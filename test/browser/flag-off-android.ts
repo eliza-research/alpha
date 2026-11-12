@@ -96,6 +96,13 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
       if (method === 'GET' && ['/api/notes/state', '/api/lifeops/calendar/feed', '/api/lifeops/calendar/calendars', '/api/lifeops/calendar/next-context'].includes(path.split('?')[0])) return { status: 503, data: { error: 'Canonical records unavailable in this fixture' } };
       if (path === '/api/auth/me') return ok({ identity: { id, kind: 'owner' }, access: { role: 'OWNER', mode: 'local' } });
       if (path === '/api/notes/state' && method === 'GET') return ok({success:true,data:{notes:[],trash:[],revision:0}});
+      // Home reads the resident's owner-visible automation collections on entry.
+      if (method === 'GET') {
+        if (path === '/api/automations') return ok({ automations: [] });
+        if (path === '/api/lifeops/scheduled-tasks?ownerVisibleOnly=1') return ok({ tasks: [] });
+        if (path === '/api/lifeops/reminders') return ok({ reminders: [] });
+        if (path === '/api/lifeops/definitions') return ok({ definitions: [] });
+      }
       if (path === '/api/agents') return ok({ agents: [{ id: agentId, name: agentName, status: 'running' }] });
       if (path === '/api/client-devices/register') { f.installationId = headers['X-Eliza-Device-Id']; navigation().register(headers); }
       if (path === '/api/client-devices/register') return ok({ installationId: headers['X-Eliza-Device-Id'], enrollmentId: 'fixture-enrollment', capabilities: [] });

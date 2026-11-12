@@ -1,5 +1,5 @@
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
-import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
+import {confirmCloudSignOut,openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {fenceNetwork,seedCompletedAccessSetup} from './flag-off-android';
 import {observeCloudNotices} from './helpers/cloud-connection-notices';
 import {test,expect,type Page} from '@playwright/test';
@@ -70,7 +70,6 @@ async function confirmBillingAccount(page:Page){
  await expect.poll(async()=>(await calls(page)).filter(c=>c.method==='openExternal').length).toBeGreaterThan(0);
 }
 
-async function confirmSignOut(page:Page){const dialog=page.getByRole('dialog',{name:'Sign out?',exact:true});await expect(dialog).toBeVisible();await dialog.getByRole('button',{name:'Sign out',exact:true}).click();}
 
 /** No admissible plan: nothing opens by itself; the notice beside the running agent offers Redeem
  * code, which opens the plan panel (the notice's other action is Choose a plan). */
@@ -602,7 +601,7 @@ test.describe('account, plan and sign-in expiry',()=>{
   await expect(dialog.getByRole('region',{name:'Balance and membership',exact:true}).getByText('synthetic-plan@example.invalid',{exact:true})).toBeVisible();
   for(const name of ['Use code','Manage plan','Sign out'])await expect(dialog.getByRole('button',{name,exact:true})).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('plan-panel.png'),animations:'disabled'});
-  await dialog.getByRole('button',{name:'Sign out',exact:true}).click();await confirmSignOut(page);
+  await dialog.getByRole('button',{name:'Sign out',exact:true}).click();await confirmCloudSignOut(page);
   // Signed out, the dedicated page returns and the agent restarts without Cloud inference.
   await expect(signInPage(page)).toBeVisible();await expect(signInPage(page).getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>localStorage.getItem('alpha.connection.plan-admission.v1'))).toBeNull();
@@ -697,7 +696,7 @@ test.describe('explicit membership code entry',()=>{
  test('changing account retires explicit entry without submitting or opening billing',async({page})=>{
   const entry=await notice(page);await entry.getByRole('button',{name:'Redeem code',exact:true}).click();
   const input=sheet(page).getByRole('textbox',{name:'Membership code',exact:true});await expect(input).toBeFocused();await input.fill('SYNTHETIC-OLD-ACCOUNT');
-  await sheet(page).getByRole('button',{name:'Sign out',exact:true}).click();await confirmSignOut(page);await expect(input).toHaveCount(0);await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().membershipCodeEntry===true)).toBe(false);await noEffects(page);
+  await sheet(page).getByRole('button',{name:'Sign out',exact:true}).click();await confirmCloudSignOut(page);await expect(input).toHaveCount(0);await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().membershipCodeEntry===true)).toBe(false);await noEffects(page);
  });
 });
 
