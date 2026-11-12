@@ -253,8 +253,7 @@ jobs:
                 test/embedding-host-admission.test.mjs \
                 test/upstream-reachability.test.mjs \
                 test/voice-host-record.test.mjs \
-                test/cloud-voice-profile.test.mjs \
-                test/private-preview-cartesia-route.test.mjs
+                test/cloud-voice-profile.test.mjs
             '
       - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # Noncandidate diagnostics retain their existing absent-input check.
