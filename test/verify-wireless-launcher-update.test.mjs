@@ -11,6 +11,7 @@ import {
   captureLauncher, checkFollowup, checkReplacement, readPublicLauncherOffer, verifyPublicLauncherBytes,
 } from '../scripts/verify-wireless-launcher-update.ts';
 import {appUpdateManifestUrl} from '../scripts/update-channel.ts';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 const packageName = 'ai.alphacompute.alphaphone';
 const dataApkPath = '/data/app/~~AA==/ai.alphacompute.alphaphone-X=/base.apk';
@@ -296,7 +297,7 @@ test('the before and after CLI admit installed releases at or below the recorded
       const versionCode = (followup ? 9 : 8) - (phase === 'before' ? 1 : 0);
       return execFileSync(process.execPath, [realpathSync(output), phase, '--serial', 'fixture-phone',
         '--apk-manifest', manifests.get(versionCode), '--out', receipt, ...extra], {
-        encoding: 'utf8', timeout: 30_000, env: {...process.env, FIXTURE_DISTRIBUTION: distribution, FIXTURE_FOLLOWUP: followup ? '1' : '0'},
+        encoding: 'utf8', timeout: scaledTimeout(30_000), env: {...process.env, FIXTURE_DISTRIBUTION: distribution, FIXTURE_FOLLOWUP: followup ? '1' : '0'},
       });
     };
     run('before', before, ['--distribution', distribution]);
