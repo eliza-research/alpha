@@ -69,7 +69,7 @@ test('the destination is a new folder beneath test-results',t=>{
 test('arguments: one destination, known options only',()=>{
  assert.deepEqual(parseDeveloperArchiveArgs(['test-results/x']),{testMocks:false,apkDir:'artifacts',destination:'test-results/x'});
  assert.deepEqual(parseDeveloperArchiveArgs(['--apk-dir=out','--test-mocks','test-results/x']),{testMocks:true,apkDir:'out',destination:'test-results/x'});
- for(const argv of [[],['a','b'],['--force','test-results/x'],['--apk-dir']])assert.throws(()=>parseDeveloperArchiveArgs(argv),/Use: node scripts\/developer-archive\.ts/);
+ for(const argv of [[],['a','b'],['--force','test-results/x'],['--apk-dir']])assert.throws(()=>parseDeveloperArchiveArgs(argv),/Use: bun scripts\/developer-archive\.ts/);
 });
 test('the command prints the archive and its hashes',t=>{
  const root=temporary(t);build(root);

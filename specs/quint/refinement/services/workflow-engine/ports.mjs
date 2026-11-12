@@ -96,7 +96,7 @@ export async function engineModule() {
     assert.equal(digest(readFileSync(path)), hash, `Workflow source changed before evaluation: ${path}`);
   }
   if (!evaluated) {
-    const module = await import('data:text/javascript;base64,' + Buffer.from(compiled.code).toString('base64') + `#${++compilation}`);
+    const module = await import('data:text/javascript;base64,' + Buffer.from(`${compiled.code}\n// compilation ${++compilation}`).toString('base64'));
     evaluated = {...module, sources: compiled.sources, compiledHashes: {...compiled.compiledHashes}};
   }
   return evaluated;

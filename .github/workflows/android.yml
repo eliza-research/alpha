@@ -24,12 +24,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
+      # The pinned upstream SDK retains Node-based build tooling.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version-file: .nvmrc
-          cache: npm
+          node-version: "26.13.0"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        if: github.event_name == 'workflow_dispatch'
         with:
           bun-version: "1.4.2"
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -53,40 +52,37 @@ jobs:
           # Native engine wrappers (prepare-embedding-host) require the CMake release of the qualified build.
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
-      - run: npm ci
-      # The host JVM tests in npm run verify and the Calendar bridge both need the pinned org.json jar.
+      - run: bun install --frozen-lockfile
+      # The host JVM tests in bun run verify and the Calendar bridge both need the pinned org.json jar.
       - name: Prepare normal host-test JSON
         timeout-minutes: 1
         run: bash scripts/ci/prepare-host-test-json.sh
       - name: Prepare reviewed Kotlin compiler for native routing checks
-        run: node test/fixtures/kotlin-tools.mjs --prepare
-      # npm run verify's prepared-SDK tests need the pinned Bun and SDK, as in browser.yml.
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        if: github.event_name == 'workflow_dispatch'
-        with:
-          bun-version: "1.4.2"
+        run: bun test/fixtures/kotlin-tools.mjs --prepare
+      # bun run verify's prepared-SDK tests need the prepared SDK, as in browser.yml.
       - name: Prepare pinned SDK for manual verification
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          export ALPHA_BUN="$(command -v bun)"
+          ALPHA_BUN="$(command -v bun)"
+          export ALPHA_BUN
           test "$("$ALPHA_BUN" --version)" = '1.4.2'
-          node scripts/prepare-local-agent.ts
-          prepared_source=$(node --input-type=module -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
+          bun scripts/prepare-local-agent.ts
+          prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - name: Verify standalone manual qualification
         if: github.event_name == 'workflow_dispatch'
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
-        run: npm run verify
-      - run: node --test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
+        run: bun run verify
+      - run: bun test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # On-device speech is the shared paradee-voice library on libelizainference (llama.cpp/ggml):
       # Paradee-8M TTS with misaki G2P and the bundle's ASR slot. This lane stages no native voice
       # outputs, so Gradle compiles the real Java API unpackaged and the APKs report speech unavailable.
       - name: Prepare pinned native lifecycle sources
         if: github.event_name != 'workflow_dispatch'
-        run: node scripts/prepare-local-agent.ts --source-only
+        run: bun scripts/prepare-local-agent.ts --source-only
       # Distribution build: flag-off whatever the runner exports. This job stages no
       # resident runtime, so releases are recorded distributable:false (APK-build
       # evidence only); the resident workflow builds and verifies PACKAGED releases.
@@ -102,7 +98,7 @@ jobs:
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           # A clean release R8 pass exhausted the default 2 GiB heap on this runner.
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
-        run: npm run android:build -- --allow-unpackaged-runtime --skip-instrumentation
+        run: bun run android:build -- --allow-unpackaged-runtime --skip-instrumentation
       - name: Verify product Gradle OTA channel admission
         shell: bash
         timeout-minutes: 4
@@ -118,15 +114,15 @@ jobs:
         run: python scripts/ci/calendar-bridge.py
       - name: Require test-mock-free distribution
         run: |
-          node scripts/audit-production-bundle.ts web-dist
-          node - <<'NODE'
+          bun scripts/audit-production-bundle.ts web-dist
+          bun - <<'NODE'
           const fs = require('node:fs');
           const manifest = JSON.parse(fs.readFileSync('artifacts/apk-manifest.json', 'utf8'));
           if (manifest.testMocks !== false || manifest.demoEntryPoints !== false) throw new Error('Distribution APKs must be testMocks:false and demoEntryPoints:false');
           if (manifest.results.length !== 4 || manifest.results.some(row => row.testMocks !== false || row.bundleAudit !== 'passed')) throw new Error('Every distribution APK must pass the flag-off bundle audit');
           console.log(JSON.stringify({ testMocks: manifest.testMocks, demoEntryPoints: manifest.demoEntryPoints, version: manifest.version, signing: manifest.signing.release }, null, 2));
           NODE
-      - run: npm run aosp:stage -- --apk artifacts/launcher-debug.apk --development
+      - run: bun run aosp:stage -- --apk artifacts/launcher-debug.apk --development
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-distribution-apks-${{ github.run_id }}-${{ github.run_attempt }}
@@ -170,8 +166,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: scripts/ci
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
       - env:
           SELECTED: ${{ needs.changes.outputs.android }}
           CHANGES: ${{ needs.changes.result }}
           BUILD: ${{ needs.build.result }}
-        run: node scripts/ci/required-result.ts "changes=$CHANGES" "build=$BUILD:$SELECTED"
+        run: bun scripts/ci/required-result.ts "changes=$CHANGES" "build=$BUILD:$SELECTED"

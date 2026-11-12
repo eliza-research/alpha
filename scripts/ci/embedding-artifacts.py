@@ -14,9 +14,8 @@ import urllib.parse
 import urllib.request
 import zipfile
 
-REPOSITORY = 'eliza-research/alpha'
+REPOSITORY = 'alphacompute/alpha'
 REPOSITORY_ID = 1396333361
-REPOSITORY_OWNER_ID = 314117943
 LIBRARIES = ('libelizainference.so', 'libelizavoicejni.so', 'libc++_shared.so')
 MAX_ARCHIVE = 128 * 1024 * 1024
 MAX_EXPANDED = 192 * 1024 * 1024
@@ -24,8 +23,7 @@ MAX_EXPANDED = 192 * 1024 * 1024
 
 def canonical_repository(env):
     return (env.get('GITHUB_REPOSITORY') == REPOSITORY and
-            env.get('GITHUB_REPOSITORY_ID') == str(REPOSITORY_ID) and
-            env.get('GITHUB_REPOSITORY_OWNER_ID') == str(REPOSITORY_OWNER_ID))
+            env.get('GITHUB_REPOSITORY_ID') == str(REPOSITORY_ID))
 
 
 def require(value, message):

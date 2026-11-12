@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {registerHooks} from 'node:module';
+import {registerHooks} from '../../../../test/support/module-hooks.mjs';
 import {execFileSync, spawn} from 'node:child_process';
 import {basename, dirname, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';

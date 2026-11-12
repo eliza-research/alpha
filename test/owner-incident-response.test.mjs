@@ -21,8 +21,8 @@ test('the IOC file transcribes the cleanup record', () => {
   assert.equal(Object.keys(iocs.ciRunsOnForgedCommits).length, 18);
   assert.equal(Object.values(iocs.ciRunsOnForgedCommits).reduce((a, b) => a + b, 0), 117);
   assert.equal(iocs.ciRunsOnForgedCommits.alphaphone, 6);
-  assert.deepEqual(forgedPrefixes(iocs, 'eliza-research/alphaphone').sort(), ['0cefd6e47', '131cd0e63', '39ef59401', '61d293f61', 'cc3f7a709']);
-  assert.equal(fullName(iocs, 'alphaphone'), 'eliza-research/alphaphone');
+  assert.deepEqual(forgedPrefixes(iocs, 'alphacompute/alphaphone').sort(), ['0cefd6e47', '131cd0e63', '39ef59401', '61d293f61', 'cc3f7a709']);
+  assert.equal(fullName(iocs, 'alphaphone'), 'alphacompute/alphaphone');
   assert.equal(fullName(iocs, 'vera'), 'AlphaCompute/vera');
   for (const row of iocs.branches) for (const key of ['preAttack', 'forged']) assert.match(row[key], /^[0-9a-f]{9}$/);
 });
@@ -186,7 +186,7 @@ test('ruleset drafts block force-push and deletion, require signatures and have 
 test('marker detection matches the recorded payload shape', () => {
   const files = ['init', '.env', '.vscode/tasks.json', 'android/x/reminders/public/fonts/fa-brand-400.orc', 'src/init.ts', 'docs/init'];
   assert.deepEqual(pathMarkers(files, iocs.markers), ['init', '.env', '.vscode/tasks.json', 'android/x/reminders/public/fonts/fa-brand-400.orc']);
-  assert.deepEqual(initScripts(JSON.stringify({scripts: {build: 'node init && vite build', dev: 'node ./init', test: 'node --test', initdb: 'node scripts/initdb.mjs', x: 'node init-db.mjs'}}), iocs.markers), ['build', 'dev']);
+  assert.deepEqual(initScripts(JSON.stringify({scripts: {build: 'node init && vite build', dev: 'node ./init', test: 'bun test', initdb: 'bun scripts/initdb.mjs', x: 'node init-db.mjs'}}), iocs.markers), ['build', 'dev']);
   assert.deepEqual(contentMarkers('"runOptions": { "runOn": "folderOpen" }', iocs.markers).length, 1);
   assert.deepEqual(contentMarkers('const src = atob(process.env.AUTH_API_KEY); eval(proxyInfo);', iocs.markers).length, 2);
   assert.deepEqual(contentMarkers('export default {webDir: "web-dist"}', iocs.markers), []);

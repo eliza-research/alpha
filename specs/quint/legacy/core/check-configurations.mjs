@@ -102,7 +102,7 @@ function includeModel(path) {
   }
 }
 for (const {model} of modelPlans) includeModel(model.path);
-const inputFiles = [inventoryPath, manifestPath, runnerPath, tlcConfigPath, pinPath, 'package-lock.json', ...metadataFiles, ...modelFiles];
+const inputFiles = [inventoryPath, manifestPath, runnerPath, tlcConfigPath, pinPath, 'bun.lock', ...metadataFiles, ...modelFiles];
 if (phase === 'temporal') inputFiles.push(tlcJar);
 const snapshot = () => Object.fromEntries(inputFiles.map(path => [path, hash(path)]));
 const before = snapshot();

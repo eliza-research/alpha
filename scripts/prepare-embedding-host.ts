@@ -13,7 +13,7 @@ const root=path.resolve(import.meta.dirname,'..'),upstream=path.join(root,'vendo
 const args=process.argv.slice(2),option=(name: string)=>{const i=args.indexOf(name);return i<0?undefined:args[i+1];};
 for(let i=0;i<args.length;i++){if(args[i]==='--build'||args[i]==='--remap-build-path')continue;if(['--fork','--output','--abi'].includes(args[i])){if(!args[++i]||args[i].startsWith('--'))throw Error('Missing option value');}else throw Error('Unknown option');}
 const abi=option('--abi')||'arm64-v8a',forkInput=option('--fork'),outputInput=option('--output');
-if(!['arm64-v8a','x86_64'].includes(abi)||!forkInput||!outputInput)throw Error('Usage: node scripts/prepare-embedding-host.ts --fork <existing pinned checkout> --output <new isolated directory> [--abi arm64-v8a|x86_64] [--build] [--remap-build-path]');
+if(!['arm64-v8a','x86_64'].includes(abi)||!forkInput||!outputInput)throw Error('Usage: bun scripts/prepare-embedding-host.ts --fork <existing pinned checkout> --output <new isolated directory> [--abi arm64-v8a|x86_64] [--build] [--remap-build-path]');
 const fork=fs.realpathSync(forkInput),output=path.resolve(outputInput);
 const within=(parent: string,child: string)=>{const relative=path.relative(parent,child);return relative===''||!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative);};
 for(let p=output;p!==path.dirname(p);p=path.dirname(p))if(fs.existsSync(p)&&fs.lstatSync(p).isSymbolicLink())throw Error('Output must not traverse a symlink');

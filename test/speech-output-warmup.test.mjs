@@ -12,7 +12,7 @@ test('shared output warmup is admitted and closes on first audio, cancellation a
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-warmup-source-'));
  t.after(()=>fs.rmSync(temporary,{recursive:true,force:true}));
  const source=upstreamNativeSource(root);
- materializeNativePatches({source,manifest:{...JSON.parse(fs.readFileSync(path.join(root,'android/upstream-native-sources.json'))),baseCommit:source.pin},patchRoot:path.join(root,'patches/eliza'),temporary});
+ materializeNativePatches({source,manifest:{...JSON.parse(fs.readFileSync(path.join(root,'android/upstream-native-sources.json'))),baseCommit:source.pin},temporary});
  const speech=path.join(temporary,'plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice');
  const bridge=fs.readFileSync(path.join(speech,'LocalSpeechBridgePlugin.java'),'utf8');
  assert.match(bridge,/@PluginMethod public void warmSpeechOutput\(PluginCall call\)/);

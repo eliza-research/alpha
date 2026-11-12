@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {build} from 'esbuild';
 const dependencies=await build({stdin:{contents:"import * as workflowTime from './apps/app/src/runtime/workflow-local-time.ts'; export {workflowTime}; export {describePhoneTrigger,phoneTriggerClockChangeNote} from './apps/app/src/runtime/phone-workflow-authoring.ts'; export {WorkflowTypedRejected} from './apps/app/src/runtime/workflow-protocol.ts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'esm',platform:'neutral',mainFields:['module','main'],logLevel:'silent'});
 const {workflowTime,describePhoneTrigger,phoneTriggerClockChangeNote,WorkflowTypedRejected}=await import('data:text/javascript;base64,'+Buffer.from(dependencies.outputFiles[0].text).toString('base64'));

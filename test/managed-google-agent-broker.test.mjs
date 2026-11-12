@@ -3,7 +3,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
-if(!process.versions.bun&&!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createManagedGoogleAgentBroker}=await import('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-agent-broker.ts');
 const {GoogleAgentRefusal}=await import('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts');
 const secret='NEVER_EXPOSE_SYNTHETIC_HOST_TEXT';

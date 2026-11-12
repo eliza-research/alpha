@@ -26,4 +26,4 @@ physical Back delivery, accepted sign-out, and real Cloud operations are outside
 the checked schedules.
 
 With the authenticated client features and Playwright Chromium prepared, run
-`node --import=tsx --test test/quint-legacy-settings-nav-refinement.test.mjs`.
+`bun test ./test/quint-legacy-settings-nav-refinement.test.mjs`.

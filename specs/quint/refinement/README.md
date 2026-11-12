@@ -17,7 +17,7 @@ It compares observations after every supplied checkpoint, retains input traces,
 and binds results to source, adapter and model hashes. A mismatched observation
 fails the invocation. The harness test includes a deliberately wrong observation.
 
-Run an implemented family with `node scripts/check-quint-refinement.ts
+Run an implemented family with `bun scripts/check-quint-refinement.ts
 --families=native`. The default command runs application, services, native and composition campaigns. Missing adapters
 and failed checks produce a failing command. `--require-complete` also requires
 the outstanding application-refinement obligations to be discharged.

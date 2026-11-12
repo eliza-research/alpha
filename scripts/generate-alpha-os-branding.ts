@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Render Alpha's existing vector identity; no upstream source or phone mutation. */
 import fs from 'node:fs';
 import path from 'node:path';

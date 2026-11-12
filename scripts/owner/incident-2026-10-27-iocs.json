@@ -10,7 +10,7 @@
   },
   "defaultOwner": "AlphaCompute",
   "ownerOverrides": {
-    "alphaphone": "eliza-research"
+    "alphaphone": "alphacompute"
   },
   "ciRunsOnForgedCommits": {
     "dstack-tee": 24,

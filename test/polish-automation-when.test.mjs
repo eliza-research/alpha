@@ -9,8 +9,10 @@ test('automationWhen renders the device-local instant consistently across saved 
  setLocalePreferences({locale:'en-US',hourCycle:'h12'});
  try{
   const local=new Date(2026,9,29,18),stamp=local.toISOString();
-  for(const zone of ['UTC','America/New_York','Asia/Tokyo','Not/AZone',undefined])assert.equal(automationWhen(stamp,zone,'en-US'),'Oct 29, 2026, 6:00 PM');
-  assert.equal(automationWhen(local.getTime(),'Asia/Tokyo','en-US'),'Oct 29, 2026, 6:00 PM');
+  // The glue between date and time depends on the runtime's CLDR revision (Bun uses the system ICU).
+  const expected=/^Oct 29, 2026(?:,| at) 6:00 PM$/;
+  for(const zone of ['UTC','America/New_York','Asia/Tokyo','Not/AZone',undefined])assert.match(automationWhen(stamp,zone,'en-US'),expected);
+  assert.match(automationWhen(local.getTime(),'Asia/Tokyo','en-US'),expected);
   assert.equal(automationWhen('not a date'),'');assert.equal(automationWhen(Number.NaN),'');
  }finally{setLocalePreferences({});}
 });
@@ -20,8 +22,8 @@ for(const hourCycle of ['h23','h12'])test(`workflow instants and snoozes honor t
  setLocalePreferences({locale,hourCycle});
  try{
   const time=hourCycle==='h23'?'15:04':'3:04 pm';
-  const expected=hourCycle==='h23'?'Oct 7, 2026, 15:04':'7 Oct 2026, 3:04 pm';
-  assert.equal(workflowLocalInstant(date.getTime(),'fr-FR'),expected);
+  const expected=hourCycle==='h23'?/^Oct 7, 2026(?:,| at) 15:04$/:/^7 Oct 2026(?:,| at) 3:04 pm$/;
+  assert.match(workflowLocalInstant(date.getTime(),'fr-FR'),expected);
   assert.equal(workflowSnoozeTime(date.getTime(),now),time);
   assert.notEqual(workflowSnoozeTime(date.getTime(),now),date.toLocaleTimeString(locale,{hour:'numeric',minute:'2-digit'}),'vanilla Intl cannot see Android\'s hour-cycle override');
   const tomorrow=new Date(2026,9,8,15,4),nextYear=new Date(2027,9,8,15,4);

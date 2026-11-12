@@ -6,7 +6,7 @@
  * root; --product defaults to android/aosp/pixel10a-product.json and --channel to its update
  * channel:
  *
- *   node scripts/aosp-release-record.ts --signed-target-files ZIP --ota ZIP --out NEW_FILE
+ *   bun scripts/aosp-release-record.ts --signed-target-files ZIP --ota ZIP --out NEW_FILE
  *     [--product FILE] [--channel FILE] [--apk-manifest FILE] [--keys-dir DIR] [--incremental-from ZIP]
  *
  * It only reads archives; imageBooted, signedUpdateApplied, releaseQualified and

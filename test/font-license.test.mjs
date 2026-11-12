@@ -213,7 +213,7 @@ function scratchRoot(t) {
   for (const name of ['node_modules', 'vendor', 'android']) fs.symlinkSync(path.join(ROOT, name), path.join(dir, name));
   fs.mkdirSync(path.join(dir, 'apps/app'), {recursive: true});
   fs.symlinkSync(path.join(ROOT, 'apps/app/public'), path.join(dir, 'apps/app/public'));
-  for (const name of ['package.json', 'package-lock.json', 'upstream.lock.json']) fs.copyFileSync(path.join(ROOT, name), path.join(dir, name));
+  for (const name of ['package.json', 'bun.lock', 'upstream.lock.json']) fs.copyFileSync(path.join(ROOT, name), path.join(dir, name));
   fs.cpSync(path.join(ROOT, 'licenses'), path.join(dir, 'licenses'), {recursive: true});
   // The reviewed ASR model pins are listed in the notices, so their recorded reasons are not stale.
   fs.mkdirSync(path.join(dir, 'scripts'));

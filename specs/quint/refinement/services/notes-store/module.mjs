@@ -34,7 +34,7 @@ export async function loadNotesSource(extraSources=[]) {
       });
     }}]});
   assert.doesNotMatch(built.outputFiles[0].text,/['"]file-type['"]/, 'Optional media dependency must be absent from Notes executable');
-  const sources=[...compiled.keys(),fileURLToPath(import.meta.url),'package-lock.json',...CORE_STATE_INPUTS,...extraSources];
+  const sources=[...compiled.keys(),fileURLToPath(import.meta.url),'bun.lock',...CORE_STATE_INPUTS,...extraSources];
   const driverHashes=captureInputs(sources);
   for(const [file,digest] of Object.entries(prepared.receipt.inputHashes))assert.equal(driverHashes[path.resolve(file)],digest,'Notes source inputs changed before capture');
   for(const [file,digest] of compiled)assert.equal(driverHashes[path.resolve(file)],digest,'Notes source changed during compilation');

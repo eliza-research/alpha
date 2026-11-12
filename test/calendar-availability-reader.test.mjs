@@ -22,6 +22,6 @@ test('Android free/busy reader: chosen calendars only, provider availability, ci
   const [verdict,cases]=output.split('\n');
   assert.equal(verdict,'PASS calendar availability reader');
   const file=join(temporary,'cases.json');writeFileSync(file,cases);
-  assert.match(execFileSync(process.execPath,['--import','tsx','scripts/test-calendar-availability-provider-rows.ts',file],{cwd:root,encoding:'utf8',timeout:120000,stdio:'pipe'}),/^PASS: \d+ Android reader results/);
+  assert.match(execFileSync(process.execPath,['scripts/test-calendar-availability-provider-rows.ts',file],{cwd:root,encoding:'utf8',timeout:120000,stdio:'pipe'}),/^PASS: \d+ Android reader results/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

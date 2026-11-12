@@ -145,7 +145,7 @@ async function generate(make,name){
  return {name,init:{name:'init'},expect,steps};
 }
 export async function checkBatchCaptureCompletion(extraSources=[]){
- const sources=[modelPath,source,'apps/app/src/runtime/cloud-voice.ts','package-lock.json',fileURLToPath(import.meta.url),...extraSources];
+ const sources=[modelPath,source,'apps/app/src/runtime/cloud-voice.ts','bun.lock',fileURLToPath(import.meta.url),...extraSources];
  const driverHashes=captureInputs(sources);
  const make=extractImplementation(),traces=[];
  for(const name of batchCaptureScenarios)traces.push(await generate(make,name));

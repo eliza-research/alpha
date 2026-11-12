@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
-import {ALLOW_OLDER_PIN, checkoutProblems, mainPinProblem, mainPinStatus, strictBuildInputs} from '../scripts/android-build-preflight.ts';
+import {checkoutProblems, mainPinProblem, mainPinStatus, strictBuildInputs} from '../scripts/android-build-preflight.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const IDENTITY = ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false'];
@@ -62,7 +62,7 @@ test('a pin equal to or descending from main passes', t => {
   assert.deepEqual(checkoutProblems(f.root, {voiceHost: noVoiceCheck}), []);
 });
 
-test('a consistent but older or diverged pin is refused unless the reviewed rollback flag is given', t => {
+test('a consistent but older or diverged pin is refused', t => {
   for (const pin of ['B', 'D']) {
     const f = fixture(t, {pin, mainPin: 'C'});
     assert.equal(mainPinStatus(f.root, f.pin).state, 'older');
@@ -70,10 +70,6 @@ test('a consistent but older or diverged pin is refused unless the reviewed roll
     assert.equal(problems.length, 1);
     assert.match(problems[0], new RegExp(`pins ${f.pin}, which is older than or diverged from the pin ${f.commits.C} on refs/remotes/origin/main`));
     assert.match(problems[0], /Run: git fetch origin && git rebase origin\/main .*git submodule update --init vendor\/eliza/);
-    assert.match(problems[0], /--allow-older-upstream-pin/);
-    const notes = [];
-    assert.deepEqual(checkoutProblems(f.root, {voiceHost: noVoiceCheck, allowOlderUpstreamPin: true, notes}), []);
-    assert.match(notes[0], new RegExp(`^${ALLOW_OLDER_PIN}: building upstream pin ${f.pin}`));
   }
 });
 
@@ -81,7 +77,6 @@ test('a main pin unknown to vendor/eliza asks for a fetch instead of passing', t
   const f = fixture(t, {pin: 'B', mainPin: 'e'.repeat(40)});
   assert.equal(mainPinStatus(f.root, f.pin).state, 'unknown');
   assert.match(mainPinProblem(f.root, f.pin), /The upstream pin e{40} on refs\/remotes\/origin\/main is not in vendor\/eliza.*Run: git -C vendor\/eliza fetch origin\./);
-  assert.equal(mainPinProblem(f.root, f.pin, {allowOlderUpstreamPin: true}), null);
 });
 
 test('a shallow vendor/eliza that cannot decide asks to unshallow', t => {
@@ -112,20 +107,17 @@ test('the inputs report marks the pinned checkout missing for an older pin', t =
   assert.match(row.action, /Rebase on origin\/main/);
 });
 
-test('the preflight entry point exits 2 for an older pin and passes with the override', t => {
+test('the preflight entry point exits 2 for an older pin', t => {
   const f = fixture(t, {pin: 'B', mainPin: 'C'});
-  for (const file of ['android-build-preflight.ts', 'voice-host.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'mobile-uuid-adapter.ts', 'android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'toolchain.ts', 'copy-file-clone.ts', 'core-state-patch.ts', 'build-policy-source.ts', 'removed-profile-flags.ts']) {
+  for (const file of ['android-build-preflight.ts', 'voice-host.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'mobile-uuid-adapter.ts', 'android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'toolchain.ts', 'copy-file-clone.ts', 'core-state-patch.ts', 'build-policy-source.ts']) {
     fs.mkdirSync(path.join(f.root, 'scripts'), {recursive: true});
     fs.copyFileSync(path.join(ROOT, 'scripts', file), path.join(f.root, 'scripts', file));
   }
   // The unpackaged developer lane may omit the on-device voice outputs, so only the pin is in question here.
   fs.mkdirSync(path.join(f.root, 'android/voice-host'), {recursive: true});
   fs.copyFileSync(path.join(ROOT, 'android/voice-host/qualified-voice-host.json'), path.join(f.root, 'android/voice-host/qualified-voice-host.json'));
-  const run = (...args) => spawnSync(process.execPath, ['scripts/android-build-preflight.ts', '--before-prepare', '--allow-unpackaged-runtime', ...args], {cwd: f.root, encoding: 'utf8'});
-  let result = run();
+  const run = () => spawnSync(process.execPath, ['scripts/android-build-preflight.ts', '--before-prepare', '--allow-unpackaged-runtime'], {cwd: f.root, encoding: 'utf8'});
+  const result = run();
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stderr, /Android build prerequisites are missing:\n  - upstream\.lock\.json pins .* older than or diverged/);
-  result = run(ALLOW_OLDER_PIN);
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /Note: --allow-older-upstream-pin: building upstream pin/);
 });

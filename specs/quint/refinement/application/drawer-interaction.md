@@ -20,5 +20,5 @@ Owner replacement, concurrent native handoffs, physical touch and actual
 Android screen delivery require separate evidence.
 
 ```sh
-node --test test/quint-drawer-interaction.test.mjs
+bun test test/quint-drawer-interaction.test.mjs
 ```

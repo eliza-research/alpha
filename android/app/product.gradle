@@ -2,11 +2,9 @@
 // appScripts). The upstream generator owns SDK, dependencies, variants, signing,
 // version and test-mocks policy; this file holds only Alpha's Gradle-time product
 // inputs and admission: App Links, update manifest, voice and embedding hosts.
-// There is one runtime profile. Every build packages on-device speech and local embeddings; the
-// renderer chooses Cloud, provider or on-device speech at run time. The resident agent still
-// receives ELIZA_RUNTIME_PROFILE=native (upstream's local-embeddings route).
-if (project.hasProperty('ELIZA_RUNTIME_PROFILE') || project.hasProperty('ELIZA_LOCAL_EMBEDDINGS'))
- throw new GradleException('There is one runtime profile now; remove ELIZA_RUNTIME_PROFILE and ELIZA_LOCAL_EMBEDDINGS')
+// Every build packages on-device speech and local embeddings; the renderer chooses Cloud, provider
+// or on-device speech at run time. The resident agent receives ELIZA_RUNTIME_PROFILE=native
+// (upstream's local-embeddings route).
 def unpackagedRuntime = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
 // Upstream switch (vendor/eliza/packages/app/scripts/dev-ui.ts): the generator attaches test-only
 // sources to DEBUG variants when it is exactly "1".
@@ -22,7 +20,6 @@ if (!runtimeAbis || runtimeAbis.toSet().size() != runtimeAbis.size() || runtimeA
 def androidBunTarget = project.findProperty('ELIZA_ANDROID_BUN_TARGET') ?: System.getenv('ELIZA_ANDROID_BUN_TARGET') ?: 'linux-musl'
 if (!(androidBunTarget in ['android', 'linux-musl']) || androidBunTarget == 'android' && runtimeAbis != ['arm64-v8a'])
  throw new GradleException('Android Bun requires the explicit arm64-v8a target')
-def envValue = { String name -> def value = System.getenv(name); value == null || value.trim().isEmpty() ? null : value.trim() }
 apply from: file('cloud-deployment.generated.gradle')
 def cloudWebHost = alphaCloudWebHosts.production
 def stagingCloudWebHost = alphaCloudWebHosts.staging
@@ -30,12 +27,7 @@ def stagingCloudWebHost = alphaCloudWebHosts.staging
 // Workspace consent return (GoogleWorkspaceReturn) at the configured production web host.
 // AndroidManifest.xml declares the exact sign-in and Google callback paths. Publish the
 // assetlinks.json rendered by scripts/render-assetlinks.ts on that configured host.
-def appLinkHostRaw = project.findProperty('ELIZAOS_APP_LINK_HOST') ?: envValue('ELIZAOS_APP_LINK_HOST')
-def appLinkHost = appLinkHostRaw == null || appLinkHostRaw.toString().trim().isEmpty() ? cloudWebHost : appLinkHostRaw.toString().trim()
-if (appLinkHost && !(appLinkHost ==~ /(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]/))
- throw new GradleException('ELIZAOS_APP_LINK_HOST must be a lower-case DNS host name without scheme, port or path')
-if (appLinkHost && appLinkHost != cloudWebHost)
- throw new GradleException('ELIZAOS_APP_LINK_HOST must match the production web host in scripts/cloud-deployment-policy.ts')
+def appLinkHost = cloudWebHost
 // One-tap app update (AlphaDevicePlugin checkForUpdate): the one HTTPS update manifest, app.config.json updateManifestUrl.
 def updateManifestUrl = new groovy.json.JsonSlurper().parse(file('../../app.config.json')).updateManifestUrl
 if (!(updateManifestUrl instanceof String) || new URI(updateManifestUrl).scheme != 'https' || !new URI(updateManifestUrl).host)
@@ -94,13 +86,12 @@ android {
   manifestPlaceholders.put('alphaUpdateManifestSha256', 'sha256:' + updateManifestSha256)
   // Constant: the value the resident agent is launched with (AlphaLocalAgentPlugin).
   buildConfigField 'String', 'ELIZA_RUNTIME_PROFILE', '"native"'
-  // The verified App Link host this build declares (ELIZAOS_APP_LINK_HOST), or "" when none.
+  // The verified App Link host this build declares: the production Cloud web host.
   buildConfigField 'String', 'ELIZAOS_APP_LINK_HOST', "\"${appLinkHost}\""
   buildConfigField 'String', 'ALPHA_UPDATE_MANIFEST_URL', "\"${updateManifestUrl}\""
   // The shared voice loader configures Phonon-2's in-tree ggml backend.
-  // Decode threads may be supplied by the host; empty means one per big core.
-  def elizaAsrThreads = (System.getenv('ELIZA_ASR_THREADS') ?: '').trim()
-  buildConfigField 'String', 'ELIZA_ASR_THREADS', "\"${elizaAsrThreads ==~ /[0-9]{1,2}/ ? elizaAsrThreads : ''}\""
+  // Empty decode threads means one per big core.
+  buildConfigField 'String', 'ELIZA_ASR_THREADS', '""'
   // The source commit each voice latency trial records (issue #395, shared VoiceLatencyProbe via AlphaApplication).
   // A tree with tracked changes is recorded as dirty; the aggregator never accepts dirty trials.
   def sourceGit = { List<String> command ->
@@ -117,7 +108,7 @@ android {
 // The shared bionic host is packaged only from the reviewed consumer artifact and BGE pin.
 def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {
  workingDir rootProject.projectDir.parentFile
- def args = ['node', 'scripts/stage-embedding-host.ts', '--verify']
+ def args = ['bun', 'scripts/stage-embedding-host.ts', '--verify']
  if (unpackagedRuntime) args += '--allow-unpackaged-runtime'
  commandLine args
 }
@@ -127,7 +118,7 @@ tasks.named('preBuild').configure { dependsOn verifyEmbeddingHost }
 def verifyNativeGoogleHost = tasks.register('verifyNativeGoogleHost', Exec) {
  onlyIf { !unpackagedRuntime && testMocksRaw?.toString() != '1' }
  workingDir rootProject.projectDir.parentFile
- commandLine 'node', 'scripts/runtime-profile.ts', '--verify-native'
+ commandLine 'bun', 'scripts/runtime-profile.ts', '--verify-native'
 }
 tasks.named('preBuild').configure { dependsOn verifyNativeGoogleHost }
 
@@ -141,21 +132,10 @@ if (!selectedParadeeAbis || selectedParadeeAbis.toSet().size() != selectedParade
 def paradeeAbiArgs = selectedParadeeAbis.collectMany { ['--abi', it] }
 def verifyParadeeAppLinkage = tasks.register('verifyParadeeAppLinkage', Exec) {
  workingDir rootProject.projectDir.parentFile
- commandLine(['node', 'scripts/paradee-runtime.ts', '--app-linkage'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
+ commandLine(['bun', 'scripts/paradee-runtime.ts', '--app-linkage'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
 }
 def verifyVoiceHost = tasks.register('verifyVoiceHost', Exec) {
  workingDir rootProject.projectDir.parentFile
- commandLine(['node', 'scripts/voice-host.ts', '--verify'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
+ commandLine(['bun', 'scripts/voice-host.ts', '--verify'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
 }
 tasks.named('preBuild').configure { dependsOn verifyParadeeAppLinkage, verifyVoiceHost }
-
-// Reject stale synced renderer assets: a renderer built for the removed Cloud profile names it.
-def verifyRuntimeWebProfile = tasks.register('verifyRuntimeWebProfile') {
- doLast {
-  def flagsFile = file('src/main/assets/public/build-flags.json')
-  if (!flagsFile.isFile()) throw new GradleException('Synced web build flags missing')
-  def flags = new groovy.json.JsonSlurper().parse(flagsFile)
-  if (flags.runtimeProfile != null) throw new GradleException('Synced web assets name a runtime profile; rebuild and sync the renderer')
- }
-}
-tasks.named('preBuild').configure { dependsOn verifyRuntimeWebProfile }

@@ -210,9 +210,7 @@ test("the https autoVerify filters are the two returns on the configured host an
   for (const match of https) assert.ok(main.includes(match[0]), "the returns belong to MainActivity");
   assert.equal(manifest.match(/autoVerify/g).length, 2);
   assert.doesNotMatch(manifest, /scheme="https"[^>]*cloud-delegation/, "no https Cloud delegation filter: only the custom scheme has a handler");
-  assert.match(gradle, /project\.findProperty\('ELIZAOS_APP_LINK_HOST'\) \?: envValue\('ELIZAOS_APP_LINK_HOST'\)/);
-  assert.match(gradle, /\? cloudWebHost : appLinkHostRaw\.toString\(\)\.trim\(\)/);
-  assert.match(gradle, /if \(appLinkHost && appLinkHost != cloudWebHost\)/);
+  assert.match(gradle, /^def appLinkHost = cloudWebHost$/m);
   assert.match(gradle, /manifestPlaceholders\.put\('appLinkHost', appLinkHost\)/);
   assert.doesNotMatch(gradle, /app-links|addStaticManifestFile|autoVerify/, "no configuration-time manifest overlay");
   assert.doesNotMatch(gradle, /ALPHA_APP_LINK/);

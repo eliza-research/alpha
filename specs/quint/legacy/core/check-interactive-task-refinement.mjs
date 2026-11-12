@@ -5,7 +5,7 @@ import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {build} from 'esbuild';
 import {materializeHistoricalFormalSources} from './formal-source-inventory.mjs';
 

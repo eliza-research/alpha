@@ -23,12 +23,16 @@ test('publication workflow preserves protected review, exact source and verifica
   assert.match(workflow.jobs.admit.if,/inputs.workflow_commit == github.sha/);
   const steps=publish.steps;
   assert(steps.filter(step=>step.uses?.startsWith('actions/checkout@')).every(step=>step.with['persist-credentials']===false));
-  const verification=steps.findIndex(step=>step.run?.includes('npm run android:verify -- --cloud-voice-evidence='));
-  const delivery=steps.findIndex(step=>step.run?.includes('node scripts/deliver-app-update.ts --variant launcher'));
+  const verification=steps.findIndex(step=>step.run?.includes('android:verify --'));
+  const delivery=steps.findIndex(step=>step.run?.includes('bun scripts/deliver-app-update.ts --variant launcher'));
   assert(verification>=0&&delivery>verification);
   assert.equal(steps[delivery]['working-directory'],'qualified-product');
   assert.match(steps[delivery].run,/scripts\/deliver-app-update\.mjs/);
   assert.match(steps[verification].run,/qualified-stage\/cloud-voice.json/);
+  assert.match(steps[verification].run,/--runtime-profile=cloud/);
+  assert.match(steps[verification].run,/npm run android:verify/);
+  const node=steps.find(step=>step.uses?.startsWith('actions/setup-node@'));
+  assert.equal(node.with['node-version-file'],'qualified-product/.nvmrc');
   const restore=steps.findIndex(step=>step.run?.includes('--product \"$GITHUB_WORKSPACE/qualified-product\"'));
   assert(restore>=0&&restore<verification);
   assert.match(steps[restore].run,/cp android\/release-signer\.json qualified-product\/android\/release-signer\.json/);
@@ -36,6 +40,37 @@ test('publication workflow preserves protected review, exact source and verifica
   assert.equal(secretSteps.length,0,'private delivery must not depend on a copied storage token');
   assert(!/APP_RELEASE_KEYSTORE|RELEASE_KEY_PASSPHRASE|RECIPIENT_PRIVATE|openssl cms|sign-release-apks/.test(source));
   for(const step of steps.filter(step=>step.uses))assert.match(step.uses,/@[0-9a-f]{40}$/);
+});
+
+test('publication supplies the Cloud profile flag only to the retained Cloud verifier', t => {
+  const workflow = YAML.parse(fs.readFileSync(new URL('../.github/workflows/publish-qualified-app-update.yml', import.meta.url), 'utf8'));
+  const step = workflow.jobs.publish.steps.find(step => step.run?.includes('android:verify --'));
+  assert.ok(step);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-qualified-profile-'));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const stage = path.join(root, 'qualified-stage');
+  fs.mkdirSync(stage);
+  const summary = path.join(stage, 'qualification-summary.json');
+  const evidence = path.join(stage, 'cloud-voice.json');
+  const run = (profile, lockfile) => {
+    const cwd = fs.mkdtempSync(path.join(root, 'product-'));
+    if (lockfile) fs.writeFileSync(path.join(cwd, lockfile), '');
+    fs.writeFileSync(summary, JSON.stringify({runtimeProfile: profile}));
+    const stub = 'bun() { printf "%s\\n" bun "$@"; }\nnpm() { printf "%s\\n" npm "$@"; }\n';
+    return spawnSync('bash', ['-e', '-c', stub + step.run], {
+      cwd, env: {...process.env, RUNNER_TEMP: root}, encoding: 'utf8', timeout: 10_000,
+    });
+  };
+  const native = run('native', 'bun.lock');
+  assert.equal(native.status, 0, native.stderr);
+  assert.deepEqual(native.stdout.trim().split('\n'), ['bun', 'run', 'android:verify', '--', `--cloud-voice-evidence=${evidence}`]);
+  const cloud = run('cloud');
+  assert.equal(cloud.status, 0, cloud.stderr);
+  assert.deepEqual(cloud.stdout.trim().split('\n'), ['npm', 'run', 'android:verify', '--',
+    `--cloud-voice-evidence=${evidence}`, '--runtime-profile=cloud']);
+  const invalid = run('other', 'bun.lock');
+  assert.equal(invalid.status, 1);
+  assert.match(invalid.stdout, /^::error::Unsupported qualified runtime profile\n$/);
 });
 
 test('publication retains the exact Alpha Compute manifest only after both signed release rows qualify', () => {

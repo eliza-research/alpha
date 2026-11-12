@@ -57,7 +57,7 @@ test('CI selection follows changed files, renames, missing history and manual di
 test('retained documentation selects verify and policy inputs select normal build lanes', async () => {
   const {affected, testReadReference} = await import('../scripts/ci/affected.ts');
   const lanes = paths => {const r=affected(paths);return [r.verify,r.browser,r.android,r.prepare];};
-  for (const path of ['docs/prd.md', 'README.md']) {
+  for (const path of ['docs/prd.md', 'docs/development.md', 'README.md']) {
     assert.equal(testReadReference(path), true, path);
     assert.deepEqual(lanes([path]), [true,false,false,false], path);
   }

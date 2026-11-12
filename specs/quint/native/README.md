@@ -122,7 +122,7 @@ From the repository root, a single model can be checked with the pinned executab
 node_modules/.bin/quint typecheck specs/quint/native/VoiceSession.qnt
 node_modules/.bin/quint test specs/quint/native/VoiceSession.qnt --backend=typescript --seed=1701 --max-samples=1
 node_modules/.bin/quint run specs/quint/native/VoiceSession.qnt --backend=typescript --invariant=safety --seed=1701 --max-samples=300 --max-steps=60
-node specs/quint/native/conformance.mjs
+bun specs/quint/native/conformance.mjs
 ```
 
 The 98 deterministic scenarios exercise accepted, denied, canceled, stale,

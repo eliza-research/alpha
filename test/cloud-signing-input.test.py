@@ -182,8 +182,7 @@ class CloudSigningInputTest(unittest.TestCase):
 
     def candidate_api_responses(self):
         source = self.pin["alphaCommit"]
-        repository = {"id": PRODUCER.REPOSITORY_ID, "full_name": PRODUCER.REPOSITORY,
-                      "owner": {"id": PRODUCER.OWNER_ID}}
+        repository = {"id": PRODUCER.REPOSITORY_ID, "full_name": PRODUCER.REPOSITORY}
         run = {"id": 171, "run_attempt": 2, "run_number": 44, "event": "push", "head_branch": "main",
                "head_sha": source, "workflow_id": PRODUCER.WORKFLOW_ID, "path": PRODUCER.WORKFLOW,
                "status": "completed", "conclusion": "success",
@@ -385,7 +384,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 self.write_candidate(change_receipt=lambda receipt: receipt.update({field: value}))
                 with self.assertRaises(ValueError):
                     ADMISSION.admit(self.archive, self.pin)
-        for field, value in (("attempt", "1"), ("packageName", ADMISSION.PACKAGE), ("voiceRecordSha256", "0" * 64)):
+        for field, value in (("attempt", "1"), ("packageName", "ai.example.other"), ("voiceRecordSha256", "0" * 64)):
             with self.subTest(field=field):
                 self.write_candidate(change_native=lambda native: native.update({field: value}))
                 with self.assertRaises(ValueError):
@@ -573,6 +572,8 @@ class CloudSigningInputTest(unittest.TestCase):
 
 class PrivateProducerSourceReviewTest(unittest.TestCase):
     def test_isolated_source_requires_exact_committed_approval(self):
+        self.assertEqual(ADMISSION.PACKAGE, "ai.elizaresearch.alphaphone")
+        self.assertEqual(PRODUCER.REPOSITORY, "eliza-research/alpha")
         with tempfile.TemporaryDirectory(prefix="alpha-source-review-") as directory:
             root = Path(directory)
             (root / "scripts/ci").mkdir(parents=True)
@@ -609,7 +610,7 @@ class PrivateProducerSourceReviewTest(unittest.TestCase):
             env = {**os.environ, "PATH": str(root / "bin") + os.pathsep + os.environ["PATH"],
                    "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": "5" * 40,
                    "GITHUB_REPOSITORY": PRODUCER.REPOSITORY, "GITHUB_REPOSITORY_ID": str(PRODUCER.REPOSITORY_ID),
-                   "GITHUB_REPOSITORY_OWNER_ID": str(PRODUCER.OWNER_ID), "RUNNER_TEMP": directory,
+                   "RUNNER_TEMP": directory,
                    "GITHUB_OUTPUT": str(root / "output"), "SIGNING_PLAN": json.dumps(plan),
                    "TEST_COMPARISON": json.dumps(comparison)}
             for field in (None, "approval", *fields):

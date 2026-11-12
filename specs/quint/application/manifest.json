@@ -73,6 +73,10 @@
       "backOrderTest",
       "staleNavigationTest",
       "deliveryTest",
+      "acknowledgeBeforeCommitRefusedTest",
+      "wrongClaimDestinationRefusedTest",
+      "lostAcknowledgementKeepsCommittedViewTest",
+      "unrelatedViewRetiresClaimTest",
       "settingsInsertionKeepsFocusTest",
       "settingsReorderKeepsFocusTest",
       "settingsRemovalClearsFocusTest",
@@ -98,7 +102,7 @@
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
-      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "Completed-action navigation models one captured context, its renderer claim, its own view commit and the acknowledged or unknown result. The source campaign observes exact renderer and transport boundaries through controlled ports.",
       "Settings list identity projects About and Finish setup. A Chromium source trace checks one delayed group insertion and keyboard activation. Other mutable lists and native accessibility remain separate obligations.",
       "The composer draft is one text value with an unsent flag: only Send clears it. A view that replaces the draft through its own chat entry is not modeled."
     ],
@@ -111,6 +115,7 @@
     ],
     "witnesses": [
       "DeliveredClaimWitness",
+      "LostClaimAcknowledgementWitness",
       "DraftAwayFromHomeWitness"
     ]
   },
@@ -3948,7 +3953,6 @@
       "completedMigrationPreservesLaterStockChoiceTest",
       "customLayoutRemainsCustomTest",
       "reviewedStockSurvivesIdentityMigrationTest",
-      "reviewedCustomTileMigratesInPlaceTest",
       "reviewedUnrelatedCustomRetainedTest",
       "currentVersionLeavesRetainedLayoutTest",
       "existingPermissionDenialRemainsTest",

@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   admit:
-    if: github.repository_id == '1396333361' && github.repository_owner_id == '314117943' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha
+    if: github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -69,9 +69,14 @@ jobs:
           submodules: true
           path: qualified-product
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version-file: .nvmrc
+          bun-version: "1.4.2"
+      - name: Select the qualified producer's Node toolchain
+        if: ${{ hashFiles('qualified-product/.nvmrc') != '' }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: qualified-product/.nvmrc
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -112,16 +117,40 @@ jobs:
           # It can postdate the unsigned producer when an installed app rotates keys.
           cp android/release-signer.json qualified-product/android/release-signer.json
       - name: Install locked verifier dependencies without lifecycle scripts
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      # Signed producers keep the lockfile and runtime that built their reviewed APKs.
       - name: Install locked product verifier dependencies without lifecycle scripts
         working-directory: qualified-product
-        run: npm ci --ignore-scripts
+        run: |
+          if test -f bun.lock || test -f bun.lockb; then
+            bun install --frozen-lockfile --ignore-scripts
+          else
+            npm ci --ignore-scripts
+          fi
       - name: Project the exact product's reviewed client sources
         working-directory: qualified-product
-        run: npm run upstream:prepare-client
+        run: |
+          if test -f bun.lock || test -f bun.lockb; then
+            bun run upstream:prepare-client
+          else
+            npm run upstream:prepare-client
+          fi
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
         working-directory: qualified-product
-        run: npm run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+        shell: bash
+        run: |
+          arguments=(--cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json")
+          profile=$(jq -er '.runtimeProfile' "$RUNNER_TEMP/qualified-stage/qualification-summary.json")
+          case "$profile" in
+            cloud) arguments+=(--runtime-profile=cloud) ;;
+            native) ;;
+            *) echo "::error::Unsupported qualified runtime profile"; exit 1 ;;
+          esac
+          if test -f bun.lock || test -f bun.lockb; then
+            bun run android:verify -- "${arguments[@]}"
+          else
+            npm run android:verify -- "${arguments[@]}"
+          fi
       - name: Require both qualified release rows before publication
         run: |
           python3 - <<'PY'
@@ -151,7 +180,7 @@ jobs:
           if test -f scripts/deliver-app-update.mjs; then
             node scripts/deliver-app-update.mjs --variant launcher --apk-manifest artifacts/apk-manifest.json
           else
-            node scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
+            bun scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

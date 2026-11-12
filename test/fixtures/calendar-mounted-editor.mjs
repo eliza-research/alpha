@@ -11,7 +11,7 @@ const main = resolve(root, 'apps/app/src/main.tsx');
 const adapter = resolve(root, 'apps/app/src/prototype/agent-calendar-adapter.ts');
 const cameraAdapter = resolve(root, 'apps/app/src/prototype/camera-adapter.ts');
 export const mountedCalendarFixtureSources = [fileURLToPath(import.meta.url), main, adapter, resolve(root, 'vite.config.ts'),
-  resolve(root, 'package-lock.json')];
+  resolve(root, 'bun.lock')];
 
 async function installCalendar({legacyTitle, eventTitles, notes}) {
   const {connectionController} = await import('/src/runtime/connection-ui.tsx');

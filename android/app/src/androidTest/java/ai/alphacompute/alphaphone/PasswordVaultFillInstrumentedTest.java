@@ -30,7 +30,7 @@ import static org.junit.Assert.*;
  * filled only into that exact package after the device credential; not offered to a form in
  * another package (Alpha's own, hosted over MainActivity); the fill sheet's Cancel leaves the form
  * empty; and after the vault locks, a fill asks for the credential again.
- *   npm run test:android:instrumentation -- --owned-emulator --avd NAME --classes PasswordVaultFill
+ *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --classes PasswordVaultFill
  * passwordVaultFill=1 is the runner's gate. The class sets and clears a screen-lock PIN and the
  * secure autofill_service setting and restores what it found. The second package is Alpha itself
  * because the instrumentation APK holds one package; a third-party package needs a companion APK.

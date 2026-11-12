@@ -296,7 +296,7 @@ export async function checkMobileBundleAdmission(extraSources = []) {
   const core = coreStateReceipt(repository);
   const sources = [
     fileURLToPath(import.meta.url), 'test/fixtures/mobile-uuid-build.mjs', 'test/fixtures/core-state-root.mjs',
-    'upstream.lock.json', 'package-lock.json', MOBILE_UUID_POLICY, ...MOBILE_BUILD_INPUTS,
+    'upstream.lock.json', 'bun.lock', MOBILE_UUID_POLICY, ...MOBILE_BUILD_INPUTS,
     'vendor/eliza/bun.lock', 'vendor/eliza/'+actualPolicy.builder.path,
     ...Object.keys(actualPolicy.package.files).map(name => 'node_modules/uuid/'+name),
     ...Object.keys(core.inputHashes), ...Object.keys(core.files).map(name => 'vendor/eliza/'+name),

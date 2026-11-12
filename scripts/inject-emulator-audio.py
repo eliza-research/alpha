@@ -43,10 +43,10 @@ def discovery(pid, explicit, port):
     return {}
 
 def speech_tools():
-    tts = os.environ.get('ALPHA_TTS_TOOL') or shutil.which('say') or shutil.which('espeak-ng')
-    ffmpeg = os.environ.get('ALPHA_FFMPEG') or shutil.which('ffmpeg')
+    tts = shutil.which('say') or shutil.which('espeak-ng')
+    ffmpeg = shutil.which('ffmpeg')
     if not tts or not ffmpeg:
-        raise ValueError('--prepare needs a speech tool (macOS say or espeak-ng; or ALPHA_TTS_TOOL) and ffmpeg (or ALPHA_FFMPEG) on this platform')
+        raise ValueError('--prepare needs a speech tool (macOS say or espeak-ng) and ffmpeg on PATH')
     return tts, ffmpeg
 
 def main():

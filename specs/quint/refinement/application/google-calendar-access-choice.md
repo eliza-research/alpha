@@ -19,5 +19,5 @@ captures bound this projection. Native persistence, provider effects and
 the authorization return have separate scopes.
 
 ```sh
-node --test test/quint-google-calendar-access-choice.test.mjs
+bun test test/quint-google-calendar-access-choice.test.mjs
 ```

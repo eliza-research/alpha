@@ -22,5 +22,5 @@ settlement. The original Design and as-built model checks and their
 historical outcomes remain separate from this comparison.
 
 ```sh
-node --test test/quint-historical-camera-session.test.mjs
+bun test test/quint-historical-camera-session.test.mjs
 ```
