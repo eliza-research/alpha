@@ -27,8 +27,8 @@ module CloudConnectionNotices {
   val ExactDismissal = s.dismissed.subseteq(s.required) and mounted.intersect(s.dismissed) == Set()
   val ForegroundOwnership = if (s.covered) exposed == Set() else exposed == mounted
   val RenderOrder = order.length() == exposed.size() and s.required == kinds
-  val safety = ExactDismissal and ForegroundOwnership and RenderOrder
-    and not("sign-in".in(mounted)) and (expiryInSettings implies s.covered)
+  val ExpirySettingsOwnership = not("sign-in".in(mounted)) and (expiryInSettings implies s.covered)
+  val safety = ExactDismissal and ForegroundOwnership and RenderOrder and ExpirySettingsOwnership
 
   run planNoticeSuspendsAndReturnsTest = init.then(coverScreen)
     .expect(safety and mounted == kinds and exposed == Set())
