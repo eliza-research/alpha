@@ -29,7 +29,6 @@
     "agent:local": "bun scripts/start-local-remote.ts",
     "test:browser": "playwright test --project=chromium",
     "test:browser:production": "playwright test --project=production",
-    "test:browser:storage": "playwright test --project=firefox --project=webkit",
     "test:browser:live": "ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE=\"${ALPHA_LOCAL_AGENT_TOKEN_FILE:-$HOME/.local/share/alphaphone/local-remote/owner-token}\" playwright test --project=live --workers=1",
     "dev:local": "bun scripts/dev-local.ts",
     "agent:prepare": "bun scripts/prepare-local-agent.ts",

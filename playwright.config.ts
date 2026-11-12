@@ -42,7 +42,7 @@ const development={
 const production={
   // A flag-off production build served by vite preview: no mocks, fixtures or developer surfaces.
   // It is written outside web-dist so it never replaces a release or test-mocks build.
-  command: `bun run upstream:prepare-client && bunx vite build --outDir ../../${productionOutput} && bun scripts/audit-production-bundle.ts ${productionOutput} && bunx vite preview --outDir ../../${productionOutput} --host 127.0.0.1 --port ${productionPort} --strictPort`,
+  command: `bun run upstream:prepare-client && bunx --bun vite build --outDir ../../${productionOutput} && bun scripts/audit-production-bundle.ts ${productionOutput} && bunx --bun vite preview --outDir ../../${productionOutput} --host 127.0.0.1 --port ${productionPort} --strictPort`,
   url: `http://127.0.0.1:${productionPort}`, reuseExistingServer: false, timeout: 180_000,
   env: { ELIZA_DEV_ALLOW_TEST_MOCKS: '', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: '', VITE_LOCAL_AGENT: '' },
 };

@@ -19,7 +19,7 @@ Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 
 ```sh
-git clone --recurse-submodules https://github.com/alphacompute/alpha.git
+git clone --recurse-submodules https://github.com/eliza-research/alpha.git
 cd alpha
 bun install --frozen-lockfile
 bun run verify
@@ -40,6 +40,12 @@ CI runs them only when `develop` is promoted to `main`. See [CONTRIBUTING.md](..
 Function proofs require Dafny 4.11.0 on `PATH`; `LEMMA_REQUIRE_BACKEND=1` makes a
 missing backend fail. A generation-only run records a skipped proof. Promotion CI installs the
 hash-pinned backend and requires proofs.
+
+A pull request runs one CI job, `bun run verify`. The Android build also runs when a pull
+request changes Android, renderer, script, lockfile or upstream-pin paths. The browser tests
+are not run by PR CI: run `bun run test:browser` and `bun run test:browser:production` before
+finalising a PR and say so in its description. CI runs them with the formal models when
+`develop` is promoted to `main`.
 
 On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) lengthens refinement
 subprocess deadlines so slow but live checkers are not reported as failures; CI uses 1.
@@ -421,9 +427,9 @@ post-signing verification manifest for the exact APK baked into the image.
 
 Record each [wireless drill](https://github.com/eliza-research/alpha/issues/889)
 with the release APK and its verification manifest available locally. Both captures
-verify the installed bytes against the reviewed `android/release-signer.json`
-signing policy, including for versions already recorded as released. This
-capture requires Android 14 or later for package installer provenance. Keep the phone
+verify the installed bytes against the reviewed `android/release-signer.json` signing
+policy, including for versions already recorded as released. This capture
+requires Android 14 or later for package installer provenance. Keep the phone
 offline from baseline installation through HOME selection, any one-time Android
 installation permission, and the `before` capture. Keep the host online and
 connect the phone by USB. The host verifies the anonymous offer and its APK
@@ -432,11 +438,11 @@ leave Alpha idle in the foreground. Allow one full 15-minute check interval
 plus download time.
 
 ```sh
-node scripts/verify-wireless-launcher-update.ts before --serial <serial> \
+bun scripts/verify-wireless-launcher-update.ts before --serial <serial> \
   --distribution sideload --apk-manifest <baseline>/apk-manifest.json --out <new-before.json>
 # Disconnect USB/ADB, restore the phone's network, and return to idle HOME.
 # Let Alpha discover and install the update. Reconnect after the observed result.
-node scripts/verify-wireless-launcher-update.ts after --serial <serial> \
+bun scripts/verify-wireless-launcher-update.ts after --serial <serial> \
   --before <before.json> --apk-manifest <update>/apk-manifest.json --out <new-after.json>
 ```
 
@@ -465,7 +471,7 @@ distribution, pass the first before and after receipts followed by the
 second before and after receipts.
 
 ```sh
-node scripts/verify-wireless-launcher-update.ts matrix \
+bun scripts/verify-wireless-launcher-update.ts matrix \
   --sideload stock-1-before.json --sideload stock-1-after.json \
   --sideload stock-2-before.json --sideload stock-2-after.json \
   --image-preinstalled image-1-before.json --image-preinstalled image-1-after.json \
@@ -568,11 +574,10 @@ tracks the overall release gate. A successful host test or model does not close
 these release and device gates. Alpha consumes the reviewed rejected-download
 retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) and the
 reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255)
-at `8876e369ca00d82f334e604aba3763a3998a854e`. This pin adds only the reviewed
-OS descriptor admission changes from [eliza#39291](https://github.com/elizaOS/eliza/pull/39291)
-to `06e268c7ecdc1a6451bfa1a0ad9665461a7f7d2b`; the core, runtime, mobile builder,
-Bun lock and recorded native producer inputs are unchanged. The exact pin is
-reachable from upstream develop through [eliza#39298](https://github.com/elizaOS/eliza/pull/39298).
+and the Maps opening view from [eliza#39408](https://github.com/elizaOS/eliza/pull/39408)
+at `c518127a025ab173874af9c7d304f26b25213b0d`, a commit on upstream develop. The
+native engine gitlink is unchanged; three recorded producer inputs changed only
+in their version string. No native build or qualification was run at this pin.
 Earlier APK, voice and device evidence does not qualify this pin; rebuild and
 qualify the exact product inputs before OS enrollment.
 

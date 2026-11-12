@@ -22,14 +22,6 @@ on:
         description: SHA-256 of the compiled component artifact archive
         type: string
         required: false
-      embedding_qualification_artifact_id:
-        description: Exact reviewed semantic qualification artifact ID
-        type: string
-        required: false
-      embedding_qualification_sha256:
-        description: SHA-256 of the semantic qualification artifact archive
-        type: string
-        required: false
       build_version_code:
         description: Dispatched build versionCode (25..2100000000), recorded in the producer evidence
         type: string
@@ -74,10 +66,6 @@ jobs:
       ALPHA_APP_UPDATE_CANDIDATE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '0' }}
       ELIZA_ANDROID_BUN_TARGET: linux-musl
       ELIZA_ANDROID_TARGET_ABIS: arm64-v8a,x86_64
-      ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID: ${{ inputs.embedding_component_artifact_id || '' }}
-      ALPHA_EMBEDDING_COMPONENT_SHA256: ${{ inputs.embedding_component_sha256 || '' }}
-      ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID: ${{ inputs.embedding_qualification_artifact_id || '' }}
-      ALPHA_EMBEDDING_QUALIFICATION_SHA256: ${{ inputs.embedding_qualification_sha256 || '' }}
       ELIZA_BUN_CHANNEL: stable
       ELIZAOS_VERSION_CODE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_version_code || '' }}
       ANDROID_NDK: /usr/local/lib/android/sdk/ndk/28.2.13676358
@@ -194,11 +182,10 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
-      - name: Check embedding artifact contract and requested inputs
+      - name: Check embedding artifact contract
         run: |
           python3 test/embedding-artifact-inputs.test.py
           python3 -B test/hosted-native-inputs.test.py
-          python3 scripts/ci/embedding-artifacts.py --check-inputs
       - name: Validate dispatched build version
         if: github.event_name == 'workflow_dispatch'
         run: |

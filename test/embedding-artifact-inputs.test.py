@@ -19,27 +19,6 @@ spec.loader.exec_module(module)
 
 
 class EmbeddingInputsTest(unittest.TestCase):
-    def environment(self):
-        return {'ALPHA_LOCAL_EMBEDDINGS':'1',
-                'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11','ALPHA_EMBEDDING_COMPONENT_SHA256':'a'*64,
-                'ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID':'12','ALPHA_EMBEDDING_QUALIFICATION_SHA256':'b'*64}
-
-    def test_default_is_noop(self):
-        self.assertEqual(module.settings({}), [])
-
-    def test_explicit_complete_inputs(self):
-        self.assertEqual(module.settings(self.environment()), [('11','a'*64),('12','b'*64)])
-
-    def test_partial_or_implicit_inputs_rejected(self):
-        for key in self.environment():
-            env=self.environment();env.pop(key)
-            with self.subTest(key=key),self.assertRaises(ValueError):module.settings(env)
-        with self.assertRaises(ValueError):module.settings({'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11'})
-
-    def test_duplicate_artifacts_rejected(self):
-        env=self.environment();env['ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID']='11'
-        with self.assertRaises(ValueError):module.settings(env)
-
     def test_artifact_metadata_is_pinned_and_same_repository(self):
         value={'id':11,'expired':False,'digest':'sha256:'+'a'*64,'size_in_bytes':50,
                'workflow_run':{'id':13,'repository_id':module.REPOSITORY_ID,'head_repository_id':module.REPOSITORY_ID,'head_sha':'c'*40}}

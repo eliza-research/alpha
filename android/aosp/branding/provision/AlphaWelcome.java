@@ -46,7 +46,9 @@ final class AlphaWelcome {
         TextView title = text(activity, activity.getString(R.string.alpha_welcome), 34, foreground);
         title.setAccessibilityHeading(true);
         column.addView(title);
-        TextView description = text(activity, activity.getString(R.string.alpha_setup_description), 17, Color.rgb(204, 204, 214));
+        int descriptionText = Completion.hasFreshTelephony(activity)
+                ? R.string.alpha_setup_telephony_description : R.string.alpha_setup_description;
+        TextView description = text(activity, activity.getString(descriptionText), 17, Color.rgb(204, 204, 214));
         description.setPadding(0, dp(activity, 16), 0, dp(activity, 36));
         column.addView(description);
         button(activity, column, R.string.alpha_wifi, () -> open(activity, Settings.ACTION_WIFI_SETTINGS));
@@ -84,20 +86,25 @@ final class AlphaWelcome {
             this.activity = activity; this.completed = completed; this.next = next;
             this.settings = settings; this.notice = notice;
         }
+        static boolean hasFreshTelephony(Activity activity) {
+            PackageManager packages = activity.getPackageManager();
+            return packages.hasSystemFeature(FRESH_TELEPHONY)
+                    && packages.hasSystemFeature(PackageManager.FEATURE_TELEPHONY);
+        }
+
         void begin() {
             if (waiting || activity.isFinishing() || activity.isDestroyed()) return;
             final int attempt = ++generation;
             if (!eligible()) return;
             RoleManager roles = activity.getSystemService(RoleManager.class);
             if (roles == null) { fail(R.string.alpha_home_failed); return; }
-            PackageManager packages = activity.getPackageManager();
-            boolean telephony = packages.hasSystemFeature(FRESH_TELEPHONY)
-                    && packages.hasSystemFeature(PackageManager.FEATURE_TELEPHONY);
+            boolean telephony = hasFreshTelephony(activity);
             String[] required = telephony
                     ? new String[]{RoleManager.ROLE_HOME, RoleManager.ROLE_DIALER, RoleManager.ROLE_SMS}
                     : new String[]{RoleManager.ROLE_HOME};
             waiting = true;
             next.setEnabled(false);
+            settings.setVisibility(View.GONE);
             notice.setText(telephony ? R.string.alpha_roles_checking : R.string.alpha_home_checking);
             for (String role : required) {
                 try {
@@ -149,12 +156,20 @@ final class AlphaWelcome {
                     return;
                 } catch (IllegalStateException | SecurityException failure) { fail(failureMessage); return; }
             }
+            if (verifyRoles(roles, required)) finishPresets(roles, required);
+        }
+
+        private boolean verifyRoles(RoleManager roles, String[] required) {
             for (String role : required) {
                 try {
-                    if (!held(roles, role)) { fail(roleFailure(role)); return; }
-                } catch (IllegalStateException | SecurityException failure) { fail(roleFailure(role)); return; }
+                    if (roles.isRoleAvailable(role) && held(roles, role)) continue;
+                } catch (IllegalStateException | SecurityException failure) {
+                    // A failed read cannot establish a holder.
+                }
+                fail(roleFailure(role));
+                return false;
             }
-            finishPresets();
+            return true;
         }
 
         private boolean eligible() {
@@ -184,7 +199,7 @@ final class AlphaWelcome {
             return roles.getRoleHoldersAsUser(role, Process.myUserHandle()).equals(java.util.Collections.singletonList(ALPHA));
         }
 
-        private void finishPresets() {
+        private void finishPresets(RoleManager roles, String[] required) {
             if (!AlphaFreshPresets.eligible(activity)) { fail(R.string.alpha_setup_state_changed); return; }
             AlphaFreshSetupPolicy.ImeResult keyboard = AlphaFreshPresets.ensureKeyboard(activity);
             if (keyboard == AlphaFreshSetupPolicy.ImeResult.FAILED || keyboard == AlphaFreshSetupPolicy.ImeResult.SKIPPED) {
@@ -196,6 +211,7 @@ final class AlphaWelcome {
                     fail(R.string.alpha_appearance_preset_failed); return;
                 }
             } catch (IllegalStateException | SecurityException failure) { fail(R.string.alpha_appearance_preset_failed); return; }
+            if (!verifyRoles(roles, required) || !eligible()) return;
             waiting = false;
             completed.run();
         }
@@ -203,11 +219,13 @@ final class AlphaWelcome {
             waiting = false;
             next.setEnabled(true); next.setText(R.string.alpha_retry_setup);
             boolean home = message == R.string.alpha_home_failed;
+            boolean phoneRole = message == R.string.alpha_roles_failed;
             String action = home ? Settings.ACTION_HOME_SETTINGS
-                    : message == R.string.alpha_roles_failed ? Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS
+                    : phoneRole ? Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS
                     : message == R.string.alpha_keyboard_failed ? Settings.ACTION_INPUT_METHOD_SETTINGS
                     : Settings.ACTION_SETTINGS;
-            settings.setText(home ? R.string.alpha_home_settings : R.string.alpha_open_settings);
+            settings.setText(home ? R.string.alpha_home_settings
+                    : phoneRole ? R.string.alpha_default_apps_settings : R.string.alpha_open_settings);
             settings.setOnClickListener(view -> open(activity, action));
             settings.setVisibility(View.VISIBLE); notice.setText(message);
         }

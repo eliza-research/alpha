@@ -170,7 +170,7 @@ public class CompletionTest {
    static String getString(Activity activity,String key){return activity.palette;}
   }
  }
- static class View {static final int VISIBLE=0;}
+ static class View {static final int VISIBLE=0, GONE=8;}
  static class Button {
   int text,visibility; boolean enabled=true; Consumer<Object> click;
   void setText(int value){text=value;}
@@ -216,6 +216,7 @@ public class CompletionTest {
   final RoleManager roles=new RoleManager(this);
   boolean telephony=true, factoryTelephony=true, primary=true, managed, complete, destroyed, prepared, missingRoles;
   boolean paletteAccepted=true;
+  Runnable afterPalette=()->{};
   String opened,palette="owner palette";
   int completions;
   BroadcastReceiver prepareReply;
@@ -270,7 +271,7 @@ public class CompletionTest {
   static AlphaFreshSetupPolicy.ImeResult ensureKeyboard(Activity activity){activity.effects.add("keyboard");return activity.keyboard;}
  }
  static class AlphaAppearance {
-  static boolean applyPalette(Activity activity){activity.effects.add("palette");return activity.paletteAccepted;}
+  static boolean applyPalette(Activity activity){activity.effects.add("palette");activity.afterPalette.run();return activity.paletteAccepted;}
  }
  static void open(Activity activity,String action){activity.opened=action;}
 '''+completion+'''
@@ -286,7 +287,8 @@ public class CompletionTest {
   void failure(int message,String action){
    check(activity.completions==0 && next.enabled && next.text==R.string.alpha_retry_setup
        && notice.text==message && settings.visibility==View.VISIBLE
-       && settings.text==(message==R.string.alpha_home_failed ? R.string.alpha_home_settings : R.string.alpha_open_settings),
+       && settings.text==(message==R.string.alpha_home_failed ? R.string.alpha_home_settings
+         : message==R.string.alpha_roles_failed ? R.string.alpha_default_apps_settings : R.string.alpha_open_settings),
        "failure remains retryable");
    settings.click.accept(null);check(action.equals(activity.opened),"failure recovery destination");
   }
@@ -370,6 +372,18 @@ public class CompletionTest {
   keyboard.setup.begin();keyboard.roles.grant(HOME);keyboard.failure(R.string.alpha_keyboard_failed,Settings.ACTION_INPUT_METHOD_SETTINGS);
   Fixture palette=new Fixture();palette.activity.telephony=false;palette.activity.palette="{}";palette.activity.paletteAccepted=false;
   palette.setup.begin();palette.roles.grant(HOME);palette.failure(R.string.alpha_appearance_preset_failed,Settings.ACTION_SETTINGS);
+
+  Fixture driftAfterPalette=new Fixture();driftAfterPalette.activity.telephony=false;driftAfterPalette.activity.palette="{}";
+  driftAfterPalette.activity.afterPalette=()->driftAfterPalette.roles.holders.put(HOME,List.of(OTHER));
+  driftAfterPalette.setup.begin();driftAfterPalette.roles.grant(HOME);
+  driftAfterPalette.failure(R.string.alpha_home_failed,Settings.ACTION_HOME_SETTINGS);
+  driftAfterPalette.effects(HOME,"keyboard","palette");
+
+  Fixture managedAfterPalette=new Fixture();managedAfterPalette.activity.telephony=false;managedAfterPalette.activity.palette="{}";
+  managedAfterPalette.activity.afterPalette=()->managedAfterPalette.activity.managed=true;
+  managedAfterPalette.setup.begin();managedAfterPalette.roles.grant(HOME);
+  managedAfterPalette.failure(R.string.alpha_setup_state_changed,Settings.ACTION_SETTINGS);
+  managedAfterPalette.effects(HOME,"keyboard","palette");
   System.out.println("PASS actual setup completion and recovery");
  }
 }''')

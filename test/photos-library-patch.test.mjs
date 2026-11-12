@@ -173,6 +173,7 @@ public final class PhotoFilter {
 }`),
   stub('com/getcapacitor/JSObject.java',fs.readFileSync(path.join(capacitor,'JSObject.java'),'utf8')),
   path.join(media,'OwnedMediaConfig.java'),
+  path.join(media,'PhotoCrop.java'),
   path.join(media,'OwnedPhotoEdits.java'),
   stub('ai/eliza/plugins/media/PhotoRecoveryCheck.java',`package ai.eliza.plugins.media;
 import android.content.Context;

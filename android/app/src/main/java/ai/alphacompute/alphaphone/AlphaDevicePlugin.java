@@ -278,7 +278,7 @@ public final class AlphaDevicePlugin extends Plugin {
    if(result==null)call.resolve();else call.resolve(result);
   });
  }
- /** A downloaded automatic update may only replace idle, unlocked Home. */
+ /** A downloaded automatic update may only replace idle, unlocked Home. The image also hosts calls. */
  private boolean automaticUpdateReady(){
   android.app.Activity activity=getActivity();
   if(!(activity instanceof MainActivity)||((MainActivity)activity).isAssistantSurface()||!shareForeground(activity))return false;
@@ -288,8 +288,11 @@ public final class AlphaDevicePlugin extends Plugin {
    if(audio==null||audio.getMode()!=android.media.AudioManager.MODE_NORMAL)return false;
    if(!AlphaImageCapability.verified(context))return true;
    android.telecom.TelecomManager calls=context.getSystemService(android.telecom.TelecomManager.class);
-   return calls!=null&&!calls.isInCall()&&canReadUpdateCallState(context,calls);
-  }catch(RuntimeException unknown){return false;}
+   // A grant arriving after Telecom returned false cannot authenticate that read.
+   if(calls==null||!canReadUpdateCallState(context,calls)||calls.isInCall())return false;
+   return canReadUpdateCallState(context,calls);
+  }catch(SecurityException denied){return false;}
+  catch(RuntimeException unknown){return false;}
  }
  /** Telecom can report false when phone-state access is denied. Only use a negative with known access. */
  private static boolean canReadUpdateCallState(Context context,android.telecom.TelecomManager calls){

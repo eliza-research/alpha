@@ -31,22 +31,6 @@ def require(value, message):
         raise ValueError(message)
 
 
-def settings(env):
-    enabled = env.get('ALPHA_LOCAL_EMBEDDINGS', '0') == '1'
-    require(env.get('ALPHA_LOCAL_EMBEDDINGS', '0') in ('0', '1'), 'Invalid embedding capability')
-    names = ('COMPONENT', 'QUALIFICATION')
-    inputs = [(env.get('ALPHA_EMBEDDING_' + name + '_ARTIFACT_ID', ''),
-               env.get('ALPHA_EMBEDDING_' + name + '_SHA256', '')) for name in names]
-    if not enabled:
-        require(not any(value for pair in inputs for value in pair), 'Embedding artifact inputs require explicit opt-in')
-        return []
-    for identity, digest in inputs:
-        require(re.fullmatch(r'[1-9][0-9]{0,19}', identity), 'Embedding artifact ID is required')
-        require(re.fullmatch(r'[0-9a-f]{64}', digest), 'Embedding artifact SHA-256 is required')
-    require(inputs[0][0] != inputs[1][0], 'Component and qualification artifacts must be distinct')
-    return inputs
-
-
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -330,36 +314,7 @@ def main(args, env=os.environ):
     if args == ['--prepare-carrier']:
         prepare_carrier(env)
         return
-    inputs = settings(env)
-    if args == ['--check-inputs']:
-        print('Embedding artifact inputs valid' if inputs else 'Local embeddings not requested')
-        return
-    require(args == [], 'Unknown embedding artifact option')
-    if not inputs:
-        return
-    require(canonical_repository(env), 'Canonical repository required')
-    token = env.get('GH_TOKEN')
-    require(token, 'Artifact access token unavailable')
-    output = Path('test-results/resident-ci/embedding-inputs')
-    output.mkdir(mode=0o700, parents=True, exist_ok=False)
-    opener = urllib.request.build_opener(NoRedirect())
-    records = []
-    for name, (identity, digest) in zip(('component', 'qualification'), inputs):
-        records.append(download(identity, digest, output / (name + '.zip'), token, opener))
-    extract_selected(output / 'component.zip', output / 'component', {
-        'component-output/export/PREPARATION.json': 'PREPARATION.json',
-        'component-output/INTENT.json': 'INTENT.json',
-        **{'component-output/export/' + name: name for name in LIBRARIES}})
-    extract_selected(output / 'qualification.zip', output / 'qualification', {
-        'QUALIFICATION.json': 'QUALIFICATION.json', 'embedding-qualification.json': 'embedding-qualification.json'})
-    component = read_json(output / 'component/PREPARATION.json')
-    intent = read_json(output / 'component/INTENT.json')
-    qualification = read_json(output / 'qualification/QUALIFICATION.json')
-    semantic_path = output / 'qualification/embedding-qualification.json'
-    identity = validate_receipts(component, intent, qualification, read_json(semantic_path), semantic_path.read_bytes(), output / 'component')
-    (output / 'ADMISSION.json').write_text(json.dumps({'state': 'PINNED_INPUTS_VERIFIED_PENDING_CANONICAL_STAGE',
-        **identity, 'artifacts': records, 'consumer': env.get('GITHUB_SHA'), 'sourceReceiptsUnmodified': True}, indent=2) + '\n')
-    print('Verified compiled component and bound semantic qualification; canonical staging remains required')
+    raise ValueError('Unknown embedding artifact option')
 
 
 if __name__ == '__main__':

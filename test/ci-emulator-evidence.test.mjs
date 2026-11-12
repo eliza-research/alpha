@@ -7,7 +7,6 @@ import {spawnSync} from 'node:child_process';
 import {parse as parseYaml} from 'yaml';
 import {AVD,BROWSER_CONTROLS_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.ts';
 import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.ts';
-import {affected} from '../scripts/ci/affected.ts';
 import {assertBefore} from './fixtures/assert-order.mjs';
 
 const read=file=>fs.readFileSync(file,'utf8');
@@ -106,7 +105,7 @@ test('every action in the emulator evidence workflow is pinned to an exact commi
  }
  // One commit per action across the file, and the first-party pins are the ones the other workflows use.
  const pins=new Map();for(const [,target] of uses){const [name,commit]=target.split('@');assert.equal(pins.get(name)??commit,commit,name);pins.set(name,commit);}
- const others=['android.yml','browser.yml','resident-android.yml'].map(file=>read(path.join('.github/workflows',file))).join('\n');
+ const others=['android.yml','verify.yml','resident-android.yml'].map(file=>read(path.join('.github/workflows',file))).join('\n');
  for(const [name,commit] of pins)if(name.startsWith('actions/'))assert.ok(others.includes(`${name}@${commit}`),`${name} is pinned to a commit no other workflow uses`);
  assert.equal(others.includes('actions/cache@'),false,'a shared actions/cache must use the same pin in every workflow');
  assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner']);
@@ -183,11 +182,6 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
   assert.equal(publish.if,"needs.admit.result == 'success' && needs.admit.outputs.qualification_sha256 != '' && inputs.workflow_commit == github.sha");
   assert.deepEqual(publication.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
  }
-});
-
-test('a change to the emulator evidence workflow selects no automatic lane of its own',()=>{
- assert.deepEqual(affected([WORKFLOW]),{verify:true,browser:false,android:false,prepare:false});
-
 });
 
 test('the build job hands over hash-anchored APKs',()=>{

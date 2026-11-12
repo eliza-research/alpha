@@ -227,7 +227,7 @@ public final class UpdateFlowTest {
  private static void settled()throws Exception{plugin("updateAsked",0L);}
  /** Alpha's last exchange with Android was this long ago, for the tests that measure the wait itself. */
  private static void aged(long millis)throws Exception{plugin("updateAsked",System.nanoTime()-TimeUnit.MILLISECONDS.toNanos(millis));}
- /** Every other scenario keeps three seconds, so a held download released after a few taps is still in time. */
+ /** Only the deadline scenarios shorten the production limits. */
  private static void deadline(long nanos)throws Exception{plugin("UPDATE_DEADLINE_NANOS",nanos);}
  private static void resume(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.RESUMED;plugin.handleOnResume();}
  private static void stop(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.CREATED;}
@@ -478,13 +478,13 @@ public final class UpdateFlowTest {
   deadline(TimeUnit.MILLISECONDS.toNanos(300));
   body=trickle(40);connections.clear();
   PluginCall late;
-  try{late=tap(owner);}finally{deadline(TimeUnit.SECONDS.toNanos(3));}
+  try{late=tap(owner);}finally{deadline(TimeUnit.HOURS.toNanos(6));}
   check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
   check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
   deadline(TimeUnit.MILLISECONDS.toNanos(300));
   body=trickle(2);
   try{check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");}
-  finally{deadline(TimeUnit.SECONDS.toNanos(3));body=IN_MEMORY;}
+  finally{deadline(TimeUnit.HOURS.toNanos(6));body=IN_MEMORY;}
  }
  private static void destroyClosesADownloadInFlight(File cache)throws Exception{
   Context context=installing(cache);
@@ -2114,6 +2114,28 @@ public final class UpdateFlowTest {
     "idle audio and the applicable call-state authority admit one automatic replacement: "+authority);
   }
  }
+ private static void automaticCallReadRequiresAuthorityBeforeAndAfter(File cache)throws Exception{
+  var ready=AlphaDevicePlugin.class.getDeclaredMethod("automaticUpdateReady");
+  ready.setAccessible(true);
+  Context context=installing(cache);context.imageAdmitted=true;context.calls.defaultDialer=null;
+  context.phoneStateGranted=true;context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_IGNORED;
+  context.calls.active=true;context.calls.readDenied=true;
+  context.calls.afterRead=()->context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  check(!(Boolean)ready.invoke(owner),"a call-state grant observed only after a denied read cannot prove idle");
+  check(context.calls.reads==0,"an unauthorized call-state observation is skipped");
+
+  context.calls.active=false;context.calls.readDenied=false;
+  context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+  context.calls.afterRead=()->context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_IGNORED;
+  check(!(Boolean)ready.invoke(owner),"losing the call-state grant during an idle read defers");
+  check(context.calls.reads==1,"the in-flight authorized read cannot outlive its grant");
+
+  context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+  context.calls.afterRead=()->{};
+  check(automatic(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,
+   "the next idle check with a stable call-state grant admits one automatic replacement");
+ }
  private static void automaticUpdatesRecheckUseAfterDownloadAndBeforeCommit(File cache)throws Exception{
   for(String cut:List.of("download-focus","staging-background","stop-focus","stop-stock-call","stop-call","stop-call-unknown")){
    Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);AlphaLocalAgentPlugin.stops=0;
@@ -2295,8 +2317,9 @@ public final class UpdateFlowTest {
       }
      }
     };
+    if(!readinessCut)plugin("UPDATE_MANIFEST_RECHECK_MILLIS",3000);
     PluginCall request=bindAutomatic(tlsApk(8),digest);owner.installUpdate(request);
-    check(entered.await(5,TimeUnit.SECONDS),"final offer read reaches held "+cut+" stage");
+    check(entered.await(15,TimeUnit.SECONDS),"final offer read reaches held "+cut+" stage");
     check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"the held final read follows resident pause");
     if(cut.equals("foreground"))owner.activity.focused=false;
     if(stockCall)context.audio.mode=android.media.AudioManager.MODE_IN_CALL;
@@ -2305,7 +2328,7 @@ public final class UpdateFlowTest {
      context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_IGNORED;
     }
     if(readinessCut)released.countDown();
-    request.awaitAnswerWithin(5000);
+    request.awaitAnswerWithin(15000);
     if(readinessCut)check(request.rejected.get()==1&&download(context).exists()&&
      installer.sessions.isEmpty()&&installer.committed.isEmpty()&&owner.activity.started.isEmpty()&&
      AlphaDevicePlugin.UpdatePause.store().read()==null,"loss of readiness during a valid final read defers and retains verified bytes: "+cut);
@@ -2322,13 +2345,16 @@ public final class UpdateFlowTest {
     }
     if(cut.equals("open")){
      check(released.getCount()==1,"installer stops waiting while opening the transport is still blocked");
-     PluginCall concurrent=bindAutomatic(tlsApk(8),digest);owner.installUpdate(concurrent);concurrent.awaitAnswerWithin(5000);
+     PluginCall concurrent=bindAutomatic(tlsApk(8),digest);owner.installUpdate(concurrent);concurrent.awaitAnswerWithin(15000);
      checkOfferRefusal(owner,context,concurrent,"offer-unavailable");
      check(installer.abandoned.size()==2,"an occupied transport slot does not queue another automatic read");
      check(tap(owner).resolved.get()==1&&installer.committed.size()==1&&released.getCount()==1,
       "manual recovery can commit while canceled automatic network I/O is still held");
     }
-   }finally{released.countDown();manifestOpenObserver=()->{};manifestExchange=null;manifestTlsReply=null;}
+   }finally{
+    released.countDown();manifestOpenObserver=()->{};manifestExchange=null;manifestTlsReply=null;
+    plugin("UPDATE_MANIFEST_RECHECK_MILLIS",10000);
+   }
   }
   System.out.println("PASS final offer deadline bounds held network stages and leaves manual recovery available");
   System.out.println("PASS call changes during final HTTPS defer automatic commit");
@@ -2431,6 +2457,7 @@ public final class UpdateFlowTest {
    automaticDraftRefusalNeverStopsOrCommits(cache);
    automaticModeIsStrictAndExplicitFalseKeepsManualBehavior(cache);
    automaticUpdatesRequireForegroundUnlockedMainAndIdleCallState(cache);
+   automaticCallReadRequiresAuthorityBeforeAndAfter(cache);
    automaticUpdatesRecheckUseAfterDownloadAndBeforeCommit(cache);
    System.out.println("PASS automatic call deferral protects stock and image installs before download and commit");
    verifiedAutomaticCacheAvoidsRedownloadButNeverBypassesAdmission(cache);

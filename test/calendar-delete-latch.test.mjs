@@ -16,9 +16,9 @@ const event=()=>({id:'7',calendarId:'local',title:'Standup',begin:start+HOUR,end
 async function deviceCalendar(){
   let now=start;class FixedDate extends Date{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}}
   const calls=[],toasts=[],state={events:[],day:0,month:null,open:null,form:null,calPrefs:{}};
-  const provider={events:[event()],removal:async()=>({status:'unknown'}),
+  const provider={events:[event()],truncated:false,removal:async()=>({status:'unknown'}),
     async requestAccess(){return {status:'granted'};},
-    async list(range){calls.push('list');return {status:'ready',events:provider.events,calendars:[{id:'local',local:true,writable:true,account:'Alpha Phone',name:'Phone'}],truncated:false,range};},
+    async list(range){calls.push('list');return {status:'ready',events:provider.events,calendars:[{id:'local',local:true,writable:true,account:'Alpha Phone',name:'Phone'}],truncated:provider.truncated,range};},
     async pendingCreations(){return {status:'ready',creations:[]};},
     async inspect(){return {status:'ready',revision:'r1'};},
     async inspectDeletion(){calls.push('inspectDeletion');return {status:'ready',eventId:'7',sourceId:'local',sourceRevision:'s1',revision:'r1'};},
@@ -82,6 +82,21 @@ test('an unconfirmed delete that removed the event is released when the refresh 
     await unconfirmedDelete(h);
     h.provider.events=[];h.detail().checkUncertain();await settle();
     assert.equal(h.shell.calendarWriteUncertain,undefined);assert.equal(h.state.events.length,0);
+  }finally{h.close();}
+});
+
+test('an incomplete provider range cannot confirm an absent event was deleted',async()=>{
+  const h=await deviceCalendar();
+  try{
+    await unconfirmedDelete(h);
+    h.provider.events=[];
+    h.provider.truncated=true;
+    await h.shell.refreshAgentCalendar();
+    assert.equal(h.shell.calendarWriteUncertain?.kind,'delete');
+
+    h.provider.events=[event()];
+    await h.shell.refreshAgentCalendar();
+    assert.equal(h.shell.calendarWriteUncertain,undefined,'a matching row is evidence even in an incomplete range');
   }finally{h.close();}
 });
 
