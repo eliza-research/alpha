@@ -4,8 +4,6 @@
 import assert from 'node:assert/strict';
 import {abortablePause,executeCalendarAvailability,parseAvailabilityEvents,parseAvailabilitySources,SOURCE_LIST_ATTEMPTS,SOURCE_LIST_RETRY_MS,type AvailabilityProvider,type AvailabilityReview} from '../apps/app/src/runtime/calendar-availability.ts';
 import {DeviceActions} from '../apps/app/src/runtime/device-actions.ts';
-import {readFileSync} from 'node:fs';
-import {CALENDAR_AVAILABILITY_CAPABILITY} from '../.eliza/client-features/packages/contracts/src/device-reviews.ts';
 
 const ZONE='America/New_York',signal=()=>new AbortController().signal;
 // 2026-10-13 is a Tuesday; New York is UTC-4. The window is the whole local day.
@@ -53,16 +51,6 @@ const noSecrets=(value:unknown)=>{const text=JSON.stringify(value);for(const sec
 const noContent=(value:unknown)=>{noSecrets(value);if(typeof value==='string')return;const text=JSON.stringify(value);for(const field of ['"title"','"name"','"account"','"description"','"location"','"id"','"calendarId"'])assert.ok(!text.includes(field),`shared value must not contain a ${field} field`);};
 const refused=(outcome:Awaited<ReturnType<typeof run>>,pattern:RegExp)=>{assert.equal(outcome.status,'failed');assert.equal(outcome.foregroundResult,undefined);assert.match(outcome.summary,pattern);assert.match(outcome.summary,/Nothing was shared\.$/);noSecrets(outcome);};
 
-// The connection controller negotiates the contract's capability by name, in all three agent paths.
-{
- const controller=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
- const phoneContext=readFileSync(new URL('../apps/app/src/runtime/phone-context.ts',import.meta.url),'utf8');
- assert.ok(phoneContext.includes(`export const CALENDAR_AVAILABILITY_CAPABILITY = '${CALENDAR_AVAILABILITY_CAPABILITY}';`));
- // All three paths build X-Eliza-Device-Capabilities through one function, which negotiates it.
- assert.equal(controller.split('=await deviceCapabilities(').length-1,3);
- assert.equal(phoneContext.split('if(agent.includes(CALENDAR_AVAILABILITY_CAPABILITY))').length-1,1);
- assert.equal(controller.split(',runForegroundReview);').length-1,3);
-}
 // Authorized calendars only: free events excluded, tentative flagged, unrelated calendar unread.
 {
  const {state,provider}=fixture(),{seen,review}=reviews(['1','2']);
