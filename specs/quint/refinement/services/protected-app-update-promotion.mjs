@@ -75,9 +75,11 @@ function checkWorkflows() {
   assert.match(restored.run, /\$EXPECTED_QUALIFICATION/);
   assert.equal(publishing.publish.steps.find(step => step.with?.path === 'qualified-product').with.ref,
     '$' + '{{ needs.admit.outputs.source_commit }}');
-  const reverify = publishing.publish.steps.find(runs('bun run android:verify -- --cloud-voice-evidence='));
+  const reverify = publishing.publish.steps.find(runs('android:verify --'));
   assert.equal(reverify?.['working-directory'], 'qualified-product');
-  assert.equal(reverify.run, 'bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
+  const verifyCloud = 'run android:verify -- --runtime-profile=cloud --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"';
+  assert.ok(reverify.run.includes(`bun ${verifyCloud}`));
+  assert.ok(reverify.run.includes(`npm ${verifyCloud}`));
   assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'bun scripts/verify-apks.ts');
   ordered(publishing.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
     step => step === reverify, runs("manifest['runtimeProfile'] == summary['runtimeProfile']"),
