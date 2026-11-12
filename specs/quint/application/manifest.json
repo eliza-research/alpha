@@ -7,6 +7,7 @@
     "invariant": "safety",
     "tests": [
       "reviewedEffectTest",
+      "inFlightFeedbackTest",
       "ownerSwitchTest",
       "resetDuringVoiceTest",
       "uncertainEffectTest"
@@ -2300,23 +2301,25 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "simultaneousNoticesSuspendAndReturnTest",
-      "dismissPlanKeepsExactSignInTest",
-      "dismissSignInKeepsExactPlanTest"
+      "planNoticeSuspendsAndReturnsTest",
+      "accountShowsExpiryOnlyWhileOpenTest",
+      "dismissPlanKeepsAccountExpiryTest"
     ],
     "invariants": [
       "ExactDismissal",
-      "SettingsOwnership",
-      "RenderOrder"
+      "ForegroundOwnership",
+      "RenderOrder",
+      "ExpirySettingsOwnership"
     ],
     "sources": [
       "apps/app/src/runtime/connection-ui.tsx",
       "apps/app/src/runtime/connection-ui.css",
-      "apps/app/src/browser/display.ts"
+      "apps/app/src/browser/display.ts",
+      "apps/app/src/prototype/settings-adapter.ts"
     ],
     "abstractions": [
-      "The mounted chooser projects a running resident with a needs-plan admission and a near-expiry sign-in. Each notice owns one dismissal and Settings suppresses publication while retaining its mounted card.",
-      "Two viewport and text-scale classes. A closed Chromium replay checks actual geometry, action hit ownership, scrolling and both dismissal orders. Account replacement, renewal, billing and installed WebView behavior remain separate."
+      "The mounted chooser projects a running resident with a needs-plan admission and a near-expiry sign-in. The plan notice has its own dismissal. Opening Account replaces the passive notice and exposes the sign-in action.",
+      "Two viewport and text-scale classes. A closed Chromium replay checks actual geometry, action hit ownership, Account entry and plan dismissal. Account replacement, renewal, billing and installed WebView behavior remain separate."
     ]
   },
   {

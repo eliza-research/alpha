@@ -456,3 +456,25 @@ test('an older recovery host cannot admit permanent deletion',async()=>{
   assert.equal(f.calls.some(call=>call.method!=='GET'),false);
  }finally{await f.close();}
 });
+
+test('an in-flight automation stays protected without showing an unknown outcome',async()=>{
+ let release,started=false,enabled=false;
+ const held=new Promise(resolve=>release=resolve);
+ const f=await fixture(async call=>{
+  if(call.method==='PUT'){started=true;await held;enabled=true;return {trigger:{id:'prompt',enabled:true}};}
+  if(call.path==='/api/automations')return {automations:[workflow,{...prompt,enabled,status:enabled?'active':'paused'}]};
+  return read(call);
+ });
+ const app=adapterFixture(f.request);
+ try{
+  await openPrompt(app);reviewed(app,'Enable');await wait(()=>started);
+  assert.equal(app.render().automation.busy,true);
+  assert.equal(app.render().automation.locked,false);
+  assert.notEqual(app.render().cards.find(card=>card.name==='Owner prompt').statusLabel,'Outcome unknown');
+  assert.equal(app.render().automation.actions.find(action=>action.label==='Enable').disabled,true);
+  assert.equal(Object.keys(app.storage).length,1);
+  release();await wait(()=>!app.render().automation.busy&&!app.render().automation.loading);
+  assert.equal(app.render().automation.locked,false);
+  assert.equal(Object.keys(app.storage).length,0);
+ }finally{release();app.close();await f.close();}
+});

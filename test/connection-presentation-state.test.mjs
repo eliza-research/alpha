@@ -28,8 +28,8 @@ test('hidden production agent state cannot block navigation; owner/session/epoch
  f.context.epoch++;assert.equal(nav.current(),false);f.context.epoch--;
  f.context.state={...f.snapshot(),session:{}};assert.equal(nav.current(),false);
 });
-test('signed-out and expired production accounts remain modal even after close',()=>{
- for(const account of [null,{expiresAt:Date.now()-1000}]){const f=fixture({account});f.update({open:false});assert.equal(f.snapshot().open,true);assert.equal(f.navigation().current(),false);}
+test('first-run Welcome blocks navigation and an expired account leaves navigation available',()=>{
+ for(const [account,required] of [[null,true],[{expiresAt:Date.now()-1000},false]]){const f=fixture({account});f.update({open:false});assert.equal(f.snapshot().open,required);assert.equal(f.navigation().current(),!required);}
 });
 test('explicit account, plan and sign-in panels still block navigation',()=>{
  for(const purpose of ['cloud-account','plan']){const f=fixture({purpose});f.update({open:true});assert.equal(f.snapshot().open,true);assert.equal(f.navigation().current(),false);f.update({open:false});assert.equal(f.navigation().current(),true);}
@@ -74,13 +74,14 @@ test('unresolved saved-session restore does not start the earlier automatic sign
  evaluate();assert.equal(probes,0,'the sign-in effect is declared first but must leave restore alone');assert.equal(f.context.connectionChooserVisible(f.snapshot()),false);
  f.update({cloudAccount:{expiresAt:Date.now()+60000},startupResolved:true,automaticRestore:false});evaluate();assert.equal(probes,0);assert.equal(f.context.connectionChooserVisible(f.snapshot()),false);
 });
-test('resolved signed-out and sign-out transitions still request sign-in',()=>{
+test('a fresh phone opens Welcome after startup and returning sign-out stays in the app',()=>{
  const f=fixture({account:null});f.update({startupResolved:false,automaticRestore:true});assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),false);
  f.update({startupResolved:true,automaticRestore:false});assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),true);assert.equal(f.snapshot().open,true);
- const returning=fixture();returning.update({startupResolved:true,cloudAccount:null});assert.equal(returning.context.productionCloudSignInRequired(returning.snapshot()),true);
+ const returning=fixture();returning.update({startupResolved:true,cloudAccount:null});assert.equal(returning.context.productionCloudSignInRequired(returning.snapshot()),false);
+ assert.equal(returning.snapshot().open,false);
 });
-test('expired and rejected restored sessions still require authentication; valid offline account stays nonmodal',()=>{
- for(const patch of [{cloudAccount:{expiresAt:Date.now()-1000},startupResolved:true},{cloudAccount:null,startupResolved:true,error:'Sign-in expired'},{cloudAccount:null,startupResolved:false,error:'Sign-in expired'}]){const f=fixture();f.update(patch);assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),true);}
+test('expired, rejected and offline returning accounts leave the app available',()=>{
+ for(const patch of [{cloudAccount:{expiresAt:Date.now()-1000},startupResolved:true},{cloudAccount:null,startupResolved:true,error:'Sign-in expired'},{cloudAccount:null,startupResolved:false,error:'Sign-in expired'}]){const f=fixture();f.update(patch);assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),false);assert.equal(f.snapshot().open,false);}
  const f=fixture();f.update({startupResolved:true,inferenceOffline:true});assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),false);assert.equal(f.snapshot().open,false);
 });
 
@@ -659,14 +660,14 @@ test('closing unknown balance uses ordinary close rules without claiming zero ba
     assert.equal(refused.snapshot().fundingRefused, true);
   }
 });
-test('closing unknown balance preserves required sign-in for signed-out and expired accounts', () => {
+test('closing unknown balance keeps first-run Welcome and dismisses returning-account UI', () => {
   for (const balance of ['checking', 'unavailable', undefined]) {
     for (const account of [null, {expiresAt: Date.now() - 1}]) {
       const f = preflightFixture(balance, {account});
       f.context.state.open = true; f.close();
-      assert.equal(f.snapshot().open, true);
+      assert.equal(f.snapshot().open, account===null);
       assert.equal(f.snapshot().membershipDismissed, false);
-      assert.equal(f.context.productionCloudSignInRequired(f.snapshot()), true);
+      assert.equal(f.context.productionCloudSignInRequired(f.snapshot()), account===null);
     }
   }
 });
@@ -786,15 +787,15 @@ test('retained credential with unreachable identity restores history without for
   const f=await offlineRestoreFixture({kind,recent});assert.equal(f.historyReads,1);assert.equal(f.snapshot().history.messages.length,15);assert.equal(f.snapshot().residentSavedCredential,true);assert.equal(f.snapshot().residentPlanNotice,'offline');assert.equal(f.snapshot().cloudAccount,null,'offline identity is never fabricated as authenticated');assert.equal(f.context.admission.notice,undefined,'Cloud being unreachable adds no notice or status text');assert.equal(f.context.service,null);assert.equal(f.context.admission.binding,recent?'kept':'unbound');assert.equal(f.credentialWrites,0);assert.equal(f.identityReads,1);assert.equal(f.context.residentSignInRequired(),false);assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),false);assert.equal(f.snapshot().open,false);assert.equal(f.context.connectionChooserVisible(f.snapshot()),false);
  }
 });
-test('retained offline exception cannot bypass missing, expired or revoked sign-in',async()=>{
- for(const kind of ['missing','expired','revoked']){const f=await offlineRestoreFixture({kind});assert.equal(f.snapshot().cloudAccount,null);assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),true);assert.equal(f.snapshot().open,true);assert.equal(f.context.admission.binding,'unbound');assert.equal(f.credentialWrites,0);}
- for(const patch of [{residentSavedCredential:false,residentPlanNotice:'offline'},{residentSavedCredential:true,residentPlanNotice:null},{residentSavedCredential:true,residentPlanNotice:'offline',error:'Sign-in expired',errorKind:'sign-in-rejected'},{residentSavedCredential:true,residentPlanNotice:'offline',cloudAccount:{expiresAt:Date.now()-1000}}]){const f=fixture({account:null});f.update({startupResolved:true,...patch});assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),true);}
+test('missing credentials open first-run Welcome and refused saved credentials leave inference unbound',async()=>{
+ for(const kind of ['missing','expired','revoked']){const f=await offlineRestoreFixture({kind});assert.equal(f.snapshot().cloudAccount,null);assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),kind==='missing');assert.equal(f.snapshot().open,kind==='missing');assert.equal(f.context.admission.binding,'unbound');assert.equal(f.credentialWrites,0);}
+ for(const patch of [{hadCloudSignIn:true,residentSavedCredential:false},{residentSavedCredential:true,residentPlanNotice:null},{residentSavedCredential:true,residentPlanNotice:'offline',error:'Sign-in expired',errorKind:'sign-in-rejected'},{residentSavedCredential:true,residentPlanNotice:'offline',cloudAccount:{expiresAt:Date.now()-1000}}]){const f=fixture({account:null});f.update({startupResolved:true,...patch});assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),false);}
 });
-test('offline with a saved sign-in: only a refused sign-in brings back the required page, not another error',async()=>{
- for(const [patch,required] of [[{error:'Your agent stopped.'},false],[{error:'Cloud did not confirm revoking.',errorKind:null},false],[{error:'Signing in failed.',errorKind:'account-changed'},false],[{error:'Sign in again.',errorKind:'sign-in-rejected'},true]]){
+test('offline or refused saved sign-in never brings back Welcome',async()=>{
+ for(const patch of [{error:'Your agent stopped.'},{error:'Cloud did not confirm revoking.',errorKind:null},{error:'Signing in failed.',errorKind:'account-changed'},{error:'Sign in again.',errorKind:'sign-in-rejected'}]){
   const f=fixture({account:null});f.update({startupResolved:true,residentSavedCredential:true,residentPlanNotice:'offline',...patch});
-  assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),required,JSON.stringify(patch));
-  assert.equal(f.snapshot().open,required);
+  assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),false,JSON.stringify(patch));
+  assert.equal(f.snapshot().open,false);
  }
  // An error replaced or cleared drops its kind; the same text kept keeps it.
  const f=fixture({account:null});f.update({error:'Sign in again.',errorKind:'sign-in-rejected'});f.update({error:'Sign in again.'});assert.equal(f.snapshot().errorKind,'sign-in-rejected');

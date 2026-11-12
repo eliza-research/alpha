@@ -15,14 +15,14 @@ const model = 'CloudConnectionNotices';
 const modelPath = 'specs/quint/application/'+model+'.qnt';
 const controller = 'apps/app/src/runtime/connection-ui.tsx';
 const style = 'apps/app/src/runtime/connection-ui.css';
-const kinds = ['plan', 'sign-in'];
+const kinds = ['plan'];
 const expect = baseExpect.configure({timeout:15000});
 const region = (page, kind) => page.getByRole('region', {name:'Eliza Cloud '+kind+' notice', exact:true});
 const noticeButton = (page, kind, name) => region(page, kind).getByRole('button', {name, exact:true});
 const stack = page => page.locator('.alpha-plan-notices');
 
 async function observe(page) {
-  const {view, notices} = await observeCloudNotices(page);
+  const {notices} = await observeCloudNotices(page);
   const input = await page.evaluate(() => {
     const c = window.quintNoticeController, snapshot = c.getSnapshot();
     return {
@@ -33,16 +33,20 @@ async function observe(page) {
       largeText: Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')) >= 1.5,
     };
   });
-  assert.ok(input.plan && input.signIn, 'The resident still requires both notices at the same account boundary');
+  assert.ok(input.plan && input.signIn, 'The fixture has both a plan requirement and a near-expiry key');
+  assert.ok(notices.every(notice => notice.kind==='plan'), 'Expiry never mounts on Home');
   const mounted = notices.map(notice => notice.kind);
   const order = notices.filter(notice => notice.visible).map(notice => notice.kind);
+  const accountOpen = await page.getByRole('dialog', {name:'Account', exact:true}).isVisible();
   return {
     's.required': qset(kinds),
-    's.dismissed': qset(kinds.filter(kind => !mounted.includes(kind))),
+    ...(!accountOpen ? {'s.dismissed': qset(kinds.filter(kind => !mounted.includes(kind)))} : {}),
     's.covered': input.covered,
+    's.accountOpen': accountOpen,
     's.compact': input.compact,
     's.largeText': input.largeText,
     mounted: qset(mounted), exposed: qset(order), order,
+    expiryInSettings: await page.getByRole('button', {name:'Approve this phone again', exact:true}).isVisible(),
   };
 }
 
@@ -72,6 +76,15 @@ async function settingsRoundTrip(page, t) {
     await page.getByRole('button', {name:entry, exact:true}).click();
     await expect(stack(page)).toBeHidden();
     checkpoint(t, 'Actual '+entry+' suspends passive notices without dismissing them', call('coverScreen'), await observe(page));
+    if(entry==='Settings'){
+      await page.getByRole('button', {name:'Account', exact:true}).click();
+      const account=page.getByRole('dialog', {name:'Account', exact:true});
+      await expect(account.getByRole('button', {name:'Approve this phone again', exact:true})).toBeVisible();
+      checkpoint(t, 'Opening Account reveals the sign-in expiry action', call('openAccount'), await observe(page));
+      await page.keyboard.press('Escape');
+      await expect(account).toHaveCount(0);
+      checkpoint(t, 'Closing Account hides the sign-in action', call('closeAccount'), await observe(page));
+    }
     await page.evaluate(() => window.dispatchEvent(new Event('alpha-back', {cancelable:true})));
     await expect(stack(page)).toBeVisible();
     checkpoint(t, 'Actual Back returns Home to the unchanged owned notices', call('returnHome'), await observe(page));
@@ -79,7 +92,7 @@ async function settingsRoundTrip(page, t) {
 }
 
 async function exercise(page, short) {
-  const t = trace(short ? 'short_large_text_plan_then_sign_in' : 'settings_sign_in_then_plan', await observe(page));
+  const t = trace(short ? 'short_large_text_plan_and_account' : 'home_plan_and_account', await observe(page));
   if (short) {
     await page.setViewportSize({width:360, height:480});
     await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement)
@@ -97,11 +110,6 @@ async function exercise(page, short) {
       .getPropertyValue('--alpha-text-scale')))).toBe(1.5);
     assert.ok(await font() >= normal * 1.49, 'The notice text itself grew');
     checkpoint(t, 'The actual browser display adapter enlarges text', call('largeText'), await observe(page));
-    const box = await stack(page).boundingBox();
-    assert.ok(box && await stack(page).evaluate(node => node.scrollHeight > node.clientHeight), 'The shared notice stack has its own scroll room');
-    await page.mouse.move(box.x + box.width / 2, box.y + Math.min(20, box.height / 2));
-    await page.mouse.wheel(0, box.height);
-    await expect.poll(() => stack(page).evaluate(node => node.scrollTop)).toBeGreaterThan(0);
   }
   await proveHitTargets(page, {short});
   if (!short) {
@@ -121,12 +129,7 @@ async function exercise(page, short) {
     await expect(region(page, kind)).toHaveCount(0);
     checkpoint(t, 'Touch dismisses only the exact '+kind+' notice', call('dismiss', kind), await observe(page));
   };
-  const [first, second] = short ? kinds : kinds.slice().reverse();
-  await dismiss(first);
-  await expect(region(page, second)).toBeVisible();
-  await settingsRoundTrip(page, t);
-  await proveHitTargets(page, {short});
-  await dismiss(second);
+  await dismiss('plan');
   await expect(stack(page)).toHaveCount(0);
   return t;
 }
@@ -205,7 +208,7 @@ export async function checkCloudConnectionNotices(extraSources = []) {
           window.quintNoticeController = connectionController;
         });
         await expect(region(page, 'plan')).toBeVisible({timeout:120000});
-        await expect(region(page, 'sign-in')).toBeVisible();
+        await expect(region(page, 'sign-in')).toHaveCount(0);
         traces.push(await exercise(page, short));
         const effects = await page.evaluate(() => window.planFixture.calls.filter(call =>
           ['configureCloudProvider','openExternal','startEmail','verifyEmail'].includes(call.method) || call.path?.endsWith('/redeem')));
