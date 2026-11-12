@@ -336,7 +336,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   // Only two re-export maps remain: they select upstream leaves for bare package specifiers
   // and carry no declarations of their own.
   const project = (name: string, text: string) => source.set(name, {bytes:Buffer.from(text),mode:'100644',sha256:hash(text)});
-  project('client-contracts.ts', 'export * from "./packages/contracts/src/calendar";\nexport * from "./packages/contracts/src/calendar-linked-sync";\nexport * from "./packages/contracts/src/device-reviews";\nexport * from "./packages/contracts/src/workflow-device";\nexport * from "./packages/contracts/src/contracts/theme";\n');
+  project('client-contracts.ts', 'export * from "./packages/contracts/src/calendar";\nexport * from "./packages/contracts/src/calendar-linked-sync";\nexport * from "./packages/contracts/src/device-reviews";\nexport * from "./packages/contracts/src/workflow-device";\nexport * from "./packages/contracts/src/contracts/theme";\nexport type { PhoneRelativeCalendarRange } from "./packages/contracts/src/phone-workflow";\n');
   const text = (name: string) => {
     const file = source.get(name);
     if (!file) throw Error('Missing client feature projection input: ' + name);
