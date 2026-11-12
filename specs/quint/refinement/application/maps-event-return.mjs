@@ -66,7 +66,7 @@ function fixture(compiled) {
     locationPermissionGranted: async () => false, shareMap: () => {}, mapShareLabel: () => 'Share', isAndroid: false,
     publishMapsSelection: () => {}, clearMapsSelection: () => {},
     bindAgentNavigation: () => ({dispose() {}}), residentMapsNavigationPort: {}, keepCloudMapsCoverage: () => () => {},
-    regionalMapsConfigured: false, regionalMap: () => undefined, cloudMapsBasemap: () => undefined,
+    devSurfacesEnabled: true, regionalMapsConfigured: false, regionalMap: () => undefined, cloudMapsBasemap: () => undefined,
     cloudMapsDiagnostics: () => ({}), cloudMapsCoverage: () => undefined, globalBasemap: {attribution: 'Fixture map'},
     describeMapsDisclosure: () => '',
   });

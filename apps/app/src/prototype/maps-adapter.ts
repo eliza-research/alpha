@@ -1,3 +1,4 @@
+import {devSurfacesEnabled} from '../build-flags';
 import {openContentLink} from './content-links';
 import {guidanceDistance} from '../maps/guidance';
 import {distanceToRoute} from '../maps/route-distance';
@@ -45,7 +46,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const module = views.maps; if (!module) return () => {};
   const original = { render: module.render, back: module.back, onLeave: module.onLeave, reply: module.reply, suggestions: module.suggestions, ongoing: module.ongoing };
   let api: Bag | undefined, disposed=false, renders=0;
-  let startupLocationChecked=false,locationGeneration=0,saveNamedPlace=false;
+  let startupLocationChecked=false,startupLocationSettled=false,locationGeneration=0,saveNamedPlace=false;
   let planeBasemap:MapBasemap|undefined, plane: MapPlane | undefined, planeElement: HTMLElement | undefined;
   let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined;
   let mapCopyright='';
@@ -186,7 +187,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   module.back = () => screen.back();
   module.onLeave = () => {
-    startupLocationChecked=false;locationGeneration++;
+    startupLocationChecked=false;startupLocationSettled=false;locationGeneration++;
     retireEventReturn();
     screen.release();
   };
@@ -212,7 +213,10 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       const generation=locationGeneration;
       void locationPermissionGranted().then(granted=>{
         const current=screen.view();
-        if(granted&&generation===locationGeneration&&active()&&current.mode==='base'&&!current.query&&!pendingHandoff)void mapsController?.locate();
+        if(generation!==locationGeneration||!active())return;
+        startupLocationSettled=true;
+        if(granted&&current.mode==='base'&&!current.query&&!pendingHandoff)void mapsController?.locate();
+        else screen.refresh();
       });
     }
     // Calling the original with neutral state retains visual tokens without
@@ -227,7 +231,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     return text.length > 200 ? `${text.slice(0, 199)}…` : text;
   }
   function bind(data: Bag, view: MapsScreenView, st: Bag, currentApi: Bag) {
-    const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;
+    const status = view.status, region = regionalMap(), raster=cloudMapsBasemap();
+    const globalMap=devSurfacesEnabled&&!region&&!raster;
+    const basemap=region||raster||(globalMap?globalBasemap:undefined);
     // Alpha's Cloud provider is operator-owned. Translate only the generic setup
     // prompt after a service-configuration refusal; preserve other recovery messages.
     const cloudFailure = cloudMapsDiagnostics();
@@ -243,6 +249,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const emptySearch=view.noResults&&!view.emptyQuery&&!savedMatches.length&&status.map!=='error';
     const snapshot=mapsController?.snapshot();
     const position=snapshot?.position.phase==='ready'?snapshot.position.value?.coordinate:undefined;
+    const locationReady=startupLocationSettled&&snapshot?.position.phase!=='loading';
     const places=new Map((view.mode==='origin'?snapshot?.originSearch.value:snapshot?.search.value)?.map(place=>[`place:${place.providerId}:${place.id}`,place.coordinate]));
     for(const saved of snapshot?.saved.value??[])places.set(`saved:${saved.id}`,saved.coordinate);
     const distanceFor=(key:string)=>{const point=places.get(key);return position&&point?guidanceDistance(distanceToRoute(position,[point])):'';};
@@ -252,14 +259,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       nativeShareLabel:mapShareLabel(),
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
-      notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
+      notNative:false, hasNativeMap:!!basemap&&locationReady,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
       mapRef:(element:HTMLElement)=>{
         if(!element||!basemap)return;
         if(element!==planeElement||planeBasemap!==basemap){
           mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;
           const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();
           try{
-            plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>id.startsWith('saved:')?screen.chooseSaved(id.slice(6)):screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}},point=>{cancelSearch();submittedSearch=undefined;screen.selectPoint(point);});
+            plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>id.startsWith('saved:')?screen.chooseSaved(id.slice(6)):screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}},point=>{cancelSearch();submittedSearch=undefined;screen.selectPoint(point);},position);
             mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapReady==='true'?'ready':'loading');});
             mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});
           }catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(current())screen.setMapState('error');});}

@@ -49,7 +49,7 @@ export function resolveMapColors(container: HTMLElement, colors: Record<string, 
  * plane reflows the selected place when these sheets move (plugin-maps 5176c4523c). */
 export class MapPlane extends SharedMapPlane {
  private releaseGestures:()=>void=()=>{};
- constructor(container:HTMLElement,region:MapBasemap,onError:()=>void,colors:Record<string,string>,onPin?:(id:string)=>void,onCopyright?:(text:string)=>void,onPoint?:(point:Coordinate)=>void) {
+ constructor(container:HTMLElement,region:MapBasemap,onError:()=>void,colors:Record<string,string>,onPin?:(id:string)=>void,onCopyright?:(text:string)=>void,onPoint?:(point:Coordinate)=>void,initialCenter?:Coordinate) {
   const worldwide=region.kind==='global'||region.kind==='cloud-raster';
   super(container,region,onError,region.kind==='global'?colors:resolveMapColors(container,colors),{fontUrl,workerUrl,preserveDrawingBuffer:!Capacitor.isNativePlatform(),accent:'#1616d8',protocol:'alpha-region',routePadding:{top:220,bottom:280,left:30,right:30},nativeRegion,nativeRequest:nativeRegionRequest,onCopyright,selectionPadding:worldwide?()=>{
    const bounds=container.getBoundingClientRect();
@@ -58,7 +58,7 @@ export class MapPlane extends SharedMapPlane {
    const sheet=container.parentElement?.querySelector('[data-alpha-maps-sheet]')?.getBoundingClientRect();
    const right=sheet&&sheet.left>bounds.left+30?Math.max(30,bounds.right-sheet.left+30):30;
    return {top:header?header.bottom-bounds.top+60:100,bottom:credits?bounds.bottom-credits.top+16:Math.min(430,container.clientHeight*.52+30),left:30,right};
-  }:undefined,onPin,onPoint});
+  }:undefined,onPin,onPoint,initialCenter});
   const shell=container.closest<HTMLElement>('.alpha-phone')??container;
   const priorShellTouch=shell.style.touchAction,priorMapTouch=container.style.touchAction;
   shell.style.touchAction='pan-x pan-y';
