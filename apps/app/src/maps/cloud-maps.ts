@@ -12,8 +12,8 @@ import { readServiceLimit } from '../runtime/subscription-entitlement.ts';
 const maps = createCloudMaps(() => captureMapsSession(() => connectionController.getCloudClient()), configureMapsProvider, { serviceLimit: readServiceLimit,
  tileRequest:()=>{
   const owner=connectionController.getCloudClient();
-  const current=()=>{const now=connectionController.getCloudClient();if(!owner||!now||owner.sessionId!==now.sessionId||owner.credentialId!==now.credentialId||owner.client!==now.client)throw Error('The Maps account changed.');};
-  return async(z,x,y,signal)=>{current();const bytes=await owner!.client.mapsTile(z,x,y,signal);current();signal.throwIfAborted();return bytes;};
+  const current=()=>{const now=connectionController.getCloudClient();if(!owner||!now||owner.sessionId!==now.sessionId||owner.credentialId!==now.credentialId)throw Error('The Maps account changed.');return now;};
+  return async(z,x,y,signal)=>{const active=current();const bytes=await active.client.mapsTile(z,x,y,signal);current();signal.throwIfAborted();return bytes;};
  },
 });
 export const { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics } = maps;

@@ -341,7 +341,8 @@
         "generation/requestGeneration/requestEpoch": "AlphaMapsDeviceNavigation.begin and route callback identity",
         "locationGranted/fixFresh": "permission and bounded navigation fix freshness",
         "route/previousRoute/guidance/rerouting": "active guidance, replacement route and failed-reroute preservation",
-        "assistant/foreground": "assistant overlay and activity visibility independent of guidance"
+        "assistant/foreground": "assistant overlay and activity visibility independent of guidance",
+        "refreshClient": "Same session and credential can replace their transport client without transferring route ownership."
       },
       "abstractions": [
         "Two route generations, two owners and boolean fix freshness summarize coordinate geometry and timestamps.",
@@ -357,7 +358,8 @@
         "waitingForLocationTest",
         "staleReplyTest",
         "assistantAndRerouteTest",
-        "accountRetirementTest"
+        "accountRetirementTest",
+        "sameAccountRefreshTest"
       ],
       "invariants": [
         "GuidanceHasRoute",
@@ -372,7 +374,8 @@
         "seed": "123"
       },
       "sharedSources": [
-        "plugins/plugin-maps/src/client/navigation-fix.ts"
+        "plugins/plugin-maps/src/client/navigation-fix.ts",
+        "plugins/plugin-maps/src/client/cloud-session.ts"
       ]
     },
     {

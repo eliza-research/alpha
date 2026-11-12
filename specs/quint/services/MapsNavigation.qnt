@@ -59,6 +59,8 @@ module MapsNavigation {
   action dismissAssistant = s' = { ...s, assistant: false }
   action background = s' = { ...s, foreground: false }
   action foreground = s' = { ...s, foreground: true }
+  /// Rebuilding transport for the same authenticated session preserves route ownership.
+  action refreshClient = s' = s
   action staleFix = s' = { ...s, fixFresh: false }
   action stop = s' = { ...s, phase: "stopped", guidance: false, rerouting: false }
   action switchOwner = all {
@@ -71,7 +73,7 @@ module MapsNavigation {
     routeReply(s.generation, s.epoch, true), routeReply(s.generation, s.epoch, false),
     routeReply(0, s.epoch, true), routeReply(s.generation, 3, true), start,
     allowDirectStart, agentStart, beginReroute, rerouteReply(true), rerouteReply(false),
-    showAssistant, dismissAssistant, background, foreground, staleFix, stop, switchOwner, s' = s
+    showAssistant, dismissAssistant, background, foreground, refreshClient, staleFix, stop, switchOwner, s' = s
   }
   val GuidanceHasRoute = s.guidance implies s.route > 0 and s.routeOwner == s.owner
   val RerouteKeepsRoute = s.rerouting implies s.guidance and s.route == s.previousRoute
@@ -91,4 +93,7 @@ module MapsNavigation {
   run accountRetirementTest = init.then(grantLocation).then(receiveFix(true)).then(requestRoute)
     .then(routeReply(1, 0, true)).then(start).then(switchOwner)
     .expect(s.route == 0 and not(s.guidance) and safety)
+  run sameAccountRefreshTest = init.then(grantLocation).then(receiveFix(true)).then(requestRoute)
+    .then(refreshClient).then(routeReply(1, 0, true)).then(start).then(refreshClient)
+    .expect(s.guidance and s.route == 1 and s.owner == 1 and safety)
 }

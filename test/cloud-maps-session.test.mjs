@@ -11,7 +11,7 @@ async function load(entry,stubs){
 async function cloudMaps(){
  const state=globalThis.cloudMapsTest={client:{sessionId:'s1',credentialId:'c1',client:{}},listeners:[],retired:0};
  await load('apps/app/src/maps/cloud-maps.ts',{
-  './cloud-provider':'export const createCloudMaps=()=>({initializeCloudMaps(){},cloudMapsCoverage(){},cloudMapsDiagnostics:()=>({configured:true}),retireCloudMaps:()=>globalThis.cloudMapsTest.retired++});',
+  './cloud-provider':'export const createCloudMaps=(_capture,_configure,options)=>{globalThis.cloudMapsTest.tileRequest=options.tileRequest;return {initializeCloudMaps(){},cloudMapsCoverage(){},cloudMapsDiagnostics:()=>({configured:true}),retireCloudMaps:()=>globalThis.cloudMapsTest.retired++}};',
   './cloud-session':'export const captureMapsSession=read=>read();',
   './runtime':'export const configureMapsProvider=()=>{};',
   '../runtime/connection-ui':'export const connectionController={getCloudClient:()=>globalThis.cloudMapsTest.client,subscribe:listener=>globalThis.cloudMapsTest.listeners.push(listener)};',
@@ -33,6 +33,20 @@ test('a new session or credential retires Cloud Maps',async()=>{
  update({sessionId:'s2',credentialId:'c1',client:{}});assert.equal(state.retired,1);
  update({sessionId:'s2',credentialId:'c2',client:{}});assert.equal(state.retired,2);
  update(undefined);assert.equal(state.retired,3);
+});
+
+test('tile requests follow a rebuilt same-account client and reject an account change',async()=>{
+ const {state,update}=await cloudMaps();
+ const request=state.tileRequest();
+ let finish;
+ update({sessionId:'s1',credentialId:'c1',client:{mapsTile:async()=>new Uint8Array([42])}});
+ assert.deepEqual(await request(1,0,0,new AbortController().signal),new Uint8Array([42]));
+ update({sessionId:'s1',credentialId:'c1',client:{mapsTile:()=>new Promise(resolve=>{finish=resolve;})}});
+ const pending=request(1,0,0,new AbortController().signal);
+ update({sessionId:'s2',credentialId:'c2',client:{mapsTile:()=>{throw Error('new account must not receive this request');}}});
+ finish(new Uint8Array([43]));
+ await assert.rejects(pending,/account changed/);
+ await assert.rejects(request(1,0,0,new AbortController().signal),/account changed/);
 });
 
 async function share(run){
