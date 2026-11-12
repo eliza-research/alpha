@@ -8,6 +8,9 @@ export const assistantAgent=app+'AlphaLocalAgentPlugin.java';
 export const assistantNavigation=app+'AlphaNavigationService.java';
 export const senseFixtures='vendor/eliza/plugins/plugin-native-system/test/sense-client-stubs.json';
 export const systemModule='plugins/plugin-native-system/android';
+export const imageModule='plugins/plugin-native-messages/android';
+export const imageCapabilitySource='vendor/eliza/'+imageModule+'/src/main/java/ai/eliza/plugins/messages/ImageCapability.java';
+export const imageAdmissionSource='vendor/eliza/'+imageModule+'/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java';
 export const assistantShared=['SenseInvocation','SenseListenerClient','AssistantEntryTile'].map(name=>
   systemModule+'/src/main/java/ai/eliza/plugins/system/'+name+'.java');
 
@@ -53,11 +56,20 @@ public class Context {
  public static final Context APP=new Context();
  public static final PackageManager packages=new PackageManager();
  public static KeyguardManager keyguard=new KeyguardManager();
- public static boolean mic=true;
+ public static boolean mic=true,control=true,hostSystem=true,provisioned=true;
  public Context getApplicationContext(){return APP;}
  public String getPackageName(){return "fixture.alpha";}
  public PackageManager getPackageManager(){return packages;}
- public int checkSelfPermission(String permission){if(!permission.equals("record-audio"))throw new AssertionError(permission);return mic?0:-1;}
+ public int checkSelfPermission(String permission){
+  if(permission.equals("record-audio"))return mic?0:-1;
+  if(permission.equals("fixture.alpha.sense.permission.LISTENER_CONTROL"))return control?0:-1;
+  throw new AssertionError(permission);
+ }
+ public android.content.res.Resources getResources(){return new android.content.res.Resources();}
+ public android.content.pm.ApplicationInfo getApplicationInfo(){
+  try{return packages.getApplicationInfo(getPackageName(),0);}
+  catch(PackageManager.NameNotFoundException absent){throw new IllegalStateException(absent);}
+ }
  public ContentResolver getContentResolver(){return new ContentResolver();}
  public <T>T getSystemService(Class<T> type){if(type!=KeyguardManager.class)throw new AssertionError(type);return type.cast(keyguard);}
  public String getString(int id){return "resource-"+id;}
@@ -65,10 +77,33 @@ public class Context {
     put('android/content/pm/PackageManager.java',`package android.content.pm;
 import android.content.ComponentName;
 public final class PackageManager {
- public static final int MATCH_DEFAULT_ONLY=1,SIGNATURE_MATCH=0,PERMISSION_GRANTED=0,GET_META_DATA=128;
- public boolean listener=true,system=true,protectedPower=true;
+ public static final int MATCH_DEFAULT_ONLY=1,SIGNATURE_MATCH=0,PERMISSION_GRANTED=0,GET_META_DATA=128,GET_SIGNING_CERTIFICATES=256;
+ public boolean listener=true,system=true,protectedPower=true,feature=true,hotword=true;
+ public boolean companionEnabled=true,companionSystem=true,companionPath=true;
  public static final class NameNotFoundException extends Exception {}
- public ApplicationInfo getApplicationInfo(String name,int flags)throws NameNotFoundException{throw new AssertionError("Listener discovery outside fixture");}
+ public ApplicationInfo getApplicationInfo(String name,int flags)throws NameNotFoundException{
+  ApplicationInfo info=new ApplicationInfo();info.packageName=name;info.enabled=true;info.flags=ApplicationInfo.FLAG_SYSTEM;
+  switch(name){
+   case "fixture.alpha" -> {info.uid=12000;info.sourceDir="/system/priv-app/Alpha/Alpha.apk";info.flags=android.content.Context.hostSystem?ApplicationInfo.FLAG_SYSTEM:0;}
+   case "fixture.alpha.sense" -> {info.uid=12001;info.sourceDir=companionPath?"/system_ext/priv-app/AlphaSense/AlphaSense.apk":"/data/app/AlphaSense.apk";info.enabled=companionEnabled;info.flags=companionSystem?ApplicationInfo.FLAG_SYSTEM:0;}
+   case "android","com.android.systemui" -> {info.uid=1000;info.sourceDir="/system/framework/fixture.apk";}
+   default -> throw new NameNotFoundException();
+  }
+  return info;
+ }
+ public PackageInfo getPackageInfo(String name,int flags)throws NameNotFoundException{
+  String certificate=switch(name){
+   case "fixture.alpha" -> "alpha";
+   case "fixture.alpha.sense" -> listener?"alpha":"foreign";
+   case "android" -> "platform";
+   case "com.android.systemui" -> system?"platform":"foreign";
+   default -> throw new NameNotFoundException();
+  };
+  PackageInfo info=new PackageInfo();info.signingInfo.signers=new Signature[]{new Signature(certificate)};return info;
+ }
+ public boolean hasSystemFeature(String name){return feature&&name.equals("fixture.alpha.feature.SENSE");}
+ public boolean hasSystemFeature(String name,int version){return feature&&version<=1&&name.equals("fixture.alpha.aosp_image");}
+ public int checkPermission(String permission,String name){return hotword&&name.equals("fixture.alpha.sense")&&permission.equals("android.permission.CAPTURE_AUDIO_HOTWORD")?0:-1;}
  public int checkSignatures(String a,String b){
   if(a.equals("fixture.alpha")&&b.equals("fixture.alpha.sense"))return listener?0:-1;
   if(a.equals("android")&&b.equals("com.android.systemui"))return system?0:-1;
@@ -82,6 +117,31 @@ public final class PackageManager {
  public boolean resolves(String action){return ai.alphacompute.alphaphone.MainActivityPorts.settings.contains(action);}
  public ResolveInfo resolveActivity(android.content.Intent intent,int flags){return null;}
 }`);
+    put('android/content/pm/ApplicationInfo.java',`package android.content.pm;
+public class ApplicationInfo {
+ public static final int FLAG_SYSTEM=1;
+ public boolean enabled=true;
+ public int uid,flags;
+ public String packageName,sourceDir;
+ public android.os.Bundle metaData=new android.os.Bundle();
+}`);
+    put('android/content/pm/Signature.java','package android.content.pm;public record Signature(String certificate) {}');
+    put('android/content/pm/SigningInfo.java','package android.content.pm;public class SigningInfo {public Signature[] signers;public Signature[] getApkContentsSigners(){return signers;}}');
+    put('android/content/pm/PackageInfo.java','package android.content.pm;public class PackageInfo {public SigningInfo signingInfo=new SigningInfo();}');
+    edit('android/content/res/Resources.java','public class Resources {',`public class Resources {
+ public boolean getBoolean(int id){if(id!=206)throw new AssertionError(id);return android.content.Context.provisioned;}`);
+    put('ai/alphacompute/alphaphone/BuildConfig.java',`package ai.alphacompute.alphaphone;
+public class BuildConfig {
+ public static final String APPLICATION_ID="fixture.alpha";
+ public static boolean IS_LAUNCHER=true,DEBUG=false,ELIZA_DEV_ALLOW_TEST_MOCKS=false;
+}`);
+    // Only the nominal interface is needed here; preserve its exact pinned declaration.
+    const configuration=readFileSync(join(root,imageAdmissionSource),'utf8');
+    const admission=[...configuration.matchAll(/public interface Admission \{ boolean admitted\(Context context\); \}/g)];
+    assert.equal(admission.length,1,'One source-owned image admission interface');
+    put('ai/eliza/plugins/messages/SmsTelephonyConfiguration.java',`package ai.eliza.plugins.messages;
+import android.content.Context;
+public final class SmsTelephonyConfiguration {${admission[0][0]}}`);
     put('android/app/Activity.java',`package android.app;
 import android.content.*;
 public class Activity extends Context {
@@ -92,7 +152,7 @@ public class Activity extends Context {
  public ComponentName getComponentName(){return new ComponentName(getPackageName(),getClass().getName());}
  public Intent getIntent(){throw new AssertionError("Only a hosted Activity may expose its intent");}
 }`);
-    put('android/app/ComponentCaller.java','package android.app;public record ComponentCaller(String name) {public String getPackage(){return name;}}');
+    put('android/app/ComponentCaller.java','package android.app;public record ComponentCaller(String name,int uid) {public String getPackage(){return name;}public int getUid(){return uid;}}');
     put('android/Manifest.java','package android;public final class Manifest {public static final class permission {public static final String RECORD_AUDIO="record-audio";}}');
     put('android/annotation/TargetApi.java','package android.annotation;public @interface TargetApi {int value();}');
     put('android/annotation/SuppressLint.java','package android.annotation;public @interface SuppressLint {String[] value();}');
@@ -118,8 +178,10 @@ public record Icon(int id) {public static Icon createWithResource(android.conten
     const activity='com/getcapacitor/BridgeActivity.java';
     edit(activity,'public class BridgeActivity {',`public class BridgeActivity extends android.app.Activity {
   public String launchedFrom;
+  public int launchedFromUid=-1;
   public boolean copyLoadIntent;
   public String getLaunchedFromPackage(){return launchedFrom;}
+  public int getLaunchedFromUid(){return launchedFromUid;}
   public void onPause(){}
   public void onNewIntent(android.content.Intent intent,android.app.ComponentCaller caller){onNewIntent(intent);}`);
     edit(activity,'    onNewIntent(getIntent());',`    ai.alphacompute.alphaphone.AssistantEntryTraces.beforeBridgeReentry(this);
@@ -179,6 +241,7 @@ public final class JsonCredentialSlots {public static final Object LOCK=new Obje
     const res='ai/alphacompute/alphaphone/R.java';
     put(res,`package ai.alphacompute.alphaphone;
 public final class R {
+ public static final class bool {public static final int alpha_aosp_image_capability=206;}
  public static final class string {
   public static final int alpha_quick_settings_label=201,alpha_quick_settings_locked=202,
     alpha_quick_settings_open=203,alpha_quick_settings_description=204;
