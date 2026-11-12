@@ -61,7 +61,6 @@ export const AOSP_TARGETS = CUTTLEFISH_TARGETS;
 type PhysicalSource = Awaited<ReturnType<typeof verifyPixel10aSource>> & {hardwareLayout?: ReturnType<typeof pixel10aSourceLayout>};
 interface SourceOverrideOptions {
   physicalSource?: PhysicalSource | null;
-  cuttlefish?: boolean;
   lockPath?: string;
   source?: string | null;
   appliedPatches?: ReviewedSourcePatch[];
@@ -138,9 +137,9 @@ function admitApk({ apk, hash, development, manifestFile, platformCertificateSha
 }
 /**
  * Source overrides the secure-camera source check admits. Pixel and Cuttlefish images are built from the same
- * reviewed Android 17 tree, so both admit exactly its hash-pinned overrides; other development staging admits none.
+ * reviewed Android 17 tree, so both admit exactly its hash-pinned overrides.
  */
-export function reviewedSourceOverrides({physicalSource = null, cuttlefish = false, lockPath = defaultLockPath, source, appliedPatches = []}: SourceOverrideOptions = {}) {
+export function reviewedSourceOverrides({physicalSource = null, lockPath = defaultLockPath, source, appliedPatches = []}: SourceOverrideOptions = {}) {
   const reviewed = sharedReviewedSourceOverrides as unknown as (options: {
     physicalSource: PhysicalSource | null;
     imageTarget: boolean;
@@ -148,23 +147,21 @@ export function reviewedSourceOverrides({physicalSource = null, cuttlefish = fal
     source?: string | null;
     appliedPatches: ReviewedSourcePatch[];
   }) => ReturnType<typeof sharedReviewedSourceOverrides>;
-  return reviewed({physicalSource, imageTarget: cuttlefish, lockPath, source, appliedPatches});
+  return reviewed({physicalSource, imageTarget: true, lockPath, source, appliedPatches});
 }
 
-export function stagingSystemuiPatches(names: string[], imageTarget: boolean): ReviewedSourcePatch[] {
-  if (!names.length) return [];
-  if (!imageTarget) throw Error('--applied-systemui-patch requires --target pixel10a or cuttlefish');
+export function stagingSystemuiPatches(names: string[]): ReviewedSourcePatch[] {
   if (new Set(names).size !== names.length) throw Error('Duplicate applied SystemUI patch');
   if (names.includes('alpha-protected-power') && names.includes('assist'))
     throw Error('The protected Power patch and the generic assist patch change the same SystemUI source');
   return names.map(name => name === 'alpha-protected-power' ? alphaProtectedPowerPatch() : listenerSystemuiPatch(name));
 }
 
-export function stagingBuildPatches(names: string[], imageTarget: boolean) {
-  if (!names.length) return [];
-  if (!imageTarget) throw Error('--applied-build-patch requires --target pixel10a or cuttlefish');
-  if (new Set(names).size !== names.length) throw Error('Duplicate applied build patch');
-  return names.map(aospBuildPatch);
+/** Every image is built from a tree carrying soong-app-native: Soong installs the APK and its JNI only with it. */
+export function stagingBuildPatches(names: string[]) {
+  const applied = ['soong-app-native', ...names];
+  if (new Set(applied).size !== applied.length) throw Error('Duplicate applied build patch');
+  return applied.map(aospBuildPatch);
 }
 
 async function main(args: string[]) {
@@ -182,7 +179,7 @@ for (let i = 0; i < args.length; i++) {
     args[i + 1].startsWith("--")
   )
     throw new Error(
-      "Use --apk FILE --output NEW_DIR [--descriptor FILE [--production] | --development] [--apk-manifest FILE] [--aosp-source PATH] [--target cuttlefish | --target pixel10a --factory-image FILE (--development | --production --descriptor FILE)] [--listener-apk FILE [--listener-descriptor FILE] [--listener-qualification FILE]] [--applied-systemui-patch chip|ops|assist|alpha-protected-power ...] [--applied-build-patch soong-memory|soong-app-native|alpha-sense-policy ...] [--boot-animation ZIP (pixel10a, when the composition pins one)]",
+      "Use --target cuttlefish | --target pixel10a --factory-image FILE (--development | --production), with --aosp-source PATH --apk FILE --output NEW_DIR [--descriptor FILE (required by --production)] [--apk-manifest FILE] [--listener-apk FILE [--listener-descriptor FILE] [--listener-qualification FILE]] [--applied-systemui-patch chip|ops|assist|alpha-protected-power ...] [--applied-build-patch soong-memory|alpha-sense-policy ...] [--boot-animation ZIP (pixel10a, when the composition pins one)]",
     );
   if (args[i] === '--applied-systemui-patch') appliedPatchNames.push(args[i + 1]);
   if (args[i] === '--applied-build-patch') appliedBuildNames.push(args[i + 1]);
@@ -196,7 +193,7 @@ const production = args.includes("--production");
 const source = get('--aosp-source');
 const factory = get('--factory-image');
 const cuttlefish = cuttlefishOptions({target:get('--target'), source, factory});
-const physical = pixel10aOptions({target:cuttlefish ? null : get('--target'), development, production, source, factory});
+const physical = !cuttlefish && pixel10aOptions({target:get('--target'), development, production, source, factory});
 if (get('--boot-animation') && !physical) throw new Error('--boot-animation belongs to --target pixel10a');
 if (production && development) throw new Error("--production and --development are exclusive");
 const listenerApk = get('--listener-apk');
@@ -222,9 +219,7 @@ const product = production || senseImage ? JSON.parse(fs.readFileSync(physical ?
 const platformCertificateSha256 = product?.signer?.platformCertificateSha256;
 const qualification = qualificationFile ? readSenseQualification(qualificationFile, product?.listenerQualificationSha256, production) : null;
 const senseSdk = qualification ? verifyPinnedUpstream(process.cwd()) : null;
-const appliedPatches = [...stagingSystemuiPatches(appliedPatchNames, physical || cuttlefish), ...stagingBuildPatches(appliedBuildNames, physical || cuttlefish)];
-if ((physical || cuttlefish) && !appliedBuildNames.includes('soong-app-native'))
-  throw Error('Image staging requires --applied-build-patch soong-app-native for Soong-only APK and JNI installation.');
+const appliedPatches = [...stagingSystemuiPatches(appliedPatchNames), ...stagingBuildPatches(appliedBuildNames)];
 const physicalSource: PhysicalSource | null = physical ? await verifyPixel10aSource({source:get('--aosp-source'), factory:get('--factory-image'), appliedPatches}) : null;
 if (physicalSource) physicalSource.hardwareLayout = pixel10aSourceLayout({source:source!});
 // The verified tree must also lunch a release carrying the stock stallion vendor API (shared check).
@@ -254,10 +249,7 @@ if (descriptor) {
   if (supplied.packageName !== identity.appId || supplied.moduleName !== identity.moduleName)
     throw new Error(`Descriptor does not belong to this product: packageName ${supplied.packageName} and moduleName ${supplied.moduleName} must be ${identity.appId} and ${identity.moduleName} (app.config.json).`);
 }
-const cameraOverrides = reviewedSourceOverrides({physicalSource, cuttlefish, source, appliedPatches});
-const cameraSource = source || !development
-  ? verifySecureCameraSource(source, undefined, cameraOverrides)
-  : { sourceVerified: false, imageVerified: false, lockedCaptureVerified: false, deviceAcceptanceVerified: false, reason: "Development staging without reviewed AOSP source" };
+const cameraSource = verifySecureCameraSource(source, undefined, reviewedSourceOverrides({physicalSource, source, appliedPatches}));
 const env = androidEnv();
 if (!descriptor) {
   if (!development)
@@ -308,7 +300,7 @@ const destination = path.resolve(get("--output") || `artifacts/aosp/${identity.s
 // and published only after the last check; a refusal leaves the destination absent.
 if (fs.existsSync(destination)) throw Error('Output already exists: ' + destination);
 fs.mkdirSync(path.dirname(destination), {recursive:true});
-const temporary = fs.mkdtempSync(path.join(path.dirname(destination), `.${physical ? 'pixel10a' : cuttlefish ? 'cuttlefish' : identity.slug}-stage-`));
+const temporary = fs.mkdtempSync(path.join(path.dirname(destination), `.${physical ? 'pixel10a' : 'cuttlefish'}-stage-`));
 const output = path.join(temporary, 'overlay');
 try {
 const admittedLauncherDescriptor = path.join(temporary, 'launcher-descriptor.json');
@@ -357,7 +349,7 @@ fs.appendFileSync(path.join(output, "product.mk"), clockProductRequirement);
 // launcher and the provisioning overlay written below for production and admitted Sense qualification
 // images. Test-mocks APKs were refused above, and a sideloaded APK never has the
 // system-partition install. The shared Pixel 10a composition declares it for every brand, so only
-// the other products write it here.
+// the Cuttlefish product writes it here.
 if (!physical) {
   const capability = writeImageCapability(output, identity.appId);
   const feature = Object.keys(capability).find(name => name !== "productMakefile");

@@ -42,11 +42,7 @@ export interface AospSourceOptions {
   factory?: string | null;
 }
 export function pixel10aOptions({target, development, production, source, factory}: AospSourceOptions & {development: boolean; production: boolean}) {
-  if (target != null && target !== 'pixel10a') throw Error('Only --target pixel10a is supported; omit --target for the existing product');
-  if (!target) {
-    if (factory) throw Error('--factory-image requires --target pixel10a');
-    return false;
-  }
+  if (target !== 'pixel10a') throw Error('Staging requires --target pixel10a or --target cuttlefish');
   if (development && production) throw Error('--production and --development are exclusive');
   if (!development && !production) throw Error('Pixel 10a staging needs --development or --production');
   if (!source || !factory) throw Error('Pixel 10a staging requires --aosp-source and --factory-image');

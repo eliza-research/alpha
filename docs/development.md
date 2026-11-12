@@ -193,12 +193,14 @@ product build configuration. Dependency checksums remain in
 
 ```sh
 bun run test:android:instrumentation -- --owned-emulator --avd <avd> --serial emulator-NNNN
-bun run aosp:stage -- --apk artifacts/launcher-debug.apk --development
+bun run aosp:stage -- --target cuttlefish --aosp-source <aosp-checkout> --apk artifacts/launcher-debug.apk --development
 bun scripts/verify-aosp-listener.ts --serial <serial> --user 0
 ```
 
-Instrumentation uses an owned disposable emulator. Image staging emits an AOSP
-vendor add-on under `artifacts/aosp/`. APK builds, emulator HOME-role behavior,
+Instrumentation uses an owned disposable emulator. Image staging takes
+`--target cuttlefish` or `--target pixel10a` (the latter with `--factory-image`),
+requires the reviewed AOSP checkout with the `soong-app-native` patch applied,
+and emits an AOSP vendor add-on under `artifacts/aosp/`. APK builds, emulator HOME-role behavior,
 full AOSP boot, real integrations, physical-device testing and user acceptance
 are independent results.
 
@@ -211,7 +213,7 @@ Pixel 10a Sense images take `--listener-apk`, `--listener-descriptor` and
 `listenerQualificationSha256` in `android/aosp/pixel10a-product.json`. The record
 binds the exact signed APKs, staging descriptors, signer, SDK, source inventory,
 applied patches and SELinux policy. Apply and name the `chip`, `ops`, `alpha-protected-power` and
-`alpha-sense-policy` patches in addition to `soong-app-native`.
+`alpha-sense-policy` patches.
 
 An enrolled record with `qualified: false` stages only with `--development`,
 using the signed inputs and the Pixel 10a `userdebug` target. Production staging

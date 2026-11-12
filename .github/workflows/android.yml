@@ -120,7 +120,6 @@ jobs:
           if (manifest.results.length !== 2 || manifest.results.some(row => row.testMocks !== false || row.bundleAudit !== 'passed' || row.runtime !== 'PACKAGED')) throw new Error('Both launcher APKs must pass the flag-off bundle audit and package the runtime');
           console.log(JSON.stringify({ testMocks: manifest.testMocks, demoEntryPoints: manifest.demoEntryPoints, version: manifest.version, signing: manifest.signing.release }, null, 2));
           NODE
-      - run: bun run aosp:stage -- --apk artifacts/launcher-debug.apk --development
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-distribution-apks-${{ github.run_id }}-${{ github.run_attempt }}

@@ -85,7 +85,7 @@ test("a fully populated fixture lock is complete; each unset, placeholder or for
 
 test("stage-aosp --production refuses an incomplete lock before reading any APK and accepts a complete one", t => {
   const { dir } = completeLock(t);
-  const stage = (cwd, args) => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), ...args], { cwd, encoding: "utf8" });
+  const stage = (cwd, args) => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), "--target", "cuttlefish", "--aosp-source", "absent-source", ...args], { cwd, encoding: "utf8" });
   const unset = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-aosp-unset-"));
   t.after(() => fs.rmSync(unset, { recursive: true, force: true }));
   for (const rel of ["app.config.json", "android/release-signer.json", "vendor/eliza/packages/os/android/aosp.lock.json", ...fs.readdirSync(path.join(root, "android/aosp")).map(name => `android/aosp/${name}`)]) {
