@@ -118,16 +118,19 @@ export async function deliver({directory, manifestUrl, source}, {run = gh, read 
   if (!verified) throw Error('APK readback was not verified');
   const current = await readManifest();
   if ((current ? current.sha256 : null) !== (previous ? previous.sha256 : null)) throw Error('Stable channel changed during publication; retry against its current state');
-  if (!previous || previous.sha256 !== sha(manifestBytes)) run(['release','upload','app-stable',manifestFile,'--repo',repo,'--clobber']);
+  const manifestSha256 = sha(manifestBytes);
+  if (!previous || previous.sha256 !== manifestSha256) run(['release','upload','app-stable',manifestFile,'--repo',repo,'--clobber']);
+  // Release asset visibility can lag a successful upload. Poll the public
+  // pointer for up to 92 seconds of backoff without replacing it again.
   let visible = false;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (const delay of [0, 2000, 5000, 10000, 15000, 30000, 30000]) {
+    if (delay) await wait(delay);
     const published = await readManifest();
-    if (published?.sha256 === sha(manifestBytes)) {visible = true; break;}
-    if (attempt < 3) await wait(1000 * (attempt + 1));
+    if (published?.sha256 === manifestSha256) {visible = true; break;}
   }
-  if (!visible) throw Error('Stable manifest readback failed; retry this same candidate to repair publication');
+  if (!visible) throw Error('Stable manifest readback failed; inspect the public pointer before retrying this same candidate');
   return {schema: 'alpha-app-update-delivery/v1', publisherCommit: source, sourceScope: 'publication-tooling-only', variant: offer.variant, versionCode: offer.versionCode,
-    apkSha256: offer.sha256, manifestSha256: sha(manifestBytes), anonymousReadback: true};
+    apkSha256: offer.sha256, manifestSha256, anonymousReadback: true};
 }
 
 export async function main(argv, {root = process.cwd(), log = console.log} = {}) {

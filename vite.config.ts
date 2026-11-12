@@ -103,6 +103,8 @@ function productionSurface(): Plugin[] {
 
 export default defineConfig({
   root: "apps/app",
+  // Worktrees can share node_modules. Their source aliases and mock flags cannot share optimized chunks.
+  cacheDir: fileURLToPath(new URL(`./.eliza/vite-cache/${flagOn ? 'mocks' : 'live'}/`, import.meta.url)),
   plugins: [productionSurface(), localOcrAssets(), browserPdfAssets(), browserFullReload(), react(), localAgentDevBridge(), browserCloudDevBridge()],
   define: {
     'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify(flagOn ? '1' : ''),

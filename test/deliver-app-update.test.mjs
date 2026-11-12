@@ -82,6 +82,22 @@ test('stable publication cannot regress, mutate a version, or withdraw a differe
   }
 });
 
+test('a delayed public manifest needs one upload and an exact anonymous readback',async t => {
+  const f = fixture(t,{previous:{},manifestInvisible:true});
+  const read = f.ports.read;
+  let elapsed = 0;
+  f.ports.wait = async ms => { elapsed += ms; };
+  f.ports.read = async (url, options) => {
+    if (url === manifestUrl && f.uploads.includes('alpha-update-stable.json') && elapsed >= 45_000) {
+      return object(f.manifestBytes);
+    }
+    return read(url, options);
+  };
+  const receipt = await deliver(f,f.ports);
+  assert.equal(receipt.manifestSha256,sha(f.manifestBytes));
+  assert.deepEqual(f.uploads,['alpha-phone-8.apk','alpha-update-stable.json']);
+});
+
 test('manifest readback failure is a failed publication, never a successful receipt',async t => {
   const f = fixture(t,{manifestInvisible:true});
   await assert.rejects(deliver(f,f.ports),/manifest readback failed/);
