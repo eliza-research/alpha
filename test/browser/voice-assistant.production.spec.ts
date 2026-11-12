@@ -13,6 +13,14 @@ async function say(page:Page,text:string){
  await page.waitForTimeout(150);
  await page.evaluate(()=>{const f=(window as any).live,t=Date.now();f.frames([t],[{type:'speech-end',timestampMs:t}]);});
 }
+type EndpointTiming = {endpoint: {by: string; semantic: string; reason?: string}; heard?: string};
+function persistedEndpoints(page: Page): Promise<EndpointTiming[]> {
+ return page.evaluate(() => {
+  const rows = JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1') || '[]');
+  return rows.filter((row: EndpointTiming) => row.endpoint)
+   .map(({endpoint, heard}: EndpointTiming) => ({endpoint, heard}));
+ });
+}
 const posts=(page:Page)=>page.evaluate(()=>(window as any).flagOff.posts.map((text:string)=>text.split('[USER MESSAGE]\n').at(-1))) as Promise<string[]>;
 async function clean(page:Page,foreign:string[]){expect(await live(page,f=>f.forbidden)).toEqual([]);expect(foreign).toEqual([]);}
 
@@ -74,8 +82,9 @@ test('explicit Stop drains playback, keeps only the played sentence and a restar
  expect(heard[0].ownerId).toBeTruthy();
  // Native first-pause submission does not ask the semantic scorer, on either echo-cancellation route.
  expect(await live(page,f=>f.eotCalls)).toEqual([]);
- const endpoints=await page.evaluate(()=>JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1')||'[]').filter((row:any)=>row.endpoint).map((row:any)=>[row.endpoint.by,row.endpoint.semantic,row.endpoint.reason??null,row.heard??null]));
- expect(endpoints).toEqual([['gap','not-asked',null,'recorded'],['gap','not-asked',null,null]]);
+ await expect.poll(async () => (await persistedEndpoints(page)).map(({endpoint, heard}) =>
+  [endpoint.by, endpoint.semantic, endpoint.reason ?? null, heard ?? null]
+ )).toEqual([['gap','not-asked',null,'recorded'],['gap','not-asked',null,null]]);
  await clean(page,foreign);
 });
 
@@ -105,8 +114,7 @@ test('Mute controls capture and Stop retires playback',async({page})=>{
  const heard=await live(page,f=>f.heard);
  expect(heard.map((row:any)=>[row.path.split('/')[5],row.nothingHeard,row.heardText])).toEqual([['11111111-1111-4111-8111-111111111111',true,undefined]]);
  expect(heard[0].ownerId).toBeTruthy();
- const outcomes=await page.evaluate(()=>JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1')||'[]').filter((row:any)=>row.endpoint).map((row:any)=>row.heard??null));
- expect(outcomes).toEqual(['recorded']);
+ await expect.poll(async () => (await persistedEndpoints(page)).map(row => row.heard ?? null)).toEqual(['recorded']);
  await clean(page,foreign);
 });
 
@@ -157,8 +165,7 @@ test('native first-pause submission leaves the optional semantic scorer unasked'
  await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today']);
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  expect(await live(page,f=>f.eotCalls)).toEqual([]);
- const endpoints=await page.evaluate(()=>JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1')||'[]').filter((row:any)=>row.endpoint).map((row:any)=>row.endpoint));
- expect(endpoints).toEqual([{by:'gap',semantic:'not-asked'}]);
+ await expect.poll(async () => (await persistedEndpoints(page)).map(row => row.endpoint)).toEqual([{by:'gap',semantic:'not-asked'}]);
  await page.evaluate(()=>(window as any).live.finishPlayback());await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await button(page,'Stop voice conversation').click();await clean(page,foreign);
 });

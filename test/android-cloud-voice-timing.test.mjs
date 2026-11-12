@@ -1,11 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitizeTurns, summarizeTurns, sanitizeNative, sanitizeBuild, evaluate } from '../scripts/android-cloud-voice-timing.ts';
+import {runInNewContext} from 'node:vm';
+import {createVoiceTurnTiming} from '../.eliza/client-features/packages/voice/src/voice-turn-timing.ts';
+import { rendererTimingSnapshot, sanitizeTurns, summarizeTurns, sanitizeNative, sanitizeBuild, evaluate } from '../scripts/android-cloud-voice-timing.ts';
 
 const turn = { route: 'eliza-cloud', cold: false, entry: 'conversation', marks: {
   'recording-end': 0, 'transcript-ready': 2100, send: 2120,
   'first-token': 3855, 'final-reply': 4952, 'first-audio': 8283,
 } };
+
+test('the installed WebView snapshot includes marks queued for persistence', async () => {
+  const key = 'alphaphone:voice-timing:v1';
+  const values = new Map();
+  const storage = {
+    getItem(name) { assert.equal(name, key); return values.get(name) ?? null; },
+    setItem(name, value) { assert.equal(name, key); values.set(name, value); },
+    removeItem(name) { values.delete(name); },
+  };
+  let now = 100;
+  const timing = createVoiceTurnTiming({storageKey: key, format: 'alpha-voice-timing-v1',
+    routes: ['eliza-cloud'], storage: () => storage, clock: () => now});
+  timing.begin({route: 'eliza-cloud', cold: false});
+  now += 15;
+  assert.equal(timing.mark('transcript-ready'), true);
+  assert.equal(storage.getItem(key), null);
+  const snapshot = await runInNewContext(rendererTimingSnapshot, {localStorage: storage, setTimeout});
+  // Runtime.evaluate returns this value across the debugger's JSON boundary.
+  assert.deepEqual(sanitizeTurns(JSON.parse(JSON.stringify(snapshot))), [{route: 'eliza-cloud', cold: false,
+    marks: {'recording-end': 0, 'transcript-ready': 15}}]);
+});
 
 test('device diagnostics isolate STT, agent and TTS without treating missing audio as zero', () => {
   assert.deepEqual(summarizeTurns([turn])[0], {
