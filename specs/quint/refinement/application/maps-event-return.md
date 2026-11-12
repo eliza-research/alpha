@@ -21,5 +21,5 @@ Physical native or remote provider effects and detailed navigation guidance
 have separate scope.
 
 ```sh
-node --test test/quint-maps-event-return.test.mjs
+bun test test/quint-maps-event-return.test.mjs
 ```

@@ -1714,6 +1714,59 @@ public final class UpdateFlowTest {
   check(plugin.activity.started.size()==1&&plugin.activity.started.get(0).action.equals("android.settings.MANAGE_UNKNOWN_APP_SOURCES"),"Android's page opens");
   check(context.packages.installer.sessions.isEmpty(),"and nothing is downloaded or staged");
  }
+ private static void assertInstallSourcePage(AlphaDevicePlugin plugin){
+  check(plugin.activity.started.size()==1,"exactly one Android activity opens");
+  Intent intent=plugin.activity.started.get(0);
+  check(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES.equals(intent.getAction()),"the Android install-source page opens");
+  check(("package:"+plugin.getContext().getPackageName()).equals(intent.getDataString()),"only Alpha's package is selected");
+  check(intent.getFlags()==(BuildConfig.IS_LAUNCHER?Intent.FLAG_ACTIVITY_NEW_TASK:0),"the shared launcher handoff preserves its task behavior");
+ }
+ private static void explicitUpdatePermissionOpensBeforeAnyOffer(File cache)throws Exception{
+  boolean originalLauncher=BuildConfig.IS_LAUNCHER;
+  try{
+   for(boolean launcher:new boolean[]{true,false}){
+    BuildConfig.IS_LAUNCHER=launcher;
+    Context context=installing(cache);
+    Build.VERSION.SDK_INT=31;
+    context.packages.installsAllowed=false;
+    AlphaDevicePlugin plugin=bridge(context,Lifecycle.State.RESUMED);
+    connections.clear();AlphaLocalAgentPlugin.stops=0;
+    int manifestReads=syntheticManifestRequests.get();
+    PluginCall request=new PluginCall(new JSObject());
+    plugin.openUpdatePermissionSettings(request);request.awaitAnswer();
+    check(request.resolved.get()==1&&request.rejected.get()==0&&"opened".equals(request.result.optString("status")),"the handoff reports only that Android Settings opened");
+    assertInstallSourcePage(plugin);
+    check("permission-required".equals(AlphaDevicePlugin.automaticUpdateStatus(context)),"opening the page does not grant consent");
+    check(syntheticManifestRequests.get()==manifestReads&&connections.isEmpty()&&!download(context).exists(),"permission setup never checks the feed or downloads an APK");
+    check(context.packages.installer.internals.isEmpty()&&plugin.events.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&AlphaDevicePlugin.UpdatePause.store().read()==null,"permission setup never stages an install or pauses the resident");
+   }
+   Context older=installing(cache);
+   Build.VERSION.SDK_INT=30;
+   older.packages.installsAllowed=false;
+   AlphaDevicePlugin olderBridge=bridge(older,Lifecycle.State.RESUMED);
+   PluginCall unsupported=new PluginCall(new JSObject());
+   olderBridge.openUpdatePermissionSettings(unsupported);unsupported.awaitAnswer();
+   check(unsupported.resolved.get()==1&&"unsupported".equals(unsupported.result.optString("status"))&&olderBridge.activity.started.isEmpty(),"API 30 does not open automatic update setup");
+   PluginCall manual=tap(olderBridge);
+   check(manual.resolved.get()==1&&manual.result==null,"the manual handoff still resolves without a setup result");
+   assertInstallSourcePage(olderBridge);
+
+   Context unavailable=installing(cache);
+   AlphaDevicePlugin plugin=bridge(unavailable,Lifecycle.State.RESUMED);
+   plugin.activity.refuseStart=new SecurityException("settings unavailable");
+   PluginCall refused=new PluginCall(new JSObject());
+   plugin.openUpdatePermissionSettings(refused);refused.awaitAnswer();
+   check(refused.resolved.get()==0&&refused.rejected.get()==1&&plugin.activity.started.isEmpty(),"Android's refusal is reported as a rejection");
+
+   plugin.activity.deferUiWork=true;
+   PluginCall retired=new PluginCall(new JSObject());
+   plugin.openUpdatePermissionSettings(retired);
+   plugin.activity.destroyed=true;
+   plugin.activity.queuedUiWork.remove().run();retired.awaitAnswer();
+   check(retired.resolved.get()==0&&retired.rejected.get()==1&&plugin.activity.started.isEmpty(),"a retired activity cannot open Settings from queued work");
+  }finally{BuildConfig.IS_LAUNCHER=originalLauncher;}
+  System.out.println("PASS explicit update permission opens only Alpha Android settings before an offer");
+ }
  private static void appSignerIsTheOriginalCertificateOfOneSigner(File cache)throws Exception{
   Signature original=new Signature(new byte[]{1,2,3}),rotated=new Signature(new byte[]{4,5,6});
   Context context=new Context(cache);
@@ -1851,6 +1904,9 @@ public final class UpdateFlowTest {
   ManifestReply(int status,byte[] bytes){this.status=status;this.bytes=bytes;}
  }
  private static volatile ManifestReply manifestTlsReply;
+ @FunctionalInterface private interface ManifestExchange {void send(com.sun.net.httpserver.HttpExchange exchange)throws IOException;}
+ private static volatile ManifestExchange manifestExchange;
+ private static volatile Runnable manifestOpenObserver=()->{};
  private static void prepareCacheTls(String file)throws Exception{
   var keys=java.security.KeyStore.getInstance("PKCS12");
   try(var input=Files.newInputStream(java.nio.file.Path.of(file))){keys.load(input,"fixture-pass".toCharArray());}
@@ -1860,6 +1916,9 @@ public final class UpdateFlowTest {
   HttpsURLConnection.setDefaultSSLSocketFactory(tls.getSocketFactory());
   cacheTlsServer=com.sun.net.httpserver.HttpsServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
   cacheTlsServer.setHttpsConfigurator(new com.sun.net.httpserver.HttpsConfigurator(tls));
+  cacheTlsServer.setExecutor(java.util.concurrent.Executors.newCachedThreadPool(work->{
+   Thread thread=new Thread(work,"UpdateFixtureTLS");thread.setDaemon(true);return thread;
+  }));
   cacheTlsServer.createContext("/cache",exchange->{cacheTlsRequests.incrementAndGet();exchange.sendResponseHeaders(200,APK.length);try(var output=exchange.getResponseBody()){output.write(APK);}finally{exchange.close();}});
   cacheTlsServer.createContext("/manifest",exchange->{
    manifestTlsRequests.incrementAndGet();
@@ -1867,6 +1926,8 @@ public final class UpdateFlowTest {
    ManifestReply reply=manifestTlsReply;
    exchange.getResponseHeaders().set("Cache-Control","public, max-age=86400");
    try{
+    ManifestExchange override=manifestExchange;
+    if(override!=null){override.send(exchange);return;}
     exchange.sendResponseHeaders(reply.status,reply.bytes.length==0?-1:reply.bytes.length);
     if(reply.bytes.length>0)try(var output=exchange.getResponseBody()){output.write(reply.bytes);}
    }finally{exchange.close();}
@@ -1880,7 +1941,9 @@ public final class UpdateFlowTest {
  static void serveFixtureHttps(){
   URL.setURLStreamHandlerFactory(protocol->!"https".equals(protocol)?null:new URLStreamHandler(){
    @Override protected URLConnection openConnection(URL url)throws IOException{
-    if(manifestTlsReply!=null&&url.toString().equals(BuildConfig.ALPHA_UPDATE_MANIFEST_URL))return manifestTlsTransport.openConnection();
+    if(manifestTlsReply!=null&&url.toString().equals(BuildConfig.ALPHA_UPDATE_MANIFEST_URL)){
+     manifestOpenObserver.run();return manifestTlsTransport.openConnection();
+    }
     return cacheTlsTransport!=null&&url.getPath().equals("/tls-cache.apk")?cacheTlsTransport.openConnection():new Served(url);
    }
   });
@@ -2166,9 +2229,12 @@ public final class UpdateFlowTest {
   check(check.resolved.get()==1&&sha256(expected).equals(digest),"discovery hashes the exact HTTPS body including its newline");
   return digest;
  }
- private static void unavailableOffer(AlphaDevicePlugin owner,Context context,PluginCall request)throws Exception{
+ private static void refusedOffer(AlphaDevicePlugin owner,Context context,PluginCall request,String status)throws Exception{
   owner.installUpdate(request);request.awaitAnswer();
-  check(request.resolved.get()==1&&"offer-unavailable".equals(request.result.optString("status")),"unconfirmed feed resolves as an unavailable offer");
+  checkOfferRefusal(owner,context,request,status);
+ }
+ private static void checkOfferRefusal(AlphaDevicePlugin owner,Context context,PluginCall request,String status)throws Exception{
+  check(request.resolved.get()==1&&status.equals(request.result.optString("status")),"expected final offer refusal: "+status);
   check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&
    owner.activity.started.isEmpty()&&!download(context).exists()&&AlphaDevicePlugin.UpdatePause.store().read()==null,
    "an unavailable offer clears its uncommitted session, pause and APK without prompting");
@@ -2185,7 +2251,7 @@ public final class UpdateFlowTest {
    manifestTlsReply=new ManifestReply(200,original);
    String oldDigest=discoverTlsOffer(owner,original);
    PluginCall missing=tlsApk(8);missing.getData().put("automatic",true);
-   unavailableOffer(owner,context,missing);
+   refusedOffer(owner,context,missing,"offer-unavailable");
    check(cacheTlsRequests.get()==apkReads&&manifestTlsRequests.get()==feedReads+1,"missing binding is refused before network or staging");
    context.packages.archiveRead=()->owner.activity.focused=false;
    PluginCall first=bindAutomatic(tlsApk(8),oldDigest);owner.installUpdate(first);first.awaitAnswer();
@@ -2194,17 +2260,19 @@ public final class UpdateFlowTest {
    context.packages.archiveRead=()->{};owner.activity.focused=true;
    int releases=AlphaLocalAgentPlugin.releases;
    AlphaLocalAgentPlugin.pauseObserver=()->manifestTlsReply=new ManifestReply(200,newer);
-   unavailableOffer(owner,context,bindAutomatic(tlsApk(8),oldDigest));
+   PluginCall changed=bindAutomatic(tlsApk(8),oldDigest);
+   refusedOffer(owner,context,changed,"offer-response-changed");
+   check(new String(newer,java.nio.charset.StandardCharsets.UTF_8).equals(changed.result.optString("manifest")),"changed response carries exactly the bounded text for strict renderer validation");
    check(cacheTlsRequests.get()==apkReads+1&&manifestTlsRequests.get()==feedReads+2&&AlphaLocalAgentPlugin.releases==releases+1,
     "a cached APK is reused, but a late manifest change prevents its commit and releases its resident pause");
    AlphaLocalAgentPlugin.pauseObserver=()->{};
    String newDigest=discoverTlsOffer(owner,newer);
-   unavailableOffer(owner,context,bindAutomatic(tlsApk(8),newDigest));
+   refusedOffer(owner,context,bindAutomatic(tlsApk(8),newDigest),"offer-unavailable");
    check(cacheTlsRequests.get()==apkReads+2,"the new manifest's digest cannot authorize the older request tuple");
    for(ManifestReply reply:List.of(new ManifestReply(404,new byte[0]),new ManifestReply(503,new byte[0]),
-                                  new ManifestReply(200,new byte[65537]))){
+                                  new ManifestReply(200,new byte[65537]),new ManifestReply(200,new byte[]{(byte)0xff}))){
     manifestTlsReply=reply;
-    unavailableOffer(owner,context,bindAutomatic(tlsApk(8),oldDigest));
+    refusedOffer(owner,context,bindAutomatic(tlsApk(8),oldDigest),reply.status==404?"offer-withdrawn":"offer-unavailable");
    }
    manifestTlsReply=new ManifestReply(200,newer);
    context.packages.archive.versionCode=9;
@@ -2213,6 +2281,92 @@ public final class UpdateFlowTest {
    check(uncachedManifestRequests.get()==manifestTlsRequests.get(),"every TLS discovery and recheck requests cache revalidation");
    System.out.println("PASS fresh HTTPS offer rejects cached withdrawal, change and transport failure before one current commit");
   }finally{manifestTlsReply=null;AlphaLocalAgentPlugin.pauseObserver=()->{};}
+ }
+ private static void holdOfferStage(CountDownLatch entered,CountDownLatch released){
+  entered.countDown();
+  boolean interrupted=false;
+  while(true)try{released.await();break;}catch(InterruptedException stopped){interrupted=true;}
+  if(interrupted)Thread.currentThread().interrupt();
+ }
+ private static void finalOfferDeadlineRetiresBeforeLateTransport(File cache)throws Exception{
+  for(String cut:List.of("foreground","headers","body","open")){
+   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+   var installer=context.packages.installer;
+   byte[] bytes=manifestBytes(manifestOffer(tlsApk(8)));
+   manifestTlsReply=new ManifestReply(200,bytes);
+   var entered=new CountDownLatch(1);var released=new CountDownLatch(1);
+   int releases=AlphaLocalAgentPlugin.releases;
+   try{
+    String digest=discoverTlsOffer(owner,bytes);
+    if(cut.equals("open"))manifestOpenObserver=()->holdOfferStage(entered,released);
+    else if(!cut.equals("body"))manifestExchange=exchange->{
+     holdOfferStage(entered,released);
+     exchange.sendResponseHeaders(200,bytes.length);
+     try(var output=exchange.getResponseBody()){output.write(bytes);}
+    };
+    else manifestExchange=exchange->{
+     exchange.sendResponseHeaders(200,bytes.length);
+     try(var output=exchange.getResponseBody()){
+      for(byte next:bytes){
+       output.write(next);output.flush();entered.countDown();
+       try{if(released.await(70,TimeUnit.MILLISECONDS))return;}catch(InterruptedException stopped){return;}
+      }
+     }
+    };
+    PluginCall request=bindAutomatic(tlsApk(8),digest);owner.installUpdate(request);
+    check(entered.await(5,TimeUnit.SECONDS),"final offer read reaches held "+cut+" stage");
+    check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"the held final read follows resident pause");
+    if(cut.equals("foreground")){owner.activity.focused=false;released.countDown();}
+    request.awaitAnswerWithin(5000);
+    if(cut.equals("foreground"))check(request.rejected.get()==1&&download(context).exists()&&
+     installer.sessions.isEmpty()&&installer.committed.isEmpty()&&owner.activity.started.isEmpty()&&
+     AlphaDevicePlugin.UpdatePause.store().read()==null,"loss of foreground during a valid final read defers and retains only verified bytes");
+    else checkOfferRefusal(owner,context,request,"offer-unavailable");
+    check(installer.abandoned.size()==1&&AlphaLocalAgentPlugin.releases==releases+1,"only the staged precommit session is abandoned and its pause released: "+cut);
+    if(cut.equals("open")){
+     check(released.getCount()==1,"installer stops waiting while opening the transport is still blocked");
+     PluginCall concurrent=bindAutomatic(tlsApk(8),digest);owner.installUpdate(concurrent);concurrent.awaitAnswerWithin(5000);
+     checkOfferRefusal(owner,context,concurrent,"offer-unavailable");
+     check(installer.abandoned.size()==2,"an occupied transport slot does not queue another automatic read");
+     check(tap(owner).resolved.get()==1&&installer.committed.size()==1&&released.getCount()==1,
+      "manual recovery can commit while canceled automatic network I/O is still held");
+    }
+   }finally{released.countDown();manifestOpenObserver=()->{};manifestExchange=null;manifestTlsReply=null;}
+  }
+  System.out.println("PASS final offer deadline bounds held network stages and leaves manual recovery available");
+ }
+ private static void automaticConsentRecheckedAfterTls(File cache)throws Exception{
+  Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  byte[] current=manifestBytes(manifestOffer(tlsApk(8)));
+  try{
+   manifestTlsReply=new ManifestReply(200,current);
+   String digest=discoverTlsOffer(owner,current);
+   int reads=manifestTlsRequests.get(),releases=AlphaLocalAgentPlugin.releases;
+   manifestExchange=exchange->{
+    context.packages.installsAllowed=false;
+    exchange.sendResponseHeaders(200,current.length);
+    try(var output=exchange.getResponseBody()){output.write(current);}
+   };
+   PluginCall refused=bindAutomatic(tlsApk(8),digest);owner.installUpdate(refused);refused.awaitAnswer();
+   check(manifestTlsRequests.get()==reads+1&&!context.packages.canRequestPackageInstalls(),
+    "install consent was revoked during the final HTTPS feed response");
+   check(refused.resolved.get()==1&&refused.result!=null&&"permission-required".equals(refused.result.optString("status")),
+    "the automatic attempt reports revoked consent");
+   check(context.packages.installer.committed.isEmpty()&&context.packages.installer.abandoned.size()==1&&
+    context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null&&
+    AlphaLocalAgentPlugin.releases==releases+1&&!download(context).exists()&&owner.activity.started.isEmpty(),
+    "revocation before commit abandons only the staged session and releases the pause without prompting");
+   manifestExchange=null;
+   check(tap(owner).resolved.get()==1&&owner.activity.started.size()==1&&
+    "android.settings.MANAGE_UNKNOWN_APP_SOURCES".equals(owner.activity.started.get(0).action)&&
+    context.packages.installer.committed.isEmpty()&&manifestTlsRequests.get()==reads+1,
+    "an explicit manual attempt still opens Android settings after revocation");
+   context.packages.installsAllowed=true;
+   PluginCall retry=bindAutomatic(tlsApk(8),digest);owner.installUpdate(retry);retry.awaitAnswer();
+   check(retry.resolved.get()==1&&context.packages.installer.committed.size()==1&&owner.activity.started.size()==1,
+    "restored consent admits one new attempt and opens no automatic prompt");
+   System.out.println("PASS revoked install consent during final HTTPS leaves no commit or pause");
+  }finally{manifestExchange=null;manifestTlsReply=null;}
  }
  private static PluginCall updateState(AlphaDevicePlugin bridge)throws Exception{
   PluginCall read=new PluginCall(new JSObject());bridge.updateState(read);read.awaitAnswer();return read;
@@ -2266,8 +2420,11 @@ public final class UpdateFlowTest {
    if(cacheTlsServer!=null){
     verifiedAutomaticCacheUsesOneRealTlsResponse(cache);
     automaticOfferRecheckedOverTls(cache);
+    finalOfferDeadlineRetiresBeforeLateTransport(cache);
+    automaticConsentRecheckedAfterTls(cache);
    }
    automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
+   explicitUpdatePermissionOpensBeforeAnyOffer(cache);
    manualUpdateDoesNotWaitForAutomaticColdBootReadiness(cache);
    automaticPendingActionWaitsForAnExplicitContinue(cache);
    aReceivedConfirmationSurvivesOnlyUntilFirstLaunch(cache);

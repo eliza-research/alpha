@@ -2657,7 +2657,7 @@
   <sc-if value="{{notes.trashAskOpen}}">
     <div ref="{{notes.askModal}}" data-alpha-popup class="photo-delete-modal" style="position:absolute;inset:0;z-index:20">
     <button aria-hidden="true" tabindex="-1" aria-label="Close" onClick="{{notes.trashAskClose}}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim)"></button>
-    <div role="dialog" aria-modal="true" aria-label="{{notes.trashAskTitle}}" class="enter" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height:calc(100% - 44px);overflow:auto;box-sizing:border-box; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
+    <div role="dialog" aria-modal="true" aria-label="{{notes.trashAskLabel}}" class="enter" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height:calc(100% - 44px);overflow:auto;box-sizing:border-box; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
       <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
       <div class="serif" style="font-size: 26px; line-height: 1.15; overflow-wrap: anywhere">{{notes.trashAskTitle}}</div>
       <sc-if value="{{notes.trashAskDescription}}"><p style="margin:8px 0 0;color:var(--mut)">{{notes.trashAskDescription}}</p></sc-if>
@@ -2669,7 +2669,7 @@
     </div>
   </sc-if>
   <sc-if value="{{notes.trashConfirmOpen}}">
-    <div ref="{{notes.emptyModal}}" class="photo-delete-modal" style="position:absolute;inset:0;z-index:20">
+    <div ref="{{notes.emptyModal}}" data-alpha-popup class="photo-delete-modal" style="position:absolute;inset:0;z-index:20">
     <button aria-hidden="true" tabindex="-1" aria-label="Close" onClick="{{notes.trashCancel}}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim)"></button>
     <div role="dialog" aria-modal="true" aria-label="{{notes.trashConfirmTitle}}" class="enter" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height:calc(100% - 44px);overflow:auto;box-sizing:border-box; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
       <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
@@ -3583,7 +3583,7 @@
 
       </div>
     </sc-for>
-    <sc-if value="{{workflows.listToggles}}"><button class="workflow-row-open" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><span class="workflow-row-title">Alarms</span></button></sc-if>
+    <sc-if value="{{workflows.listToggles}}"><div class="workflow-row"><button class="workflow-row-open" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><span class="workflow-row-content"><span class="workflow-row-title">Alarms</span></span><svg class="i workflow-row-chevron" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></div></sc-if>
     <sc-for list="{{workflows.automation.managementCards}}" as="control"><button class="automation-management" aria-disabled="{{control.busy}}" onClick="{{control.open}}"><span>{{control.name}}</span><span>{{control.short}}</span><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></sc-for>
   </div>
 

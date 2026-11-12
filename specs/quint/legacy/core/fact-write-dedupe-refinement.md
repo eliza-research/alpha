@@ -74,7 +74,7 @@ evaluator's `mutateSourceEvidence` reconciliation is a separate owner boundary.
 The insert path awaits `after_memory_persisted` after releasing the per-room
 section, so source liveness additionally depends on hook completion.
 
-Run the campaign with `node --test test/quint-fact-write-dedupe-refinement.test.mjs`.
+Run the campaign with `bun test test/quint-fact-write-dedupe-refinement.test.mjs`.
 
 ## Separate current-source model
 
@@ -97,4 +97,4 @@ and known precommit failure. It leaves concurrent hits on the same metadata,
 ambiguous commits, multiple adapters or processes, and persistence hooks as
 separate obligations.
 
-Run it with `node --test test/quint-fact-write-scope.test.mjs`.
+Run it with `bun test test/quint-fact-write-scope.test.mjs`.

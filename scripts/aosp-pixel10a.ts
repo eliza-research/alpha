@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {assertPixel10aSourceLayout, composePixel10aProduct} from '../vendor/eliza/packages/os/scripts/android/pixel10a-product.ts';
 import {placeholderFields, releaseDescriptorProblems} from '../vendor/eliza/packages/os/scripts/android/pixel10a-release.mjs';
 import {assertStockVendorApi} from '../vendor/eliza/packages/os/scripts/android/vendor-api.mjs';
+import type {SenseImageActivation} from './aosp-sense-image.ts';
 
 export {placeholderFields};
 /** The production descriptor for Pixel 10a (stallion) on Android 17. */
@@ -92,8 +93,9 @@ type Pixel10aProductOptions = Omit<Pixel10aCompositionOptions, 'product' | 'nati
   identity: {moduleName: string};
   bootAnimation?: string | null;
   vendorApi?: Pixel10aCompositionOptions['vendorApi'];
+  senseActivation?: SenseImageActivation | null;
 };
-export function writePixel10aProduct({root, output, apk, identity, launcher, sourceEvidence, production = false, bootAnimation = null, vendorApi = null}: Pixel10aProductOptions) {
+export function writePixel10aProduct({root, output, apk, identity, launcher, sourceEvidence, production = false, bootAnimation = null, vendorApi = null, senseActivation = null}: Pixel10aProductOptions) {
   const nativeStagingEvidence = JSON.parse(execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--target', 'stallion', '--defer-soong'], {encoding:'utf8'}));
   const product = readPixel10aComposition(root);
   // A brand boot animation is staged only when the shared composition pins its bytes.
@@ -104,7 +106,8 @@ export function writePixel10aProduct({root, output, apk, identity, launcher, sou
     const bytes = fs.readFileSync(path.join(root, PIXEL10A_PRODUCT));
     const descriptor = JSON.parse(bytes.toString('utf8'));
     Object.assign(report, {productDescriptor:{file:PIXEL10A_PRODUCT, sha256:sha256(bytes)}, sourceLockSha256:descriptor.sourceLock.sha256, platformCertificateSha256:descriptor.signer.platformCertificateSha256});
-    fs.writeFileSync(path.join(output, 'physical-product.json'), JSON.stringify(report, null, 2) + '\n');
   }
+  if (senseActivation) Object.assign(report, {senseListener:senseActivation});
+  if (production || senseActivation) fs.writeFileSync(path.join(output, 'physical-product.json'), JSON.stringify(report, null, 2) + '\n');
   return report;
 }

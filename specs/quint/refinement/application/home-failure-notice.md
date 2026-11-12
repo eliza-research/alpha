@@ -18,5 +18,5 @@ and notice history. Native activity launch, inventory lifecycle, multiple
 profiles and favorites durability remain separate obligations.
 
 ```sh
-node --test test/quint-home-failure-notice.test.mjs
+bun test test/quint-home-failure-notice.test.mjs
 ```

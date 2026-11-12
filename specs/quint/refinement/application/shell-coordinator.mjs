@@ -8,16 +8,17 @@ import {sourcePaths, filesWithin, relativePath} from '../../../../scripts/quint-
 import {flagOffAndroid, fenceNetwork} from '../../../../test/browser/flag-off-android.ts';
 import {residentStub, setStub} from '../../../../test/browser/resident-stub.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const root = resolve(fileURLToPath(new URL('../../../..', import.meta.url)));
 const self = fileURLToPath(import.meta.url);
-const stepTimeout = 45_000;
+const stepTimeout = scaledTimeout(45_000);
 // Each fresh browser context loads the module graph before the shell can establish a session.
-const mountTimeout = 120_000;
+const mountTimeout = scaledTimeout(120_000);
 
 /** Mount the real application and observe its installed shell/agent coordinator. */
 export async function generateShellCoordinatorTraces(extraSources = []) {
-  const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'package-lock.json',
+  const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'bun.lock',
     'scripts/quint-lib.ts', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',
     'test/browser/helpers/native-navigation-protocol.ts', 'upstream.lock.json',
     ...filesWithin(resolve(root, '.eliza/client-features'), path => /\.(?:ts|tsx|js|json|css|html)$/.test(path)).map(relativePath),

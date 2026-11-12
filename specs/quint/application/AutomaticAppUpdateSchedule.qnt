@@ -5,12 +5,12 @@ module AutomaticAppUpdateSchedule {
   // Zero is absent or unbound. Positive values identify distinct cached offer
   // objects with a native digest, including a newer read of the same bytes.
   type Poll = {phase: str, capability: str, pending: bool, candidate: bool, requests: int,
-    cachedOffer: int, attemptedOffer: int,
+    cachedOffer: int, attemptedOffer: int, cachedManual: bool,
     lastCapability: str, lastPending: bool, lastCandidate: bool, lastCurrent: bool, lastIdle: bool}
   var state: State
   var poll: Poll
   val emptyPoll = {phase:"idle", capability:"unread", pending:false, candidate:false, requests:0,
-    cachedOffer:0, attemptedOffer:0,
+    cachedOffer:0, attemptedOffer:0, cachedManual:false,
     lastCapability:"unread", lastPending:false, lastCandidate:false, lastCurrent:false, lastIdle:false}
   var now: int
   action init = all {
@@ -60,7 +60,7 @@ module AutomaticAppUpdateSchedule {
     Set("starting", "supported", "permission-required", "unsupported").contains(capability),
     offer >= 0 and offer <= 3,
     now' = now, state' = state,
-    poll' = {...poll, capability:capability, pending:pending, candidate:candidate, cachedOffer:offer,
+    poll' = {...poll, capability:capability, pending:pending, candidate:candidate, cachedOffer:offer, cachedManual:candidate,
       phase: if (not(state.valid)) "canceled" else if (not(idle)) "retry"
         else if (pending) "answered" else if (capability == "starting") "retry"
         else if (capability != "supported" or not(candidate)) "answered"
@@ -78,16 +78,17 @@ module AutomaticAppUpdateSchedule {
   action replaceOffer(offer: int): bool = all {
     state.busy, poll.phase == "install",
     offer > 0 and offer <= 3 and offer != poll.cachedOffer and offer != poll.attemptedOffer,
-    now' = now, state' = state, poll' = {...poll, cachedOffer:offer}
+    now' = now, state' = state, poll' = {...poll, cachedOffer:offer, cachedManual:true}
   }
   action installReply(status: str): bool = all {
     state.busy, poll.phase == "install",
-    Set("starting", "permission-required", "unsupported", "offer-unavailable", "answered").contains(status),
+    Set("starting", "permission-required", "unsupported", "offer-unavailable", "offer-retired", "answered").contains(status),
     now' = now, state' = state,
     poll' = {...poll,
-      cachedOffer: if (status == "offer-unavailable" and poll.cachedOffer == poll.attemptedOffer) 0
+      cachedOffer: if (Set("offer-unavailable", "offer-retired").contains(status) and poll.cachedOffer == poll.attemptedOffer) 0
         else poll.cachedOffer,
-      phase: if (Set("starting", "offer-unavailable").contains(status)) "retry" else "answered"}
+      cachedManual: poll.cachedManual and not(status == "offer-retired" and poll.cachedOffer == poll.attemptedOffer),
+      phase: if (Set("starting", "offer-unavailable", "offer-retired").contains(status)) "retry" else "answered"}
   }
   action finishPoll(failed: bool): bool = all {
     state.busy,
@@ -120,7 +121,7 @@ module AutomaticAppUpdateSchedule {
     readFacts(capability, pending, candidate, idle, offer),
     dispatch,
     nondet offer = 1.to(3).oneOf(); replaceOffer(offer),
-    nondet status = Set("starting", "permission-required", "unsupported", "offer-unavailable", "answered").oneOf()
+    nondet status = Set("starting", "permission-required", "unsupported", "offer-unavailable", "offer-retired", "answered").oneOf()
     installReply(status),
     finishPoll(true), finishPoll(false),
     nondet time = 0.to(20).oneOf(); advance(time),
@@ -181,15 +182,21 @@ module AutomaticAppUpdateSchedule {
     .then(readFacts("supported", false, true, true, 1)).then(dispatch)
     .then(installReply("answered")).then(finishPoll(false))
     .expect(safety and poll.attemptedOffer == 1 and poll.requests == 1)
-  run unavailableOfferClearsExactCacheTest = init.then(readyPoll).then(dispatch)
-    .then(installReply("offer-unavailable")).then(finishPoll(true))
-    .expect(safety and poll.cachedOffer == 0 and state.wakeAt == 1)
+  run retiredOfferClearsExactCacheTest = init.then(readyPoll).then(dispatch)
+    .then(installReply("offer-retired")).then(finishPoll(true))
+    .expect(safety and poll.cachedOffer == 0 and not(poll.cachedManual) and state.wakeAt == 1)
     .then(advance(1)).then(beginPoll).then(readCheck(true, true))
     .then(readFacts("supported", false, true, true, 2)).then(dispatch)
     .then(installReply("answered")).then(finishPoll(false))
     .expect(safety and poll.attemptedOffer == 2 and poll.requests == 2)
   run unavailableOfferKeepsConcurrentRefreshTest = init.then(readyPoll).then(dispatch).then(replaceOffer(2))
     .then(installReply("offer-unavailable")).then(finishPoll(true))
-    .expect(safety and poll.cachedOffer == 2 and poll.attemptedOffer == 1 and state.wakeAt == 1)
+    .expect(safety and poll.cachedOffer == 2 and poll.cachedManual and poll.attemptedOffer == 1 and state.wakeAt == 1)
+  run retiredOfferKeepsConcurrentRefreshTest = init.then(readyPoll).then(dispatch).then(replaceOffer(2))
+    .then(installReply("offer-retired")).then(finishPoll(true))
+    .expect(safety and poll.cachedOffer == 2 and poll.cachedManual and poll.attemptedOffer == 1 and state.wakeAt == 1)
+  run unavailableOfferPreservesManualTest = init.then(readyPoll).then(dispatch)
+    .then(installReply("offer-unavailable")).then(finishPoll(true))
+    .expect(safety and poll.cachedOffer == 0 and poll.cachedManual and state.wakeAt == 1)
 
 }

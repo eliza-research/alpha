@@ -1,18 +1,18 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Render the /.well-known/assetlinks.json for the verified App Links return host from the
  * committed release-signer descriptor, and check rendered or published copies.
  *
- *   node scripts/render-assetlinks.ts [--out FILE] [--debug-fingerprint HEX ...]
- *   node scripts/render-assetlinks.ts --cloud-config [--published FILE|URL] [--keep-fingerprint HEX ...]
- *   node scripts/render-assetlinks.ts --check FILE|URL [--debug-fingerprint HEX ...]
+ *   bun scripts/render-assetlinks.ts [--out FILE] [--debug-fingerprint HEX ...]
+ *   bun scripts/render-assetlinks.ts --cloud-config [--published FILE|URL] [--keep-fingerprint HEX ...]
+ *   bun scripts/render-assetlinks.ts --check FILE|URL [--debug-fingerprint HEX ...]
  *
  * The fingerprint comes only from android/release-signer.json signerSha256. It is refused while
  * that is "unset", when the template placeholder would remain, and when it equals a debug signing
  * certificate: every debug row's signerSha256 in artifacts/apk-manifest.json and each
  * --debug-fingerprint given. Writes artifacts/assetlinks.json by default. The file holds no secret.
  *
- * Alpha's return host is the Eliza Cloud web host (ELIZAOS_APP_LINK_HOST must equal
+ * Alpha's return host is the Eliza Cloud web host (BuildConfig.ELIZAOS_APP_LINK_HOST is
  * scripts/cloud-deployment-policy.ts production.web), whose assetlinks.json Cloud builds only from the
  * operator variable ELIZA_ANDROID_ASSET_LINKS_JSON: one {package_name, sha256_cert_fingerprints,
  * relations?} entry per app, and any malformed entry or duplicate package publishes [] for every
@@ -365,9 +365,9 @@ export async function readAssetLinksSource(source: string, { fetchImpl = globalT
 }
 
 const USAGE = [
-  "Usage: node scripts/render-assetlinks.ts [--out FILE] [--debug-fingerprint HEX ...]",
-  "       node scripts/render-assetlinks.ts --cloud-config [--published FILE|URL] [--keep-fingerprint HEX ...] [--debug-fingerprint HEX ...]",
-  "       node scripts/render-assetlinks.ts --check FILE|URL [--debug-fingerprint HEX ...]",
+  "Usage: bun scripts/render-assetlinks.ts [--out FILE] [--debug-fingerprint HEX ...]",
+  "       bun scripts/render-assetlinks.ts --cloud-config [--published FILE|URL] [--keep-fingerprint HEX ...] [--debug-fingerprint HEX ...]",
+  "       bun scripts/render-assetlinks.ts --check FILE|URL [--debug-fingerprint HEX ...]",
 ].join("\n");
 
 function parseArgs(argv: string[]) {
@@ -420,7 +420,7 @@ async function main(argv: string[]) {
       const result = cloudAssetLinksConfig({ entries, packageName, signerSha256, keep: options.keep, debugFingerprints });
       for (const value of result.removed) console.error(`note: ${packageName} no longer lists ${value}; pass --keep-fingerprint ${value} to keep it`);
       for (const value of result.keptDebug) console.error(`warning: ${value} is a recorded debug signing certificate; keep it only where debug builds must verify (staging), never as a release identity`);
-      console.error(`Set ${CLOUD_ASSET_LINKS.variable} on the Cloud environment to the value below, deploy, then run: node scripts/render-assetlinks.ts --check https://<web host>/.well-known/assetlinks.json`);
+      console.error(`Set ${CLOUD_ASSET_LINKS.variable} on the Cloud environment to the value below, deploy, then run: bun scripts/render-assetlinks.ts --check https://<web host>/.well-known/assetlinks.json`);
       console.log(result.text);
       return 0;
     }

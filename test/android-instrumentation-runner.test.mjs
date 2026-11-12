@@ -126,7 +126,7 @@ test("restart runner keeps the bookmark phase wired", () => {
   for (const phase of ["prepare", "verify", "cleanup"]) assert.ok(signins.includes(`"${phase}"`), `sign-in restart phase ${phase}`);
   assert.ok(signins.includes('getString("signinPhase")'));
   assert.match(source, /bookmark: \{\n\t\ttestClass: "BrowserContinuityInstrumentedTest",\n\t\tmethod: "bookmarkProcessRestartPhase",\n\t\tgate: "bookmarkPhase"/);
-  assert.equal(JSON.parse(fs.readFileSync("package.json", "utf8")).scripts["test:android:instrumentation"], "node scripts/android-instrumentation.ts");
+  assert.equal(JSON.parse(fs.readFileSync("package.json", "utf8")).scripts["test:android:instrumentation"], "bun scripts/android-instrumentation.ts");
 });
 
 const ROOTS = ["android/app/src/androidTest/java", "android/app/src/testMocks/androidTest/java"];
@@ -159,7 +159,7 @@ test("every registered class exists in the app's instrumentation sources and dec
     }
     if (spec.campaign) {
       // The refusal names a real script, and that script names the class.
-      const script = /(?:node|python3) (scripts\/[A-Za-z0-9_./-]+)/.exec(spec.campaign)?.[1];
+      const script = /(?:bun|python3) (scripts\/[A-Za-z0-9_./-]+)/.exec(spec.campaign)?.[1];
       assert.ok(script && fs.existsSync(script), `${name} campaign names no existing script: ${spec.campaign}`);
       assert.ok(new RegExp(`\\b${name}InstrumentedTest\\b`).test(fs.readFileSync(script, "utf8")), `${script} does not run ${name}`);
       assert.ok(!spec.args && !spec.phases, `${name} is a campaign; its gates belong to the campaign runner`);
@@ -555,7 +555,7 @@ test("round-9 registrations: new classes, campaigns and removed reasons", () => 
   // --classes SelectedDocument runs its ungated methods; only the restart phase stays with its campaign.
   assert.equal(parseInstrumentationArgs(["--classes", "SelectedDocument"]).classes[0], C("SelectedDocument"));
   assert.equal(CLASS_REGISTRY.SelectedDocument.args, undefined);
-  assert.equal(CLASS_REGISTRY.WorkflowLegacyReminderUpgrade.campaign.split(" ").slice(0, 3).join(" "), "node scripts/test-installed-upgrade.ts reminder");
+  assert.equal(CLASS_REGISTRY.WorkflowLegacyReminderUpgrade.campaign.split(" ").slice(0, 3).join(" "), "bun scripts/test-installed-upgrade.ts reminder");
   assert.throws(() => parseInstrumentationArgs(["--classes", "WorkflowLegacyReminderUpgrade"]), /test-installed-upgrade/);
   // SettingsCrashLog has its two-process runner now.
   assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, "SettingsCrashLog"));

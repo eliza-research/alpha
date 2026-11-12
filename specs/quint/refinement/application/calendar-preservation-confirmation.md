@@ -23,5 +23,5 @@ around stable mounted commits. Broader connection and provider behavior,
 arbitrary storage failures, and installed process death are separate.
 
 ```sh
-node --test test/quint-calendar-preservation-confirmation.test.mjs
+bun test test/quint-calendar-preservation-confirmation.test.mjs
 ```

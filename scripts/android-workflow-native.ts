@@ -16,8 +16,8 @@
  * (WorkflowNoticeProcessRunner, a helper process of the app), so the test outlives the main
  * process it kills; every other case uses AndroidJUnitRunner. Both are declared by the same
  * admitted instrumentation APK.
- * The archive is `node scripts/build-archive.ts` output, or for developer APKs the folder
- * `node scripts/developer-archive.ts` assembles from a verified `artifacts/` build.
+ * The archive is `bun scripts/build-archive.ts` output, or for developer APKs the folder
+ * `bun scripts/developer-archive.ts` assembles from a verified `artifacts/` build.
  * Emulator-class evidence only: no paired host, live workflow, account or device acceptance. */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

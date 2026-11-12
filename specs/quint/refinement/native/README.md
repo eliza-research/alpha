@@ -1,6 +1,6 @@
 # Native implementation correspondence
 
-Run `node --test test/quint-native-refinement.test.mjs` from the repository root.
+Run `bun test test/quint-native-refinement.test.mjs` from the repository root.
 The runner requires a JDK and the pinned `org.json` 20250517 jar in the Gradle
 cache or `ALPHA_JSON_JAR`. It compiles original Java classes in temporary
 directories, executes them with controlled external inputs, and checks their

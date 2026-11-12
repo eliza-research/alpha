@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import {execFileSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 import {loginSurfaceInventory as inventory} from './support/login-surfaces.mjs';
 
@@ -352,12 +352,16 @@ test('secrets stay out of observations, transcripts and logs', () => {
 // provider or vault.
 test('the pinned binding rules and password policy pass their JVM tests', () => {
   const java = process.env.JAVA_HOME || (process.platform === 'darwin' ? '/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home' : '');
-  // A nested test run reports through NODE_TEST_CONTEXT unless it is removed; read its TAP output instead.
-  const {NODE_TEST_CONTEXT: _parent, ...inherited} = process.env;
-  const env = java ? {...inherited, JAVA_HOME: java} : inherited;
-  const result = execFileSync(process.execPath, ['--test', '--test-reporter=tap', 'vendor/eliza/plugins/plugin-native-browser-surface/test/native-host/policies.node.mjs'], {encoding: 'utf8', timeout: 180000, env});
-  for (const name of ['BrowserFieldOriginTest', 'BrowserHttpAuthOriginTest', 'BrowserLinkAutofillPolicyTest']) assert.match(result, new RegExp(`ok \\d+ - ${name}`), name);
-  assert.match(result, /# fail 0/);
+  const env = java ? {...process.env, JAVA_HOME: java} : {...process.env};
+  delete env.NODE_TEST_CONTEXT;
+  // A nested Bun test run. Bun has no TAP reporter and folds subtests into their parent, so each
+  // JVM consumer is read from the line the upstream subtest prints only after its assertion passed.
+  const result = spawnSync(process.execPath, ['test', './vendor/eliza/plugins/plugin-native-browser-surface/test/native-host/policies.node.mjs'], {encoding: 'utf8', timeout: 180000, env});
+  const detail = result.stdout + result.stderr;
+  assert.equal(result.error, undefined, result.error?.message);
+  assert.equal(result.status, 0, detail);
+  for (const name of ['BrowserFieldOriginTest', 'BrowserHttpAuthOriginTest', 'BrowserLinkAutofillPolicyTest']) assert.match(result.stdout, new RegExp(`^${name}: \\d+ assertions passed$`, 'm'), name);
+  assert.match(result.stderr, /^ 0 fail$/m, detail);
 });
 
 // Engine-attested field origins for the browser's website logins (BrowserFieldOrigin,

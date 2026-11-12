@@ -325,7 +325,7 @@ export async function runWorkflowEngineRefinement(extraSources = []) {
   const discovered = await engineDriverSources();
   const sources = serviceInputs([...discovered, fileURLToPath(import.meta.url),
     'specs/quint/refinement/services/workflow-engine/ports.mjs', 'specs/quint/refinement/services/support.mjs',
-    'package.json', 'package-lock.json', ...extraSources]);
+    'package.json', 'bun.lock', ...extraSources]);
   const driverHashes = captureInputs(sources);
   const compiledHashes = await prepareEngineModule(discovered, driverHashes);
   for (const [path, hash] of Object.entries(compiledHashes)) assert.equal(hash, driverHashes[path]);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 
 const {collectLegacyCampaigns} = await tsImport('../specs/quint/refinement/legacy/index.mjs', import.meta.url);
 

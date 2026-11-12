@@ -31,7 +31,7 @@ for(const [name,env,native] of [
   ['native',{},true],
 ])test(`actual flag rejects ${name}`,()=>assert.equal(enabled(env,native),false));
 
-// One actual adapter/VM lifecycle per standard Node worker. Combined contexts have
+// One actual adapter/VM lifecycle per test-runner worker process. Combined contexts have
 // intermittently SIGSEGV'd on pinned Node 24.15; the precise engine cause is unproved.
 const adapterCases = Object.freeze([
   'actual adapter starts existing Cartesia route without local preflight or Cloud sign-in',
@@ -60,7 +60,7 @@ function adapterTest(name,run){
     // Each child is a fresh test runner, not a recursive call in this worker.
     delete childEnv.NODE_TEST_CONTEXT;
     const result=spawnSync(process.execPath,[
-      '--test','--test-reporter=tap','--test-name-pattern',pattern,fileURLToPath(import.meta.url),
+      'test','--test-name-pattern',pattern,fileURLToPath(import.meta.url),
     ],{
       env:childEnv,
       encoding:'utf8',timeout:10000,maxBuffer:64*1024,killSignal:'SIGKILL',
@@ -70,7 +70,9 @@ function adapterTest(name,run){
     assert.equal(result.error,undefined,detail);
     assert.equal(result.signal,null,detail);
     assert.equal(result.status,0,detail);
-    assert.match(result.stdout,/# pass 1$/m,'Selected child case must execute and pass once: '+detail);
+    // Bun prints its summary on stderr.
+    assert.match(result.stderr,/^ 1 pass$/m,'Selected child case must execute and pass once: '+detail);
+    assert.match(result.stderr,/^ 0 fail$/m,detail);
   });
 }
 

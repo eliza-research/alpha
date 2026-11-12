@@ -62,11 +62,22 @@ test('DailyApps runs every selected-document call on its worker, never on the pl
  assert.match(source,/protected void handleOnDestroy\(\)\{worker\.shutdownNow\(\);super\.handleOnDestroy\(\);\}/,'and stops it without dropping the reminder teardown');
 });
 
-test('every worker a plugin declares is listed and checked above',()=>{
+// The process-wide final-offer slot has a different lifetime from plugin workers. Its
+// sole synchronous caller catches a rejected slot; native-plugin-teardown.test.mjs
+// verifies that call boundary and refuses aliases, shutdown owners and extra callers.
+const processWorkers={AlphaDevicePlugin:['updateOfferReader']};
+test('the final-offer process worker remains private and is used only by its reviewed submission',()=>{
+ const source=readFileSync(nativeSource('AlphaDevicePlugin.java'),'utf8');
+ assert.match(source,/private static final java\.util\.concurrent\.ExecutorService updateOfferReader=/);
+ assert.equal([...source.matchAll(/\bupdateOfferReader\.submit\(/g)].length,1);
+ assert.equal([...source.matchAll(/\bupdateOfferReader\b/g)].length,2,'only its declaration and reviewed submission may reference the slot');
+});
+
+test('every worker a plugin declares is listed and checked for its lifetime',()=>{
  for(const name of Object.keys(plugins)){
   const source=readFileSync(nativeSource(`${name}.java`),'utf8');
   const declared=[...source.matchAll(/(?:ExecutorService|ThreadPoolExecutor|NoticeWorker)\s+(\w+)\s*=/g)].map(match=>match[1]);
-  for(const worker of declared)assert.ok(plugins[name].includes(worker),`${name}.${worker} is listed`);
+  for(const worker of declared)assert.ok(plugins[name].includes(worker)||(processWorkers[name]??[]).includes(worker),`${name}.${worker} is listed`);
  }
 });
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Publish an admitted release APK first, verify anonymous download, then move
  * the stable manifest. No keys, builds or private QA URLs enter this command.
  * GitHub asset replacement is not atomic: a manifest upload failure is reported
@@ -13,7 +13,7 @@ import {fileURLToPath} from 'node:url';
 import {main as prepare, MANIFEST_NAME} from './publish-update-manifest.ts';
 import {updateArtifactDigest} from './update-artifact.ts';
 import {
-  APP_UPDATE_REPOSITORY, APP_UPDATE_REPOSITORY_ID, APP_UPDATE_REPOSITORY_OWNER_ID, APP_UPDATE_TAG,
+  APP_UPDATE_REPOSITORY, APP_UPDATE_REPOSITORY_ID, APP_UPDATE_TAG,
   LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl, isPublishedUpdateApkUrl,
 } from './update-channel.ts';
 
@@ -167,10 +167,9 @@ export async function deliver({directory, manifestUrl, source}: DeliveryInput, {
   if (offer.apkUrl !== new URL(apkName, manifestUrl).href) throw Error('APK URL differs from the configured stable release');
   const apk = path.join(directory, apkName), artifact = updateArtifactDigest(apk);
   if (artifact.size !== offer.sizeBytes || artifact.sha256 !== offer.sha256) throw Error('Staged APK differs from its admitted manifest');
-  const repository: {id?: number; full_name?: string; owner?: {id?: number}; private?: boolean} | null =
+  const repository: {id?: number; full_name?: string; private?: boolean} | null =
     JSON.parse(run(['api',`repos/${repo}`]) ?? 'null');
-  if (repository?.id !== APP_UPDATE_REPOSITORY_ID || repository.full_name !== repo ||
-      repository.owner?.id !== APP_UPDATE_REPOSITORY_OWNER_ID || repository.private !== false)
+  if (repository?.id !== APP_UPDATE_REPOSITORY_ID || repository.full_name !== repo || repository.private !== false)
     throw Error('Phones require the anonymously readable public Alpha update repository');
   await checkLegacyFloor(run, read, offer.versionCode);
   const readManifest = () => read(manifestUrl, {maxBytes: 32768, missing: true});
@@ -227,7 +226,7 @@ export async function main(argv: string[], {root = process.cwd(), log = console.
   let variant: string | undefined, apkManifest = 'artifacts/apk-manifest.json', notes: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i], value = argv[++i];
-    if (!value || value.startsWith('--')) throw Error('Usage: node scripts/deliver-app-update.ts --variant launcher|standalone [--apk-manifest FILE] [--notes TEXT]');
+    if (!value || value.startsWith('--')) throw Error('Usage: bun scripts/deliver-app-update.ts --variant launcher|standalone [--apk-manifest FILE] [--notes TEXT]');
     if (flag === '--variant') variant = value;
     else if (flag === '--apk-manifest') apkManifest = value;
     else if (flag === '--notes') notes = value;

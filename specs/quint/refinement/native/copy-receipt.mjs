@@ -99,7 +99,7 @@ async function installFixture() {
 async function drive(extraSources=[],mutation) {
  checkClientFeatures();
  const sources=[...new Set([...filesWithin(resolve(root,'apps/app/src')),...filesWithin(resolve(root,'.eliza/client-features')),
-  'vite.config.ts','package.json','package-lock.json','upstream.lock.json','scripts/prepare-client-features.ts','scripts/browser-full-reload.ts',
+  'vite.config.ts','package.json','bun.lock','upstream.lock.json','scripts/prepare-client-features.ts','scripts/browser-full-reload.ts',
   'test/browser/browser-photo-edit.spec.ts','test/browser/helpers/page-modules.ts',driver,...extraSources])];
  const driverHashes=captureInputs(sources),loaded=new Set();let server,browser;
  try{

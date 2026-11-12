@@ -24,10 +24,10 @@ export async function checkBrowserCloudRequestCustody(extraSources = []) {
   const sources = [...new Set([
     ...Object.keys(graph), bridge, probe, fileURLToPath(import.meta.url),
     'scripts/cloud-deployment-policy.ts', 'scripts/native-view-policy.ts',
-    'package.json', 'package-lock.json', 'tsconfig.json', ...extraSources,
+    'package.json', 'bun.lock', 'tsconfig.json', ...extraSources,
   ])];
   const driverHashes = captureInputs(sources);
-  const result = spawnSync(process.execPath, ['--import=tsx', probe, 'current'], {
+  const result = spawnSync(process.execPath, [probe, 'current'], {
     cwd: root, encoding: 'utf8', timeout: 10000, maxBuffer: 1024*1024,
     env: {PATH: '/usr/bin:/bin', TSX_DISABLE_CACHE: '1'},
   });

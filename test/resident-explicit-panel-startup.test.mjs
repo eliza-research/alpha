@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {installWorkflowDeviceBindings} from './fixtures/workflow-device-bindings.mjs';
-const file=process.env.CONTROLLER_SOURCE||'apps/app/src/runtime/connection-ui.tsx';
+const file='apps/app/src/runtime/connection-ui.tsx';
 const text=readFileSync(file,'utf8');
 const source=stripTypeScriptTypes(text.slice(text.indexOf('async function connectResident('),text.indexOf('async function connectCloud(')),{mode:'strip'});
 for(const purpose of ['plan','cloud-account','agent'])test(`resident completion retains the explicit ${purpose} surface and refusal`,async()=>{

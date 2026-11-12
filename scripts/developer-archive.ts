@@ -1,15 +1,15 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Assemble the folder the archive-based campaigns read (`ALPHA_BUILD_ARCHIVE`) from a build that
  * verify-apks has already recorded. It builds nothing.
  *
- *   node scripts/developer-archive.ts [--test-mocks] [--apk-dir artifacts] test-results/<new-folder>
+ *   bun scripts/developer-archive.ts [--test-mocks] [--apk-dir artifacts] test-results/<new-folder>
  *
  * `scripts/build-archive.ts` is the qualified route: it verifies, builds and proves its inputs did
  * not change, and it needs the strict packaged build. This script is for the developer APKs of
- * `npm run android:build -- --allow-unpackaged-runtime` (or `-- --test-mocks`): it copies both
+ * `bun run android:build -- --allow-unpackaged-runtime` (or `-- --test-mocks`): it copies both
  * distributions' debug APK and the instrumentation APK built with it, each admitted against
- * `apk-manifest.json` exactly as `npm run test:android:instrumentation` admits them, under the
+ * `apk-manifest.json` exactly as `bun run test:android:instrumentation` admits them, under the
  * names the campaigns expect, with their name-to-SHA-256 `apk-manifest.json`.
  * `archive-source.json` records the commit and that this is a developer archive. Results taken
  * from it are emulator-class evidence for those exact APKs, never a distributable-build result.
@@ -21,7 +21,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { admitApks } from "./android-instrumentation.ts";
 
-const USAGE = "Use: node scripts/developer-archive.ts [--test-mocks] [--apk-dir <dir>] test-results/<new-folder>";
+const USAGE = "Use: bun scripts/developer-archive.ts [--test-mocks] [--apk-dir <dir>] test-results/<new-folder>";
 const sha = (file: string) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 
 export function parseDeveloperArchiveArgs(argv: readonly string[]) {

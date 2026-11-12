@@ -36,7 +36,7 @@ async function captureImplementation(additionalSources=[]){
  `,resolveDir:root,sourcefile:'quint-maps-guidance.ts'},bundle:true,write:false,platform:'node',format:'esm',metafile:true};
  const discover=await build(options);
  const inputs=Object.keys(discover.metafile.inputs).filter(path=>existsSync(resolve(path)));
- const sources=[...inputs,modelPath,adapter,'upstream.lock.json',preparedManifest,'package-lock.json',
+ const sources=[...inputs,modelPath,adapter,'upstream.lock.json',preparedManifest,'bun.lock',
   'scripts/prepare-client-features.ts',pinnedMapsScreen,
   fileURLToPath(import.meta.url),...additionalSources];
  const driverHashes=captureInputs(sources);

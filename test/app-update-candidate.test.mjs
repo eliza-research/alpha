@@ -42,10 +42,12 @@ test('retired-channel inventory sets a version floor while the receipt binds onl
   };
   f.state.legacyMissing = false;
   f.state.legacyPages = [[{name: 'alpha-phone-703.apk'}]];
-  f.state.legacyPointer = pointer(legacyManifestUrl.replace('/alpha/', '/alphaphone/'), 704);
-  const initial = await candidateVersion(f);
-  assert.equal(initial.observedFloor, 704);
-  assert.equal(initial.manifestSha256, null);
+  for (const repository of ['eliza-research/alpha', 'eliza-research/alphaphone', 'alphacompute/alphaphone']) {
+    f.state.legacyPointer = pointer(legacyManifestUrl.replace('alphacompute/alpha', repository), 704);
+    const initial = await candidateVersion(f);
+    assert.equal(initial.observedFloor, 704, repository);
+    assert.equal(initial.manifestSha256, null);
+  }
   f.state.pointer = pointer(f.config.updateManifestUrl, 702);
   assert.equal((await candidateVersion(f)).manifestSha256, f.state.pointer.sha256);
   f.state.legacyPages.push([{name: 'alpha-phone-705.apk'}]);
@@ -58,7 +60,7 @@ test('retired-channel inventory sets a version floor while the receipt binds onl
 test('missing or malformed inventories, hidden pointers and wrong source/workflow epochs fail before writing a candidate', async t => {
   const f = fixture(t), destination = 'test-results/version.json';
   for (const change of [{GITHUB_EVENT_NAME: 'workflow_dispatch'}, {GITHUB_REF: 'refs/heads/develop'},
-    {GITHUB_REPOSITORY_ID: '99'}, {GITHUB_REPOSITORY_OWNER_ID: '99'},
+    {GITHUB_REPOSITORY_ID: '99'},
     {GITHUB_WORKFLOW_REF: f.env.GITHUB_WORKFLOW_REF.replace('resident-android', 'new-workflow')},
     {GITHUB_SHA: '0'.repeat(40)}, {GITHUB_RUN_NUMBER: '2100000001'}, {GITHUB_RUN_ATTEMPT: '0'}]) {
     await assert.rejects(main(['version', destination], {...f, env: {...f.env, ...change}}));
@@ -148,7 +150,7 @@ test('archive measurement binds the actual artifact metadata and expanded upload
       repository_id: 1396333361, head_repository_id: 1396333361}};
   const options = {...f, archive: archive.relative, env: {...f.env, ALPHA_CANDIDATE_ARTIFACT_ID: '4242',
     ALPHA_CANDIDATE_ARTIFACT_SHA256: 'a'.repeat(64)}, api: args => {
-      assert.deepEqual(args, ['repos/eliza-research/alpha/actions/artifacts/4242']); return uploaded;
+      assert.deepEqual(args, ['repos/alphacompute/alpha/actions/artifacts/4242']); return uploaded;
     }};
   const files = fs.readdirSync(archive.output);
   const expandedBytes = files.reduce((sum, file) => sum + fs.statSync(path.join(archive.output, file)).size, 0);
@@ -220,7 +222,6 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   const build = workflow.jobs.build;
   assert.equal(evaluate(build.if, main), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, main), '1');
-  assert.equal(build.env.ALPHA_RUNTIME_PROFILE, undefined);
   assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
   assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
   assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), true);
@@ -238,8 +239,6 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   const dispatch = {...main, event_name: 'workflow_dispatch'}, manual = {operation: 'build', build_version_code: '44'};
   assert.equal(evaluate(build.if, dispatch, manual), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, dispatch, manual), '0');
-  assert.equal(workflow.on.workflow_dispatch.inputs.runtime_profile, undefined);
-  assert.equal(workflow.on.workflow_dispatch.inputs.local_embeddings, undefined);
   assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, dispatch, manual), '44');
   assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, main), '');
   assert.notEqual(evaluate(group, main), evaluate(group, dispatch, manual));

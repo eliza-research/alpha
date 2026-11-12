@@ -33,7 +33,7 @@ export async function scanRefinement() {
   const next = captureInputs(sources);
   for (const [path,hash] of Object.entries(driverHashes)) assert.equal(next[path],hash,`Source changed while bundling: ${path}`);
   driverHashes=next;
-  const browser = await chromium.launch({headless: true, ...(process.env.ALPHA_CHROMIUM_PATH ? {executablePath: process.env.ALPHA_CHROMIUM_PATH} : {}), args: ['--no-sandbox']});
+  const browser = await chromium.launch({headless: true, args: ['--no-sandbox']});
   const code = compiled.code, traces = [];
   try {
     for (const mode of ['automatic', 'explicit', 'explicit-then-autosave', 'unverified']) {

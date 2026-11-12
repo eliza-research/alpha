@@ -6,9 +6,6 @@ import assert from 'node:assert/strict';
 import type { CloudNativeRequest } from '../apps/app/src/runtime/cloud-protocol.ts';
 import type { SubscriptionRedeemError as RedeemError } from '../apps/app/src/runtime/subscription-entitlement.ts';
 import { exitFromChild, runChild } from './child-command.ts';
-if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
-  exitFromChild(await runChild(process.execPath, ['--import', 'tsx', process.argv[1]], { stdio: 'inherit' }));
-}
 const { CloudProtocol, CloudProtocolError, planManagementUrl } = await import('../apps/app/src/runtime/cloud-protocol.ts');
 const { SubscriptionRedeemError } = await import('../apps/app/src/runtime/subscription-entitlement.ts');
 

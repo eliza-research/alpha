@@ -27,7 +27,7 @@ function fixture(voiceShell, seed) {
   const shell={screen:'home',view:null,voice:'off',typing:false,chat:'input'};
   const context=vm.createContext({URL,Number,Date:{now:()=>clock},Capacitor:{isNativePlatform:()=>true},
     localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
-    document:{querySelector:()=>editor?{}:null},
+    document:{querySelector:selector=>editor&&selector.startsWith('input:focus,')?{}:null,querySelectorAll:()=>[]},
     owner:voiceShell??{S:()=>shell,voiceConversationActive:()=>false},connectionController:{getSnapshot:()=>({busy:false,open:false})},
     updateBusy:'',changed(){},
     device:{checkForUpdate:()=>{checks++;return check();},snapshot:()=>read(),updateState:async()=>({pending}),installUpdate:async input=>{
@@ -43,7 +43,7 @@ function fixture(voiceShell, seed) {
     offline(){check=async()=>{throw Error('offline');};},pending(){pending=true;},unsupported(){capability='permission-required';},
     capability(value){capability=value;},read(value){read=value;},install(value){install=value;},maxInFlight:()=>maxInFlight,
     offer(value){check=async()=>value;},checks:()=>checks,check:()=>api.checkForUpdate(true),
-    saved:()=>JSON.parse(storage.get(updateKey)??'null'),
+    saved:()=>JSON.parse(storage.get(updateKey)??'null'),storeExternal:value=>storage.set(updateKey,JSON.stringify(value)),
     manualOffer:()=>api.parseUpdateManifest(api.savedUpdate().manifest,{versionCode:7,launcher:true,signerSha256:root}),
     scheduled(){
       let now=0,serial=0;const jobs=new Map();
@@ -58,6 +58,8 @@ function fixture(voiceShell, seed) {
 }
 const request=(offer=manifest,digest=manifestSha256)=>({apkUrl:offer.apkUrl,sha256:offer.sha256,sizeBytes:offer.sizeBytes,
   versionCode:offer.versionCode,automatic:true,manifestSha256:digest});
+const nextOffer={...manifest,versionCode:9,apkUrl:'https://example.test/launcher-9.apk'};
+const changedResponse=manifest=>({status:'offer-response-changed',manifest});
 
 test('automatic discovery sends the native digest bound to the exact admitted update',async()=>{
   const f=fixture();await f.run();
@@ -95,9 +97,11 @@ test('failed or malformed refresh cannot authorize an old cached offer automatic
   }
 });
 
-test('a withdrawn offer clears storage and retries at backoff with a fresh native digest',async()=>{
+for(const [reason,reply] of [['withdrawal',{status:'offer-withdrawn'}],['valid replacement',changedResponse(JSON.stringify(nextOffer))],
+  ['valid index without the installed pair',changedResponse(JSON.stringify({schema:'alpha-update/index-v1',releases:[{...manifest,variant:'standalone'}]}))]])
+test(`${reason} retires the saved row and rechecks at backoff`,async()=>{
   const f=fixture(),s=f.scheduled();
-  f.install(async()=>({status:'offer-unavailable'}));
+  f.install(async()=>reply);
   try{
     s.setActive(true);await s.tick();
     assert.deepEqual(f.installs,[request()]);
@@ -117,7 +121,34 @@ test('a withdrawn offer clears storage and retries at backoff with a fresh nativ
   }finally{s.dispose();}
 });
 
-test('a late stale reply preserves a fresher in-flight manual check result',async()=>{
+test('uncertain final responses retain manual recovery and require a fresh automatic read',async()=>{
+  const malformed=['{','{"schema":"alpha-update/v1"}',JSON.stringify(nextOffer)+'// trailing',
+    JSON.stringify({...nextOffer,sizeBytes:0}),
+    JSON.stringify({schema:'alpha-update/index-v1',releases:[nextOffer,nextOffer]})];
+  for(const reply of [{status:'offer-unavailable'},...malformed.map(changedResponse)]){
+    const f=fixture(),s=f.scheduled();
+    f.install(async()=>reply);
+    try{
+      s.setActive(true);await s.tick();
+      assert.deepEqual(f.saved(),{checkedAt:0,manifest});
+      assert.equal(f.manualOffer()?.versionCode,8);
+      assert.deepEqual(f.installs,[request()]);
+      assert.deepEqual(s.times(),[60_000]);
+      f.offline();await s.tick(60_000);
+      assert.equal(f.checks(),2);
+      assert.equal(f.manualOffer()?.versionCode,8);
+      assert.deepEqual(f.installs,[request()]);
+      const digest='3d'.repeat(32);
+      f.offer({manifest:JSON.stringify(nextOffer),manifestSha256:digest});
+      f.install(async()=>({}));await s.tick(120_000);
+      assert.deepEqual(f.installs,[request(),request(nextOffer,digest)]);
+      assert.equal(s.snapshot().failures,0);
+    }finally{s.dispose();}
+  }
+});
+
+for(const reply of [{status:'offer-withdrawn'},changedResponse(JSON.stringify(nextOffer)),{status:'offer-unavailable'}])
+test(`a late ${reply.status} preserves a fresher manual check result`,async()=>{
   const f=fixture(),s=f.scheduled();
   let finish;
   f.install(()=>new Promise(resolve=>{finish=resolve;}));
@@ -128,7 +159,7 @@ test('a late stale reply preserves a fresher in-flight manual check result',asyn
     const digest='3d'.repeat(32);
     f.offer({manifest:JSON.stringify(next),manifestSha256:digest});
     assert.equal(await f.check(),true);
-    finish({status:'offer-unavailable'});await new Promise(setImmediate);
+    finish(reply);await new Promise(setImmediate);
     assert.deepEqual(f.saved(),{checkedAt:0,manifest:next,manifestSha256:digest});
     assert.equal(s.snapshot().failures,1);
     f.install(async()=>({}));
@@ -137,6 +168,19 @@ test('a late stale reply preserves a fresher in-flight manual check result',asyn
     assert.equal(f.checks(),2,'the newer result remains the current cached offer');
     assert.equal(f.maxInFlight(),1);
   }finally{s.dispose();}
+});
+
+test('a final refusal does not overwrite another bridge’s persisted offer',async()=>{
+  for(const status of ['offer-withdrawn','offer-unavailable']){
+    const f=fixture();let finish;
+    f.install(()=>new Promise(resolve=>{finish=resolve;}));
+    const run=f.run(),refused=assert.rejects(run,/Update offer unavailable/);
+    await new Promise(setImmediate);
+    const newer={checkedAt:1,manifest:nextOffer,manifestSha256:'3d'.repeat(32)};
+    f.storeExternal(newer);
+    finish({status});await refused;
+    assert.deepEqual(f.saved(),newer);
+  }
 });
 
 test('a fresh 404 withdraws a cached offer without bypassing the answered-check interval',async()=>{
@@ -272,7 +316,7 @@ async function mountedVoiceGate(owner,automatic,{holdFlush=false}={}){
   let state={pending:true,phase:'preparing',activationId,bridgeId,automatic};
   await context.watch({async updateState(){return state;},async addListener(){return {remove:async()=>{}};},
     async activateUpdate(input){acknowledgments.push(input);},continueUpdate:async()=>{}},
-    {dialogClass:'test',dialogLabel:'Update',pendingLabel:'Updating',continueLabel:'Continue',navigationEvents:[]},context.prepare,()=>{});
+    {dialogClass:'alpha-update-startup',dialogLabel:'Update',pendingLabel:'Updating',continueLabel:'Continue',navigationEvents:[]},context.prepare,()=>{});
   await new Promise(setImmediate);
   return {acknowledgments,flushes:()=>flushes,release,
     async close(){state={pending:false,activationId,bridgeId,outcome:'failed'};assert.ok(waits.length);waits.shift()();await new Promise(setImmediate);window.close();}};

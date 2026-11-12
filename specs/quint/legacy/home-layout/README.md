@@ -31,4 +31,4 @@ check. Physical IME and role-manager behavior, arbitrary screen sizes and text
 scale, other source states, installed permissions, and real provider effects
 remain outside it. With the authenticated client features and Playwright
 Chromium prepared, run
-`node --import=tsx --test test/quint-legacy-home-layout-refinement.test.mjs`.
+`bun test ./test/quint-legacy-home-layout-refinement.test.mjs`.

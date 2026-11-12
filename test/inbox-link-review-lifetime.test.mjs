@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const {boot} = await tsImport('../scripts/inbox-adapter-fixture.ts', import.meta.url);
 
 // Real Inbox adapter and closed provider fixture. The review port holds the owner's answer;

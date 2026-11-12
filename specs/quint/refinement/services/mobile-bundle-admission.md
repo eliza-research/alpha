@@ -11,5 +11,5 @@ The bundle and source stamp are synthetic. The helpers compare smoke claims as r
 Run the replay and the original UUID fixture tests with Node 26.
 
 ```sh
-node --test test/mobile-uuid-build.test.mjs test/quint-mobile-bundle-admission.test.mjs
+bun test test/mobile-uuid-build.test.mjs test/quint-mobile-bundle-admission.test.mjs
 ```

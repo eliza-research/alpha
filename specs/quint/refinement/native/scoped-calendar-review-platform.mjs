@@ -155,7 +155,7 @@ export function scopedCalendarReviewPlatform(){
     const patches=catalog.patches.filter(patch=>patch.module===module);
     const source=upstreamNativeSource(root);
     const verified=materializeNativePatches({source,
-      manifest:{...catalog,baseCommit:source.pin,modules:[module],patches},patchRoot:join(root,'patches/eliza'),temporary:staged});
+      manifest:{...catalog,baseCommit:source.pin,modules:[module]},temporary:staged});
     const guardFiles=['CalendarEventGuard.java','read/CalendarSourceIdentity.java'].map(name=>calendarSource+name);
     const put=(name,bytes)=>{
       const path=join(temporary,'ports',name);

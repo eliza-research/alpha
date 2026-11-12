@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Read-only checks of a booted alpha_stallion_phone image on a Pixel 10a through the shared
  * launcher image verifier: exact fingerprint, Alpha's system launcher bytes as
@@ -6,7 +6,7 @@
  * boot state and, with --listener, the Sense listener's privileges. The shared pixel10a target
  * refuses orange (unlocked) and red. Device facts only; no install or role change.
  *
- *   node scripts/verify-pixel10a-image.ts --serial SERIAL --user 0 --descriptor LAUNCHER_JSON \
+ *   bun scripts/verify-pixel10a-image.ts --serial SERIAL --user 0 --descriptor LAUNCHER_JSON \
  *     --fingerprint EXACT --apk-path /product/priv-app/AlphaPhone/AlphaPhone.apk --out NEW_REPORT [--listener]
  *
  * The path is /product/priv-app/... when the staged descriptor names the identifier permission

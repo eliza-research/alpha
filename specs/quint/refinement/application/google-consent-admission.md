@@ -21,5 +21,5 @@ persistence, linked Calendar writes, permission persistence failures and
 overlapping permission requests remain separate obligations.
 
 ```sh
-node --test test/quint-google-consent-admission.test.mjs
+bun test test/quint-google-consent-admission.test.mjs
 ```

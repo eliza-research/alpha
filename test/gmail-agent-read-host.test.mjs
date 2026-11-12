@@ -5,7 +5,6 @@ import {mkdtemp,writeFile,rm,mkdir} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash,randomUUID} from 'node:crypto';
-if(!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createGmailAgentReadHost:createReadHost}=await import('../scripts/gmail-agent-read-host.ts');
 const createGmailAgentReadHost=(profile,access=()=>({gmailChanges:true,calendarEdits:true}))=>createReadHost(profile,access);
 const {cloudStorageNamespace}=await import('../apps/app/src/runtime/cloud-deployment.generated.ts');

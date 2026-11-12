@@ -24,7 +24,7 @@ test('unavailable initial workflow tap lookup establishes no retained tap and pr
  await assert.rejects(()=>resolveWorkflowTap(native,binding,new AbortController().signal),/Queue recheck unavailable/);
  assert.equal(consumed,0);
  console.log('PASS');`;
- assert.match(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:new URL('../',import.meta.url),encoding:'utf8'}),/PASS/);
+ assert.match(execFileSync(process.execPath,['-e',script],{cwd:new URL('../',import.meta.url),encoding:'utf8'}),/PASS/);
 });
 test('owner return requires current workflow revision, pending exact proposal, expiry and stable session',()=>{
  const script=`
@@ -44,5 +44,5 @@ test('owner return requires current workflow revision, pending exact proposal, e
  const stale=fixture();stale.client.detail=async()=>{stale.stop();return {versionId:'v1'}};assert.equal(await run(stale),'stale');
  const offline=fixture();offline.client.detail=async()=>{throw Error('offline')};await assert.rejects(()=>run(offline),/offline/);
  console.log('PASS');`;
- assert.match(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:new URL('../',import.meta.url),encoding:'utf8'}),/PASS/);
+ assert.match(execFileSync(process.execPath,['-e',script],{cwd:new URL('../',import.meta.url),encoding:'utf8'}),/PASS/);
 });

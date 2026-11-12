@@ -105,7 +105,9 @@ public final class BrowserDownloadInstrumentedTest {
   }catch(Exception cancelled){}});}catch(IOException closed){break;}});
   android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();DownloadManager manager=context.getSystemService(DownloadManager.class);List<Long> cleanup=new ArrayList<>();
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   AppNavigation.liveMode();host(AppNavigation.request("Browser"));ready(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();String url="http://127.0.0.1:"+server.getLocalPort()+"/";address(url);page();
+   AppNavigation.liveMode();host(AppNavigation.request("Browser"));ready(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();
+   String origin="http://127.0.0.1:"+server.getLocalPort(),url=origin+"/";
+   address(url);page();
    link("file");nativeVisible("127.0.0.1");nativeVisible(filename);nativeVisible("Advertised size: "+expected.length+" bytes");
    assertEquals("No DownloadManager side effect before consent",-1,find(manager,filename));nativeClick("Cancel");assertEquals("Denied review queues nothing",-1,find(manager,filename));
    address(url);link("file");
@@ -125,7 +127,10 @@ public final class BrowserDownloadInstrumentedTest {
    address(url);link("slow");nativeClick("Download");long slowId=row(manager,slowname);cleanup.add(slowId);nativeVisible(slowname);nativeClickDescription("Cancel download "+slowname);
    boolean removed=false;for(int i=0;i<100;i++){try(Cursor cursor=manager.query(new DownloadManager.Query().setFilterById(slowId))){if(!cursor.moveToFirst()){removed=true;break;}}SystemClock.sleep(100);}assertTrue("Cancellation removes native transfer",removed);nativeClick("Close");
    address(url);link("error");nativeClick("Download");long errorId=row(manager,errorname);cleanup.add(errorId);
-   boolean failed=false;for(int i=0;i<300;i++){try(Cursor cursor=manager.query(new DownloadManager.Query().setFilterById(errorId))){if(cursor.moveToFirst()&&cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))==DownloadManager.STATUS_FAILED){failed=true;break;}}SystemClock.sleep(100);}assertTrue("Native HTTP failure is not reported complete",failed);nativeVisible("Failed · Android reason");nativeClick("Close");
+   boolean failed=false;for(int i=0;i<300;i++){try(Cursor cursor=manager.query(new DownloadManager.Query().setFilterById(errorId))){if(cursor.moveToFirst()&&cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))==DownloadManager.STATUS_FAILED){failed=true;break;}}SystemClock.sleep(100);}
+   assertTrue("Native HTTP failure is not reported complete",failed);
+   nativeVisible(errorname+"\n"+origin+"\nFailed · Server refused the file");
+   nativeClick("Close");
    address(url);page();assertEquals("Child download page retains no app bridge","true",browser.child("typeof Capacitor==='undefined' && typeof androidBridge==='undefined'"));
   }finally{
    releaseSlow.countDown();server.close();workers.shutdownNow();for(long id:cleanup)manager.remove(id);for(String name:new String[]{filename,slowname,errorname}){long id=find(manager,name);if(id>0)manager.remove(id);}

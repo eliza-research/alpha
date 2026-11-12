@@ -4,15 +4,18 @@ module ContactsSession {
     // The view is open, admitted by the image and the page is visible; `active` is the adapter's copy.
     viewOpen: bool, admitted: bool, hidden: bool, active: bool,
     epoch: int, reads: Set[int], loading: bool, editorOpen: bool,
-    readable: bool, rows: bool, more: bool, limit: int
+    readable: bool, rows: bool, more: bool, limit: int,
+    query: bool, rowsQuery: bool
   }
   var s: State
   action init = s' = {
     viewOpen: false, admitted: true, hidden: false, active: false,
     epoch: 0, reads: Set(), loading: false, editorOpen: false,
-    readable: false, rows: false, more: false, limit: 1
+    readable: false, rows: false, more: false, limit: 1,
+    query: false, rowsQuery: false
   }
   pure def availableIn(v: State): bool = v.viewOpen and v.admitted and not(v.hidden)
+  pure def showsRows(v: State): bool = v.rows and v.query == v.rowsQuery
   /// The environment changed and the adapter synchronised: becoming available starts a read,
   /// becoming unavailable clears rows, access and the loading flag under a new epoch.
   def synced(target: State): State =
@@ -37,12 +40,13 @@ module ContactsSession {
       else { ...s, epoch: s.epoch + 1 }
   }
   action loadMore = all {
-    s.active, s.more, s.limit < 4, s.epoch < 6,
+    s.active, showsRows(s), s.more, s.limit < 4, s.epoch < 6,
     s' = { ...s, limit: s.limit + 1, epoch: s.epoch + 1, reads: s.reads.union(Set(s.epoch + 1)), loading: true }
   }
+  /// Two query identities suffice to exercise a search, a switch and a return to the first query.
   action search = all {
     s.active, s.epoch < 6,
-    s' = { ...s, limit: 1, epoch: s.epoch + 1, reads: s.reads.union(Set(s.epoch + 1)), loading: true }
+    s' = { ...s, query: not(s.query), limit: 1, epoch: s.epoch + 1, reads: s.reads.union(Set(s.epoch + 1)), loading: true }
   }
   /// A read answers: no access, a page of rows, or a failure. A superseded read changes nothing.
   action readCompletes(token: int, outcome: str, more: bool): bool = all {
@@ -50,7 +54,8 @@ module ContactsSession {
     s' = if (token != s.epoch) { ...s, reads: s.reads.exclude(Set(token)) }
       else { ...s, reads: s.reads.exclude(Set(token)), loading: false,
         readable: if (outcome == "error") s.readable else outcome == "rows",
-        rows: outcome == "rows", more: outcome == "rows" and more }
+        rows: outcome == "rows", more: outcome == "rows" and more,
+        rowsQuery: if (outcome == "rows") s.query else s.rowsQuery }
   }
   /// The system contact editor opens over the view and, on return, the list is read again.
   action openEditor = all {
@@ -80,10 +85,10 @@ module ContactsSession {
   val safety = TypeOK and ActiveMatchesAvailability and InactiveHoldsNoRows and RowsNeedAccess and
     MoreNeedsRows and LoadingHasCurrentWork and DeferredViewNotOpen
 
-  val RowsKeptWhileLoadingWitness = s.rows and s.loading and not(s.editorOpen)
+  val RowsKeptWhileLoadingWitness = showsRows(s) and s.loading and not(s.editorOpen)
   val SupersededReadWitness = s.active and s.reads.exists(token => token != s.epoch)
   val RevokedWhileOpenWitness = not(s.admitted) and not(s.active) and s.epoch > 1
-  val EditorOverLoadedListWitness = s.editorOpen and s.rows
+  val EditorOverLoadedListWitness = s.editorOpen and showsRows(s)
 
   run readRowsTest = init.then(openView).expect(s.loading).then(readCompletes(1, "rows", true))
     .expect(s.rows and s.more and not(s.loading) and safety)
@@ -93,8 +98,11 @@ module ContactsSession {
   run answerAfterLeaveTest = init.then(openView).then(closeView)
     .expect(not(s.loading) and not(s.active))
     .then(readCompletes(1, "rows", true)).expect(not(s.rows or s.loading) and safety)
-  run supersededReadTest = init.then(openView).then(search).then(readCompletes(2, "rows", false))
-    .then(readCompletes(1, "no-access", false)).expect(s.rows and s.readable and safety)
+  run supersededReadTest = init.then(openView).then(readCompletes(1, "rows", true))
+    .then(search).expect(s.rows and not(showsRows(s)) and s.loading)
+    .then(search).expect(showsRows(s) and s.loading)
+    .then(readCompletes(3, "rows", false)).then(readCompletes(2, "no-access", false))
+    .expect(showsRows(s) and s.readable and not(s.more) and safety)
   /// Losing the image's Contacts admission while the view is open closes it and clears the rows.
   run revokedWhileOpenTest = init.then(openView).then(readCompletes(1, "rows", false))
     .then(admission(false)).expect(RevokedWhileOpenWitness and not(s.viewOpen or s.rows) and safety)

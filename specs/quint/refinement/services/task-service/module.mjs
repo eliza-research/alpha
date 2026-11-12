@@ -49,7 +49,7 @@ export async function loadTaskService(extraSources = []) {
   });
   assert.doesNotMatch(built.outputFiles[0].text, /['"]file-type['"]/, 'Unprovided optional media dependency reached TaskService output');
   const history = materializeHistoricalFormalSources(root,extraSources);
-  const sources = [...compiled.keys(), ...resources, fileURLToPath(import.meta.url), 'package-lock.json', ...CORE_STATE_INPUTS, ...history.sources];
+  const sources = [...compiled.keys(), ...resources, fileURLToPath(import.meta.url), 'bun.lock', ...CORE_STATE_INPUTS, ...history.sources];
   const driverHashes = captureInputs(sources);
   for (const [file, digest] of Object.entries(core.receipt.inputHashes)) assert.equal(driverHashes[path.resolve(file)], digest, 'Core source input changed before driver capture');
   for (const [file, digest] of compiled) assert.equal(driverHashes[path.resolve(file)], digest, 'Task source changed during compilation');

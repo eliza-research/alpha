@@ -106,6 +106,8 @@ function handOffs(name, code) {
 
 // Hand-offs that are safe for a reason the scanner cannot see. Each entry is one exact place.
 const REVIEWED = [
+  { file: "AlphaDevicePlugin.java", receiver: "updateOfferReader", method: "submit", count: 1,
+    why: "private process-wide transport slot; its private reader propagates rejection to the sole caller's unavailable-offer catch, checked below" },
   { file: "AlphaCanonicalNotifications.java", receiver: "SERIAL", method: "execute", count: 7,
     why: "private static final process dispatcher; stop retires sessions, never the executor; lifetime and non-escape checked below" },
   { file: "AlphaCanonicalNotifications.java", receiver: "SERIAL", method: "schedule", count: 2,
@@ -128,7 +130,55 @@ function assertNotificationDispatcherLifetime(source) {
   }
 }
 
+/** The final-offer reader is guarded across a private synchronous method boundary. */
+function assertUpdateOfferReaderGuard(source) {
+  const code = mask(source), all = blocks(code);
+  const declaration = /\bprivate\s+static\s+final\s+java\.util\.concurrent\.ExecutorService\s+updateOfferReader\s*=/g;
+  const declarations = [...code.matchAll(declaration)];
+  assert.equal(declarations.length, 1, "offer reader must remain privately owned and immutable");
+  const start = declarations[0].index, end = start + declarations[0][0].length;
+  for (const reference of code.matchAll(/\bupdateOfferReader\b/g)) {
+    if (reference.index >= start && reference.index < end) continue;
+    assert.match(code.slice(reference.index), /^updateOfferReader\s*\.\s*submit\s*\(/,
+      "offer reader must not escape, be reassigned or be shut down");
+  }
+  const method = signature => {
+    const found = signature.exec(code);
+    assert.ok(found, "reviewed private offer-reader method must exist");
+    const opening = code.indexOf("{", found.index);
+    const body = all.find(block => block.start === opening);
+    assert.ok(body, "reviewed offer-reader method body must exist");
+    return body;
+  };
+  const reader = method(/\bprivate\s+static\s+byte\[\]\s+readFinalUpdateManifest\(\)\s*throws\s+Exception\s*\{/);
+  const submits = [...code.matchAll(/\bupdateOfferReader\s*\.\s*submit\s*\(/g)];
+  assert.equal(submits.length, 1);
+  assert.ok(reader.start < submits[0].index && submits[0].index < reader.end,
+    "only the private final-offer reader may submit transport work");
+  const uses = [...code.matchAll(/\breadFinalUpdateManifest\s*\(/g)];
+  assert.equal(uses.length, 2, "private reader must have only its declaration and one caller");
+  const caller = method(/\bprivate\s+void\s+requireCurrentUpdateOffer\([^)]*\)\s*throws\s+UpdateOfferUnavailable\s*\{/);
+  const call = uses.find(use => caller.start < use.index && use.index < caller.end);
+  assert.ok(call, "the sole caller must be requireCurrentUpdateOffer");
+  const scope = all.filter(block => block.start < call.index && call.index < block.end)
+    .sort((a, b) => b.start - a.start).find(block => block.kind === "try" || block.kind === "deferred");
+  assert.ok(scope?.kind === "try" && scope.catches.includes("Exception"),
+    "caller must catch rejected submissions without crossing a deferred body");
+  assert.match(code.slice(caller.start, caller.end),
+    /\bcatch\s*\(\s*Exception\s+\w+\s*\)\s*\{\s*\}\s*throw\s+new\s+UpdateOfferUnavailable\s*\(/,
+    "rejection must become the existing unavailable-offer result");
+}
+
 const sites = files.flatMap(name => handOffs(name, mask(read(name))));
+
+test("the bounded update offer reader answers a rejected slot through its sole synchronous caller", () => {
+  const source = read("AlphaDevicePlugin.java");
+  assertUpdateOfferReaderGuard(source);
+  assert.throws(() => assertUpdateOfferReaderGuard(source.replace("static final java.util.concurrent.ExecutorService updateOfferReader", "static java.util.concurrent.ExecutorService updateOfferReader")));
+  assert.throws(() => assertUpdateOfferReaderGuard(source.replace("var result=updateOfferReader.submit(", "var alias=updateOfferReader;var result=updateOfferReader.submit(")));
+  assert.throws(() => assertUpdateOfferReaderGuard(source.replace("byte[] manifest=readFinalUpdateManifest();", "byte[] manifest=anotherReader();")));
+  assert.throws(() => assertUpdateOfferReaderGuard(source.replace("catch(Exception unavailable){/* A failed read cannot confirm the offer. */}", "catch(java.io.IOException unavailable){}")));
+});
 
 test("notification dispatcher outlives sessions and cannot escape to a shutdown owner", () => {
   const source = read("AlphaCanonicalNotifications.java");

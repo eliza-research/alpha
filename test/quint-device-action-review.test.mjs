@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {checkDeviceActionReview} from '../specs/quint/refinement/application/device-action-review.mjs';
 
-test('real device-action coordinator binds review, reservation, claim and one effect', {timeout:120000}, async()=>{
+test('real device-action coordinator binds review, reservation, claim and one effect', {timeout:scaledTimeout(120000)}, async()=>{
   const receipt=await checkDeviceActionReview(['test/quint-device-action-review.test.mjs']);
   assert.ok(receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound);
   assert.equal(receipt.traces,36);

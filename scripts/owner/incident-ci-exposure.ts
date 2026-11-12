@@ -1,11 +1,11 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Issue #658 step 1 evidence: which workflow runs executed on a forged commit or on a commit
  * built on top of one, and which
  * secret / variable / environment NAMES each repository exposes (so the owner knows what
  * to rotate and can show when each one was last updated).
  *
- *   node scripts/owner/incident-ci-exposure.ts [--repo owner/name ...] [--all] [--json]
+ *   bun scripts/owner/incident-ci-exposure.ts [--repo owner/name ...] [--all] [--json]
  *
  * --all covers every repository in scripts/owner/incident-2026-10-27-iocs.json that had CI
  * runs on forged commits (default when no --repo is given). GH_BIN selects the gh binary.
@@ -144,7 +144,7 @@ function print(report: ReturnType<typeof auditRepository>) {
 function main(argv: readonly string[]) {
   let args;
   try { args = parseArgs(argv, {flags: ['--all', '--json'], multi: ['--repo']}); }
-  catch (error) { console.error(`${error instanceof Error ? error.message : String(error)}\nUsage: node scripts/owner/incident-ci-exposure.ts [--repo owner/name ...] [--all] [--json]`); return 2; }
+  catch (error) { console.error(`${error instanceof Error ? error.message : String(error)}\nUsage: bun scripts/owner/incident-ci-exposure.ts [--repo owner/name ...] [--all] [--json]`); return 2; }
   const iocs = loadIocs();
   const repos = args.repo?.length && !args.all ? args.repo : Object.keys(iocs.ciRunsOnForgedCommits).map(repo => fullName(iocs, repo));
   const reports = repos.map(repo => auditRepository(repo, iocs));

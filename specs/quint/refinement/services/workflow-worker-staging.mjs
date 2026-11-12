@@ -4,11 +4,33 @@ import {syncBuiltinESMExports} from 'node:module';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {stageWorkerArtifact, verifyWorkerArtifact, workerHash} from '../../../../scripts/workflow-worker-artifact.ts';
+import {registerHooks} from '../../../../test/support/module-hooks.mjs';
 import {writeWorkerFixture} from '../../../../test/fixtures/workflow-worker-assets.mjs';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const driver = fileURLToPath(import.meta.url);
+// Bun binds named node:fs imports once (syncBuiltinESMExports does nothing there). The exact product
+// helper is loaded with its three faulted operations bound through the mutable node:fs object instead.
+const artifactSource = new URL('../../../../scripts/workflow-worker-artifact.ts', import.meta.url).href;
+const liveFs = 'data:text/javascript,'+encodeURIComponent(`import fs from 'node:fs';
+export * from 'node:fs';
+export const copyFileSync = (...args) => fs.copyFileSync(...args);
+export const renameSync = (...args) => fs.renameSync(...args);
+export const rmSync = (...args) => fs.rmSync(...args);
+`);
+let liveFsBound = false;
+const hooks = registerHooks({resolve(specifier, context, next) {
+  if (context.parentURL === artifactSource && specifier === 'node:fs') {
+    liveFsBound = true;
+    return {url: liveFs, shortCircuit: true};
+  }
+  return next(specifier, context);
+}});
+// The fixture module has already loaded the helper; this is a second instance of the same source bytes.
+// (Bun keeps the query of a path specifier, and drops that of a file: URL.)
+const {stageWorkerArtifact, verifyWorkerArtifact, workerHash} = await import(fileURLToPath(artifactSource)+'?live-fs');
+hooks.deregister();
+assert.ok(liveFsBound, 'The exact staging helper imported the instrumented filesystem port');
 const model = 'WorkflowWorkerStaging';
 const worker = 'lib/worker.js';
 const qualityErrors = new Map([

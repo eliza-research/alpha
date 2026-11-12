@@ -9,12 +9,11 @@ module OSDefaults {
     pending: false, written: false, appop: "unset", eligible: true, writeAuthorized: true }
   action init = s' = initialState("stock", 0)
   action initReviewed(layout: str, version: int): bool = all {
-    layout.in(Set("stock", "custom", "legacy-custom")), version.in(Set(2, 3)),
+    layout.in(Set("stock", "custom")), version.in(Set(2, 3)),
     s' = initialState(layout, version)
   }
   pure def migratedLayout(layout: str, version: int): str =
     if (version < 2 and layout == "stock") "alpha"
-    else if (version < 3 and layout == "legacy-custom") "custom-alpha"
     else layout
   action load = s' = { ...s, selected: migratedLayout(s.saved, s.version),
     pending: s.version < 3, written: false }
@@ -36,7 +35,7 @@ module OSDefaults {
   action step = any { load, storeLayout(true), storeLayout(false), storeVersion(true),
     storeVersion(false), restart, ownerLayout("custom"), ownerLayout("stock"),
     context(true), context(false), ownerAppop("allow"), ownerAppop("deny"), defaultAppop }
-  pure val layouts = Set("stock", "custom", "alpha", "legacy-custom", "custom-alpha")
+  pure val layouts = Set("stock", "custom", "alpha")
   val safety = s.version.in(Set(0, 2, 3)) and s.saved.in(layouts)
     and s.selected.in(layouts) and s.writeAuthorized
   run coreLauncherScopeTest = init.expect(coreLauncher("alpha",true,true,true)
@@ -54,14 +53,10 @@ module OSDefaults {
   run reviewedStockSurvivesIdentityMigrationTest = initReviewed("stock", 2).then(load)
     .expect(s.selected == "stock" and safety).then(storeLayout(true)).then(storeVersion(true))
     .expect(s.saved == "stock" and s.version == 3 and safety)
-  run reviewedCustomTileMigratesInPlaceTest = initReviewed("legacy-custom", 2).then(load)
-    .then(storeLayout(false)).then(storeVersion(true)).expect(s.saved == "legacy-custom" and s.version == 2)
-    .then(restart).then(load).then(storeLayout(true)).then(storeVersion(true))
-    .expect(s.saved == "custom-alpha" and s.version == 3 and safety)
   run reviewedUnrelatedCustomRetainedTest = initReviewed("custom", 2).then(load)
     .then(storeLayout(true)).then(storeVersion(true)).expect(s.saved == "custom" and s.version == 3 and safety)
-  run currentVersionLeavesRetainedLayoutTest = initReviewed("legacy-custom", 3).then(load)
-    .expect(s.selected == "legacy-custom" and not(s.pending) and safety)
+  run currentVersionLeavesRetainedLayoutTest = initReviewed("custom", 3).then(load)
+    .expect(s.selected == "custom" and not(s.pending) and safety)
   run existingPermissionDenialRemainsTest = init.then(ownerAppop("deny")).then(defaultAppop)
     .expect(s.appop == "deny" and safety)
   run ineligiblePermissionDoesNotGrantTest = init.then(context(false)).then(defaultAppop)

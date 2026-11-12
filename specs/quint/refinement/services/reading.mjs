@@ -22,7 +22,7 @@ export async function readingRefinement() {
   const compiled = await build({stdin: {contents: 'import {reviewContentQuestion} from "./apps/app/src/browser/content-question.ts";window.reviewContentQuestion=reviewContentQuestion;', resolveDir: process.cwd()}, bundle: true, write: false, metafile: true, platform: 'browser', format: 'iife', define: {'import.meta.env': '{}'},
     plugins: [{name: 'unused-image-ocr', setup(builder) { builder.onResolve({filter: /local-ocr$/}, () => ({path: 'ocr', namespace: 'port'})); builder.onLoad({filter: /.*/, namespace: 'port'}, () => ({contents: 'export const recognizeLocalText=async()=>{throw Error("No image input");};', loader: 'js'})); }}]});
   capture(Object.keys(compiled.metafile.inputs).filter(input => existsSync(input)));
-  const browser = await chromium.launch({headless: true, ...(process.env.ALPHA_CHROMIUM_PATH ? {executablePath: process.env.ALPHA_CHROMIUM_PATH} : {}), args: ['--no-sandbox']});
+  const browser = await chromium.launch({headless: true, args: ['--no-sandbox']});
   try {
     for (const retireDuringVerification of [false, true]) {
       const page = await browser.newPage(); page.setDefaultTimeout(30000); await page.route('https://reading.refinement.invalid/**', route => route.fulfill({contentType: 'text/html', body: '<main class="os"></main>'})); await page.goto('https://reading.refinement.invalid/');

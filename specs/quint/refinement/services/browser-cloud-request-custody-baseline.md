@@ -9,7 +9,7 @@ The defect follows from assigning the duplicate's cleanup key before checking wh
 Run the exact baseline from commit `e180629fe55222711484fefd9a1e4eb6f6ddf807` with Node 26.
 
 ```sh
-node --test --test-concurrency=1 test/quint-browser-cloud-request-custody.test.mjs
+bun test test/quint-browser-cloud-request-custody.test.mjs
 ```
 
 ## Corrected request custody

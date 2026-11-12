@@ -180,6 +180,128 @@ class CloudSigningInputTest(unittest.TestCase):
             "outputObject": f"signed/{digest}/{'d' * 32}/signed-apks.tar",
         }
 
+    def candidate_api_responses(self):
+        source = self.pin["alphaCommit"]
+        repository = {"id": PRODUCER.REPOSITORY_ID, "full_name": PRODUCER.REPOSITORY}
+        run = {"id": 171, "run_attempt": 2, "run_number": 44, "event": "push", "head_branch": "main",
+               "head_sha": source, "workflow_id": PRODUCER.WORKFLOW_ID, "path": PRODUCER.WORKFLOW,
+               "status": "completed", "conclusion": "success",
+               "repository": repository, "head_repository": copy.deepcopy(repository)}
+        artifact = {"id": 202, "expired": False, "expires_at": "2099-01-01T00:00:00Z",
+                    "name": f"app-native-candidate-44-{source}-171-2", "size_in_bytes": self.pin["archiveBytes"],
+                    "digest": "sha256:" + self.pin["archiveSHA256"],
+                    "workflow_run": {"id": 171, "head_sha": source, "head_branch": "main",
+                                     "repository_id": PRODUCER.REPOSITORY_ID,
+                                     "head_repository_id": PRODUCER.REPOSITORY_ID}}
+        return {f"repos/{PRODUCER.REPOSITORY}/actions/runs/171/attempts/2": run,
+                f"repos/{PRODUCER.REPOSITORY}/actions/artifacts/202": artifact}
+
+    def test_candidate_preparation_yields_mirror_request_then_exact_signing_plan(self):
+        self.write_candidate()
+        api = self.candidate_api_responses().__getitem__
+        original = self.archive.read_bytes()
+        mirror = ADMISSION.prepare_candidate(self.archive, "202", api=api)
+        self.assertEqual(mirror["schema"], "alpha-candidate-mirror-request/v1")
+        self.assertEqual(mirror["artifactId"], "202")
+        self.assertEqual(mirror["mirror"], {
+            "bucket": self.pin["privateStorage"]["bucket"], "object": self.pin["privateStorage"]["inputObject"],
+            "bytes": len(original), "sha256": self.pin["archiveSHA256"],
+        })
+        self.assertNotIn("privateStorage", mirror)
+        with self.assertRaises((KeyError, ValueError)):
+            PRODUCER.validate_private_storage(mirror)
+
+        plan = ADMISSION.prepare_candidate(self.archive, "202", input_generation="123",
+                                           delivery_id="d" * 32, api=api)
+        self.assertEqual(plan, self.pin)
+        self.assertEqual(PRODUCER.validate_private_storage(plan), self.pin["privateStorage"])
+        self.assertIs(ADMISSION.admit(self.archive, plan)["signed"], False)
+        self.assertEqual(self.archive.read_bytes(), original)
+        self.assertEqual(set(self.archive.parent.iterdir()), {self.archive})
+
+    def test_candidate_preparation_refuses_wrong_official_artifact_or_attempt(self):
+        self.write_candidate()
+        for endpoint, field, value in (
+            ("artifacts/202", "digest", "sha256:" + "0" * 64),
+            ("artifacts/202", "size_in_bytes", self.pin["archiveBytes"] + 1),
+            ("artifacts/202", "expired", True),
+            ("artifacts/202", "name", f"app-native-candidate-44-{self.pin['alphaCommit']}-171-1"),
+            ("runs/171/attempts/2", "id", 172),
+            ("runs/171/attempts/2", "run_attempt", 1),
+            ("runs/171/attempts/2", "event", "workflow_dispatch"),
+            ("runs/171/attempts/2", "conclusion", "failure"),
+        ):
+            with self.subTest(endpoint=endpoint, field=field):
+                responses = self.candidate_api_responses()
+                responses[f"repos/{PRODUCER.REPOSITORY}/actions/{endpoint}"][field] = value
+                with self.assertRaises(ValueError):
+                    ADMISSION.prepare_candidate(self.archive, "202", api=responses.__getitem__)
+
+    def test_candidate_preparation_checks_archive_evidence_and_unsigned_bytes(self):
+        for extra in (
+            {"inputs-after.json": b"{}"},
+            {"launcher-release-unsigned.apk": self.apk_bytes["launcher-release-unsigned.apk"].upper()},
+        ):
+            with self.subTest(member=next(iter(extra))):
+                self.write_candidate(extra)
+                with self.assertRaises(ValueError):
+                    ADMISSION.prepare_candidate(self.archive, "202", api=self.candidate_api_responses().__getitem__)
+
+    def test_native_handoff_requires_publication_debug_and_indexed_evidence(self):
+        manifest_name = "producer-evidence/manifest.json"
+        evidence_name = "artifacts/sbom/alpha.cdx.json"
+        evidence = b'{"verified":true}'
+        for case, refusal in (
+            ("valid", None),
+            ("changed-debug", "Producer debug APK bytes differ"),
+            ("missing-evidence", "Missing, nonregular or oversized archive member"),
+            ("changed-evidence", "Producer evidence bytes differ"),
+        ):
+            with self.subTest(case=case):
+                self.write_candidate()
+                with zipfile.ZipFile(self.archive) as source:
+                    entries = {entry.filename: source.read(entry) for entry in source.infolist()}
+                manifest = json.loads(entries[manifest_name])
+                manifest["files"][evidence_name] = {"bytes": len(evidence), "sha256": ADMISSION.digest(evidence)}
+                entries[manifest_name] = json.dumps(manifest).encode()
+                if case != "missing-evidence":
+                    entries["producer-evidence/" + evidence_name] = evidence.upper() if case == "changed-evidence" else evidence
+                if case == "changed-debug":
+                    entries["standalone-debug.apk"] = entries["standalone-debug.apk"].upper()
+                with zipfile.ZipFile(self.archive, "w", compression=zipfile.ZIP_DEFLATED) as target:
+                    for name, data in entries.items():
+                        target.writestr(name, data)
+                archive_bytes = self.archive.read_bytes()
+                digest = ADMISSION.digest(archive_bytes)
+                self.pin.update(archiveBytes=len(archive_bytes), archiveSHA256=digest,
+                                producerManifestSHA256=ADMISSION.digest(entries[manifest_name]))
+                self.pin["privateStorage"].update(inputObject=f"unsigned/{digest}.zip",
+                                                  outputObject=f"signed/{digest}/{'d' * 32}/signed-apks.tar")
+                PRODUCER.validate_private_storage(self.pin)
+                api = self.candidate_api_responses().__getitem__
+                delivery = {"input_generation": "123", "delivery_id": "d" * 32}
+                if refusal:
+                    for options in ({}, delivery):
+                        with self.assertRaisesRegex(ValueError, refusal):
+                            ADMISSION.prepare_candidate(self.archive, "202", api=api, **options)
+                    stage = self.archive.with_name("protected-stage")
+                    with self.assertRaisesRegex(ValueError, refusal):
+                        ADMISSION.admit(self.archive, self.pin, stage)
+                    self.assertFalse(stage.exists())
+                else:
+                    self.assertEqual(ADMISSION.prepare_candidate(self.archive, "202", api=api, **delivery), self.pin)
+                    self.assertTrue(ADMISSION.admit(self.archive, self.pin)["inputVerified"])
+                self.assertEqual(self.archive.read_bytes(), archive_bytes)
+
+    def test_candidate_preparation_refuses_invalid_or_unpaired_delivery_fields(self):
+        self.write_candidate()
+        api = self.candidate_api_responses().__getitem__
+        for generation, delivery_id in ((None, "d" * 32), ("123", None), ("0", "d" * 32),
+                                        ("01", "d" * 32), ("123", "d" * 31), ("123", "D" * 32)):
+            with self.subTest(generation=generation, delivery_id=delivery_id), self.assertRaises(ValueError):
+                ADMISSION.prepare_candidate(self.archive, "202", input_generation=generation,
+                                            delivery_id=delivery_id, api=api)
+
     def test_candidate_admits_only_exact_native_receipts_and_frozen_inputs(self):
         self.write_candidate()
         stage = self.archive.parent / "candidate-staged"
@@ -192,7 +314,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 self.write_candidate(change_receipt=lambda receipt: receipt.update({field: value}))
                 with self.assertRaises(ValueError):
                     ADMISSION.admit(self.archive, self.pin)
-        for field, value in (("attempt", "1"), ("packageName", ADMISSION.PACKAGE), ("voiceRecordSha256", "0" * 64)):
+        for field, value in (("attempt", "1"), ("packageName", "ai.example.other"), ("voiceRecordSha256", "0" * 64)):
             with self.subTest(field=field):
                 self.write_candidate(change_native=lambda native: native.update({field: value}))
                 with self.assertRaises(ValueError):
@@ -380,6 +502,8 @@ class CloudSigningInputTest(unittest.TestCase):
 
 class PrivateProducerSourceReviewTest(unittest.TestCase):
     def test_isolated_source_requires_exact_committed_approval(self):
+        self.assertEqual(ADMISSION.PACKAGE, "ai.elizaresearch.alphaphone")
+        self.assertEqual(PRODUCER.REPOSITORY, "eliza-research/alpha")
         with tempfile.TemporaryDirectory(prefix="alpha-source-review-") as directory:
             root = Path(directory)
             (root / "scripts/ci").mkdir(parents=True)
@@ -416,7 +540,7 @@ class PrivateProducerSourceReviewTest(unittest.TestCase):
             env = {**os.environ, "PATH": str(root / "bin") + os.pathsep + os.environ["PATH"],
                    "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": "5" * 40,
                    "GITHUB_REPOSITORY": PRODUCER.REPOSITORY, "GITHUB_REPOSITORY_ID": str(PRODUCER.REPOSITORY_ID),
-                   "GITHUB_REPOSITORY_OWNER_ID": str(PRODUCER.OWNER_ID), "RUNNER_TEMP": directory,
+                   "RUNNER_TEMP": directory,
                    "GITHUB_OUTPUT": str(root / "output"), "SIGNING_PLAN": json.dumps(plan),
                    "TEST_COMPARISON": json.dumps(comparison)}
             for field in (None, "approval", *fields):
