@@ -1,3 +1,4 @@
+import {Capacitor} from '@capacitor/core';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPlane as SharedMapPlane, type MapBasemap } from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/map-plane.ts';
 import fontUrl from '@fontsource/public-sans/files/public-sans-latin-400-normal.woff2?url';
@@ -48,7 +49,7 @@ export function resolveMapColors(container: HTMLElement, colors: Record<string, 
 export class MapPlane extends SharedMapPlane {
  constructor(container:HTMLElement,region:MapBasemap,onError:()=>void,colors:Record<string,string>,onPin?:(id:string)=>void,onCopyright?:(text:string)=>void) {
   const worldwide=region.kind==='global'||region.kind==='cloud-raster';
-  super(container,region,onError,region.kind==='global'?colors:resolveMapColors(container,colors),{fontUrl,workerUrl,accent:'#1616d8',protocol:'alpha-region',routePadding:{top:220,bottom:280,left:30,right:30},nativeRegion,nativeRequest:nativeRegionRequest,onCopyright,selectionPadding:worldwide?()=>{
+  super(container,region,onError,region.kind==='global'?colors:resolveMapColors(container,colors),{fontUrl,workerUrl,preserveDrawingBuffer:!Capacitor.isNativePlatform(),accent:'#1616d8',protocol:'alpha-region',routePadding:{top:220,bottom:280,left:30,right:30},nativeRegion,nativeRequest:nativeRegionRequest,onCopyright,selectionPadding:worldwide?()=>{
    const bounds=container.getBoundingClientRect();
    const credits=container.parentElement?.querySelector('.alpha-map-credits')?.getBoundingClientRect();
    const header=container.parentElement?.querySelector('[data-alpha-app-header="main"]')?.getBoundingClientRect();

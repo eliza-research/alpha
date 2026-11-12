@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "repository": "elizaOS/eliza",
-  "base": "develop",
-  "baseCommit": "1d5a89838cedaff328445c050cef6d2a6292bef1",
-  "head": "f3233f52cfabeeef544a7e8b9dd7c8d3e71da639",
+  "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
+  "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
+  "head": "a8b17349d2ff5f2345504a7bfafc412677118459",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...f3233f52cfabeeef544a7e8b9dd7c8d3e71da639",
+  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...a8b17349d2ff5f2345504a7bfafc412677118459",
   "status": "diverged",
-  "aheadBy": 36,
-  "behindBy": 614,
+  "aheadBy": 63,
+  "behindBy": 617,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -116,6 +116,10 @@
       "subject": "Merge commit '765725575c6c1062cf75b01c69e7949da968314d' into codex/review-calendar-39435"
     },
     {
+      "sha": "b520b1f0bc622a8fd9e8cbc8843dd0da692dbf8c",
+      "subject": "Merge commit 'd8e6354d74ec287f29a649a840e4187bc6021277' into codex/alpha-sense-absence-20261112"
+    },
+    {
       "sha": "bace08c870a2d3170a263e1ac3348d4eedcab0e1",
       "subject": "Draft owner-confirmed canonical Notes erasure"
     },
@@ -150,7 +154,114 @@
     {
       "sha": "f3233f52cfabeeef544a7e8b9dd7c8d3e71da639",
       "subject": "Remove false rename notices after Files recovery"
+    },
+    {
+      "sha": "4f93d71ad113f6977423d410f3f45bfe3a38539c",
+      "subject": "fix(scheduling): compose the default morning reminder from canonical sources"
+    },
+    {
+      "sha": "da306758f4bf1671914aae36abf871f3f5395c71",
+      "subject": "fix: read managed Gmail in summaries and retain Calendar revision times"
+    },
+    {
+      "sha": "0d640b44832ad651f9ee3c0cb1fbf8c3229558c3",
+      "subject": "Declare the Google Calendar provider update timestamp"
+    },
+    {
+      "sha": "c0ce429f5b8a49c27e42b1a58467b7d744180982",
+      "subject": "Keep Calendar cache refreshes out of recent provider changes"
+    },
+    {
+      "sha": "228e3518c74384068fcfdf0f7e22ecd39fcb7064",
+      "subject": "Prune admitted generated directories during workspace verification"
+    },
+    {
+      "sha": "03fc4ef124e1858f6ab5e809cc23adb7d3589082",
+      "subject": "Use one provider edit clock for managed Calendar readback"
+    },
+    {
+      "sha": "c5513030938d6892cf17e1cfbb25836b966c8188",
+      "subject": "test(scheduling): cover unset owner timezone at local morning"
+    },
+    {
+      "sha": "490eb2d247e29149e17925f5c07a07e8007b93f8",
+      "subject": "fix(scheduling): resolve missing owner zone before cron evaluation"
+    },
+    {
+      "sha": "99eb20c992677d31c99e913a55b9555a6ceab1e5",
+      "subject": "fix(scheduling): keep the shared timezone import singular"
+    },
+    {
+      "sha": "64e7c75ee4dd8642fe5f3789dbe1b5fd78e5146a",
+      "subject": "test(scheduling): clear seeded owner facts in timezone regression"
+    },
+    {
+      "sha": "e56f537d9c15d6fe7a64cc8ee5f0d9f2c8681877",
+      "subject": "test(scheduling): bind timezone regression runner identity"
+    },
+    {
+      "sha": "9f7cb6733e81d46d883763ea13cbffc506c2d631",
+      "subject": "fix(scheduling): share resolved owner facts with due preflight"
+    },
+    {
+      "sha": "f70e188037f48a22fdebb08859c01f110322fc9f",
+      "subject": "test(scheduling): bind owner timezone model to runtime cases"
+    },
+    {
+      "sha": "9fc6adbb5e3e5c9dc50adf77541fef0e7106abf0",
+      "subject": "fix(lifeops): generate morning summaries through the configured model"
+    },
+    {
+      "sha": "973f79bad75dbce787ea8101279724ee178fd2c1",
+      "subject": "test(lifeops): verify summary generation and persistence outcomes"
+    },
+    {
+      "sha": "334c24bf16a6fb6362886eecbf0ddbddeb85f0d1",
+      "subject": "Format the summary conformance imports"
+    },
+    {
+      "sha": "c4b126bb3c5dffb208d3943e052d3b44aa7de784",
+      "subject": "Format the owner-clock conformance imports"
+    },
+    {
+      "sha": "cebf6ec13304a6f0d2eda5d63444ea77e25aba0b",
+      "subject": "Reproduce the stale current-day summary regression"
+    },
+    {
+      "sha": "e9cf6f19e0178bd6e928e0229bdfb71ac5504514",
+      "subject": "Reject summaries that misstate the owner-local report date"
+    },
+    {
+      "sha": "732de043757580ab10b09914344e1f7670ddc9ef",
+      "subject": "Check supported current-day declarations and model their persistence guard"
+    },
+    {
+      "sha": "ecf8e6adfad62ddabb3f98ef9c2ed436085ebe80",
+      "subject": "test(scheduling): reproduce owner travel clock mismatch"
+    },
+    {
+      "sha": "574b4beddf411afdcee3745e6bce9b6f128cb58e",
+      "subject": "fix(scheduling): bind owner facts to the runner clock"
+    },
+    {
+      "sha": "0be6030677e030221221f99d35c5df057b1473f1",
+      "subject": "test(scheduling): cover distinct host and tick travel clocks"
+    },
+    {
+      "sha": "9f4e8eafe97511e9b84d16ed99346ba69df6475a",
+      "subject": "Accept complete mail recipients with Space and retain direct Send entry"
+    },
+    {
+      "sha": "980c6686c648e4229c0bb8e263e1c916a0b322f3",
+      "subject": "Format recipient interaction regression checks"
+    },
+    {
+      "sha": "1151ccf8e12f6eca3bdcc70e465e3f4188c23d3e",
+      "subject": "Allow browser hosts to retain map frames for embedded previews"
+    },
+    {
+      "sha": "a8b17349d2ff5f2345504a7bfafc412677118459",
+      "subject": "Condense Maps data explanation without repeating recipients"
     }
-  ],
-  "pullRequests": []
+  ]
 }

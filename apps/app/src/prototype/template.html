@@ -1964,7 +1964,6 @@
       <details class="alpha-map-privacy"><summary aria-label="Map information" title="Map information"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.info}}"></path></svg></summary>
         <div class="alpha-map-info">
           <sc-if value="{{maps.nativePositionDetails}}"><p>{{maps.nativePositionDetails}}</p></sc-if>
-          <button class="tap" onClick="{{maps.nativeManualLocation}}">Enter coordinates</button>
           <sc-if value="{{maps.globalBasemap}}"><p>OpenFreeMap receives your IP address and viewed map area. Location is used only when you request it.</p></sc-if>
           <sc-if value="{{maps.searchDisclosure}}"><p data-maps-disclosure>{{maps.searchDisclosure}}</p></sc-if>
         </div>
