@@ -7,6 +7,7 @@ import {checkChatAttachments} from './chat-attachments.mjs';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {root} from './support.mjs';
+import {onBun} from '../../../../test/support/node-only.mjs';
 import {modelStateInventory, traceActionCoverage, unobservedStateFields} from '../model-state.mjs';
 import {startupPermissions, callbackLanding, preferences, browserSession, permanentVoiceDeletion, draftDispatch} from './portable.mjs';
 import {application, assistantConversation} from './clients.mjs';
@@ -148,9 +149,20 @@ const adapters = [checkCalendarApprovalReview, checkDeviceActionReview, checkCal
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
   checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkAppInfoHandoffComposition, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkAutomaticAppUpdateSchedule, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 
+// Components that need a platform feature Bun 1.4.2 lacks. Under Bun they are left out, reported in
+// `skipped`, and their model keeps its "Source-adapter refinement" obligation; `bun run test:node`
+// runs the whole campaign on Node.js.
+const needsNode = new Map([
+  [checkBrowserFilesTrash, 'the Files Trash source takes a Web Lock and Bun has no navigator.locks'],
+]);
+
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement(onProgress) {
-  return collectApplicationCampaigns(adapters, onProgress);
+  const skipped = adapters.filter(adapter => onBun && needsNode.has(adapter))
+    .map(adapter => ({campaign: adapter.name, reason: needsNode.get(adapter)}));
+  for (const {campaign, reason} of skipped) console.warn(`Skipping ${campaign} on Bun: ${reason} (bun run test:node)`);
+  const result = await collectApplicationCampaigns(adapters.filter(adapter => !(onBun && needsNode.has(adapter))), onProgress);
+  return {...result, skipped};
 }
 
 export async function collectApplicationCampaigns(campaigns, onProgress) {

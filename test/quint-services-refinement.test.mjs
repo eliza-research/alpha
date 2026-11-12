@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {closeSync, fstatSync, mkdtempSync, openSync, readSync, rmSync} from 'node:fs';
+import {closeSync, fstatSync, mkdtempSync, openSync, readFileSync, readSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {loadModels} from '../scripts/quint-lib.ts';
@@ -12,6 +12,9 @@ test('service components and coordinators check real-source traces and preserve 
   const expected = new Set(loadModels().filter(model => model.family === 'services').map(model => model.module));
   const directory = mkdtempSync(join(tmpdir(), 'alpha-quint-services-'));
   const log = openSync(join(directory, 'run.log'), 'w+');
+  // The summary goes to a file on descriptor 3: Bun's spawnSync does not capture extra 'pipe' descriptors.
+  const summaryPath = join(directory, 'summary.json');
+  const summary = openSync(summaryPath, 'w+');
   try {
     const result = spawnSync(process.execPath, ['-e', `
       import {writeSync} from 'node:fs';
@@ -29,14 +32,14 @@ test('service components and coordinators check real-source traces and preserve 
         traces: result.receipts.reduce((sum, receipt) => sum + receipt.traces, 0),
         obligations: result.obligations.length,
       }));
-    `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 2380000, stdio: ['ignore', log, log, 'pipe']});
+    `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 2380000, stdio: ['ignore', log, log, summary]});
     if (result.error || result.status !== 0) {
       const size = fstatSync(log).size;
       const tail = Buffer.alloc(Math.min(size, 64 * 1024));
       const read = readSync(log, tail, 0, tail.length, size - tail.length);
       assert.fail(`Service refinement exited with ${result.error ?? result.signal ?? result.status}\n${tail.toString('utf8', 0, read)}`);
     }
-    const {models, traces, obligations} = JSON.parse(result.output[3]);
+    const {models, traces, obligations} = JSON.parse(readFileSync(summaryPath, 'utf8'));
     assert.deepEqual(new Set(models), expected);
     assert.deepEqual(models.filter((model, index) => models.indexOf(model) !== index).sort(),
       ['GoogleAccounts', 'IdentitySession', 'InboxCoordinator']);
@@ -44,6 +47,7 @@ test('service components and coordinators check real-source traces and preserve 
     assert.ok(obligations >= 37, 'remaining obligations accompany the bounded evidence');
   } finally {
     closeSync(log);
+    closeSync(summary);
     rmSync(directory, {recursive: true, force: true});
   }
 });

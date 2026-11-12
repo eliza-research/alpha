@@ -20,7 +20,7 @@ export async function captureRendererImplementation(additionalSources = []) {
       resolve(root, 'upstream.lock.json'), resolve(root, '.eliza/client-features/.source.json'));
   const driverHashes = captureInputs(sources);
   const compiled = await build(options);
-  const implementation = await import('data:text/javascript;base64,' + Buffer.from(compiled.outputFiles[0].text).toString('base64') + '#' + crypto.randomUUID());
+  const implementation = await import('data:text/javascript;base64,' + Buffer.from(compiled.outputFiles[0].text + '\n// ' + crypto.randomUUID()).toString('base64'));
   return {implementation, sources, driverHashes};
 }
 

@@ -11,6 +11,8 @@ export const NODE_ONLY_TESTS = [
   'test/quint-conformance.test.mjs',
   // Web Locks: Bun has no navigator.locks.
   'test/quint-browser-files-trash-refinement.test.mjs',
+  // Its Files Trash component is skipped on Bun for the same reason; Node runs the whole composite.
+  'test/quint-application-refinement.test.mjs',
 ];
 const MINIMUM_MAJOR = 24;
 
