@@ -16,7 +16,7 @@ function executable(name) {
   for (const candidate of [process.env.JAVA_HOME && join(process.env.JAVA_HOME, 'bin', name),
     `/usr/lib/jvm/java-21-openjdk/bin/${name}`, name].filter(Boolean)) {
     if (candidate.includes('/') && !existsSync(candidate)) continue;
-    if (spawnSync(candidate, ['-version'], {encoding: 'utf8', timeout: 10000}).status === 0) return candidate;
+    if (spawnSync(candidate, ['-version'], {encoding: 'utf8', timeout: scaledTimeout(10000)}).status === 0) return candidate;
   }
   throw new Error(`A JDK is required for native refinement (${name})`);
 }
