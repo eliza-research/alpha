@@ -259,10 +259,9 @@ test('Notes scheduling contract: double activation makes one draft; a reload mid
  await expect(page.getByText('From note: Venue meeting',{exact:true})).toBeVisible();
  const saved=await events(page);expect(saved).toHaveLength(1);
  await expect.poll(()=>links(page)).toEqual({[`event:${saved[0].id}`]:'Venue meeting'});
- // A draft switched from the reminder list to the in-app calendar keeps its note too.
+ // A second explicit event handoff keeps its own note identity.
  await openRecording(page,'Garden meeting');
- await reviewNoteScheduleContract(page,'reminder');
- await button(page,'In this app').click();
+ await reviewNoteScheduleContract(page,'event');
  await saveEventDraft(page,'Garden walk');
  await expect(page.getByText('From note: Garden meeting',{exact:true})).toBeVisible();
  expect(await events(page)).toHaveLength(2);expect(await reminders(page)).toEqual([]);

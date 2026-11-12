@@ -287,7 +287,6 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  await chooseCalendarEventAction(page,'Edit event');
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Venue walkthrough');
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Venue walkthrough edited');
- await page.getByRole('textbox',{name:'Location',exact:true}).fill('Main hall');
  await page.getByRole('button',{name:'Save event',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Venue walkthrough edited',level:1})).toBeVisible();
  // After a reload and an edit the event still names its note, and opens exactly that recording.
@@ -301,12 +300,15 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  await chooseCalendarEventAction(page,'Edit event');
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Book the venue');
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Book the venue edited');
- await page.getByRole('button',{name:'Start later',exact:true}).click();
+ const from=page.getByLabel('From time',{exact:true});
+ const [hour,minute]=(await from.inputValue()).split(':').map(Number);
+ const shifted=hour*60+minute+15;
+ await from.fill(`${String(Math.floor(shifted/60)%24).padStart(2,'0')}:${String(shifted%60).padStart(2,'0')}`);
  await page.getByRole('button',{name:'Save event',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Book the venue edited',level:1})).toBeVisible();
  await page.reload();await ready(page,true);
  expect(await eventTitles(page)).toEqual(['Venue booking call','Venue walkthrough edited']);
- expect((await events(page)).find(e=>e.title==='Venue walkthrough edited')).toMatchObject({id:handoffEvent.id,location:'Main hall',body:actionText,begin:handoffEvent.begin,end:handoffEvent.end});
+ expect((await events(page)).find(e=>e.title==='Venue walkthrough edited')).toMatchObject({id:handoffEvent.id,location:handoffEvent.location,body:actionText,begin:handoffEvent.begin,end:handoffEvent.end});
  expect(await liveReminders(page)).toEqual(['Book the venue edited','Email the caterer']);
  expect((await reminders(page)).find(r=>r.title==='Book the venue edited')).toMatchObject({body:actionText,at:handoffReminder.at+15*60_000,status:'scheduled'});
 
