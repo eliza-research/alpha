@@ -26,6 +26,7 @@ test('explicit full Cloud profile uses the canonical assistant without inherited
     assert.equal(env.ELIZA_PLUGIN_SET, undefined);
     assert.equal(env.ELIZA_LEAN_CHAT_WORKFLOWS, undefined);
     assert.equal(env.ELIZA_PLATFORM, undefined, 'the host must not impersonate Android');
+    assert.equal(env.ELIZA_DISABLE_SCHEDULING_TICK, '1', 'full profile leaves scheduled delivery to the assistant owner');
     assert.equal(env.ELIZAOS_CLOUD_USE_INFERENCE, 'true');
     assert.equal(env.ELIZAOS_CLOUD_API_KEY, 'synthetic-cloud-only');
     assert.equal(env.CEREBRAS_API_KEY, undefined);
@@ -42,6 +43,7 @@ test('the omitted profile option retains the existing lean Cloud host contract',
     await host.clear();
     const config = JSON.parse(await fs.readFile(join(profile, 'eliza.json'), 'utf8'));
     assert.equal(config.plugins.entries['personal-assistant'].enabled, false);
+    assert.equal(launches[0].env.ELIZA_DISABLE_SCHEDULING_TICK, undefined, 'lean profile retains its standalone scheduling worker');
     assert.equal(launches[0].env.ELIZA_PLUGIN_SET, 'lean-chat');
     assert.equal(launches[0].env.ELIZA_LEAN_CHAT_WORKFLOWS, '1');
   } finally { await host.close(); await fs.rm(profile, {recursive: true, force: true}); }
