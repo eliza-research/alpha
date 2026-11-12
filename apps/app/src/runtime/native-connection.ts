@@ -214,21 +214,36 @@ let storageQueue:Promise<unknown>=Promise.resolve();
 function serial<T>(operation:()=>Promise<T>):Promise<T> {
   const result=storageQueue.then(operation,operation);storageQueue=result.catch(()=>{});return result;
 }
+// Browser-host reads cross an HTTP bridge. Concurrent consumers share only an
+// in-flight read; the result is never cached after settlement. Mutations retire
+// the shared read before joining the same storage queue.
+const pendingCredentialReads=new Map<CloudEnvironment,Promise<CloudCredential|null>>();
 export const cloudCredentialStore:CloudCredentialStore={
   acceptsReferences:browserCloudHost,
-  read:environment=>serial(async()=>{
-    const value=await secureConnectionStore.read<CloudCredential>(`cloud:${environment}`);
-    if(value&&!value.credentialId){value.credentialId=crypto.randomUUID();await secureConnectionStore.write(`cloud:${environment}`,value);}
-    return value;
-  }),
-  write:(environment,value,signal)=>{clearHomeStartupCache();return serial(async()=>{
+  read:environment=>{
+    let pending=browserCloudHost?pendingCredentialReads.get(environment):undefined;
+    if(!pending){
+      pending=serial(async()=>{
+        const value=await secureConnectionStore.read<CloudCredential>(`cloud:${environment}`);
+        if(value&&!value.credentialId){value.credentialId=crypto.randomUUID();await secureConnectionStore.write(`cloud:${environment}`,value);}
+        return value;
+      });
+      if(browserCloudHost){
+        pendingCredentialReads.set(environment,pending);
+        const settled=()=>{if(pendingCredentialReads.get(environment)===pending)pendingCredentialReads.delete(environment);};
+        void pending.then(settled,settled);
+      }
+    }
+    return pending.then(value=>value?{...value}:null);
+  },
+  write:(environment,value,signal)=>{pendingCredentialReads.delete(environment);clearHomeStartupCache();return serial(async()=>{
     signal.throwIfAborted();
     await secureConnectionStore.write(`cloud:${environment}`,{...value,credentialId:crypto.randomUUID()});
     if(signal.aborted){await secureConnectionStore.remove(`cloud:${environment}`);signal.throwIfAborted();}
   });},
   // Native credential CAS remains prohibited; only the private browser host admits this capability.
-  ...(browserCloudHost?{clearIfCurrent:(environment:CloudEnvironment,expected:CloudCredential|null)=>{clearHomeStartupCache();return serial(()=>clearBrowserCloudCredentialIfCurrent(environment,expected));}}:{}),
-  clear:environment=>{clearHomeStartupCache();return serial(()=>secureConnectionStore.remove(`cloud:${environment}`));},
+  ...(browserCloudHost?{clearIfCurrent:(environment:CloudEnvironment,expected:CloudCredential|null)=>{pendingCredentialReads.delete(environment);clearHomeStartupCache();return serial(()=>clearBrowserCloudCredentialIfCurrent(environment,expected));}}:{}),
+  clear:environment=>{pendingCredentialReads.delete(environment);clearHomeStartupCache();return serial(()=>secureConnectionStore.remove(`cloud:${environment}`));},
 };
 /**
  * Forced sign-out of a build that cannot use Eliza Cloud: removes the Cloud key an earlier build
