@@ -47,6 +47,22 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   let mapCopyright='';
   let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
+  let searchTimer:ReturnType<typeof setTimeout>|undefined;
+  let submittedSearch:{kind:'place'|'origin';text:string}|undefined;
+  const cancelSearch=()=>{if(searchTimer!==undefined)clearTimeout(searchTimer);searchTimer=undefined;};
+  const runSearch=(kind:'place'|'origin',text:string)=>{
+    cancelSearch();
+    const snapshot=mapsController?.snapshot();
+    const failed=(kind==='origin'?snapshot?.originSearch:snapshot?.search)?.phase==='error';
+    if(!active()||!text.trim()||!failed&&submittedSearch?.kind===kind&&submittedSearch.text===text)return;
+    submittedSearch={kind,text};
+    if(kind==='origin')screen.planOrigin();else screen.submit();
+  };
+  const queueSearch=(kind:'place'|'origin',text:string)=>{
+    cancelSearch();submittedSearch=undefined;
+    if(!text.trim())return;
+    searchTimer=setTimeout(()=>runSearch(kind,text),350);
+  };
   const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;mapCopyright='';plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
   const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.'));
   const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
@@ -87,7 +103,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     toast: text => api?.toast(text==='Copied'?'Link copied':text),
     discardHandoff: () => { pendingHandoff=undefined; if(api?.get('maps').query!=null)api.set({query:null}); },
     handoffReturn: () => !!mapsEventReturnOffered(api?.get('maps').fromEvent,api?.S.stack,screen.isNavigating()),
-    released: dropPlane,
+    released: ()=>{cancelSearch();submittedSearch=undefined;dropPlane();},
     // With no Maps provider on Android, an event's location can be handed to an installed map
     // app, only when the user taps for it. The exact hand-off text is sent; no route is shown.
     ...(isAndroid ? { mapsApp: {
@@ -183,9 +199,10 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       (status.text.startsWith('Connect a Maps provider') || status.text === cloudFailure.message)
       ? 'Maps is unavailable right now. Try again later.' : status.text;
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
-    const isPlace = view.mode === 'place', isResults = (view.mode === 'results' || view.mode === 'origin') && !view.emptyQuery, isNav = view.mode === 'navigation';
+    const isPlace = view.mode === 'place', isNav = view.mode === 'navigation';
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
     const savedMatches=view.mode!=='origin'&&view.query.trim()?view.saved.filter(item=>item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())):[];
+    const isResults=(view.mode==='results'||view.mode==='origin')&&!view.emptyQuery&&(view.hasResults||view.noResults||savedMatches.length>0);
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
@@ -218,15 +235,15 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       mode:view.mode==='navigation'?'nav':view.mode==='directions'?'dir':view.mode, isBase:view.mode==='base',isResults,isPlace,isDir:view.mode==='directions',isNav,
       showSearch:view.showSearch, showRec:!isNav, grid: '', major: '', fwy: '', water: '', parks: '', rwy: '', routeD: '', doneD: '', hasRoute: false, pins: [], labels: [], meCss: 'display:none;',
       mapDown: () => {}, mapUp: () => {}, q: view.query, hasQ: !!view.query, searchLabel: view.searchLead === 'back' ? 'Back' : 'Search',
-      searchLead: () => screen.searchLead(),
-      onQ: (event: Event) => screen.setQuery((event.target as HTMLInputElement).value),
+      searchLead: () => {cancelSearch();submittedSearch=undefined;screen.searchLead();},
+      onQ: (event: Event) => {const text=(event.target as HTMLInputElement).value;screen.setQuery(text);queueSearch('place',text);},
       focusQ: () => screen.focusQuery(),
-      qKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); screen.submit(); (event.target as HTMLInputElement).blur(); } },
-      clearQ: () => screen.clearQuery(),
-      chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => screen.chooseSaved(item.id) })),
+      qKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); runSearch('place',(event.target as HTMLInputElement).value); (event.target as HTMLInputElement).blur(); } },
+      clearQ: () => {cancelSearch();submittedSearch=undefined;screen.clearQuery();},
+      chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => {cancelSearch();screen.chooseSaved(item.id);submittedSearch=undefined;} })),
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => screen.searchFor(category.label) })),
-      savedRows: savedMatches.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: '', d: PIN, go: () => screen.chooseSaved(item.id) })),
-      results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
+      savedRows: savedMatches.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: '', d: PIN, go: () => {cancelSearch();screen.chooseSaved(item.id);submittedSearch=undefined;} })),
+      results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => {cancelSearch();screen.choose(row.key);submittedSearch=undefined;} })),
       hasResults: view.hasResults||savedMatches.length>0, noResults: view.noResults&&!savedMatches.length, emptyQ: view.emptyQuery,
       recenter: () => screen.recenter(), recBottom: isPlace ? 414 : view.mode === 'results' ? 534 : 124, recCss: '',
       sheetH: sheetHeight, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
@@ -257,9 +274,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     if (directions) {
       // Coordinates plan directly; any other text searches places and saved places.
       data.originText=directions.originText;
-      data.onOrigin=(event:Event)=>screen.setOriginText((event.target as HTMLInputElement).value);
-      data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();screen.planOrigin();}};
-      data.originLocation=()=>screen.locate();
+      data.onOrigin=(event:Event)=>{const text=(event.target as HTMLInputElement).value;screen.setOriginText(text);queueSearch('origin',text);};
+      data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();runSearch('origin',(event.target as HTMLInputElement).value);}};
+      data.originLocation=()=>{cancelSearch();submittedSearch=undefined;screen.locate();};
       const nav = view.navigation;
       data.dr={name:directions.name,close:()=>screen.back(),min:directions.duration,meta:directions.meta,via:directions.via,shareLabel:mapShareLabel()==='Share'?'Share route':'Copy route link',shareEta:()=>screen.shareRoute(),
        modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode:TravelMode=reference.mode==='bike'?'bicycle':reference.mode;const on=!!directions.modes.find(choice=>choice.mode===mode)?.selected;return {label:reference.label,t:reference.label,d:reference.d,on,css:on?'background:var(--acc);color:#fff':'background:var(--s2);color:var(--fg)',go:()=>screen.setMode(mode)};}),

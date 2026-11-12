@@ -37,3 +37,16 @@ test('a global manual pin composes with the actual configured route provider wit
  const beforeLocation=await page.getByRole('button',{name:'Recenter',exact:true}).boundingBox();
  const query=page.getByRole('textbox',{name:'Search places',exact:true});await query.fill('37.77, -122.42');await query.press('Enter');await page.getByRole('button',{name:'Directions',exact:true}).click();const origin=page.getByRole('textbox',{name:'Starting point',exact:true});await origin.fill('37.78, -122.41');await origin.press('Enter');await expect.poll(()=>page.evaluate(()=>(window as any).globalRoutes)).toEqual([{from:{latitude:37.78,longitude:-122.41},to:{latitude:37.77,longitude:-122.42},mode:'drive'}]);await expect(page.getByText(/no live traffic/).first()).toBeVisible();await expect.poll(async()=>Number(await page.locator('[data-alpha-map-plane]').getAttribute('data-map-zoom'))).toBeGreaterThan(14);expect(fitWarnings).toEqual([]);expect(await page.evaluate(()=>(window as any).locationRequests)).toBe(0);
 });
+
+
+test('pinching over the Maps chat controls cannot zoom the whole page',async({page})=>{
+ await setup(page);const map=page.locator('[data-alpha-map-plane]');await expect(map).toHaveAttribute('data-map-ready','true');
+ const result=await page.evaluate(()=>{
+  const shell=document.querySelector('.alpha-phone')!,pill=shell.querySelector('[data-alpha-layer="pill"]')!;
+  const wheel=new WheelEvent('wheel',{bubbles:true,cancelable:true,ctrlKey:true,deltaY:-120});pill.dispatchEvent(wheel);
+  const gesture=new Event('gesturechange',{bubbles:true,cancelable:true});pill.dispatchEvent(gesture);
+  return {wheelCancelled:wheel.defaultPrevented,gestureCancelled:gesture.defaultPrevented,touchAction:(shell as HTMLElement).style.touchAction};
+ });
+ expect(result).toEqual({wheelCancelled:true,gestureCancelled:true,touchAction:'pan-x pan-y'});
+ await returnToApps(page);expect(await page.locator('.alpha-phone').evaluate(el=>(el as HTMLElement).style.touchAction)).not.toBe('pan-x pan-y');
+});

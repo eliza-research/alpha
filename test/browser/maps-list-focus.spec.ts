@@ -25,16 +25,17 @@ async function setup(page:Page){
   const original=MapsController.prototype.search;
   MapsController.prototype.search=function(...args:any[]){(window as any).mapFocus.controller=this;return original.apply(this,args as any);};
   const place=(id:string,name:string)=>({providerId:'focus-fixture',id,name,coordinate:{latitude:43.7+Number(id)*.001,longitude:7.425},attribution:'Fixture',fetchedAt:Date.now()});
-  const f=(window as any).mapFocus={items:[place('1','One'),place('2','Two')],place};
-  configureMapsProvider({status:'configured',providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',revision:'fixture1',capabilities:{map:false,search:true,placeDetails:true,modes:['walk'],traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}}},{providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',search:async()=>f.items,detail:async(id:string)=>f.items.find((item:any)=>item.id===id),route:async()=>{throw Error('No route requested');}} as any);
+  const f=(window as any).mapFocus={items:[place('1','One'),place('2','Two')],place,searches:[]};
+  configureMapsProvider({status:'configured',providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',revision:'fixture1',capabilities:{map:false,search:true,placeDetails:true,modes:['walk'],traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}}},{providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',search:async(query:string)=>{f.searches.push(query);return f.items;},detail:async(id:string)=>f.items.find((item:any)=>item.id===id),route:async()=>{throw Error('No route requested');}} as any);
  });
  await page.getByRole('button',{name:'Maps',exact:true}).click();
 }
 
 test('a Maps search readback keeps the focused provider place when a preceding result arrives',async({page},info)=>{
  const hashes=captureInputs(sources),checkpoints:any[]=[];await setup(page);
- const query=page.getByRole('textbox',{name:'Search places',exact:true});await query.fill('place');await query.press('Enter');
+ const query=page.getByRole('textbox',{name:'Search places',exact:true});await query.fill('place');
  const sheet=page.locator('[data-alpha-maps-sheet="results"]');const target=sheet.getByRole('button',{name:/^Two/});await target.focus();
+ await expect.poll(()=>page.evaluate(()=>(window as any).mapFocus.searches.length)).toBe(1);
  const intended=await target.getAttribute('data-alpha-map-row');expect(intended).not.toBeNull();await target.evaluate(element=>(window as any).originalMapRow=element);
  checkpoints.push({label:'focus provider result',...await observe(page,intended)});
  await page.evaluate(async()=>{const f=(window as any).mapFocus;f.items=[f.place('0','Inserted'),...f.items];await f.controller.search('place');});
@@ -50,6 +51,7 @@ test('removing another saved place keeps focus and selection on the retained sav
  const hashes=captureInputs(sources),checkpoints:any[]=[];await setup(page);
  const query=page.getByRole('textbox',{name:'Search places',exact:true});await query.fill('saved');await query.fill('');
  await page.evaluate(()=>{const f=(window as any).mapFocus;f.first=f.controller.save({label:'Saved One',coordinate:{latitude:43.7,longitude:7.4}});f.controller.save({label:'Saved Two',coordinate:{latitude:43.8,longitude:7.4}});});
+ await query.fill('Saved');
  const sheet=page.locator('[data-alpha-maps-sheet="results"]');const target=sheet.getByRole('button',{name:/^Saved Two/});await target.focus();
  const intended=await target.getAttribute('data-alpha-map-row');expect(intended).not.toBeNull();await target.evaluate(element=>(window as any).originalMapRow=element);
  checkpoints.push({label:'focus saved place',...await observe(page,intended)});
@@ -60,4 +62,16 @@ test('removing another saved place keeps focus and selection on the retained sav
  await page.keyboard.press('Enter');await expect(page.locator('[data-alpha-maps-sheet="place"] h1')).toHaveText('Saved Two');
  checkpoints.push({label:'open retained saved place',...await observe(page,intended)});
  await saveTrace(info,hashes,'maps-saved-focus',checkpoints);
+});
+
+
+test('automatic Maps search cancels empty and abandoned input',async({page})=>{
+ await setup(page);const query=page.getByRole('textbox',{name:'Search places',exact:true});
+ await query.fill('abandoned');await query.fill('');
+ await page.waitForTimeout(500);
+ expect(await page.evaluate(()=>(window as any).mapFocus.searches)).toEqual([]);
+ await expect(page.locator('[data-alpha-maps-sheet="results"]')).toHaveCount(0);
+ await query.fill('leaving');await page.getByRole('button',{name:'Back to apps',exact:true}).click();
+ await page.waitForTimeout(500);
+ expect(await page.evaluate(()=>(window as any).mapFocus.searches)).toEqual([]);
 });
