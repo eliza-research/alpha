@@ -486,8 +486,11 @@ retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) and the
 reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255)
 and the Maps opening view from [eliza#39408](https://github.com/elizaOS/eliza/pull/39408).
 The current pin includes [native Android sign-in recovery and renewal](https://github.com/elizaOS/eliza/pull/39445)
-and [reproducible native browser resource generation](https://github.com/elizaOS/eliza/pull/39450)
-at `f2d1a2df2c7c0a2b71560f3409ac5942271bc524` on upstream develop. The native engine
+and [reproducible native browser resource generation](https://github.com/elizaOS/eliza/pull/39450).
+It also includes the [selected-tab permission](https://github.com/elizaOS/eliza/pull/39423),
+[prepared speech](https://github.com/elizaOS/eliza/pull/39424), [download publication](https://github.com/elizaOS/eliza/pull/39425),
+[held update offer](https://github.com/elizaOS/eliza/pull/39440) and [updater scratch storage](https://github.com/elizaOS/eliza/pull/39446) changes
+at `9e87d1ce947018c9ee201527b74798387c7bf694` on upstream develop. The native engine
 gitlink and recorded embedding producer inputs match the previous pin. Rebuild
 and qualify the exact product inputs before OS enrollment.
 
