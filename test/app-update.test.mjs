@@ -5,7 +5,6 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {nativeSource,fixture,runJvm,root,javaBinary,jvmTimeout,upstreamConnection} from './fixtures/jvm-tools.mjs';
-import {exactUpdateMembers} from '../specs/quint/refinement/native/update-barrier.mjs';
 
 // One-tap app update, native side (AlphaDevicePlugin). The download admission and the update flow run on the
 // host JVM from the plugin's own source; the rest are source checks (class S) of Android wiring that only a
@@ -14,6 +13,27 @@ import {exactUpdateMembers} from '../specs/quint/refinement/native/update-barrie
 const plugin=readFileSync(nativeSource('AlphaDevicePlugin.java'),'utf8');
 const install=plugin.slice(plugin.indexOf('@PluginMethod public void installUpdate('),plugin.indexOf('@Override protected void handleOnDestroy()'));
 const javaFiles=dir=>readdirSync(dir,{recursive:true}).filter(file=>file.endsWith('.java')).map(file=>join(dir,file));
+function exactUpdateMembers(source) {
+  const start = source.indexOf(' static final long UPDATE_MAX_BYTES=');
+  const end = source.indexOf(' // End of updater methods for host replay.');
+  const handOff = /^ private static Intent handOff\(Intent intent\)\{[^\n]*$/m.exec(source)?.[0];
+  const foreground = / static boolean shareForeground\(android\.app\.Activity activity\)\{[\s\S]*?\n \}/.exec(source)?.[0];
+  assert.ok(start > 0 && end > start && handOff && foreground, 'Exact updater method slice exists');
+  return `package ai.alphacompute.alphaphone;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageInstaller;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.provider.Settings;
+import com.getcapacitor.*;
+final class AlphaDevicePlugin extends Plugin {
+ private final java.util.concurrent.ExecutorService diagnosticsWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
+${handOff}
+${foreground}
+${source.slice(start, end)}}
+`;
+}
 
 test('the download is admitted only at its declared size and SHA-256',()=>{
  const start=plugin.indexOf(' static final long UPDATE_MAX_BYTES='),end=plugin.indexOf(' static final String UPDATE_STATUS=');

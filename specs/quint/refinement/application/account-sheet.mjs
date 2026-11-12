@@ -79,7 +79,7 @@ export async function checkAccountSheet(extraSources=[]){
   'apps/app/index.html','vite.config.ts','upstream.lock.json','bun.lock','scripts/prepare-client-features.ts',
   'test/browser/flag-off-android.ts','test/browser/helpers/native-cloud-plan-fixture.ts',
   'test/browser/helpers/resident-agent-plugin.ts','test/browser/helpers/native-navigation-protocol.ts',
-  'specs/quint/refinement/application/index.mjs','test/quint-application-refinement.test.mjs',driver,...extraSources];
+  'test/quint-application-refinement.test.mjs',driver,...extraSources];
  const before=captureInputs(sources);
  assert.equal(before[resolve(root,'app.config.json')],sha256(identityBytes),'captured identity is the one used to locate generated Java');
  const temporary=mkdtempSync(join(tmpdir(),'alpha-account-refinement-'));

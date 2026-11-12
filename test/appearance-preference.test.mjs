@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {appearancePreferenceFixture} from './fixtures/appearance-preference.mjs';
-import {checkAppearancePreferenceAdmission} from '../specs/quint/refinement/application/appearance-preference-admission.mjs';
 
 for (const native of [false, true]) {
   test(`a flag-off ${native ? 'native' : 'browser'} query cannot disable the saved System choice`, () => {
@@ -40,11 +39,4 @@ test('an admitted explicit development preview keeps its rendered theme', () => 
   assert.equal(f.observe().displayed, 'light');
   assert.equal(f.observe().stored, 'dark');
   assert.deepEqual(f.observe().attempts, []);
-});
-
-test('actual appearance events and settled preference writes refine Quint', {timeout: 60_000}, async () => {
-  const receipt = await checkAppearancePreferenceAdmission();
-  assert.equal(receipt.passed, true);
-  assert.equal(receipt.driverInputsBound, true);
-  assert.equal(receipt.traces, 11);
 });

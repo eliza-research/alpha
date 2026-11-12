@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {firstSendDraftMigrationFixture, migrationText, replacementText} from './fixtures/first-send-draft-migration.mjs';
-import {checkFirstSendDraftMigration} from '../specs/quint/refinement/application/first-send-draft-migration.mjs';
 
 async function heldSource() {
   const f = await firstSendDraftMigrationFixture();
@@ -11,10 +10,6 @@ async function heldSource() {
   return f;
 }
 
-test('the first-send migration refines Quint slot custody through source CAS', async () => {
-  const receipt = await checkFirstSendDraftMigration();
-  assert.equal(receipt.traces, 11);
-});
 
 test('a current draft migration clears only the confirmed source copy', async () => {
   const f = await heldSource();

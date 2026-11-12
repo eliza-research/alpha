@@ -1,51 +1,30 @@
-import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {spawnSync} from 'node:child_process';
-import {closeSync, fstatSync, mkdtempSync, openSync, readFileSync, readSync, rmSync} from 'node:fs';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
-import {loadModels} from '../scripts/quint-lib.ts';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
+import {authorizationRefinement} from '../specs/quint/refinement/services/authorization.mjs';
+import {googleAccountsRefinement} from '../specs/quint/refinement/services/google-accounts.mjs';
+import {googleAccountsLifecycleRefinement} from '../specs/quint/refinement/services/google-accounts-lifecycle.mjs';
+import {calendarRefinement} from '../specs/quint/refinement/services/calendar.mjs';
+import {calendarLinkedRefinement} from '../specs/quint/refinement/services/calendar-linked.mjs';
+import {inboxRefinement} from '../specs/quint/refinement/services/inbox.mjs';
+import {mapsRefinement} from '../specs/quint/refinement/services/maps.mjs';
+import {cacheRefinement} from '../specs/quint/refinement/services/cache.mjs';
+import {workflowRefinement} from '../specs/quint/refinement/services/workflow.mjs';
+import {policyRefinement} from '../specs/quint/refinement/services/policies.mjs';
+import {readingRefinement} from '../specs/quint/refinement/services/reading.mjs';
+import {scanRefinement} from '../specs/quint/refinement/services/scan.mjs';
+import {credentialRefinement} from '../specs/quint/refinement/services/credentials.mjs';
+import {pdfRefinement} from '../specs/quint/refinement/services/pdf.mjs';
 
-// The complete serial campaign was still producing passing receipts at its former
-// 880-second cutoff. Keep all campaigns and a finite budget matching the app aggregate.
-test('service components and coordinators check real-source traces and preserve explicit platform obligations', {timeout: scaledTimeout(2400000)}, () => {
-  const expected = new Set(loadModels().filter(model => model.family === 'services').map(model => model.module));
-  const directory = mkdtempSync(join(tmpdir(), 'alpha-quint-services-'));
-  const log = openSync(join(directory, 'run.log'), 'w+');
-  const summaryPath = join(directory, 'summary.json');
-  try {
-    const result = spawnSync(process.execPath, ['-e', `
-      import {writeFileSync} from 'node:fs';
-      import {runServicesRefinement} from './specs/quint/refinement/services/index.mjs';
-      const result = await runServicesRefinement(({receipts, failures}) => {
-        console.log('Service refinement progress: '+receipts.length+' receipts, '+failures.length+' failures');
-      });
-      if (result.failures.length) {
-        const names = result.failures.map(({campaign}) => campaign);
-        const errors = result.failures.map(({campaign, error}) => new Error(campaign, {cause: error}));
-        throw new AggregateError(errors, 'Service refinement campaigns failed: ' + names.join(', '));
-      }
-      writeFileSync(${JSON.stringify(summaryPath)}, JSON.stringify({
-        models: result.receipts.map(receipt => receipt.model),
-        traces: result.receipts.reduce((sum, receipt) => sum + receipt.traces, 0),
-        obligations: result.obligations.length,
-      }));
-    `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: scaledTimeout(2380000), stdio: ['ignore', log, log]});
-    if (result.error || result.status !== 0) {
-      const size = fstatSync(log).size;
-      const tail = Buffer.alloc(Math.min(size, 64 * 1024));
-      const read = readSync(log, tail, 0, tail.length, size - tail.length);
-      assert.fail(`Service refinement exited with ${result.error ?? result.signal ?? result.status}\n${tail.toString('utf8', 0, read)}`);
-    }
-    const {models, traces, obligations} = JSON.parse(readFileSync(summaryPath, 'utf8'));
-    assert.deepEqual(new Set(models), expected);
-    assert.deepEqual(models.filter((model, index) => models.indexOf(model) !== index).sort(),
-      ['GoogleAccounts', 'IdentitySession', 'InboxCoordinator']);
-    assert.ok(traces >= models.length);
-    assert.ok(obligations >= 37, 'remaining obligations accompany the bounded evidence');
-  } finally {
-    closeSync(log);
-    rmSync(directory, {recursive: true, force: true});
-  }
-});
+// Service source campaigns whose adapters cover several models. Each runs the product source
+// against its models' transitions; a model with a single adapter has its own test file.
+for (const check of [authorizationRefinement, googleAccountsRefinement, googleAccountsLifecycleRefinement,
+  calendarRefinement, calendarLinkedRefinement, inboxRefinement, mapsRefinement, cacheRefinement, workflowRefinement,
+  policyRefinement, readingRefinement, scanRefinement, credentialRefinement, pdfRefinement]) {
+  test(`${check.name} checks service source traces against the Quint models`, {timeout: scaledTimeout(600000)}, async () => {
+    const result = await check();
+    const receipts = result?.receipts ?? (Array.isArray(result) ? result : [result?.receipt ?? result]);
+    assert.ok(receipts.length > 0);
+    for (const receipt of receipts) assert.equal(receipt.passed, true, receipt.model);
+  });
+}

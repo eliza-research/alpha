@@ -3915,7 +3915,6 @@
       "apps/app/src/prototype/model.js"
     ],
     "abstractions": [
-      "Finite page/control identities. Concrete DOM replacement and focus records are checked by settings-page-focus.mjs.",
       "No-popup source component; React layout, platform delivery and liveness remain separate obligations."
     ]
   },
@@ -3937,8 +3936,7 @@
       "apps/app/src/prototype/template.html"
     ],
     "abstractions": [
-      "Civil minute draft values and real month facts. Provider mutation, DST admission and canonical Calendar authority are separate.",
-      "Representative direct edits and step controls execute the retained form handlers in calendar-form-controls.mjs. Installed behavior is separate."
+      "Civil minute draft values and real month facts. Provider mutation, DST admission and canonical Calendar authority are separate."
     ]
   },
   {
@@ -5489,8 +5487,7 @@
       "Three tabs stand for the limit of 8 in the renderer and in the native browser. Tab identities are integers and never reused.",
       "One navigation is in flight at a time. A second navigation started before the first settles, the approved-destination abort signal and adapter disposal are not modeled.",
       "Native creation and page load results are nondeterministic inputs. Closing a native tab is immediate. The creation map itself is the shared tab session's.",
-      "When the selected tab closes, any remaining tab may become selected; the source picks the first remaining tab or the opener.",
-      "test/quint-browser-tab-lifecycle.test.mjs replays this model's scenario, witness and random traces against the adapter's navigate, ensure, restoreSession, forgetTabs and native tab listeners over the shared tab session with the limit set to 3; New tab, a tab card's close and the editing flag are performed as the view's render closure does and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance."
+      "When the selected tab closes, any remaining tab may become selected; the source picks the first remaining tab or the opener."
     ],
     "sharedSources": [
       "plugins/plugin-native-browser-surface/src/tab-host.ts",
@@ -5585,7 +5582,6 @@
       "The native side is taken to answer a write it received before a clear before it answers the clear.",
       "PassedOverWriteCountsAsSavedWitness records current behavior: a queued write skipped while clearing is counted as stored, so after a failed clear the record keeps the older snapshot until another change.",
       "Snapshot identities are ordered by inclusion: a successful read only adds saved entries to what is open, so its result is never a smaller identity.",
-      "test/quint-browser-session-persistence.test.mjs replays this model's scenario, witness and random traces against the adapter's restoreSession, clearBrowsingData and createSessionSaver over a controlled native bridge and clock and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance.",
       "Clear retires queued generations, drains already dispatched writes, and waits for renderer commit; failed Clear makes the unchanged snapshot retryable. Source replay drives the retained adapter saveSession directly. The separate session-saver helper is independently tested and is outside this production persistence model."
     ],
     "sharedSources": [
@@ -5689,8 +5685,7 @@
       "The saved list is a version number; which addresses it holds is not modeled. At most three operations wait.",
       "A damaged list exists only on the web build, where the store refuses both reading and changing it; that refusal is an assumption about the document store, modeled in DurableStore.",
       "UnreadWriteAttemptWitness records current behavior: once the recovery offer is shown, a bookmark change is attempted without a successful read.",
-      "The quiet first read at startup outside the Browser is not modeled.",
-      "test/quint-bookmarks-hydration.test.mjs replays this model's scenario, witness and random traces against the adapter's refreshBookmarks, saveBookmark and loadBookmarks over controlled plugin calls and a controlled bookmark document and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance."
+      "The quiet first read at startup outside the Browser is not modeled."
     ]
   },
   {
@@ -5773,8 +5768,7 @@
     "abstractions": [
       "Two tabs, a query that is empty or not, one result count and at most three undelivered native events. The 150 ms debounce is one nondeterministic timer.",
       "Native find events may be delayed arbitrarily; real delivery is far faster than the debounce. Native clearing on navigation and un-presenting is the shared tab host's.",
-      "HiddenFindBarWitness and FindBarOnClosedTabWitness record current behavior: a find bar with no native search is not cleared by a tab switch or by closing its tab, and the next Back press closes it. EarlierTextSearchedWitness records that the debounce carries no query version.",
-      "test/quint-find-in-page.test.mjs replays this model's scenario, witness and random traces against the adapter's openFind, closeFind, findQuery, its debounce and the findResult listener; the native tab host is a stand-in that keeps the contract this model states for it and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance."
+      "HiddenFindBarWitness and FindBarOnClosedTabWitness record current behavior: a find bar with no native search is not cleared by a tab switch or by closing its tab, and the next Back press closes it. EarlierTextSearchedWitness records that the debounce carries no query version."
     ],
     "sharedSources": [
       "plugins/plugin-native-browser-surface/src/tab-host.ts",
@@ -5941,8 +5935,7 @@
     },
     "abstractions": [
       "Text is represented by the properties the decision tests. The shared parser's own classification, URL parsing and the search address are external inputs covered by source tests.",
-      "Only combinations of properties one text can have are submitted.",
-      "test/quint-address-input.test.mjs replays this model's scenario, witness and random traces against the adapter's navigate with the shared address parser, for a corpus of texts covering each named kind (typed and approved) and for the model submissions a corpus text can stand for and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance."
+      "Only combinations of properties one text can have are submitted."
     ],
     "sharedSources": [
       "plugins/plugin-native-browser-surface/src/address-input.ts"
@@ -6188,8 +6181,7 @@
       "Two page geometries stand for all measured bounds; host rectangles, the underlay backdrop and animation-frame scheduling are not modeled.",
       "Every covering layer (menu, switcher, library, share, dialogs, shade, modal host) is one flag. The native side answers calls in order.",
       "A hidden app keeps its page request: the native host hides the page itself.",
-      "A render withdraws the page only off the Browser or under a covering layer, whether or not the app is shown; a tab that is not ready is withdrawn by the poll.",
-      "test/quint-browser-surface-presentation.test.mjs replays this model's scenario, witness and random traces against the adapter's update, hide and presentBrowser over a controlled native present call and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance."
+      "A render withdraws the page only off the Browser or under a covering layer, whether or not the app is shown; a tab that is not ready is withdrawn by the poll."
     ],
     "sharedSources": [
       "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BelowHostLayer.kt"
@@ -7501,8 +7493,7 @@
     },
     "abstractions": [
       "Six sequence values and one listener. Pause and Turn off are one action class; toasts, availability and consent are not modeled.",
-      "Owner instance and capability abort fences are separate.",
-      "Replayed against listenerReadGate with the adapter's two uses of it repeated by the driver (test/quint-settings-listener-reads.test.mjs)."
+      "Owner instance and capability abort fences are separate."
     ]
   },
   {

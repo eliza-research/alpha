@@ -156,7 +156,7 @@ const cases = [
 
 export async function checkSavedServiceRead(extraSources = []) {
   const sources = [driver, implementation, cacheSource, 'specs/quint/refinement/application/support.mjs',
-    'specs/quint/refinement/application/index.mjs', 'test/quint-application-refinement.test.mjs', ...extraSources];
+    'test/quint-application-refinement.test.mjs', ...extraSources];
   const driverHashes = captureInputs(sources);
   const temporary = mkdtempSync(join(tmpdir(), 'alpha-saved-service-source-'));
   const input = join(temporary, 'saved-read.cjs');

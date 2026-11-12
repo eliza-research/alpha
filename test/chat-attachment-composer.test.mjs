@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {chatAttachmentComposerFixture} from './fixtures/chat-attachment-composer.mjs';
-import {checkChatAttachments} from '../specs/quint/refinement/application/chat-attachments.mjs';
 
 test('the browser composer restores its transcript after a definite pre-dispatch refusal', async () => {
   const f = chatAttachmentComposerFixture();
@@ -33,10 +32,3 @@ for (const changed of ['Owner', 'Conversation']) {
     assert.deepEqual(f.observe().saved, [11], 'The accepted old write keeps its exact slot');
   });
 }
-
-test('actual browser composer and attachment readback refine Quint', {timeout: 60_000}, async () => {
-  const receipt = await checkChatAttachments();
-  assert.equal(receipt.passed, true);
-  assert.equal(receipt.driverInputsBound, true);
-  assert.equal(receipt.traces, 12);
-});

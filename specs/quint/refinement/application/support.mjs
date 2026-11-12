@@ -14,11 +14,11 @@ export function captureSources(paths) {
   }
 }
 captureSources(['specs/quint/refinement/application/support.mjs', 'specs/quint/refinement/check-traces.mjs',
-  'specs/quint/refinement/application/index.mjs', 'test/quint-application-refinement.test.mjs',
+  'test/quint-application-refinement.test.mjs',
   'test/support/strip-types.mjs', 'upstream.lock.json', 'scripts/prepare-client-features.ts',
   '.eliza/client-features/.source.json']);
 export function boundInputs(options) {
-  const sources = [...new Set([...options.sources, ...captured.keys(), 'specs/quint/refinement/application/index.mjs',
+  const sources = [...new Set([...options.sources, ...captured.keys(),
     'test/quint-application-refinement.test.mjs'])];
   for (const source of sources) {
     if (!captured.has(resolve(root, source))) throw Error(`Source was not captured before execution: ${source}`);

@@ -72,7 +72,7 @@ public class Probe {
 export async function checkOSProvisioning(extraSources=[]){
  const sources=[driver,'app.config.json','specs/quint/refinement/application/os-host-support.mjs','test/fixtures/jvm-tools.mjs',
   'android/gradle/verification-metadata.xml',jsonJar,...['AlphaWelcome.java','AlphaAppearance.java','AlphaFreshPresets.java','AlphaFreshSetupPolicy.java'].map(name=>folder+name),...extraSources];
- sources.push('test/fixtures/jvm-tools.mjs','scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts','specs/quint/refinement/application/index.mjs','test/quint-application-refinement.test.mjs');
+ sources.push('test/fixtures/jvm-tools.mjs','scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts','test/quint-application-refinement.test.mjs');
  const before=captureInputs(sources),temporary=mkdtempSync(join(tmpdir(),'alpha-os-provision-'));
  try{
   const identity=JSON.parse(readFileSync(resolve(root,'app.config.json'),'utf8')).appId;

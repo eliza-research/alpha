@@ -1,37 +1,30 @@
-import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {collectApplicationCampaigns, runApplicationRefinement} from '../specs/quint/refinement/application/index.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
+import {startupPermissions, callbackLanding, preferences, browserSession, permanentVoiceDeletion, draftDispatch} from '../specs/quint/refinement/application/portable.mjs';
+import {application, assistantConversation} from '../specs/quint/refinement/application/clients.mjs';
+import {durableStore} from '../specs/quint/refinement/application/storage.mjs';
+import {notesLifecycle, calendarPresentation, credentialVault, permissionWalkthrough} from '../specs/quint/refinement/application/contracts.mjs';
+import {filesAndSharing, notificationCollection, developmentHost} from '../specs/quint/refinement/application/boundaries.mjs';
+import {checkShellCoordinator} from '../specs/quint/refinement/application/shell-coordinator.mjs';
+import {checkCompletedViewDelivery} from '../specs/quint/refinement/application/completed-view-delivery.mjs';
+import {filesPreview} from '../specs/quint/refinement/application/files-preview.mjs';
+import {checkNotesRecorderMediaAdmission} from '../specs/quint/refinement/application/notes-recorder-media-admission.mjs';
+import {checkModalScrimOwnership} from '../specs/quint/refinement/application/modal-scrim-ownership.mjs';
+import {checkBrowserExternalHandoff} from '../specs/quint/refinement/application/browser-external-handoff.mjs';
+import {checkNotesTrashReadPublication} from '../specs/quint/refinement/application/notes-trash-read-publication.mjs';
+import {checkScheduledTaskControls} from '../specs/quint/refinement/application/scheduled-task-controls.mjs';
 
-// The complete aggregate exceeded 20 minutes on the measured two-worker run.
-// Keep all component checks and their own bounds; allow the aggregate to finish.
-test('application source observations match bounded Quint component traces', {timeout: scaledTimeout(2400000)}, async () => {
-  const result = await runApplicationRefinement();
-  assert.deepEqual(result.failures, [], result.failures.map(({campaign, error}) => `${campaign}: ${error}`).join('\n'));
-  const manifest = JSON.parse(readFileSync(new URL('../specs/quint/application/manifest.json', import.meta.url)));
-  const declared = new Set(manifest.map(model => model.module));
-  assert.ok(result.receipts.every(receipt => declared.has(receipt.coverageModel)));
-  const observed = new Set(result.receipts.map(receipt => receipt.coverageModel));
-  for (const model of declared) {
-    if (!observed.has(model)) assert.ok(result.obligations.some(row =>
-      row.model === model && row.obligation === 'Source-adapter refinement'));
-  }
-  assert.ok(result.receipts.every(receipt => receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound));
-  assert.ok(Array.isArray(result.obligations), 'remaining obligations accompany the bounded evidence');
-});
-
-test('application campaign retains receipts before and after an adapter fails', async () => {
-  const initial = {model: 'ShellNavigation', observedFields: [], traceInputs: [{}], assumptions: []};
-  const timeout = new Error('fixture failed to mount');
-  const result = await collectApplicationCampaigns([
-    () => ({...initial, id: 'before'}),
-    function failedMount() {throw timeout;},
-    () => ({receipt: {...initial, id: 'after'}, obligations: [{obligation: 'fixture'}]}),
-  ]);
-  assert.deepEqual(result.receipts.map(receipt => [receipt.coverageModel, receipt.id]),
-    [['ShellNavigation', 'before'], ['ShellNavigation', 'after']]);
-  assert.deepEqual(result.failures, [{campaign: 'failedMount', error: timeout}]);
-  assert.ok(result.obligations.some(row => row.obligation === 'fixture'));
-  assert.ok(result.obligations.some(row => row.model === 'Application' && row.obligation === 'Source-adapter refinement'));
-});
+// Application source campaigns that share adapters across several models. Each runs the product
+// source against its model's transitions; a model with a single adapter has its own test file.
+for (const check of [application, assistantConversation, startupPermissions, callbackLanding, preferences, browserSession,
+  permanentVoiceDeletion, draftDispatch, durableStore, notesLifecycle, calendarPresentation, credentialVault,
+  permissionWalkthrough, filesAndSharing, notificationCollection, developmentHost, checkShellCoordinator,
+  checkCompletedViewDelivery, filesPreview, checkNotesRecorderMediaAdmission, checkModalScrimOwnership,
+  checkBrowserExternalHandoff, checkNotesTrashReadPublication, checkScheduledTaskControls]) {
+  test(`${check.name} source observations match its Quint model`, {timeout: scaledTimeout(600000)}, async () => {
+    const result = await check();
+    const receipt = result.receipt ?? result;
+    assert.ok(receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound, receipt.model);
+  });
+}

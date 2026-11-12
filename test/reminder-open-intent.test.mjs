@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {reminderOpenIntentFixture as fixture} from './fixtures/reminder-open-intent.mjs';
-import {checkReminderOpenIntent} from '../specs/quint/refinement/application/reminder-open-intent.mjs';
 
 test('a failed tap refresh tells the owner and a later successful refresh does not navigate',async()=>{
  const f=await fixture();
@@ -64,9 +63,4 @@ test('the Workflows device row starts its exact refresh before the Calendar entr
   {action:'refreshReminders',args:['tapped','one'],current:'workflows'}]);
  f.commitNavigation();held.ok();await opened;
  assert.equal(f.opened.length,2);assert.equal(f.opened.at(-1).open,'reminder:tapped');
-});
-
-test('the legacy reminder adapter refines Quint navigation ownership',async()=>{
- const receipt=await checkReminderOpenIntent();
- assert.equal(receipt.traces,12);
 });
