@@ -163,6 +163,34 @@ test('a ready device Calendar range is published while creation and reminder rea
   }finally{releaseCreation({status:'ready',creations:[]});releaseReminder();h.close();}
 });
 
+test('a retired range cannot publish creation recovery after Calendar access is lost',async()=>{
+  const h=await deviceCalendar();
+  let releaseCreation;
+  const creation=new Promise(resolve=>{releaseCreation=resolve;});
+  const receipts={status:'ready',creations:[{creationId:'unconfirmed',status:'unknown'}]};
+  const list=h.provider.list;
+  try{
+    h.provider.pendingCreations=()=>creation;
+    const first=h.shell.refreshAgentCalendar();
+    await settle();
+    assert.equal(h.displaySources().ready,true);
+
+    h.provider.list=async()=>({status:'permission-required'});
+    h.state.month=1;
+    h.render();
+    await settle();
+    assert.equal(h.displaySources().status,'Connect device calendars');
+
+    releaseCreation(receipts);
+    await first;
+    assert.equal(h.render().creationRecovery,false);
+
+    h.provider.list=list;
+    await h.shell.refreshAgentCalendar();
+    assert.equal(h.render().creationRecovery,true);
+  }finally{releaseCreation(receipts);h.close();}
+});
+
 test('device calendar rows and reminders are read again just after local midnight',async()=>{
   const h=await deviceCalendar();
   try{

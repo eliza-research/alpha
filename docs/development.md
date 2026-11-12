@@ -245,8 +245,8 @@ three pins against GitHub metadata before setting up the Android toolchain.
 The check names each unavailable input and reports the expiry of admitted pins
 so the maintainer can renew them before a build fails. Acquisition checks the
 metadata again and verifies the exact archive bytes through the workflow's
-read-only token. The build stages with the existing voice and embedding tools,
-and retain the input IDs, hashes and sizes in `native-input-admission.json`.
+read-only token. The build stages with the existing voice and embedding tools
+and retains the input IDs, hashes and sizes in `native-input-admission.json`.
 The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
 from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.

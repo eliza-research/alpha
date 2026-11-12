@@ -227,7 +227,7 @@ public final class UpdateFlowTest {
  private static void settled()throws Exception{plugin("updateAsked",0L);}
  /** Alpha's last exchange with Android was this long ago, for the tests that measure the wait itself. */
  private static void aged(long millis)throws Exception{plugin("updateAsked",System.nanoTime()-TimeUnit.MILLISECONDS.toNanos(millis));}
- /** Every other scenario keeps three seconds, so a held download released after a few taps is still in time. */
+ /** Tests can give deliberate trickle reads less time and real loopback TLS more time. */
  private static void deadline(long nanos)throws Exception{plugin("UPDATE_DEADLINE_NANOS",nanos);}
  private static void resume(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.RESUMED;plugin.handleOnResume();}
  private static void stop(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.CREATED;}
@@ -2372,10 +2372,15 @@ public final class UpdateFlowTest {
   int status=1;
   try{
    if(cacheTlsServer!=null){
-    verifiedAutomaticCacheUsesOneRealTlsResponse(cache);
-    automaticOfferRecheckedOverTls(cache);
-    finalOfferDeadlineRetiresBeforeLateTransport(cache);
-    automaticConsentRecheckedAfterTls(cache);
+    // A cold TLS handshake can exceed the in-memory fixture's three-second download deadline.
+    long normalDeadline=AlphaDevicePlugin.UPDATE_DEADLINE_NANOS;
+    deadline(TimeUnit.SECONDS.toNanos(30));
+    try{
+     verifiedAutomaticCacheUsesOneRealTlsResponse(cache);
+     automaticOfferRecheckedOverTls(cache);
+     finalOfferDeadlineRetiresBeforeLateTransport(cache);
+     automaticConsentRecheckedAfterTls(cache);
+    }finally{deadline(normalDeadline);}
    }
    automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
    explicitUpdatePermissionOpensBeforeAnyOffer(cache);
