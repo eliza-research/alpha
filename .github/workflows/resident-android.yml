@@ -199,7 +199,7 @@ jobs:
       - name: Admit exact tools and fresh source paths
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(bun --version)" = "1.4.2"
+          test "$(node --version)" = "v26.13.0"
           test "$(bun --version)" = "1.4.2"
           python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 10*1024**3'
           mkdir -p test-results/resident-ci

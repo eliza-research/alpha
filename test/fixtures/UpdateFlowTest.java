@@ -482,6 +482,7 @@ public final class UpdateFlowTest {
    PluginCall late=tap(owner);
    check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
    check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
+   deadline(defaultDeadline);
    body=trickle(2);
    check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");
   }finally{deadline(defaultDeadline);body=IN_MEMORY;}

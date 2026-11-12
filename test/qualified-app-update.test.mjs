@@ -56,6 +56,46 @@ test('publication workflow preserves protected review, exact source and verifica
   for(const step of steps.filter(step=>step.uses))assert.match(step.uses,/@[0-9a-f]{40}$/);
 });
 
+test('publication supplies the Cloud profile flag only to the retained Cloud verifier', t => {
+  const workflow = YAML.parse(fs.readFileSync(new URL('../.github/workflows/publish-qualified-app-update.yml', import.meta.url), 'utf8'));
+  const steps = workflow.jobs.publish.steps;
+  const toolchain = steps.find(step => step.id === 'product_toolchain');
+  const step = steps.find(step => step.run?.includes('android:verify --'));
+  assert.ok(toolchain && step);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-qualified-profile-'));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const stage = path.join(root, 'qualified-stage');
+  fs.mkdirSync(stage);
+  const summary = path.join(stage, 'qualification-summary.json');
+  const evidence = path.join(stage, 'cloud-voice.json');
+  const run = (profile, lockfile) => {
+    const cwd = fs.mkdtempSync(path.join(root, 'product-'));
+    fs.writeFileSync(path.join(cwd, lockfile), '');
+    fs.writeFileSync(summary, JSON.stringify({runtimeProfile: profile}));
+    const outputs = path.join(cwd, 'outputs');
+    const selected = spawnSync('bash', ['-e', '-c', toolchain.run], {
+      cwd, env: {...process.env, GITHUB_OUTPUT: outputs}, encoding: 'utf8', timeout: 10_000,
+    });
+    assert.equal(selected.status, 0, selected.stderr);
+    const manager = /^manager=(bun|npm)$/m.exec(fs.readFileSync(outputs, 'utf8'))?.[1];
+    assert.ok(manager);
+    const stub = 'bun() { printf "%s\\n" bun "$@"; }\nnpm() { printf "%s\\n" npm "$@"; }\n';
+    return spawnSync('bash', ['-e', '-c', stub + step.run], {
+      cwd, env: {...process.env, RUNNER_TEMP: root, PRODUCT_PACKAGE_MANAGER: manager}, encoding: 'utf8', timeout: 10_000,
+    });
+  };
+  const native = run('native', 'bun.lock');
+  assert.equal(native.status, 0, native.stderr);
+  assert.deepEqual(native.stdout.trim().split('\n'), ['bun', 'run', 'android:verify', '--', `--cloud-voice-evidence=${evidence}`]);
+  const cloud = run('cloud', 'package-lock.json');
+  assert.equal(cloud.status, 0, cloud.stderr);
+  assert.deepEqual(cloud.stdout.trim().split('\n'), ['npm', 'run', 'android:verify', '--',
+    '--runtime-profile=cloud', `--cloud-voice-evidence=${evidence}`]);
+  const invalid = run('other', 'bun.lock');
+  assert.equal(invalid.status, 1);
+  assert.match(invalid.stderr, /^Unknown qualified runtime profile\n$/);
+});
+
 test('publication retains the exact Alpha Compute manifest only after both signed release rows qualify', () => {
   const workflow = YAML.parse(fs.readFileSync(new URL('../.github/workflows/publish-qualified-app-update.yml', import.meta.url), 'utf8'));
   const steps = workflow.jobs.publish.steps;

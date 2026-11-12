@@ -78,6 +78,8 @@ function checkWorkflows() {
   const reverify = publishing.publish.steps.find(runs('run android:verify --'));
   assert.equal(reverify?.['working-directory'], 'qualified-product');
   assert.equal(reverify.env.PRODUCT_PACKAGE_MANAGER, '$' + '{{ steps.product_toolchain.outputs.manager }}');
+  assert.match(reverify.run, /profile=\$\(jq -er '\.runtimeProfile' "\$RUNNER_TEMP\/qualified-stage\/qualification-summary\.json"\)/);
+  assert.match(reverify.run, /native\) args=\(\) ;;\s+cloud\) args=\(--runtime-profile=cloud\) ;;/);
   assert.equal(reverify.run.trim().split('\n').at(-1), '"$PRODUCT_PACKAGE_MANAGER" run android:verify -- "${args[@]}" --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
   assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'bun scripts/verify-apks.ts');
   ordered(publishing.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
@@ -131,9 +133,9 @@ function publicFixture(directory, launcherBytes, version) {
           wait: async () => {},
           run(args) {
             if (args[0] === 'api') {
-              assert.deepEqual(args, ['api', 'repos/alphacompute/alpha']);
+              assert.deepEqual(args, ['api', 'repos/eliza-research/alpha']);
               return JSON.stringify({id: 1396333361,
-                full_name: 'alphacompute/alpha', private: false});
+                full_name: 'eliza-research/alpha', private: false});
             }
             if (args[0] !== 'release') assert.fail('Unexpected command: ' + args.join(' '));
             if (args[1] === 'view' && args[2] === LEGACY_APP_UPDATE_TAG) {
