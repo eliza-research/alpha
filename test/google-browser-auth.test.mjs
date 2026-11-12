@@ -42,6 +42,7 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
     for(const source of ['plugins/plugin-native-secure-store/android-nativeonly','plugins/plugin-native-agent/android'])
       cpSync(join(root,'vendor/eliza',source),join(temporary,source),{recursive:true});
     const env={...process.env};
+    if (!env.ELIZA_JSON_JAR && env.ALPHA_JSON_JAR) env.ELIZA_JSON_JAR=env.ALPHA_JSON_JAR;
     delete env.NODE_TEST_CONTEXT;
     // These upstream node:test/JVM fixtures execute with their genuine Node runtime.
     const runSuite=(label,minimumTests)=>{
