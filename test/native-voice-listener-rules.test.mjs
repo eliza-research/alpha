@@ -16,9 +16,9 @@ const method = name => {
 const busy = 'if(Boolean.FALSE.equals(call.getBoolean("replace",true))&&speakerBusy()){call.reject("Speaker is in use","playback-busy");return;}';
 
 test('replace:false never interrupts a clip or a streamed utterance on any Alpha synthesis route', () => {
-  // The shared publish step alone refuses only a prepared clip, so each route asks the shared
-  // speaker state, which also covers a playing stream and a request in flight.
-  assert.match(shared, /protected final boolean speakerBusy\(\)\{return playbackFile!=null\|\|streamPlayback!=null\|\|!gate\.idle\(\);\}/);
+  // Each route checks playback and in-flight synthesis before admitting a new request.
+  assert.match(shared, /protected final boolean speakerBusy\(\)\{return playbackBusy\(\)\|\|!gate\.idle\(\);\}/);
+  assert.match(shared, /private boolean playbackBusy\(\)\{return playbackFile!=null\|\|streamPlayback!=null;\}/);
   for (const name of ['synthesize', 'synthesizeOwn', 'synthesizePaired']) {
     const body = method(name);
     assert.ok(body.startsWith(`@PluginMethod public void ${name}(PluginCall call){${busy}`), `${name} refuses a busy speaker before any work`);
@@ -32,5 +32,5 @@ test('a busy speaker refuses browser reading before its approval is consumed', (
   assert.ok(body.startsWith('@PluginMethod public void synthesizeBrowserReading(PluginCall call){mainHandler().post(()->{' + busy), 'the speaker is read on the main thread');
   // The on-device reading goes through the shared reviewed synthesis, which checks clip and stream itself.
   assert.match(method('synthesizeLocalBrowserReading'), /synthesizeReviewed\(call,reviewed\)/);
-  assert.match(shared, /if\(Boolean\.FALSE\.equals\(call\.getBoolean\("replace",true\)\)&&\(playbackFile!=null\|\|streamPlayback!=null\)\)\{refusal\[0\]="playback-busy";return;\}/);
+  assert.match(shared, /if\(Boolean\.FALSE\.equals\(call\.getBoolean\("replace",true\)\)&&playbackBusy\(\)\)\{refusal\[0\]="playback-busy";return;\}/);
 });

@@ -806,8 +806,11 @@ public final class SignInCoordinatorTraces {
             SignInTestPorts.events.add(next);
           }
         }
+        SignInTestPorts.Event revoked = SignInTestPorts.next("http:/api/v1/api-keys/current");
+        trace.step("ack", observed(2).put("s.ackTries", SignInTestPorts.acknowledgements.get(2)), false);
+        release(revoked);
         SignInTestPorts.Event logout = SignInTestPorts.next("http:/steward/auth/logout");
-        trace.step("ack", observed(2).put("s.ackTries", 3), false);
+        trace.step("revokePrevious", observed(2).put("s.revoked", SignInTestPorts.revocations == 1), true);
         release(logout);
         drain(second);
         trace.step("releaseSteward", observed(2));
