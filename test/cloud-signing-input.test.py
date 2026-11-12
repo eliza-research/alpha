@@ -572,6 +572,8 @@ class CloudSigningInputTest(unittest.TestCase):
 
 class PrivateProducerSourceReviewTest(unittest.TestCase):
     def test_isolated_source_requires_exact_committed_approval(self):
+        self.assertEqual(ADMISSION.PACKAGE, "ai.elizaresearch.alphaphone")
+        self.assertEqual(PRODUCER.REPOSITORY, "eliza-research/alpha")
         with tempfile.TemporaryDirectory(prefix="alpha-source-review-") as directory:
             root = Path(directory)
             (root / "scripts/ci").mkdir(parents=True)

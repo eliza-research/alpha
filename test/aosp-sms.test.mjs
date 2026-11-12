@@ -224,8 +224,10 @@ test("native boundary: image-only plugin methods, immutable explicit callbacks, 
   assert.match(plugin, /send\.setFilterTouchesWhenObscured\(true\)/);
   assert.match(plugin, /catch \(SmsSendJournal\.Expired expired\) \{ call\.reject\(/);
   assert.match(sms, /receiver\.getResultCode\(\) == Activity\.RESULT_OK/, "sent only from a successful sent callback");
-  assert.match(plugin, /main.post\(\(\) -> reviewSmsOnMain\(call\)\);/, "review is marshalled from Capacitor's plugin thread to main");
-  assert.match(plugin, /private void reviewSmsOnMain\(PluginCall call\) \{\n  if \(refused\(call\)\) return;/, "admission is rechecked on main before review");
+  // The journal is read on the telephony worker; only the review itself is posted to main, where a
+  // cancelled request is recorded and admission is rechecked before anything is shown.
+  assert.match(plugin, /SmsTelephony\.WORK\.execute\(\(\) -> \{[\s\S]*?existing = journal\.existing\(operationId, binding\);[\s\S]*?\n   main\.post\(\(\) -> reviewSmsOnMain\(call, journal, binding, operationId, recipients, body, subscriptionId\)\);\n  \}\);/, "review is marshalled from the worker thread to main");
+  assert.match(plugin, /private void reviewSmsOnMain\(ReviewCall call, [^)]*\) \{\n  if \(call\.cancelled\) \{ decide\(call, journal, operationId, recipients, body, subscriptionId, "cancelled", [^\n]*\); return; \}\n  if \(refused\(call\)\) return;\n  if \(review != null\)/, "admission is rechecked on main before review");
   // Read state: only the default SMS app's write counts, only received messages through the shown one, behind the
   // entry fence; the write's count is still reported if access changes afterwards (the rows were already marked).
   assert.match(plugin, /fencedWrite\(call, "sms", "Messages", cancel -> \{\n   JSObject value = new JSObject\(\);\n   boolean holder = MmsStore\.isDefaultSmsApp\(getContext\(\)\);/);

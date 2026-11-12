@@ -76,7 +76,7 @@ jobs:
         id: product_toolchain
         working-directory: qualified-product
         run: |
-          if test -f bun.lock; then
+          if test -f bun.lock || test -f bun.lockb; then
             printf 'manager=bun\nruntime=bun\n' >> "$GITHUB_OUTPUT"
           elif test -f package-lock.json; then
             printf 'manager=npm\nruntime=node\n' >> "$GITHUB_OUTPUT"
@@ -85,7 +85,11 @@ jobs:
             exit 1
           fi
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: steps.product_toolchain.outputs.runtime == 'node'
+        if: hashFiles('qualified-product/.nvmrc') != ''
+        with:
+          node-version-file: qualified-product/.nvmrc
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.product_toolchain.outputs.runtime == 'node' && hashFiles('qualified-product/.nvmrc') == ''
         with:
           node-version: '26.13.0'
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -148,7 +152,15 @@ jobs:
         working-directory: qualified-product
         env:
           PRODUCT_PACKAGE_MANAGER: ${{ steps.product_toolchain.outputs.manager }}
-        run: '"$PRODUCT_PACKAGE_MANAGER" run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"'
+        shell: bash
+        run: |
+          profile=$(jq -er '.runtimeProfile' "$RUNNER_TEMP/qualified-stage/qualification-summary.json")
+          case "$profile" in
+            native) args=() ;;
+            cloud) args=(--runtime-profile=cloud) ;;
+            *) echo 'Unknown qualified runtime profile' >&2; exit 1 ;;
+          esac
+          "$PRODUCT_PACKAGE_MANAGER" run android:verify -- "${args[@]}" --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
       - name: Require both qualified release rows before publication
         run: |
           python3 - <<'PY'

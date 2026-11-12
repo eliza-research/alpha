@@ -26,15 +26,18 @@ test('publication workflow preserves protected review, exact source and verifica
   const toolchain=steps.find(step=>step.id==='product_toolchain');
   assert.equal(toolchain['working-directory'],'qualified-product');
   assert.match(toolchain.run,/test -f bun\.lock[\s\S]*manager=bun[\s\S]*test -f package-lock\.json[\s\S]*manager=npm[\s\S]*exit 1/);
-  const node=steps.find(step=>step.uses?.startsWith('actions/setup-node@'));
-  assert.equal(node.if,"steps.product_toolchain.outputs.runtime == 'node'");
+  const nodes=steps.filter(step=>step.uses?.startsWith('actions/setup-node@'));
+  assert.equal(nodes.find(step=>step.with['node-version-file']==='qualified-product/.nvmrc')?.if,"hashFiles('qualified-product/.nvmrc') != ''");
+  const node=nodes.find(step=>step.with['node-version']);
+  assert.equal(node.if,"steps.product_toolchain.outputs.runtime == 'node' && hashFiles('qualified-product/.nvmrc') == ''");
   assert.equal(node.with['node-version'],'26.13.0');
   const install=steps.findIndex(step=>step['working-directory']==='qualified-product'&&step.run?.includes('install --frozen-lockfile'));
   assert(install>steps.indexOf(toolchain));
   assert.match(steps[install].run,/bun install --frozen-lockfile --ignore-scripts[\s\S]*npm ci --ignore-scripts/);
   const projection=steps.findIndex(step=>step.run?.includes('run upstream:prepare-client'));
-  const verification=steps.findIndex(step=>step.run?.includes('run android:verify -- --cloud-voice-evidence='));
+  const verification=steps.findIndex(step=>step.run?.includes('run android:verify --'));
   const delivery=steps.findIndex(step=>step.run?.includes('scripts/deliver-app-update.ts --variant launcher'));
+  assert.match(steps[verification].run,/native\) args=\(\)[\s\S]*cloud\) args=\(--runtime-profile=cloud\)[\s\S]*exit 1/);
   assert(projection>install&&verification>projection&&delivery>verification);
   for(const index of [install,projection,verification]){
     assert.equal(steps[index]['working-directory'],'qualified-product');

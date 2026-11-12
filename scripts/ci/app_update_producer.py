@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 
-REPOSITORY = "alphacompute/alpha"
+REPOSITORY = "eliza-research/alpha"
 REPOSITORY_ID = 1396333361
 WORKFLOW = ".github/workflows/resident-android.yml"
 WORKFLOW_ID = 373209004
