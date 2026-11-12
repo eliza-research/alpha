@@ -244,7 +244,8 @@ export async function startMountedCalendar({onSource = () => {}, observeCamera =
     process.env.ALPHA_BROWSER_CLOUD_PROFILE = profile;
     for (const path of mountedCalendarFixtureSources) onSource(path);
     server = await createServer({
-      configFile: resolve(root, 'vite.config.ts'), cacheDir: join(profile, 'vite'), logLevel: 'error',
+      // Bun cannot reliably re-import Vite's generated temporary config modules in one process.
+      configFile: resolve(root, 'vite.config.ts'), configLoader: 'runner', cacheDir: join(profile, 'vite'), logLevel: 'error',
       server: {host: '127.0.0.1', port: 0},
       plugins: [{name: 'quint-calendar-observer', enforce: 'pre', transform(code, id) {
         const path = id.split('?')[0];

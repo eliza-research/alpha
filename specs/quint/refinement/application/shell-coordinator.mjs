@@ -30,7 +30,7 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
-    server = await createServer({root: resolve(root, 'apps/app'), configFile: resolve(root, 'vite.config.ts'), logLevel: 'error',
+    server = await createServer({configLoader: 'runner', root: resolve(root, 'apps/app'), configFile: resolve(root, 'vite.config.ts'), logLevel: 'error',
       cacheDir: resolve(root, 'test-results/quint-refinement/shell-cache'),
       server: {host: '127.0.0.1', port: 0, strictPort: false},
       define: {'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify('')},

@@ -396,7 +396,7 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
   let server, browser;
   try {
     for (const name of flags) process.env[name] = '';
-    server = await createServer({configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', cacheDir,
+    server = await createServer({configLoader: 'runner', configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', cacheDir,
       server: {host: '127.0.0.1', port: 0, strictPort: false, hmr: false, watch: null},
       define: {'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify('')},
       plugins: [{name: 'quint-legacy-maps-inputs', enforce: 'pre', transform(code, id) {
