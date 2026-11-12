@@ -26,7 +26,7 @@ interface StableAsset {name: string}
 interface UpdateOffer {schema: string; variant: string; signerSha256: string; sha256: string; sizeBytes: number; apkUrl: string; versionCode: number}
 interface ArchiveRecord {testMocks: boolean; runtimeProfile: string; updateChannel: {kind: string; manifestUrlSha256: string}}
 interface VerifiedApk extends ArchiveRecord {mode: string; variant: string; file: string; packageName: string; versionCode: number; signed: boolean; signerSha256: string | null; distributable: boolean; debuggable: boolean; runtime: string; home: boolean; launcher: boolean; sha256: string; releaseAdmission: {failures: unknown[]; blockers: string[]}}
-interface ArchiveVerification extends ArchiveRecord {upstream: {commit: string}; allowUnpackagedRuntime: boolean; results: VerifiedApk[]}
+interface ArchiveVerification extends ArchiveRecord {upstream: {commit: string}; results: VerifiedApk[]}
 interface InputFreeze {files: Record<string, string>; digest: string}
 interface NativeInputAdmission {
   schema: string; source: string; sdkCommit: string; packageName: string; runId: string; attempt: string;
@@ -179,7 +179,6 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
     assert.deepEqual(record.updateChannel, channel, 'Archive update channel changed');
   }
   assert.equal(verified.upstream.commit, context.sdkCommit, 'Archive SDK differs');
-  assert.equal(verified.allowUnpackagedRuntime, false, 'Candidate requires the packaged resident');
   const before = readJson<InputFreeze>(path.join(archive, 'inputs-before.json'));
   const after = readJson<InputFreeze>(path.join(archive, 'inputs-after.json'));
   assert.deepEqual(after, before, 'Archive inputs changed');
@@ -213,15 +212,15 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
     component.qualificationTransferred === false, 'Native input embedding qualification is incomplete');
   const manifest = readJson<Record<string, string>>(path.join(archive, 'apk-manifest.json'));
   const releases = verified.results.filter(row => row.mode === 'release');
-  assert.equal(releases.length, 2, 'Exactly two release variants required');
+  assert.equal(releases.length, 1, 'Exactly one launcher release required');
   const apks: Record<string, ApkDigest> = {};
-  for (const variant of ['standalone', 'launcher']) {
+  for (const variant of ['launcher']) {
     const name = `${variant}-release-unsigned.apk`, file = path.join(archive, name);
     const row = releases.find(entry => entry.variant === variant);
     assert.ok(row && row.file === `artifacts/${name}` && row.packageName === config.appId &&
       row.versionCode === context.versionCode && row.signed === false && row.signerSha256 === null &&
       row.distributable === false && row.testMocks === false && row.debuggable === false &&
-      row.runtime === 'PACKAGED' && row.home === (variant === 'launcher') && row.launcher === true &&
+      row.runtime === 'PACKAGED' && row.home === true && row.launcher === true &&
       row.releaseAdmission.failures.length === 0 && row.releaseAdmission.blockers.includes('unsigned release'), 'Archive is not a genuine unsigned candidate');
     assert.deepEqual(row.updateChannel, channel);
     const stat = fs.lstatSync(file);
@@ -255,7 +254,7 @@ export function candidateArchiveSize({root = process.cwd(), env = process.env, a
   const rows = (JSON.parse(verification.toString('utf8')) as ArchiveVerification).results;
   const manifest = readJson<Record<string, string>>(path.join(archive, 'apk-manifest.json'));
   const debugApks: Record<string, ApkDigest> = {};
-  for (const variant of ['standalone', 'launcher']) {
+  for (const variant of ['launcher']) {
     for (const mode of ['debug', 'release']) {
       const name = `${variant}-${mode === 'debug' ? 'debug' : 'release-unsigned'}.apk`;
       const row = rows.find(item => item.variant === variant && item.mode === mode && item.file === 'artifacts/' + name);

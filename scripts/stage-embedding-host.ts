@@ -97,16 +97,7 @@ export function verifyEmbeddingEngine(productRoot: string,manifest: Pick<Embeddi
  if(!embedding||!voice||embedding.sha256!==voice.sha256||embedding.bytes!==voice.bytes)throw Error('arm64-v8a libelizainference.so differs: '+embeddingRecord+' records '+label(embedding)+', '+voiceRecord+' records '+label(voice)+'; both ship as jniLibs/arm64-v8a/libelizainference.so');
 }
 /** Build admission reads exact staged bytes; it never downloads or repairs a missing artifact. */
-export function verifyEmbeddingHost(productRoot: string,{allowAbsentRuntime=false,requireProducerInputs=false}={}) {
- // The explicit unpackaged developer build has no agent to use this host. Never
- // admit a partial resident payload or a partially staged native host this way.
- if(allowAbsentRuntime){
-  const runtime=['alpha-source.json','agent-bundle.js','workflow-worker/manifest.json'];
-  const native=names.flatMap(name=>['arm64-v8a','x86_64'].map(abi=>'android/app/src/main/jniLibs/'+abi+'/'+name));
-  const files=[...runtime.map(name=>'android/app/src/main/assets/agent/'+name),...native];
-  if(files.every(file=>!fs.existsSync(path.join(productRoot,file))))return {status:'not-packaged',distributable:false};
- }
-
+export function verifyEmbeddingHost(productRoot: string,{requireProducerInputs=false}={}) {
  const manifest: EmbeddingManifest=JSON.parse(fs.readFileSync(path.join(productRoot,embeddingRecord),'utf8'));
  if(manifest.jniIdentityRelocated!==true)throw Error('Embedding host JNI identity missing or changed');
  verifyEmbeddingEngine(productRoot,manifest);
@@ -124,10 +115,9 @@ export function verifyEmbeddingHost(productRoot: string,{allowAbsentRuntime=fals
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const args=process.argv.slice(2);
- if(args[0]==='--verify'&&(args.length===1||args.length===2&&args[1]==='--allow-unpackaged-runtime')){
-  const result=verifyEmbeddingHost(root,{allowAbsentRuntime:args.includes('--allow-unpackaged-runtime')});
-  if('status' in result && result.status==='not-packaged')console.log('No resident embedding host packaged; developer APK only.');
-  else console.log('ARM64 embedding host source, JNI and BGE384 bytes verified.');
+ if(args[0]==='--verify'&&args.length===1){
+  verifyEmbeddingHost(root);
+  console.log('ARM64 embedding host source, JNI and BGE384 bytes verified.');
  }
  else if(args[0]==='--receipt'&&(args.length===2||args.length===4&&args[2]==='--library-root')){
   const libraryRoot=args.length===4?args[3]:undefined;

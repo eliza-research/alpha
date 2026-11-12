@@ -227,7 +227,7 @@ test('External authorization uses the browser and Google sign-in uses the native
   assert.doesNotMatch(open, /setPackage\(getContext\(\)\.getPackageName\(\)\)|AlphaBrowserPlugin/, 'never opened in Alpha\'s own browser');
   // Alpha registers no general web handler, so a sign-in page cannot resolve back into Alpha. The
   // exceptions are the verified returns: the in-app sign-in and the Workspace consent, each one exact path.
-  const callback = /^<intent-filter android:autoVerify="true"><action android:name="android\.intent\.action\.VIEW"\/><category android:name="android\.intent\.category\.DEFAULT"\/><category android:name="android\.intent\.category\.BROWSABLE"\/><data android:scheme="https" android:host="(\$\{appLinkHost\}|\$\{stagingCloudWebHost\})" android:path="\/alphaphone\/(auth|gmail)\/callback"\/><\/intent-filter>$/;
+  const callback = /^<intent-filter android:autoVerify="true"><action android:name="android\.intent\.action\.VIEW"\/><category android:name="android\.intent\.category\.DEFAULT"\/><category android:name="android\.intent\.category\.BROWSABLE"\/><data android:scheme="https" android:host="(\$\{appLinkHost\})" android:path="\/alphaphone\/(auth|gmail)\/callback"\/><\/intent-filter>$/;
   // scripts/verify-apks.ts pins the exact set of web VIEW filters in the merged manifest.
   const returns = [];
   for (const manifest of walk('android', file => file.endsWith('AndroidManifest.xml') && !/[\\/](test|androidTest|build)[\\/]/.test(file))) {
@@ -239,7 +239,7 @@ test('External authorization uses the browser and Google sign-in uses the native
       returns.push(`${manifest.split(path.sep).join('/')}:${match[1]}:${match[2]}`);
     }
   }
-  assert.deepEqual(returns.sort(), ['android/app/src/main/AndroidManifest.xml:${appLinkHost}:auth', 'android/app/src/main/AndroidManifest.xml:${appLinkHost}:gmail', 'android/app/src/testMocks/AndroidManifest.xml:${stagingCloudWebHost}:auth'], 'the production returns use the configured host placeholder (android/app/product.gradle); the staging return exists only in the test-mocks overlay');
+  assert.deepEqual(returns.sort(), ['android/app/src/main/AndroidManifest.xml:${appLinkHost}:auth', 'android/app/src/main/AndroidManifest.xml:${appLinkHost}:gmail'], 'the production returns use the configured host placeholder (android/app/product.gradle)');
   // Inspect the exact shared source that the Android build packages.
   const staged=preparePatchedNative({root:process.cwd()});
   const signIn = read(path.join(staged.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java'));

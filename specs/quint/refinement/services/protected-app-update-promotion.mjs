@@ -43,7 +43,7 @@ function checkWorkflows() {
   assert.match(producerJob.env.ALPHA_APP_UPDATE_CANDIDATE, /github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
   ordered(producerJob.steps, runs('app-update-candidate.ts version'),
     runs('build-archive.ts test-results/resident-ci-distribution'), runs('Captured APK verification differs'),
-    runs('build-archive.ts --test-mocks'), runs('app-update-candidate.ts receipt'),
+    runs('app-update-candidate.ts receipt'),
     step => step.with?.name?.startsWith('app-native-candidate-'));
   const signing = YAML.parse(read(signer)).jobs;
   assert.equal(signing.admit.uses, './' + verifier);

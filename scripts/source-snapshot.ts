@@ -2,10 +2,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-const roots=['apps/app/src','apps/app/public','android/app/src/main/java','android/app/src/main/res','android/app/src/androidTest','android/app/src/testMocks','android/app/src/main/AndroidManifest.xml','android/app/build.gradle','android/settings.gradle','capacitor.config.ts','vite.config.ts','package.json','bun.lock','app.config.json'];
+const roots=['apps/app/src','apps/app/public','android/app/src/main/java','android/app/src/main/res','android/app/src/androidTest','android/app/src/main/AndroidManifest.xml','android/app/build.gradle','android/settings.gradle','capacitor.config.ts','vite.config.ts','package.json','bun.lock','app.config.json'];
 // Record flavor manifests and build policy as well as renderer/bridge sources.
 // Generated web assets and Gradle output remain outputs, not source inputs.
-roots.push('android/app/src/launcher','android/app/src/standalone','android/app/src/release',
+roots.push('android/app/src/launcher','android/app/src/release',
  // The Gradle host the pinned upstream generator writes from android/consumer-host.json.
  'android/consumer-host.json','android/app/product.gradle','scripts/android-host.ts',
  'android/app/cloud-deployment.generated.gradle','scripts/cloud-deployment.ts','scripts/cloud-deployment-policy.ts',
@@ -43,7 +43,6 @@ roots.push('android/app/src/main/assets/agent','android/app/src/main/jniLibs',
  'scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts',
  'scripts/prepare-client-features.ts','.eliza/client-features/.source.json',
  'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
- 'scripts/ci/resident_native_source.py',
  'scripts/build-workflow-worker.ts','scripts/prepared-workflow-worker.ts',
  'scripts/stage-workflow-worker.ts','scripts/workflow-worker-artifact.ts',
  'vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app',

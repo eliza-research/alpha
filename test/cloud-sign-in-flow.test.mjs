@@ -73,9 +73,9 @@ test('Alpha callback contract vectors through the shared native parser',()=>{
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });
 
-test('the sign-in App Link is on the configured Cloud host; staging lives in the test-mocks overlay',()=>{
+test('the sign-in App Link is on the configured Cloud host',()=>{
  const strip=text=>text.replace(/<!--[\s\S]*?-->/g,'');
- const main=strip(read('android/app/src/main/AndroidManifest.xml')),mocks=strip(read('android/app/src/testMocks/AndroidManifest.xml')),gradle=read('android/app/product.gradle');
+ const main=strip(read('android/app/src/main/AndroidManifest.xml')),gradle=read('android/app/product.gradle');
  const filter=host=>`<intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="${host}" android:path="/alphaphone/auth/callback"/></intent-filter>`;
  const activity=between(main,'<activity android:name=".MainActivity"','</activity>');
  assert.match(gradle,/^def appLinkHost = cloudWebHost$/m,'every build declares the configured Cloud host');
@@ -89,7 +89,6 @@ test('the sign-in App Link is on the configured Cloud host; staging lives in the
  assert.match(connection,/static final String DELEGATION_SCHEME="alphaphone",DELEGATION_HOST="cloud-delegation";/);
  assert.match(connection,/DelegationCallback\.admit\(DELEGATION_SCHEME,DELEGATION_HOST,uri\.getScheme\(\),uri\.getHost\(\),uri\.getPort\(\),uri\.getUserInfo\(\),uri\.getFragment\(\),uri\.getPath\(\),query\)==null\)return;/);
  assert.ok(main.includes('<intent><action android:name="android.support.customtabs.action.CustomTabsService"/></intent>'),'Custom Tabs providers are visible');
- assert.ok(mocks.includes(filter('${stagingCloudWebHost}'))&&mocks.includes('<activity android:name=".MainActivity" tools:node="merge">'),'the staging return merges into MainActivity in test-mocks builds');
  const assetlinks=JSON.parse(read('android/app/src/main/assetlinks.template.json'));
  assert.equal(assetlinks[0].target.package_name,'ai.alphacompute.alphaphone');
  assert.deepEqual(assetlinks[0].relation,['delegate_permission/common.handle_all_urls']);

@@ -18,9 +18,8 @@ building. The Android build refuses a pin older than main's, and there is no ove
 Run `bun run verify` and the Android build: `bun run android:build:local` (input check,
 `agent:build-embedding-host`, `agent:prepare`, `agent:build-workflow-worker`, `agent:stage-android`,
 `licenses:packaged-runtime`, `android:build`; staged on-device voice outputs first, see README);
-verify both distribution variants. Plain `bun run android:build` exits 2
-before Gradle with the command to run when an input is missing; `-- --allow-unpackaged-runtime`
-builds non-distributable developer APKs. Mocks, fixtures and developer surfaces exist only with
+verify the launcher APK it produces. Plain `bun run android:build` exits 2
+before Gradle with the command to run when an input is missing. Mocks, fixtures and developer surfaces exist only with
 `ELIZA_DEV_ALLOW_TEST_MOCKS=1`; production builds must pass `scripts/audit-production-bundle.ts`.
 Distinguish an APK build, emulator HOME-role test, full AOSP image boot, real integrations,
 and device/user acceptance. Never claim one proves another.

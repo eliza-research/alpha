@@ -238,8 +238,7 @@ def admit(archive, pin, stage=None):
             verified = archive_json(apk_manifest)
             require(verified.get("updateChannel") == channel, "Verified update channel differs")
             require(verified["upstream"]["commit"] == pin["sdkCommit"], "Verified SDK commit differs")
-            require(single_profile(verified, profile) and verified["testMocks"] is False
-                    and verified.get("allowUnpackagedRuntime") is False,
+            require(single_profile(verified, profile) and verified["testMocks"] is False,
                     "APK verification is outside the reviewed distribution profile")
             config = json.loads(build)
             require(config.get("updateChannel") == channel, "Build update channel differs")

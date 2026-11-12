@@ -583,23 +583,22 @@ class HostedNativeInputsTest(unittest.TestCase):
 
     def test_automatic_workflow_admits_inputs_before_prepare_and_keeps_diagnostics(self):
         workflow = (ROOT / '.github/workflows/resident-android.yml').read_text()
-        steps = ('Check the automatic native input manifest and artifact availability',
+        steps = ('Check the native input manifest and artifact availability',
                  'actions/setup-java@', 'android-actions/setup-android@', 'Install pinned Android native toolchain',
-                 'Acquire exact native inputs for the automatic candidate', 'Stage the admitted voice and embedding inputs',
+                 'Acquire exact native inputs', 'Stage the admitted voice and embedding inputs',
                  'Prepare and qualify fresh resident source', 'bun scripts/stage-embedding-host.ts --verify',
                  'native-input-admission.json')
         self.assertEqual(sorted(workflow.index(step) for step in steps), [workflow.index(step) for step in steps])
-        preflight = workflow.split('Check the automatic native input manifest and artifact availability', 1)[1].split('      - ', 1)[0]
-        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'", preflight)
+        preflight = workflow.split('Check the native input manifest and artifact availability', 1)[1].split('      - ', 1)[0]
+        self.assertNotIn('if:', preflight)
         self.assertIn('GH_TOKEN:', preflight)
         self.assertIn('--check-remote', preflight)
-        acquire = workflow.split('Acquire exact native inputs for the automatic candidate', 1)[1].split('      - name:', 1)[0]
+        acquire = workflow.split('Acquire exact native inputs', 1)[1].split('      - name:', 1)[0]
         stage = workflow.split('Stage the admitted voice and embedding inputs', 1)[1].split('      - name:', 1)[0]
-        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'", acquire)
-        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'", stage)
+        self.assertNotIn('if:', acquire)
+        self.assertNotIn('if:', stage)
         self.assertIn('GH_TOKEN:', acquire)
         self.assertNotIn('GH_TOKEN:', stage)
-        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'\n        run: bun scripts/voice-host.ts --verify --allow-absent", workflow)
 
 
 if __name__ == '__main__':

@@ -129,7 +129,7 @@ test('the input report separates what a script produces from what needs a person
   let report = formatReport(rows);
   assert.match(report, /2 input\(s\) only a person can supply: on-device voice outputs, release signer\./);
   assert.match(report, /An unset release signer does not stop the build: verify-apks records its releases distributable:false/);
-  assert.match(report, /Missing or changed voice outputs stop Gradle :app:verifyVoiceHost in a distribution build\./);
+  assert.match(report, /Missing or changed voice outputs stop Gradle :app:verifyVoiceHost\./);
 
   // Staged voice outputs are ready; signing values are never printed.
   for (const name of f.names) f.stage(name);

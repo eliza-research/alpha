@@ -21,14 +21,12 @@ test('public builds retain their source URL and refuse undeclared private input'
  const {env}=input(t);assert.throws(()=>readUpdateChannel({...env,ALPHA_UPDATE_CHANNEL:'public'},publicUrl),/input refused/);
  assert.throws(()=>readUpdateChannel({ALPHA_UPDATE_CHANNEL:'unknown'},publicUrl),/input refused/);
 });
-test('protected input yields digest-only evidence and requires a complete packaged build with test mocks off',t=>{
+test('protected input yields digest-only evidence',t=>{
  const {env}=input(t),record=readUpdateChannel(env,publicUrl);
  assert.deepEqual(record,{kind:'private-qa',manifestUrlSha256:hash(privateUrl)});
- const options=consumerBuildOptions({testMocks:false},env,process.cwd());
+ const options=consumerBuildOptions(env,process.cwd());
  assert.deepEqual(options.record.metadata.updateChannel,record);
  assert.ok(!JSON.stringify(options.record).includes(privateUrl));
- // The private channel does not depend on a runtime profile (there is one); mocks and unpackaged builds are refused.
- for(const refused of [{testMocks:true},{testMocks:false,allowUnpackagedRuntime:true}])assert.throws(()=>consumerBuildOptions(refused,env,process.cwd()),/complete packaged build with test mocks off/);
 });
 test('wrong digest, readable permissions, symlinks, oversized bytes and absent files are refused without echoing capability',t=>{
  const {file,env}=input(t);

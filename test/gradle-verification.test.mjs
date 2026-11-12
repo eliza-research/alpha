@@ -159,7 +159,7 @@ test('the write command covers every Gradle task the scripts run and is the only
   const tasks = source => [...read(source).matchAll(/["'`](:[a-z-]+:[A-Za-z]+)["'`]/g)].map(match => match[1]);
   for (const task of [...tasks('scripts/build-android.ts'), ...tasks('scripts/build-notification-fixture.ts')]) assert.ok(VERIFIED_TASKS.includes(task), task);
   // build-android.ts also composes per-variant task names in its low-disk path.
-  for (const variant of ['Standalone', 'Launcher'])
+  for (const variant of ['Launcher'])
     for (const suffix of ['Debug', 'Release', 'DebugAndroidTest']) assert.ok(VERIFIED_TASKS.includes(`:app:assemble${variant}${suffix}`));
   const scripts = JSON.parse(read('package.json')).scripts;
   assert.equal(scripts['android:deps:check'], 'bun scripts/gradle-verification.ts --check');
@@ -185,10 +185,10 @@ test('staged Java-only native patches retain their authenticated dependency desc
 });
 
 
-test('dependency verification takes one mode and the unpackaged-runtime option', () => {
-  assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write',allowUnpackagedRuntime:false});
-  assert.deepEqual(parseVerificationArgs(['--write','--allow-unpackaged-runtime']), {mode:'--write',allowUnpackagedRuntime:true});
-  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',allowUnpackagedRuntime:false});
+test('dependency verification takes exactly one mode', () => {
+  assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write'});
+  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check'});
+  assert.throws(() => parseVerificationArgs(['--write','--allow-unpackaged-runtime']), /Usage/);
   assert.throws(() => parseVerificationArgs(['--write','--other']), /Usage/);
 });
 

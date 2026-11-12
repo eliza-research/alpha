@@ -35,12 +35,12 @@ test('pull requests run one verify job, Android and resident preparation only fo
   for (const file of ['verify.yml', 'android.yml', 'resident-prepare.yml', 'promotion.yml'])
     assert.doesNotMatch(read(`.github/workflows/${file}`), /^  (push|schedule):/m, file);
   assert.match(android, /artifacts\/mapping\/\*\.txt/);
-  const manualVerify = android.split('- name: Verify standalone manual qualification\n')[1]?.split('\n      - ')[0];
+  const manualVerify = android.split('- name: Verify manual qualification\n')[1]?.split('\n      - ')[0];
   assert.match(manualVerify, /if: github\.event_name == 'workflow_dispatch'/);
   assert.match(manualVerify, /ALPHA_REQUIRE_PREPARED_SDK: '1'/);
   assert.match(manualVerify, /run: bun run verify/);
   assert.match(android, /name: Prepare pinned SDK for manual verification[\s\S]*bun scripts\/prepare-local-agent\.ts/);
-  assert.match(android, /name: Prepare pinned native lifecycle sources\n\s+if: github\.event_name != 'workflow_dispatch'/);
+  assert.match(android, /run: bun run android:build:local\n/);
 
   const resident = read('.github/workflows/resident-android.yml');
   // The candidate workflow test checks the other concurrency groups.

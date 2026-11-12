@@ -1,8 +1,8 @@
 name: Android emulator evidence
 # Dispatch only. Every job after `build` boots an emulator on a hosted runner, so nothing
 # here runs on a push, a pull request or a schedule. The result is
-# emulator-class evidence on developer-override APKs (unpackaged resident runtime) on an
-# x86_64 SDK image: never a distributable build, a device or acceptance.
+# emulator-class evidence for the launcher debug APK on an x86_64 SDK image: never a device
+# or acceptance.
 on:
   workflow_dispatch:
     inputs:
@@ -18,20 +18,21 @@ on:
           - all
 permissions:
   contents: read
+  # The native input artifacts are read through the workflow token.
+  actions: read
 concurrency:
   # A later dispatch of the same suite on the same ref supersedes the earlier one.
   group: android-emulator-${{ github.ref }}-${{ inputs.suite }}
   cancel-in-progress: true
 jobs:
   build:
-    name: Build developer APKs
+    name: Build the launcher APKs
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     outputs:
       artifact_id: ${{ steps.apks.outputs.artifact-id }}
       source_sha: ${{ github.sha }}
       manifest_sha256: ${{ steps.freeze.outputs.manifest }}
-      test_mocks_manifest_sha256: ${{ steps.freeze.outputs.test_mocks_manifest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -65,29 +66,30 @@ jobs:
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: bun install --frozen-lockfile
-      - name: Prepare pinned native lifecycle sources
-        run: bun scripts/prepare-local-agent.ts --source-only
-      - name: Build flag-off developer APKs with their instrumentation APKs
+      - name: Check the native input manifest and artifact availability
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/ci/hosted-native-inputs.py --check-remote
+      - name: Acquire exact native inputs
+        timeout-minutes: 12
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/ci/hosted-native-inputs.py --acquire
+      - name: Stage the admitted voice and embedding inputs
+        run: |
+          bun scripts/android-stage-voice-models.ts --from test-results/resident-ci-native-inputs/voice
+          bun scripts/build-embedding-host.ts --from test-results/resident-ci-native-inputs/embedding
+          bun scripts/voice-host.ts --verify
+      - name: Build the launcher APKs with their instrumentation APK
         env:
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
-        run: bun run android:build -- --allow-unpackaged-runtime
-      # The browser suites use loopback fixtures that require the separate test-mocks build.
-      - name: Build the separate test-mocks APKs
-        if: inputs.suite == 'browser-reading' || inputs.suite == 'browser-controls' || inputs.suite == 'all'
-        run: |
-          before=$(sha256sum artifacts/*.apk artifacts/instrumentation/*.apk)
-          bun run android:build -- --test-mocks --allow-unpackaged-runtime
-          test "$before" = "$(sha256sum artifacts/*.apk artifacts/instrumentation/*.apk)"
-      - name: Anchor the exact manifests
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
+        run: bun run android:build:local
+      - name: Anchor the exact manifest
         id: freeze
-        run: |
-          {
-            echo "manifest=$(sha256sum artifacts/apk-manifest.json | cut -d' ' -f1)"
-            if [ -f artifacts/test-mocks/apk-manifest.json ]; then
-              echo "test_mocks_manifest=$(sha256sum artifacts/test-mocks/apk-manifest.json | cut -d' ' -f1)"
-            fi
-          } >> "$GITHUB_OUTPUT"
+        run: echo "manifest=$(sha256sum artifacts/apk-manifest.json | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         id: apks
         with:
@@ -95,12 +97,8 @@ jobs:
           # The upload roots this archive at artifacts/. Restore it there in each emulator job.
           path: |
             artifacts/apk-manifest.json
-            artifacts/standalone-debug.apk
             artifacts/launcher-debug.apk
             artifacts/instrumentation/*.apk
-            artifacts/test-mocks/apk-manifest.json
-            artifacts/test-mocks/*-debug.apk
-            artifacts/test-mocks/*-androidTest.apk
           compression-level: 0
           if-no-files-found: error
           retention-days: 3
@@ -110,13 +108,12 @@ jobs:
           name: android-emulator-build-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             artifacts/*.json
-            artifacts/test-mocks/*.json
             android/app/build/reports/
           retention-days: 3
 
-  # (c) The default instrumentation run on both distributions.
+  # The default instrumentation run.
   instrumentation:
-    name: Default instrumentation, both distributions
+    name: Default instrumentation
     needs: build
     if: inputs.suite == 'instrumentation' || inputs.suite == 'all'
     runs-on: ubuntu-24.04
@@ -177,7 +174,7 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  # (b) The selected browser suite, on the pinned Chromium 157 WebView.
+  # The selected browser suite, on the pinned Chromium 157 WebView.
   browser-reading:
     name: ${{ inputs.suite == 'browser-controls' && 'Browser controls on WebView 157' || 'Browser reading on WebView 157' }}
     needs: build
@@ -188,7 +185,6 @@ jobs:
       BROWSER_SUITE: ${{ inputs.suite == 'browser-controls' && 'browser-controls' || 'browser-reading' }}
       SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
       EXPECTED_MANIFEST_SHA256: ${{ needs.build.outputs.manifest_sha256 }}
-      EXPECTED_TEST_MOCKS_MANIFEST_SHA256: ${{ needs.build.outputs.test_mocks_manifest_sha256 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -210,12 +206,10 @@ jobs:
           artifact-ids: ${{ needs.build.outputs.artifact_id }}
           path: artifacts
           merge-multiple: true
-      - name: Require the build job's exact APK manifests, capacity and KVM
+      - name: Require the build job's exact APK manifest, capacity and KVM
         run: |
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test "$(sha256sum artifacts/apk-manifest.json | cut -d' ' -f1)" = "$EXPECTED_MANIFEST_SHA256"
-          test -n "$EXPECTED_TEST_MOCKS_MANIFEST_SHA256"
-          test "$(sha256sum artifacts/test-mocks/apk-manifest.json | cut -d' ' -f1)" = "$EXPECTED_TEST_MOCKS_MANIFEST_SHA256"
           python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 8*1024**3, "Insufficient fresh-runner emulator capacity"'
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -248,6 +242,5 @@ jobs:
             !test-results/ci-webview-provider/chromium.zip
             !test-results/ci-webview-provider/SystemWebView.apk
             artifacts/apk-manifest.json
-            artifacts/test-mocks/apk-manifest.json
           if-no-files-found: error
           retention-days: 3

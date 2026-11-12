@@ -68,7 +68,6 @@ class CloudSigningInputTest(unittest.TestCase):
             "upstream": {"commit": self.pin["sdkCommit"]},
             "runtimeProfile": "cloud",
             "testMocks": False,
-            "allowUnpackagedRuntime": False,
             "results": rows,
         }
         self.build = {
@@ -521,7 +520,7 @@ class CloudSigningInputTest(unittest.TestCase):
 
     def test_rejects_unreviewed_build_flags(self):
         for record, field in ((self.build, "testMocks"), (self.build, "signingRequested"),
-                              (self.verification, "testMocks"), (self.verification, "allowUnpackagedRuntime")):
+                              (self.verification, "testMocks")):
             with self.subTest(field=field):
                 record[field] = True
                 self.write_archive()

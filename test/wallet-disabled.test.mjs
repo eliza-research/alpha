@@ -48,13 +48,12 @@ test('Wallet has no view, deep link or quick command in the standalone, launcher
  assert.match(read('apps/app/src/prototype/native-adapter.ts'),/if \(module === 'wallet'\) \{/);
 });
 
-test('neither APK distribution declares a native Wallet, payment or NFC adapter',()=>{
+test('the APK declares no native Wallet, payment or NFC adapter',()=>{
  const sources=join(root,'android/app/src');
  const manifests=[],java=[];
  const visit=dir=>{for(const name of readdirSync(dir)){const file=join(dir,name);if(statSync(file).isDirectory()){if(name!=='build')visit(file);}else if(name==='AndroidManifest.xml')manifests.push(file);else if(/\.(java|kt)$/.test(name)&&!file.includes('/androidTest/')&&!file.includes('/test/'))java.push(file);}};
  visit(sources);
- // main, launcher and standalone flavors (and the test-mocks overlay) are all checked.
- for(const flavor of ['main','launcher','standalone'])assert.ok(manifests.some(file=>file.includes(`/src/${flavor}/`)),`${flavor} manifest present`);
+ for(const flavor of ['main','launcher'])assert.ok(manifests.some(file=>file.includes(`/src/${flavor}/`)),`${flavor} manifest present`);
  for(const file of manifests){
   const text=readFileSync(file,'utf8');
   assert.doesNotMatch(text,/android\.permission\.NFC|BIND_NFC_SERVICE|android\.nfc\.|cardemulation|HostApduService|com\.google\.android\.gms\.wallet|android\.permission\.BIND_QUICK_ACCESS_WALLET_SERVICE|QuickAccessWalletService/,file);

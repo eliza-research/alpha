@@ -97,8 +97,7 @@ test('the SBOM lists each recorded engine library per ABI and every bundle file 
 
 test('staging copies exactly the recorded bytes into the shared paradee-voice layout, ASR slot included', t => {
   const {dir, from, record} = fixtureProduct(t);
-  assert.deepEqual(verifyVoiceHost(dir, {allowAbsentRuntime: true}), {status: 'not-packaged', qualified: false});
-  assert.throws(() => verifyVoiceHost(dir), /not staged/, 'a distribution build needs the voice outputs');
+  assert.throws(() => verifyVoiceHost(dir), /not staged/, 'a build needs the voice outputs');
   const result = stageVoiceModels(dir, {from: [from]});
   assert.equal(result.asr, true);
   const native = path.join(dir, '.eliza/paradee-voice/native');

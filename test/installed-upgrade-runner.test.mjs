@@ -11,14 +11,14 @@ function exercise(kind,mode='pass',bridge=false){
  try{
   const pkg='ai.alphacompute.alphaphone',host=kind==='calendar'?'com.android.launcher3':'com.google.android.apps.nexuslauncher';
   fs.writeFileSync(path.join(root,'app.config.json'),JSON.stringify({appId:pkg}));
-  for(const variant of ['standalone','launcher'])for(const [file,bytes] of [
+  for(const variant of ['launcher'])for(const [file,bytes] of [
    [`baseline/${variant}-debug.apk`,'baseline'],[`baseline/${variant}-test.apk`,'baseline-test'],[`artifacts/${variant}-debug.apk`,'candidate'],[`artifacts/instrumentation/${variant}-androidTest.apk`,'candidate-test'],
    // Shared Gradle outputs are overwritten by later builds; the runner must never install them.
    [`android/app/build/outputs/apk/androidTest/${variant}/debug/app-${variant}-debug-androidTest.apk`,'stale-gradle-output']
   ]){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,bytes);}
   // The verified build record that pairs each candidate app with its instrumentation APK.
   const digest=text=>createHash('sha256').update(text).digest('hex');
-  if(mode!=='candidate-unverified')fs.writeFileSync(path.join(root,'artifacts/apk-manifest.json'),JSON.stringify({testMocks:mode==='candidate-test-mocks',results:['standalone','launcher'].map(variant=>({variant,mode:'debug',sha256:digest('candidate'),versionCode:1})),instrumentation:Object.fromEntries(['standalone','launcher'].map(variant=>[variant,{sha256:digest(mode==='candidate-unpaired'&&variant==='launcher'?'another-build':'candidate-test')}]))}));
+  if(mode!=='candidate-unverified')fs.writeFileSync(path.join(root,'artifacts/apk-manifest.json'),JSON.stringify({testMocks:mode==='candidate-test-mocks',results:['launcher'].map(variant=>({variant,mode:'debug',sha256:digest('candidate'),versionCode:1})),instrumentation:Object.fromEntries(['launcher'].map(variant=>[variant,{sha256:digest(mode==='candidate-unpaired'&&variant==='launcher'?'another-build':'candidate-test')}]))}));
   if(mode==='candidate-app-replaced')fs.writeFileSync(path.join(root,'artifacts/launcher-debug.apk'),'rebuilt after verification');
   const adb=path.join(root,'platform-tools/adb'),aapt=path.join(root,'build-tools/36.0.0/aapt'),state=path.join(root,'state.json'),log=path.join(root,'commands.jsonl');
   fs.mkdirSync(path.dirname(adb),{recursive:true});fs.mkdirSync(path.dirname(aapt),{recursive:true});
@@ -48,7 +48,7 @@ else if(a.includes('switch-user')){if(mode==='restore-failure'&&a.at(-1)==='0')p
 else if(a.includes('remove-user')){s.exists=false;save();console.log('Success');}
 else if(a.includes('is-user-stopped'))console.log('true');
 else if(a.includes('users'))console.log('UserInfo{0:Owner:13}'+(s.exists?'\\nUserInfo{10:Fixture:10}':''));
-else if(a.includes('packages')){if(mode==='candidate-rebuilt')fs.writeFileSync(${JSON.stringify(path.join(root,'artifacts/standalone-debug.apk'))},'rebuilt during the run');console.log(Object.keys(s.files).map(p=>'package:'+p).join('\\n'));}
+else if(a.includes('packages')){if(mode==='candidate-rebuilt')fs.writeFileSync(${JSON.stringify(path.join(root,'artifacts/launcher-debug.apk'))},'rebuilt during the run');console.log(Object.keys(s.files).map(p=>'package:'+p).join('\\n'));}
 else if(a.includes('resolve-activity'))console.log(host+'/.Launcher');
 else if(a.includes('set-home-activity'))console.log('Success');
 else if(a.includes('activities'))console.log('topResumedActivity=ActivityRecord u'+s.user+' '+host+'/.Launcher');
@@ -79,13 +79,13 @@ const instruments=r=>r.commands.filter(a=>a.includes('instrument'));
 const installs=r=>r.commands.filter(a=>a[0]==='install').map(a=>a.at(-1));
 // The plain reminder pass is identical for two tests below; run it once.
 let reminderPass;const passRun=kind=>kind==='reminder'?reminderPass??=exercise('reminder'):exercise(kind,'pass',true);
-for(const kind of ['calendar','reminder'])test(`${kind} upgrade delegates both variants and restores its owned fixture`,()=>{
- const r=passRun(kind);assert.equal(r.status,0,r.stderr);assert.equal(r.reports.length,2);assert.ok(r.reports.every(p=>p.passed&&p.ownerRestored&&!p.cleanupDeferred));assert.deepEqual(r.state.files,{});assert.equal(r.state.exists,false);assert.equal(r.state.user,'0');
- // Baseline seed, candidate verify and one companion class per distribution.
- assert.equal(instruments(r).length,6);
+for(const kind of ['calendar','reminder'])test(`${kind} upgrade runs the launcher pair and restores its owned fixture`,()=>{
+ const r=passRun(kind);assert.equal(r.status,0,r.stderr);assert.equal(r.reports.length,1);assert.ok(r.reports.every(p=>p.passed&&p.ownerRestored&&!p.cleanupDeferred));assert.deepEqual(r.state.files,{});assert.equal(r.state.exists,false);assert.equal(r.state.user,'0');
+ // Baseline seed, candidate verify and one companion class.
+ assert.equal(instruments(r).length,3);
  if(kind==='reminder')assert.ok(r.reports.every(p=>p.intentPreservation.passed&&p.intentPreservation.routes===3));else assert.ok(r.reports.every(p=>p.bridge.totalTests===1));
  // The candidate pair is the verified artifacts pair, never the shared Gradle output.
- assert.ok(installs(r).some(file=>file.endsWith('artifacts/instrumentation/standalone-androidTest.apk'))&&installs(r).some(file=>file.endsWith('artifacts/instrumentation/launcher-androidTest.apk')));
+ assert.ok(installs(r).some(file=>file.endsWith('artifacts/instrumentation/launcher-androidTest.apk')));
  assert.ok(!installs(r).some(file=>file.includes('build/outputs')));
  assert.ok(r.reports.every(p=>/^[0-9a-f]{64}$/.test(p.candidate.appSha256)&&/^[0-9a-f]{64}$/.test(p.candidate.testSha256)&&p.failedPhase===undefined));
 });
@@ -104,19 +104,19 @@ test('failed owner restoration retains the secondary user for recovery',()=>{
 });
 
 test('reminder can explicitly admit the known process runner in a newer baseline',()=>{
- const r=exercise('reminder','baseline-process');assert.equal(r.status,0,r.stderr);assert.equal(r.reports.length,2);
+ const r=exercise('reminder','baseline-process');assert.equal(r.status,0,r.stderr);assert.equal(r.reports.length,1);
 });
 for(const mode of ['baseline-undeclared','candidate-missing-runner'])test(`reminder rejects ${mode} before installing any APK`,()=>{
  const r=exercise('reminder',mode);assert.notEqual(r.status,0);assert.ok(!r.commands.some(a=>a[0]==='install'));assert.deepEqual(r.state.files,{});assert.equal(r.reports[0].cleanupDeferred,true);
 });
 
-test('reminder upgrade runs the legacy workflow digest class on both distributions against the upgraded pair',()=>{
+test('reminder upgrade runs the legacy workflow digest class against the upgraded pair',()=>{
  const r=passRun('reminder');assert.equal(r.status,0,r.stderr);
  const calls=instruments(r),selectors=calls.map(a=>a[a.indexOf('class')+1]);
- assert.equal(selectors.filter(selector=>selector===legacySelector).length,2);
- for(const variant of [0,1]){
-  const run=calls.slice(variant*3,variant*3+3);
-  // Order per distribution: baseline seed, candidate verify, then the legacy digest in the verify phase.
+ assert.equal(selectors.filter(selector=>selector===legacySelector).length,1);
+ {
+  const run=calls.slice(0,3);
+  // Order: baseline seed, candidate verify, then the legacy digest in the verify phase.
   assert.deepEqual(run.map(a=>a[a.indexOf('reminderUpgrade')+1]),['seed','verify','verify']);
   assert.equal(run[2][run[2].indexOf('class')+1],legacySelector);
   assert.equal(run[2][run[2].indexOf('--user')+1],'10','runs in the owned secondary user');

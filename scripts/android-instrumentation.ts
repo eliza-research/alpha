@@ -1,19 +1,18 @@
 #!/usr/bin/env bun
 /**
- * Install both distribution variants with their instrumentation APKs on an owned,
+ * Install the launcher debug APK with its instrumentation APK on an owned,
  * disposable emulator and run a named class list or the whole androidTest suite.
  *
  *   bun run test:android:instrumentation -- --owned-emulator --avd <name> \
  *     [--serial emulator-5554] [--classes NoMockProduct,Shell,StartupReadiness | --all] \
- *     [--variants standalone,launcher] [--test-mocks] [--apk-dir artifacts] \
+ *     [--apk-dir artifacts] \
  *     [--output test-results/android-instrumentation/<run>] [--timeout-ms 900000] \
  *     [--clock-exclusive] [--home-role] [--live-network]
  *
  * --live-network passes each class's `liveArgs` gate (BrowserFlow's browserFlowLive=1): the methods
  * that load a public third-party page run only when the emulator has network and this is asked for.
  *
- * Variants share one package id and replace each other, so they run one after the
- * other: install app + test APK, check the installed bytes, run every class in its
+ * One run: install app + test APK, check the installed bytes, run every class in its
  * own `am instrument` process after clearing the app's data, uninstall. Only packages this run installed are
  * removed; an existing Alpha installation is refused, never replaced.
  *
@@ -55,17 +54,12 @@ interface ClassSpec {
   requires?: "--clock-exclusive";
   campaign?: string;
   note?: string;
-  flagOffOnly?: boolean;
-  testMocks?: boolean;
-  requiresTestMocksBuild?: boolean;
   secondaryUser?: boolean;
   homeRole?: "requests" | "held";
 }
 interface InstrumentationArgs {
   classes: string[] | null;
   all: boolean;
-  variants: string[];
-  testMocks: boolean;
   apkDir: string | null;
   output: string | null;
   serial: string | null;
@@ -133,11 +127,7 @@ const sleepFor = (ms: number) => { Atomics.wait(new Int32Array(new SharedArrayBu
  * kills mid-test, permission changes, provider credential fixtures); they are
  * refused here and named with the campaign that runs them.
  * `liveArgs` are passed only with --live-network (a default run never depends on a public page).
- * `flagOffOnly` classes check a policy a test-mocks build relaxes by design; --test-mocks refuses them.
- * `testMocks` classes are compiled only into the test-mocks instrumentation APK;
- * `requiresTestMocksBuild` classes are in every instrumentation APK but assume a
- * test-mocks app build, so they are refused without --test-mocks instead of skipping.
- * `homeRole` classes run only on the launcher variant inside the --home-role phase:
+ * `homeRole` classes run only inside the --home-role phase:
  * "requests" before Alpha is selected (the class asks for the role in Android's own
  * dialog and restores what it found), "held" while Alpha is the selected HOME app.
  */
@@ -152,26 +142,10 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   ResetPolicy: { note: "Non-destructive cancellation, migration refusal and isolated marker checks; not a system reset proof" },
   BrowserCookiePolicy: { note: "Synthetic intercepted HTTPS origins; private method requires scoped WebView deletion support" },
   BrowserSignins: { note: "signinProcessRestartPhase is skipped here; run bun scripts/test-native-restart.ts signin" },
-  BrowserFlow: { liveArgs: { browserFlowLive: "1" }, note: "loopback fixture methods need --test-mocks; by default the search method asserts the submitted www.google.com/search URL and the javascript: refusal offline; only --live-network (browserFlowLive=1) needs live HTTPS to www.google.com and records INSTRUMENTATION_STATUS browserFlowSearch=results or provider-check (the provider's own check page for that exact search)" },
-  // Every method drives the views, which P-43's required sign-in covers on a signed-out flag-off build.
-  BrowserContinuity: { requiresTestMocksBuild: true, note: "bookmarkProcessRestartPhase is skipped here; run bun scripts/test-native-restart.ts bookmark" },
-  BrowserDownload: { note: "needs --test-mocks (loopback HTTP fixtures); skipped on any other build, so it is not a default class" },
-  // src/testMocks/androidTest: compiled only into the test-mocks instrumentation APK.
-  BrowserAutofill: { testMocks: true },
-  // Both hosted classes serve results from a loopback HTTP fixture, which HostedTransport accepts
-  // only in a test-mocks app build (any other build answers "HTTPS required").
-  HostedProcessRestart: {
-    secondaryUser: true, requiresTestMocksBuild: true,
-    args: { alphaHostedProcessRestartFixture: "true" },
-    phases: ["prepareCommittedResultWithLostAck", "resumeAfterProcessDeathRecoversAckOnce", "verifySecondRestartAndCleanup"],
-  },
+  BrowserFlow: { liveArgs: { browserFlowLive: "1" }, note: "the loopback fixture methods skip (they assume a mock build); the search method asserts the submitted www.google.com/search URL and the javascript: refusal offline; only --live-network (browserFlowLive=1) needs live HTTPS to www.google.com and records INSTRUMENTATION_STATUS browserFlowSearch=results or provider-check (the provider's own check page for that exact search)" },
   RealClock: { args: { realClock: "1", clockExclusive: "1" }, requires: "--clock-exclusive", grantOther: { "com.android.deskclock": ["POST_NOTIFICATIONS"] },
     note: "fixture qualified for API 35 only (it asserts the SDK level); the runner grants AOSP Clock its notification permission, which the class requires for real firing evidence" },
-  Accessibility: { note: "a flag-off build signed out of Eliza Cloud runs requiredCloudSignInAtDoubleFontScale (P-43's sign-in page); the test-mocks pair runs the Home, shade and Settings journey" },
-  // PRD AP-15 coverage across views; the views need the test-mocks pair (a flag-off emulator build is signed out, P-43).
-  AccessibilityViews: { requiresTestMocksBuild: true, grant: ["CAMERA"], note: "every retained view and Apps at 200% system font with normal/largest in-app text (200%/300% effective): ATF, TalkBack order and focus after opening; not TalkBack itself or a device" },
-  AccessibilityLifecycle: { requiresTestMocksBuild: true, note: "repeated HOME with relaunch and rotation across every view at 200% font; processRestartPhase is skipped here; run bun scripts/test-native-restart.ts accessibility" },
-  AccessibilityHomeRole: { homeRole: "held", requiresTestMocksBuild: true, grant: ["CAMERA"], note: "launcher variant with Alpha selected as HOME by --home-role: HOME from every view at 200% font lands on an accessible Alpha Home; not boot-time HOME or device acceptance" },
+  Accessibility: { note: "signed out of Eliza Cloud it runs requiredCloudSignInAtDoubleFontScale (P-43's sign-in page)" },
   ContactsCatalog: { note: "Owned disposable-profile ContactsProvider fixture only; no image admission or contacts activity" },
   ImageCapabilities: { note: "ordinary APK denial only; no AOSP image or real telephony acceptance" },
   SettingsSystemFacts: { note: "read-only comparison with this image's settings; not device acceptance of the Settings handoffs" },
@@ -179,68 +153,46 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   // Core-loop classes. Registered so their opt-in gates are passed; none
   // has a recorded run through this runner yet. An unmet device assumption reports "skipped".
   // Decision P-43 replaced LocalAgentOfflineApps (the retired "without AI" path); written, no recorded run.
-  ResidentAlwaysPresent: { flagOffOnly: true, note: "signed out with the network off and a legacy local-apps selection: the resident starts, the required Eliza Cloud sign-in page opens over Home and cannot be dismissed; not a device or full-image run" },
+  ResidentAlwaysPresent: { note: "signed out with the network off and a legacy local-apps selection: the resident starts, the required Eliza Cloud sign-in page opens over Home and cannot be dismissed; not a device or full-image run" },
   LauncherHome: { homeRole: "held", note: "launcher variant with Alpha selected as HOME by --home-role; not boot-time HOME or device acceptance" },
   SettingsRoles: { homeRole: "requests", note: "removes, declines and accepts the HOME role in Android's dialog and restores the previous holder; --home-role proves the restoration" },
   NotesTrashBackstop: {},
   // Added by the round-2 integration (PR 388); no recorded run.
   AssistantResidentReuse: { note: "synthetic runtime observation, enrollment and streams; not evidence that a live resident stream survives" },
   LauncherApps: { note: "upstream SystemLauncherApps through Alpha's identity; resolves against this image's package manager only; two methods skip when the image has no other launchable app" },
-  NotesDocument: { note: "Production migration refusal and unchanged Notes; test-mocks builds exercise SAF migration. Restart phase requires the explicit notes development campaign." },
+  NotesDocument: { note: "Production migration refusal and unchanged Notes. Restart phase requires the explicit notes development campaign." },
   NotesStorageDurability: { args: { notesStorage: "1" } },
   CloudDeploymentStorage: {},
   CloudSignInAuthorization: { note: "Actual native Authorize/Cancel gate with an isolated plugin and no session; not live authentication or remote key issuance" },
   DailyApps: {},
-  ReminderNoticeQuestion: { requiresTestMocksBuild: true, note: "own reminder notice's Ask Alpha action without a selected agent; the review method needs a selected agent (-e noticeQuestion 1) and skips here (MVP-13, #676)" },
   ReminderLifecycle: { note: "the re-post method skips unless notifications are enabled for the app" },
   ClockHandoff: { args: { clockHandoff: "1" }, note: "Clock intents are intercepted; not ringing evidence" },
   ClockRepeatDays: {},
   HostedResultNotice: { note: "builders only here; the posted and denied notices need the notification permission set first: bun scripts/test-native-permissions.ts notice|notice-denied APP.apk TEST.apk OUTPUT" },
-  HostedBackgroundWorker: { secondaryUser: true, requiresTestMocksBuild: true, args: { alphaHostedBackgroundFixture: "true" } },
   WorkflowApprovalNotice: { args: { workflowApprovalNotice: "1" }, grant: ["POST_NOTIFICATIONS"], note: "the runner grants the notification permission the class requires after clearing app data" },
-  // The reading classes below give the product a synthetic loopback HTTP speech route. Only a
-  // test-mocks app build admits that route; any other build answers "Select an available speech
-  // route before reading" first, which is the correct refusal for a phone without an HTTPS route.
-  BrowserReading: { args: { browserReading: "1" }, requiresTestMocksBuild: true, note: "needs a WebView provider with isolated-world injection" },
-  BrowserSensitiveReading: { args: { browserSensitiveReading: "1" }, requiresTestMocksBuild: true },
-  BrowserIsolatedReading: { args: { browserIsolatedReading: "1" }, requiresTestMocksBuild: true, note: "needs a WebView provider with isolated-world injection" },
   BrowserReadingNavigation: { args: { browserIsolatedReading: "1" }, note: "one method per provider: the stale-document method needs isolated-world injection; without it only the reading-unavailable method runs and the other is listed as skipped (INSTRUMENTATION_STATUS browserReadingProvider says which)" },
   PasswordBrowserFill: {},
   InboxOperationJournal: { args: { inboxOperationNative: "1" } },
   MailAttachment: { args: { mailAttachmentNative: "1" } },
-  // Both drive Home, which a production Android build covers with the Eliza Cloud sign-in gate;
-  // only a test-mocks build offers "Continue offline" to reach it without an account. SystemShade's
-  // outcome and permission methods also run on a flag-off build; its Home method is skipped there.
-  Notifications: { requiresTestMocksBuild: true, note: "opens Android's own shade with Android's global action on both flavors and taps the notice on its own row (Android 15 bundles two notices into a collapsed automatic group first); Alpha draws no shade (#416)" },
-  SystemShade: { note: "homeAsksAndroidForItsShadeOnTheLauncherOnly needs --test-mocks (skipped otherwise). Launcher Home asks Android for its shade (EXPAND_STATUS_BAR); standalone never does (#416, #417). Not AOSP-image or device acceptance" },
+  SystemShade: { note: "homeAsksAndroidForItsShadeOnTheLauncherOnly skips on a signed-out build. Launcher Home asks Android for its shade (EXPAND_STATUS_BAR) (#416, #417). Not AOSP-image or device acceptance" },
   CameraScan: {},
   CameraLatency: { args: { cameraLatency: "1" }, note: "cold/warm first frame (PreviewView STREAMING, also traced as alpha.camera.firstFrame) and shutter-to-thumbnail, reported as cameraLatency.* status; -e cameraLatencyAssert 1 fails on a missed Pixel 10a target; emulator numbers are not device evidence" },
   StorageLegacyAccess: { note: "API 29: legacy storage in effect, both storage permissions granted by the test, one uniquely named Download/ folder created and removed; API 30+: all-files access unchanged" },
   // J05-2: native page excerpt -> reviewed question -> composer; a note's web source across recreation.
   BrowserPageQuestion: { args: { browserPageQuestion: "1" }, note: "offline: every page is served from memory to the tab's WebView (the first tab opens on https://reading.invalid/start, which never resolves); needs a WebView provider with isolated-world injection; the agent's answer and the summary-note save that follows it need a connected agent and are not covered" },
-  // Mock mode and loopback fixtures exist only in a test-mocks app build.
-  ConnectionChooser: { requiresTestMocksBuild: true },
-  BrowserDialogLifecycle: { requiresTestMocksBuild: true },
-  BrowserWebFeatures: { requiresTestMocksBuild: true },
-  CloudVoice: { requiresTestMocksBuild: true },
-  PairedAsr: { requiresTestMocksBuild: true },
-  PairedVoice: { requiresTestMocksBuild: true },
-  ScopedVoicePlayback: { requiresTestMocksBuild: true },
-  IsolatedPdf: { args: { isolatedPdfNative: "1" }, requiresTestMocksBuild: true },
   // Round-9 additions (WP2). None has a recorded run; each is compiled into both instrumentation APKs.
   RendererRecovery: { note: "ends the host WebView renderer (WebViewRenderProcess.terminate, else chrome://crash in a debuggable build); LauncherHome repeats it while Alpha is HOME" },
-  ConnectionRoutes: { flagOffOnly: true, note: "flag-off ConnectionRoutes policy inside the APK; a test-mocks build admits every origin by design, so --test-mocks refuses this class" },
+  ConnectionRoutes: { note: "ConnectionRoutes policy inside the APK" },
   ChatContinuity: { note: "real soft keyboard, KEYCODE_BACK and HOME through UiAutomation; HOME is delivered to Alpha only when it holds the role, otherwise the app is backgrounded and resumed" },
   SelectedDocument: { note: "documentProcessRestartPhase is skipped here; run bun scripts/test-native-restart.ts document" },
   PasswordVaultSettings: { args: { passwordVault: "1" }, note: "sets and clears a fixture screen-lock PIN: an owned emulator with no screen lock of its own; the inactivity step waits out the 60 s unlock window" },
   PasswordVaultFill: { args: { passwordVaultFill: "1" }, note: "sets and clears a fixture screen-lock PIN and selects Alpha as the Autofill service, restoring the previous service; the other package is Alpha's own (the instrumentation APK holds one package)" },
   // Round-9 journeys and links (WP2, second pass). Compiled into both instrumentation APKs; no recorded run.
-  JourneyJ05: { args: { journeyJ05: "1" }, flagOffOnly: true, note: "J05 on the flag-off pair, offline: page -> Ask about page -> native review -> composer -> Send while inference is unavailable (resident present, P-43; nothing dispatched) -> a source note for that page across recreation; needs a WebView provider with isolated-world injection; no agent answer" },
+  JourneyJ05: { args: { journeyJ05: "1" }, note: "J05 on the flag-off pair, offline: page -> Ask about page -> native review -> composer -> Send while inference is unavailable (resident present, P-43; nothing dispatched) -> a source note for that page across recreation; needs a WebView provider with isolated-world injection; no agent answer" },
   NoteOrigin: { note: "storage level: a reminder's note link in note-origins:v1:device, read back exactly and across recreation; needs the slot admitted for compare-and-exchange (WP1). The Calendar 'From note' line is not driven" },
   Maps: { args: { mapsEventReturn: "1" }, note: "calendarLocationReturnsToTheSameEventAndFailsClosed owns a local calendar and grants itself Calendar access; explicitRecenterUsesInjectedNativeLocationAndStopsWatch is skipped without host GPS injection (mapsLatitude/mapsLongitude)" },
   // Self-contained classes with an explicit gate. Registered so the gate is passed.
   BrowserShare: { args: { browserShareLive: "1" }, note: "opens a public HTTPS page and Android's chooser; the emulator needs network" },
-  BrowserUnsupportedReading: { args: { browserUnsupportedReading: "1" }, requiresTestMocksBuild: true, note: "the negative flow: needs a WebView provider WITHOUT isolated-world injection" },
   LargeInboxAttachment: { args: { largeInboxAttachmentNative: "1" } },
   NoteAudioMetadataEncrypted: { args: { notesAudioEncryption: "1" } },
   AppInfo: { secondaryUser: true, note: "opens Android Settings for the named fixture package in an owned disposable user" },
@@ -278,7 +230,7 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   CalendarDeletionReview: { secondaryUser: true, args: { calendarDeletionReview: "1" }, grant: ["READ_CALENDAR", "WRITE_CALENDAR"], note: "Actual native review, Cancel, Undo and expiry against an owned disposable Calendar" },
   CalendarSyncProvider: { secondaryUser: true, args: { calendarSyncProvider: "1" }, grant: ["READ_CALENDAR", "WRITE_CALENDAR"], note: "Exact rich-event CalendarProvider CAS in a fresh disposable user; no Google or agent traffic" },
   ScopedCalendarDeletion: { secondaryUser: true, args: { scopedCalendarDeletion: "1" }, grant: ["READ_CALENDAR", "WRITE_CALENDAR"], note: "Exact synthetic provider rows in a fresh owned secondary user; no real account integration" },
-  CalendarFlow: { secondaryUser: true, args: { calendarFlow: "1" }, grant: ["READ_CALENDAR", "WRITE_CALENDAR"], note: "changes the emulator's time zone and automatic time zone setting and restores them when it closes; bun scripts/test-calendar-regression.ts --case=CalendarFlowInstrumentedTest also restores them if the process dies. Skipped on a signed-out flag-off build (P-43); run it with --test-mocks" },
+  CalendarFlow: { secondaryUser: true, args: { calendarFlow: "1" }, grant: ["READ_CALENDAR", "WRITE_CALENDAR"], note: "changes the emulator's time zone and automatic time zone setting and restores them when it closes; skipped on a signed-out build (P-43)" },
   PrototypeFlow: { note: "the Wallet method runs on a flag-off build only; the view methods skip on a signed-out flag-off build (P-43)" },
   ReminderCapacity: {},
   ReminderHeadsUp: { note: "skips unless notifications are enabled for the app and Do Not Disturb is off" },
@@ -287,9 +239,7 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   Video: {},
   VoiceWorkerSettlement: {},
   ResidentEgressRedaction: { campaign: "ALPHA_RESIDENT_DISPOSABLE_EMULATOR=1 bun scripts/android-resident-instrumentation.ts <app.apk> <androidTest.apk> (owner-only provider key fixture, ARM64)" },
-  ReminderTapProcessDeath: { campaign: "python3 scripts/ci/pending-recovery-ui.py (external process death)" },
-  WorkflowNoticeProcessDeath: { campaign: "python3 scripts/ci/pending-recovery-ui.py (external process death)" },
-  WorkflowApprovalNoticeProcessDeath: { campaign: "ALPHA_BUILD_ARCHIVE=<flag-off archive> ALPHA_TEST_MOCKS_ARCHIVE=<test-mocks archive> bun scripts/android-workflow-native.ts --phase=approval-notice-recovery (kills the main process from the WorkflowNoticeProcessRunner helper process, in an owned secondary user)" },
+  WorkflowApprovalNoticeProcessDeath: { campaign: "ALPHA_BUILD_ARCHIVE=<archive> bun scripts/android-workflow-native.ts --phase=approval-notice-recovery (the WorkflowNoticeProcessRunner helper process, in an owned secondary user)" },
   NotificationChannels: { campaign: "bun scripts/test-native-permissions.ts channels APP.apk TEST.apk OUTPUT (permission-restoring runner)" },
   VoicePermissionDenied: { campaign: "bun scripts/test-native-permissions.ts voice APP.apk TEST.apk OUTPUT (RECORD_AUDIO revoked before the app starts)" },
   VoicePermissionRevoke: { campaign: "bun scripts/test-native-permissions.ts voice-revoke APP.apk TEST.apk OUTPUT (RECORD_AUDIO revoked while recording; the process is killed)" },
@@ -297,7 +247,6 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   WorkflowLegacyReminderUpgrade: { campaign: "bun scripts/test-installed-upgrade.ts reminder (installed-upgrade campaign; runs upgradedLegacyOneOffReminderIsIncludedInNativeDigest after the candidate verify phase)" },
   SettingsCrashLog: { campaign: "bun scripts/test-native-restart.ts crash-log APP.apk TEST.apk OUTPUT (the crash phase kills the process; readback in a new one)" },
   NativeVoiceLatency: { campaign: "bun scripts/native-voice-latency-emulator.ts --serial <owned emulator> --avd <name> --python <grpc venv python> --wav <speech.wav> --out <dir> (issue #395; injects speech into the virtual microphone while the harness runs)" },
-  HomeCalendarCard: { campaign: "bun scripts/test-calendar-regression.ts --case=HomeCalendarCardInstrumentedTest (granted, then with calendar access revoked before the process starts)" },
 };
 
 /**
@@ -306,15 +255,19 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
  */
 export const CAMPAIGN_RUNNERS = [
   "scripts/test-native-calendar-deletion-restart.ts",
-  "scripts/test-native-permissions.ts", "scripts/test-native-restart.ts", "scripts/test-calendar-regression.ts",
+  "scripts/test-native-permissions.ts", "scripts/test-native-restart.ts",
   "scripts/test-installed-upgrade.ts", "scripts/test-reminder-one-off.ts", "scripts/test-reminder-recurrence.ts",
-  "scripts/reminder-recovery-fixture.ts", "scripts/test-cross-app-notifications.ts",
+  "scripts/reminder-recovery-fixture.ts",
   "scripts/android-workflow-native.ts", "scripts/android-resident-instrumentation.ts", "scripts/android-browser-reading-live.ts",
-  "scripts/android-paired-speech-live.ts", "scripts/maps/test-native-navigation.ts",
-  "scripts/maps/test-native-recovery.ts", "scripts/ci/pending-recovery-ui.py", "scripts/ci/resident-native.py",
+  "scripts/maps/test-native-navigation.ts",
+  "scripts/maps/test-native-recovery.ts",
   // Added on main while the reachability check was being written: BrowserStorageFormat.
   "scripts/test-browser-storage-format.ts",
 ];
+
+const MOCK_BUILD_ONLY = "asserts or assumes BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS (mock mode, loopback HTTP fixtures or Home without an account), which no APK build sets; other live sources still reference the class";
+const CALENDAR_CAMPAIGN = "ran only in the Calendar regression campaign, which installed the test-mocks pair to get past the required sign-in";
+const NO_HOSTED_SUPERVISOR = "ran only under the resident-android.yml emulator supervisors, which installed the test-mocks archive";
 
 /**
  * @Test classes that no runner in this repository can run, each with the reason. A class
@@ -322,6 +275,30 @@ export const CAMPAIGN_RUNNERS = [
  * gained a registry entry or a campaign, and for any new class that has neither.
  */
 export const NOT_RUN_BY_A_RUNNER = {
+  CalendarAvailability: CALENDAR_CAMPAIGN,
+  CalendarCrud: CALENDAR_CAMPAIGN,
+  CalendarExternalEditor: CALENDAR_CAMPAIGN,
+  CalendarRange: CALENDAR_CAMPAIGN,
+  CalendarTruncation: CALENDAR_CAMPAIGN,
+  CalendarCreationRecovery: NO_HOSTED_SUPERVISOR,
+  ClockAgentReview: NO_HOSTED_SUPERVISOR,
+  CloudDelegationCallback: NO_HOSTED_SUPERVISOR,
+  Connection: NO_HOSTED_SUPERVISOR,
+  NoteAudio: NO_HOSTED_SUPERVISOR,
+  ReminderAgent: NO_HOSTED_SUPERVISOR,
+  ReminderDeletionStorage: NO_HOSTED_SUPERVISOR,
+  ReminderTapLifecycle: NO_HOSTED_SUPERVISOR,
+  ReminderTapProcessDeath: NO_HOSTED_SUPERVISOR,
+  ReminderTiming: NO_HOSTED_SUPERVISOR,
+  ResidentStreamTransport: NO_HOSTED_SUPERVISOR,
+  ResidentWorkflowCrash: NO_HOSTED_SUPERVISOR,
+  WorkflowNoticeProcessDeath: NO_HOSTED_SUPERVISOR,
+  WorkflowNoticeTap: NO_HOSTED_SUPERVISOR,
+  AccessibilityViews: MOCK_BUILD_ONLY,
+  AccessibilityHomeRole: MOCK_BUILD_ONLY,
+  BrowserIsolatedReading: MOCK_BUILD_ONLY,
+  BrowserWebFeatures: MOCK_BUILD_ONLY,
+  IsolatedPdf: MOCK_BUILD_ONLY,
   PosterCalendarJourney: "J01 drives the removed Camera Scan mode (decision C1); Choose image remains in the composed Camera tools, but this old mode-based journey needs a rewrite to the agent scan path before any runner takes it again",
   LocalServerSocketRelease: "platform probe for an upstream resident defect (upstream defect 4): it measures Android, not Alpha, and is run by hand when that defect is revisited",
   ResetExternalFixture: "requires an external host controller, disposable non-owner user, synthetic device credential and separate companion/media sentinels; reset kills instrumentation, so phases cannot run as a single generic campaign",
@@ -344,11 +321,7 @@ export const NOT_RUN_BY_A_RUNNER = {
 
 /**
  * What a run without --classes executes. Every one of these has at least one method that runs on a
- * flag-off build, so a default run can pass. BrowserDownload is not listed: its only
- * method needs a test-mocks app build, so on the default build the class could only be recorded
- * "skipped", which fails the run. It runs with `--test-mocks --classes BrowserDownload`.
- * BrowserContinuity is not listed for the same reason: each of its methods drives the views, which
- * P-43's required sign-in covers on a signed-out flag-off build. It runs with `--test-mocks`.
+ * signed-out build, so a default run can pass.
  */
 export const DEFAULT_CLASSES = [
   "NoMockProduct", "Shell", "StartupReadiness", "TextScale", "BrowserSignins", "BrowserFlow",
@@ -362,7 +335,7 @@ export const qualifiedClass = (name: string) => {
 };
 
 export function parseInstrumentationArgs(argv: readonly string[]) {
-  const options: InstrumentationArgs = { classes: null, all: false, variants: ["standalone", "launcher"], testMocks: false, apkDir: null, output: null,
+  const options: InstrumentationArgs = { classes: null, all: false, apkDir: null, output: null,
     serial: null, avd: null, ownedEmulator: false, timeoutMs: 900_000, clockExclusive: false, homeRole: false, liveNetwork: false };
   const value = (arg: string, index: number): [string, number] => {
     if (arg.includes("=")) return [arg.slice(arg.indexOf("=") + 1), index];
@@ -375,13 +348,11 @@ export function parseInstrumentationArgs(argv: readonly string[]) {
     let v;
     switch (name) {
       case "--all": options.all = true; break;
-      case "--test-mocks": options.testMocks = true; break;
       case "--owned-emulator": options.ownedEmulator = true; break;
       case "--clock-exclusive": options.clockExclusive = true; break;
       case "--home-role": options.homeRole = true; break;
       case "--live-network": options.liveNetwork = true; break;
       case "--classes": [v, index] = value(arg, index); options.classes = v.split(",").map(s => s.trim()).filter(Boolean); break;
-      case "--variants": [v, index] = value(arg, index); options.variants = v.split(",").map(s => s.trim()).filter(Boolean); break;
       case "--apk-dir": [v, index] = value(arg, index); options.apkDir = v; break;
       case "--output": [v, index] = value(arg, index); options.output = v; break;
       case "--serial": [v, index] = value(arg, index); options.serial = v; break;
@@ -391,10 +362,8 @@ export function parseInstrumentationArgs(argv: readonly string[]) {
     }
   }
   if (options.all && options.classes) throw new Error("Choose --classes or --all, not both");
-  if (!options.variants.length || options.variants.some(v => !["standalone", "launcher"].includes(v)) || new Set(options.variants).size !== options.variants.length)
-    throw new Error("--variants must list standalone and/or launcher once each");
   if (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs < 10_000) throw new Error("--timeout-ms must be at least 10000");
-  options.apkDir ??= options.testMocks ? "artifacts/test-mocks" : "artifacts";
+  options.apkDir ??= "artifacts";
   if (!options.all) {
     const requested = (options.classes ?? DEFAULT_CLASSES).map(qualifiedClass);
     if (new Set(requested).size !== requested.length) throw new Error("Duplicate class");
@@ -405,19 +374,14 @@ export function parseInstrumentationArgs(argv: readonly string[]) {
       if (spec.secondaryUser && !options.ownedEmulator) throw new Error(`${short(cls)} runs in a disposable secondary Android user; it requires --owned-emulator`);
       if (spec.requires === "--clock-exclusive" && !options.clockExclusive)
         throw new Error(`${short(cls)} changes real alarms; pass --clock-exclusive only on an exclusive, unlocked emulator with no other timers`);
-      if (spec.testMocks && !options.testMocks) throw new Error(`${short(cls)} runs only on the --test-mocks variant`);
-      if (spec.requiresTestMocksBuild && !options.testMocks) throw new Error(`${short(cls)} needs a test-mocks app build; pass --test-mocks (artifacts/test-mocks)`);
-      if (spec.flagOffOnly && options.testMocks) throw new Error(`${short(cls)} checks the flag-off policy, which a test-mocks app build relaxes by design; run it without --test-mocks`);
       if (spec.homeRole && !options.homeRole)
         throw new Error(`${short(cls)} needs the HOME role phase; pass --home-role on an owned emulator (the runner selects the launcher APK as HOME and restores the original)`);
-      if (spec.homeRole && !options.variants.includes("launcher")) throw new Error(`${short(cls)} runs only on the launcher variant`);
     }
     options.classes = requested;
   }
   if (options.homeRole) {
     if (options.all) throw new Error("--home-role runs named classes; it cannot be combined with --all");
     if (!options.ownedEmulator) throw new Error("--home-role changes the HOME role; it requires --owned-emulator");
-    if (!options.variants.includes("launcher")) throw new Error("--home-role needs the launcher variant");
     if (!options.classes?.some(cls => CLASS_REGISTRY[short(cls)]?.homeRole)) throw new Error("--home-role was given but no requested class uses the HOME role (LauncherHome, SettingsRoles)");
   }
   return {...options, apkDir: options.apkDir};
@@ -460,8 +424,11 @@ export function secondaryUserLifecycle({ serial, lease, avd, adb, env = process.
   };
 }
 
-/** Locate a variant's app/test APK pair and bind the app to the verify-apks manifest. */
-export function admitApks(apkDir: string, variant: string, { testMocks }: {testMocks: boolean}) {
+export const VARIANT = "launcher";
+
+/** Locate the app/test APK pair and bind the app to the verify-apks manifest. */
+export function admitApks(apkDir: string) {
+  const variant = VARIANT;
   const sha = (file: string) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
   const manifestFile = path.join(apkDir, "apk-manifest.json");
   if (!fs.existsSync(manifestFile)) throw new Error(`${manifestFile} is missing; build and verify the APKs first`);
@@ -470,9 +437,9 @@ export function admitApks(apkDir: string, variant: string, { testMocks }: {testM
     results?: {variant: string; mode: string; sha256: string; versionCode?: number | null}[];
     instrumentation?: Record<string, {sha256?: string}>;
   } = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
-  if (manifest.testMocks !== testMocks) throw new Error(`${manifestFile} records testMocks=${manifest.testMocks}; expected ${testMocks}`);
+  if (manifest.testMocks !== false) throw new Error(`${manifestFile} records testMocks=${manifest.testMocks}; an APK build is always flag-off`);
   const app = path.join(apkDir, `${variant}-debug.apk`);
-  const test = testMocks ? path.join(apkDir, `${variant}-androidTest.apk`) : path.join(apkDir, "instrumentation", `${variant}-androidTest.apk`);
+  const test = path.join(apkDir, "instrumentation", `${variant}-androidTest.apk`);
   for (const file of [app, test]) if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
   const appSha256 = sha(app), testSha256 = sha(test);
   const row = manifest.results?.find(entry => entry.variant === variant && entry.mode === "debug");
@@ -481,8 +448,8 @@ export function admitApks(apkDir: string, variant: string, { testMocks }: {testM
   const recordedTest = manifest.instrumentation?.[variant]?.sha256;
   if (recordedTest !== testSha256) throw new Error(`${test} does not match the instrumentation APK recorded in ${manifestFile}; rebuild and re-verify`);
   return [
-    { variant, role: "app", file: app, sha256: appSha256, versionCode: row.versionCode, testMocks },
-    { variant, role: "test", file: test, sha256: testSha256, testMocks },
+    { variant, role: "app", file: app, sha256: appSha256, versionCode: row.versionCode },
+    { variant, role: "test", file: test, sha256: testSha256 },
   ];
 }
 
@@ -598,7 +565,7 @@ export async function runLeased({ options, serial, adb, timing = {}, withSeconda
   const packages = adb(["shell", "pm", "list", "packages", "-u", "--user", "all"]).split(/\r?\n/).map(s => s.trim());
   if (packages.some(row => row === `package:${PACKAGE}` || row === `package:${PACKAGE}.test`))
     throw new Error("Alpha Phone or its test package is already installed; use a fresh emulator (never replaced)");
-  const apks = options.variants.flatMap(variant => admitApks(options.apkDir, variant, options));
+  const apks = admitApks(options.apkDir);
   const home = options.homeRole ? admitHome(adb) : null;
   if (!options.all && !options.classes) throw new Error("Named instrumentation classes are required unless --all was selected");
   const requested = options.classes ?? [];
@@ -620,8 +587,9 @@ export async function runLeased({ options, serial, adb, timing = {}, withSeconda
     if (actual !== expected) throw new Error(`Installed ${pkg} bytes do not match the admitted APK`);
   };
   try {
-    for (const variant of options.variants) {
-      const [app, test] = apks.filter(apk => apk.variant === variant);
+    run: {
+      const variant = VARIANT;
+      const [app, test] = apks;
       adb(["install", "-t", app.file], { timeout: 600_000 }); installed.push(PACKAGE);
       adb(["install", "-t", test.file], { timeout: 600_000 }); installed.push(`${PACKAGE}.test`);
       fingerprint(PACKAGE, app.sha256);
@@ -694,10 +662,10 @@ export async function runLeased({ options, serial, adb, timing = {}, withSeconda
               record(cls, missingClass(), { user: "secondary", note: `secondary user phase failed: ${message(error)}` });
           }
           // An unremoved user keeps this run's state on the emulator (its packages were still uninstalled):
-          // stop further variants; remove the retained user by hand with the recovery command printed at the end of the run.
-          if (!lifecycle.removed) break;
+          // stop the run; remove the retained user by hand with the recovery command printed at the end of the run.
+          if (!lifecycle.removed) break run;
         }
-        if (home && variant === "launcher") {
+        if (home) {
           for (const cls of requested.filter(cls => phase(cls) === "requests")) runClass(cls);
           const held = requested.filter(cls => phase(cls) === "held");
           try {
@@ -710,7 +678,7 @@ export async function runLeased({ options, serial, adb, timing = {}, withSeconda
               record(cls, missingClass(), { note: `HOME role phase failed: ${message(error)}` });
           }
           // Restore while Alpha is still installed, so the role is given back and not merely lost with the package.
-          if (!restoreHome(adb, home, timing).restored) break;
+          if (!restoreHome(adb, home, timing).restored) break run;
         }
       }
       adb(["uninstall", `${PACKAGE}.test`], { allowFailure: true }); installed.splice(installed.indexOf(`${PACKAGE}.test`), 1);
@@ -736,7 +704,7 @@ export async function runLeased({ options, serial, adb, timing = {}, withSeconda
   }
   const restoration = home?.restoration;
   const result = writeInstrumentationRecord(path.join(output, "results.json"), {
-    runId, createdAt: new Date().toISOString(), commit, dirty, testMocks: options.testMocks, emulator,
+    runId, createdAt: new Date().toISOString(), commit, dirty, emulator,
     apks: apks.map(({ file, ...apk }) => ({ ...apk, file: path.relative(process.cwd(), path.resolve(file)) })),
     mode: options.all ? "all" : "classes",
     ...(options.liveNetwork ? { liveNetwork: true } : {}),

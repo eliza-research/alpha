@@ -65,7 +65,7 @@ bun run test:browser:production   # production bundle
 The web build is a development preview and the payload packaged into the APKs.
 Production builds start with live, empty or unconnected states. Mock data,
 fixtures and developer controls require exactly `ELIZA_DEV_ALLOW_TEST_MOCKS=1`.
-`bun run dev`, Playwright and explicit test-mocks builds enable this switch.
+`bun run dev` and Playwright enable this switch; no APK build does.
 Add `?tools=1` to an enabled development server to show developer controls;
 the query cannot enable them in production or on Android.
 
@@ -120,9 +120,8 @@ bun run android:build:local        # prepare, build worker, stage runtime and bu
 bun run android:verify            # inspect APK contents and signatures
 ```
 
-The build produces standalone and launcher, debug and release APKs under
-`artifacts/`. The variants share `ai.alphacompute.alphaphone` and can replace one
-another with an admitted version and signer. The launcher declares HOME.
+The build produces the launcher debug and release APKs under `artifacts/`.
+The launcher declares HOME.
 Phone, Contacts and SMS/MMS require an admitted AOSP image capability.
 
 Alpha Compute builds use the same ID for the installed package and native
@@ -143,16 +142,7 @@ their own provider is selected, Eliza Cloud speech when signed in to Cloud with
 no plan limit in force, otherwise on-device speech. A Cloud or provider speech
 request that fails before audio plays falls back to on-device speech.
 
-Developer APKs may explicitly omit the runtime:
-
-```sh
-bun run agent:prepare -- --source-only
-bun run android:build -- --allow-unpackaged-runtime
-bun run android:build -- --test-mocks --allow-unpackaged-runtime
-```
-
-Test-mocks APKs go to `artifacts/test-mocks/`. Production Android builds remove
-mock flags from child environments. `scripts/audit-production-bundle.ts` checks
+Android builds remove mock flags from child environments. `scripts/audit-production-bundle.ts` checks
 the web output and APK assets for developer code, fixtures and source maps.
 
 Release signing uses `ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
@@ -225,9 +215,8 @@ discards the cache hint; the durable installer journal still owns recovery.
 Main pushes automatically build unsigned native candidates in the existing
 Resident Android workflow. The separate `app-native-candidate-*` artifact holds
 the genuine distribution archive and `app-update-candidate.json`, which binds
-source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
-in the qualification archive. Each main-push run and its reruns share a group
-keyed by run ID. Builds can complete out of order, so select the successful
+source, SDK, run/attempt, profile, channel and actual APK hashes. Each main-push
+run and its reruns share a group keyed by run ID. Builds can complete out of order, so select the successful
 candidate for the reviewed source commit.
 
 Before enabling a successful automatic build, a maintainer supplies
@@ -307,15 +296,14 @@ read-only token. The build stages with the existing voice and embedding tools
 and retains the input IDs, hashes and sizes in `native-input-admission.json`.
 The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
-from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
+from GitHub, expanded file bytes, and the unsigned APK hash and size.
 The expiry workflow on the default branch checks `main` on schedule and on
 manual dispatch from `develop`. A manual dispatch from `main` checks the
 selected commit. Its summary records the inspected revision and identifies
 pins expiring within four days. Renew the artifact IDs and digests while the
 old inputs remain available. Retain qualification receipts for identical
 files and review changed native bytes or source records before admission.
-The candidate archive retains the distribution producer evidence before
-the test-mocks build can replace it.
+The candidate archive retains the distribution producer evidence.
 
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
@@ -495,8 +483,8 @@ The remaining release work is tracked in [native promotion #888](https://github.
 and [wireless launcher acceptance #889](https://github.com/alphacompute/alphaphone/issues/889).
 Complete it in this order:
 
-1. Admit native voice inputs for the exact SDK, then build and sign both
-   distribution variants. Preserve advancing versions and the enrolled signer.
+1. Admit native voice inputs for the exact SDK, then build and sign the
+   launcher release. Preserve advancing versions and the enrolled signer.
    The protected [release custody workflow](../.github/workflows/release-custody-proof.yml)
    exports the verified public certificates and fingerprints under
    `artifacts/release-public-identities/` for enrollment.
@@ -534,17 +522,8 @@ Complete it in this order:
      [Cloud registration #666](https://github.com/alphacompute/alphaphone/issues/666),
      [App Links #670](https://github.com/alphacompute/alphaphone/issues/670).
 
-   For a debug-signed Pixel, use an explicit `--test-mocks` APK on an owned
-   test device and select **Staging** in **Subscription gate QA**. The staging
-   App Links filter is part of that build. Use the staging URL
-   `https://staging.eliza.app/.well-known/assetlinks.json` and pass
-   `--keep-fingerprint <debug-SHA256>` to the asset-link config generator.
-   For native Google sign-in, add the package and that signer's SHA-1 in
-   the staging Steward project. After deploying, run
-   `bun scripts/cloud-readiness.ts probe --environment staging --signer <debug-SHA256>`.
-   The staging phone flow ends at plan admission. For production Cloud acceptance
-   on the Pixel, use the admitted release APK. Android requires a separate device
-   or fresh installation when the installed copy uses an incompatible signer.
+   For production Cloud acceptance on the Pixel, use the admitted release APK.
+   Android requires a separate device or fresh installation when the installed copy uses an incompatible signer.
 3. Qualify the exact signed baseline and establish it on both distribution
    paths before exposing the phones to a newer offer. If using
    `scripts/provision-unit.ts`, provision before recording the baseline's version

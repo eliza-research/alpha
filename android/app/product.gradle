@@ -1,28 +1,15 @@
 // Alpha product configuration applied by the generated host (android/consumer-host.json,
-// appScripts). The upstream generator owns SDK, dependencies, variants, signing,
-// version and test-mocks policy; this file holds only Alpha's Gradle-time product
+// appScripts). The upstream generator owns SDK, dependencies, the launcher variant, signing and
+// version policy; this file holds only Alpha's Gradle-time product
 // inputs and admission: App Links, update manifest, voice and embedding hosts.
-// Every build packages on-device speech and local embeddings; the renderer chooses Cloud, provider
-// or on-device speech at run time. The resident agent receives ELIZA_RUNTIME_PROFILE=native
-// (upstream's local-embeddings route).
-def unpackagedRuntime = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
-// Upstream switch (vendor/eliza/packages/app/scripts/dev-ui.ts): the generator attaches test-only
-// sources to DEBUG variants when it is exactly "1".
-def testMocksRaw = project.findProperty('ELIZA_DEV_ALLOW_TEST_MOCKS') ?: System.getenv('ELIZA_DEV_ALLOW_TEST_MOCKS')
-// Debug ABIs use the same explicit target as resident staging (scripts/stage-local-agent-runtime.ts);
-// dependency ABI flags do not filter the app. android/consumer-host.json therefore declares no debug
-// abiFilters: the default stays arm64-v8a + x86_64, and the Android Bun producer admits ARM64 only.
-def runtimeAbisRaw = project.findProperty('ELIZA_ANDROID_TARGET_ABIS')
-if (runtimeAbisRaw == null) runtimeAbisRaw = System.getenv('ELIZA_ANDROID_TARGET_ABIS')
-def runtimeAbis = runtimeAbisRaw == null ? ['arm64-v8a', 'x86_64'] : runtimeAbisRaw.toString().split(',', -1).collect { it.trim() }
-if (!runtimeAbis || runtimeAbis.toSet().size() != runtimeAbis.size() || runtimeAbis.any { !(it in ['arm64-v8a', 'x86_64']) })
- throw new GradleException('Invalid ELIZA_ANDROID_TARGET_ABIS')
-def androidBunTarget = project.findProperty('ELIZA_ANDROID_BUN_TARGET') ?: System.getenv('ELIZA_ANDROID_BUN_TARGET') ?: 'linux-musl'
-if (!(androidBunTarget in ['android', 'linux-musl']) || androidBunTarget == 'android' && runtimeAbis != ['arm64-v8a'])
- throw new GradleException('Android Bun requires the explicit arm64-v8a target')
+// Every build packages the resident runtime, on-device speech and local embeddings; the renderer
+// chooses Cloud, provider or on-device speech at run time. The resident agent receives
+// ELIZA_RUNTIME_PROFILE=native (upstream's local-embeddings route).
+// Debug packages the ABIs resident staging produces (scripts/stage-local-agent-runtime.ts);
+// dependency ABI flags do not filter the app. Release is arm64-v8a (android/consumer-host.json).
+def runtimeAbis = ['arm64-v8a', 'x86_64']
 apply from: file('cloud-deployment.generated.gradle')
 def cloudWebHost = alphaCloudWebHosts.production
-def stagingCloudWebHost = alphaCloudWebHosts.staging
 // Verified App Links return for Cloud delegation, the in-app Cloud sign-in and the Google
 // Workspace consent return (GoogleWorkspaceReturn) at the configured production web host.
 // AndroidManifest.xml declares the exact sign-in and Google callback paths. Publish the
@@ -41,7 +28,7 @@ if (!(updateChannel in ['public','private-qa']) || updateChannel == 'public' && 
  throw new GradleException('Update channel input refused')
 if (updateChannel == 'private-qa') {
  try {
-  if (unpackagedRuntime || testMocksRaw?.toString() == '1' || !privateUpdateFile || !(privateUpdateDigest ==~ /[a-f0-9]{64}/)) throw new Exception()
+  if (!privateUpdateFile || !(privateUpdateDigest ==~ /[a-f0-9]{64}/)) throw new Exception()
   def input = java.nio.file.Paths.get(privateUpdateFile)
   def noFollow = java.nio.file.LinkOption.NOFOLLOW_LINKS
   if (!input.isAbsolute() || java.nio.file.Files.isSymbolicLink(input)) throw new Exception()
@@ -81,7 +68,6 @@ android {
  }
  defaultConfig {
   manifestPlaceholders.put('appLinkHost', appLinkHost)
-  manifestPlaceholders.put('stagingCloudWebHost', stagingCloudWebHost)
   manifestPlaceholders.put('alphaUpdateChannel', updateChannel)
   manifestPlaceholders.put('alphaUpdateManifestSha256', 'sha256:' + updateManifestSha256)
   // Constant: the value the resident agent is launched with (AlphaLocalAgentPlugin).
@@ -108,15 +94,12 @@ android {
 // The shared bionic host is packaged only from the reviewed consumer artifact and BGE pin.
 def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {
  workingDir rootProject.projectDir.parentFile
- def args = ['bun', 'scripts/stage-embedding-host.ts', '--verify']
- if (unpackagedRuntime) args += '--allow-unpackaged-runtime'
- commandLine args
+ commandLine 'bun', 'scripts/stage-embedding-host.ts', '--verify'
 }
 tasks.named('preBuild').configure { dependsOn verifyEmbeddingHost }
 
 // The staged Google host must match the current product sources before it is packaged.
 def verifyNativeGoogleHost = tasks.register('verifyNativeGoogleHost', Exec) {
- onlyIf { !unpackagedRuntime && testMocksRaw?.toString() != '1' }
  workingDir rootProject.projectDir.parentFile
  commandLine 'bun', 'scripts/runtime-profile.ts', '--verify-native'
 }
@@ -126,16 +109,13 @@ tasks.named('preBuild').configure { dependsOn verifyNativeGoogleHost }
 // not package it; the app packages its resident host's engine, so the two must be identical bytes.
 // Staged voice outputs must also be the bytes android/voice-host/qualified-voice-host.json records.
 // The listener APK packages its own verified copy of the engine.
-// One explicit selection controls JNI compilation and the same integrity checks.
-def selectedParadeeAbis = project.findProperty('elizaParadeeAbis')?.toString()?.split(',', -1)?.toList() ?: ['arm64-v8a', 'x86_64']
-if (!selectedParadeeAbis || selectedParadeeAbis.toSet().size() != selectedParadeeAbis.size() || selectedParadeeAbis.any { !(it in ['arm64-v8a', 'x86_64']) }) throw new GradleException('Invalid elizaParadeeAbis')
-def paradeeAbiArgs = selectedParadeeAbis.collectMany { ['--abi', it] }
+def paradeeAbiArgs = runtimeAbis.collectMany { ['--abi', it] }
 def verifyParadeeAppLinkage = tasks.register('verifyParadeeAppLinkage', Exec) {
  workingDir rootProject.projectDir.parentFile
- commandLine(['bun', 'scripts/paradee-runtime.ts', '--app-linkage'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
+ commandLine(['bun', 'scripts/paradee-runtime.ts', '--app-linkage'] + paradeeAbiArgs)
 }
 def verifyVoiceHost = tasks.register('verifyVoiceHost', Exec) {
  workingDir rootProject.projectDir.parentFile
- commandLine(['bun', 'scripts/voice-host.ts', '--verify'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
+ commandLine(['bun', 'scripts/voice-host.ts', '--verify'] + paradeeAbiArgs)
 }
 tasks.named('preBuild').configure { dependsOn verifyParadeeAppLinkage, verifyVoiceHost }

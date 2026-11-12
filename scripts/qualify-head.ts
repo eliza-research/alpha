@@ -1,24 +1,22 @@
 /**
  * Qualify the current checkout HEAD from scratch and record one result file.
  *
- *   bun scripts/qualify-head.ts [--allow-unpackaged-runtime] [--fresh]
- *                                 [--engines chromium,firefox,webkit] [--skip-android]
+ *   bun scripts/qualify-head.ts [--fresh] [--engines chromium,firefox,webkit] [--skip-android]
  *                                 [--candidate-archive <apk-manifest.json>]
  *   bun scripts/qualify-head.ts --candidate [--candidate-archive <apk-manifest.json>]
  *                                 # re-read campaign evidence for HEAD's existing result
  *
  * Writes test-results/qualify/<sha>/result.json with the git SHA, the
- * upstream.lock.json commit, `bun run verify`, `bun run android:build` (standalone
- * and launcher, debug and release), the production bundle audit, and per-engine
+ * upstream.lock.json commit, `bun run verify`, `bun run android:build` (the launcher
+ * debug and release APKs), the production bundle audit, and per-engine
  * results for the browser storage-domain specs, the full Chromium suite (`bun run test:browser`)
  * and the production-surface project (`bun run test:browser:production`). Every step runs now; no earlier
  * log, manifest or result is reused (--fresh deletes an older directory for the
  * same SHA, otherwise the script refuses to overwrite it). A dirty tree is
  * recorded and can never qualify.
  *
- * Qualification is not a distribution decision, but it never hides one: a test-mocks
- * build cannot qualify, and the result names every release blocker verify-apks recorded
- * (releaseBlockers; unsigned, unpackaged runtime, unqualified speech, and the proprietary-font
+ * Qualification is not a distribution decision, but it never hides one: the result names
+ * every release blocker verify-apks recorded (releaseBlockers; unsigned, unqualified speech, and the proprietary-font
  * check unresolved-font-licence while its policy constant in scripts/licence-policy.ts is true)
  * and reports releasesDistributable:false while any remains. Open-source licence flags are
  * recorded by verify-apks (licenceFlags) and are never a blocker here (decision P-09).
@@ -48,7 +46,6 @@ export { STORAGE_SPECS };
 export const ENGINES = Object.freeze(["chromium", "firefox", "webkit"]);
 
 interface QualifyOptions {
-  allowUnpackagedRuntime: boolean;
   fresh: boolean;
   skipAndroid: boolean;
   candidateOnly: boolean;
@@ -112,11 +109,10 @@ interface Qualification {
 }
 
 export function parseQualifyArgs(argv: readonly string[]) {
-  const options: QualifyOptions = { allowUnpackagedRuntime: false, fresh: false, skipAndroid: false, candidateOnly: false, candidateArchive: undefined, engines: [...ENGINES] };
+  const options: QualifyOptions = { fresh: false, skipAndroid: false, candidateOnly: false, candidateArchive: undefined, engines: [...ENGINES] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === "--allow-unpackaged-runtime") options.allowUnpackagedRuntime = true;
-    else if (arg === "--fresh") options.fresh = true;
+    if (arg === "--fresh") options.fresh = true;
     else if (arg === "--skip-android") options.skipAndroid = true;
     else if (arg === "--candidate") options.candidateOnly = true;
     else if (arg === "--candidate-archive") {
@@ -386,7 +382,7 @@ function main() {
   else {
     // Remove the previous manifest first so a failed build can never report it.
     fs.rmSync("artifacts/apk-manifest.json", { force: true });
-    result.androidBuild = step("android-build", "bun", ["run", "android:build", ...(options.allowUnpackagedRuntime ? ["--", "--allow-unpackaged-runtime"] : [])]);
+    result.androidBuild = step("android-build", "bun", ["run", "android:build"]);
     if (fs.existsSync("artifacts/apk-manifest.json")) {
       const manifest: ApkManifest = JSON.parse(fs.readFileSync("artifacts/apk-manifest.json", "utf8"));
       fs.copyFileSync("artifacts/apk-manifest.json", path.join(directory, "apk-manifest.json"));
@@ -400,7 +396,7 @@ function main() {
         runtime: row.runtime, distributable: row.distributable, bundleAudit: row.bundleAudit,
         ...(row.mode === "release" ? { distributionBlockers: releaseBlockers(row, { manifestTestMocks: manifest.testMocks }) } : {}),
       }));
-      const expected = ["standalone/debug", "standalone/release", "launcher/debug", "launcher/release"];
+      const expected = ["launcher/debug", "launcher/release"];
       const built = manifest.results.map(row => `${row.variant}/${row.mode}`).sort();
       if (JSON.stringify(built) !== JSON.stringify([...expected].sort())) {
         result.androidBuild.status = "failed";
@@ -451,8 +447,7 @@ function main() {
 
   result.finishedAt = new Date().toISOString();
   result.qualified = verdict(result);
-  // Qualification of the head is not a distribution decision: releases without
-  // the packaged resident runtime (--allow-unpackaged-runtime) stay non-distributable.
+  // Qualification of the head is not a distribution decision.
   const completed = Object.assign(recordCandidate(result, root, ciArchive), releaseDistribution(result.androidBuild?.apks));
   write();
   for (const blocker of completed.releaseBlockers) console.warn(`RELEASE BLOCKER ${blocker}`);

@@ -1,16 +1,11 @@
 /** Archived workflow scenarios; upstream owns leased APK and disposable-user lifecycles.
  * Phases: `workflow` (phone-step reads and drafts), `approval-notice` (phone-step approval
  * notice builders, OS posting, tap route and withdrawal, and the tap fenced after an account change) and `approval-notice-recovery` (a pending
- * approval notice across the death of the app's main process, a signed-out cold start on each build,
- * and an owner change). Every case runs on both distributions from hash-admitted archive pairs; any
- * failed, skipped or missing case fails the campaign.
- * Two archives: `ALPHA_BUILD_ARCHIVE` (flag-off) for every case, and `ALPHA_TEST_MOCKS_ARCHIVE`
- * (test-mocks) for the cases that restore a synthetic owner. Each archive's own record must say which
- * build it is; a selection that needs a missing or mislabelled archive is refused before the emulator
- * is touched. A test-mocks case first runs the same method under AndroidJUnitRunner with
- * `-e workflowOwnerPhase prepare` in the same owned user, then under its own runner.
- * `--variant=standalone|launcher` and `--phase=workflow|approval-notice|approval-notice-recovery`
- * run part of it, for the cases left after a failure stopped an earlier run: the report then
+ * approval notice across a signed-out cold start and an owner change). Every case runs on the
+ * launcher APK from the hash-admitted archive `ALPHA_BUILD_ARCHIVE`; any failed, skipped or missing
+ * case fails the campaign.
+ * `--phase=workflow|approval-notice|approval-notice-recovery`
+ * runs part of it, for the cases left after a failure stopped an earlier run: the report then
  * carries `selection` and `selectionPassed`, and `passed` (the whole campaign) stays false.
  * The process-death cases run under the instrumentation APK's second runner
  * (WorkflowNoticeProcessRunner, a helper process of the app), so the test outlives the main
@@ -27,10 +22,8 @@ import {androidEnv} from './toolchain.ts';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {verifyPinnedUpstream} from './pinned-upstream-source.ts';
-import {requireInstrumentationSuccess} from './instrumentation-result.ts';
 import type {IsolatedAndroidTest, IsolatedUserState} from './native-test-fixture.ts';
 
-type Build = 'flag-off' | 'test-mocks';
 type Case = {
  class: string;
  method: string;
@@ -39,22 +32,17 @@ type Case = {
  phase?: string;
  notifications?: boolean;
  runner?: string;
- build?: Build;
- prepareOwner?: boolean;
 };
 type ApkPair = { appSha256: string; testSha256: string };
-type Archive = { directory: string; apks: Record<string, ApkPair> };
 type CaseResult = ApkPair & {
  variant: string;
  phase: string;
  method: string;
  runner: string;
- build: Build;
  passed: boolean;
  userLifecycle?: IsolatedUserState;
  user?: number;
  result?: unknown;
- preparation?: ReturnType<typeof requireInstrumentationSuccess>;
  error?: string;
 };
 type PhaseSummary = {
@@ -72,9 +60,9 @@ const {withIsolatedAndroidUser}=await import('../vendor/eliza/packages/app/scrip
 const {acquireDeviceLease}=await import('../vendor/eliza/packages/app/scripts/lib/device-lease.ts');
 const PHASES=['workflow','approval-notice','approval-notice-recovery'];
 const options=process.argv.slice(2);
-assert.ok(options.every(arg=>/^--(?:variant|phase)=.+$/.test(arg)),'Unknown workflow campaign option');assert.equal(new Set(options.map(arg=>arg.split('=')[0])).size,options.length,'Duplicate workflow campaign option');
-const requestedVariant=options.find(arg=>arg.startsWith('--variant='))?.slice(10),requestedPhase=options.find(arg=>arg.startsWith('--phase='))?.slice(8);
-assert.ok(!requestedVariant||['standalone','launcher'].includes(requestedVariant),'Unknown variant');assert.ok(!requestedPhase||PHASES.includes(requestedPhase),'Unknown phase');
+assert.ok(options.length<=1&&options.every(arg=>/^--phase=.+$/.test(arg)),'Unknown workflow campaign option');
+const requestedPhase=options[0]?.slice(8);
+assert.ok(!requestedPhase||PHASES.includes(requestedPhase),'Unknown phase');
 const serial=process.env.ANDROID_SERIAL,avd=process.env.ALPHA_WORKFLOW_TEST_AVD,abi=process.env.ALPHA_WORKFLOW_TEST_ABI;
 assert.ok(serial&&/^emulator-\d+$/.test(serial),'Explicit emulator serial required');
 assert.ok(avd&&/^[A-Za-z0-9_.-]+$/.test(avd),'Explicit owned AVD name required');
@@ -92,12 +80,7 @@ const cases: Case[]=[{class:'WorkflowPhoneNativeInstrumentedTest',method:'privat
  // MVP-18: a tap after the account changed is fenced to the other-account state; no stale approval opens.
  // The process-death counterpart is WorkflowApprovalNoticeProcessDeathInstrumentedTest in the approval-notice-recovery phase below.
  {class:'WorkflowApprovalNoticeInstrumentedTest',method:'approvalNoticeTapAfterAccountChangeIsFencedWithoutAStaleApproval',gate:'workflowApprovalNotice',grant:false,notifications:true,phase:'approval-notice'},
- // A pending approval notice while the main process dies: the helper-process runner keeps the test alive.
- // Test-mocks: the prepare run restores a synthetic owner and posts the approval through main first.
- {class:'WorkflowApprovalNoticeProcessDeathInstrumentedTest',method:'pendingApprovalNoticeSurvivesProcessDeathAndOpensItsExactApprovalOnce',gate:'workflowApprovalNoticeProcessDeath',grant:false,notifications:true,phase:'approval-notice-recovery',runner:'WorkflowNoticeProcessRunner',build:'test-mocks',prepareOwner:true},
- // The prepared owner's credential is gone at the next cold start: the approval is withdrawn and its original tap cancelled.
- {class:'WorkflowApprovalNoticeProcessDeathInstrumentedTest',method:'definitiveSignedOutColdStartWithdrawsApprovalAndInvalidatesOriginalTap',gate:'workflowApprovalNoticeProcessDeath',grant:false,notifications:true,phase:'approval-notice-recovery',runner:'WorkflowNoticeProcessRunner',build:'test-mocks',prepareOwner:true},
- // Flag-off: the actual product initializer settles signed out and withdraws a persisted approval.
+ // The helper-process runner keeps the test alive across the cold start: the product initializer settles signed out and withdraws a persisted approval.
  {class:'WorkflowApprovalNoticeProcessDeathInstrumentedTest',method:'productionSignedOutColdStartWithdrawsPersistedSyntheticApproval',gate:'workflowApprovalNoticeProcessDeath',grant:false,notifications:true,phase:'approval-notice-recovery',runner:'WorkflowNoticeProcessRunner'},
  // A pending approval notice while the connected owner changes (synthetic owner IDs; no account).
  {class:'WorkflowApprovalNoticeInstrumentedTest',method:'ownerChangeWithdrawsThePendingApprovalNoticeAndItsTapOpensNothing',gate:'workflowApprovalNotice',grant:false,notifications:true,phase:'approval-notice-recovery'}];
@@ -106,40 +89,27 @@ assert.ok(cases.every(test=>PHASES.includes(test.phase??'workflow')),'Every case
 const runners=['androidx.test.runner.AndroidJUnitRunner',pkg+'.WorkflowNoticeProcessRunner'];
 const runnerOf=(test: Case)=>test.runner?pkg+'.'+test.runner:runners[0];
 assert.ok(cases.every(test=>runners.includes(runnerOf(test))),'Every case names a declared runner');
-const phaseOf=(test: Case)=>test.phase??'workflow',buildOf=(test: Case)=>test.build??'flag-off';
-assert.ok(cases.every(test=>['flag-off','test-mocks'].includes(buildOf(test))&&(!test.prepareOwner||buildOf(test)==='test-mocks')),'Every case names its build; only test-mocks cases prepare an owner');
+const phaseOf=(test: Case)=>test.phase??'workflow';
 const cancellation=new AbortController(),cancel=()=>cancellation.abort();
 const execute=promisify(execFile);
 const call=async(args: string[],signal?: AbortSignal)=>String((await execute(adb,['-s',serial,...args],{env,encoding:'utf8',timeout:120000,killSignal:'SIGKILL',maxBuffer:4*1024*1024,signal})).stdout).trim();
-const variants=['standalone','launcher'];
+const variants=['launcher'];
 // A selection runs fewer cases; the report always lists the whole campaign, so the rest read not-run.
-const selectedVariants=variants.filter(variant=>!requestedVariant||variant===requestedVariant),selectedCases=cases.filter(test=>!requestedPhase||phaseOf(test)===requestedPhase);
-// Every archive the selection needs, admitted before the emulator is touched: its four APKs hash to its
-// manifest, and its own record (build-archive's configuration.json or developer-archive's
-// archive-source.json) says which build it is. A missing test-mocks archive refuses, never skips.
-const archives: Partial<Record<Build, Archive>>={};
-const builds: Build[] = ['flag-off'];
-if (selectedCases.some(test => buildOf(test) === 'test-mocks')) builds.push('test-mocks');
-for(const build of builds){
- const source: string | undefined=build==='flag-off'?process.env.ALPHA_BUILD_ARCHIVE:process.env.ALPHA_TEST_MOCKS_ARCHIVE;
- assert.ok(source,'Set ALPHA_TEST_MOCKS_ARCHIVE to a test-mocks archive for the cases that restore a synthetic owner');
- const directory=path.resolve(source),label=['configuration.json','archive-source.json'].map(name=>path.join(directory,name)).filter(file=>fs.existsSync(file));
- assert.equal(label.length,1,`The ${build} archive must carry exactly one build record`);
- assert.equal(JSON.parse(fs.readFileSync(label[0],'utf8')).testMocks,build==='test-mocks',`${directory} is not a ${build} archive`);
- const manifest: Record<string, string>=JSON.parse(fs.readFileSync(path.join(directory,'apk-manifest.json'),'utf8'));
- for(const variant of variants)for(const kind of ['debug','androidTest']){
-  const name=`${variant}-${kind}.apk`;assert.equal(hash(path.join(directory,name)),manifest[name],'Immutable archive hash mismatch');
- }
- // The exact pair every case installs: each case's preflight binds upstream's pinned bytes to these
- // hashes, and upstream re-checks the installed bytes before each instrumentation.
- archives[build]={directory,apks:Object.fromEntries(variants.map(variant=>[variant,{appSha256:manifest[`${variant}-debug.apk`],testSha256:manifest[`${variant}-androidTest.apk`]}]))};
+const selectedCases=cases.filter(test=>!requestedPhase||phaseOf(test)===requestedPhase);
+// The archive is admitted before the emulator is touched: its APKs hash to its manifest, and its own
+// record (build-archive's configuration.json or developer-archive's archive-source.json) is present.
+const label=['configuration.json','archive-source.json'].map(name=>path.join(archive,name)).filter(file=>fs.existsSync(file));
+assert.equal(label.length,1,'The archive must carry exactly one build record');
+const manifest: Record<string, string>=JSON.parse(fs.readFileSync(path.join(archive,'apk-manifest.json'),'utf8'));
+for(const variant of variants)for(const kind of ['debug','androidTest']){
+ const name=`${variant}-${kind}.apk`;assert.equal(hash(path.join(archive,name)),manifest[name],'Immutable archive hash mismatch');
 }
-const flagOffArchive=archives['flag-off'];
-assert.ok(flagOffArchive,'Flag-off archive admission required');
-const {apks}=flagOffArchive;
+// The exact pair every case installs: each case's preflight binds upstream's pinned bytes to these
+// hashes, and upstream re-checks the installed bytes before each instrumentation.
+const apks: Record<string, ApkPair>=Object.fromEntries(variants.map(variant=>[variant,{appSha256:manifest[`${variant}-debug.apk`],testSha256:manifest[`${variant}-androidTest.apk`]}]));
 const lease=await acquireDeviceLease(`android:${serial}`,{waitMs:0,ttlMs:Number.MAX_SAFE_INTEGER});
-const selection=requestedVariant||requestedPhase?{variants:selectedVariants,phases:[...new Set(selectedCases.map(phaseOf))]}:null;
-const report={serial,avd,abi,archive,apks,...(archives['test-mocks']?{testMocksArchive:archives['test-mocks'].directory,testMocksApks:archives['test-mocks'].apks}:{}),nativeOnly:true,pairedHostTested:false,allWorkflowFlowsAccepted:false,passed:false,...(selection?{selection,selectionPassed:false}:{}),phases:{} as Record<string, PhaseSummary>,results:[] as CaseResult[],failure:undefined as {variant: string; phase: string; method: string; message: string} | undefined};
+const selection=requestedPhase?{phases:[...new Set(selectedCases.map(phaseOf))]}:null;
+const report={serial,avd,abi,archive,apks,nativeOnly:true,pairedHostTested:false,allWorkflowFlowsAccepted:false,passed:false,...(selection?{selection,selectionPassed:false}:{}),phases:{} as Record<string, PhaseSummary>,results:[] as CaseResult[],failure:undefined as {variant: string; phase: string; method: string; message: string} | undefined};
 const summarize=()=>{
  report.phases={};
  for(const test of cases){
@@ -160,13 +130,11 @@ const persist=()=>{summarize();fs.writeFileSync(path.join(output,'result.json'),
 process.once('SIGINT',cancel);process.once('SIGTERM',cancel);
 try{
  fs.mkdirSync(output,{recursive:true});
- for(const variant of selectedVariants)for(const test of selectedCases){
+ for(const variant of variants)for(const test of selectedCases){
   cancellation.signal.throwIfAborted();
   const directory=path.join(output,variant+'-'+test.method);fs.mkdirSync(directory);
-  const selectedArchive=archives[buildOf(test)];
-  assert.ok(selectedArchive,'Selected case requires an admitted archive');
-  const {directory:source,apks:pair}=selectedArchive;
-  const record: CaseResult={variant,phase:phaseOf(test),method:test.class+'#'+test.method,runner:runnerOf(test),build:buildOf(test),...pair[variant],passed:false};report.results.push(record);let failure: unknown;
+  const source=archive,pair=apks;
+  const record: CaseResult={variant,phase:phaseOf(test),method:test.class+'#'+test.method,runner:runnerOf(test),...pair[variant],passed:false};report.results.push(record);let failure: unknown;
   try{
    const installed=(await call(['shell','pm','list','packages','-u','--user','all'],cancellation.signal)).split(/\r?\n/);
    assert.ok(![pkg,pkg+'.test'].some(name=>installed.includes('package:'+name)),'Existing package registration; refusing replacement');
@@ -179,14 +147,7 @@ try{
       // The bytes upstream pins and installs are the manifest pair this report records, checked before any install.
       preflightVariant:({record:pinned}: {record: ApkPair})=>{assert.equal(pinned.appSha256,pair[variant].appSha256,'App changed after archive admission');assert.equal(pinned.testSha256,pair[variant].testSha256,'Test APK changed after archive admission');},
       prepareVariant:async()=>{for(const permission of ['READ_CALENDAR','WRITE_CALENDAR']){await call(['shell','pm',test.grant?'grant':'revoke','--user',String(user),pkg,'android.permission.'+permission],cancellation.signal);await call(['shell','pm','clear-permission-flags','--user',String(user),pkg,'android.permission.'+permission,'user-set','user-fixed'],cancellation.signal);}
-       if(test.notifications!==undefined){await call(['shell','pm',test.notifications?'grant':'revoke','--user',String(user),pkg,'android.permission.POST_NOTIFICATIONS'],cancellation.signal);await call(['shell','pm','clear-permission-flags','--user',String(user),pkg,'android.permission.POST_NOTIFICATIONS','user-set','user-fixed'],cancellation.signal);}
-       // The same method under the standard runner restores the synthetic owner and posts its approval
-       // through main. No force-stop afterwards: it would clear that notice before the helper run.
-       if(test.prepareOwner){
-        const raw=await call(['shell','am','instrument','--user',String(user),'-w','-r','-e','class',pkg+'.'+test.class+'#'+test.method,'-e',test.gate,'1','-e','workflowOwnerPhase','prepare',pkg+'.test/'+runners[0]],cancellation.signal);
-        fs.writeFileSync(path.join(directory,'prepare.log'),raw);record.preparation=requireInstrumentationSuccess(raw,[pkg+'.'+test.class]);
-        assert.equal(record.preparation.totalTests,1);assert.deepEqual(record.preparation.cases,[pkg+'.'+test.class+'#'+test.method]);persist();
-       }},
+       if(test.notifications!==undefined){await call(['shell','pm',test.notifications?'grant':'revoke','--user',String(user),pkg,'android.permission.POST_NOTIFICATIONS'],cancellation.signal);await call(['shell','pm','clear-permission-flags','--user',String(user),pkg,'android.permission.POST_NOTIFICATIONS','user-set','user-fixed'],cancellation.signal);}},
      });
     }catch(error){failure=error;record.error=message(error);}
     let proof;try{proof=JSON.parse(fs.readFileSync(path.join(directory,'verification.json'),'utf8'));}catch{/* Retain the fixture if cleanup is unproven. */}
@@ -198,8 +159,8 @@ try{
   if(failure){report.failure={variant,phase:record.phase,method:record.method,message:message(failure)};persist();process.exitCode=1;throw failure;}
  }
  summarize();
- // A campaign that returns without every case of every phase on both distributions is not a pass.
- if(selection){report.selectionPassed=report.results.length===selectedVariants.length*selectedCases.length&&report.results.every(row=>row.passed);persist();assert.ok(report.selectionPassed,'Selected workflow native cases are incomplete');}
+ // A campaign that returns without every case of every phase is not a pass.
+ if(selection){report.selectionPassed=report.results.length===variants.length*selectedCases.length&&report.results.every(row=>row.passed);persist();assert.ok(report.selectionPassed,'Selected workflow native cases are incomplete');}
  else assert.ok(report.passed&&report.results.length===variants.length*cases.length,'Workflow native campaign is incomplete');
  persist();
  console.log(output);

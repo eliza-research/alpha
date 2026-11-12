@@ -265,8 +265,7 @@ def main():
         '--no-build-cache', '--no-configuration-cache',
         '--init-script', str(root / 'scripts/ci/calendar-bridge.init.gradle'),
         '-PcalendarBridgeInputs=' + str(config),
-        '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=1',
-        '-PELIZA_DEV_ALLOW_TEST_MOCKS=0', ':app:qualifyCalendarPairedJournalBridge']
+        ':app:qualifyCalendarPairedJournalBridge']
     require(time.monotonic() - entry <= PREFLIGHT_SECONDS, 'Preflight budget exhausted')
     CURRENT_DEADLINE = entry + WORK_END_SECONDS
     free = shutil.disk_usage(root).free

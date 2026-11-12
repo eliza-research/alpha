@@ -21,6 +21,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  # The native input artifacts are read through the workflow token.
+  actions: read
 concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
@@ -79,34 +81,41 @@ jobs:
           prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
-      - name: Verify standalone manual qualification
+      - name: Verify manual qualification
         if: github.event_name == 'workflow_dispatch'
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
         run: bun run verify
       - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
-      # On-device speech is the shared paradee-voice library on libelizainference (llama.cpp/ggml):
-      # Paradee-8M TTS with misaki G2P and the bundle's ASR slot. This lane stages no native voice
-      # outputs, so Gradle compiles the real Java API unpackaged and the APKs report speech unavailable.
-      - name: Prepare pinned native lifecycle sources
-        if: github.event_name != 'workflow_dispatch'
-        run: bun scripts/prepare-local-agent.ts --source-only
-      # Distribution build: flag-off whatever the runner exports. This job stages no
-      # resident runtime, so releases are recorded distributable:false (APK-build
-      # evidence only); the resident workflow builds and verifies PACKAGED releases.
-      # This lane never runs instrumentation; manual build archives still include it.
-      - name: Record tracked source frame before normal Android build
+      # Every APK packages the resident runtime and on-device speech. The reviewed voice outputs and
+      # embedding host come from the artifacts pinned in android/hosted-native-inputs.json.
+      - name: Check the native input manifest and artifact availability
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/ci/hosted-native-inputs.py --check-remote
+      - name: Acquire exact native inputs
+        timeout-minutes: 12
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/ci/hosted-native-inputs.py --acquire
+      - name: Stage the admitted voice and embedding inputs
+        run: |
+          bun scripts/android-stage-voice-models.ts --from test-results/resident-ci-native-inputs/voice
+          bun scripts/build-embedding-host.ts --from test-results/resident-ci-native-inputs/embedding
+          bun scripts/voice-host.ts --verify
+      - name: Record tracked source frame before the Android build
         timeout-minutes: 1
         env:
           ALPHA_CALENDAR_BRIDGE_EXPECTED_HEAD: ${{ github.sha }}
         run: python scripts/ci/calendar-bridge.py --source-frame
-      - name: Build flag-off distribution APKs
+      - name: Build the launcher APKs
         env:
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           # A clean release R8 pass exhausted the default 2 GiB heap on this runner.
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
-        run: bun run android:build -- --allow-unpackaged-runtime --skip-instrumentation
+        run: bun run android:build:local
       - name: Verify product Gradle OTA channel admission
         shell: bash
         timeout-minutes: 4
@@ -120,14 +129,14 @@ jobs:
         env:
           ALPHA_CALENDAR_BRIDGE_EXPECTED_HEAD: ${{ github.sha }}
         run: python scripts/ci/calendar-bridge.py
-      - name: Require test-mock-free distribution
+      - name: Require flag-off APKs
         run: |
           bun scripts/audit-production-bundle.ts web-dist
           bun - <<'NODE'
           const fs = require('node:fs');
           const manifest = JSON.parse(fs.readFileSync('artifacts/apk-manifest.json', 'utf8'));
-          if (manifest.testMocks !== false || manifest.demoEntryPoints !== false) throw new Error('Distribution APKs must be testMocks:false and demoEntryPoints:false');
-          if (manifest.results.length !== 4 || manifest.results.some(row => row.testMocks !== false || row.bundleAudit !== 'passed')) throw new Error('Every distribution APK must pass the flag-off bundle audit');
+          if (manifest.testMocks !== false || manifest.demoEntryPoints !== false) throw new Error('APKs must be testMocks:false and demoEntryPoints:false');
+          if (manifest.results.length !== 2 || manifest.results.some(row => row.testMocks !== false || row.bundleAudit !== 'passed' || row.runtime !== 'PACKAGED')) throw new Error('Both launcher APKs must pass the flag-off bundle audit and package the runtime');
           console.log(JSON.stringify({ testMocks: manifest.testMocks, demoEntryPoints: manifest.demoEntryPoints, version: manifest.version, signing: manifest.signing.release }, null, 2));
           NODE
       - run: bun run aosp:stage -- --apk artifacts/launcher-debug.apk --development

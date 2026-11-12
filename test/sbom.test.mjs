@@ -114,7 +114,6 @@ test('the embedding host is listed from its reviewed pins, without claiming it i
     assert.deepEqual(component.hashes, [{alg: 'SHA-256', content: library.sha256}]);
     assert.equal(prop(component, 'bytes'), String(library.bytes));
     assert.ok(prop(component, 'source').includes(`engine ${host.forkPin}`));
-    // The foundation job's unpackaged APKs contain no embedding host; the pin must not read as if they did.
     assert.match(prop(component, 'ships-in'), /legacy qualification record; incompatible with current Paradee engine/);
   }
   assert.equal(byRef.get('embedding-model:bge-small-en-v1.5-f16.gguf').hashes[0].content, host.model.sha256);
@@ -161,7 +160,6 @@ test('release-candidate options list what was built and never upgrade it', t => 
   fs.mkdirSync(path.join(dir, 'android/app/src/main/assets/agent'), {recursive: true});
   fs.writeFileSync(path.join(dir, 'android/app/src/main/assets/agent/agent-bundle.js'), '');
   assert.deepEqual(sbomArgs('artifacts', dir).slice(-1), ['--packaged-runtime']);
-  assert.match(fs.readFileSync(path.join(ROOT, 'scripts/build-android.ts'), 'utf8'), /else run\("bun", \["scripts\/generate-sbom\.ts", \.\.\.sbomArgs\(outDir, root\)\]\);/);
 });
 
 test('staged native candidates retain their actual hashes when the embedding source record is superseded', t => {
