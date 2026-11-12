@@ -80,7 +80,7 @@ jobs:
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ''
           ELIZA_DEV_ALLOW_TEST_MOCKS: ''
         run: |
-          bunx vite build --outDir ../../test-results/browser-proof-renderer
+          bunx --bun vite build --outDir ../../test-results/browser-proof-renderer
           bun scripts/audit-production-bundle.ts test-results/browser-proof-renderer
           bun scripts/ci/export-browser-proof.ts renderer
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -238,7 +238,7 @@ jobs:
           # Storage specs run against the flag-on development server.
           ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
         # The firefox and webkit projects in playwright.config.ts select the storage specs.
-        run: bunx playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
+        run: bunx --bun playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:

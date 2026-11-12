@@ -1,3 +1,7 @@
+# Scripts, builds and tests read only the environment they are given, as they did on Node: Bun
+# would otherwise load a repository-root .env into every script, Vite build and signing step.
+env = false
+
 [install]
 # The lockfile is the reviewed dependency input; installs never rewrite it implicitly in CI
 # (`bun install --frozen-lockfile`).

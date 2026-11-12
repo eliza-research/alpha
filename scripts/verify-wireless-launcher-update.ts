@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Record an operator-run wireless launcher replacement using read-only ADB commands. */
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';

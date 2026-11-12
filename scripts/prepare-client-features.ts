@@ -328,7 +328,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     }
   }
   const upstream = upstreamNativeSource(root);
-  const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
+  const source = new Map(upstream.readAll(CLIENT_FEATURE_PATHS).flatMap(files => [...files]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
   if(projectVoice){
   // Upstream publishes every renderer type as a leaf entry (@elizaos/core/schema-types,
