@@ -1,6 +1,6 @@
 {
-  "baseCommit": "9e87d1ce947018c9ee201527b74798387c7bf694",
-  "note": "sha256 of each upstream packages/auth/android/test file this overlay replaces at its reviewed rebase pin. The pinned suite runs first; the browser fork retains its extra lifecycle cases plus upstream verification-ownership, persisted cancellation, acknowledgement-recovery and resident-mutation regressions. Null means upstream has no such file.",
+  "baseCommit": "c9247e6966b572612b51e6b5e6a1f15af2843af8",
+  "note": "sha256 of each upstream packages/auth/android/test file this overlay replaces at its reviewed rebase pin. The pinned suite runs first; the browser fork retains its additional lifecycle cases and current upstream verification ownership, durable return adoption, acknowledgement activation/recovery, SMS cooldown, silent renewal and resident-mutation regressions. Null means upstream has no such file.",
   "files": {
     "native-sign-in.test.mjs": "ea4d1bbc0c105d4b7685bd0f04655706eef553d794c4065e29e372a81dffc174",
     "ai/eliza/auth/cloud/CloudSignInFlowTest.java": "540d4e5bfd53a62e872c7504e326b5d82ae92918af6e18ee78e77227e0c0cead",

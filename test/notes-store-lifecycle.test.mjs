@@ -27,6 +27,7 @@ test('encrypted successful CAS with failed readback has durable data but no succ
   assert.equal(service.status().phase,'error');assert.throws(()=>service.snapshot(),fenced);
   assert.equal(f.events.length,0);
   await assert.rejects(f.interact('create-note',{content:'Must not overwrite'}),fenced);
+  assert.equal(f.events.length,0);
   assert.equal((await f.raw()).notes[0].title,'Durable unknown');
   await service.stop();const restarted=await f.open();assert.equal(restarted.snapshot().notes[0].title,'Durable unknown');
  }finally{await f.close();}
