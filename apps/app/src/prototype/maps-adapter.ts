@@ -1,3 +1,4 @@
+import {devSurfacesEnabled} from '../build-flags';
 import {openContentLink} from './content-links';
 import {guidanceDistance} from '../maps/guidance';
 import {distanceToRoute} from '../maps/route-distance';
@@ -227,7 +228,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     return text.length > 200 ? `${text.slice(0, 199)}…` : text;
   }
   function bind(data: Bag, view: MapsScreenView, st: Bag, currentApi: Bag) {
-    const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;
+    const status = view.status, region = regionalMap(), raster=cloudMapsBasemap();
+    const globalMap=devSurfacesEnabled&&!region&&!raster;
+    const basemap=region||raster||(globalMap?globalBasemap:undefined);
     // Alpha's Cloud provider is operator-owned. Translate only the generic setup
     // prompt after a service-configuration refusal; preserve other recovery messages.
     const cloudFailure = cloudMapsDiagnostics();
@@ -252,7 +255,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       nativeShareLabel:mapShareLabel(),
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
-      notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
+      notNative:false, hasNativeMap:!!basemap,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
       mapRef:(element:HTMLElement)=>{
         if(!element||!basemap)return;
         if(element!==planeElement||planeBasemap!==basemap){
