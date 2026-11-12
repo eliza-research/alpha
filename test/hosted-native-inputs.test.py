@@ -208,9 +208,8 @@ class NativeInputPacketTest(unittest.TestCase):
         })
         self.git('add', native.MANIFEST)
         self.git('commit', '-qm', 'Admit the three resulting artifact pins')
-        env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
+        env = {'GITHUB_REPOSITORY': 'eliza-research/alpha', 'GH_TOKEN': 'inert-fixture-token',
                'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
-               'GITHUB_REPOSITORY_OWNER_ID': str(native.embedding.REPOSITORY_OWNER_ID),
                'GITHUB_SHA': self.git('rev-parse', 'HEAD').strip(),
                'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1'}
         api = ArtifactAPI(archives)
