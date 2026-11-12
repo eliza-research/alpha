@@ -38,7 +38,25 @@ export const TURBO_AGENT_DETECTION_ENV=Object.freeze(['AI_AGENT','AUGMENT_AGENT'
 export function preparedSourceEnv(env=process.env, extra: NodeJS.ProcessEnv = {}) {
  const result: NodeJS.ProcessEnv = {...env,...extra};
  for(const name of TURBO_AGENT_DETECTION_ENV)delete result[name];
+ // The upstream source builds with its own Node.js (engines.node): one generated file differs when
+ // Bun stands in for it. `bun run` puts a `node` that is Bun first on PATH, so drop those entries
+ // and let the child find the installed Node.
+ if(result.PATH)result.PATH=result.PATH.split(path.delimiter).filter(directory=>!bunAsNode(directory)).join(path.delimiter);
  return result;
+}
+/** The first `node` on this environment's PATH, if any; preparedSourceEnv has removed Bun's stand-ins. */
+export function upstreamNode(env: NodeJS.ProcessEnv): string | undefined {
+ for(const directory of (env.PATH??'').split(path.delimiter)){
+  const candidate=path.join(directory,'node');
+  if(directory&&present(candidate))return candidate;
+ }
+ return undefined;
+}
+/** Whether this PATH directory's `node` is Bun's stand-in rather than Node.js. */
+function bunAsNode(directory: string): boolean {
+ if(!directory)return false;
+ try{return /^bun(?:\.exe)?$/.test(path.basename(fs.realpathSync(path.join(directory,'node'))));}
+ catch{return false;}
 }
 export function sourceDirectory(root: string, env=process.env) {
  const supplied=env.ALPHA_LOCAL_AGENT_SOURCE_DIR;

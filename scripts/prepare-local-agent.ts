@@ -2,7 +2,7 @@
 /** Prepare one immutable upstream commit without consumer source overlays. */
 import fs from 'node:fs';
 import path from 'node:path';
-import {digest, preparedSourceEnv, sourceDirectory, verifySource, seedCommittedCache} from './local-agent-source.ts';
+import {digest, preparedSourceEnv, sourceDirectory, upstreamNode, verifySource, seedCommittedCache} from './local-agent-source.ts';
 import {execFileSync} from 'node:child_process';
 const root=path.resolve(import.meta.dirname,'..');
 const directory=sourceDirectory(root);
@@ -39,6 +39,8 @@ if(!process.argv.includes('--source-only')){
  try{actual=execFileSync(bun,['--version'],{cwd:directory,encoding:'utf8',env:preparedSourceEnv(process.env,installEnv)}).trim();}
  catch{throw Error(`Cannot run selected Bun ${JSON.stringify(bun)}. This source requires Bun ${expected}. Install that version and set ALPHA_BUN to its absolute executable, or put it on PATH.`);}
  if(actual!==expected)throw Error(`Selected Bun ${JSON.stringify(bun)} is ${actual}; this source requires Bun ${expected}. Set ALPHA_BUN to the absolute Bun ${expected} executable, or put that version on PATH.`);
+ // The install's postinstall and turbo builds call `node`; see preparedSourceEnv.
+ if(!upstreamNode(preparedSourceEnv(process.env,installEnv)))throw Error('The pinned elizaOS source builds with Node.js (its package.json engines.node), which is not on PATH. Install that Node.js; Alpha itself runs on Bun.');
  run(bun,['install','--frozen-lockfile'],directory,installEnv);
  verifySource(directory,lock.commit);
 }
