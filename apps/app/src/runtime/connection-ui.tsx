@@ -1138,7 +1138,11 @@ function runQueuedSignInReturn() {
   }
 }
 function showSignInIncomplete(restarted: boolean, code?: 'storage' | 'activation-expired') {
-  update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: code ? signInFailureMessage(code) : restarted ? 'Sign in again' : signInFailureMessage('app-link-unverified') });
+  const signIn = state.signIn;
+  const error = code ? signInFailureMessage(code) : restarted ? 'Sign in again' : signInFailureMessage('app-link-unverified');
+  // Activation expiry concerns a stored key. An independent sign-in can already be waiting for its code.
+  update({ open: true, message: '', error, ...(signIn && code !== 'activation-expired'
+    ? { signIn: { step: 'choose' as const, environment: signIn.environment } } : {}) });
 }
 function runQueuedResidentRebind() { if (residentRebindQueue?.pending && residentCloudFlow()) void residentRebindQueue.resume(rebindResident, residentRebindBlocked)?.catch(() => {}); }
 async function remoteIdentity(remote: RemoteProtocol, signal: AbortSignal) {

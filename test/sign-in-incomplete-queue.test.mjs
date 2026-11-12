@@ -106,4 +106,7 @@ test('native activation expiry reports the removed credential after startup, and
  live.operation={};live.connectionController.signInIncomplete({code:'activation-expired'});
  const next={step:'code',environment:'production',attemptId:'new'};live.state.signIn=next;
  live.operation=null;live.runQueuedSignInReturn();assert.equal(live.state.signIn,next);assert.equal(live.state.error,'');
+ live.connectionController.signInIncomplete({code:'activation-expired'});
+ assert.equal(live.state.signIn,next,'expiry of a previously saved key cannot retire a live code step');
+ assert.equal(live.state.error,'failure:activation-expired');
 });
