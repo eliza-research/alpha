@@ -1,3 +1,4 @@
+import {exportRetainedNote,openRecentlyDeletedNotes} from './helpers/notes-menu';
 import {openRetainedDigests} from './helpers/retained-digests';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import { test, expect } from '@playwright/test';
@@ -59,7 +60,7 @@ test('Notes create, edit, reload and delete to Recently deleted', async ({ page 
   await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
   // Deletion is not immediate erasure: the note waits in Recently deleted for 30 days.
   await expect(page.getByText('Moved to Recently deleted', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Recently deleted', exact: true }).click();
+  await openRecentlyDeletedNotes(page);
   await expect(page.getByRole('button', { name: 'Browser audit note, 30 days left', exact: true })).toBeVisible();
 });
 // Folder controls were removed at the owner's request. Canonical Notes CRUD and
@@ -86,10 +87,8 @@ for (const [label, text] of [['unicode CRLF', 'Local 🧪 file\r\nExact bytes\n'
   await page.getByRole('button',{name:'Import text note',exact:true}).click();
   await (await chooser).setFiles({ name:'Owned browser note.txt', mimeType:'text/plain', buffer:Buffer.from(text) });
   await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue(text.replaceAll('\r\n','\n'));
-  await page.getByRole('button',{name:'More',exact:true}).click();
-  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('button',{name:'Save file',exact:true}).click();
+  await exportRetainedNote(page);
   const result=await download;
   expect(result.suggestedFilename()).toBe('Owned browser note.txt');
   expect(await readFile((await result.path())!)).toEqual(Buffer.from(['Owned browser note',text].filter(Boolean).join('\n\n'), 'utf8'));
@@ -204,20 +203,32 @@ test('MVP mock digest and fallback advertise only retained views', async ({page}
   await expect(page.getByRole('heading',{name:'Revised term sheet',exact:true})).toBeVisible();
 });
 
-test('MVP Notes sharing keeps email and export without a deferred SMS dead end',async({page})=>{
+test('MVP Notes sharing respects platform support without a custom chooser',async({page})=>{
+  await page.addInitScript(()=>{
+    (window as any).sharedNotes=[];
+    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).copiedNote=text;}}});
+    Object.defineProperty(navigator,'share',{configurable:true,value:async(value:unknown)=>{
+      (window as any).sharedNotes.push(value);
+      throw new DOMException('Cancelled','AbortError');
+    }});
+  });
   await page.goto('/');await openLegacyNotes(page);
   await page.getByRole('button',{name:'New note',exact:true}).click();
   await page.getByRole('textbox',{name:'Title',exact:true}).fill('MVP share scope');
   await page.getByRole('textbox',{name:'Note',exact:true}).fill('Local test note');
   await page.getByRole('button',{name:'More',exact:true}).click();
-  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Email',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Save file',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Share',exact:true})).toBeVisible();
+  const sharing=await page.evaluate(async()=>(await import('/src/runtime/text-share.ts')).platformSharingAvailable());
+  const actions=page.getByRole('dialog',{name:'Note actions',exact:true});
+  if(sharing){
+    await actions.getByRole('button',{name:'Share note',exact:true}).click();
+    await expect.poll(()=>page.evaluate(()=>(window as any).sharedNotes)).toEqual([{title:'MVP share scope',text:'MVP share scope\n\nLocal test note'}]);
+  }else{
+    await actions.getByRole('button',{name:'Copy text',exact:true}).click();
+    await expect.poll(()=>page.evaluate(()=>(window as any).copiedNote)).toBe('MVP share scope\n\nLocal test note');
+    expect(await page.evaluate(()=>(window as any).sharedNotes)).toEqual([]);
+  }
+  await expect(page.getByRole('dialog',{name:'Share',exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Share in Messages',exact:true})).toHaveCount(0);
-  await page.getByRole('button',{name:'Close share',exact:true}).click();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toHaveCount(0);
   await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Local test note');
 });
 test('the notes:rec deep link no longer opens the old simulated clip recorder', async ({ page }) => {

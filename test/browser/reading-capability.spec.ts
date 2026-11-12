@@ -12,7 +12,8 @@ test('the web build offers reading a committed page without an Android unavailab
  await expect(page.frameLocator('iframe[title="Website"]').getByRole('heading',{name:'Public reading fixture'})).toBeVisible();
  await page.getByRole('button',{name:'Menu',exact:true}).click();
  const menu=page.getByRole('dialog',{name:'Browser menu'});
- await expect(menu.getByRole('button',{name:'Read aloud',exact:true})).toBeVisible();
+ // The user removed Read aloud from the menu. The retained reading engine has separate tests.
+ await expect(menu.getByRole('button',{name:'Read aloud',exact:true})).toHaveCount(0);
  await expect(menu.getByRole('button',{name:'Ask about page',exact:true})).toBeVisible();
  await expect(menu.locator('[data-alpha-reading-unavailable]')).toHaveCount(0);
 });
@@ -43,7 +44,8 @@ test('web reading stays unavailable for blank, loading, stopped and external-onl
  release();await menu.getByRole('button',{name:'Reload page',exact:true}).click();
  await expect(page.frameLocator('iframe[title="Website"]').getByRole('heading',{name:'Loaded reading fixture'})).toBeVisible();
  await page.getByRole('button',{name:'Menu',exact:true}).click();
- await expect(menu.getByRole('button',{name:'Read aloud',exact:true})).toBeVisible();
+ // The user removed Read aloud from the menu. The retained reading engine has separate tests.
+ await expect(menu.getByRole('button',{name:'Read aloud',exact:true})).toHaveCount(0);
  // A fallback provider may return an external destination instead of an embedded page.
  // Even a malformed positive commit must not give that destination reading authority.
  await page.evaluate(async()=>{

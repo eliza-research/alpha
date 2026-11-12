@@ -245,7 +245,12 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
 
  test('an entitlement for another account is refused and binds no inference',async({page})=>{
   await boot(page,await entitlements({sub:'33333333-3333-4333-8333-333333333333'}));
-  await idle(page);const panel=signInPage(page);await expect(panel).toBeVisible();await expect(panel.getByRole('alert')).toContainText('different account');await started(page);
+  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().error)).toContain('different account');
+  await idle(page);await started(page);
+  // Returning accounts recover through their explicit Account entry. A rejected plan
+  // must remain unbound before that entry is opened.
+  await page.evaluate(()=>(window as any).planController.openCloudAccount());
+  await expect(page.locator('.alpha-cloud-sign-in')).toBeVisible();
   expect(await page.evaluate(()=>(window as any).planController.getSnapshot().cloudAccount)).toBeNull();
   expect(await configured(page)).toBe(0);
  });
@@ -352,8 +357,9 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   await expect(subscription.getByText('Synthetic plan',{exact:true})).toHaveCount(1);
   await expect(subscription.getByText('Active',{exact:true})).toBeVisible();
   await expect(subscription.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
-  await expect(panel).not.toContainText(/Available credits|Add credits|\$\d/);
-  await expect(panel.locator('.alpha-membership-amount')).toHaveCount(0);
+  await expect(panel).toContainText('Balance');
+  await expect(panel).toContainText('$0.00');
+  await expect(panel.locator('.alpha-membership-amount')).toHaveText('$0.00');
   await expect(panel.getByRole('region',{name:'Eliza Cloud plan',exact:true})).toHaveCount(0);
   await expect(panel.getByRole('heading',{name:'AI',exact:true})).toHaveCount(0);
   await expect(panel.getByText('Your agent uses Eliza Cloud for AI.',{exact:true})).toHaveCount(0);
@@ -652,8 +658,8 @@ test('failed native provider binding reports unconfirmed inference and exposes t
  const pageErrors:string[]=[];page.on('pageerror',error=>pageErrors.push(error.message));
  await boot(page,{...await entitlements(),holdProvider:false,providerFailure:'Synthetic account verification failure',fullApp:true});await started(page);await idle(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'About',exact:true}).click();
- await page.getByRole('button',{name:/^Connection help/}).click();
+ await page.getByRole('button',{name:'General',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  const settings=page.getByRole('region',{name:'Settings',exact:true});
  await expect(settings.getByText('Not available',{exact:true})).toBeVisible();
  const error=settings.getByText(/Synthetic account verification failure/);await expect(error).toBeVisible();

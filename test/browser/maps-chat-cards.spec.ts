@@ -25,7 +25,7 @@ for(const theme of ['light','dark'])test(`agent Maps cards render without raw ma
  const transcript=page.locator('[data-alpha-transcript]');
  await expect(transcript).not.toContainText('[MAPSCARD]');await expect(transcript).not.toContainText('[CHOICE');await expect(transcript).not.toContainText('"kind"');
  const routeCard=page.locator('.maps-chat-card[data-maps-card-kind="route"]');
- await expect(routeCard).toContainText('Route to Ferry Building');await expect(routeCard).toContainText('Walking · 1.5 km · 21 min');await expect(routeCard.locator('small')).toHaveText(attribution);
+ await expect(routeCard).toContainText('Route to Ferry Building');await expect(routeCard).toContainText('Walking · 1.0 mi · 21 min');await expect(routeCard.locator('small')).toHaveText(attribution);
  await expect(transcript).toContainText('Share the location of Ferry Building?');
  const choice=page.getByRole('group',{name:'Share location'});await expect(choice.getByRole('button')).toHaveText(['Share location',"Don't share"]);
  for(const button of await choice.getByRole('button').all())expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);

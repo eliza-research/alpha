@@ -53,12 +53,12 @@ test('a failed device-calendar read leaves no stale Home event and recovers in C
   await expect(page.getByText('Recoverable browser event',{exact:true}).first()).toBeVisible();
 });
 
-test('a failed Agent Calendar read leaves no stale Home event and retries when Calendar opens', async ({ page }) => {
+test('a failed Agent Calendar read keeps the saved event and retries when Calendar opens', async ({ page }) => {
   await page.goto('/');const event={title:'Recoverable agent event',startAt:new Date(Date.now()+3600000).toISOString(),endAt:new Date(Date.now()+5400000).toISOString()};await installHomeCalendar(page,event);
   const card = page.locator('[data-alpha-home-calendar]');
   await expect(card).toContainText(event.title);
   await refreshHomeCalendar(page,{fail:true});
-  await expect(card).toHaveCount(0);
+  await expect(card).toContainText(event.title);await expect(card).toHaveAttribute('aria-description',/Calendar could not load/);
   await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
   await page.evaluate(()=>(window as any).homeCalendarFixture.fail=false);
   // Opening Calendar is the explicit retry and reads the agent calendar again.

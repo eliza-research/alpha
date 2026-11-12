@@ -73,3 +73,25 @@ export async function shiftCalendarStart(page:Page,minutes:number){
   await date.fill(next.toISOString().slice(0,10));
   await time.fill(next.toISOString().slice(11,16));
 }
+
+/** Seed a retained event-location field after its manual editor was removed. */
+export async function setRetainedCalendarLocation(page:Page,value:string){
+ await page.evaluate(value=>{
+  const root=document.getElementById('root') as any;
+  const container=Object.keys(root).find(name=>name.startsWith('__reactContainer$'));
+  if(!container)throw Error('Phone shell is unavailable');
+  const pending=[root[container]];
+  while(pending.length){
+   const fiber=pending.pop(),shell=fiber?.stateNode;
+   if(typeof shell?.vset==='function'&&shell.S?.().view==='calendar'){
+    const form=shell.vget('calendar').form;
+    if(!form)throw Error('Open the event editor first');
+    shell.vset('calendar',{form:{...form,where:value}});
+    return;
+   }
+   if(fiber?.sibling)pending.push(fiber.sibling);
+   if(fiber?.child)pending.push(fiber.child);
+  }
+  throw Error('Open Calendar first');
+ },value);
+}

@@ -28,6 +28,7 @@ const LABEL='Journey alarm';
 const actions=(page:Page)=>page.evaluate(async()=>(await (await import('/src/browser/development-execution-document.ts')).readExecutionPart({namespace:'local'} as any,'actions',()=>({proposals:[],journal:[]}))) as any);
 /** Read-only view of persisted development Clock alarms. */
 const alarms=(page:Page)=>page.evaluate(async()=>{const raw=await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw();return raw?JSON.parse(raw).reminders.filter((r:any)=>r.id.startsWith('alarm_')).map((r:any)=>({title:r.title,at:r.at,status:r.status})):[];});
+const activeAlarms=async(page:Page)=>(await alarms(page)).filter((row:any)=>['scheduled','posted','permission-denied'].includes(row.status));
 const clock=(page:Page)=>page.getByRole('dialog',{name:'Clock alarms',exact:true});
 async function openClock(page:Page){await page.getByRole('button',{name:'Workflows',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();await expect(clock(page)).toBeVisible();return clock(page);}
 async function queue(page:Page,operation:object){
@@ -51,7 +52,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
 
  // 1. The development Clock starts empty.
  let dialog=await openClock(page);
- await expect(dialog.getByText('No alarms',{exact:true})).toBeVisible();
+ await expect.poll(()=>activeAlarms(page)).toEqual([]);
  await dialog.getByRole('button',{name:'Back',exact:true}).click();await expect(dialog).toHaveCount(0);
  await returnToApps(page);
 
@@ -117,16 +118,16 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  dialog=clock(page);
  await expect(dialog.getByText('Ringing',{exact:true})).toBeVisible();
  await expect(dialog.getByText(LABEL,{exact:true})).toHaveCount(1);
- await dialog.getByLabel('Snooze minutes',{exact:true}).fill('2');
+ await expect(dialog.getByLabel('Snooze minutes',{exact:true})).toHaveCount(0);
  await dialog.getByRole('button',{name:'Snooze '+LABEL,exact:true}).click();
  await expect(dialog.getByText('Ringing',{exact:true})).toHaveCount(0);
  await expect(dialog.getByText(LABEL,{exact:true})).toHaveCount(1);
- expect(await alarms(page)).toEqual([{title:LABEL,at:Date.parse('2027-06-01T07:17:02Z'),status:'scheduled'}]);
- await page.clock.setFixedTime(new Date('2027-06-01T07:17:03Z'));
+ expect(await alarms(page)).toEqual([{title:LABEL,at:Date.parse('2027-06-01T07:25:02Z'),status:'scheduled'}]);
+ await page.clock.setFixedTime(new Date('2027-06-01T07:25:03Z'));
  await expect(dialog.getByText('Ringing',{exact:true})).toBeVisible();
  await expect(dialog.getByText(LABEL,{exact:true})).toHaveCount(1);
  await dialog.getByRole('button',{name:'Dismiss '+LABEL,exact:true}).click();
- await expect(dialog.getByText('No alarms',{exact:true})).toBeVisible();
+ await expect.poll(()=>activeAlarms(page)).toEqual([]);
 
  // 8. Restart: the dismissed alarm does not ring again, no second alarm appeared, receipts are retained.
  await page.reload();
@@ -134,7 +135,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  const after=await alarms(page);
  expect(after).toHaveLength(1);expect(after[0].title).toBe(LABEL);expect(['scheduled','posted']).not.toContain(after[0].status);
  dialog=await openClock(page);
- await expect(dialog.getByText('No alarms',{exact:true})).toBeVisible();
+ await expect.poll(()=>activeAlarms(page)).toEqual([]);
  await expect(dialog.getByText('Ringing',{exact:true})).toHaveCount(0);
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
  await returnToApps(page);
@@ -179,7 +180,7 @@ test('journey C: a declined alarm proposal hands nothing to Clock, before or aft
  await expect(conversation).not.toContainText(/Alarm saved|Clock request sent|will ring/);
  await returnToApps(page);
  let dialog=await openClock(page);
- await expect(dialog.getByText('No alarms',{exact:true})).toBeVisible();
+ await expect.poll(()=>activeAlarms(page)).toEqual([]);
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
 
  // The alarm's time passes: nothing rings, because nothing was set.

@@ -1,3 +1,4 @@
+import {readRetainedBrowserPage} from './helpers/retained-browser';
 import {test,expect} from '@playwright/test';
 import {agentBrowserVoice} from './voice-fixture';
 // P-43: reading aloud has no Web Speech fallback; it runs through the local agent's on-device
@@ -45,7 +46,7 @@ test('rendered Browser menu opens local review offline and HOME cancels it',asyn
  await page.getByRole('button',{name:'Search or type address',exact:true}).click();
  await page.getByRole('textbox',{name:'Address',exact:true}).fill('https://example.com/article');await page.getByRole('textbox',{name:'Address',exact:true}).press('Enter');
  await expect(page.frameLocator('iframe[title="Website"]').getByRole('heading',{name:'Public article'})).toBeVisible();
- await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('button',{name:'Read aloud',exact:true}).click();
+ await readRetainedBrowserPage(page);
  const dialog=page.getByRole('dialog',{name:'Read page excerpt'});await expect(dialog).toBeVisible();
  await expect(dialog.getByRole('textbox')).toHaveValue('Public article\n\nFixture excerpt.');
  await dialog.getByRole('textbox').fill('Fixture excerpt.');await dialog.getByRole('button',{name:'Read locally',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('Reading locally…');

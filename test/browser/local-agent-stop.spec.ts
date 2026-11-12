@@ -40,7 +40,7 @@ for (const scenario of ['confirmed', 'incomplete-timeout'] as const) {
             if (method === 'request') {
               // Connected Notes and Calendar mount read-only source checks alongside the agent.
               // This shutdown fixture supplies no source data and admits no write operation.
-              if (input.method === 'GET' && (input.path === '/api/notes/state' || /^\/api\/lifeops\/calendar\/(feed|calendars|next-context)\?/.test(input.path))) return { status: 503, body: '{}' };
+              if (input.method === 'GET' && (input.path === '/api/notes/state' || ['/api/automations','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1','/api/lifeops/reminders','/api/lifeops/definitions'].includes(input.path) || /^\/api\/lifeops\/calendar\/(feed|calendars|next-context)\?/.test(input.path))) return { status: 503, body: '{}' };
               let body: any;
               if (input.path === '/api/auth/me') body = { identity: { kind: 'owner', id: 'fixture-owner' }, access: { role: 'OWNER', mode: 'session' } };
               else if (input.path === '/api/agents') body = { agents: [{ id: 'fixture-agent', name: 'Resident fixture', status: 'running' }] };

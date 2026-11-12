@@ -102,7 +102,9 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
       // Otherwise the explicit recovery control uploads the durable result.
       // A settled server attempt is history: explicit sync must not upload it again.
       const afterNavigation=await counts();expect([0,1]).toContain(afterNavigation.receipts);
-      expect({...afterNavigation,receipts:0}).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 0, automationLists: 1, journal: ['reserve', 'markApplying', 'finish'] });
+      // The cancellable Home warm read can finish before navigation, or be retired.
+      expect([1,2]).toContain(afterNavigation.automationLists);
+      expect({...afterNavigation,receipts:0,automationLists:0}).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 0, automationLists: 0, journal: ['reserve', 'markApplying', 'finish'] });
       await returnToApps(page);
       await page.getByRole('button',{name:'Settings',exact:true}).click();
       await openConnectionDiagnostics(page);
@@ -115,7 +117,8 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
       await page.getByRole('button',{name:'Check with agent',exact:true}).click();
       await expect(page.getByRole('button',{name:'Check with agent',exact:true})).toBeEnabled();
       await expect(page.getByText('done · this phone: succeeded',{exact:true})).toBeVisible();
-      expect(await counts()).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 1, automationLists: 1, journal: ['reserve', 'markApplying', 'finish'] });
+      const final=await counts();expect([2,3]).toContain(final.automationLists);
+      expect({...final,automationLists:0}).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 1, automationLists: 0, journal: ['reserve', 'markApplying', 'finish'] });
       expect(await page.evaluate(()=>new Set((window as any).navigationFixture.receiptBodies).size)).toBe(1);
     } else {
       await expect(page.locator('.alpha-action-review')).toHaveCount(0);

@@ -73,7 +73,8 @@ for (const theme of ['light', 'dark'] as const) for (const view of VIEWS) {
     const surface = await open(page, view, theme);
     // One fresh profile covers the same root's content, landmark and focus.
     if (view !== 'Camera') await themeIsApplied(surface, theme);
-    await expect(surface.getByText(EMPTY[view]).filter({visible:true}).first()).toBeVisible();
+    if (view === 'Maps') await expect(surface.getByRole('textbox', {name: 'Search places', exact: true})).toBeVisible();
+    else await expect(surface.getByText(EMPTY[view]).filter({visible:true}).first()).toBeVisible();
     if(view==='Settings')for(const name of ['Account','General','Privacy','Apps','About'])await expect(surface.getByRole('button',{name,exact:true})).toBeVisible();
     if(view==='Files'){await expect(surface.getByText(/No recent files/)).toHaveCount(0);await expect(surface.getByRole('button',{name:/^Open /})).toHaveCount(0);}
     if (view === 'Camera') {

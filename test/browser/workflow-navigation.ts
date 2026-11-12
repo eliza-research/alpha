@@ -9,7 +9,11 @@ export async function installWorkflowListFixture(page:Page){await page.evaluate(
   const admitted=original(),workflow=c.getWorkflowClient();
   if(!admitted||!workflow||admitted.sessionId!==workflow.sessionId)return null;
   return {...admitted,request:async(path,method,body,signal)=>{
-   (window as any).workflowMetadataFixtureCalls.push({path,method});signal.throwIfAborted();if(method!=='GET'||body!==undefined)throw Error('This fixture supplies read-only automation metadata.');
+   (window as any).workflowMetadataFixtureCalls.push({path,method});signal.throwIfAborted();
+   // Typed lifecycle requests use the same development protocol and receipts as the editor.
+   if(path.startsWith('/api/workflow/'))return (workflow.client as any).request(path,body,signal);
+   if(method!=='GET'||body!==undefined)throw Error('This fixture supplies read-only automation metadata.');
+   if(path==='/api/triggers?removed=1')return {recovery:true,triggers:[]};
    const current=()=>{signal.throwIfAborted();if(c.getWorkflowClient()?.sessionId!==workflow.sessionId)throw new DOMException('Workflow fixture owner changed','AbortError');};
    current();let result;
    if(path==='/api/automations'){
@@ -35,7 +39,7 @@ export async function retainedWorkflowAction(page:Page,kind:'createWorkflow'|'de
    const fiber=pending.pop(),shell=fiber?.stateNode;
    if(typeof shell?.renderVals==='function'&&shell.S?.().view==='workflows'){
     const view=shell.renderVals().workflows;
-    const action=kind==='createWorkflow'?view.automation?.createWorkflow:view.b?.[kind==='description'?'onDescription':kind];
+    const action=kind==='createWorkflow'?(view.automation?.createWorkflow??view.newFlow):view.b?.[kind==='description'?'onDescription':kind];
     if(typeof action!=='function')throw Error('Retained workflow action is unavailable');
     if(kind==='description')action({target:{value:text}});else action();
     return;

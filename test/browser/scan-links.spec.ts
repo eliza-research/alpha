@@ -14,7 +14,13 @@ test('recognized links require a current, reviewed click and open without opener
  await page.evaluate(()=>(window as any).oldScanLink.click());expect(requested).toBe(0);
  await details.getByRole('link').scrollIntoViewIfNeeded();
  await page.screenshot({path:info.outputPath('review-links.png'),animations:'disabled'});
- const popupPromise=context.waitForEvent('page');await details.getByRole('link',{name:'Open https://example.com/corrected',exact:true}).click();const popup=await popupPromise;await expect(popup.getByRole('heading',{name:'Test destination'})).toBeVisible();expect(popup.url()).toBe('https://example.com/corrected');expect(await popup.evaluate(()=>window.opener)).toBeNull();expect(requested).toBe(1);await popup.close();
+ await details.getByRole('link',{name:'Open https://example.com/corrected',exact:true}).click();
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','browser');
+ const destination=page.locator('iframe[title="Website"]:visible');
+ await expect(destination).toHaveAttribute('src','https://example.com/corrected');
+ await expect(destination.contentFrame().getByRole('heading',{name:'Test destination'})).toBeVisible();
+ expect(await destination.contentFrame().locator('body').evaluate(()=>window.opener)).toBeNull();
+ expect(context.pages()).toHaveLength(1);expect(requested).toBe(1);
 });
 
 test('closing a scan retires its link controls',async({page,context})=>{

@@ -1,3 +1,4 @@
+import {retainedWorkflowAction,describeWorkflow} from './workflow-navigation';
 import { test, expect } from '@playwright/test';
 
 for (const theme of ['light', 'dark']) {
@@ -7,7 +8,7 @@ for (const theme of ['light', 'dark']) {
     await expect(page.getByRole('button', { name: 'Weekly review One-page recap of your week, Fridays at 5', exact: true })).toBeVisible();
     await expect(page.getByText('Protect focus', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Receipts to Files', { exact: true })).toHaveCount(0);
-    await page.getByRole('button', { name: 'New automation', exact: true }).click();
+    await retainedWorkflowAction(page,'createWorkflow');
     await page.getByRole('button', { name: 'Edit When step', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Message trigger', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Email trigger', exact: true })).toBeVisible();
@@ -47,7 +48,7 @@ for (const prompt of ['whenever Maya texts, check my calendar', 'every day at 6,
 
 test('Mock assistant keeps email triggers and call-note summaries in scope', async ({ page }) => {
   await page.goto('/?mode=mock&start=workflows:new');
-  await page.getByRole('button', { name: 'Describe it to Alpha', exact: true }).click();
+  await describeWorkflow(page);
   await page.getByRole('textbox', { name: 'Message Alpha', exact: true }).fill('whenever Maya emails, summarize call notes');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Here's the workflow\. Turn it on\?$/})).toBeVisible();

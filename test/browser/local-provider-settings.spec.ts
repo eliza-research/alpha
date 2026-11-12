@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { test, expect } from '@playwright/test';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 // Rendered provider section over a synthetic native Agent bridge. No key reaches Cerebras: the
@@ -99,10 +100,7 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   // (the receipt is a toast, not a message left in the closed sheet).
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'About', exact: true }).click();
-  const agentConnection = page.getByRole('button', { name: 'Connection help', exact: true });
-  await expect(agentConnection).toContainText('Provider fixture');
-  await agentConnection.click();
+  await openConnectionDiagnostics(page);
   await chooser.getByText('Model provider', { exact: true }).click();
   await expect(chooser.getByText('Configured · Cerebras · qwen-3.8-27b', { exact: true })).toBeVisible();
   await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');
@@ -121,13 +119,11 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   // Removal stops the agent that holds the key, deletes the key, then starts the agent again without it.
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   expect(await page.evaluate(() => { const f = (window as any).providerFixture; return { clears: f.clears, stops: f.stops }; })).toEqual({ clears: 1, stops: 1 });
-  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
   const aiConnection = await openAccountProvider(page);
   await expect(aiConnection.getByRole('button', { name: 'Own API keys', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(aiConnection.getByRole('button', { name: 'Cloud', exact: true })).toBeVisible();
   await aiConnection.getByRole('button', { name: 'Close Account', exact: true }).click();
-  await page.getByRole('button', { name: 'About', exact: true }).click();
-  await agentConnection.click();
+  await openConnectionDiagnostics(page);
   await expect(chooser.getByText('Connected · On this device', { exact: true })).toBeVisible();
   await chooser.getByText('Model provider', { exact: true }).click();
   await expect(chooser.getByText('Not configured', { exact: true })).toBeVisible();

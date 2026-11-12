@@ -1,6 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
 import {guardCalendarFixture} from './calendar-draft-readiness';
-import {installWorkflowListFixture,workflowCard} from './workflow-navigation';
+import {installWorkflowListFixture} from './workflow-navigation';
 
 async function savedState(page:Page){
  return page.evaluate(async()=>{
@@ -35,18 +35,21 @@ test('a fresh Workflows visit reaches the sole removed workflow and restores it 
  await page.reload();await installWorkflowListFixture(page);
  await page.getByRole('button',{name:'Workflows',exact:true}).click();
  await expect(page.getByText('No workflows yet',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:/^Removed workflows\b/}).click();
- await workflowCard(page,'Sole removed workflow').click();
- await expect(page.getByText('Removed; execution history retained. Restore returns it paused',{exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'succeeded execution',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Workflows options',exact:true}).click();
+ await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ await page.getByRole('button',{name:/^Sole removed workflow/}).click();
+ const confirmation=page.getByRole('dialog',{name:'Recover 1 item?',exact:true});
+ await expect(confirmation).toBeVisible();
  expect(await savedState(page)).toEqual(before);
-
- await page.getByRole('button',{name:'Restore workflow',exact:true}).click();
- await expect(page.getByRole('button',{name:'Confirm restore',exact:true})).toBeVisible();
+ await confirmation.getByRole('button',{name:'No',exact:true}).click();
+ await expect(confirmation).toHaveCount(0);
  expect(await savedState(page)).toEqual(before);
- await page.getByRole('button',{name:'Confirm restore',exact:true}).click();
- await expect(page.getByRole('button',{name:'Remove workflow',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Turn Sole removed workflow on or off',exact:true})).toHaveAttribute('aria-pressed','false');
+ await page.getByRole('button',{name:/^Sole removed workflow/}).click();
+ await confirmation.getByRole('button',{name:'Yes',exact:true}).click();
+ await expect.poll(async()=>{const saved=await savedState(page);return {removed:saved.workflows[0].removed,active:saved.workflows[0].active};}).toEqual({removed:false,active:false});
+ await expect(confirmation).toHaveCount(0);
+ await page.getByRole('button',{name:'Back to workflows',exact:true}).click();
+ await expect(page.getByRole('button',{name:/^Sole removed workflow/})).toBeVisible();
  const restored=await savedState(page);
  expect(restored.workflows[0].removed).toBe(false);expect(restored.workflows[0].active).toBe(false);
  expect(restored.runs.map((run:any)=>({id:run.id,versionId:run.workflowVersionId}))).toEqual([{id:seeded.runId,versionId:seeded.versionId}]);

@@ -28,7 +28,7 @@ async function installHeldReads(page: Page) {
       const min = Date.parse(url.searchParams.get('timeMin') ?? '');
       const max = Date.parse(url.searchParams.get('timeMax') ?? '');
       const answer = await request(path, method, body, signal);
-      if (url.pathname === '/api/lifeops/calendar/feed' && max - min === 2) {
+      if (url.pathname === '/api/lifeops/calendar/feed' && max - min === 2000) {
         await new Promise<void>(finish => reads.push({signal, finish}));
       }
       return answer;

@@ -1,3 +1,4 @@
+import {returnToApps} from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
 // MVP-14: "Use in email" from the assistant conversation into the exact email selected in Inbox.
 // Closed fixture: a synthetic Cloud client and agent session, no account, network or mail. Any
@@ -56,7 +57,7 @@ for(const theme of ['light','dark'])test(`reviewed reply fills the selected emai
  await expect(body(page)).toHaveValue(first);await expect(body(page)).toBeInViewport();
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Re: Planning session');
  await expect(page.getByText('sender@example.invalid',{exact:true})).toBeVisible();
- await expect(page.getByText(/Agent suggestion placed in a local draft\. Review and edit before sending; nothing has been sent\./)).toBeVisible();
+ await expect(page.getByText(/Agent suggestion placed in a local draft\. Review and edit before sending; nothing has been sent\./)).toHaveCount(0);
  await page.screenshot({path:info.outputPath('use-in-email-draft-'+theme+'.png'),animations:'disabled'});
  expect(await page.evaluate(()=>(window as any).useInEmail.writes)).toBe(0);
 });
@@ -100,8 +101,10 @@ test('a full-height conversation keeps the review below the status bar, and a se
  expect(measured.cancel).toBeGreaterThanOrEqual(measured.header);
  expect(await dialog.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);
  await dialog.getByRole('button',{name:'Insert into draft',exact:true}).click();await expect(body(page)).toHaveValue(first);
- // System Back closes the composer; the one draft for this account stays, off screen.
- await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
+ // Home preserves the draft. Back is now an explicit discard review.
+ await returnToApps(page);
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await page.getByText('Planning session',{exact:true}).click();
  await expect(body(page)).toHaveCount(0);await expect(page.getByText('Can you do Tuesday at 10?',{exact:true})).toBeVisible();
  await say(page,second);await expect(reply(page,second)).toBeVisible();await openReview(page,second);
  await expect(dialog.locator('[data-alpha-email-use-destination]')).toHaveText('Your unfinished reply draft (not on screen) · Re: Planning session · to sender@example.invalid');

@@ -38,7 +38,7 @@ test('browser surface isolates pages, persists bookmarks and hides overlaid tabs
  await expect(page.frameLocator('[data-browser-surface="tab"] iframe').getByRole('heading',{name:'Embedded page'})).toBeVisible();
  await expect(page.locator('[data-browser-surface="tab"] iframe')).toHaveAttribute('sandbox',/allow-scripts/);
  expect(await page.locator('[data-browser-surface="tab"] iframe').getAttribute('sandbox')).not.toContain('allow-same-origin');
- await expect(page.locator('[data-browser-surface="tab"] a')).toHaveAttribute('rel','noopener noreferrer');
+ await expect(page.locator('[data-browser-surface="tab"] a')).toHaveCount(0);
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaBrowser').present({session:'test',id:null});});
  await expect(page.locator('[data-browser-surface="tab"]')).toBeHidden();
  await page.reload();

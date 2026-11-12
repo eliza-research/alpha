@@ -1,3 +1,4 @@
+import {setRetainedCalendarLocation} from './helpers/browser-calendar';
 import {openBrowserCalendar} from './helpers/browser-calendar';
 // Maps "Back to event": shown only when Maps was opened from a calendar event's location, returns to
 // exactly that event, never replays the hand-off and fails closed when the event is gone.
@@ -45,7 +46,7 @@ async function setup(page: Page) {
   for (const title of ['Harbour meeting', 'Dock meeting']) {
     await button(page, 'New event').click();
     await page.getByRole('textbox', {name: 'Title', exact: true}).fill(title);
-    await page.getByRole('textbox', {name: 'Location', exact: true}).fill(address);
+    await setRetainedCalendarLocation(page,address);
     await button(page, 'Save event').click();
     await expect(page.getByRole('heading', {name: title, exact: true})).toBeVisible();
     await button(page, 'Back to calendar').click();

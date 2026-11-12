@@ -86,8 +86,8 @@ test('J01 poster scan becomes exactly one reviewed Calendar event; suggestions a
  await dialog.getByRole('button',{name:'Review in Calendar',exact:true}).click();
  await expect(dialog).toHaveCount(0);
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Reviewed studio visit');
- await expect(page.getByRole('textbox',{name:'Location',exact:true})).toHaveValue('Main hall');
- await expect(page.getByLabel('Selected event date',{exact:true})).toHaveText('Saturday, October 10, 2026');
+ await expect(page.getByRole('textbox',{name:'Location',exact:true})).toHaveCount(0);
+ await expect(page.getByLabel('From date',{exact:true})).toHaveValue('2026-10-10');
  await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue(poster);
  expect(await events(page)).toHaveLength(0);
  await page.getByRole('button',{name:'Back to calendar',exact:true}).last().click();
@@ -102,8 +102,8 @@ test('J01 poster scan becomes exactly one reviewed Calendar event; suggestions a
  await openBrowserCalendar(page);
  await page.getByRole('button',{name:'New event',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Reviewed studio visit');
- await expect(page.getByRole('textbox',{name:'Location',exact:true})).toHaveValue('Main hall');
- await expect(page.getByLabel('Selected event date',{exact:true})).toHaveText('Saturday, October 10, 2026');
+ await expect(page.getByRole('textbox',{name:'Location',exact:true})).toHaveCount(0);
+ await expect(page.getByLabel('From date',{exact:true})).toHaveValue('2026-10-10');
  await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue(poster);
  expect(await events(page)).toHaveLength(0);
  await page.getByRole('button',{name:'Save event',exact:true}).click();

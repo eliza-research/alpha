@@ -29,7 +29,7 @@ test('development vault: unlock, search, add, generate, edit and delete without 
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await devVault(page);
   await expect(page.getByText('Locked', { exact: true })).toBeVisible();
-  await expect(page.getByText('Other password providers', { exact: true })).toBeVisible();
+  await expect(page.getByText('Other password providers', { exact: true })).toHaveCount(0);
   // The agent observation is paused for the whole password surface.
   expect((await agentContext(page)).sensitive).toBe(true);
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
@@ -176,9 +176,9 @@ test('native vault: Android unlock, app bindings, copy and autofill picker with 
   await expect(page.getByText('Alpha Phone passwords', { exact: true }).last()).toBeVisible();
   const calls = await page.evaluate(() => (window as any).vaultFixture.calls.map((c: any) => c.method));
   expect(calls).toEqual(expect.arrayContaining(['status', 'unlock', 'list', 'copy', 'openAutofillSettings']));
-  // Proton Pass remains an alternative provider on the same page.
-  await expect(page.getByText('Other password providers', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Get Proton Pass from Proton', exact: true })).toBeVisible();
+  // The password manager stays local and does not add an external-provider setup flow.
+  await expect(page.getByText('Other password providers', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Get Proton Pass from Proton', exact: true })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Export passwords', exact: true }).click();
   await expect(page.getByText('Export did not complete. The selected file may contain passwords; delete it if you do not need it.', { exact: true })).toBeVisible();
