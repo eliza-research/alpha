@@ -48,7 +48,7 @@ Try Alpha in your browser. You need [Git](https://git-scm.com) and
 [Bun 1.4.2](https://bun.sh). No Android tools and no account are required.
 
 ```bash
-git clone --recurse-submodules https://github.com/alphacompute/alpha.git
+git clone --recurse-submodules https://github.com/eliza-research/alpha.git
 ```
 
 ```bash

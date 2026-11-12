@@ -19,7 +19,7 @@ Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 
 ```sh
-git clone --recurse-submodules https://github.com/alphacompute/alpha.git
+git clone --recurse-submodules https://github.com/eliza-research/alpha.git
 cd alpha
 bun install --frozen-lockfile
 bun run verify
@@ -385,9 +385,10 @@ image-preinstalled phone drills remain required for this batch.
 
 On the machine with the phone, keep each version's `apk-manifest.json` from its
 `qualified-launcher-publication-<run>-<attempt>` artifact beside the exact
-signed `launcher-release.apk`. For the baked launcher, use the post-signing
-manifest for the APK in the image. Both wireless captures verify the installed
-bytes against the reviewed `android/release-signer.json` policy, including for
+signed `launcher-release.apk`. If you download the public APK asset, save it
+under that filename. For the baked launcher, use the post-signing manifest for
+the exact APK in the image. Both wireless captures verify the installed bytes
+against the reviewed `android/release-signer.json` policy, including for
 versions already recorded as released. The [wireless drill](https://github.com/eliza-research/alpha/issues/889)
 requires Android 14 or later for package installer provenance. Keep the phone
 offline from baseline installation through HOME selection, any one-time Android
@@ -447,7 +448,8 @@ bun scripts/verify-wireless-launcher-update.ts matrix \
 ```
 
 The matrix checks the receipt links, signing family, installed SDK revision
-and the same two offered releases across both distributions.
+and the same two offered releases across both distributions. It reads the saved
+receipts offline, so the public channel may already have advanced.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/alphacompute/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/alphacompute/alphaphone/issues/889).
