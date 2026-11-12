@@ -1,3 +1,4 @@
+import {installChatTools} from './prototype/chat-tools-adapter';
 import {installContentLinks} from './prototype/content-links';
 import {installCalendarFormPresentation} from './prototype/calendar-form-presentation';
 import { externalVoiceInvocationEnabled } from './runtime/voice-entry-policy';
@@ -125,6 +126,7 @@ if (!fixture) {
   selected = installSelectedDocumentAdapter(Component, VIEWS);
   installPrototypeCameraAdapter(Component, VIEWS);
   installAgentAdapter(Component, VIEWS);
+  installChatTools(Component);
   installReminderAdapter(Component, VIEWS);
   installCalendarAdapter(Component, VIEWS, {active:deviceCalendarScope});
   if(isAndroid){installContactsAdapter(Component,VIEWS);installSmsAdapter(Component,VIEWS);installPhoneAdapter(Component,VIEWS);}

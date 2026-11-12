@@ -11,7 +11,7 @@ import {ownerRouteAllowed, ownerRouteGroup} from './owner-route-policy.ts';
 import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 import type { VerifiedSession, ChatChannel } from './alpha-client';
-import { conversationViewHeaders, conversationRoomId, messagePageQuery, turnAbortOutcome, turnAbortPath, type MessagePage, type RemoteChatReply, type RemoteConversation, type TurnAbortOutcome } from './remote-protocol';
+import { parseConversationSearch, conversationViewHeaders, conversationRoomId, messagePageQuery, turnAbortOutcome, turnAbortPath, type MessagePage, type RemoteChatReply, type RemoteConversation, type TurnAbortOutcome } from './remote-protocol';
 import { readLocalAgentStream, type StreamTextListener } from './local-agent-stream';
 import { streamNativeAgent, type NativeStreamPort } from './local-agent-native-stream';
 import { subscribeNativeVoiceEvents, type NativeVoiceEventPort } from './local-agent-native-events';
@@ -420,6 +420,14 @@ export class LocalAgentProtocol {
     const value=await this.json(`/api/conversations/${encodeURIComponent(identifier(id))}/messages${messagePageQuery(page)}`,undefined,signal);
     if(!Array.isArray(value.messages))throw new Error('Invalid local conversation history.');
     return {messages:value.messages.map(record),...(typeof value.hasMore==='boolean'?{hasMore:value.hasMore}:{})};
+  }
+  async searchMessages(query:string,signal?:AbortSignal,offset=0) {
+    return parseConversationSearch(await this.json(`/api/conversations/messages/search?${new URLSearchParams({q:query,limit:'50',offset:String(offset)})}`,undefined,signal));
+  }
+  async messagesAround(id:string,messageId:string,signal?:AbortSignal):Promise<{messages:Record<string,unknown>[]}> {
+    const value=await this.json(`/api/conversations/${encodeURIComponent(identifier(id))}/messages?${new URLSearchParams({around:messageId})}`,undefined,signal);
+    if(!Array.isArray(value.messages))throw Error('Invalid conversation window.');
+    return {messages:value.messages.map(record)};
   }
   /** Streams render progress. If the stream drops before its terminal frame, the same request is
    * repeated once without streaming under the same clientMessageId: the agent returns the durable
