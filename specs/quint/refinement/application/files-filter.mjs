@@ -66,6 +66,7 @@ async function fixture(compiled) {
       return task.promise;
     },
     async storageCategory() {return {status: 'ready', entries: [], count: 0};},
+    async storageList() {return {status: 'ready', entries: []};},
     async storageTrashList() {return {status: 'ready', items: []};},
     async storageWatch() {return {status: 'ready'};},
     async storageUnwatch() {return {status: 'ready'};},

@@ -49,7 +49,7 @@ module ScheduledTaskControls {
   }
 
   val busy = s.visible and s.pending.owner == s.owner
-  val locked = s.detail and ownerHasIntent(s)
+  val locked = s.detail and ownerHasIntent(s) and not(busy)
   val reviewVerb = s.review.verb
   val clockEditable = s.detail and s.kind == "preset"
   val menu = if (s.detail and not(s.editing) and reviewVerb == "") menuFor(s.shownStatus) else List()
