@@ -961,3 +961,8 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 .alpha-map-copy-label { font-size:13px; font-weight:600; white-space:nowrap; }
 
 .alpha-map-recenter { position:relative;flex-shrink:0;margin-left:auto;width:48px;height:48px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--fg);box-shadow:0 2px 8px var(--shc);z-index:8;touch-action:manipulation; }
+
+/* Keep navigation map controls just above the route footer. */
+html:not(.alpha-large-text):not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits {
+  bottom:calc(max(var(--alpha-maps-guidance-bottom,26px),var(--alpha-dock-reserve,108px)) + 128px)!important;
+}

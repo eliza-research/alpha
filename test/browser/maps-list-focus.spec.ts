@@ -148,7 +148,7 @@ test('typing a new Maps search keeps the current panel until replacement results
 
 test('directions start from the allowed current location and can swap endpoints',async({page})=>{
  await page.context().grantPermissions(['geolocation']);await page.context().setGeolocation({latitude:43.7,longitude:7.425});
- await setup(page);await page.evaluate(()=>{const f=(window as any).mapFocus;f.routes=[];f.route=async(from:any,to:any,mode:string)=>{f.routes.push({from,to,mode});return {providerId:'focus-fixture',id:'route-'+f.routes.length,from,to,mode,geometry:[from,to],distanceMeters:111,durationSeconds:60,steps:[{coordinate:to,instruction:'Continue'}],attribution:'Fixture',fetchedAt:Date.now(),traffic:'none'};};});
+ await setup(page);await page.evaluate(()=>{const f=(window as any).mapFocus;f.routes=[];f.route=async(from:any,to:any,mode:string)=>{f.routes.push({from,to,mode});return {providerId:'focus-fixture',id:'route-'+f.routes.length,from,to,mode,geometry:[from,to],distanceMeters:111,durationSeconds:60,steps:[{coordinate:to,instruction:'Continue',distanceMeters:111}],attribution:'Fixture',fetchedAt:Date.now(),traffic:'none'};};});
  await page.getByRole('textbox',{name:'Search places',exact:true}).fill('place');
  await page.locator('[data-alpha-maps-sheet="results"]').getByRole('button',{name:/^One/}).click();
  await page.getByRole('button',{name:'Directions',exact:true}).click();
@@ -157,4 +157,8 @@ test('directions start from the allowed current location and can swap endpoints'
  await page.getByRole('button',{name:'Swap starting point and destination',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).mapFocus.routes.length)).toBe(2);
  expect(await page.evaluate(()=>(window as any).mapFocus.routes.at(-1))).toMatchObject({from:{latitude:43.701,longitude:7.425},to:{latitude:43.7,longitude:7.425}});
+ await page.getByRole('button',{name:'Start',exact:true}).click();
+ await expect(page.getByRole('button',{name:'End navigation',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:/voice guidance/i})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Ask Alpha',exact:true})).toHaveCount(0);
 });
