@@ -532,6 +532,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/native-voice-turn.ts",
     "apps/app/src/runtime/note-audio-deletions.ts",
     "apps/app/src/runtime/note-audio-lock.ts",
+    "apps/app/src/runtime/note-audio.ts",
     "apps/app/src/runtime/note-dates.ts",
     "apps/app/src/runtime/note-default-title.ts",
     "apps/app/src/runtime/note-origin.ts",

@@ -137,7 +137,7 @@ async function recover(page, title, legacy = false) {
   if (!legacy) await expect(button(page, 'Empty Recently deleted')).toHaveCount(0);
   await trash(page).getByRole('button', {name: legacy ? new RegExp('^'+title+', ') : title, exact: !legacy}).click();
   const review = page.getByRole('dialog', {name: title, exact: true});
-  if (!legacy) await expect(review.getByRole('button', {name: 'Delete now', exact: true})).toHaveCount(0);
+  if (!legacy) await expect(review.getByRole('button', {name: 'Delete now', exact: true})).toBeVisible();
   await review.getByRole('button', {name: 'Recover', exact: true}).click();
   await expect(review).toHaveCount(0);
   if (!legacy) await button(page, 'Back to notes').click();
@@ -168,7 +168,7 @@ async function canonical(page) {
   await remove(page, 'Canonical first');
   await t.point('Canonical delete moves the first committed identity to Recently deleted', action('TrashNote', 'n1'));
   await recover(page, 'Canonical first');
-  await t.point('Restore-only Recently deleted returns the same canonical identity', action('Restore', 'n1'));
+  await t.point('Recently deleted returns the same canonical identity', action('Restore', 'n1'));
   await second.click();
   const after = await selection(page, 'canonical-note', 'notes-second');
   assert.notEqual(after.revision, original.revision, 'An unrelated mutation retires the earlier collection revision');

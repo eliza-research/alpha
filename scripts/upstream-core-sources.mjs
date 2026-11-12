@@ -1,12 +1,12 @@
 export default {
   "schema": 1,
-  "baseCommit": "b520b1f0bc622a8fd9e8cbc8843dd0da692dbf8c",
+  "baseCommit": "940a53fe3ef1762f861e961e1794dfc0e47f4722",
   "files": {
     "packages/core/src/services/task.ts": "d1aed0e788fecb0dffacd15a8d8ecc7a1046d103db561915faaffa7a3f6d36bf",
-    "plugins/plugin-notes/src/service.ts": "b25222d39bf98551b26795bc369e614bf8332e263848c7f6dab0beb460ece97a",
+    "plugins/plugin-notes/src/service.ts": "26df266dc926e05b2e36b89819fdf3164ca141cd79a8e98c599a1eba40abaea8",
     "plugins/plugin-notes/src/store.ts": "7cf45a1d43d900c18d930296bdb85d12ff6833ec3c52db7f061b39083a6520bf",
-    "plugins/plugin-notes/src/types.ts": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c",
-    "plugins/plugin-notes/src/validation.ts": "6bb3d21aa78263462a234c6b04580ef2bceddeab227db8deba9c7568362f37a4",
+    "plugins/plugin-notes/src/types.ts": "512fbb7d0b3f939ba24dfc2fc1f4bcaea7c4a0475264e6e3e7218a015b7d7642",
+    "plugins/plugin-notes/src/validation.ts": "b72240d9243ce4d8a39d17068d568bfb4c62451fb51562b74e66dac1399bb977",
     "packages/core/src/runtime/turn-controller.ts": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111",
     "packages/core/src/runtime/room-handler-queue.ts": "4733782d1486a9f3caf2314e4e18ad35dfa8770fc3235e60f944b57a8840e68e",
     "packages/core/src/runtime/embeddings.ts": "eb6bd91bad9e60ee137e088562e59de7e9babac5673e26a4061845c4b02d6188",
