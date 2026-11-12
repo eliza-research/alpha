@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {fileURLToPath} from 'node:url';
 import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 import {checkNativeRequestWithdrawal} from '../specs/quint/refinement/native/request-withdrawal.mjs';
 
-test('real renderer withdrawal and three native requests refine the two-worker model',async()=>{
+test('real renderer withdrawal and three native requests refine the two-worker model',{timeout:scaledTimeout(600000)},async()=>{
  const {receipt,coverage}=await checkNativeRequestWithdrawal([fileURLToPath(import.meta.url)]);
  assert.equal(receipt.passed,true);
  assert.equal(receipt.traces,42); // five named scenarios, 32 random traces and five witnesses
