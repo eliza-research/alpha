@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -348,7 +349,7 @@ async function runNamedEmbeddingProvenanceRefinement(extraSources = []) {
   ]};
 }
 
-test('named embedding admission preserves SQL provenance and rolls back rejected mutations', {timeout: 120000}, async () => {
+test('named embedding admission preserves SQL provenance and rolls back rejected mutations', {timeout: scaledTimeout(120000)}, async () => {
   const {receipts, obligations} = await runNamedEmbeddingProvenanceRefinement([fileURLToPath(import.meta.url)]);
   assert.equal(receipts.length, 1);
   assert.equal(receipts[0].model, 'NamedEmbeddingProvenance');
@@ -359,7 +360,7 @@ test('named embedding admission preserves SQL provenance and rolls back rejected
 
 // A current-source scheduling probe, separate from both the eight Named model
 // traces and the immutable historical CoreEmbeddingDimension counterexample.
-test('current SQL refuses a delayed unmarked insert before the runtime publishes its named pin', {timeout: 120000}, async () => {
+test('current SQL refuses a delayed unmarked insert before the runtime publishes its named pin', {timeout: scaledTimeout(120000)}, async () => {
   const loaded = await loadEmbeddingStoreDatabase([fileURLToPath(import.meta.url)]);
   const setup = await loaded.createIsolatedTestDatabase('current-embedding-publication-'+randomUUID(), [], {postgresUrl: null});
   const {runtime, adapter} = setup;
@@ -420,7 +421,7 @@ test('current SQL refuses a delayed unmarked insert before the runtime publishes
   }
 });
 
-test('experience reload and metadata flush retain the stored vector without restamping it', {timeout: 120000}, async () => {
+test('experience reload and metadata flush retain the stored vector without restamping it', {timeout: scaledTimeout(120000)}, async () => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const source = path.join(root, 'vendor/eliza');
   const target = NAMED_EMBEDDING_TARGETS.find(name => name.endsWith('/experience/service.ts'));

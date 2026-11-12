@@ -4,8 +4,11 @@ from datetime import datetime, timedelta, timezone
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
+from textwrap import dedent
 import unittest
 from unittest.mock import patch
 from urllib.parse import urlsplit
@@ -90,6 +93,28 @@ class NativeInputExpiryTest(unittest.TestCase):
             self.assertIn('::notice ', log.getvalue())
             self.assertIn('#916', summary.read_text())
             self.assertIn(expiry.native.MANIFEST, summary.read_text())
+
+    def test_workflow_checks_the_reviewed_main_commit_after_a_develop_event(self):
+        workflow = (ROOT / '.github/workflows/native-input-expiry.yml').read_text()
+        self.assertIn("github.event_name == 'schedule'", workflow)
+        self.assertIn("github.ref == 'refs/heads/main' && github.sha || 'refs/heads/main'", workflow)
+        step = dedent(workflow.split('        run: |\n', 1)[1])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
+            subprocess.run(['git', '-c', 'commit.gpgsign=false',
+                            '-c', 'user.name=Expiry fixture', '-c', 'user.email=expiry@example.invalid',
+                            'commit', '-q', '--allow-empty', '-m', 'Reviewed main'], cwd=root, check=True)
+            source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+            checker = root / 'scripts/ci/check-native-input-expiry.py'
+            checker.parent.mkdir(parents=True)
+            checker.write_text('import os\nprint(os.environ["GITHUB_SHA"])\n')
+            summary = root / 'summary.md'
+            run = subprocess.run(['bash', '-e', '-c', step], cwd=root, check=True, capture_output=True, text=True,
+                                 env={**os.environ, 'GITHUB_REF': 'refs/heads/develop', 'GITHUB_SHA': SOURCE,
+                                      'GITHUB_STEP_SUMMARY': str(summary)})
+            self.assertEqual(run.stdout.strip(), source)
+            self.assertIn(source, summary.read_text())
 
     def test_all_three_current_pins_use_only_exact_metadata_routes(self):
         api = MetadataAPI()

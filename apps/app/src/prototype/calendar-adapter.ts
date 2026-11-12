@@ -63,7 +63,17 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
   const render=views.calendar.render;
   let owner:any, calendars:Bag[]=[], status='Not connected', loading=false, generation=0, loadFailed=false;
   let creationPending:Bag[]|null=null,creationRecoveryFailed=false,creationDraftEpoch=0,creationReadEpoch=0;
-  async function readCreations(){if(!owner||!active(owner))return [];const token=++creationReadEpoch,readingOwner=owner,draftEpoch=creationDraftEpoch;const value=await calendar.pendingCreations();if(value.status!=='ready'||!Array.isArray(value.creations))throw Error('Calendar creation recovery unavailable');if(owner===readingOwner&&draftEpoch===creationDraftEpoch&&token===creationReadEpoch){creationPending=value.creations;creationRecoveryFailed=false;}return value.creations as Bag[];}
+  async function readCreations(current=()=>true):Promise<Bag[]> {
+    if(!owner||!active(owner))return [];
+    const token=++creationReadEpoch,readingOwner=owner,draftEpoch=creationDraftEpoch;
+    const value=await calendar.pendingCreations();
+    if(value.status!=='ready'||!Array.isArray(value.creations))throw Error('Calendar creation recovery unavailable');
+    if(owner===readingOwner&&draftEpoch===creationDraftEpoch&&token===creationReadEpoch&&current()){
+      creationPending=value.creations;
+      creationRecoveryFailed=false;
+    }
+    return value.creations;
+  }
   let agentSelection:Bag|undefined,agentSelectionKey='',agentSelectionEpoch=0;
   p.calendarSelection=function(){if(!active(this))return;const state=this.vget('calendar');if(agentSelection?.kind==='calendar-source')return state.form?.cal===agentSelection.formCal?{kind:'calendar-source',id:agentSelection.id,revision:agentSelection.revision,accountId:agentSelection.id,sourceRevision:agentSelection.revision}:undefined;return agentSelection&&state.open===agentSelection.open?{kind:'calendar-event',id:agentSelection.id,revision:agentSelection.revision,accountId:agentSelection.accountId,sourceRevision:agentSelection.sourceRevision}:undefined;};
   type Range={begin:number;end:number;key:string};
@@ -80,7 +90,7 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
       title:event.title||'Untitled event',notes:event.body||'',where:event.location||'',
       cal:'personal',who:event.who||[],video:event.video?'Room':false,repeat:'none',alert:event.alert??null,allDay};
   };
-  async function refresh(request=false, force=false) {
+  async function refresh(request=false, force=false, {waitForRecovery=true}={}) {
     if(!owner||!active(owner)||(loading&&!force))return;
     if (Capacitor.getPlatform() === 'web' && !Capacitor.isPluginAvailable('AlphaCalendar')) {
       desired=rangeFor(owner.vget('calendar'));attemptedKey=desired.key;
@@ -108,11 +118,12 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
           readAt=Date.now();
           rows=(result.events as Bag[]).map(mapEvent);
           loadedKey=range.key;truncated=!!result.truncated;calendars=result.calendars;status=result.truncated?'Calendar range limited to 2,000 events':Capacitor.isNativePlatform()?(calendars.length?'Device calendar access allowed':'No device calendars found'):'Local calendar ready';
-          // A provider read can settle the exact unconfirmed write it started with. A read of
-          // another range that does not list the event says nothing about a delete.
+          // A provider read can settle the exact unconfirmed write it started with. Absence
+          // only confirms deletion when the complete read covers the event's start.
           if(uncertain&&currentOwner.calendarWriteUncertain===uncertain&&(request||force)){
             const present=result.events.some((e:Bag)=>e.id===uncertain.eventId);
-            if(present||uncertain.kind==='delete'&&uncertain.begin>=range.begin&&uncertain.begin<range.end)currentOwner.calendarWriteUncertain=undefined;
+            const deleted=!result.truncated&&uncertain.kind==='delete'&&uncertain.begin>=range.begin&&uncertain.begin<range.end;
+            if(present||deleted)currentOwner.calendarWriteUncertain=undefined;
           }
         }
       }
@@ -125,13 +136,14 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
     // CalendarProvider rows and the next range can load while these independent reads settle.
     const refreshReminders=async()=>{try{await currentOwner.refreshReminders();}catch{/* The reminder view owns reminder freshness. */}};
     const refreshCreations=async()=>{
-      const draftEpoch=creationDraftEpoch,reading=readCreations(),readEpoch=creationReadEpoch;
+      const draftEpoch=creationDraftEpoch,reading=readCreations(current),readEpoch=creationReadEpoch;
       const ownsRecovery=()=>current()&&draftEpoch===creationDraftEpoch&&readEpoch===creationReadEpoch;
       try{await reading;}
       catch{if(ownsRecovery()){creationPending=null;creationRecoveryFailed=true;}}
       finally{if(ownsRecovery())currentOwner.vset('calendar',{});}
     };
-    await Promise.all([refreshReminders(),readAt===null?undefined:refreshCreations()]);
+    const recovery=Promise.all([refreshReminders(),readAt===null?undefined:refreshCreations()]);
+    if(waitForRecovery)await recovery;
   }
   // One presentation seam over the existing display sources/preferences. These
   // controls never create native agent read grants or change source identities.
@@ -155,7 +167,7 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
       const day=(civilDay(new Date(request.begin),request.allDay)-civilDay(new Date()))/DAY;
       // Cover the day list until the event opens, so a deep link never flashes the full calendar.
       currentOwner.vset('calendar',{day,month:null,open:null,openDay:null,form:null,deepOpening:request.id});desired=rangeFor({day});
-      await refresh(false,true);
+      await refresh(false,true,{waitForRecovery:false});
       if(owner!==currentOwner||epoch!==navigationEpoch||document.hidden||currentOwner.S().view!=='calendar'||currentOwner.vget('calendar').day!==day)return;
       const row=currentOwner.nativeCalendarRows?.find((row:Bag)=>row.alphaCalendarId===request.id);
       if(!row)return;

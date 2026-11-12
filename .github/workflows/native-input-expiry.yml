@@ -9,7 +9,11 @@ permissions: {}
 
 jobs:
   check:
-    if: github.repository_id == '1396333361' && (github.event_name == 'schedule' || github.ref == 'refs/heads/main')
+    if: >-
+      github.repository_id == '1396333361' && github.repository_owner_id == '314117943' &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')))
     runs-on: ubuntu-24.04
     timeout-minutes: 6
     permissions:
@@ -18,8 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Scheduled runs originate on the default branch; released input pins live on main.
-          ref: ${{ github.event_name == 'schedule' && 'main' || github.sha }}
+          # The released native input pins live on main, including for develop dispatches.
+          ref: ${{ github.ref == 'refs/heads/main' && github.sha || 'refs/heads/main' }}
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -28,7 +32,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
-        # Bind admission to the exact checked-out main revision, including scheduled runs.
         run: |
           if [ ! -e scripts/ci/check-native-input-expiry.py ] && [ ! -L scripts/ci/check-native-input-expiry.py ]; then
             if [ ! -e android/hosted-native-inputs.json ] && [ ! -L android/hosted-native-inputs.json ]; then
@@ -42,4 +45,6 @@ jobs:
             echo '::error title=Launcher OTA native inputs::Native input pins are present on main, but the expiry monitor is absent. Promote the monitor before relying on these pins.'
             exit 1
           fi
-          GITHUB_SHA="$(git rev-parse HEAD)" python3 -B scripts/ci/check-native-input-expiry.py
+          source=$(git rev-parse --verify HEAD)
+          printf 'Reviewed main checkout %s.\n\n' "$source" >> "$GITHUB_STEP_SUMMARY"
+          GITHUB_SHA="$source" python3 -B scripts/ci/check-native-input-expiry.py

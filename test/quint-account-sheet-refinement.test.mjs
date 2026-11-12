@@ -94,7 +94,7 @@ async function checkAccountSheet(extraSources=[]){
   writeFileSync(initializer,await nativeFixture(null,input),{mode:0o600});
   const driverHashes={...before,...captureInputs([generated,initializer])},loaded=new Set();
   process.env.ELIZA_DEV_ALLOW_TEST_MOCKS='';
-  server=await createServer({configFile:resolve(root,'vite.config.ts'),logLevel:'error',
+  server=await createServer({configLoader: 'runner', configFile:resolve(root,'vite.config.ts'),logLevel:'error',
    cacheDir:resolve(root,'test-results/quint-refinement/account-sheet-vite-cache'),server:{host:'127.0.0.1',port:0,hmr:false,watch:null},
    define:{'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS':JSON.stringify('')},plugins:[{name:'bound-account-observer',enforce:'pre',transform(code,id){
     const path=id.split('?')[0];if(path!==resolve(root,product))return;

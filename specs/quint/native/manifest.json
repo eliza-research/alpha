@@ -2850,7 +2850,17 @@
       "coldPowerNeverReturnsAfterFocusLossTest",
       "newNativeOwnerRetiresColdPinTest",
       "stalePowerPreservesSuccessorTest",
-      "tileCancellationAndImmutableDispatchTest"
+      "tileCancellationAndImmutableDispatchTest",
+      "ordinarySystemAndWrongListenerUidAreSurfaceOnlyTest",
+      "listenerNeedsImageAndItsOwnSignerOnlyTest",
+      "coldPowerWithoutCallerIsSurfaceOnlyTest",
+      "coldPowerWrongSystemUidIsSurfaceOnlyTest",
+      "coldPowerBeforeApi34IsSurfaceOnlyTest",
+      "coldPowerNeedsImageAndBothSignersTest",
+      "warmPowerRequiresModernTrustedSystemCallerTest",
+      "warmPowerNeedsImageAndBothSignersTest",
+      "coldListenerAttributionDoesNotTransferTest",
+      "stalePowerPreservesListenerSuccessorTest"
     ],
     "invariants": [
       "sanitizedSurface",
@@ -2869,10 +2879,14 @@
       "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java",
       "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/AssistantEntryTile.java",
       "android/app/src/main/AndroidManifest.xml",
-      "android/consumer-host.json"
+      "android/consumer-host.json",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSenseAdmission.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaImageCapabilities.java",
+      "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/ImageCapability.java",
+      "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java"
     ],
     "stateMapping": {
-      "sdk/now/locked/policy/account/epoch/signers/protected": "Controlled platform clock, Activity metadata, signers, keyguard and native credential admission snapshot",
+      "sdk/now/locked/policy/account/epoch/signers/systemSigner/image/protected": "Controlled platform clock, Activity metadata, companion and platform signer partitions, exact caller package+UID classes, image qualification conjunction, keyguard and native credential snapshot",
       "latest/bound/invocation": "Actual package-wide Sense lease, recorded origin, lock, arrival and native owner adoption",
       "surfaces": "Intent projection, virtual bridge-load reentry, window events, Activity lease, focus and exact protected launch grant",
       "tile": "Inactive presentation, callback custody and exact explicit immutable or legacy dispatch request",
@@ -2882,7 +2896,8 @@
       "Two Activity/bridge identities, fixed renderer generation, exact or foreign binding, one bound account snapshot and selected elapsed-time boundaries.",
       "Closed bridge port mirrors installed Capacitor bridge assignment and virtual intent reentry. Exact sanitized object forwarding during load preserves the authenticated cold receipt. A copied argument or public delivery takes the ordinary path.",
       "Power entry uses exact product pin and readback members with controlled credential and Android permission ports. Tile has at most one pending controlled unlock callback.",
-      "No Activity launches, microphone capture, Android Settings or app runtime process. OS authority and delivery are external."
+      "No Activity launches, microphone capture, Android Settings or app runtime process. OS authority and delivery are external.",
+      "Only the current companion with its actual UID, image facts and current signer may record listener voice. Ordinary SystemUI is surface-only. Cold protected Power additionally needs API 34+, and warm Power needs the API 35+ reported SystemUI caller. Caller UID mismatches are explicit rejected input classes; previously minted grants retain their existing credential/lifecycle readback boundary."
     ],
     "bounds": {
       "maxSamples": 1000,

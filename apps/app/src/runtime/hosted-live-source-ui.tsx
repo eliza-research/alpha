@@ -154,7 +154,8 @@ export function HostedLiveSourcePicker({
 			const removed = result.remoteRevocation === "confirmed";
 			setMessage(target.account ? (removed ? "Removed" : "Off · retry") : "");
 			setRevocation({ grantId: target.grantId, removed });
-			if (removed) {
+			// On Android, the server disables local reads before it confirms the remote disconnect.
+			if (removed || (isAndroid && result.revoked === true)) {
 				setAccounts(accounts => accounts.filter(account => cloudGrantId(account.accountId) !== target.grantId));
 				setAccountId(accountId => cloudGrantId(accountId) === target.grantId ? "" : accountId);
 			}
@@ -228,7 +229,7 @@ export function HostedLiveSourcePicker({
 	return (
 		<details ref={liveDetails} onToggle={event => { if (event.target === event.currentTarget && !event.currentTarget.open) retireRemoval(); }}>
 			<summary onClick={() => { if (liveDetails.current?.open) retireRemoval(); }}><span aria-hidden="true" className="alpha-google-icon" style={{ display: "inline-block", width: 18, height: 18, marginRight: 6, verticalAlign: "middle" }} />Live Google</summary>
-            {scope && (browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development'?<BrowserDigestDelegation client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()}/>:isAndroid?<CloudDelegationPanel client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()} onReviewRemoval={grantId => void removeAccess({ grantId })} removalBusy={busy || pending || !!removal} revocation={revocation}/>:null) }
+            {scope && (browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development'?<BrowserDigestDelegation client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()} onReviewRemoval={grantId => void removeAccess({ grantId })} removalBusy={busy || pending || !!removal} revocation={revocation}/>:isAndroid?<CloudDelegationPanel client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()} onReviewRemoval={grantId => void removeAccess({ grantId })} removalBusy={busy || pending || !!removal} revocation={revocation}/>:null) }
 			{message && <p>{message === "Sign-in stays on phone" && <span aria-hidden="true" style={{ ...iconStyle("lock-keyhole"), width: "16px", height: "16px", marginRight: 6, verticalAlign: "middle" }} />}{message}</p>}
 			<button disabled={busy || pending} onClick={() => void loadAccounts()}>
 				Refresh connected accounts

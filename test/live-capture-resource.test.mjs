@@ -23,8 +23,11 @@ test('native admission cancels permission/start before the serialized worker can
  assert.match(stop,/admission\.stop\(id,discard\);/);
  assert.ok(stop.indexOf('admission.stop(id,discard)')<stop.indexOf('pipe.close(true,cutoff)'), 'Stop is published before transport cancellation can wake startup');
  assert.ok(stop.indexOf('admission.stop(id,discard)')<stop.indexOf('submit(worker'), 'Stop is published before queued worker cleanup');
- assert.match(controller,/next\.start\(\);[\s\S]*?current=next;\s*if\(!host\.canStart\(epoch\)\|\|!admission\.run\(ticket\)\|\|!startup\.report\(\)\)\{admission\.discard\(ticket\);current=null;next\.stop\(\);/,
+ assert.match(controller,/next\.start\(\);[\s\S]*?current=next;\s*if\(!host\.canStart\(epoch\)\|\|!admission\.run\(ticket\)\|\|!startup\.report\(\)\)\{admission\.discard\(ticket\);boolean released=retire\(next\);closePipe\(id,true,now\(\)\);if\(!released\)result\.refused\("Microphone release is unconfirmed",CAPTURE\);else refuse\(/,
   'A refused late startup discards its event admission before clearing the published capture and stopping its source');
+ // The published capture is cleared only once its microphone release is confirmed; an unconfirmed one stays the owner.
+ assert.match(controller,/private boolean retire\(LiveVoiceCapture capture\)\{\s*try\{capture\.stopAndWait\(\);if\(live==capture\)live=null;if\(current==capture\)current=null;return true;\}\s*catch\(RuntimeException unconfirmed\)\{live=capture;current=capture;return false;\}\s*\}/,
+  'Retiring a capture stops its source and waits for release before clearing it');
  const plugin=fs.readFileSync(upstreamBridgeSource('LocalSpeechBridgePlugin.java'),'utf8');
  assert.match(plugin,/LiveCaptureAdmission\.Ticket ticket=live\.reserve\(id,epoch\.get\(\)\);\s*if\(getPermissionState\("microphone"\)/);
  assert.match(plugin,/public boolean open\(long admitted\)\{return !destroyed&&speechForeground&&admitted==epoch\.get\(\);\}/);

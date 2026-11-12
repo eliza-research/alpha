@@ -26,7 +26,7 @@ import zipfile
 from app_update_producer import CANDIDATE, HOSTED_DISPATCH, apk_member_limit, copy_verified, decode, producer_kind
 
 ROOT = Path(__file__).resolve().parents[2]
-REPOSITORY = "alphacompute/alpha"
+REPOSITORY = "eliza-research/alpha"
 REPOSITORY_ID = 1396333361
 SIGNING_WORKFLOW_ID = 411388003
 HEX = re.compile(r"[0-9a-f]{64}")

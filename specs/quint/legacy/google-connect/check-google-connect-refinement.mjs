@@ -178,7 +178,7 @@ async function mounted(extraSources) {
     const previous = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
     try {
-      server = await createServer({configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', cacheDir,
+      server = await createServer({configLoader: 'runner', configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', cacheDir,
         server: {host: '127.0.0.1', port: 0, hmr: false, watch: null},
         define: {'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify('')},
         plugins: [{name: 'quint-google-connect-inputs', enforce: 'pre', transform(code, id) {

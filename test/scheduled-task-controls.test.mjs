@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {scheduledTaskControlsFixture} from './fixtures/scheduled-task-controls.mjs';
@@ -48,7 +49,7 @@ test('a failed schedule-source refresh retains detail with its changes disabled'
   assert.equal(state.sends.length, 0);
 });
 
-test('actual scheduled-task controls refine their reviewed request model', {timeout: 60_000}, async () => {
+test('actual scheduled-task controls refine their reviewed request model', {timeout: scaledTimeout(60_000)}, async () => {
   const receipt = await checkScheduledTaskControls();
   assert.equal(receipt.passed, true);
   assert.equal(receipt.driverInputsBound, true);
