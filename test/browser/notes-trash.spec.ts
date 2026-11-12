@@ -1,3 +1,4 @@
+import {openRecentlyDeletedNotes} from './helpers/notes-menu';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
@@ -18,7 +19,7 @@ async function deleteOpenNote(page:Page){
  await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
 }
 /** The "Recently deleted" folder chip, shown while it has notes. */
-async function openDeleted(page:Page){await page.getByRole('button',{name:'Recently deleted',exact:true}).click();}
+async function openDeleted(page:Page){await openRecentlyDeletedNotes(page);}
 /** Row → Recover in the action sheet. */
 async function recover(page:Page,title:string,left:string){
  await page.getByRole('button',{name:`${title}, ${left}`,exact:true}).click();

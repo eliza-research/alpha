@@ -1,3 +1,4 @@
+import {refreshInbox} from './helpers/mail-actions';
 import {test,expect} from '@playwright/test';
 // The fixture models an installation that already finished access setup; a signed-in account with
 // pending setup is owed the startup walkthrough, which would otherwise cover Home once the swapped
@@ -15,21 +16,21 @@ for(const reason of ['disconnected','scope-revoked'] as const)test(`Gmail same-I
  });
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  // Opening Inbox loads the connected account once, without another tap.
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Mail options',{exact:true})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>(window as any).gmailGrantFixture.reads)).toBe(1);
  await page.evaluate(reason=>{const f=(window as any).gmailGrantFixture;if(reason==='disconnected')f.connected=false;else f.triage=false;},reason);
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Mail options',{exact:true})).toBeVisible();
  await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Fixture mailbox',exact:true})).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Mail options',{exact:true})).toBeVisible();
  await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).gmailGrantFixture)).toMatchObject({reads:1,oauth:0});
  await page.evaluate(()=>{const f=(window as any).gmailGrantFixture;f.connected=true;f.triage=true;});
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Mail options',{exact:true})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>(window as any).gmailGrantFixture.reads)).toBe(2);
- await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();
+ await refreshInbox(page);
  await expect.poll(()=>page.evaluate(()=>(window as any).gmailGrantFixture.reads)).toBe(3);
  expect(await page.evaluate(()=>(window as any).gmailGrantFixture.oauth)).toBe(0);
 });
@@ -82,14 +83,14 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
  // Since 10e15eff9 Add Google account asks once for Gmail send and Calendar edit, and the old
  // "Gmail permissions / Enable Gmail changes" upgrade is the Calendar edits switch: this grant
  // lacks Calendar write, so turning it on starts the same consent.
- for(const [label,role] of [['Add Google account','button'],['Calendar edits','switch']] as const){
+ for(const [label,role] of [['Allow Gmail changes','button'],['Calendar edits','switch']] as const){
   const before=await f();
   await panel.getByRole(role,{name:label,exact:true}).click();
   // The previous handoff's notice is still shown, so wait for this handoff's own open first.
   await expect.poll(async()=>(await f()).opened.length,label).toBe(before.opened.length+1);
   await expect(next).toBeVisible();
   const after=await f();
-  expect(after.initiates.slice(before.initiates.length),label).toEqual([['write','send']]);
+  expect(after.initiates.slice(before.initiates.length),label).toEqual([['write','modify']]);
   expect(after.opened.slice(before.opened.length),label).toEqual([AUTH]);
   expect(after.reads,label+': no mailbox read until the owner checks again').toBe(before.reads);
  }
@@ -100,7 +101,7 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
  await expect.poll(async()=>(await f()).reads).toBe(2);
  // A handoff abandoned while the browser is open (Escape closes the panel) reports nothing as pending.
  await page.evaluate(()=>{const f=(window as any).handoffFixture;f.hold=new Promise<void>(resolve=>{f.release=resolve;});});
- await panel.getByRole('button',{name:'Add Google account',exact:true}).click();
+ await panel.getByRole('button',{name:'Allow Gmail changes',exact:true}).click();
  await expect.poll(async()=>(await f()).opened.length).toBe(3);
  await page.keyboard.press('Escape');
  await expect(panel).toHaveCount(0);

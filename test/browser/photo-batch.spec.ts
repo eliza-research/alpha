@@ -1,4 +1,4 @@
-import {openPhotoTools,openPhotoShare} from './helpers/owned-photo';
+import {openPhotoTools,openPhotoShare,savePhotoContract} from './helpers/owned-photo';
 import {execFileSync} from 'node:child_process';
 import {test,expect} from '@playwright/test';
 test.beforeEach(async({page})=>{
@@ -10,7 +10,7 @@ test('visible batch favorite, trash, undo and download journey persists exact se
  const tiles=page.locator('button[data-owned-media-id^="native-camera-"]');await expect(tiles).toHaveCount(3);
  const select=async()=>{await openPhotoTools(page);await page.getByRole('button',{name:'Select photos',exact:true}).click();await tiles.nth(0).click();await tiles.nth(1).click();};
  await select();await page.getByRole('button',{name:'Favorite selected',exact:true}).click();await expect(page.getByText('Added 2 to Favorites',{exact:true})).toBeVisible();
- await select();const selectedIds=await tiles.evaluateAll(nodes=>nodes.slice(0,2).map(n=>n.getAttribute('data-owned-media-id')!.replace(/^native-camera-/,'')));const expected=await page.evaluate(async(ids)=>{const {browserPhotoLibrary:p}=await import('/src/prototype/browser-camera.ts');return Promise.all(ids.map(async id=>{const row=await p.read({id});const bytes=await (await fetch(row.image)).arrayBuffer();return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(v=>v.toString(16).padStart(2,'0')).join('');}));},selectedIds);expect(new Set(expected).size).toBe(2);const downloading=page.waitForEvent('download');await page.getByRole('button',{name:'Share selected',exact:true}).click();await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Save file',exact:true}).click();const download=await downloading;expect(download.suggestedFilename()).toBe('Alpha photos.zip');const path=await download.path();const entries=JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys,hashlib; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print(json.dumps({n:hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist()}))',path!],{encoding:'utf8'}));expect(entries).toEqual({'Alpha-photo-1.jpg':expected[0],'Alpha-photo-2.jpg':expected[1]});
+ await select();const selectedIds=await tiles.evaluateAll(nodes=>nodes.slice(0,2).map(n=>n.getAttribute('data-owned-media-id')!.replace(/^native-camera-/,'')));const expected=await page.evaluate(async(ids)=>{const {browserPhotoLibrary:p}=await import('/src/prototype/browser-camera.ts');return Promise.all(ids.map(async id=>{const row=await p.read({id});const bytes=await (await fetch(row.image)).arrayBuffer();return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(v=>v.toString(16).padStart(2,'0')).join('');}));},selectedIds);expect(new Set(expected).size).toBe(2);const downloading=page.waitForEvent('download');await savePhotoContract(page,true);const download=await downloading;expect(download.suggestedFilename()).toBe('Alpha photos.zip');const path=await download.path();const entries=JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys,hashlib; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print(json.dumps({n:hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist()}))',path!],{encoding:'utf8'}));expect(entries).toEqual({'Alpha-photo-1.jpg':expected[0],'Alpha-photo-2.jpg':expected[1]});
  await page.getByRole('button',{name:'Delete selected',exact:true}).click();await expect(tiles).toHaveCount(1);await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(tiles).toHaveCount(3);
  await page.reload();const result=await page.evaluate(async()=>{const {browserPhotoLibrary:p}=await import('/src/prototype/browser-camera.ts');return {summary:await p.summary(),count:(await p.list()).items.length};});expect(result).toMatchObject({summary:{favorites:2,trash:0},count:3});
 });
@@ -63,6 +63,7 @@ for(const batch of [false,true])for(const outcome of ['supported','unavailable',
  const downloads:string[]=[];page.on('download',download=>downloads.push(download.suggestedFilename()));
  await page.evaluate(outcome=>{
   const w=window as any;w.sharedMedia=[];
+  Object.defineProperty(document,'permissionsPolicy',{configurable:true,value:{allowsFeature:()=>true}});
   Object.defineProperty(navigator,'canShare',{configurable:true,value:(data:ShareData)=>outcome!=='unavailable'&&!!data.files?.length});
   Object.defineProperty(navigator,'share',{configurable:true,value:async(data:ShareData)=>{w.sharedMedia.push(data.files?.map(file=>({name:file.name,type:file.type,size:file.size})));if(outcome==='cancelled')throw new DOMException('Cancelled','AbortError');}});
  },outcome);
@@ -70,16 +71,13 @@ for(const batch of [false,true])for(const outcome of ['supported','unavailable',
  const tiles=page.locator('button[data-owned-media-id^="native-camera-"]');await expect(tiles).toHaveCount(3);
  if(batch){await openPhotoTools(page);await page.getByRole('button',{name:'Select photos',exact:true}).click();await tiles.nth(0).click();await tiles.nth(1).click();}else await tiles.first().click();
  const share=async()=>{if(batch)await page.getByRole('button',{name:'Share selected',exact:true}).click();else await openPhotoShare(page);};
- await share();const panel=page.getByRole('dialog',{name:'Share',exact:true});
- await expect(panel.getByRole('button',{name:'Email',exact:true})).toHaveCount(0);
- await expect(panel.getByRole('button',{name:'Save file',exact:true})).toBeVisible();
- await panel.getByRole('button',{name:'Share',exact:true}).click();
+ await share();await expect(page.getByRole('dialog',{name:'Share',exact:true})).toHaveCount(0);
  if(outcome==='unavailable')await expect(page.getByText('Sharing is unavailable in this browser. Use Save file.',{exact:true})).toBeVisible();
  else await expect.poll(()=>page.evaluate(()=>(window as any).sharedMedia.length)).toBe(1);
  const shared=await page.evaluate(()=>(window as any).sharedMedia);
  if(outcome==='unavailable')expect(shared).toEqual([]);else{expect(shared[0]).toHaveLength(batch?2:1);for(const file of shared[0]){expect(file.type).toBe('image/jpeg');expect(file.size).toBeGreaterThan(0);}}
  expect(downloads).toEqual([]);
- await share();const saving=page.waitForEvent('download');await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Save file',exact:true}).click();
+ const saving=page.waitForEvent('download');await savePhotoContract(page,batch);
  expect((await saving).suggestedFilename()).toMatch(batch?/^Alpha photos\.zip$/:/^Alpha-photo-\d+\.jpg$/);
  expect(downloads).toHaveLength(1);
 });
@@ -100,6 +98,7 @@ for(const destination of ['share','save'])test(`media ${destination} rechecks re
 for(const destination of ['share','save'])for(const retirement of ['back','home-return','hidden-return'])test(`pending media ${destination} is retired by ${retirement} without changing the media revision`,async({page})=>{
  const downloads:string[]=[];page.on('download',download=>downloads.push(download.suggestedFilename()));
  await page.evaluate(()=>{
+  Object.defineProperty(document,'permissionsPolicy',{configurable:true,value:{allowsFeature:()=>true}});
   const w=window as any;w.mediaHandoffCalls=0;w.mediaReadStarted=false;const original=window.fetch;let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);w.releaseMediaRead=release;const click=HTMLAnchorElement.prototype.click;w.restoreMediaFetch=()=>{window.fetch=original;HTMLAnchorElement.prototype.click=click;};
   Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async()=>{w.mediaHandoffCalls++;}});
   // A save starts its download with a link click in the same task as its final check. The read counts as
@@ -109,7 +108,7 @@ for(const destination of ['share','save'])for(const retirement of ['back','home-
  });
  await page.getByRole('button',{name:'Photos',exact:true}).click();await page.locator('button[data-owned-media-id^="native-camera-"]').first().click();
  const before=await page.evaluate(async()=>{const p=(await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary;return (await p.list()).items.map(row=>[row.id,row.mutationRevision]);});
- await openPhotoShare(page);await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:destination==='share'?'Share':'Save file',exact:true}).click();
+ if(destination==='share')await openPhotoShare(page);else await savePhotoContract(page);
  await expect.poll(()=>page.evaluate(()=>(window as any).mediaReadStarted)).toBe(true);
  if(retirement==='hidden-return')await page.evaluate(()=>{let hidden=true;Object.defineProperty(document,'hidden',{configurable:true,get:()=>hidden});document.dispatchEvent(new Event('visibilitychange'));hidden=false;document.dispatchEvent(new Event('visibilitychange'));});
  else{await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));await expect(page.getByRole('button',{name:'Share photo',exact:true})).toHaveCount(0);if(retirement==='home-return'){await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Photos',exact:true}).click();await page.locator('button[data-owned-media-id^="native-camera-"]').first().click();}}
@@ -123,8 +122,22 @@ for(const destination of ['share','save'])for(const retirement of ['back','home-
  await page.evaluate(()=>{(window as any).restoreMediaFetch();});
 });
 
-test('a library refresh keeps the Share panel open and a changed selection closes it',async({page})=>{
- await page.evaluate(()=>{const w=window as any;w.sharedMedia=[];Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async(data:ShareData)=>{w.sharedMedia.push(data.files?.length);}});});
+test('pending native sharing survives a library refresh and retires when selection changes',async({page})=>{
+ await page.evaluate(()=>{
+  const w=window as any;w.sharedMedia=[];
+  Object.defineProperty(document,'permissionsPolicy',{configurable:true,value:{allowsFeature:()=>true}});
+  Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});
+  Object.defineProperty(navigator,'share',{configurable:true,value:async(data:ShareData)=>{w.sharedMedia.push(data.files?.length);}});
+  const original=window.fetch;
+  window.fetch=async(...args)=>{
+   if(typeof args[0]==='string'&&args[0].startsWith('data:image/')){
+    w.mediaReadStarted=true;await new Promise<void>(resolve=>{w.releaseMediaRead=resolve;});
+    const response=await original(...args),read=response.blob.bind(response);
+    response.blob=async()=>{const bytes=await read();w.mediaReadReleased=true;return bytes;};return response;
+   }
+   return original(...args);
+  };
+ });
  const setPhotos=(patch:Record<string,unknown>)=>page.evaluate(patch=>{
   const root=document.getElementById('root') as any,key=Object.keys(root).find(name=>name.startsWith('__reactContainer$'))!;const pending=[root[key]];
   while(pending.length){const fiber=pending.pop();if(typeof fiber?.stateNode?.vset==='function'){fiber.stateNode.vset('photos',patch);return;}if(fiber?.sibling)pending.push(fiber.sibling);if(fiber?.child)pending.push(fiber.child);}
@@ -132,15 +145,17 @@ test('a library refresh keeps the Share panel open and a changed selection close
  },patch);
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  const tiles=page.locator('button[data-owned-media-id^="native-camera-"]');await expect(tiles).toHaveCount(3);await tiles.first().click();
- const share=()=>openPhotoShare(page),panel=page.getByRole('dialog',{name:'Share',exact:true});
- await share();await expect(panel).toBeVisible();
- // The same refresh counters the device library and capture loads write; the panel checks every 250 ms.
- await setPhotos({nativeLibraryRevision:Date.now(),nativeCaptureRevision:Date.now()});await page.waitForTimeout(600);
- await expect(panel).toBeVisible();await panel.getByRole('button',{name:'Share',exact:true}).click();
+ await openPhotoShare(page);await expect.poll(()=>page.evaluate(()=>(window as any).mediaReadStarted)).toBe(true);
+ await setPhotos({nativeLibraryRevision:Date.now(),nativeCaptureRevision:Date.now()});
+ await page.evaluate(()=>(window as any).releaseMediaRead());
  await expect.poll(()=>page.evaluate(()=>(window as any).sharedMedia)).toEqual([1]);
- await share();await expect(panel).toBeVisible();
- await setPhotos({open:null});await expect(panel).toHaveCount(0);
+ await page.evaluate(()=>{const w=window as any;w.mediaReadStarted=false;w.mediaReadReleased=false;});
+ await openPhotoShare(page);await expect.poll(()=>page.evaluate(()=>(window as any).mediaReadStarted)).toBe(true);
+ await setPhotos({open:null});await page.evaluate(()=>(window as any).releaseMediaRead());
+ await expect.poll(()=>page.evaluate(()=>(window as any).mediaReadReleased)).toBe(true);
+ await page.evaluate(async()=>{const p=(await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary;await p.changeMany({operation:'favorite',items:[{id:'settled-probe',revision:'none'}]});});
  expect(await page.evaluate(()=>(window as any).sharedMedia)).toEqual([1]);
+ await expect(page.getByRole('dialog',{name:'Share',exact:true})).toHaveCount(0);
 });
 test('declining a large selection stops after one confirmation and preserves every photo',async({page})=>{
  await page.evaluate(async()=>{

@@ -6,3 +6,10 @@ export async function chooseMailAction(page: Page, name: 'Reply' | 'Reply all' |
   if (await menu.getAttribute('open') === null) await menu.getByLabel('Message actions', {exact: true}).click();
   await menu.getByRole('button', {name, exact: true}).click();
 }
+
+/** The current refresh action lives in the shared Mail options menu. */
+export async function refreshInbox(page:Page){
+ const menu=page.locator('.mail-selection-menu');
+ if(await menu.getAttribute('open')===null)await menu.getByLabel('Mail options',{exact:true}).click();
+ await menu.getByRole('menuitem',{name:'Refresh',exact:true}).click();
+}

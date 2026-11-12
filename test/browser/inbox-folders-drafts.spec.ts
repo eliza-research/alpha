@@ -28,7 +28,7 @@ async function install(page:Page,caps:Record<string,unknown>){
   const snapshot={...c.getSnapshot(),cloudAccount:{environment:'production',userId:'fixture-owner',sessionId:'fixture-session',credentialId:'fixture'}} as any;c.getSnapshot=()=>snapshot;
  },caps);
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Mail options',{exact:true})).toBeVisible();
 }
 const fixture=(page:Page)=>page.evaluate(()=>(window as any).folderFixture);
 
@@ -81,12 +81,12 @@ test('Send opens the exact review and nothing is sent until it is confirmed',asy
  await page.getByRole('textbox',{name:'Subject',exact:true}).fill('Reviewed subject');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Reviewed body');
  await page.getByRole('button',{name:'Send email',exact:true}).click();
- const review=page.getByRole('dialog',{name:'Review mail operation'});
- await expect(review.getByRole('button',{name:'Send this email',exact:true})).toBeVisible();
- await expect(review.getByText('Reviewed body',{exact:true})).toBeVisible();
+ const review=page.getByRole('dialog',{name:'Send this email?'});
+ await expect(review.getByRole('button',{name:'Yes',exact:true})).toBeVisible();
+ expect((await fixture(page)).prepared.at(-1)).toMatchObject({kind:'send',to:['friend@example.invalid'],subject:'Reviewed subject',bodyText:'Reviewed body'});
  expect((await fixture(page)).prepared.map((p:any)=>p.kind)).toEqual(['send']);
  expect((await fixture(page)).dispatches).toBe(0);
- await review.getByRole('button',{name:'Close mail review',exact:true}).click();
+ await review.getByRole('button',{name:'No',exact:true}).click();
  await expect(review).toHaveCount(0);
  await page.waitForTimeout(200);
  expect((await fixture(page)).dispatches).toBe(0);

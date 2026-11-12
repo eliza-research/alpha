@@ -1,3 +1,4 @@
+import {openRecentlyDeletedNotes} from './helpers/notes-menu';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
@@ -73,7 +74,7 @@ test('Trash written under a larger limit stays readable, restorable and purgeabl
  expect(rewritten()).toBeGreaterThan(0);
  expect(await page.evaluate(async()=>(await import('/src/runtime/notes-trash-policy.ts')).NOTES_TRASH_MAX_ENTRIES)).toBe(2);
  expect(await trashEntries(page)).toEqual(stored);
- await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ await openRecentlyDeletedNotes(page);
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
  for(const title of ['Alpha','Bravo','Charlie'])await expect(trash.getByText(title,{exact:true})).toBeVisible();
  await expect(trash.getByText('Trash could not be read',{exact:false})).toHaveCount(0);
@@ -110,7 +111,7 @@ test('Trash written under a larger limit stays readable, restorable and purgeabl
  expect(await page.evaluate(async()=>JSON.stringify((await (await import('/src/browser/documents.ts')).browserDocuments.read('alpha.browser.notes-trash.v1'))??null).includes('Delta body'))).toBe(false);
 
  // Restorable above the limit: the exact record returns.
- await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ await openRecentlyDeletedNotes(page);
  await rowAction(page,'Alpha','Recover');
  await expect(page.getByText('Alpha restored',{exact:true})).toBeVisible();
  expect((await savedRecords(page)).find((n:any)=>n.title==='Alpha')).toEqual(original.find((n:any)=>n.title==='Alpha'));
@@ -265,7 +266,7 @@ test('a stale Trash row of a note that is then deleted permanently is dropped, s
  expect(await pendingDeletions(page)).toEqual([]);
  const erased=await describeAudio(page,'stale-audio');
  expect(erased.transcript).toBe('');expect(erased.expired).toBe(true);
- await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ await openRecentlyDeletedNotes(page);
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
  await expect(trash.getByText('Filler',{exact:true})).toBeVisible();
  await expect(trash.getByText('Stale memo',{exact:true})).toHaveCount(0);
@@ -320,7 +321,7 @@ test('a clock moved backwards never purges early or extends the label, and the p
  // Ten days in the past, across a restart: kept, never more than 30 days shown, deletedAt not rewritten.
  await page.clock.setSystemTime(entry.deletedAt-10*DAY);
  await page.reload();await openNotes(page);
- await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ await openRecentlyDeletedNotes(page);
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
  await expect(trash.getByRole('button',{name:'Clock note, 30 days left',exact:true})).toBeVisible();
  expect(await trashEntries(page)).toEqual([entry]);
@@ -329,7 +330,7 @@ test('a clock moved backwards never purges early or extends the label, and the p
  await page.clock.setSystemTime(entry.deletedAt+30*DAY-5*60_000);
  await page.reload();await openNotes(page);
  expect(await trashEntries(page)).toEqual([entry]);
- await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ await openRecentlyDeletedNotes(page);
  await expect(trash.getByRole('button',{name:'Clock note, 1 day left',exact:true})).toBeVisible();
 
  // A restore while the clock is wrong reinstates the exact record.

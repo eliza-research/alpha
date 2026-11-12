@@ -1,3 +1,5 @@
+import {retainedEmailSource} from './helpers/retained-email-source';
+import {retainedMailDraft} from './helpers/retained-mail-draft';
 import {choosePhotoAction} from './helpers/owned-photo';
 import {test,expect,type Page} from '@playwright/test';
 import {photosBridge} from './helpers/photos-bridge';
@@ -28,7 +30,7 @@ async function setup(page:Page){
  await page.evaluate(()=>(window as any).fileEmail.shell.openView('photos',{}));
  await page.getByRole('button',{name:/^Photo, /}).click();
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='readPhotoSelected').length)).toBe(0);
- await choosePhotoAction(page,'Email');
+ await retainedEmailSource(page,'photos');
  await expect(dialog(page)).toContainText('source.png');
 }
 test('Photos source requires separate attachment review and preserves source bytes in local draft',async({page})=>{
@@ -37,8 +39,8 @@ test('Photos source requires separate attachment review and preserves source byt
  await page.screenshot({path:test.info().outputPath('photo-email-review.png')});
  await dialog(page).getByRole('checkbox').check();await insert.click();
  await expect(page.getByRole('button',{name:'Remove source.png',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Save draft locally',exact:true}).click();
- await expect(page.getByText('Saved locally on this device',{exact:true}).first()).toBeVisible();
+ await retainedMailDraft(page,'save');
+ await expect.poll(()=>retainedMailDraft(page,'status')).toMatch(/^Saved locally/);
  const saved=await page.evaluate(async()=>{const {secureConnectionStore}=await import('/src/runtime/native-connection.ts');return await secureConnectionStore.read<any>('inbox-drafts:v1:'+JSON.stringify(['production','file-owner','','file-grant']));});
  expect(saved.attachments[0]).toEqual({name:'source.png',mimeType:'image/png',dataBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7l8AAAAASUVORK5CYII='});
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);

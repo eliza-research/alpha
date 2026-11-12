@@ -1,3 +1,4 @@
+import {refreshInbox} from './helpers/mail-actions';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {test,expect,type Page} from '@playwright/test';
 import {returnToApps} from './app-navigation';
@@ -37,7 +38,7 @@ for(const theme of ['light','dark'])test(`Home Inbox uses cached unread subjects
 
 test('Home omits empty Inbox header pages without claiming a complete unread result',async({page})=>{
  await fixture(page);await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.rows=[];f.more=true;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toHaveCount(0);
- await page.evaluate(()=>{(window as any).homeInboxFixture.more=false;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
+ await page.evaluate(()=>{(window as any).homeInboxFixture.more=false;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await refreshInbox(page);await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
 });
 
 test('Home omits an unconnected Inbox widget and keeps Google setup in app Settings',async({page})=>{
@@ -47,7 +48,7 @@ test('Home omits an unconnected Inbox widget and keeps Google setup in app Setti
 });
 
 test('Home Inbox retains failure and retires cached subjects on owner change',async({page})=>{
- await fixture(page);await load(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await page.evaluate(()=>(window as any).homeInboxFixture.fail=true);await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);await expect(page.getByText('Saved mail · Could not update',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('Open to retry');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');
+ await fixture(page);await load(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await page.evaluate(()=>(window as any).homeInboxFixture.fail=true);await refreshInbox(page);await expect(page.getByLabel('Mail options',{exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);await expect(page.getByText('Saved mail · Could not update',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('Open to retry');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');
  await page.evaluate(async()=>{(window as any).homeInboxFixture.owner='b';(await import('/src/runtime/connection-ui.tsx')).connectionController.close();});await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Synthetic quarterly planning subject');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('2 unread');
 });
 

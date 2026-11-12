@@ -1,3 +1,4 @@
+import {openRecentlyDeletedNotes} from './helpers/notes-menu';
 import {openLegacyNotes} from './helpers/legacy-notes';
 // B-10: a full Notes Trash refuses a deletion without losing data.
 // Browser build only; source/test evidence. The native slot cap ("storage-full" from
@@ -89,7 +90,7 @@ test('a deletion that would overfill Trash is refused: the note stays saved, Tra
  await expect(page.getByRole('button',{name:'Open Charlie',exact:true})).toBeVisible();
 
  // Make room the way the refusal says to: restore one trashed note. The refused deletion then works.
- await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ await openRecentlyDeletedNotes(page);
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
  await rowAction(page,'Alpha','Recover');
  await expect(page.getByText('Alpha restored',{exact:true})).toBeVisible();

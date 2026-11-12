@@ -59,7 +59,7 @@ test('Alpha unified list, filters, paused authoring and explicit owner review us
  await expect(page.getByRole('button',{name:'Save',exact:true})).toBeDisabled();await page.getByLabel('What should Alpha do?',{exact:true}).fill('Use only text explicitly supplied in this prompt.');await expect(page.getByRole('button',{name:'More options',exact:true})).toHaveCount(0);
  await page.screenshot({path:testInfo.outputPath('prompt-editor.png')});await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('[data-alpha-layer=app]').getByText('Use only text explicitly supplied in this prompt.',{exact:true})).toBeVisible();
  const created=calls.find(call=>call.path==='/api/triggers'&&call.method==='POST');expect(created?.body.enabled).toBe(false);expect(calls.filter(call=>call.path.endsWith('/execute')||call.path.endsWith('/fire'))).toHaveLength(0);
- await page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true}).click();await page.getByRole('button',{name:'Enable',exact:true}).click();expect(calls.filter(call=>call.method==='PUT')).toHaveLength(0);await page.getByRole('button',{name:'Confirm Enable',exact:true}).click();await expect(page.locator('[data-alpha-subview=automations-detail]').getByText('Saved on this agent.',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-subview=workflows-list]')).toHaveAttribute('inert','');expect(calls.filter(call=>call.path==='/api/triggers/prompt'&&call.method==='PUT')).toHaveLength(1);
+ await page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true}).click();await page.getByLabel('More automation actions',{exact:true}).click();await page.getByRole('button',{name:'Enable',exact:true}).click();expect(calls.filter(call=>call.method==='PUT')).toHaveLength(0);await page.getByRole('dialog',{name:'Enable?',exact:true}).getByRole('button',{name:'Yes',exact:true}).click();await expect.poll(()=>calls.filter(call=>call.path==='/api/triggers/prompt'&&call.method==='PUT').length).toBe(1);await expect(page.locator('[data-alpha-subview=workflows-list]')).toHaveAttribute('inert','');expect(calls.filter(call=>call.path==='/api/triggers/prompt'&&call.method==='PUT')).toHaveLength(1);
  await page.getByRole('button',{name:'Back to automations',exact:true}).click();await page.locator('[data-alpha-subview=workflows-list]').getByText('Reviewed workflow',{exact:true}).click();await expect(page.getByRole('heading',{name:'Reviewed workflow',exact:true})).toBeVisible();await page.getByRole('button',{name:'Back to workflows',exact:true}).click();
  await page.getByRole('button',{name:'New automation',exact:true}).click();await expect(page.getByRole('button',{name:'Reminder on this phone',exact:false})).toHaveCount(0);await expect(page.getByRole('button',{name:'Clock alarms',exact:true})).toBeVisible();await page.getByRole('button',{name:/^Reminder/,exact:false}).click();await expect(page.getByLabel('Reminder',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Save',exact:true})).toBeDisabled();await page.getByLabel('Reminder',{exact:true}).fill('Review this test');await expect(page.getByRole('button',{name:'Save',exact:true})).toBeEnabled();expect(calls.filter(call=>call.path==='/api/lifeops/definitions'&&call.method!=='GET')).toHaveLength(0);
  expect(errors).toEqual([]);
@@ -72,7 +72,7 @@ test('missing server capability is an explicit source state, not a healthy empty
 
 test('a locked row shows the recovery line and Allow another asks before releasing it',async({page})=>{
  await setup(page);await page.route('**/__unified_api/api/triggers/prompt/execute',route=>route.abort());
- await page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true}).click();await page.getByRole('button',{name:'Run now',exact:true}).click();await page.getByRole('button',{name:'Confirm Run now',exact:true}).click();
+ await page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true}).click();await page.getByRole('button',{name:'Run now',exact:true}).click();await page.getByRole('dialog',{name:'Run now?',exact:true}).getByRole('button',{name:'Yes',exact:true}).click();
  const detail=page.locator('[data-alpha-subview=automations-detail]');await expect(detail.getByRole('alert').filter({hasText:'Couldn’t confirm the last change. Check it, then allow another.'})).toBeVisible();await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeDisabled();
  page.once('dialog',dialog=>{expect(dialog.message()).toBe('Check this automation first. Allowing another may repeat the change.');void dialog.accept();});await detail.getByRole('button',{name:'Allow another',exact:true}).click();
  await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
@@ -95,7 +95,7 @@ test('schedule time, days and instructions change only after confirmation',async
  await page.getByRole('button',{name:'Save',exact:true}).click();
  const writes=()=>calls.filter(c=>c.method==='POST'&&c.path.endsWith('/weekly/edit'));
  expect(writes()).toHaveLength(0);
- await page.getByRole('button',{name:'Confirm Save schedule',exact:true}).click();
+ await page.getByRole('dialog',{name:'Save schedule?',exact:true}).getByRole('button',{name:'Yes',exact:true}).click();
  await expect.poll(()=>writes().length).toBe(1);
  expect(writes()[0].body).toEqual({promptInstructions:'Review my week.',trigger:{kind:'cron',expression:'30 9 * * 1,3,5',tz:await page.evaluate(()=>Intl.DateTimeFormat().resolvedOptions().timeZone)}});
 });
@@ -112,7 +112,7 @@ test('workflow creation has three choices and a confirmed schedule run fires onc
  await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();
  await page.getByRole('button',{name:'Run now',exact:true}).click();
  expect(calls.filter(c=>c.path.endsWith('/fire'))).toHaveLength(0);
- await page.getByRole('button',{name:'Confirm Run now',exact:true}).click();
+ await page.getByRole('dialog',{name:'Run now?',exact:true}).getByRole('button',{name:'Yes',exact:true}).click();
  await expect(page.locator('[data-alpha-subview=automations-detail]').getByText('Run started.',{exact:true})).toBeVisible();
  expect(calls.filter(c=>c.path.endsWith('/fire')&&c.method==='POST')).toHaveLength(1);
 });

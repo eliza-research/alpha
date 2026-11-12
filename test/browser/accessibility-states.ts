@@ -34,7 +34,6 @@ const settle = async (page: Page) => {
 const press = async (page: Page, steps: string[]) => {
   for (const step of steps) {
     if(step==='Share photo'){await openPhotoShare(page);continue;}
-    if(step==='Recently deleted'&&await page.getByRole('button',{name:'Notes options',exact:true}).isVisible())await page.getByRole('button',{name:'Notes options',exact:true}).click();
     if (step === 'Edit event' || step === 'Delete event') {
       await chooseCalendarEventAction(page, step);
       continue;
@@ -120,7 +119,7 @@ export const LIVE_STATES: State[] = [
     await openLegacyNotes(page,[{id:'retained-accessibility-note',kind:'text',title:'Retained note',body:'Existing text remains available.'}]);
     await expect(page.getByRole('button',{name:'Open Retained note',exact:true})).toBeVisible();await settle(page);
   }},
-  legacyNotes('Notes recently deleted', ['New note', 'More', 'Delete', 'Recently deleted'], 'notes-trash'),
+  legacyNotes('Notes recently deleted', ['New note', 'More', 'Delete', 'Notes options', 'Recently deleted'], 'notes-trash'),
   live('Files', ['Files']),
   live('Workflows', ['Workflows']),
   live('Settings', ['Settings']),

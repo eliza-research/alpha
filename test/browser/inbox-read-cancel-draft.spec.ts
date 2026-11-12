@@ -1,3 +1,5 @@
+import {retainedMailDraft} from './helpers/retained-mail-draft';
+import {refreshInbox} from './helpers/mail-actions';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {returnToApps} from './app-navigation';
 import {localDraftRow} from './inbox-draft-navigation';
@@ -20,7 +22,7 @@ for(const request of ['Refresh inbox','Search Gmail','Account revalidation'])for
   const snapshot={...c.getSnapshot(),cloudAccount:{environment:'production',userId:'fixture-owner',sessionId:'fixture-session',credentialId:'fixture'}} as any;c.getSnapshot=()=>snapshot;
  });
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Mail options',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Compose',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Compose',exact:true}).click();
  await page.getByRole('textbox',{name:'To',exact:true}).fill('fixture@example.invalid');
@@ -29,7 +31,7 @@ for(const request of ['Refresh inbox','Search Gmail','Account revalidation'])for
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Original text');
  if(saved){
   await page.evaluate(()=>(window as any).cancelMail.holdSavedWrite=true);
-  await page.getByRole('button',{name:'Save draft locally',exact:true}).click();
+  await retainedMailDraft(page,'save');
   await expect.poll(()=>page.evaluate(()=>typeof (window as any).cancelMail.releaseSavedWrite)).toBe('function');
   await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeDisabled();
   await page.evaluate(()=>(window as any).cancelMail.releaseSavedWrite());
@@ -39,14 +41,14 @@ for(const request of ['Refresh inbox','Search Gmail','Account revalidation'])for
  await page.getByRole('button', {name: 'Cc and Bcc', exact: true}).click();
   await page.getByRole('textbox', {name: 'Cc', exact: true}).fill('copy@example.invalid');
  await page.getByRole('textbox',{name:'Bcc',exact:true}).fill('blind@example.invalid');
- await page.getByRole('button',{name:'Back from draft',exact:true}).click();
+ await returnToApps(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Compose',exact:true})).toBeEnabled();
  if(request==='Search Gmail'){
   await page.getByRole('button',{name:'Search email',exact:true}).click();
   await page.getByPlaceholder('Search mail').fill('fixture');
  }
  const before=await page.evaluate(()=>JSON.stringify((window as any).cancelMail.slots));
  await page.evaluate(()=>(window as any).cancelMail.hold=true);
- if(request==='Account revalidation')await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));else if(request==='Search Gmail')await page.getByPlaceholder('Search mail').press('Enter');else await page.getByRole('button',{name:request,exact:true}).click();
+ if(request==='Account revalidation')await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));else if(request==='Search Gmail')await page.getByPlaceholder('Search mail').press('Enter');else await refreshInbox(page);
  await expect.poll(()=>page.evaluate(()=>typeof (window as any).cancelMail.release)).toBe('function');
  await returnToApps(page);
  await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
@@ -82,13 +84,13 @@ test('Compose waits for the selected account draft read before accepting a click
   const snapshot={...c.getSnapshot(),cloudAccount:{environment:'production',userId:'fixture-owner',sessionId:'fixture-session',credentialId:'fixture'}} as any;c.getSnapshot=()=>snapshot;
  });
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Mail options',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Compose',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Compose',exact:true}).click();
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Account a local draft');
- await page.getByRole('button',{name:'Save draft locally',exact:true}).click();
- await expect(page.getByRole('status').filter({hasText:'Saved locally on this device'})).toBeVisible();
- await page.getByRole('button',{name:'Back from draft',exact:true}).click();
+ await retainedMailDraft(page,'save');
+ await expect.poll(()=>retainedMailDraft(page,'status')).toMatch(/^Saved locally/);
+ await returnToApps(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Compose',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Account b',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).draftAdmission.waiting)).toBe(true);
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveCount(0);

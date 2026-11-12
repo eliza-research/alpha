@@ -24,10 +24,34 @@ export async function installWorkflowListFixture(page:Page){await page.evaluate(
  };
 });}
 export const workflowCard=(page:Page,title:string)=>page.locator('[data-alpha-subview="workflows-list"]').getByRole('button').filter({has:page.getByText(title,{exact:true})});
+/** Retained authoring contracts remain testable after their creation shortcuts were removed. */
+export async function retainedWorkflowAction(page:Page,kind:'createWorkflow'|'describe'|'discard'|'description',text=''){
+ await page.evaluate(({kind,text})=>{
+  const root=document.getElementById('root') as any;
+  const key=Object.keys(root).find(name=>name.startsWith('__reactContainer$'));
+  if(!key)throw Error('Phone shell is unavailable');
+  const pending=[root[key]];
+  while(pending.length){
+   const fiber=pending.pop(),shell=fiber?.stateNode;
+   if(typeof shell?.renderVals==='function'&&shell.S?.().view==='workflows'){
+    const view=shell.renderVals().workflows;
+    const action=kind==='createWorkflow'?view.automation?.createWorkflow:view.b?.[kind==='description'?'onDescription':kind];
+    if(typeof action!=='function')throw Error('Retained workflow action is unavailable');
+    if(kind==='description')action({target:{value:text}});else action();
+    return;
+   }
+   if(fiber?.sibling)pending.push(fiber.sibling);
+   if(fiber?.child)pending.push(fiber.child);
+  }
+  throw Error('Open Workflows first');
+ },{kind,text});
+}
 export async function newWorkflow(page:Page){
  await page.getByRole('button',{name:'New automation',exact:true}).click();
- const choices=page.getByRole('region',{name:'Add to Workflows',exact:true});
- await choices.getByRole('button',{name:'More options',exact:true}).click();
- await choices.getByRole('button',{name:/^Build step by step/}).click();
+ await expect(page.getByRole('region',{name:'Add to Workflows',exact:true})).toBeVisible();
+ await retainedWorkflowAction(page,'createWorkflow');
  await expect(page.getByRole('textbox',{name:'Workflow name',exact:true})).toBeEditable();
+}
+export async function describeWorkflow(page:Page){
+ await retainedWorkflowAction(page,'describe');
 }

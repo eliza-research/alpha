@@ -70,8 +70,8 @@ test('every subview of a retained view is opened by a state that asserts it is t
     if (id.endsWith('-list')) continue;
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
-  // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Files options']", "['Move file']", "['Delete file']"])
+  // App menus, search fields, sheets and Undo are swept. Native sharing has no app subview.
+  for (const step of ["mock('workflows:new', ['Edit When step'])", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Files options']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
   // Previous notes recovers retained records; the current layout keeps its menu and Recently deleted.
   for (const state of ["name:'live Notes retained records'", "legacyNotes('Notes note menu', ['New note', 'More'])", "'notes-trash'", "'notes-recorder'"])

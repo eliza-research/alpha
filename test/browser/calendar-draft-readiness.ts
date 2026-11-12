@@ -30,6 +30,7 @@ export async function expectSavedCalendarDraft(page:Page,kind:'creation'|'edit'|
 
 /** An old saved reminder form is still restorable after its creation tab was removed. */
 export async function restoreLegacyReminderForm(page:Page){
+ await expectSavedCalendarDraft(page,'creation');
  await page.evaluate(async()=>{
   const {assistantDraftStore}=await import('/src/runtime/assistant-draft-store.ts');
   const store=await assistantDraftStore(JSON.stringify(['calendar-creation-form','app']));
@@ -40,4 +41,26 @@ export async function restoreLegacyReminderForm(page:Page){
  });
  await page.reload();await openBrowserCalendar(page);
  await page.getByRole('button',{name:'New event',exact:true}).click();
+}
+
+/** Retained reminder drafts can still reach the renderer without a new creation tab. */
+export async function selectRetainedReminderForm(page:Page){
+ await page.evaluate(()=>{
+  const root=document.getElementById('root') as any;
+  const key=Object.keys(root).find(name=>name.startsWith('__reactContainer$'));
+  if(!key)throw Error('Phone shell is unavailable');
+  const pending=[root[key]];
+  while(pending.length){
+   const fiber=pending.pop(),shell=fiber?.stateNode;
+   if(typeof shell?.vget==='function'&&typeof shell?.vset==='function'){
+    const form=shell.vget('calendar').form;
+    if(!form)throw Error('Open the retained Calendar form first');
+    shell.vset('calendar',{form:{...form,cal:'alpha-reminders'}});return;
+   }
+   if(fiber?.sibling)pending.push(fiber.sibling);
+   if(fiber?.child)pending.push(fiber.child);
+  }
+  throw Error('Phone shell is unavailable');
+ });
+ await expectSavedCalendarDraft(page,'creation',{cal:'alpha-reminders'});
 }

@@ -34,7 +34,7 @@ test('passive agent status stays quiet during startup while blocked actions reta
   };
  });
  expect(notices.startup).toBe('');
- expect(notices.recovery).toContain('Retry in Settings');
+ expect(notices.recovery).toBe('Alpha isn’t connected. Reconnect in Settings.');
  expect(notices.refusal).toContain('starting');
  expect(notices.offline).toBe('Agent connection required');
 });

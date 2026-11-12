@@ -24,5 +24,14 @@ for(const theme of ['light','dark'])test(`compact large text preserves Files car
  await address.focus();for(const control of [page.getByRole('button',{name:'Previous page',exact:true}),page.getByRole('button',{name:'Next page',exact:true}),tabs]){await page.keyboard.press(browserName==='webkit'?'Alt+Tab':'Tab');await expect(control).toBeFocused();}await page.keyboard.press('Enter');await expect(page.getByRole('button',{name:'New tab',exact:true})).toBeVisible();
  await page.waitForTimeout(450);await page.screenshot({path:info.outputPath('tabs-large-text.png')});
  await page.reload({waitUntil:'domcontentloaded'});await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--browser-text-scale').trim())).toBe('1.5');
- await page.getByRole('button',{name:'Workflows',exact:true}).click();const connected=page.getByRole('button',{name:/^Scheduled digests\b/});await connected.scrollIntoViewIfNeeded();const label=connected.getByText('Scheduled digests',{exact:true});expect(await label.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1);expect(await label.evaluate(el=>{const range=document.createRange();range.selectNodeContents(el);return range.getClientRects().length;})).toBe(1);expect(await connected.evaluate(el=>el.scrollHeight-el.clientHeight)).toBeLessThanOrEqual(1);await page.screenshot({path:info.outputPath('workflows-large-text.png')});
+ await page.getByRole('button',{name:'Workflows',exact:true}).click();
+ for(const name of ['New automation','Workflows options']){
+  const control=page.getByRole('button',{name,exact:true});
+  await expect(control).toBeVisible();
+  const box=(await control.boundingBox())!;
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  expect(box.x+box.width).toBeLessThanOrEqual(360);
+ }
+ await expect(page.getByRole('button',{name:/^Scheduled digests\b/})).toHaveCount(0);
+ await page.screenshot({path:info.outputPath('workflows-large-text.png')});
 });

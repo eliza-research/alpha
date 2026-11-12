@@ -33,3 +33,28 @@ export async function choosePhotoAction(page:Page,name:string){
 
 /** Open the current single-photo Share action. */
 export const openPhotoShare=(page:Page)=>choosePhotoAction(page,'Share');
+
+/** Exercise retained export callbacks without adding a Save entry to native sharing. */
+export async function savePhotoContract(page:Page,selection=false){
+ await page.evaluate(selection=>{
+  const root=document.getElementById('root') as any;
+  const key=Object.keys(root).find(name=>name.startsWith('__reactContainer$'));
+  if(!key)throw Error('Phone shell is unavailable');
+  const pending=[root[key]];
+  while(pending.length){
+   const fiber=pending.pop(),shell=fiber?.stateNode;
+   if(typeof shell?.renderVals==='function'&&shell.S?.().view==='photos'){
+    const view=shell.renderVals().photos;
+    const action=selection?view.selSaveLocally:view.v?.saveLocally;
+    if(typeof action!=='function')throw Error('Retained photo export is unavailable');
+    (window as any).photoExportResult=Promise.resolve(action()).then(
+     ()=>({status:'completed'}),error=>({status:'failed',name:error?.name,message:error?.message}),
+    );
+    return;
+   }
+   if(fiber?.sibling)pending.push(fiber.sibling);
+   if(fiber?.child)pending.push(fiber.child);
+  }
+  throw Error('Open Photos first');
+ },selection);
+}

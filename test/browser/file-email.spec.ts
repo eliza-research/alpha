@@ -1,3 +1,5 @@
+import {retainedEmailSource} from './helpers/retained-email-source';
+import {retainedMailDraft} from './helpers/retained-mail-draft';
 import {localDraftRow} from './inbox-draft-navigation';
 import {test,expect,type Page} from '@playwright/test';
 const dialog=(page:Page)=>page.getByRole('dialog',{name:'Use selected file in email',exact:true});
@@ -26,9 +28,9 @@ async function setup(page:Page,reviewFile=true,openInbox=true){
  if(!reviewFile)return;
  await expect.poll(()=>page.evaluate(async()=>{const {VIEWS}=await import('/src/prototype/model.js');return VIEWS.inbox.fileEmailTarget().ready;})).toBe(true);
  await page.evaluate(()=>(window as any).fileEmail.shell.openView('files',{}));
- await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+ await page.getByRole('button',{name:'All files',exact:true}).click();
  await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
- await page.getByRole('button',{name:'Use in email',exact:true}).click();
+ await retainedEmailSource(page,'files');
  await expect(dialog(page)).toContainText('selected.txt · text/plain · 17 bytes');
 }
 test('selected Files require explicit attachment review, retain exact bytes and never send',async({page})=>{
@@ -38,10 +40,10 @@ test('selected Files require explicit attachment review, retain exact bytes and 
  await review.getByRole('checkbox',{name:'Attach this file'}).check();await expect(insert).toBeEnabled();
  await review.getByRole('checkbox').uncheck();await expect(insert).toBeDisabled();
  await review.getByRole('button',{name:'Cancel',exact:true}).click();await expect(review).toHaveCount(0);
- await page.getByRole('button',{name:'Use in email',exact:true}).click();await review.getByRole('checkbox').check();await insert.click();
+ await retainedEmailSource(page,'files');await review.getByRole('checkbox').check();await insert.click();
  await expect(review).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Save draft locally',exact:true}).click();
- await expect(page.getByText('Saved locally on this device',{exact:true}).first()).toBeVisible();
+ await retainedMailDraft(page,'save');
+ await expect.poll(()=>retainedMailDraft(page,'status')).toMatch(/^Saved locally/);
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
  const saved=()=>page.evaluate(async()=>{const {inboxLocalStore}=await import('/src/runtime/inbox-local-store.ts');return await inboxLocalStore.read<any>('inbox-drafts:v1:'+JSON.stringify(['production','file-owner','','file-grant']));});
  expect((await saved()).attachments).toEqual([{name:'selected.txt',mimeType:'text/plain',dataBase64:Buffer.from('Café\nExact bytes').toString('base64')}]);
@@ -70,7 +72,7 @@ test('the same selected bytes cannot be attached twice',async({page})=>{
  await expect(page.getByRole('button',{name:'Remove selected.txt',exact:true})).toBeVisible();
  await page.evaluate(()=>(window as any).fileEmail.shell.openView('files',{}));
  await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
- await page.getByRole('button',{name:'Use in email',exact:true}).click();await dialog(page).getByRole('checkbox').check();
+ await retainedEmailSource(page,'files');await dialog(page).getByRole('checkbox').check();
  await dialog(page).getByRole('button',{name:'Insert attachment into draft'}).click();
  await expect(dialog(page).getByRole('status')).toContainText('already attached');
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
@@ -84,9 +86,9 @@ test('Files before Inbox asks to open Inbox once when a Gmail account was chosen
   saveGmailAccountChoice(c.getSnapshot().cloudAccount,'file-grant');
   (window as any).fileEmail.shell.openView('files',{});
  });
- await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+ await page.getByRole('button',{name:'All files',exact:true}).click();
  await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
- await page.getByRole('button',{name:'Use in email',exact:true}).click();
+ await retainedEmailSource(page,'files');
  await expect(dialog(page).getByRole('status')).toHaveText('Open Inbox once to load your Gmail account.');
  await expect(dialog(page).getByRole('checkbox')).toBeDisabled();
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);

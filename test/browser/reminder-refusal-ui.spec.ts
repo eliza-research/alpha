@@ -1,3 +1,4 @@
+import {selectRetainedReminderForm} from './calendar-draft-readiness';
 import {test,expect} from '@playwright/test';
 import {openBrowserCalendar} from './helpers/browser-calendar';
 // A definite native refusal shows its specific reason, leaves no unknown creation and keeps
@@ -8,7 +9,7 @@ for(const status of ['storage-full','past','permission-denied','failed'] as cons
  await openBrowserCalendar(page);
  const accept=async(dialog:any)=>{await dialog.accept();};page.on('dialog',accept);
  await page.getByRole('button',{name:'New event',exact:true}).click();
- await page.getByRole('textbox',{name:'Title',exact:true}).fill('Refused reminder');await page.getByRole('button',{name:'Reminders',exact:true}).click();
+ await page.getByRole('textbox',{name:'Title',exact:true}).fill('Refused reminder');await selectRetainedReminderForm(page);
  const message=await page.evaluate(async status=>{
   const {BrowserDaily}=await import('/src/browser/daily.ts'),{reminderRefusalMessage}=await import('/src/runtime/reminder-creations.ts');(window as any).creates=0;
   BrowserDaily.prototype.scheduleReminder=async function(input:{id:string}){(window as any).creates++;return {status,id:input.id,mode:'inexact',message:'refused'} as any;};

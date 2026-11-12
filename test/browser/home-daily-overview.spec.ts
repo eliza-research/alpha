@@ -1,3 +1,4 @@
+import {refreshInbox} from './helpers/mail-actions';
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {installHomeCalendar,refreshHomeCalendar} from './helpers/home-calendar';
 import {test,expect as baseExpect,type Page} from '@playwright/test';
@@ -210,12 +211,12 @@ test('events excluded by the Agent Calendar feed stay off Home until included ag
  await refreshHomeCalendar(page,{include:true});await expect(card).toContainText(event.title);
 });
 
-test('a failed Agent Calendar widget stays honest until an explicit Calendar retry',async({page})=>{
+test('a failed Agent Calendar refresh retains the last verified event until recovery',async({page})=>{
  await page.addInitScript(offline);await page.goto('/');const event={title:'Recoverable agent overview',startAt:new Date(Date.now()+3600000).toISOString(),endAt:new Date(Date.now()+5400000).toISOString()};await installHomeCalendar(page,event);
- const card=calendarCard(page);await expect(card).toContainText(event.title);await refreshHomeCalendar(page,{fail:true});await expect(card).toHaveCount(0);await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
+ const card=calendarCard(page);await expect(card).toContainText(event.title);await refreshHomeCalendar(page,{fail:true});await expect(card).toContainText(event.title);await expect(card).toHaveAttribute('aria-description',/Calendar could not load/);await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
  const before=await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length);
  await page.evaluate(()=>{(window as any).homeCalendarFixture.fail=false;});await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent rerender');await page.waitForTimeout(500);
- expect(await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBe(before);await expect(card).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBe(before);await expect(card).toContainText(event.title);await expect(card).toHaveAttribute('aria-description',/Calendar could not load/);
  // The app entry explicitly retries the failed source.
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).blur();
  await page.getByRole('button',{name:'Calendar',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await returnToApps(page);await expect(card).toContainText(event.title);
@@ -328,8 +329,8 @@ test('Inbox card never reads mail from Home and shows the account and read time 
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();
  await page.evaluate(()=>{(window as any).overviewMail.fail=true;});
- await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeEnabled();
+ await refreshInbox(page);
+ await expect(page.getByLabel('Mail options',{exact:true})).toBeEnabled();
  await returnToApps(page);
  // The last loaded unread mail stays, and the failure is in the card's description.
  await expect(card).toHaveAttribute('aria-description',/^Open to retry · last updated \d{1,2}:\d{2}/);
@@ -443,13 +444,14 @@ test('workflows card appears with real workflow states, and keeps its load time 
  await expect(card).toHaveCount(0);
  await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.initialize();await c.startDevelopment('local');});
  await expect(card).toContainText('Synthetic overview routine');
- // Paused records are still real workflows and report their state honestly.
- await expect(card).toContainText('Synthetic paused routine');await expect(card).toContainText('Paused');
+ // The compact card previews one routine; the full list retains all records.
+ await expect(card).not.toContainText('Synthetic paused routine');
  await expect(card).not.toContainText(/Loaded \d/);
  const times=await nearNow(page);
- expect(times.map(time=>`Workflows from your agent, loaded ${time}`)).toContain(await card.getAttribute('aria-description'));
+ expect(times.map(time=>`Automations from your agent and reminders on this phone, loaded ${time}`)).toContain(await card.getAttribute('aria-description'));
  expect(await card.evaluate(element=>({height:Math.round(element.getBoundingClientRect().height),overflowX:element.scrollWidth-element.clientWidth}))).toEqual({height:196,overflowX:0});
  await card.scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath('home-workflows-loaded.png'),animations:'disabled'});
+ await card.click();await expect(page.getByRole('region',{name:'Workflows',exact:true}).getByText('Synthetic paused routine',{exact:true})).toBeVisible();await returnToApps(page);
  // Disconnecting retires the card.
  await page.evaluate(async()=>{await(await import('/src/runtime/connection-ui.tsx')).connectionController.offline();});
  await expect(card).toHaveCount(0);

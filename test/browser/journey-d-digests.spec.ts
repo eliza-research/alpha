@@ -1,3 +1,4 @@
+import {openRetainedDigests} from './helpers/retained-digests';
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {returnToApps} from './app-navigation';
 /*
@@ -72,11 +73,11 @@ async function connect(page:Page){
  await dialog.getByRole('button',{name:'Connect development profile'}).click();
  await expect(dialog).toHaveCount(0);
 }
-/** Workflows -> Scheduled digests is the rendered entry point, including when its list is empty. */
+/** Exercise the retained digest route after the Settings shortcut was removed. */
 async function openDigests(page:Page){
  await returnToApps(page);
  await page.getByRole('button',{name:'Workflows',exact:true}).click();
- await page.getByRole('button',{name:/^Scheduled digests\b/}).click();
+ await openRetainedDigests(page);
  const panel=panelOf(page);await expect(panel).toBeVisible();return panel;
 }
 async function createSchedules(page:Page){

@@ -134,7 +134,6 @@ if (!fixture) {
   installPrototypeDataAdapter(Component, VIEWS);
   installAgentCalendarAdapter(Component,VIEWS);
   installCanonicalCalendarDrafts(Component,VIEWS);
-  installCalendarFormPresentation(VIEWS);
   // Android notification taps are independent of the development stand-in shade.
   if(isAndroid)installCanonicalNotificationTaps(Component);
   // Notice rows feed only the development stand-in shade; product builds read no notice list (#416).
@@ -172,6 +171,7 @@ if (!fixture) {
 }
 if(devSurfacesEnabled&&simulatedApps)installSimulatedApps(Component,VIEWS,simulatedApps);
 if(developmentAgentWorkflows){installWorkflowAdapter(Component,VIEWS);installAutomationsAdapter(Component,VIEWS);}
+installCalendarFormPresentation(VIEWS);
 installSubviewAccessibility(VIEWS);
 installCalendarMonthFocus(Component, VIEWS);
 installChatOverlayMotion(Component);
