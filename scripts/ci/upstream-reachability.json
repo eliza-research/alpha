@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
   "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "head": "0be6030677e030221221f99d35c5df057b1473f1",
+  "head": "a8b17349d2ff5f2345504a7bfafc412677118459",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...0be6030677e030221221f99d35c5df057b1473f1",
+  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...a8b17349d2ff5f2345504a7bfafc412677118459",
   "status": "diverged",
-  "aheadBy": 59,
+  "aheadBy": 63,
   "behindBy": 617,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -246,6 +246,22 @@
     {
       "sha": "0be6030677e030221221f99d35c5df057b1473f1",
       "subject": "test(scheduling): cover distinct host and tick travel clocks"
+    },
+    {
+      "sha": "9f4e8eafe97511e9b84d16ed99346ba69df6475a",
+      "subject": "Accept complete mail recipients with Space and retain direct Send entry"
+    },
+    {
+      "sha": "980c6686c648e4229c0bb8e263e1c916a0b322f3",
+      "subject": "Format recipient interaction regression checks"
+    },
+    {
+      "sha": "1151ccf8e12f6eca3bdcc70e465e3f4188c23d3e",
+      "subject": "Allow browser hosts to retain map frames for embedded previews"
+    },
+    {
+      "sha": "a8b17349d2ff5f2345504a7bfafc412677118459",
+      "subject": "Condense Maps data explanation without repeating recipients"
     }
   ]
 }

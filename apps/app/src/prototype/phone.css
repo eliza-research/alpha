@@ -636,7 +636,9 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .alpha-map-privacy > summary { display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; cursor:pointer; list-style:none; }
 .alpha-map-privacy > summary::-webkit-details-marker { display:none; }
 .alpha-map-privacy > summary [data-alpha-icon] { width:18px; height:18px; }
-.alpha-map-info { position:absolute; right:0; bottom:calc(100% + 8px); width:min(320px,100%); padding:12px; border:1px solid var(--line); border-radius:16px; background:var(--bg); color:var(--fg); box-shadow:0 4px 20px var(--shc); font-size:14px; }
+.alpha-map-info { position:absolute; right:0; bottom:calc(100% + 8px); width:min(300px,100%); box-sizing:border-box; padding:16px; border:1px solid var(--line); border-radius:16px; background:var(--bg); color:var(--fg); box-shadow:0 4px 20px var(--shc); font-size:13px; line-height:1.5; }
+.alpha-map-info p { margin:0; }
+.alpha-map-info p + p { margin-top:8px; }
 .alpha-landscape .alpha-map-credits { bottom:12px!important; right:auto; width:calc(100% - min(440px,50%) - 24px); box-sizing:border-box; }
 .alpha-map-privacy:not([open]) > p { display:none; }
 
