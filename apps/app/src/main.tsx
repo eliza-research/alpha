@@ -65,7 +65,7 @@ import { installPrototypeVoiceAdapter } from './prototype/voice-adapter';
 import { installPrototypeBrowserAdapter } from './prototype/browser-adapter';
 import { installCalendarAdapter } from './prototype/calendar-adapter';
 import { automaticUpdateIdle, hasAppearancePreview, installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';
-import { ConnectionChooser, connectionController, connectionChooserVisible, residentAlwaysPresent } from './runtime/connection-ui';
+import { ConnectionChooser, connectionController, connectionChooserVisible, explicitSignedOutCloudEntry, residentAlwaysPresent } from './runtime/connection-ui';
 import { protectedPowerLaunchState } from './runtime/power-launch-state';
 import { installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
 import {GoogleConnectionsPanel,googleConnectionController} from './runtime/google-connection-ui';
@@ -249,12 +249,14 @@ function Phone() {
     onCancel:()=>shell?.cancelChatMotion(),
   });
   const connection = useSyncExternalStore(connectionController.subscribe, connectionController.getSnapshot);
-  // Startup decides whether sign-in or access setup opens first: a connected agent, a saved account
+  // Startup decides whether sign-in or access setup opens first: a verified account, a saved account
   // that is offline (neither prompt), the sign-in itself or a settled start. Until then a neutral
   // screen hides an already-mounted, inert shell so its local caches can restore
   // before Home is revealed. Once shown, Home stays; a start that has not decided in 60 s (a first boot takes about 27 s) shows it as before.
   const [homeShown, setHomeShown] = useState(fixture || !residentAlwaysPresent);
-  const startupPending = !homeShown && !connection.startupResolved && !connection.session && connection.residentPlanNotice !== 'offline' && !connectionChooserVisible(connection);
+  const awaitingFirstSignIn = explicitSignedOutCloudEntry({...connection, open:true, startupResolved:true});
+  const startupPending = !homeShown && connection.residentPlanNotice !== 'offline' &&
+    (!connection.startupResolved || awaitingFirstSignIn) && !connectionChooserVisible(connection);
   useEffect(() => {
     if (!startupPending) { setHomeShown(true); return; }
     const timer = setTimeout(() => setHomeShown(true), 60_000);
