@@ -111,7 +111,7 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
   await test.step('an explicit destination, an explicit origin and an explicit mode choice', async () => {
     await page.locator('[data-alpha-maps-sheet="results"]').getByRole('button', { name: /^Port Hercule fuel dock/ }).first().click();
     await button(page, 'Directions').click();
-    await expect(page.getByText('Choose a real origin to calculate a route.')).toBeVisible();
+    await expect(page.getByText('Choose a starting point to see a route.')).toBeVisible();
     expect((await mapsRequests(page)).filter(row => row.route === 'routes')).toEqual([]);
     const origin = page.getByRole('textbox', { name: 'Starting point' });
     await origin.fill(`${ORIGIN.latitude}, ${ORIGIN.longitude}`);
