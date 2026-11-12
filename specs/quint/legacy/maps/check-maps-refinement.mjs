@@ -271,7 +271,7 @@ async function guidanceTargets(page, viewports) {
         await page.waitForFunction(landscape => document.documentElement.classList.contains('alpha-landscape') === landscape,
           width > height);
         await settle();
-        const {targets, rightDock} = await page.evaluate(landscape => {
+        const {targets, rightDock, noSubstituteMap} = await page.evaluate(landscape => {
           const root = document.querySelector('[data-alpha-maps-root]');
           const end = root.querySelector('button[aria-label="End navigation"]');
           const owns = (node, x, y) => node.contains(document.elementFromPoint(x, y));
@@ -290,24 +290,24 @@ async function guidanceTargets(page, viewports) {
             label: node.getAttribute('aria-label') || node.textContent.trim(),
             owned: points(node, [0.2, 0.5, 0.8]),
           }));
-          const recenter = root.querySelector('button[aria-label="Recenter"]');
-          const attribution = [...root.querySelectorAll('.alpha-map-credits a')].map(node =>
-            ({label: node.textContent.trim(), owned: textLines(node)}));
+          // This provider advertises routes without tiles. Production must not insert a different basemap.
+          const assertNoMap = !root.querySelector('[data-alpha-map-plane],.alpha-map-credits');
           const notice = root.querySelector('[data-alpha-maps-status] [role="status"]');
           const pill = root.closest('[data-screen]').querySelector('[data-alpha-layer="pill"]');
           const rail = pill?.getBoundingClientRect(), app = root.getBoundingClientRect();
           const dockButtons = pill ? [...pill.querySelectorAll('button,[role="button"]')].filter(node =>
             node.getClientRects().length && !node.closest('[aria-hidden="true"],[inert]')) : [];
           return {
-            targets: [...guidance, {label: 'Recenter', owned: points(recenter, [0.05, 0.2, 0.5, 0.8, 0.95])},
-              ...attribution, {label: notice.textContent.trim(), owned: textLines(notice)}],
+            targets: [...guidance, {label: notice.textContent.trim(), owned: textLines(notice)}],
+            noSubstituteMap: assertNoMap,
             rightDock: landscape && rail ? {
               atRight: rail.left > app.left + app.width / 2 && Math.abs(rail.right - app.right) < 1,
               controls: dockButtons.map(node => ({label: node.getAttribute('aria-label'), owned: points(node, [0.5])[1]})),
             } : null,
           };
         }, width > height);
-        assert.equal(targets.length, 9, 'Four guidance controls, Recenter, three attribution links and status');
+        assert.equal(noSubstituteMap, true, 'A provider without tiles does not expose a substitute basemap');
+        assert.equal(targets.length, 5, 'Four guidance controls and status remain usable without tiles');
         for (const {label, owned} of targets) {
           assert.ok(owned.length && owned.every(Boolean), `${width}×${height} at ${percent}%: ${label} owns its sampled points`);
         }
