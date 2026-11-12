@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "repository": "elizaOS/eliza",
-  "base": "a4dcc41164e32e3defadb2fe173dde07a0c27d8c",
-  "baseCommit": "a4dcc41164e32e3defadb2fe173dde07a0c27d8c",
-  "head": "03fc4ef124e1858f6ab5e809cc23adb7d3589082",
+  "base": "1cb9c5378c975d08082d528af454b9c9b931a430",
+  "baseCommit": "1cb9c5378c975d08082d528af454b9c9b931a430",
+  "head": "f70e188037f48a22fdebb08859c01f110322fc9f",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...03fc4ef124e1858f6ab5e809cc23adb7d3589082",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...f70e188037f48a22fdebb08859c01f110322fc9f",
   "status": "diverged",
-  "aheadBy": 42,
-  "behindBy": 615,
+  "aheadBy": 49,
+  "behindBy": 616,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -178,6 +178,34 @@
     {
       "sha": "03fc4ef124e1858f6ab5e809cc23adb7d3589082",
       "subject": "Use one provider edit clock for managed Calendar readback"
+    },
+    {
+      "sha": "c5513030938d6892cf17e1cfbb25836b966c8188",
+      "subject": "test(scheduling): cover unset owner timezone at local morning"
+    },
+    {
+      "sha": "490eb2d247e29149e17925f5c07a07e8007b93f8",
+      "subject": "fix(scheduling): resolve missing owner zone before cron evaluation"
+    },
+    {
+      "sha": "99eb20c992677d31c99e913a55b9555a6ceab1e5",
+      "subject": "fix(scheduling): keep the shared timezone import singular"
+    },
+    {
+      "sha": "64e7c75ee4dd8642fe5f3789dbe1b5fd78e5146a",
+      "subject": "test(scheduling): clear seeded owner facts in timezone regression"
+    },
+    {
+      "sha": "e56f537d9c15d6fe7a64cc8ee5f0d9f2c8681877",
+      "subject": "test(scheduling): bind timezone regression runner identity"
+    },
+    {
+      "sha": "9f7cb6733e81d46d883763ea13cbffc506c2d631",
+      "subject": "fix(scheduling): share resolved owner facts with due preflight"
+    },
+    {
+      "sha": "f70e188037f48a22fdebb08859c01f110322fc9f",
+      "subject": "test(scheduling): bind owner timezone model to runtime cases"
     }
   ],
   "pullRequests": []
