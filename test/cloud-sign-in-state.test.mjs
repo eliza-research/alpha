@@ -138,11 +138,12 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     const SIGN_IN_BROWSER='In browser';const testMocksEnabled=false,isAndroid=${isAndroid},browserCloudResidentEnabled=${browserCloudResidentEnabled},expired=()=>false,residentCloudFlow=()=>true;
     let required=false;const productionCloudSignInRequired=()=>required,residentSignInRequired=()=>required;let pendingBillingReview=null;const clearPersonalSetup=()=>{};
     ${ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}'}
-    const validSignInEmail=()=>true,normalizeSignInCode=value=>/^\\d{6}$/.test(value)?value:null;
-    class CloudSignInError extends Error {constructor(code){super(code);this.code=code;}}
+    const validSignInEmail=()=>true,validSignInPhone=()=>true,cloudSignInPhone=true,inAppPhone=true,normalizeSignInCode=value=>/^\\d{6}$/.test(value)?value:null;
+    class CloudSignInError extends Error {constructor(code,data={}){super(code);this.code=code;this.attemptKept=data.attemptKept===true;this.resendAt=data.resendAt;}}
     class CodeExpiredError extends Error {constructor(){super('code-expired');}}
     const signInFailureMessage=code=>code,signInFailed=(environment,keep=false)=>{if(!keep)update({signIn:{step:'choose',environment}});};
     const signedIn=async()=>events.push({authenticated:true});
+    ${part('async function sendSignInCode(', '/** The provider authenticated only')}
     ${part('async function work(', '\n/** ')}
     const connectionController={
     ${part('  close() {', '  cancel() {')}
@@ -202,13 +203,56 @@ test('a failed resend keeps the code step and the code already sent',async()=>{
   }
 });
 
+test('the same email, SMS and MFA attempt can retry a transient failure only when native kept it',async()=>{
+  for(const method of ['Email','Phone','Mfa']){
+    for(const kept of [true,false]){
+      const f=controllerFixture();
+      if(method==='Phone')f.state.signIn={...f.state.signIn,phone:'+14155550100'};
+      if(method==='Mfa')f.state.signIn={step:'mfa',environment:'production',attemptId:'old',method:'totp'};
+      const original=f.state.signIn;
+      f.client[`verify${method}SignIn`]=async()=>{throw new f.CloudSignInError('offline',{attemptKept:kept});};
+      await f.connectionController.verifySignInCode('123456');
+      assert.equal(f.state.error,'offline');
+      if(!kept){assert.equal(f.state.signIn.step,'choose');continue;}
+      assert.equal(f.state.signIn,original);
+      let retried;f.client[`verify${method}SignIn`]=async(id,code)=>{retried={id,code};return {status:'authenticated'};};
+      await f.connectionController.verifySignInCode('123456');assert.deepEqual(retried,{id:'old',code:'123456'});
+    }
+  }
+});
+
+test('a refused send keeps the host deadline on its method and leaves any previous code usable',async()=>{
+  const now=Date.now(), later=now+120_000;
+  for(const method of ['Email','Phone']){
+    const key=method.toLowerCase(),address=key==='phone'?'+14155550100':'person@example.invalid';
+    const f=controllerFixture();f.state.signIn={...choose};
+    f.client[`start${method}SignIn`]=async()=>{throw new f.CloudSignInError('rate-limited',{resendAt:later});};
+    await f.connectionController[`signIn${method}`](address);
+    assert.deepEqual(f.state.signIn,{...choose,[key]:address,sendAfter:{[key]:later}});
+    f.state.signIn={...code,attemptId:'old',[key]:address,resendAt:now};
+    await f.connectionController.resendSignInCode();
+    assert.equal(f.state.signIn.resendAt,later);assert.equal(f.state.signIn.attemptId,'old');
+    f.client[`start${method}SignIn`]=async()=>{throw new f.CloudSignInError('cooldown',{resendAt:now+30_000});};
+    await f.connectionController.resendSignInCode();assert.equal(f.state.signIn.resendAt,later);
+  }
+});
+
+test('the chooser can send by email while SMS is cooling down',async()=>panel(async({document,window,render})=>{
+  await render({view:{...choose,phone:'+14155550100',sendAfter:{phone:Date.now()+90_000}},phone:true,emailEnabled:true,ready:true});
+  const form=document.querySelector('form'),input=form.querySelector('input'),button=form.querySelector('button');
+  assert.equal(button.disabled,true);assert.match(button.textContent,/^Send code · 90s$/);
+  input.value='person@example.invalid';
+  await act(()=>input.dispatchEvent(new window.Event('input',{bubbles:true})));
+  assert.equal(button.disabled,false);assert.equal(button.textContent,'Send code');
+}));
+
 test('an expired or exhausted code keeps the address with a new code ready; other refusals return with it filled in',async()=>{
   for(const failure of ['expired','attempts-exhausted']){
-    const f=controllerFixture();f.state.signIn={...f.state.signIn,resendAt:Date.now()+60000};
+    const f=controllerFixture();const deadline=Date.now()+60000;f.state.signIn={...f.state.signIn,resendAt:deadline};
     f.client.verifyEmailSignIn=async()=>{throw new f.CloudSignInError(failure);};
     await f.connectionController.verifySignInCode('123456');
     assert.equal(f.state.signIn.step,'code');assert.equal(f.state.signIn.email,'person@example.invalid');
-    assert.equal(f.state.signIn.resendAt,0,'Resend is available at once');assert.equal(f.state.signIn.stale,true,'the dead code cannot be verified again');
+    assert.equal(f.state.signIn.resendAt,deadline,'ending the code never shortens the host cooldown');assert.equal(f.state.signIn.stale,true,'the dead code cannot be verified again');
     // An expired code says to send a new one (the screen offers Resend), never "start again".
     assert.equal(f.state.error,failure==='expired'?'code-expired':failure);
   }

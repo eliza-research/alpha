@@ -96,3 +96,14 @@ test('a same-owner storage refusal is shown once after its operation releases',(
  box.operation=null;box.runQueuedSignInReturn();assert.equal(box.state.error,'failure:storage');
  box.update({error:''});box.runQueuedSignInReturn();assert.equal(box.state.error,'');
 });
+
+test('native activation expiry reports the removed credential after startup, and ignores superseded notices',()=>{
+ const startup=harness({startupResolved:false});
+ startup.connectionController.signInIncomplete({code:'activation-expired'});
+ startup.update({startupResolved:true});startup.runQueuedSignInReturn();
+ assert.equal(startup.state.error,'failure:activation-expired');assert.equal(startup.state.open,true);
+ const live=harness({startupResolved:true,signIn:{step:'google',environment:'production'}});
+ live.operation={};live.connectionController.signInIncomplete({code:'activation-expired'});
+ const next={step:'code',environment:'production',attemptId:'new'};live.state.signIn=next;
+ live.operation=null;live.runQueuedSignInReturn();assert.equal(live.state.signIn,next);assert.equal(live.state.error,'');
+});
