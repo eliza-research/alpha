@@ -52,7 +52,7 @@ test('tile requests follow a rebuilt same-account client and reject an account c
 async function share(run){
  globalThis.mapShareTest={run};
  const {shareMap}=await load('apps/app/src/maps/share.ts',{
-  '../runtime/text-share':'export const shareSelectedText=(text,signal)=>globalThis.mapShareTest.run(text,signal);',
+  '../runtime/text-share':'export const platformSharingAvailable=()=>true; export const copySelectedText=()=>{throw Error("Unexpected clipboard fallback")}; export const shareSelectedText=(text,signal)=>globalThis.mapShareTest.run(text,signal);',
  });
  return shareMap;
 }
@@ -64,10 +64,10 @@ test('Maps share waits for the platform chooser and passes its exact selected co
  let settled=false;void result.then(()=>settled=true);
  await new Promise(resolve=>setTimeout(resolve,0));assert.equal(settled,false);
  finish('opened');assert.equal(await result,'shared');
- assert.deepEqual(shared,[{title:'Cafe',text:'Cafe\nhttps://example.com/place'}]);
+ assert.deepEqual(shared,[{title:'Cafe',text:'https://example.com/place'}]);
 });
 
 test('Maps share cancellation returns closed without another destination',async()=>{
  const shareMap=await share(()=>Promise.resolve('closed'));
- assert.equal(await shareMap({title:'Cafe',text:'Cafe'},new AbortController().signal),'closed');
+ assert.equal(await shareMap({title:'Cafe',text:'Cafe',url:'https://example.com/place'},new AbortController().signal),'closed');
 });

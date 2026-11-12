@@ -2007,7 +2007,7 @@
 
         <sc-for list="{{maps.savedRows}}" key="{{r.id}}" as="r">
           <button data-alpha-map-row="{{r.id}}" class="tap" onClick="{{r.go}}" style="width:100%;display:flex;align-items:center;gap:14px;padding:10px 20px">
-            <svg class="i" viewBox="0 0 24 24"><path d="{{ic.pin}}"></path></svg><span style="text-align:left">{{r.name}}</span>
+            <svg class="i" viewBox="0 0 24 24"><path d="{{r.d}}"></path></svg><span style="text-align:left">{{r.name}}</span>
           </button>
         </sc-for>
         <sc-for list="{{maps.results}}" key="{{r.id}}" as="r">
