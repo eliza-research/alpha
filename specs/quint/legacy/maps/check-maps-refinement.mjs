@@ -188,7 +188,7 @@ export async function route(page, t) {
   await expect(sheet(page, 'place').getByRole('button', {name: 'Rename place', exact: true})).toHaveText(label);
   await t.point('Selecting that result opens its actual place card', action('PickPlace'));
   await button(page, 'Directions').click();
-  const input = page.getByRole('textbox', {name: 'Route origin coordinates', exact: true});
+  const input = page.getByRole('textbox', {name: 'Starting point', exact: true});
   await expect(input).toBeVisible();
   await expect(sheet(page, 'directions')).toContainText('Choose a real origin to calculate a route.');
   assert.equal((await requests(page)).some(row => row.endpoint === 'routes'), false);

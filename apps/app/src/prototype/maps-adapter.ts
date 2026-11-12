@@ -1,3 +1,6 @@
+import {openContentLink} from './content-links';
+import {guidanceDistance} from '../maps/guidance';
+import {distanceToRoute} from '../maps/route-distance';
 import {mapsChatText} from '../runtime/action-message-presentation';
 import {BackgroundNavigation,type NavigationBridge} from '../maps/background-navigation';
 import {registerPlugin} from '../platform-plugins';
@@ -42,17 +45,58 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const module = views.maps; if (!module) return () => {};
   const original = { render: module.render, back: module.back, onLeave: module.onLeave, reply: module.reply, suggestions: module.suggestions, ongoing: module.ongoing };
   let api: Bag | undefined, disposed=false, renders=0;
+  let startupLocationChecked=false,locationGeneration=0,saveNamedPlace=false;
   let planeBasemap:MapBasemap|undefined, plane: MapPlane | undefined, planeElement: HTMLElement | undefined;
   let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined;
   let mapCopyright='';
   let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
+  let searchTimer:ReturnType<typeof setTimeout>|undefined;
+  let resultDrag:{id:number;y:number;distance:number;sheet:HTMLElement}|undefined;
+  const resetResultDrag=()=>{if(resultDrag)resultDrag.sheet.style.translate='';resultDrag=undefined;};
+  const resultGrip={
+    down:(event:PointerEvent)=>{
+      if(event.button!==0)return;
+      const target=event.currentTarget as HTMLElement,sheet=target.closest<HTMLElement>('[data-alpha-maps-sheet]');
+      if(!sheet)return;
+      resultDrag={id:event.pointerId,y:event.clientY,distance:0,sheet};
+      target.setPointerCapture(event.pointerId);
+    },
+    move:(event:PointerEvent)=>{
+      if(!resultDrag||event.pointerId!==resultDrag.id)return;
+      resultDrag.distance=Math.max(0,event.clientY-resultDrag.y);
+      resultDrag.sheet.style.translate=`0 ${resultDrag.distance}px`;
+      event.preventDefault();
+    },
+    up:(event:PointerEvent)=>{
+      if(!resultDrag||event.pointerId!==resultDrag.id)return;
+      const dismiss=resultDrag.distance>=72;
+      resetResultDrag();
+      if(dismiss){cancelSearch();submittedSearch=undefined;screen.back();}
+    },
+    cancel:resetResultDrag,
+  };
+  let submittedSearch:{kind:'place'|'origin';text:string}|undefined;
+  const cancelSearch=()=>{if(searchTimer!==undefined)clearTimeout(searchTimer);searchTimer=undefined;};
+  const runSearch=(kind:'place'|'origin',text:string)=>{
+    cancelSearch();
+    const snapshot=mapsController?.snapshot();
+    const failed=(kind==='origin'?snapshot?.originSearch:snapshot?.search)?.phase==='error';
+    if(!active()||!text.trim()||!failed&&submittedSearch?.kind===kind&&submittedSearch.text===text)return;
+    submittedSearch={kind,text};
+    if(kind==='origin')screen.planOrigin();else screen.searchFor(text);
+  };
+  const queueSearch=(kind:'place'|'origin',text:string)=>{
+    cancelSearch();submittedSearch=undefined;
+    if(!text.trim())return;
+    searchTimer=setTimeout(()=>runSearch(kind,text),350);
+  };
   const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;mapCopyright='';plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
   const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.'));
   const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
   // A Cloud read already made or under way for this account is not repeated: a second read would
   // uninstall the provider an open Maps search is using. An account change retires it first (cloud-maps.ts).
-  const readCloudMaps = () => { const read = cloudMapsDiagnostics(); return read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); };
+  const readCloudMaps = () => { const read = cloudMapsDiagnostics(); return cloudMapsCoverage() && read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); };
   const screen: MapsScreenController = new MapsScreenController({
     connection: mapsConnection,
     onConnectionChange: onMapsConnectionChange,
@@ -79,15 +123,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       }
     },
     openWebsite: url => {
-      if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(result.message || 'The browser could not open.'); }, () => api?.toast('The browser could not open.'));
-      else window.open(url.href, '_blank', 'noopener,noreferrer');
+      if (shell) void openContentLink(shell as any, url.href).catch(error => api?.toast(error instanceof Error ? error.message : 'The browser could not open.'));
     },
     active,
     invalidate: () => { if (active()) api?.set({ nativeMapsRevision: ++renders }); },
     toast: text => api?.toast(text==='Copied'?'Link copied':text),
     discardHandoff: () => { pendingHandoff=undefined; if(api?.get('maps').query!=null)api.set({query:null}); },
     handoffReturn: () => !!mapsEventReturnOffered(api?.get('maps').fromEvent,api?.S.stack,screen.isNavigating()),
-    released: dropPlane,
+    released: ()=>{resetResultDrag();cancelSearch();submittedSearch=undefined;dropPlane();},
     // With no Maps provider on Android, an event's location can be handed to an installed map
     // app, only when the user taps for it. The exact hand-off text is sent; no route is shown.
     ...(isAndroid ? { mapsApp: {
@@ -143,6 +186,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   module.back = () => screen.back();
   module.onLeave = () => {
+    startupLocationChecked=false;locationGeneration++;
     retireEventReturn();
     screen.release();
   };
@@ -163,6 +207,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       });
     }
     const view = screen.view();
+    if(!startupLocationChecked){
+      startupLocationChecked=true;
+      const generation=locationGeneration;
+      void locationPermissionGranted().then(granted=>{
+        const current=screen.view();
+        if(granted&&generation===locationGeneration&&active()&&current.mode==='base'&&!current.query&&!pendingHandoff)void mapsController?.locate();
+      });
+    }
     // Calling the original with neutral state retains visual tokens without
     // generating sample place cards, address guesses, routes or timers.
     const data = original.render({ ...st, query: null, place: null, directions: null, nav: false, saved: [], pan: null }, currentApi);
@@ -183,13 +235,21 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       (status.text.startsWith('Connect a Maps provider') || status.text === cloudFailure.message)
       ? 'Maps is unavailable right now. Try again later.' : status.text;
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
-    const isPlace = view.mode === 'place', isResults = (view.mode === 'results' || view.mode === 'origin') && !view.emptyQuery, isNav = view.mode === 'navigation';
+    const isPlace = view.mode === 'place', isNav = view.mode === 'navigation';
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
     const savedMatches=view.mode!=='origin'&&view.query.trim()?view.saved.filter(item=>item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())):[];
+    const isResults=(view.mode==='results'||view.mode==='origin')&&!view.emptyQuery&&(view.hasResults||savedMatches.length>0);
+    const routineStatus=['Finding location…','Place saved on this device.','Place removed from saved.','Saved place renamed.','Name updated. Tap Save to keep this place.'].includes(statusText);
+    const emptySearch=view.noResults&&!view.emptyQuery&&!savedMatches.length&&status.map!=='error';
+    const snapshot=mapsController?.snapshot();
+    const position=snapshot?.position.phase==='ready'?snapshot.position.value?.coordinate:undefined;
+    const places=new Map((view.mode==='origin'?snapshot?.originSearch.value:snapshot?.search.value)?.map(place=>[`place:${place.providerId}:${place.id}`,place.coordinate]));
+    for(const saved of snapshot?.saved.value??[])places.set(`saved:${saved.id}`,saved.coordinate);
+    const distanceFor=(key:string)=>{const point=places.get(key);return position&&point?guidanceDistance(distanceToRoute(position,[point])):'';};
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
-      nativeShareLabel:mapShareLabel(),nativeSystemShare:mapShareLabel()==='Share',nativeCopyLink:mapShareLabel()==='Copy link',
+      nativeShareLabel:mapShareLabel(),
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
       notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
@@ -199,14 +259,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
           mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;
           const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();
           try{
-            plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}});
+            plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>id.startsWith('saved:')?screen.chooseSaved(id.slice(6)):screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}},point=>{cancelSearch();submittedSearch=undefined;screen.selectPoint(point);});
             mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapReady==='true'?'ready':'loading');});
             mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});
           }catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(current())screen.setMapState('error');});}
         }
-        plane?.update(view.map.selected,view.map.route,view.map.overlay);
+        plane?.update(view.map.selected??(view.mode==='base'?position:undefined),view.map.route,{...view.map.overlay,pins:[...(view.map.overlay.pins??[]),...savedMatches.map(item=>({id:`saved:${item.id}`,label:item.label,coordinate:item.coordinate}))]});
       },
-      native: true, nativeStatusVisible:status.visible, nativeStatus: statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
+      native: true, nativeStatusVisible:(status.visible&&!routineStatus)||emptySearch, nativeStatus: emptySearch?'No places':statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
       nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy, nativeLocation: () => screen.locate(),
       nativeLocationState:status.location,nativeMapState:status.map,nativeMapStatus:status.mapText,
       nativeLocationLabel:status.locationLabel,nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,
@@ -218,18 +278,18 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       mode:view.mode==='navigation'?'nav':view.mode==='directions'?'dir':view.mode, isBase:view.mode==='base',isResults,isPlace,isDir:view.mode==='directions',isNav,
       showSearch:view.showSearch, showRec:!isNav, grid: '', major: '', fwy: '', water: '', parks: '', rwy: '', routeD: '', doneD: '', hasRoute: false, pins: [], labels: [], meCss: 'display:none;',
       mapDown: () => {}, mapUp: () => {}, q: view.query, hasQ: !!view.query, searchLabel: view.searchLead === 'back' ? 'Back' : 'Search',
-      searchLead: () => screen.searchLead(),
-      onQ: (event: Event) => screen.setQuery((event.target as HTMLInputElement).value),
+      searchLead: () => {cancelSearch();submittedSearch=undefined;screen.searchLead();},
+      onQ: (event: Event) => {const text=(event.target as HTMLInputElement).value;screen.setQuery(text);queueSearch('place',text);},
       focusQ: () => screen.focusQuery(),
-      qKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); screen.submit(); (event.target as HTMLInputElement).blur(); } },
-      clearQ: () => screen.clearQuery(),
-      chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => screen.chooseSaved(item.id) })),
+      qKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); runSearch('place',(event.target as HTMLInputElement).value); (event.target as HTMLInputElement).blur(); } },
+      clearQ: () => {cancelSearch();submittedSearch=undefined;screen.clearQuery();},
+      chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => {cancelSearch();screen.chooseSaved(item.id);submittedSearch=undefined;} })),
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => screen.searchFor(category.label) })),
-      savedRows: savedMatches.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: '', d: PIN, go: () => screen.chooseSaved(item.id) })),
-      results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
+      savedRows: savedMatches.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: '', distance:distanceFor(`saved:${item.id}`), d: PIN, go: () => {cancelSearch();screen.chooseSaved(item.id);submittedSearch=undefined;} })),
+      results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, distance:distanceFor(row.key), d: PIN, go: () => {cancelSearch();screen.choose(row.key);submittedSearch=undefined;} })),
       hasResults: view.hasResults||savedMatches.length>0, noResults: view.noResults&&!savedMatches.length, emptyQ: view.emptyQuery,
       recenter: () => screen.recenter(), recBottom: isPlace ? 414 : view.mode === 'results' ? 534 : 124, recCss: '',
-      sheetH: sheetHeight, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
+      sheetH: sheetHeight, sheetSw: resultGrip, sheetTap: () => {},
       askAlpha: () => currentApi.send(view.query || 'Help me with Maps.'), noResTxt: `Ask ${currentApi.name} about this search`,
     });
     const place = view.place;
@@ -238,28 +298,28 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       // source has them. Phone is shown as text; calling stays deferred with Phone.
       data.pc = {
         name: place.name, meta: place.meta, addr: place.address,
-        hasHours: !!place.hours, openTxt: 'Hours', openCss: '', hoursTxt: place.hours || '',
+        hasHours: !!place.hours, hoursRows: (place.hours || '').split(/;|\s+·\s+/).map((text,index)=>{const separator=text.indexOf(':');return {id:String(index),day:separator>0?text.slice(0,separator).trim():'',hours:separator>0?text.slice(separator+1).trim():text.trim()};}).filter(row=>row.hours),
         hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
         canDir: place.canDirections, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
-        close: () => screen.closePlace(), save: () => screen.toggleSaved(),
+        close: () => {saveNamedPlace=false;screen.closePlace();}, save: () => {if(place.saved)screen.toggleSaved();else {saveNamedPlace=true;screen.startRename();}},
         dirs: () => screen.openDirections(),
         share: () => screen.sharePlace(),
-        nativeName: place.name, nativeEditing: place.editingName,
+        nativeName: place.name, nativeEditing: place.editingName, nativeNameAction:saveNamedPlace?'Save':'Done',
         nativeTitleRole: 'button', nativeTitleTabIndex: 0, nativeTitleLabel: 'Rename place',
-        nativeEdit: () => screen.startRename(),
-        nativeEditKey: (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); screen.startRename(); } },
+        nativeEdit: () => {saveNamedPlace=false;screen.startRename();},
+        nativeEditKey: (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); saveNamedPlace=false;screen.startRename(); } },
         nativeRename: (event: Event) => screen.rename((event.target as HTMLInputElement).value),
-        nativeApplyName: () => screen.applyName(),
+        nativeApplyName: () => {screen.applyName();const updated=screen.view().place;if(saveNamedPlace&&updated&&!updated.editingName){saveNamedPlace=false;if(!updated.saved)screen.toggleSaved();}},
       };
     }
     const directions = view.directions;
     if (directions) {
       // Coordinates plan directly; any other text searches places and saved places.
       data.originText=directions.originText;
-      data.onOrigin=(event:Event)=>screen.setOriginText((event.target as HTMLInputElement).value);
-      data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();screen.planOrigin();}};
-      data.originLocation=()=>screen.locate();
+      data.onOrigin=(event:Event)=>{const text=(event.target as HTMLInputElement).value;screen.setOriginText(text);queueSearch('origin',text);};
+      data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();runSearch('origin',(event.target as HTMLInputElement).value);}};
+      data.originLocation=()=>{cancelSearch();submittedSearch=undefined;screen.locate();};
       const nav = view.navigation;
       data.dr={name:directions.name,close:()=>screen.back(),min:directions.duration,meta:directions.meta,via:directions.via,shareLabel:mapShareLabel()==='Share'?'Share route':'Copy route link',shareEta:()=>screen.shareRoute(),
        modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode:TravelMode=reference.mode==='bike'?'bicycle':reference.mode;const on=!!directions.modes.find(choice=>choice.mode===mode)?.selected;return {label:reference.label,t:reference.label,d:reference.d,on,css:on?'background:var(--acc);color:#fff':'background:var(--s2);color:var(--fg)',go:()=>screen.setMode(mode)};}),
@@ -330,7 +390,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   };
   window.addEventListener('pagehide', pagehide);
   document.addEventListener('visibilitychange', visibility);
-  return () => { disposed = true; retireEventReturn(); stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
+  return () => { disposed = true; resetResultDrag(); retireEventReturn(); stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
 }
 
 /** Presentation only: stored messages, model context and copied source text remain unchanged.

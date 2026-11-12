@@ -8,6 +8,6 @@ export class NativeMapsLocation extends SharedLocation {
 }
 /** Whether location is already granted, without showing a permission prompt. */
 export async function locationPermissionGranted(): Promise<boolean> {
- if (!Capacitor.isPluginAvailable('ElizaLocation')) return false;
+ if (Capacitor.isNativePlatform() && !Capacitor.isPluginAvailable('ElizaLocation')) return false;
  try { return (await location.checkPermissions()).location === 'granted'; } catch { return false; }
 }

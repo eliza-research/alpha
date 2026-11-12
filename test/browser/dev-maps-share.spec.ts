@@ -33,9 +33,9 @@ test('platform sharing failure is reported without another destination',async({p
 });
 
 
-test('a browser without a share sheet offers Copy link for the selected place',async({page})=>{
+test('a browser without a share sheet reports availability without copying',async({page})=>{
  await page.addInitScript(()=>Object.defineProperty(navigator,'share',{configurable:true,value:undefined}));
- await pin(page);await page.getByRole('button',{name:'Copy link',exact:true}).click();
- await expect.poll(()=>page.evaluate(()=>(window as any).copied)).toBe('https://www.google.com/maps/search/?api=1&query=43.7384%2C7.4246');
- await expect(page.getByText('Sharing is unavailable in this browser. Use Copy text or Save text.',{exact:true})).toHaveCount(0);
+ await pin(page);await page.getByRole('button',{name:'Share',exact:true}).click();
+ await expect(page.getByText('Sharing is unavailable in this preview.',{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).copied)).toBeUndefined();
 });

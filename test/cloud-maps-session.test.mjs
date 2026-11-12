@@ -9,16 +9,16 @@ async function load(entry,stubs){
 }
 
 async function cloudMaps(){
- const state=globalThis.cloudMapsTest={client:{sessionId:'s1',credentialId:'c1',client:{}},listeners:[],retired:0};
- await load('apps/app/src/maps/cloud-maps.ts',{
-  './cloud-provider':'export const createCloudMaps=(_capture,_configure,options)=>{globalThis.cloudMapsTest.tileRequest=options.tileRequest;return {initializeCloudMaps(){},cloudMapsCoverage(){},cloudMapsDiagnostics:()=>({configured:true}),retireCloudMaps:()=>globalThis.cloudMapsTest.retired++}};',
+ const state=globalThis.cloudMapsTest={client:{sessionId:'s1',credentialId:'c1',client:{}},listeners:[],retired:0,initializations:0};
+ const module=await load('apps/app/src/maps/cloud-maps.ts',{
+  './cloud-provider':'export const createCloudMaps=(_capture,_configure,options)=>{globalThis.cloudMapsTest.tileRequest=options.tileRequest;return {initializeCloudMaps(){globalThis.cloudMapsTest.initializations++;return globalThis.cloudMapsTest.pending;},cloudMapsCoverage(){},cloudMapsDiagnostics:()=>({configured:true}),retireCloudMaps:()=>globalThis.cloudMapsTest.retired++}};',
   './cloud-session':'export const captureMapsSession=read=>read();',
   './runtime':'export const configureMapsProvider=()=>{};',
   '../runtime/connection-ui':'export const connectionController={getCloudClient:()=>globalThis.cloudMapsTest.client,subscribe:listener=>globalThis.cloudMapsTest.listeners.push(listener)};',
   '../runtime/subscription-entitlement.ts':'export const readServiceLimit=()=>undefined;',
  });
  const update=client=>{state.client=client;for(const listener of state.listeners)listener();};
- return {state,update};
+ return {state,update,module};
 }
 
 test('a rebuilt client for the same session and credential keeps Cloud Maps guidance',async()=>{
@@ -70,4 +70,17 @@ test('Maps share waits for the platform chooser and passes its exact selected co
 test('Maps share cancellation returns closed without another destination',async()=>{
  const shareMap=await share(()=>Promise.resolve('closed'));
  assert.equal(await shareMap({title:'Cafe',text:'Cafe',url:'https://example.com/place'},new AbortController().signal),'closed');
+});
+
+
+test('Maps opening awaits the same background coverage read and an account change retires it',async()=>{
+ const {state,update,module}=await cloudMaps();
+ let finish;state.pending=new Promise(resolve=>{finish=resolve;});
+ const first=module.initializeCloudMaps();const second=module.initializeCloudMaps();
+ assert.equal(first,second);assert.equal(state.initializations,1);
+ update({sessionId:'s2',credentialId:'c2',client:{}});
+ let finishNext;state.pending=new Promise(resolve=>{finishNext=resolve;});
+ const next=module.initializeCloudMaps();assert.notEqual(first,next);assert.equal(state.initializations,2);
+ finish();await first;assert.equal(module.initializeCloudMaps(),next);
+ finishNext();await next;
 });

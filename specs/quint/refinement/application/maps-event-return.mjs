@@ -50,7 +50,7 @@ function fixture(compiled) {
   }
 
   class ScreenPort {
-    view() {return {status: {text: ''}, saved: [], results: [], mode: navigating ? 'navigation' : 'base', showSearch: true};}
+    view() {return {status: {text: '', visible: false}, query: '', emptyQuery: true, noResults: false, hasResults: false, saved: [], results: [], map: {overlay: {pins: []}}, diagnostics: {}, mode: navigating ? 'navigation' : 'base', showSearch: true};}
     surface() {return {};}
     isNavigating() {return navigating;}
     release() {}
@@ -63,7 +63,7 @@ function fixture(compiled) {
     registerPlugin: name => name === 'AlphaCalendar' ? {list: input => request('native', input)} : {},
     NavigationVoice: class {}, BackgroundNavigation: class {}, MapsScreenController: ScreenPort,
     mapsConnection: () => undefined, onMapsConnectionChange: () => () => {}, NativeMapsLocation: class {},
-    locationPermissionGranted: () => false, shareMap: () => {}, isAndroid: false,
+    locationPermissionGranted: async () => false, shareMap: () => {}, mapShareLabel: () => 'Share', isAndroid: false,
     publishMapsSelection: () => {}, clearMapsSelection: () => {},
     bindAgentNavigation: () => ({dispose() {}}), residentMapsNavigationPort: {}, keepCloudMapsCoverage: () => () => {},
     regionalMapsConfigured: false, regionalMap: () => undefined, cloudMapsBasemap: () => undefined,
