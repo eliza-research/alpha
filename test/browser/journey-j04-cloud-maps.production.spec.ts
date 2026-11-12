@@ -114,7 +114,7 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
     await button(page, 'Directions').click();
     await expect(page.getByText('Choose a real origin to calculate a route.')).toBeVisible();
     expect((await mapsRequests(page)).filter(row => row.route === 'routes')).toEqual([]);
-    const origin = page.getByRole('textbox', { name: 'Route origin coordinates' });
+    const origin = page.getByRole('textbox', { name: 'Starting point' });
     await origin.fill(`${ORIGIN.latitude}, ${ORIGIN.longitude}`);
     await origin.press('Enter');
     await expect(maps).toContainText(/7 min\s*1\.2 km · no live traffic/);
@@ -228,7 +228,7 @@ test('Cloud route alternatives are offered in order; choosing one requests nothi
   await search.press('Enter');
   await page.getByRole('button', { name: /^Port Hercule fuel dock/ }).first().click();
   await button(page, 'Directions').click();
-  const origin = page.getByRole('textbox', { name: 'Route origin coordinates' });
+  const origin = page.getByRole('textbox', { name: 'Starting point' });
   await origin.fill(`${ORIGIN.latitude}, ${ORIGIN.longitude}`);
   await origin.press('Enter');
 

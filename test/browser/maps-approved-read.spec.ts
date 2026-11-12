@@ -91,7 +91,7 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     await page.getByRole('button',{name:/^Private fixture destination/}).first().click();
     if(mode==='route'){
       await page.getByRole('button',{name:'Directions',exact:true}).click();
-      const origin=page.getByRole('textbox',{name:'Route origin coordinates'});await origin.fill('43.738,7.424');await origin.press('Enter');
+      const origin=page.getByRole('textbox',{name:'Starting point'});await origin.fill('43.738,7.424');await origin.press('Enter');
       await expect(page.getByText(/no live traffic/).first()).toBeVisible();
     }
     if(mode==='basemap-ready'){
