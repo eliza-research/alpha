@@ -88,3 +88,15 @@ for(const change of ['dismiss','Own'])test(`late saved-credential read cannot re
  release.resolve(null);await pending;assert.equal(opened,0);assert.equal(state.providerStatus.provider,'cerebras');
  assert.equal(state.providerStatus.keys.text.configured,true);assert.equal(state.providerStatus.keys.voice.configured,true);
 });
+
+for (const purpose of ['provider', 'plan', 'cloud-account']) {
+ test(`an explicit ${purpose} panel stays open after a successful provider switch`, async () => {
+  const f = fixture();
+  f.state.open = true;
+  f.state.purpose = purpose;
+  await f.api.selectCloudProvider();
+  assert.equal(f.state.open, true);
+  assert.equal(f.state.purpose, purpose);
+  assert.equal(f.state.providerStatus.provider, 'elizacloud');
+ });
+}

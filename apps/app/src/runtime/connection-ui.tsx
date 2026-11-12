@@ -2750,7 +2750,9 @@ export const connectionController = {
       const providerStatus=await selectLocalProvider({mode,expectedRevision},signal);signal.throwIfAborted();
       update({providerStatus,providerStatusError:false});
       await restartAfterProviderChange(signal,true);
-      const keepOpen=!!state.error||!!state.signIn||(mode==='cloud'&&!state.cloudAccount);
+      const keepSettingsOpen=state.open&&choiceContext.open&&state.purpose===choiceContext.purpose&&
+        ['provider','plan','cloud-account'].includes(state.purpose||'');
+      const keepOpen=keepSettingsOpen||!!state.error||!!state.signIn||(mode==='cloud'&&!state.cloudAccount);
       update({open:keepOpen,purpose:keepOpen?state.purpose:'agent',message:''});finished=true;
     });}finally{
       // A lost/cancelled response may follow a committed selection. Resolve its

@@ -140,8 +140,9 @@ test('pending provider change shows progress instead of a false failure',async({
  await expect(dialog(page).getByText('Updating connection…',{exact:true})).toBeVisible();
  await expect(dialog(page).getByText('Status unavailable.',{exact:true})).toHaveCount(0);
  await expect(dialog(page).getByRole('button',{name:'Try again',exact:true})).toHaveCount(0);
- await page.evaluate(()=>(window as any).ownProvider.releaseSelect());await expect(dialog(page)).toHaveCount(0);
- await (await openCloudPlanFromSettings(page)).getByRole('button',{name:/^AI connection(?: Cloud| Own API keys)?$/}).click();
+ await page.evaluate(()=>(window as any).ownProvider.releaseSelect());
+ await expect(dialog(page).getByText('Updating connection…',{exact:true})).toHaveCount(0);
+ await expect(dialog(page)).toBeVisible();
  await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed','true');
  await noLeaks(page,observed);
 });
@@ -185,16 +186,16 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  await expect.poll(()=>page.evaluate(()=>(window as any).ownProvider.revealed)).toBe(1);
  await expect(text.locator('input'),'native reveal never sends plaintext to the DOM').toHaveCount(0);
  await dialog(page).getByRole('button',{name:'Cloud',exact:true}).click();
- await expect(dialog(page)).toHaveCount(0);
- await (await openCloudPlanFromSettings(page)).getByRole('button',{name:/^AI connection(?: Cloud| Own API keys)?$/}).click();
+ await expect(dialog(page).getByText('Updating connection…',{exact:true})).toHaveCount(0);
+ await expect(dialog(page)).toBeVisible();
  await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(dialog(page)).not.toContainText(/keys will be removed/);
  expect(await page.evaluate(async()=>{const f=(window as any).ownProvider;return {cleared:f.cleared,saved:f.saved,selected:f.selected,status:await (window as any).Capacitor.nativePromise('Agent','providerStatus',{})};})).toMatchObject({cleared:0,saved:1,selected:1,status:{mode:'cloud',voiceConfigured:false,keys:{text:{configured:true},voice:{configured:true}}}});
  await page.screenshot({path:info.outputPath('own-provider-cloud-retained.png'),animations:'disabled'});
  // Select the already saved keys without another entry, validation or save.
  await dialog(page).getByRole('button',{name:'Own API keys',exact:true}).click();
- await expect(dialog(page)).toHaveCount(0);
- await (await openCloudPlanFromSettings(page)).getByRole('button',{name:/^AI connection(?: Cloud| Own API keys)?$/}).click();
+ await expect(dialog(page).getByText('Updating connection…',{exact:true})).toHaveCount(0);
+ await expect(dialog(page)).toBeVisible();
  await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(dialog(page).getByText('Text and voice connected',{exact:true})).toBeVisible();
  await expect(dialog(page).getByRole('form',{name:'Own API keys'})).toHaveCount(0);
