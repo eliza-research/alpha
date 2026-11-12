@@ -81,7 +81,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const runSearch=(kind:'place'|'origin',text:string)=>{
     cancelSearch();
     const snapshot=mapsController?.snapshot();
-    const failed=(kind==='origin'?snapshot?.originSearch:snapshot?.search)?.phase==='error';
+    const failed=(kind==='origin'?snapshot?.originSearch:snapshot?.search)?.phase==='error'||!!(regionalMapsConfigured?regionalDiagnostics():cloudMapsDiagnostics()).error;
     if(!active()||!text.trim()||!failed&&submittedSearch?.kind===kind&&submittedSearch.text===text)return;
     submittedSearch={kind,text};
     if(kind==='origin')screen.planOrigin();else screen.searchFor(text);
