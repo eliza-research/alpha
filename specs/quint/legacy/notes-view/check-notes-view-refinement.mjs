@@ -376,7 +376,7 @@ async function mounted(extraSources) {
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
-    server = await createServer({configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', cacheDir,
+    server = await createServer({configLoader: 'runner', configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', cacheDir,
       // The captured sources are immutable during a replay. Vite's development reload
       // would replace the document and discard its closed provider and recording ports.
       server: {host: '127.0.0.1', port: 0, strictPort: false, hmr: false, watch: null},

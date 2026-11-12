@@ -55,7 +55,7 @@ for(const [name,make] of [['reminder',reminder],['recurring Calendar',calendar]]
   }
  });
 }
-test('structured revision parsers refuse wrong source, kind, row, shape, encoding and bounds',()=>{
+test('legacy structured revision parsers refuse wrong source, kind, row, shape, encoding and bounds',()=>{
  const row=legacyReminder(),fields=JSON.parse(row.revision),cal=calendar(),split=cal.revision.lastIndexOf(':'),calendarFields=JSON.parse(decodeURIComponent(cal.revision.slice(0,split)));
  const bad=[{...row,source:'external'},{...row,source:'hosted'},{...row,kind:'workflow'},{...row,kind:'navigation'},{...row,id:'neighbor'},
   {...row,revision:JSON.stringify(fields.slice(0,3))},{...row,revision:JSON.stringify([...fields,'extra'])},{...row,revision:JSON.stringify({...fields})},{...row,revision:' '+row.revision},
@@ -67,8 +67,8 @@ test('structured revision parsers refuse wrong source, kind, row, shape, encodin
 });
 test('native and digested opaque identities stay exact; structured wire counters cover all tuple fields and bounded eviction',async()=>{
  const native=own('native-reminder','native-revision','reminder'),revisions=selection.createOwnNoticeRevisions();assert.equal(revisions(native),native.revision);assert.equal(selection.noticeReviewable(native),true);
- const current=await reminder();assert.equal(revisions(current),current.revision);assert.equal(await reminderNoticeRevision(target),current.revision);
- for(const field of ['sourceRevision','reminderId','occurrenceId','revision']){const changed={...target,[field]:field==='reminderId'?'reminder-two':field==='occurrenceId'?'occurrence-two':'d'.repeat(64)};assert.notEqual(await reminderNoticeRevision(changed),current.revision,field);}
+ const current=await reminder();assert.match(current.revision,/^[a-f0-9]{64}$/);assert.equal(revisions(current),current.revision);assert.equal(await reminderNoticeRevision(target),current.revision);
+ for(const field of ['sourceRevision','reminderId','occurrenceId','revision']){const changed={...target,[field]:field==='reminderId'?'reminder-two':field==='occurrenceId'?'occurrence-two':'d'.repeat(64)},revision=await reminderNoticeRevision(changed);assert.notEqual(revision,current.revision,field);assert.equal(revisions({...current,id:changed.reminderId,revision}),revision,field);}
  const first=legacyReminder(),one=revisions(first);assert.equal(revisions(first),one);assert.notEqual(selection.createOwnNoticeRevisions()(first),one);
  for(const field of ['sourceRevision','occurrenceId','revision']){const changed={...target,[field]:field==='occurrenceId'?'occurrence-two':'d'.repeat(64)},next=legacyReminder(changed);assert.notEqual(revisions(next),one,field);}
  const again=revisions(first);assert.notEqual(again,one);

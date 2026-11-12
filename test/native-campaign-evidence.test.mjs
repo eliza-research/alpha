@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {exercise} from './fixtures/isolated-native-campaign.mjs';
 const run=mode=>exercise(mode,'workflow');
 const approvalClass='ai.alphacompute.alphaphone.WorkflowApprovalNoticeInstrumentedTest';
-test('workflow campaign runs every exact case of every phase in disposable users and scopes permissions',()=>{
+test('workflow campaign runs every exact case of every phase in disposable users and scopes permissions',{timeout:scaledTimeout(600000)},()=>{
  const r=run('pass');assert.equal(r.code,0,r.stderr);assert.equal(r.record.results.length,24);
  assert.ok(r.record.results.every(row=>row.passed&&row.userLifecycle.removed));
  assert.equal(r.state.user,'0');assert.equal(r.state.created,false);assert.deepEqual(r.state.files,{});

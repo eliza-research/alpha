@@ -106,8 +106,6 @@ function handOffs(name, code) {
 
 // Hand-offs that are safe for a reason the scanner cannot see. Each entry is one exact place.
 const REVIEWED = [
-  { file: "AlphaDevicePlugin.java", receiver: "updateOfferReader", method: "submit", count: 1,
-    why: "private process-wide transport slot; its private reader propagates rejection to the sole caller's unavailable-offer catch, checked below" },
   { file: "AlphaCanonicalNotifications.java", receiver: "SERIAL", method: "execute", count: 7,
     why: "private static final process dispatcher; stop retires sessions, never the executor; lifetime and non-escape checked below" },
   { file: "AlphaCanonicalNotifications.java", receiver: "SERIAL", method: "schedule", count: 2,
@@ -137,9 +135,12 @@ function assertUpdateOfferReaderGuard(source) {
   const declarations = [...code.matchAll(declaration)];
   assert.equal(declarations.length, 1, "offer reader must remain privately owned and immutable");
   const start = declarations[0].index, end = start + declarations[0][0].length;
+  const submits = [...code.matchAll(/\bPluginWorkers\s*\.\s*submit\s*\(\s*updateOfferReader\s*,/g)];
+  assert.equal(submits.length, 1);
+  const submittedReference = submits[0].index + submits[0][0].indexOf("updateOfferReader");
   for (const reference of code.matchAll(/\bupdateOfferReader\b/g)) {
     if (reference.index >= start && reference.index < end) continue;
-    assert.match(code.slice(reference.index), /^updateOfferReader\s*\.\s*submit\s*\(/,
+    assert.equal(reference.index, submittedReference,
       "offer reader must not escape, be reassigned or be shut down");
   }
   const method = signature => {
@@ -151,10 +152,11 @@ function assertUpdateOfferReaderGuard(source) {
     return body;
   };
   const reader = method(/\bprivate\s+static\s+byte\[\]\s+readFinalUpdateManifest\(\)\s*throws\s+Exception\s*\{/);
-  const submits = [...code.matchAll(/\bupdateOfferReader\s*\.\s*submit\s*\(/g)];
-  assert.equal(submits.length, 1);
   assert.ok(reader.start < submits[0].index && submits[0].index < reader.end,
     "only the private final-offer reader may submit transport work");
+  assert.match(code.slice(reader.start, reader.end),
+    /if\s*\(\s*!\s*PluginWorkers\.submit\(updateOfferReader,result,\(\)->result\.cancel\(false\)\)\)\s*throw\s+new\s+java\.io\.IOException\s*\(/,
+    "a rejected slot cancels its future and becomes an unavailable offer");
   const uses = [...code.matchAll(/\breadFinalUpdateManifest\s*\(/g)];
   assert.equal(uses.length, 2, "private reader must have only its declaration and one caller");
   const caller = method(/\bprivate\s+void\s+requireCurrentUpdateOffer\([^)]*\)\s*throws\s+UpdateOfferUnavailable\s*\{/);
@@ -175,7 +177,9 @@ test("the bounded update offer reader answers a rejected slot through its sole s
   const source = read("AlphaDevicePlugin.java");
   assertUpdateOfferReaderGuard(source);
   assert.throws(() => assertUpdateOfferReaderGuard(source.replace("static final java.util.concurrent.ExecutorService updateOfferReader", "static java.util.concurrent.ExecutorService updateOfferReader")));
-  assert.throws(() => assertUpdateOfferReaderGuard(source.replace("var result=updateOfferReader.submit(", "var alias=updateOfferReader;var result=updateOfferReader.submit(")));
+  assert.throws(() => assertUpdateOfferReaderGuard(source.replace("if(!PluginWorkers.submit(updateOfferReader,", "var alias=updateOfferReader;if(!PluginWorkers.submit(updateOfferReader,")));
+  assert.throws(() => assertUpdateOfferReaderGuard(source.replace("PluginWorkers.submit(updateOfferReader,result,()->result.cancel(false))", "updateOfferReader.submit(result)")));
+  assert.throws(() => assertUpdateOfferReaderGuard(source.replace("PluginWorkers.submit(updateOfferReader,result,()->result.cancel(false))", "PluginWorkers.submit(updateOfferReader,result,()->{})")));
   assert.throws(() => assertUpdateOfferReaderGuard(source.replace("byte[] manifest=readFinalUpdateManifest();", "byte[] manifest=anotherReader();")));
   assert.throws(() => assertUpdateOfferReaderGuard(source.replace("catch(Exception unavailable){/* A failed read cannot confirm the offer. */}", "catch(java.io.IOException unavailable){}")));
 });
