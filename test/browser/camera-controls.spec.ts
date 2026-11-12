@@ -134,9 +134,9 @@ test('a zoomed recording stops when its camera source ends',async({page})=>{
  await expect(page.getByRole('alert',{name:'Mic off',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).videoAudioDenials)).toBe(1);
  await page.getByRole('button',{name:'Record without sound',exact:true}).click();await expect(page.getByRole('button',{name:'Stop recording',exact:true})).toBeVisible();
- expect(await page.evaluate(()=>(window as any).videoAudioDenials)).toBe(1);
  const recording=page.getByRole('timer',{name:'Recording',exact:true});
  await expect(recording).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).videoAudioDenials)).toBe(1);
  await expect.poll(()=>page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');return (await c.getRecordingState()).fileSize;})).toBeGreaterThan(0);
  await page.evaluate(()=>{const video=document.querySelector('[data-alpha-camera="viewfinder"] video') as HTMLVideoElement;(video.srcObject as MediaStream).getVideoTracks()[0].dispatchEvent(new Event('ended'));});
  await expect.poll(()=>page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');return (await c.getRecordingState()).isRecording;})).toBe(false);
@@ -146,9 +146,9 @@ test('a zoomed recording stops when its camera source ends',async({page})=>{
  const saved=await page.evaluate(async()=>{
   const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');const rows=(await library.list({album:'videos'})).items;
   const row=await library.read({id:rows[0].id}),blob=await(await fetch(row.path!)).blob();
-  return {count:rows.length,kind:row.kind,bytes:blob.size,size:row.size,released:(window as any).controlStreams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended'))};
+  return {count:rows.length,kind:row.kind,bytes:blob.size,size:row.size,streams:(window as any).controlStreams.length,released:(window as any).controlStreams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended'))};
  });
- expect(saved.count).toBe(1);expect(saved.kind).toBe('video');expect(saved.bytes).toBeGreaterThan(0);expect(saved.size).toBe(saved.bytes);expect(saved.released).toBe(true);
+ expect(saved.count).toBe(1);expect(saved.kind).toBe('video');expect(saved.bytes).toBeGreaterThan(0);expect(saved.size).toBe(saved.bytes);expect(saved.streams).toBeGreaterThan(1);expect(saved.released).toBe(true);
  await expect(page.getByRole('alert',{name:'Can’t start camera',exact:true})).toBeVisible();
 });
 test('Ask mode reviews an unsaved frame and returns to Camera without adding a photo',async({page})=>{

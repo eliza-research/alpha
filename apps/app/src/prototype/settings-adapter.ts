@@ -235,13 +235,18 @@ export function updateIdle(facts: UpdateIdleFacts): boolean {
     !facts.homeEdit && !facts.homeAdd && !facts.drawerMenu &&
     !facts.busy && !facts.open && !facts.editor;
 }
-/** Field updates wait for Home, outside voice, edits and foreground reviews. */
-export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean): boolean {
+/** Field updates wait for idle Home, including behind the empty required first-run sign-in landing. */
+export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean, page?: Pick<Document, 'querySelector'>): boolean {
+  // Access setup and other reviews can cover Home without changing the shell view.
+  if (page?.querySelector('dialog[open]:not(.alpha-update-startup)')) return false;
+  const signIn = connection.open ? page?.querySelector('[data-alpha-app-update-sign-in]') : null;
+  // The uncontrolled input can retain typed or autofilled text even after it loses focus.
+  const signInIdle = signIn && !signIn.matches(':active') && Array.from(signIn.querySelectorAll('input')).every(input => input.value === '');
   return updateIdle({
     voiceInactive: voiceActive === false, home: shell.screen === 'home', view: !!shell.view, voiceOff: shell.voice === 'off',
     typing: !!shell.typing, chatResting: shell.chat === 'input' || shell.chat === 'hidden', drawer: !!shell.drawer, shade: !!shell.shade,
     homeEdit: !!shell.homeEdit, homeAdd: !!shell.homeAdd, drawerMenu: !!shell.drawerMenu,
-    busy: !!connection.busy, open: !!connection.open, editor: !!editor,
+    busy: !!connection.busy, open: !!connection.open && !signInIdle, editor: !!editor,
   });
 }
 /** The Privacy page's voice fact: the speech route in use now (voice-selection.ts) and what it sends.
@@ -446,7 +451,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     changed();
     const idle = () => automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),
       !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),
-      owner?.voiceConversationActive?.() !== false);
+      owner?.voiceConversationActive?.() !== false, document);
     if (updateBusy || !idle())
       throw Error('Current activity must finish');
     const [installed, build, pending] = await Promise.all([device.snapshot(), system.getBuildInfo(), device.updateState()]);
@@ -804,9 +809,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const pending = agentPendingText(connection, 'Not connected');
     const target = connection.session ? connection.name : pending;
     const runtimeLocation=!connection.session?pending:connection.kind==='resident'?(Capacitor.isNativePlatform()?'This phone':'This computer · dev'):testMocksEnabled?'Remote':'Unsupported';
-    // About and Models read the model the resident reports the same way, so the two pages agree.
-    const residentProvider=connection.kind==='resident'&&connection.session?connection.providerStatus:null;
-    const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported';
+    // Use the current controller readback for both provider and model. Failed or pending
+    // confirmation can retain a previous selection without verifying its model.
+    const residentProvider=connection.kind==='resident'&&connection.session&&!connection.providerStatusError?connection.providerStatus:null;
+    const providerName=residentProvider?.provider==='elizacloud'?serviceName:'Cerebras';
+    const providerModelPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
+    const inferenceModel=residentProvider?.configured===true&&typeof residentProvider.model==='string'&&providerModelPattern.test(residentProvider.model)
+      ?modelLabel(providerName,residentProvider.model):'Not reported';
     const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('Unavailable'));
     const info = (label: string, val: string, id = label): Bag => ({ id, kInfo: true, label, val, hasVal: true, noAB: true });
@@ -1123,7 +1132,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
         page.hero = { ...page.hero, big: target, sub: '' };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?providerName:'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Not reported':pending)]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {

@@ -71,7 +71,7 @@ export async function checkModalScrimOwnership(extraSources = []) {
   let sources, driverHashes;
   const rows = await observeModalScrim({onInputs(inputs) {
     sources = [...inputs, 'apps/app/src/prototype/template.html', 'scripts/prepare-client-features.ts',
-      '.eliza/client-features/.source.json', 'upstream.lock.json', 'package-lock.json', modelPath, driver, ...extraSources];
+      '.eliza/client-features/.source.json', 'upstream.lock.json', 'bun.lock', modelPath, driver, ...extraSources];
     driverHashes = captureInputs(sources);
   }});
   return checkTraces({model, modelPath, sources, driverHashes, traces:rows.map(replay), scope:'bounded-orchestration', assumptions:[

@@ -473,7 +473,7 @@ test.describe('outages and offline use',()=>{
   expect(await identityReads()).toBe(before+1);
   await page.evaluate(()=>{(window as any).planFixture.networkConnected=true;window.dispatchEvent(new Event('online'));window.dispatchEvent(new Event('online'));});
   await expect.poll(identityReads).toBe(before+2);
-  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription?.kind)).toBe('unavailable');
+  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription?.kind)).toBe('unavailable');await idle(page);
   expect(await identityReads()).toBe(before+2);
   await page.evaluate(()=>{window.dispatchEvent(new Event('online'));window.dispatchEvent(new Event('pageshow'));});await idle(page);
   expect(await identityReads()).toBe(before+2);

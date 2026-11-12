@@ -52,7 +52,7 @@ public class DeviceKeyTest {public static void main(String[]args)throws Exceptio
  System.out.println("PASS renderer-derived native read and review fence verified");}}
 `);
   put('NativeDeviceEnrollmentKey.java',readFileSync(nativeSource('NativeDeviceEnrollmentKey.java'),'utf8'));
-  put('NativeOwnerReminderHost.java',readFileSync(process.env.ALPHA_NOTIFICATION_HOST_SOURCE||nativeSource('NativeOwnerReminderHost.java'),'utf8'));
+  put('NativeOwnerReminderHost.java',readFileSync(nativeSource('NativeOwnerReminderHost.java'),'utf8'));
   execFileSync(javaBinary('javac'),['--release','17','-cp',jsonJar,'-d',dir,...files],{timeout:30000,stdio:'pipe'});
   assert.match(execFileSync(javaBinary('java'),['-cp',dir+':'+jsonJar,'ai.alphacompute.alphaphone.DeviceKeyTest'],{encoding:'utf8',timeout:30000,stdio:'pipe'}),/^PASS renderer-derived native read/);
  }finally{rmSync(dir,{recursive:true,force:true});}

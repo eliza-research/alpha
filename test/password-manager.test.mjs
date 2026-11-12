@@ -38,7 +38,8 @@ async function mount({selected='none',damaged=false}={}){
   async reveal(input){calls.push(['reveal',input]);reject('reveal');return {shown:true,hidesAfterMs:30_000};},
   async openAutofillSettings(){calls.push(['openAutofillSettings']);return {status:'opened',destination:'autofill-picker'};},
  };
- const pm=mounted=await import(pathToFileURL(file).href+'?load='+(++loads));
+ // A path specifier: Bun returns the cached module for a file: URL that differs only in its query.
+ const pm=mounted=await import(file+'?load='+(++loads));
  const toasts=[],pages=[];
  const helpers={info:(label,val)=>({kInfo:true,label,val}),group:rows=>({rows}),toast:m=>toasts.push(m),set:p=>pages.push(p.page),ic:{}};
  const rows=groups=>groups.flatMap(g=>g.rows||[]);

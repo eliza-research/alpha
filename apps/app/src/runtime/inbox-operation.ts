@@ -41,8 +41,8 @@ export class InboxOperation extends SharedInboxOperation {
 }
 
 export const regressedReceiptRefusal = 'Gmail reported this operation as not started after its outcome was already recorded. The saved receipt was kept and nothing was sent or changed again. Do not repeat it.';
-/** The part of a saved operation record the regression check reads. */
-type SavedReceiptPhase = Pick<InboxOperationRecord, 'requestId' | 'phase'>;
+/** Primitive receipt fields read by the regression check and its generated proof. */
+type SavedReceiptPhase = { requestId: string; phase: string };
 /** Whether a receipt read answers `prepared` for the request whose outcome the saved record already
  * holds. The journal would take such an answer for an unsent review and offer Confirm again. */
 export function regressedReceipt(saved: SavedReceiptPhase | null | undefined, requestId: string, state: string): boolean {

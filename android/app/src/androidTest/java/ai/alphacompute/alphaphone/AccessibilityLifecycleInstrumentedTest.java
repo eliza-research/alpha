@@ -34,7 +34,7 @@ import org.junit.runner.RunWith;
  *   AccessibilityHomeRoleInstrumentedTest checks that HOME lands on an accessible Alpha Home.)
  * - rotation: each view on its side and back keeps its screen, every control on screen
  *   (RotationInstrumentedTest.CLIPPED) and its reading order.
- * - process death: processRestartPhase, run by `node scripts/test-native-restart.ts
+ * - process death: processRestartPhase, run by `bun scripts/test-native-restart.ts
  *   accessibility`, leaves 200% font set, kills the process and reads the first screen of the new
  *   one (Home, or the required sign-in page of a signed-out flag-off build) in order.
  *
@@ -167,7 +167,7 @@ public final class AccessibilityLifecycleInstrumentedTest {
 
  /**
   * Process death at 200% font, in phases each run by a new instrumentation process
-  * (`node scripts/test-native-restart.ts accessibility`): prepare sets the font scale and opens
+  * (`bun scripts/test-native-restart.ts accessibility`): prepare sets the font scale and opens
   * Settings; the runner force-stops the app; verify reads the first screen of the new process in
   * order at the persisted scale; cleanup restores the font scale. Never run without its runner.
   */

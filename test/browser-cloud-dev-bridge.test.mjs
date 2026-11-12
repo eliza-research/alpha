@@ -7,7 +7,6 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {createServer} from 'node:http';
-if(!process.execArgv.some((arg,i)=>arg==='--import=tsx'||(arg==='--import'&&process.execArgv[i+1]==='tsx'))){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createBrowserCloudDevHandler}=await import('../scripts/browser-cloud-dev-bridge.ts');
 const {CloudProtocol}=await import('../apps/app/src/runtime/cloud-protocol.ts');
 const {residentAdmissionOutcome}=await import('../apps/app/src/runtime/subscription-entitlement.ts');
@@ -363,6 +362,9 @@ test('cancelling email sign-in during resident cleanup preserves the prior accou
   const pending=f.rpc({operation:'signInVerifyEmail',attemptId:started.data.attemptId,code:'123456'});
   await waiting;
   const cancellation=new BrowserCloudSignIn().cancel();
+  // Release the cleanup only once the host has taken the cancellation: otherwise the commit's
+  // two file writes race the Cancel request across the loopback socket.
+  while((await f.rpc({operation:'signInStatus'})).data.active)await new Promise(resolve=>setTimeout(resolve,5));
   release();
   const outcome=await cancellation;
   assert.equal(outcome.status,'cancelled');

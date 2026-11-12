@@ -9,7 +9,7 @@ const adapter = new URL('../../apps/app/src/prototype/notifications-adapter.ts',
 const selection = new URL('../../apps/app/src/prototype/context-selection.ts', import.meta.url);
 const dialog = new URL('../../apps/app/src/browser/content-question.ts', import.meta.url);
 export const shadeNoticeQuestionSources = [import.meta.url, adapter, selection, dialog,
-  new URL('../support/strip-types.mjs', import.meta.url), new URL('../../package-lock.json', import.meta.url)].map(fileURLToPath);
+  new URL('../support/strip-types.mjs', import.meta.url), new URL('../../bun.lock', import.meta.url)].map(fileURLToPath);
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function range(source, start, end) {

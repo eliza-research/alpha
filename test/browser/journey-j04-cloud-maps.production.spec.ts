@@ -109,7 +109,7 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
   });
 
   await test.step('an explicit destination, an explicit origin and an explicit mode choice', async () => {
-    await page.getByRole('button', { name: /^Port Hercule fuel dock/ }).first().click();
+    await page.locator('[data-alpha-maps-sheet="results"]').getByRole('button', { name: /^Port Hercule fuel dock/ }).first().click();
     await button(page, 'Directions').click();
     await expect(page.getByText('Choose a real origin to calculate a route.')).toBeVisible();
     expect((await mapsRequests(page)).filter(row => row.route === 'routes')).toEqual([]);
@@ -190,7 +190,7 @@ test('a cancelled search shows nothing late, a place outside coverage is named, 
   await test.step('a place Cloud found outside every coverage region is named, not routed', async () => {
     await search.fill('Nice harbour');
     await search.press('Enter');
-    await page.getByRole('button', { name: /^Port of Nice/ }).first().click();
+    await page.locator('[data-alpha-maps-sheet="results"]').getByRole('button', { name: /^Port of Nice/ }).first().click();
     await expect(maps).toContainText('This location is outside Monaco search and route coverage. Its coordinates are retained.');
     expect((await mapsRequests(page)).filter(row => row.route === 'routes')).toEqual([]);
   });
@@ -225,7 +225,7 @@ test('Cloud route alternatives are offered in order; choosing one requests nothi
   const search = page.getByRole('searchbox', { name: 'Search places', exact: true });
   await search.fill(LOCATION);
   await search.press('Enter');
-  await page.getByRole('button', { name: /^Port Hercule fuel dock/ }).first().click();
+  await page.locator('[data-alpha-maps-sheet="results"]').getByRole('button', { name: /^Port Hercule fuel dock/ }).first().click();
   await button(page, 'Directions').click();
   const origin = page.getByRole('textbox', { name: 'Starting point' });
   await origin.fill(`${ORIGIN.latitude}, ${ORIGIN.longitude}`);

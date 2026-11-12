@@ -11,6 +11,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {recordComparedObservation} from './observed-replay.mjs';
+import {scaledTimeout} from './timeouts.mjs';
 
 export const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const cli = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
@@ -105,7 +106,7 @@ export function scenarioActions(source, name, seen = new Set()) {
 }
 
 function quint(args) {
-  const result = spawnSync(process.execPath, [cli, ...args], {cwd: repositoryRoot, encoding: 'utf8', timeout: 120000, maxBuffer: 64 * 1024 * 1024});
+  const result = spawnSync(process.execPath, [cli, ...args], {cwd: repositoryRoot, encoding: 'utf8', timeout: scaledTimeout(120000), maxBuffer: 64 * 1024 * 1024});
   assert.ifError(result.error);
   return result;
 }

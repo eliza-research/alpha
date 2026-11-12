@@ -21,8 +21,11 @@ const reminder={definition:{id:'definition',title:'Check the draft',description:
 const future=()=>protocol.automationLocalDateInput(Date.now()+24*3600000);
 async function fixture(handler){
  const calls=[];
+ // Connection: close keeps every request on its own connection. Bun's fetch, like a browser, resends
+ // an idempotent request once when a reused keep-alive connection drops; the write counts below are
+ // per request the adapter made.
  const server=http.createServer(async(req,res)=>{let raw='';for await(const chunk of req)raw+=chunk;const call={path:req.url,method:req.method,body:raw?JSON.parse(raw):undefined};calls.push(call);assert.equal(req.headers.authorization,'Bearer synthetic-owner');
-  try{const result=await handler(call,req,res);if(res.destroyed)return;res.writeHead(result?.status||200,{'Content-Type':'application/json'});res.end(JSON.stringify(result?.body??result??{}));}catch(error){res.writeHead(500);res.end(JSON.stringify({error:error.message}));}
+  try{const result=await handler(call,req,res);if(res.destroyed)return;res.writeHead(result?.status||200,{'Content-Type':'application/json','Connection':'close'});res.end(JSON.stringify(result?.body??result??{}));}catch(error){res.writeHead(500);res.end(JSON.stringify({error:error.message}));}
  });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const request=async(path,method,body,signal)=>{const response=await fetch(`http://127.0.0.1:${server.address().port}`+path,{method,body:body===undefined?undefined:JSON.stringify(body),headers:{Authorization:'Bearer synthetic-owner','Content-Type':'application/json'},signal});const result=await response.json();if(!response.ok)throw Object.assign(Error('Fixture request refused'),{status:response.status,code:result.code});return result;};
  return {calls,request,client:new AutomationsProtocol(request),close:async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}};
@@ -62,7 +65,7 @@ function adapterFixture(request,storage={},options={}){
  if(dom){dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};dom.window.document.querySelector('.os').inert=false;}
  const context={...protocol,homeReadIsStale,presentHomeWorkflowFreshness,connectionController:controller,showAgentStatus,DailyApps:{listReminders:async()=>({reminders:options.deviceReminders??[{id:'device',title:'On-device reminder',body:'Existing phone row',at:Date.now()+10000,status:'scheduled'}]})},Capacitor:{getPlatform:()=> 'android',isNativePlatform:()=>options.native!==false},localStorage,window:dom?.window||{dispatchEvent(event){for(const fn of windowEvents.get(event.type)||[])fn(event);},addEventListener(name,fn){const f=windowEvents.get(name)||new Set();f.add(fn);windowEvents.set(name,f);},removeEventListener(name,fn){windowEvents.get(name)?.delete(fn);}},document:dom?.window.document||{hidden:false,addEventListener:(name,fn)=>events.set(name,fn),removeEventListener(){}},getComputedStyle:dom?.window.getComputedStyle,innerWidth:400,innerHeight:800,catalog:JSON.parse(fs.readFileSync('apps/app/src/icon-catalog.json','utf8')),queueMicrotask,AbortController,Date:options.now?class extends Date{static now(){return options.now();}}:Date,crypto,Event,console,
   // The in-app review is rendered by apps/app/src/browser/review.ts; this fixture answers it.
-  BrowserReviews:class{confirm(id,title,details,label,choice){reviews.asked.push({id,title,details,label});return Promise.resolve(reviews.answer&&choice?.current?.()!==false);}cancel(){}cancelAll(){}}};
+  BrowserReviews:class{confirm(id,title,details,label,choice){reviews.asked.push({id,title,details,label});const answer=typeof reviews.answer==='function'?reviews.answer():reviews.answer;return Promise.resolve(answer).then(value=>value&&choice?.current?.()!==false);}cancel(){}cancelAll(){}}};
  vm.runInNewContext('(()=>{'+transformed('.eliza/client-features/packages/contracts/src/workflow-intents.ts')+'\nglobalThis.SharedWorkflowIntentStore=WorkflowIntentStore;globalThis.sharedWorkflowIntentKey=workflowIntentKey;globalThis.emptyWorkflowIntentArchive=emptyWorkflowIntentArchive;globalThis.storageWorkflowIntentBackend=storageWorkflowIntentBackend;globalThis.workflowIntentOwnerPrefix=workflowIntentOwnerPrefix;})();',context);
  vm.runInNewContext(transformed('apps/app/src/runtime/workflow-intents.ts')+'\nglobalThis.WorkflowIntentStore=WorkflowIntentStore;globalThis.workflowIntentKey=workflowIntentKey;',context);
  vm.runInNewContext(transformed('.eliza/client-features/packages/ui/src/utils/automation-feed-filter.ts')+'\nglobalThis.FEED_FILTERS=FEED_FILTERS;globalThis.passesFilter=passesFilter;',context);
@@ -176,6 +179,31 @@ test('an unknown Run now stays locked after refresh, and Allow another releases 
  try{await openPrompt(app);reviewed(app,'Run now');await wait(()=>runs===1&&!app.render().automation.busy&&!app.render().automation.loading);assert.equal(app.render().automation.locked,true);assert.equal(Object.keys(app.storage).length,1);
   app.reviews.answer=false;app.render().automation.allowAnother();await new Promise(resolve=>setTimeout(resolve,20));assert.equal(app.render().automation.locked,true);assert.equal(Object.keys(app.storage).length,1);assert.deepEqual(app.reviews.asked,[{id:'allow-another-automation',title:'Allow another try?',details:'The last request may already have gone through. Trying again could run it twice.',label:'Allow another try'}]);
   app.reviews.answer=true;app.render().automation.allowAnother();await wait(()=>!app.render().automation.locked&&!app.render().automation.busy);assert.equal(Object.keys(app.storage).length,0);assert.equal(app.render().automation.actions.find(action=>action.label==='Run now').disabled,false);assert.equal(runs,1);}finally{app.close();await f.close();}
+});
+test('a confirmation for an older retained automation request cannot clear its replacement',async()=>{
+ let runs=0,confirm;
+ const f=await fixture((call,_req,res)=>{if(call.method==='POST'){runs++;res.destroy();return;}return read(call);});
+ const app=adapterFixture(f.request);
+ app.reviews.answer=()=>new Promise(resolve=>{confirm=resolve;});
+ try{
+  await openPrompt(app);reviewed(app,'Run now');
+  await wait(()=>runs===1&&!app.render().automation.busy&&!app.render().automation.loading);
+  const [slot]=Object.keys(app.storage);
+  assert.ok(slot);
+  app.render().automation.allowAnother();
+  await wait(()=>!!confirm);
+  const replacement=JSON.stringify({...JSON.parse(app.storage[slot]),intentRevision:crypto.randomUUID()});
+  app.storage[slot]=replacement;
+  confirm(true);
+  await wait(()=>app.storage[slot]===undefined||app.render().automation.message==='Couldn’t release');
+  assert.equal(app.storage[slot],replacement);
+  assert.equal(app.render().automation.locked,true);
+  app.reviews.answer=true;
+  app.render().automation.allowAnother();
+  await wait(()=>!app.render().automation.locked&&!app.render().automation.busy);
+  assert.equal(app.storage[slot],undefined);
+  assert.equal(runs,1);
+ }finally{confirm?.(false);app.close();await f.close();}
 });
 test('a new automation says it saves paused, and once saved how to turn it on',async()=>{
  let posts=0;const f=await fixture(call=>{if(call.method==='POST'&&call.path==='/api/triggers'){posts++;return {trigger:{id:'created',...call.body}};}return read(call);});const app=adapterFixture(f.request);

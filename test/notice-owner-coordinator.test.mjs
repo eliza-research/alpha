@@ -9,5 +9,5 @@ test('notice coordinator retries transient suspension and always fences sign-out
  const reconnect=fixture();reconnect.c.update(A);await reconnect.drain();reconnect.c.update({...out,busy:true});await reconnect.drain();reconnect.c.update({...A,identity:'session-a2'});await reconnect.drain();assert.deepEqual(reconnect.transitions,['a','a'],'busy reconnect publishes no null owner');
  reconnect.c.update({...out,busy:true});await reconnect.drain();reconnect.c.update(out);await reconnect.drain();assert.deepEqual(reconnect.transitions,['a','a',''],'settled sign-out still fences');
  console.log('PASS');`;
- assert.match(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:new URL('../',import.meta.url),encoding:'utf8'}),/PASS/);
+ assert.match(execFileSync(process.execPath,['-e',script],{cwd:new URL('../',import.meta.url),encoding:'utf8'}),/PASS/);
 });

@@ -103,7 +103,7 @@ test('an overflowing Home takes only a clearly downward drag at its top from the
 });
 
 test('the overflow pull listens to touches only while Home is showing, and still claims a pull there', async () => {
-  const { tsImport } = await import('tsx/esm/api');
+  const { tsImport } = await import('./support/ts-import.mjs');
   const { installSystemShade } = await tsImport('../apps/app/src/prototype/system-shade.ts', import.meta.url);
   class FakeElement {
     constructor(attrs = {}, parent = null) { Object.assign(this, { attrs, parentElement: parent, scrollTop: 0, scrollHeight: 100, clientHeight: 100, ownerDocument: doc }); }

@@ -319,7 +319,7 @@ async function mountedVoiceGate(owner,automatic,{holdFlush=false}={}){
   let state={pending:true,phase:'preparing',activationId,bridgeId,automatic};
   await context.watch({async updateState(){return state;},async addListener(){return {remove:async()=>{}};},
     async activateUpdate(input){acknowledgments.push(input);},continueUpdate:async()=>{}},
-    {dialogClass:'test',dialogLabel:'Update',pendingLabel:'Updating',continueLabel:'Continue',navigationEvents:[]},context.prepare,()=>{});
+    {dialogClass:'alpha-update-startup',dialogLabel:'Update',pendingLabel:'Updating',continueLabel:'Continue',navigationEvents:[]},context.prepare,()=>{});
   await new Promise(setImmediate);
   return {acknowledgments,flushes:()=>flushes,release,
     async close(){state={pending:false,activationId,bridgeId,outcome:'failed'};assert.ok(waits.length);waits.shift()();await new Promise(setImmediate);window.close();}};

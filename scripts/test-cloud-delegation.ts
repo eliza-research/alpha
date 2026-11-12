@@ -8,7 +8,7 @@ import react from '@vitejs/plugin-react';
 import {build} from 'vite';
 import {startLoopback, stopLoopback} from './fixtures/loopback.ts';
 
-const source = path.resolve(process.env.ALPHA_HOSTED_SOURCE_ROOT || process.cwd());
+const source = process.cwd();
 const out = path.resolve(process.env.ALPHA_HOSTED_TEST_OUTPUT || 'test-results/cloud-delegation-browser');
 const fixture = path.join(source, 'scripts/fixtures/cloud-delegation');
 await mkdir(out, {recursive: true});

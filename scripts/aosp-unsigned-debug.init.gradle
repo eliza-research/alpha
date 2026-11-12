@@ -1,5 +1,0 @@
-allprojects { p ->
- p.plugins.withId('com.android.application') {
-  p.androidComponents.finalizeDsl { dsl -> dsl.buildTypes.debug.signingConfig = null }
- }
-}

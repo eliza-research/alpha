@@ -4,9 +4,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const entry = new URL('../../apps/app/src/runtime/local-agent-stream.ts', import.meta.url);
+const hostRoot = fileURLToPath(new URL('../../', import.meta.url));
 
 /** Bundle the actual stream parser so Node tests can run its renderer dependency graph. */
-export async function loadLocalAgentStream(hostRoot = fileURLToPath(new URL('../../', import.meta.url))): Promise<typeof import('../../apps/app/src/runtime/local-agent-stream.ts')> {
+export async function loadLocalAgentStream(): Promise<typeof import('../../apps/app/src/runtime/local-agent-stream.ts')> {
   const { build }: typeof import('esbuild') = createRequire(path.join(hostRoot, 'package.json'))('esbuild');
   const compiled = await build({
     stdin: { contents: readFileSync(entry, 'utf8'), loader: 'ts', resolveDir: path.join(hostRoot, 'apps/app/src/runtime') },

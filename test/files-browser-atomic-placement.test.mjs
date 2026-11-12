@@ -21,8 +21,7 @@ test('Browser Files placement preserves exact rows and Trash markers on IndexedD
     bundle: true, write: false, platform: 'browser', format: 'iife',
     external: ['pdfjs-dist'],
   });
-  const browser = await chromium.launch({headless: true, args: ['--no-sandbox'],
-    ...(process.env.ALPHA_CHROMIUM_PATH ? {executablePath: process.env.ALPHA_CHROMIUM_PATH} : {})});
+  const browser = await chromium.launch({headless: true, args: ['--no-sandbox']});
   try {
     const context = await browser.newContext({serviceWorkers: 'block'});
     await context.route('**/*', route => route.request().url() === fixtureOrigin

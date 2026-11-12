@@ -10,7 +10,7 @@ listed in `manifest.json`. All transitions are local specification execution.
 | --- | --- | --- |
 | [IdentitySession](IdentitySession.qnt) | phase/method/pending/consumed, receipt/key/acknowledged/ackTries, epoch/attemptOwner/owner | `KeyBeforeAck`, `DurableReceiptBeforeKey`, `SingleUseGoogleReturn`, `MatchedReturnBurned`, `BoundedAttempts`, `AuthenticatedKey` |
 | [ServiceAuthorization](ServiceAuthorization.qnt) | plan/validFor/refresh/failures, signedRefusal/credits, owner/epoch/requestOwner/requestEpoch, request/dispatched | `RefusalNotUpgraded`, `ExpiryHonest`, `LocalIndependent`, `ExactManagedRoute`, `CurrentDispatch` |
-| [GoogleAccounts](GoogleAccounts.qnt) | attempt/pendingEpoch/phase/returnMatched, account/readGrant/modifyGrant/calendarGrant, cacheVisible/review, disconnectSent/revoked | `ReviewNeedsCurrentModify`, `CacheNeedsRead`, `ModifyIncludesRead`, `RevokedAccountEmpty` |
+| [GoogleAccounts](GoogleAccounts.qnt) | attempt/pendingEpoch/phase/returnMatched, account/readGrant/modifyGrant/calendarGrant, cacheVisible/review, disconnectSent/revoked, disconnectOutcome/disconnectRowsKnown | `ReviewNeedsCurrentModify`, `CacheNeedsRead`, `ModifyIncludesRead`, `RevokedAccountEmpty`, `DisconnectOutcomeNeedsReadback` |
 | [CalendarSync](CalendarSync.qnt) | phase/kind/holder/instance, undoOpen/clockKnown, baseRevision/remoteRevision/checked, retryAuthorized/applied/sends, consent/localRevision/consentReview | `NoAutomaticUnknownWrite`, `UndoBeforeDispatch`, `PausedNeedsDecision`, `DurableClaim`, `VisibleOwnerBound` |
 | [InboxDelivery](InboxDelivery.qnt) | phase/durable/opOwner/opGrant, reviewedRevision/reviewedAttachments/exactReview, outcome/providerConfirmed/draftExists, dispatches | `AtMostOneDispatch`, `PersistBeforeDispatch`, `CacheBound`, `SuccessfulCleanup`, `UnknownCannotRearm` |
 | [MapsNavigation](MapsNavigation.qnt) | generation/requestGeneration/requestEpoch, locationGranted/fixFresh, route/previousRoute/guidance/rerouting, assistant/foreground | `GuidanceHasRoute`, `RerouteKeepsRoute`, `RetiredRouteHidden`, `FailedRerouteKept` |
@@ -161,7 +161,7 @@ point also reproduces the same sequence with in-memory draft storage and a
 synthetic successful export receipt.
 
 ```sh
-node specs/quint/services/scan-source-conformance.mjs
+bun specs/quint/services/scan-source-conformance.mjs
 ```
 
 The script succeeds when it observes the documented discrepancy. It creates no

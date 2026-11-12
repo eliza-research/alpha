@@ -8,7 +8,7 @@ acknowledgement recovery. Each schedule has a fresh JVM so its HTTPS URL factory
 cannot affect another test. Unknown authorities and routes fail the fixture.
 
 ```sh
-node specs/quint/refinement/services/sign-in-coordinator.mjs
+bun specs/quint/refinement/services/sign-in-coordinator.mjs
 ```
 
 The adapter runs in the services aggregate and also has a standalone command. Its seventeen schedules

@@ -21,5 +21,5 @@ destination. Provider effects and replay, linked control and Maps event
 readback remain separate.
 
 ```sh
-node --test test/quint-agent-calendar-mutation.test.mjs
+bun test test/quint-agent-calendar-mutation.test.mjs
 ```

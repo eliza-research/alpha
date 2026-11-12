@@ -18,7 +18,7 @@ Historical result tables retain their original evidence classification.
 
 ## Integrated formal gate
 
-`npm run quint:check` passed all 174 model phases, comprising typechecking,
+`bun run quint:check` passed all 174 model phases, comprising typechecking,
 scenario execution and seeded simulation for every model. All 396 registered
 scenarios passed. Each simulation used seed 20261107, up to 80 sampled traces
 and 40 transitions per trace. The deliberately false invariant canary was
@@ -110,7 +110,7 @@ runner independently required that counterexample.
 
 ## Repository and Android gates
 
-`npm run verify` completed with exit 1 after its formal gate and TypeScript stage
+`bun run verify` completed with exit 1 after its formal gate and TypeScript stage
 passed. The Node suite reported 1,953 tests, with 1,916 passed, 32 failed and five
 skipped, in 63 minutes. Its full output is
 `test-results/quint/repository-verify.log`.
@@ -137,9 +137,9 @@ Outputs are retained in `test-results/quint/production-web-build.log` and
 `test-results/quint/production-bundle-audit.log`.
 
 Both required Android commands were rerun and exited 2 before Gradle.
-`npm run android:build:local` stopped in embedding-host admission because staged
+`bun run android:build:local` stopped in embedding-host admission because staged
 `libelizainference.so` and `libelizavoicejni.so` differ from the reviewed bytes.
-`npm run android:build` reported that the pinned native engine needs
+`bun run android:build` reported that the pinned native engine needs
 requalification. The exact outputs and command results are retained in
 `test-results/quint/android-attempts.json` and its linked logs.
 
@@ -199,7 +199,7 @@ longer runs a separate typecheck phase. `quint:verify` runs an additional
 one-transition pass for models that declare `additionalProofInit`.
 
 No aggregate result for this registry is recorded here. A fresh full
-`npm run quint:check` receipt and fresh model-checking receipts
+`bun run quint:check` receipt and fresh model-checking receipts
 (`quint:verify`, and `quint:compare` and `quint:temporal` for the legacy modules
 that declare those checks) are required for the 335-model total before any pass
 is claimed for it. Earlier receipts remain evidence only for the model and source

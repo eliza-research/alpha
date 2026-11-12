@@ -43,7 +43,7 @@ for(const availability of ['rejected','pending'])test(`ordinary Notes/Calendar/t
 // A VIEWS handoff naming a view this phone does not map leaves the agent's reply standing:
 // the real client returns unavailable before any claim, and the chat shows a short note.
 test('an unmapped VIEWS handoff is reported in chat without a claim or a throw',async()=>{
- const {stripTypeScriptTypes}=await import('node:module');
+ const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');
  const adapter=fs.readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
  const start=adapter.indexOf('  function openInternalView('),helper=adapter.slice(start,adapter.indexOf('  function canonicalNotesKey(',start));
  const requests=[],context={view:'home',revision:1,sensitive:false};

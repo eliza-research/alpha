@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // The Eliza Cloud page is a pure function in the settings-facts region of the adapter.
-const text=readFileSync(process.env.SETTINGS_SOURCE||'apps/app/src/prototype/settings-adapter.ts','utf8');
+const text=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const start=text.indexOf('        const plan=connectionController.residentPlanSettings();');
 const end=text.indexOf("        page.groups.push(group([{...connectionHelpRow()",start);
 assert(start>=0&&end>start);

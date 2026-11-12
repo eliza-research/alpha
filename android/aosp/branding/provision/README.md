@@ -7,8 +7,10 @@ sends an explicit ordered request to the launcher. The receiver requires the sen
 `MANAGE_ROLE_HOLDERS` permission and verifies that the launcher is running on an admitted
 Alpha image before enabling and reading back its telephony components. Provision assigns
 the roles through Android's RoleManager and reads back every required holder before
-completing. Production image staging checks the APK for the protected receiver even when
-reusing an earlier APK admission receipt. Before building, apply this Provision source
+completing, including a final readback after applying the eligible presets.
+Production image staging checks the privately staged APK for the protected receiver
+and all nine role and routing components, including their intent filters, permissions,
+and private MMS provider. Before building, apply this Provision source
 packet to the generated product. The production product copies its feature XML from
 the packet, so skipping the source stage leaves a required build input missing.
 Development images and devices without

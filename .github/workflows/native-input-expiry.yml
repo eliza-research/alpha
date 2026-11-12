@@ -22,6 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The released native input pins live on main, including for develop dispatches.
           ref: ${{ github.ref == 'refs/heads/main' && github.sha || 'refs/heads/main' }}
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -30,7 +31,20 @@ jobs:
       - name: Report expiry for the reviewed artifact pins
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          if [ ! -e scripts/ci/check-native-input-expiry.py ] && [ ! -L scripts/ci/check-native-input-expiry.py ]; then
+            if [ ! -e android/hosted-native-inputs.json ] && [ ! -L android/hosted-native-inputs.json ]; then
+              message='The main release branch awaits promotion of the native input expiry monitor and initial native input provisioning in #916. android/hosted-native-inputs.json is absent.'
+              echo "::notice title=Launcher OTA native inputs::$message"
+              if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+                printf '## Launcher OTA native input expiry\n\n- %s\n' "$message" >> "$GITHUB_STEP_SUMMARY"
+              fi
+              exit 0
+            fi
+            echo '::error title=Launcher OTA native inputs::Native input pins are present on main, but the expiry monitor is absent. Promote the monitor before relying on these pins.'
+            exit 1
+          fi
           source=$(git rev-parse --verify HEAD)
           printf 'Reviewed main checkout %s.\n\n' "$source" >> "$GITHUB_STEP_SUMMARY"
           GITHUB_SHA="$source" python3 -B scripts/ci/check-native-input-expiry.py

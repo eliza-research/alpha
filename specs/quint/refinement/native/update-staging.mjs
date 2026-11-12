@@ -53,7 +53,7 @@ const initialNative = {'s.owner':0, 's.target':0, 's.phase':'idle', 's.file':'ab
 
 function settingsProgram() {
   const source = readFileSync(join(root, settings), 'utf8');
-  const reviewStart=source.indexOf('export const UPDATE_SCHEMA'), reviewEnd=source.indexOf('/** Field updates wait for Home',reviewStart);
+  const reviewStart=source.indexOf('export const UPDATE_SCHEMA'), reviewEnd=source.indexOf('export function automaticUpdateIdle(',reviewStart);
   const cacheStart=source.indexOf('const UPDATE_KEY'), cacheEnd=source.indexOf('/** Keep the reference settings components',cacheStart);
   assert.ok(reviewStart>=0&&reviewEnd>reviewStart&&cacheStart>reviewEnd&&cacheEnd>cacheStart,'Exact non-overlapping update parser and cache source blocks');
   const review=source.slice(reviewStart,reviewEnd), cache=source.slice(cacheStart,cacheEnd);

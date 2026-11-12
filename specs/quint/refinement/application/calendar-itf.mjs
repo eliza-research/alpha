@@ -4,6 +4,7 @@ import {mkdtempSync, readFileSync, readdirSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 const cli = join(root, 'node_modules/@informalsystems/quint/dist/src/cli.js');
@@ -33,7 +34,7 @@ function read(file, name, variable) {
 
 function quint(args) {
   return new Promise((resolve, reject) => execFile(process.execPath, [cli, ...args], {cwd: root, encoding: 'utf8',
-    timeout: 120000, maxBuffer: 16 * 1024 * 1024}, (error, stdout, stderr) => {
+    timeout: scaledTimeout(120000), maxBuffer: 16 * 1024 * 1024}, (error, stdout, stderr) => {
     if (error && typeof error.code !== 'number') reject(error);
     else resolve({status: error ? error.code : 0, stdout, stderr});
   }));

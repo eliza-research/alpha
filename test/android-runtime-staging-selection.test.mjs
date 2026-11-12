@@ -44,8 +44,8 @@ test('legacy producer defaults remain explicit musl with both ABIs and respect a
 test('the actual agent:stage-android entry uses selected environment and explicit SDK target before building',()=>{
  const script=fs.readFileSync(new URL('../scripts/stage-local-agent-runtime.ts',import.meta.url),'utf8');
  const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
- assert.equal(pkg.scripts['agent:stage-android'],'node scripts/stage-local-agent-runtime.ts');
- assert.ok(pkg.scripts['android:build:local'].includes('npm run agent:stage-android'));
+ assert.equal(pkg.scripts['agent:stage-android'],'bun scripts/stage-local-agent-runtime.ts');
+ assert.ok(pkg.scripts['android:build:local'].includes('bun run agent:stage-android'));
  assert.ok(script.includes('const env=selection.env;'));
  assert.ok(script.includes('bunTarget:${JSON.stringify(selection.bunTarget)}'));
  assertBefore(script,'const selection=runtimeStagingSelection(source,process.env);',"'scripts/build-mobile-agent.ts'");

@@ -27,7 +27,7 @@ test('recorded install-time formatting stays truthful and About never claims the
 // Software update (settings-adapter.ts, AlphaDevicePlugin): the renderer's manifest policy and check cadence.
 // The rendered rows, the check wiring and the install payload are in test/browser/settings-device-facts.spec.ts.
 const installed={versionCode:7,launcher:true,signerSha256:'5c'.repeat(32)};
-const manifest={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/eliza-research/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
+const manifest={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/alphacompute/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
 test('Software update offers only a complete, newer manifest for this flavor and signer, with an HTTPS APK, a SHA-256 and a bounded size',()=>{
  assert.equal(m.UPDATE_SCHEMA,'alpha-update/v1');
  const {schema,variant,signerSha256,...offered}=manifest;
@@ -126,7 +126,9 @@ test('the grouped Privacy page retains permission review and action-review contr
 
 test('the privacy hero names Cloud speech only while it is the route in use, and retains native and offline/startup truth',async()=>{
  const nativeSource=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
- const wording=nativeSource.slice(nativeSource.indexOf('type EgressConnection ='),nativeSource.indexOf('/** Only a verified resident session'));
+ const start=nativeSource.indexOf('type EgressConnection ='),end=nativeSource.indexOf('const externalModules =',start);
+ assert.ok(start>=0&&end>start,'the native privacy projection is present');
+ const wording=nativeSource.slice(start,end);
  // The speech route is read at run time (voice-selection.ts speechRoute); no build profile is involved.
  assert.doesNotMatch(nativeSource,/cloudRuntimeEnabled/);
  const load=async route=>import('data:text/javascript;base64,'+Buffer.from(`const speechRoute=()=>${JSON.stringify(route)};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'strip'})).toString('base64'));

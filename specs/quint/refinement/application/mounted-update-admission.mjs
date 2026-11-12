@@ -29,6 +29,10 @@ async function fixture(name, code) {
   const reads = [], waits = [], positive = new Set(), negative = new Set();
   const pending = new Map(), restarts = [], continues = [];
   let listener, continuation, notices = 0, failModal = false, busy = false;
+  const signIn = document.createElement('main');
+  signIn.setAttribute('data-alpha-app-update-sign-in', '');
+  const address = document.createElement('input');
+  signIn.append(address);
   window.HTMLDialogElement.prototype.showModal = function () {
     if (failModal) throw Error('Fixture modal refused');
     this.setAttribute('open', '');
@@ -50,7 +54,7 @@ async function fixture(name, code) {
   const context = vm.createContext({
     window, document, HTMLElement: window.HTMLElement, fixtureShell: owner,
     connectionController: {
-      getSnapshot: () => ({busy: false}),
+      getSnapshot: () => ({busy: false, open: signIn.isConnected}),
       captureAppUpdateReconnect() {
         const id = currentActivation();
         return async stillSettled => restarts.push({id, stillSettled});
@@ -99,7 +103,8 @@ async function fixture(name, code) {
     window.dispatchEvent(event);
     return event.defaultPrevented;
   };
-  const button = () => document.querySelector('dialog[open] button');
+  const dialog = () => document.querySelector('dialog.alpha-update-startup[open]');
+  const button = () => dialog()?.querySelector('button');
   const observe = () => {
     const {active, acknowledged, reconnect, localRefusal} = context.inspect();
     assert.equal(block('alpha-back'), block('launcher-home'));
@@ -109,7 +114,7 @@ async function fixture(name, code) {
       'state.active': currentActivation(),
       'state.bridge': bridges.indexOf(active?.bridgeId ?? ''),
       'state.phase': active?.phase ?? 'idle',
-      'state.panel': Boolean(document.querySelector('dialog[open]')),
+      'state.panel': Boolean(dialog()),
       'state.canContinue': Boolean(button() && !button().hidden),
       'state.acknowledged': activations.indexOf(acknowledged ?? ''),
       'state.pending': qset(pending.keys()),
@@ -141,10 +146,12 @@ async function fixture(name, code) {
     if (row === undefined) read.reject(Error('Fixture readback unavailable'));
     else read.resolve(row);
   }
+  const showSignIn = () => document.body.append(signIn);
   const entry = (id, bridge, phase) => ({activationId: activations[id], bridgeId: bridges[bridge], phase});
   return {
     result,
     end: () => window.close(),
+    showSignIn,
     async notify(id, bridge, phase, show = true, automatic = false) {
       failModal = !show;
       listener({...entry(id, bridge, phase),automatic});
@@ -168,6 +175,23 @@ async function fixture(name, code) {
       const request = pending.get(id); assert.ok(request);
       pending.delete(id); busy = true; request.barrier.resolve();
       await save('new foreground work retires automatic readiness after draft flush', 'prepared', id, false);
+    },
+    async finishWithSignInDraft(id) {
+      const request = pending.get(id); assert.ok(request);
+      pending.delete(id);
+      address.value = 'draft@example.invalid';
+      request.barrier.resolve();
+      await save('a retained sign-in draft retires readiness even with no editor focused', 'prepared', id, false);
+    },
+    async finishWithAccessSetup(id) {
+      const request = pending.get(id); assert.ok(request);
+      pending.delete(id);
+      const access = document.createElement('dialog');
+      access.className = 'alpha-startup-permissions';
+      document.body.append(access);
+      access.showModal();
+      request.barrier.resolve();
+      await save('access setup covering Home retires readiness after draft flush', 'prepared', id, false);
     },
     async terminal(id, bridge, outcome, idle = false, resume = false) {
       await readBack({pending: false, bridgeId: bridges[bridge], activationId: activations[id],
@@ -276,6 +300,23 @@ globalThis.replace = () => { shell = {live: true}; };
   await run('automatic_download_cannot_interrupt_new_foreground_work', async f => {
     await f.pending(1, 1, 'preparing',false,true,true);
     await f.finishWhileBusy(1);
+    await f.terminal(1, 1, 'failed');
+  });
+  await run('empty_required_sign_in_can_acknowledge_an_automatic_update', async f => {
+    f.showSignIn();
+    await f.pending(1, 1, 'preparing', false, true, true);
+    await f.finish(1, true);
+    await f.terminal(1, 1, 'installed');
+  });
+  await run('a_sign_in_draft_written_during_preparation_refuses_readiness', async f => {
+    f.showSignIn();
+    await f.pending(1, 1, 'preparing', false, true, true);
+    await f.finishWithSignInDraft(1);
+    await f.terminal(1, 1, 'failed');
+  });
+  await run('automatic_update_cannot_interrupt_access_setup_on_home', async f => {
+    await f.pending(1, 1, 'preparing', false, true, true);
+    await f.finishWithAccessSetup(1);
     await f.terminal(1, 1, 'failed');
   });
 

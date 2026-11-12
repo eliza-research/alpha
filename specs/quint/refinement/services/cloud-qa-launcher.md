@@ -9,7 +9,7 @@ The as-built linked-log scenario in commit `c3383d0d32bb5e92cb41f23cbda726738084
 The finite scope is one invocation, one selected child and one previous profile and receipt. Real port availability, concurrent invocations, independent path replacement, kernel signals, forced-kill timeout, real credentials, Cloud responses and Android acceptance remain separate.
 
 ```sh
-node --test --test-concurrency=1 test/quint-cloud-qa-launcher.test.mjs test/cloud-qa-launcher.test.mjs
+bun test test/quint-cloud-qa-launcher.test.mjs test/cloud-qa-launcher.test.mjs
 ```
 
 ## Revision observations

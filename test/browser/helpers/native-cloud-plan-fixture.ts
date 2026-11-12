@@ -44,6 +44,9 @@ export async function installNativeCloudPlanPorts(page:Page, initial:NativePlanF
   const resident=w.residentAgent=w.createResidentAgentPlugin({owner:()=>residentId,agentId:residentId});
   const credential={credentialId:'11111111-1111-4111-8111-111111111111',token:'synthetic-plan-token',expiresAt:initial.expiresAt??Date.now()+60*24*3600*1000};
   const names={ElizaSystem:['getNetworkStatus'],AlphaCloudSignIn:['status','startEmail','verifyEmail','cancel','addListener','removeListener'],AlphaConnection:['secureRead','secureWrite','secureRemove','request','cancel','openExternal','addListener','removeListener'],Agent:['stop','getStatus','configureCloudProvider','clearProvider','providerStatus','start','request','setGoogleAgentAccess'],AlphaHostedResults:['disableBackground','addListener','removeListener'],DailyApps:['addListener','removeListener'],AlphaNotifications:['status','addListener','removeListener'],AlphaVoiceCloud:['checkPermissions']};
+  // Android's active-network observation follows the simulated network events.
+  window.addEventListener('offline',()=>{f.networkConnected=false;});
+  window.addEventListener('online',()=>{f.networkConnected=true;});
   w.Capacitor={PluginHeaders:Object.entries(names).map(([name,methods])=>({name,methods:name==='Agent'?resident.methods(methods):methods.map(name=>({name,rtype:'promise'}))})),nativeCallback:resident.nativeCallback,nativePromise:async(plugin:string,method:string,input:any)=>{
    f.calls.push({plugin,method,path:input?.url?new URL(input.url).pathname:undefined,url:input?.url,httpMethod:input?.method});
    if(plugin==='ElizaSystem'&&method==='getNetworkStatus'){

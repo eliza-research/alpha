@@ -19,7 +19,7 @@ writer also clears the cache before each write, which is its documented single-c
 contract. Alpha now owns concurrent file creation while keeping the shared URI and
 grant helpers. The installed authority, path, filename shape and expiry remain the same.
 
-Run `node --test test/quint-reviewed-copies-refinement.test.mjs` to compile the actual
+Run `bun test test/quint-reviewed-copies-refinement.test.mjs` to compile the actual
 classes and replay the bounded host schedules. Each scenario starts a fresh JVM and
 uses real temporary files. Latches hold the first listing against a peer load and a
 peer write. Other scenarios cover failed listing recovery, exact age thresholds,

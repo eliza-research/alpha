@@ -8,7 +8,7 @@
  * (android/release-signer.json). Runs on the Linux image host after the production image
  * build, with AOSP releasetools (otatools `bin/`) and a decrypted release key directory:
  *
- *   node scripts/sign-aosp-release.ts \
+ *   bun scripts/sign-aosp-release.ts \
  *     --target-files /abs/unsigned-target_files.zip --target-files-sha256 <hex from the build record> \
  *     --keys-dir /dev/shm/keys --releasetools /abs/otatools/bin --out /abs/new-release-dir \
  *     [--apksigner /abs/apksigner] [--map-key SOURCE=NAME ...] [--apk-manifest /abs/apk-manifest.json]

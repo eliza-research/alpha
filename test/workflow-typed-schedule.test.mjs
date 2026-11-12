@@ -6,7 +6,7 @@ import {resolve} from 'node:path';
 // for the exact reviewed version; a scheduled run reports the occurrence it ran for, and a missed or skipped
 // occurrence is presented as not run. Synthetic agent responses; no runtime, device or scheduler.
 const root=resolve(import.meta.dirname,'..');
-const run=script=>JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
+const run=script=>JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
 const prelude=`
 const P=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/workflow-protocol.ts'))});
 const D=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/workflow-device-contract.ts'))});

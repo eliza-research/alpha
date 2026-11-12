@@ -3,7 +3,7 @@
 // the upstream mobile-shell and native-system suites.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {cloneElement,createElement} from 'react';
 const {installHomeShell}=await tsImport('../apps/app/src/prototype/home-shell.ts',import.meta.url);

@@ -10,7 +10,7 @@ def sources():
 before=sources()
 # The generated Android host supplies the hash-pinned Gradle wrapper (scripts/android-host.ts) and
 # includes the fixture as a module, so android/gradle/verification-metadata.xml covers its build.
-subprocess.run(['node','scripts/android-host.ts'],check=True,timeout=300)
+subprocess.run(['bun','scripts/android-host.ts'],check=True,timeout=300)
 subprocess.run(['android/gradlew','-p','android','--no-daemon',':private-peer-fixture:assembleDebug'],check=True,timeout=600)
 assert sources()==before,'Helper sources changed during build'
 target=archive/'private-peer-debug.apk';assert not target.exists()

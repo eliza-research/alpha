@@ -7,9 +7,8 @@ import {fileURLToPath} from 'node:url';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {restoreAttachments} from './support/attachment-restoration.mjs';
 import {transformSync} from 'esbuild';
-const root=process.env.ALPHA_NOTES_BASE_ROOT??fileURLToPath(new URL('..',import.meta.url));
-const changed=process.env.ALPHA_NOTES_CANDIDATE_ROOT??root;
-const read=name=>fs.readFileSync(path.join(changed,name),'utf8');
+const root=fileURLToPath(new URL('..',import.meta.url));
+const read=name=>fs.readFileSync(path.join(root,name),'utf8');
 const source=read('apps/app/src/prototype/agent-adapter.ts');
 const slice=(from,to)=>{const start=source.indexOf(from),end=source.indexOf(to,start);assert.ok(start>=0&&end>start);return source.slice(start,end);};
 const transform=text=>stripTypeScriptTypes(text,{mode:'transform'});
@@ -17,10 +16,9 @@ function moduleLoader(globals={}){
  const modules=new Map();
  function load(request){
   let file=path.resolve(request);if(!fs.existsSync(file))for(const suffix of ['.ts','.tsx','.js'])if(fs.existsSync(file+suffix)){file+=suffix;break;}
-  const local=path.relative(root,file),candidate=path.join(changed,local);if(!local.startsWith('..')&&fs.existsSync(candidate))file=candidate;
   if(modules.has(file))return modules.get(file).exports;
   const module={exports:{}};modules.set(file,module);
-  const require=name=>{assert.match(name,/^\.\.?\//);const here=path.relative(changed,file);return load(path.resolve(path.dirname(here.startsWith('..')?file:path.join(root,here)),name));};
+  const require=name=>{assert.match(name,/^\.\.?\//);return load(path.resolve(path.dirname(file),name));};
   vm.runInNewContext(transformSync(fs.readFileSync(file,'utf8'),{loader:'ts',target:'es2022',format:'cjs'}).code,Object.defineProperties({exports:module.exports,module,require,AbortController,DOMException,crypto,structuredClone,TextEncoder,TextDecoder},Object.getOwnPropertyDescriptors(globals)),{filename:file});return module.exports;
  }
  return load;

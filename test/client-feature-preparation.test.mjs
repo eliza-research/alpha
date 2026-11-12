@@ -48,7 +48,7 @@ test('concurrent preparers after a source change all succeed and leave one authe
  git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Change']);
  const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
  const script=`import {prepareClientFeatures} from ${JSON.stringify(path.resolve('scripts/prepare-client-features.ts'))};prepareClientFeatures({root:${JSON.stringify(root)},projectVoice:false});`;
- const run=()=>new Promise(resolve=>{const child=spawn(process.execPath,['--input-type=module','-e',script],{stdio:['ignore','ignore','pipe']});let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});child.on('close',status=>resolve({status,stderr}));});
+ const run=()=>new Promise(resolve=>{const child=spawn(process.execPath,['-e',script],{stdio:['ignore','ignore','pipe']});let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});child.on('close',status=>resolve({status,stderr}));});
  for(const result of await Promise.all(Array.from({length:12},run))) assert.equal(result.status,0,result.stderr);
  const source=path.join(root,'.eliza/client-features'),stamp=JSON.parse(fs.readFileSync(path.join(source,'.source.json')));
  assert.equal(stamp.baseCommit,commit);assert.match(fs.readFileSync(path.join(source,fixtureLeaf),'utf8'),/changed = 2/);
@@ -99,7 +99,7 @@ test('client feature publication retires once while a peer moves the winner',()=
   catch(error){writeControl('complete',{status:1,retire,publish,read,error:error.stack});process.exitCode=1;}
  `;
  const children=actors.map(actor=>{
-  const child=spawn(process.execPath,['--input-type=module','-e',worker,actor,root,control,pathToFileURL(path.resolve('scripts/prepare-client-features.ts')).href],{stdio:['ignore','ignore','pipe']});
+  const child=spawn(process.execPath,['-e',worker,actor,root,control,pathToFileURL(path.resolve('scripts/prepare-client-features.ts')).href],{stdio:['ignore','ignore','pipe']});
   let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});
   const closed=new Promise(resolve=>child.on('close',status=>resolve({actor,status,stderr})));
   return {actor,child,closed,diagnostic:()=>({status:child.exitCode,signal:child.signalCode,stderr})};
@@ -227,7 +227,7 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
  assert.notEqual(stamp.sourceFiles[browserCommand],stamp.files[browserCommand]);
  // Run plain Node without tsx, aliases or a custom loader and exercise the imported
  // observation parser, rather than only checking the spelling of its specifier.
- const browserImport=spawnSync(process.execPath,['--input-type=module','-e',`
+ const browserImport=spawnSync(process.execPath,['-e',`
   import assert from 'node:assert/strict';
   import {observedNativeHistorySelection} from ${JSON.stringify(pathToFileURL(path.join(source,browserCommand)).href)};
   const message={content:{metadata:{clientDevice:{context:{view:'browser',revision:3,selectedObject:{kind:'browser-tab',id:'tab:7',revision:'document:2'}}}}}};

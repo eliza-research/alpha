@@ -45,7 +45,7 @@ import static org.junit.Assert.*;
  * creates is deleted by its unique title. Emulator evidence only; not a printed poster, a camera
  * capture, a synced account or device acceptance.
  *
- *   npm run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN --classes PosterCalendarJourney
+ *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN --classes PosterCalendarJourney
  */
 @RunWith(AndroidJUnit4.class)
 public class PosterCalendarJourneyInstrumentedTest {

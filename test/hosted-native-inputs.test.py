@@ -340,7 +340,7 @@ class HostedNativeInputsTest(unittest.TestCase):
                     write(root, native.MANIFEST, plan)
                     native.load_plan(root)
 
-    def test_unreviewed_or_mismatched_shared_engine_fails_before_transport(self):
+    def test_mismatched_shared_engine_fails_before_transport(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             plan, _ = fixture(root)
@@ -350,17 +350,11 @@ class HostedNativeInputsTest(unittest.TestCase):
             write(root, native.MANIFEST, plan)
             with self.assertRaisesRegex(ValueError, 'Voice and embedding libelizainference.so differ'):
                 native.load_plan(root)
-            voice['abis'][0]['engineAdmission'] = 'unreviewed workspace build'
-            plan['voiceRecordSha256'] = write(root, native.VOICE_RECORD, voice)
-            write(root, native.MANIFEST, plan)
-            with self.assertRaisesRegex(ValueError, 'Unreviewed voice engine'):
-                native.load_plan(root)
 
     def acquire(self, root, **options):
         _, archives = fixture(root, **options)
         env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
                'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
-               'GITHUB_REPOSITORY_OWNER_ID': str(native.embedding.REPOSITORY_OWNER_ID),
                'GITHUB_SHA': SOURCE, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2'}
         def committed(args, **kwargs):
             return native.subprocess.CompletedProcess(args, 0, (root / args[-1].removeprefix('HEAD:')).read_bytes())
@@ -389,7 +383,6 @@ class HostedNativeInputsTest(unittest.TestCase):
             fixture(root)
             env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
                    'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
-                   'GITHUB_REPOSITORY_OWNER_ID': str(native.embedding.REPOSITORY_OWNER_ID),
                    'GITHUB_SHA': SOURCE, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2'}
             changed = native.subprocess.CompletedProcess([], 0, b'other committed input pins')
             with patch.object(native.subprocess, 'check_output', return_value=SOURCE + '\n'), \
@@ -452,7 +445,7 @@ class HostedNativeInputsTest(unittest.TestCase):
         steps = ('Check the automatic native input manifest and artifact availability',
                  'actions/setup-java@', 'android-actions/setup-android@', 'Install pinned Android native toolchain',
                  'Acquire exact native inputs for the automatic candidate', 'Stage the admitted voice and embedding inputs',
-                 'Prepare and qualify fresh resident source', 'node scripts/stage-embedding-host.ts --verify',
+                 'Prepare and qualify fresh resident source', 'bun scripts/stage-embedding-host.ts --verify',
                  'native-input-admission.json')
         self.assertEqual(sorted(workflow.index(step) for step in steps), [workflow.index(step) for step in steps])
         preflight = workflow.split('Check the automatic native input manifest and artifact availability', 1)[1].split('      - ', 1)[0]
@@ -465,7 +458,7 @@ class HostedNativeInputsTest(unittest.TestCase):
         self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'", stage)
         self.assertIn('GH_TOKEN:', acquire)
         self.assertNotIn('GH_TOKEN:', stage)
-        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'\n        run: node scripts/voice-host.ts --verify --allow-absent", workflow)
+        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'\n        run: bun scripts/voice-host.ts --verify --allow-absent", workflow)
 
 
 if __name__ == '__main__':

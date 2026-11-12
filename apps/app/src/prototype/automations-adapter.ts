@@ -142,12 +142,32 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  }
  /** The owner's informed release of an unconfirmed request, after checking the record. Never retries it. */
  async function allowAnother(id:string){
-  if(controller||!id)return;
-  if(!await (releaseReviews??=new BrowserReviews()).confirm('allow-another-automation','Allow another try?','The last request may already have gone through. Trying again could run it twice.','Allow another try',{current:()=>!controller&&!!visible()})||controller)return;
-  const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;
-  const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();message='';publish();
-  try{const raw=await intents.read(id,abort.signal);if(raw!==null)await intents.acknowledge(id,raw,abort.signal);if(ticket===epoch)uncertain.delete(id);}
-  catch{if(ticket===epoch)message='Couldn’t release';}
+  const ownerContext=connectionController.getSnapshot().session, boundSessionId=binding()?.sessionId;
+  const selectedEditor=editor,selectedDetail=detail,selected=selectedEditor?.row||selectedDetail;
+  const selectedId=selected?key(selected):selectedEditor?requestKey('new:'+selectedEditor.kind):'';
+  if(!ownerContext||!boundSessionId||!id||id!==selectedId)return;
+  const selectedEpoch=epoch, ownerSessionId=ownerContext.sessionId;
+  const current=()=>!controller&&visible()&&epoch===selectedEpoch&&editor===selectedEditor&&detail===selectedDetail&&
+   connectionController.getSnapshot().session?.sessionId===ownerSessionId&&binding()?.sessionId===boundSessionId;
+  if(!current())return;
+
+  // Read the retained bytes before showing the review. Another surface can replace
+  // this slot while the dialog is open, even when its automation and owner match.
+  const intents=new WorkflowIntentStore(ownerContext);
+  let retained:string|null;
+  try{retained=await intents.read(id);}
+  catch{if(current()){message='Couldn’t release';publish();}return;}
+  if(!current())return;
+  if(!await (releaseReviews??=new BrowserReviews()).confirm('allow-another-automation','Allow another try?',
+   'The last request may already have gone through. Trying again could run it twice.',
+   'Allow another try',{current})||!current())return;
+
+  const ticket=++epoch,abort=controller=new AbortController();message='';publish();
+  try{
+   if(retained!==null)await intents.acknowledge(id,retained,abort.signal);
+   else if(await intents.read(id,abort.signal)!==null)throw Error('Automation request changed');
+   if(ticket===epoch)uncertain.delete(id);
+  }catch{if(ticket===epoch)message='Couldn’t release';}
   finally{if(ticket===epoch){intentStore=intents;controller=null;publish();}}
  }
  function show(row:AutomationRow){

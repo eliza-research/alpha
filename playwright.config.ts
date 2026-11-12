@@ -9,7 +9,7 @@ const productionOutput=`test-results/production-web-${productionPort}`;
 // The production lane runs production-surface.spec.ts and every <name>.production.spec.ts.
 const productionSpec=/(production-surface|\.production)\.spec\.ts$/;
 // Live specs need a running local agent and real providers; only the live project runs them
-// (npm run test:browser:live).
+// (bun run test:browser:live).
 const liveSpec=/\.local\.spec\.ts$/;
 
 // The top-level webServer list is not per-project. Start only the servers that the
@@ -36,13 +36,13 @@ if(needsDevelopment)process.env.ELIZA_DEV_ALLOW_TEST_MOCKS='1';
 const browserTestCloudProfile=join(tmpdir(),`alpha-browser-cloud-test-${randomUUID()}`);
 const development={
   // The development server explicitly opts into test mocks, fixtures and device controls.
-  command: `npm run dev:ui -- --port ${port} --strictPort`, url: `http://127.0.0.1:${port}`, reuseExistingServer: false, timeout: 180_000,
+  command: `bun run dev:ui -- --port ${port} --strictPort`, url: `http://127.0.0.1:${port}`, reuseExistingServer: false, timeout: 180_000,
   env: { ELIZA_DEV_ALLOW_TEST_MOCKS: '1', ALPHA_BROWSER_CLOUD_PROFILE: browserTestCloudProfile },
 };
 const production={
   // A flag-off production build served by vite preview: no mocks, fixtures or developer surfaces.
   // It is written outside web-dist so it never replaces a release or test-mocks build.
-  command: `npm run upstream:prepare-client && npx vite build --outDir ../../${productionOutput} && node scripts/audit-production-bundle.ts ${productionOutput} && npx vite preview --outDir ../../${productionOutput} --host 127.0.0.1 --port ${productionPort} --strictPort`,
+  command: `bun run upstream:prepare-client && bunx vite build --outDir ../../${productionOutput} && bun scripts/audit-production-bundle.ts ${productionOutput} && bunx vite preview --outDir ../../${productionOutput} --host 127.0.0.1 --port ${productionPort} --strictPort`,
   url: `http://127.0.0.1:${productionPort}`, reuseExistingServer: false, timeout: 180_000,
   env: { ELIZA_DEV_ALLOW_TEST_MOCKS: '', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: '', VITE_LOCAL_AGENT: '' },
 };

@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkMapsEventReturn} from '../specs/quint/refinement/application/maps-event-return.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
-test('Maps retains only the exact current visit ownership while Calendar return reads settle', {timeout: 120000}, async () => {
+test('Maps retains only the exact current visit ownership while Calendar return reads settle', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkMapsEventReturn([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

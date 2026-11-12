@@ -6,10 +6,6 @@ import { spawnSync } from 'node:child_process';
 import http from 'node:http';
 import type {CloudCredential, CloudCredentialStore, CloudEnvironment, CloudNativeRequest} from '../apps/app/src/runtime/cloud-protocol.ts';
 import type {CloudSignInPort} from '../apps/app/src/runtime/cloud-sign-in.ts';
-if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
-  const child = spawnSync(process.execPath, ['--import=tsx', process.argv[1]], { stdio: 'inherit' });
-  process.exit(child.status ?? 1);
-}
 const { CloudProtocol, CloudProtocolError } = await import('../apps/app/src/runtime/cloud-protocol.ts');
 // Hosted agents are development infrastructure (#406): the product adapter has no agent route.
 const { DevelopmentCloudAgentProtocol } = await import('../apps/app/src/runtime/development-cloud-agents.ts');

@@ -13,7 +13,7 @@ android/app/src/main/assets/
 .DS_Store
 
 # Android host generated from android/consumer-host.json by the upstream generator
-# (node scripts/android-host.ts; every Android build regenerates it)
+# (bun scripts/android-host.ts; every Android build regenerates it)
 android/.eliza-consumer-host.json
 android/.eliza-consumer-profile.json
 android/build.gradle
