@@ -1,5 +1,5 @@
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
-import {seedCompletedAccessSetup} from './flag-off-android';
+import {openYourAgent,seedCompletedAccessSetup} from './flag-off-android';
 import {test,expect,type Page} from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 // Production lane only: the flag-off bundle that the APKs package, with only the Android IPC
@@ -321,10 +321,8 @@ for(const scenario of ['unbound','recovering','connected'] as const)test(`Agent 
   const close=page.getByRole('button',{name:'Close connection settings',exact:true});if(await close.isVisible())await close.click();
  }
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
- await page.getByRole('button',{name:'Settings',exact:true}).click();
- await current(page).getByRole('button',{name:'About',exact:true}).click();
- await current(page).getByRole('button',{name:'Connection help',exact:true}).click();
- const account=current(page);await expect(account.getByRole('heading',{name:'Connection help',exact:true})).toBeVisible();
+ await openYourAgent(page);
+ const account=current(page);
  await expect(account).not.toContainText('On this computer');
  await expect(account).not.toContainText('Running on this phone');
  if(scenario==='recovering')await expect(account).not.toContainText('Running on this device');

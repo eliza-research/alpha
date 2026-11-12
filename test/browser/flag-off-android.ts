@@ -472,10 +472,13 @@ export async function openYourAgent(page: Page) {
   const minimize = page.getByRole('button', { name: 'Minimize chat', exact: true });
   if (await minimize.isVisible()) await minimize.click();
   await button(page, 'Settings').click();
-  // Recovery and conversation controls live under Settings › About › Connection help.
-  await page.getByRole('button', { name: 'About', exact: true }).click();
-  await page.getByRole('button', { name: 'Connection help', exact: true }).click();
   const panel = page.getByRole('region', { name: 'Settings', exact: true });
-  await expect(panel.getByRole('heading', {name:'Connection help',exact:true})).toBeVisible();
+  const general = panel.getByRole('button', { name: 'General', exact: true });
+  await expect(general).toBeVisible();
+  await general.click();
+  const connection = panel.getByRole('button', { name: 'Agent connection', exact: true });
+  await expect(connection).toBeVisible();
+  await connection.click();
+  await expect(panel.getByRole('heading', { name: 'Agent connection', exact: true })).toBeVisible();
   return panel;
 }
