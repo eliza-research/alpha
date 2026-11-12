@@ -147,11 +147,21 @@ async function fixture(name, code) {
     else read.resolve(row);
   }
   const showSignIn = () => document.body.append(signIn);
+  const showAccountReview = (hidden = false) => {
+    const wrapper = document.createElement('div');
+    wrapper.hidden = hidden;
+    const review = document.createElement('div');
+    review.setAttribute('role', 'dialog');
+    review.setAttribute('aria-modal', 'true');
+    wrapper.append(review);
+    document.body.append(wrapper);
+  };
   const entry = (id, bridge, phase) => ({activationId: activations[id], bridgeId: bridges[bridge], phase});
   return {
     result,
     end: () => window.close(),
     showSignIn,
+    showAccountReview,
     async notify(id, bridge, phase, show = true, automatic = false) {
       failModal = !show;
       listener({...entry(id, bridge, phase),automatic});
@@ -192,6 +202,13 @@ async function fixture(name, code) {
       access.showModal();
       request.barrier.resolve();
       await save('access setup covering Home retires readiness after draft flush', 'prepared', id, false);
+    },
+    async finishWithAccountReview(id) {
+      const request = pending.get(id); assert.ok(request);
+      pending.delete(id);
+      showAccountReview();
+      request.barrier.resolve();
+      await save('an account review over Home retires readiness after draft flush', 'prepared', id, false);
     },
     async terminal(id, bridge, outcome, idle = false, resume = false) {
       await readBack({pending: false, bridgeId: bridges[bridge], activationId: activations[id],
@@ -318,6 +335,17 @@ globalThis.replace = () => { shell = {live: true}; };
     await f.pending(1, 1, 'preparing', false, true, true);
     await f.finishWithAccessSetup(1);
     await f.terminal(1, 1, 'failed');
+  });
+  await run('automatic_update_cannot_interrupt_an_aria_modal_over_home', async f => {
+    await f.pending(1, 1, 'preparing', false, true, true);
+    await f.finishWithAccountReview(1);
+    await f.terminal(1, 1, 'failed');
+  });
+  await run('a_hidden_review_does_not_block_an_automatic_update', async f => {
+    f.showAccountReview(true);
+    await f.pending(1, 1, 'preparing', false, true, true);
+    await f.finish(1, true);
+    await f.terminal(1, 1, 'installed');
   });
 
   return checkTraces(boundInputs({model, modelPath, sources, traces, scope: 'bounded-orchestration',
