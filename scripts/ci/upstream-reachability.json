@@ -1,10 +1,14 @@
 {
-  "aheadBy": 30,
+  "schema": 1,
+  "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "1d5a89838cedaff328445c050cef6d2a6292bef1",
+  "head": "f296100309fdd877e8a28c696d62197e67a1b722",
+  "recordedAt": "2026-11-12",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...f296100309fdd877e8a28c696d62197e67a1b722",
+  "status": "diverged",
+  "aheadBy": 33,
   "behindBy": 614,
-  "command": "gh api repos/elizaOS/eliza/compare/develop...0ab220502117d8f05b1e26300a34a492ab531023",
-  "head": "0ab220502117d8f05b1e26300a34a492ab531023",
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -112,10 +116,6 @@
       "subject": "Merge commit '765725575c6c1062cf75b01c69e7949da968314d' into codex/review-calendar-39435"
     },
     {
-      "sha": "b520b1f0bc622a8fd9e8cbc8843dd0da692dbf8c",
-      "subject": "Merge commit 'd8e6354d74ec287f29a649a840e4187bc6021277' into codex/alpha-sense-absence-20261112"
-    },
-    {
       "sha": "bace08c870a2d3170a263e1ac3348d4eedcab0e1",
       "subject": "Draft owner-confirmed canonical Notes erasure"
     },
@@ -126,10 +126,19 @@
     {
       "sha": "0ab220502117d8f05b1e26300a34a492ab531023",
       "subject": "Keep explicitly requested replies with context and prohibitions"
+    },
+    {
+      "sha": "498f59471f427b4928facaf4e48abcb1bac914f2",
+      "subject": "fix(files): create folders in the current location"
+    },
+    {
+      "sha": "6639622be8790ef66cb917f72729e9ed621e4ee7",
+      "subject": "Handle an empty Downloads location and update its storage fixture"
+    },
+    {
+      "sha": "f296100309fdd877e8a28c696d62197e67a1b722",
+      "subject": "List folders in Downloads alongside its files"
     }
   ],
-  "recordedAt": "2026-11-12",
-  "repository": "elizaOS/eliza",
-  "schema": 1,
-  "status": "diverged"
+  "pullRequests": []
 }
