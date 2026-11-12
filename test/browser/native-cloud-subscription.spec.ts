@@ -123,10 +123,26 @@ test.describe('first run requires Eliza Cloud sign-in while the agent runs',()=>
   await release(page);
  });
 
- test('an expired saved sign-in exposes the real sign-in action without a plan or permission bypass',async({page},info)=>{
-  await boot(page,{identity:'401'});await expect(signInPage(page)).toBeVisible();await started(page);await expect(signInPage(page).getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled();await expect(page.getByRole('alert')).toHaveText('Sign in to Eliza Cloud again to turn AI back on.');
-  await expect(page.getByRole('button',{name:'Retry saved connection',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Choose a plan',exact:true})).toHaveCount(0);await expect(page.getByRole('dialog',{name:'Set up Alpha access'})).toHaveCount(0);
-  expect((await calls(page)).some(c=>c.method==='configureCloudProvider'||c.method==='openExternal')).toBe(false);await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('expired-saved-sign-in.png'),animations:'disabled'});
+ test('an expired saved sign-in stays quiet until Account is opened from Settings',async({page},info)=>{
+  test.setTimeout(180_000);
+  await page.setViewportSize({width:412,height:915});
+  await seedCompletedAccessSetup(page);
+  await boot(page,{identity:'401',fullApp:true,storage:{'alpha.connection.cloud-service.v1':'production'}});
+  await started(page);await idle(page);
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
+  await expect(page.getByRole('dialog',{name:'Set up Alpha access'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  const account=page.getByRole('button',{name:'Account',exact:true});
+  await expect(account).toContainText('Sign in again');
+  await page.evaluate(()=>document.fonts.ready);
+  await page.screenshot({path:info.outputPath('expired-sign-in-settings.png'),animations:'disabled'});
+  await account.click();
+  const signIn=page.locator('.alpha-cloud-sign-in[role="dialog"]');
+  await expect(signIn.getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(signIn).toHaveCount(0);
+  await expect(account).toBeVisible();
+  expect((await calls(page)).some(c=>['configureCloudProvider','openExternal','startEmail'].includes(c.method))).toBe(false);
  });
 });
 
@@ -603,8 +619,8 @@ test.describe('account, plan and sign-in expiry',()=>{
   for(const name of ['Use code','Manage plan','Sign out'])await expect(dialog.getByRole('button',{name,exact:true})).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('plan-panel.png'),animations:'disabled'});
   await dialog.getByRole('button',{name:'Sign out',exact:true}).click();await confirmSignOut(page);
-  // Signed out, the dedicated page returns and the agent restarts without Cloud inference.
-  await expect(signInPage(page)).toBeVisible();await expect(signInPage(page).getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>(window as any).planController.residentPlanSettings().signedIn)).toBe(false);
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
   expect(await page.evaluate(()=>localStorage.getItem('alpha.connection.plan-admission.v1'))).toBeNull();
   expect(await page.evaluate(()=>(window as any).planController.residentPlanSettings())).toMatchObject({signedIn:false,plan:'Not signed in'});
  });
@@ -701,7 +717,7 @@ test.describe('explicit membership code entry',()=>{
  });
 });
 
-test('simultaneous plan and expiry notices keep their own actions after Settings', async ({page}) => {
+test('the plan notice stays on Home and the expiry action stays inside Account', async ({page},info) => {
   test.setTimeout(360_000);
   const foreign = await fenceNetwork(page);
   await boot(page, {...await entitlements(), plan:'none', expiresAt:Date.now()+5*24*3600_000,
@@ -709,25 +725,30 @@ test('simultaneous plan and expiry notices keep their own actions after Settings
   const plan = page.getByRole('region', {name:'Eliza Cloud plan notice', exact:true});
   const expiry = page.getByRole('region', {name:'Eliza Cloud sign-in notice', exact:true});
   await expect(plan).toBeVisible({timeout:90_000});
-  await expect(expiry).toBeVisible();
+  await expect(expiry).toHaveCount(0);
   const together = await observeCloudNotices(page);
   await page.getByRole('button', {name:'Settings', exact:true}).click();
   await expect(page.locator('[data-settings-page]:visible')).toHaveCount(1);
   const settings = await observeCloudNotices(page);
-  expect(settings.notices.map(({kind,visible}) => [kind,visible])).toEqual([['plan',false],['sign-in',false]]);
+  expect(settings.notices.map(({kind,visible}) => [kind,visible])).toEqual([['plan',false]]);
+  await openCloudPlanFromSettings(page);
+  const account=accountPanel(page);
+  await expect(account.getByRole('button',{name:'Approve this phone again',exact:true})).toBeVisible();
+  await page.screenshot({path:info.outputPath('upcoming-expiry-account.png'),animations:'disabled'});
+  await page.setViewportSize({width:1280,height:900});
+  await expect(account.getByRole('button',{name:'Approve this phone again',exact:true})).toBeVisible();
+  await page.screenshot({path:info.outputPath('upcoming-expiry-account-wide.png'),animations:'disabled'});
+  await page.keyboard.press('Escape');
+  await expect(account).toHaveCount(0);
   await page.evaluate(() => window.dispatchEvent(new Event('alpha-back', {cancelable:true})));
   await expect(plan).toBeVisible();
-  await expect(expiry).toBeVisible();
-  const returned = await observeCloudNotices(page);
-  await expiry.getByRole('button', {name:'Dismiss sign-in notice', exact:true}).click();
   await expect(expiry).toHaveCount(0);
-  await expect(plan).toBeVisible();
-  expect((await observeCloudNotices(page)).notices.map(({kind}) => kind)).toEqual(['plan']);
+  const returned = await observeCloudNotices(page);
   expect(foreign).toEqual([]);
   expect((await calls(page)).filter(call => call.method==='openExternal' || call.method==='startEmail' ||
     call.path?.endsWith('/redeem'))).toEqual([]);
   for (const state of [together,returned]) {
-    expect(state.notices.map(({kind}) => kind)).toEqual(['plan','sign-in']);
+    expect(state.notices.map(({kind}) => kind)).toEqual(['plan']);
     expect(state.notices.flatMap(({actions}) => actions.filter(({owned}) => !owned))).toEqual([]);
   }
 });

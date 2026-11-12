@@ -16,16 +16,16 @@ class AlphaClientError extends Error { constructor(code, message) { super(messag
 
 const gateCode = strip([section('function ownProviderSelected(', '\n'), section('export function productionCloudSignInRequired(', '/** Explicit account/plan')].join('\n'));
 const gate = snapshot => { const box = vm.createContext({isAndroid: true, testMocksEnabled: false, state: {}, Date}); vm.runInContext(gateCode, box); return box.productionCloudSignInRequired(snapshot); };
-test('the required sign-in page follows a refused sign-in, never another error while offline', () => {
+test('the automatic sign-in page is reserved for a fresh phone', () => {
   const offline = {cloudAccount: null, startupResolved: true, residentSavedCredential: true, residentPlanNotice: 'offline'};
   for (const [name, snapshot, required] of [
     ['offline, saved credential, start error', {...offline, error: 'Your agent stopped. Retry in Settings › Agent connection.', errorKind: null}, false],
     ['offline, saved credential, unconfirmed provider removal', {...offline, error: 'AI could not be confirmed off.'}, false],
-    ['offline, saved credential, refused sign-in', {...offline, error: 'Sign in to Eliza Cloud again to turn AI back on.', errorKind: 'sign-in-rejected'}, true],
+    ['offline, saved credential, refused sign-in', {...offline, error: 'Sign in to Eliza Cloud again to turn AI back on.', errorKind: 'sign-in-rejected'}, false],
     ['signed out', {cloudAccount: null, startupResolved: true, error: ''}, true],
-    ['signed in, refused sign-in', {cloudAccount: {expiresAt: Date.now() + 60000}, startupResolved: true, error: 'x', errorKind: 'sign-in-rejected'}, true],
+    ['signed in, refused sign-in', {cloudAccount: {expiresAt: Date.now() + 60000}, startupResolved: true, error: 'x', errorKind: 'sign-in-rejected'}, false],
     ['signed in, account changed', {cloudAccount: {expiresAt: Date.now() + 60000}, startupResolved: true, error: 'x', errorKind: 'account-changed'}, false],
-    ['signed in, key expired', {cloudAccount: {expiresAt: Date.now() - 1000}, startupResolved: true, error: ''}, true],
+    ['signed in, key expired', {cloudAccount: {expiresAt: Date.now() - 1000}, startupResolved: true, error: ''}, false],
   ]) assert.equal(gate(snapshot), required, name);
 });
 

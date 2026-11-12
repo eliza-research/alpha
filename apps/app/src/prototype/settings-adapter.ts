@@ -575,9 +575,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     out.persona = 'Voice & personality';
     const connection = connectionController.getSnapshot();
     const account = connection.cloudAccount;
+    const cloudSignInAgain = connection.errorKind==='sign-in-rejected'
+      || (account?.expiresAt!==undefined && account.expiresAt<=Date.now())
+      || (!account && connection.hadCloudSignIn && connection.startupResolved!==false && connection.residentPlanNotice!=='offline');
     out.settingsVersion=buildVersion==='Unavailable'?'Development preview':'Version '+buildVersion;
-    out.accountEmail=account?(account.email||'Signed in'):'Not signed in';
-    out.openAccount=()=>connectionController.openPlan();
+    out.accountEmail=cloudSignInAgain?'Sign in again':account?(account.email||'Signed in'):'Not signed in';
+    out.openAccount=()=>cloudSignInAgain?connectionController.openCloudAccount():connectionController.openPlan();
     const serviceName = cloudServiceName(connectionController.getCloudClient()?.client.environment ?? account?.environment ?? connection.signIn?.environment ?? 'production');
     // The always-present resident is starting or recovering, never "not connected" (P-43).
     const pending = agentPendingText(connection, 'Not connected');
@@ -586,7 +589,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     // About and Models read the model the resident reports the same way, so the two pages agree.
     const residentProvider=connection.kind==='resident'&&connection.session?connection.providerStatus:null;
     const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported';
-    const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
+    const cloudLabel = cloudSignInAgain?'Sign in again':account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('This Android settings page is unavailable.'));
     const info = (label: string, val: string, id = label): Bag => ({ id, kInfo: true, label, val, hasVal: true, noAB: true });
     const note = (label: string, sub: string): Bag => ({ kInfo: true, label, val: '', hasVal: false, hasSub: true, sub, noAB: true });
@@ -630,7 +633,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const browserNotifications = delivery.scope === 'browser';
     const topValues: Bag = {
       'Wi-Fi': wifiValue, 'Bluetooth': bluetoothValue, 'Mobile data': mobileValue,
-      'Accounts': account ? `${serviceName} connected` : 'Not signed in', 'Connections': gmail,
+      'Accounts': account&&!cloudSignInAgain ? `${serviceName} connected` : cloudLabel, 'Connections': gmail,
       'Battery': percent, 'Models': target, 'About': facts.appVersion || 'Unavailable',
       'Notifications': typeof delivery.appEnabled !== 'boolean' ? 'Unavailable' : !delivery.appEnabled || !delivery.permissionGranted ? (browserNotifications ? 'In-app alerts off' : 'App notifications off') : delivery.channels?.some((c:Bag)=>c.blocked||c.groupBlocked) ? (browserNotifications ? 'Some in-app alerts off' : 'Some channels blocked') : (browserNotifications ? 'On' : 'On'),
       'Sound & vibration': Capacitor.isNativePlatform()?'Android settings':'App sound settings',
@@ -815,7 +818,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       }
       if (page.title === 'Accounts') {
         const plan=connectionController.residentPlanSettings();
-        page.groups = [group([{ kNav:true, label:`${serviceName} account & plan`, lbl:`${serviceName} account & plan`, sub:plan?.keyExpiring?'Sign-in expiring':cloudLabel, hasSub:true, chev:true, noAB:true, go:()=>plan?api.set({page:'cloud-plan'}):connectionController.openCloudAccount() }, ...(Capacitor.isNativePlatform()?[nav('Device accounts in Android', 'accounts')]:[])])];
+        page.groups = [group([{ kNav:true, label:`${serviceName} account & plan`, lbl:`${serviceName} account & plan`, sub:!cloudSignInAgain&&plan?.keyExpiring?'Sign-in expiring':cloudLabel, hasSub:true, chev:true, noAB:true, go:()=>plan&&!cloudSignInAgain?api.set({page:'cloud-plan'}):connectionController.openCloudAccount() }, ...(Capacitor.isNativePlatform()?[nav('Device accounts in Android', 'accounts')]:[])])];
       } else if (page.title === 'Connections') {
         page.groups = [group([{kNav:true,label:'Manage Google accounts',lbl:'Manage Google accounts',chev:true,noAB:true,go:()=>googleConnectionController.open()}])];
       } else if (state.page === 'character' && page.hero?.kChar === true) {
