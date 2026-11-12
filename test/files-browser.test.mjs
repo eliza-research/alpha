@@ -282,7 +282,7 @@ test('each mounted volume is its own Storage row and tree; Trash spans volumes a
  assert.match(adapter,/void emptyTrash\(d\.items\)/);
  assert.equal(Number(adapter.match(/const EMPTY_BATCH = (\d+);/)[1]),Number(readFileSync(`${nativeStorage}/StorageBrowser.java`,'utf8').match(/BATCH_MAX=(\d+)/)[1]));
  assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8'),/b\.emptyTrash\(strings\(call,"ids",StorageBrowser\.BATCH_MAX\)\)/,'native refuses an Empty without ids');
- assert.match(adapter,/void restore\(\[d\.item\.id\], d\.item\.volume\)/);
+ assert.match(adapter,/void restore\(\[d\.item\]\)/);
  const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
  assert.match(catalog,/for\(StorageVolume volume:manager\.getStorageVolumes\(\)\)/);
  assert.match(catalog,/if\(!primary&&\(uuid==null\|\|!uuid\.matches\("\[A-Za-z0-9-\]\{1,64\}"\)\)\)continue;/);

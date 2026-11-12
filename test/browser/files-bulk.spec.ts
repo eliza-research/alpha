@@ -1,11 +1,11 @@
 import {test,expect,type Page} from '@playwright/test';
 import {execFileSync} from 'node:child_process';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');});
-// Files browser (PLAN section 4): select mode from the folder menu; Delete moves to Trash; only a confirmed Empty deletes.
+// Files browser (PLAN section 4): selection, recoverable deletion and reviewed permanent deletion.
 async function openStorage(page:Page){await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();}
 async function startSelect(page:Page){await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();}
 const zipJson=(path:string)=>JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print(json.dumps({n:z.read(n).decode() for n in z.namelist()}))',path],{encoding:'utf8'}));
-test('select, move together into a folder, delete to Trash, restore, and Empty only after confirming',async({page})=>{
+test('select, move, recover and permanently delete only the reviewed Files selection',async({page})=>{
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const f=registerPlugin<any>('AlphaFiles');await f.importFile(new File(['Café\n'],'one.txt',{type:'text/plain'}));await f.importFile(new File(['two'],'two.txt',{type:'text/plain'}));await f.createFolder({id:'root',name:'Destination'});});
  await openStorage(page);await startSelect(page);
  for(const name of ['one.txt','two.txt'])await page.getByRole('button',{name:'Select '+name,exact:true}).click();
@@ -16,12 +16,19 @@ test('select, move together into a folder, delete to Trash, restore, and Empty o
  await expect(page.getByRole('navigation',{name:'Folder path'})).toContainText('Destination');
  await startSelect(page);await page.getByRole('button',{name:'Select all',exact:true}).click();await page.getByRole('toolbar',{name:'Selection actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open one.txt',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Trash',exact:true}).click();
- await page.getByRole('button',{name:'one.txt',exact:true}).click();await page.getByRole('dialog',{name:'one.txt',exact:true}).getByRole('button',{name:'Restore',exact:true}).click();
+ await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Recently deleted',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Empty',exact:true})).toHaveCount(0);
+ await startSelect(page);await page.getByRole('button',{name:'Select one.txt',exact:true}).click();
+ await page.getByRole('button',{name:'Recover selected files',exact:true}).click();
  await expect(page.getByRole('button',{name:'one.txt',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Empty',exact:true}).click();const empty=page.getByRole('dialog',{name:'Empty Trash?',exact:true});await expect(empty).toContainText('1 item');
- await empty.getByRole('button',{name:'Cancel',exact:true}).click();await expect(page.getByRole('button',{name:'two.txt',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Empty',exact:true}).click();await page.getByRole('dialog',{name:'Empty Trash?',exact:true}).getByRole('button',{name:'Empty',exact:true}).click();await expect(page.getByRole('button',{name:'two.txt',exact:true})).toHaveCount(0);
+ await startSelect(page);await page.getByRole('button',{name:'Select two.txt',exact:true}).click();
+ await page.getByRole('button',{name:'Delete selected files permanently',exact:true}).click();
+ const removal=page.getByRole('dialog',{name:'Delete permanently?',exact:true});await expect(removal).toContainText('1 item');
+ await removal.getByRole('button',{name:'Close',exact:true}).click();await expect(page.getByRole('button',{name:'Deselect two.txt',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Delete selected files permanently',exact:true}).click();
+ await removal.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expect(page.getByRole('button',{name:'two.txt',exact:true})).toHaveCount(0);
  await page.reload();expect(await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const f=registerPlugin<any>('AlphaFiles');const all=await f.storageList({path:'Destination'});return all.entries.map((e:any)=>e.name);})).toEqual(['one.txt']);
 });
 test('a move into a folder that already has the name keeps both files',async({page})=>{

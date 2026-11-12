@@ -200,8 +200,8 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   });
   const renderFiles=views.files.render;
   views.files.render=(state:Bag,api:Bag)=>{
-    const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;
-    if(out.fd?.menuRows){
+    const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=!out.fd?.isTrash;
+    if(out.fd?.menuRows&&!out.fd.isTrash){
       const modes=[{mode:'name',icon:'type',up:'Name · A–Z',down:'Name · Z–A'},{mode:'date',icon:'calendar',up:'Date · Newest first',down:'Date · Oldest first'},{mode:'size',icon:'hard-drive',up:'Size · Largest first',down:'Size · Smallest first'}];
       const active=state.sort==='name'||state.sort==='size'?state.sort:'date';
       out.fd.menuRows=[...modes.map(choice=>{

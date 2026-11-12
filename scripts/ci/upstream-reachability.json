@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "1d5a89838cedaff328445c050cef6d2a6292bef1",
-  "head": "0d384e408a1e73d96960ad40ee87b0039d9ee361",
+  "head": "98e0f25324104ef7cacc3242a41cca3b9b94a2ed",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...0d384e408a1e73d96960ad40ee87b0039d9ee361",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...98e0f25324104ef7cacc3242a41cca3b9b94a2ed",
   "status": "diverged",
-  "aheadBy": 34,
+  "aheadBy": 35,
   "behindBy": 614,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -142,6 +142,10 @@
     {
       "sha": "0d384e408a1e73d96960ad40ee87b0039d9ee361",
       "subject": "fix(maps): retain account ownership across client refresh"
+    },
+    {
+      "sha": "98e0f25324104ef7cacc3242a41cca3b9b94a2ed",
+      "subject": "Support selected recovery and deletion in Files trash"
     }
   ],
   "pullRequests": []
