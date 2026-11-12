@@ -25,7 +25,7 @@ export async function installOneCalendar(page:Page,{googleInFeed,google=true,loc
   // Tomorrow, from three sources: the built-in calendar, the owner's Google calendar and Google's Holidays.
   const events=[...(localEvents?[event(calendars[0],'dentist','Dentist',at(1,11),at(1,12))]:[]),...(google?[event(calendars[1],'standup','Team standup',at(1,9),at(1,10)),event(calendars[1],'design-review','Design review',at(1,14),at(1,15)),event(calendars[2],'holiday','Public holiday',civil(1),civil(2),true)]:[])];
   const included=()=>events.filter(e=>calendars.some(s=>s.includeInFeed&&s.grantId===e.grantId&&s.calendarId===e.calendarId));
-  const f=(window as any).oneCalendarFixture={requests:[] as string[],googleCalendarLists:0};
+  const f=(window as any).oneCalendarFixture={requests:[] as string[],googleCalendarLists:0,gmailSearches:[] as {grant:string;query:string}[]};
   const port={identity,sessionId:identity.sessionId,current:()=>true,request:async(path:string,method:string,_body:unknown,signal:AbortSignal)=>{
    signal.throwIfAborted();f.requests.push(`${method} ${path}`);if(method!=='GET')throw Error('The one-calendar fixture is read only');
    const url=new URL(path,location.origin);
@@ -40,7 +40,7 @@ export async function installOneCalendar(page:Page,{googleInFeed,google=true,loc
   }};
   const connection='5a7c1e2d-3b4f-4a6e-8c9d-0e1f2a3b4c5d';
   const client={
-   gmailSearch:async()=>({messages:[],hasMore:false,syncedAt:new Date().toISOString()}),
+   gmailSearch:async(grant:string,query:string)=>{f.gmailSearches.push({grant,query});return {messages:[],hasMore:false,syncedAt:new Date().toISOString()};},
    gmailInboxCapabilities:async()=>({send:false,providerDrafts:false,mailboxMutations:false}),
    gmailAccounts:async()=>google?[{connectionId:connection,label:owner,configured:true,connected:true,reason:'connected',grantedCapabilities:['google.gmail.triage','google.gmail.send','google.calendar.read','google.calendar.write']}]:[],
    googleCalendars:async()=>{f.googleCalendarLists++;return[{calendarId:owner,summary:owner,description:null,primary:true,accessRole:'owner',backgroundColor:null,foregroundColor:null,timeZone:'UTC',selected:true},{calendarId:holidays,summary:'Holidays in United States',description:null,primary:false,accessRole:'reader',backgroundColor:null,foregroundColor:null,timeZone:'UTC',selected:true}];},

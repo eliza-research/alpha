@@ -65,11 +65,12 @@ test('startup keeps one inert shell mounted and restores its saved data before r
 // A restored account can arrive before the resident process is connected.
 test('restoring an account keeps the Alpha mark until the agent startup settles',()=>{
  const source=readFileSync(new URL('../apps/app/src/main.tsx',import.meta.url),'utf8');
- const expression=/const startupPending = (.*);/.exec(source)?.[1];assert.ok(expression);
- const pending=(connection,homeShown=false)=>vm.runInNewContext(expression,{connection,homeShown,connectionChooserVisible:value=>value.open});
+ const expression=/const startupPending = ([\s\S]*?);/.exec(source)?.[1];assert.ok(expression);
+ const pending=(connection,homeShown=false)=>vm.runInNewContext(expression,{connection,homeShown,awaitingFirstSignIn:false,connectionChooserVisible:value=>value.open});
  const starting={startupResolved:false,session:null,cloudAccount:{id:'restored-account'},residentPlanNotice:undefined,open:false};
  assert.equal(pending(starting),true);
- assert.equal(pending({...starting,session:{sessionId:'connected'}}),false);
+ assert.equal(pending({...starting,session:{sessionId:'connected'}}),true);
+ assert.equal(pending({...starting,startupResolved:true,session:{sessionId:'connected'}}),false);
  assert.equal(pending({...starting,startupResolved:true,kind:'recovering',error:'Startup failed'}),false);
  assert.equal(pending({...starting,open:true}),false);
  assert.equal(pending({...starting,residentPlanNotice:'offline'}),false);
