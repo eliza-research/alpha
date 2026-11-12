@@ -20,7 +20,7 @@ export type LocalAgentMethod = AutomationsMethod | AppRecordMethod;
 export interface LocalAgentBridge {
   subscribeConversationEvents?(ownerId:string,listener:(envelope:unknown)=>void,onState:(state:"connected"|"unavailable",resync:boolean)=>void):()=>void;
   subscribeVoiceEvents?(ownerId:string,listener:(envelope:unknown)=>void):()=>void;
-  start(input?:{requestId:string}): Promise<unknown>;
+  start(input?:{requestId:string},signal?:AbortSignal): Promise<unknown>;
   cancelStart?(input:{requestId:string}):Promise<unknown>;
   stop?():Promise<unknown>;
   getStatus?():Promise<{packaged?:boolean;state?:string;reason?:string;serviceActive?:boolean;socketListening?:boolean}>;
@@ -83,7 +83,7 @@ const unavailableBridge: LocalAgentBridge = {
 };
 const browserBridge: LocalAgentBridge | null = developmentBridgeAllowed ? {
   subscribeConversationEvents(ownerId,listener,onState){return subscribeBrowserConversationEvents(this,ownerId,listener,onState);},
-  async start() { if(browserCloudResidentEnabled)await browserResidentCall('residentStart');return { state: 'host-managed' }; },
+  async start(_input,signal) { if(browserCloudResidentEnabled)await browserResidentCall('residentStart',undefined,undefined,undefined,signal);return { state: 'host-managed' }; },
   async stream(input,signal,onText,onReplyReady){
     const bounded=anyAbortSignal([signal,AbortSignal.timeout(120000)]);
     const response=await fetch('/__alpha-local-agent',{method:'POST',headers:{'Content-Type':'application/json','X-Alpha-Local-Agent':'1'},
@@ -267,7 +267,7 @@ export class LocalAgentProtocol {
     signal.addEventListener('abort',cancel,{once:true});
     try{
     dispatched=true;
-    const started=this.bridge.start({requestId});
+    const started=this.bridge.start({requestId},signal);
     if(signal.aborted)cancel();
     const startup=await Promise.race([started,cancelled]);
     // Native reports when it attached this surface to the already admitted running resident

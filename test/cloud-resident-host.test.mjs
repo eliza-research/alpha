@@ -185,3 +185,22 @@ test('Gmail and embeddings keep their Cloud owner while Direct owns text and med
   for(const key of ['ELIZA_MANAGED_GMAIL_SEND_BROKER','ELIZA_MANAGED_GMAIL_OPERATION_BROKER'])assert.equal(launches.at(-1).env[key],undefined,key);
  }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
+
+
+test('browser resident readiness allows a cold source import to finish', async t => {
+ const profile=await fs.mkdtemp(join(tmpdir(),'alpha-cloud-cold-ready-'));
+ let calls=0,done;
+ t.mock.timers.enable({apis:['Date'],now:0});
+ const host=await createCloudResidentHost({source:resolve('vendor/eliza'),profile,port:47869,
+  launch:async()=>({completion:new Promise(resolve=>done=resolve),async stop(){done({code:0});}}),
+  request:async()=>{
+   calls++;
+   if(calls===1){t.mock.timers.tick(150000);return new Response('{}',{status:503});}
+   return Response.json({agents:[{status:'running'}]});
+  }});
+ try{
+  await host.clear();
+  assert.deepEqual(await host.ready(new AbortController().signal),{state:'host-managed'});
+  assert.equal(calls,2);
+ }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
+});

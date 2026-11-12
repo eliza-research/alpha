@@ -9,7 +9,8 @@ export const OWN_KEYS_NOT_SET_UP='Own API keys could not be set up. Check the ke
 export async function browserResidentCall(operation:'residentOwn'|'residentCloud'|'residentBind'|'residentClear'|'residentStatus'|'residentStart'|'residentGoogleCalendarAccess',credentialId?:string,calendarEdits?:boolean,keys?:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal){
  signal?.throwIfAborted();
  if(!browserCloudResidentEnabled)throw Error('Cloud resident host unavailable');
- const response=await fetch('/__alpha-browser-cloud',{method:'POST',headers:{'Content-Type':'application/json','X-Alpha-Browser-Cloud':'1'},body:JSON.stringify({...keys,operation,environment:browserCloudResidentEnvironment,credentialId,...(operation==='residentGoogleCalendarAccess'?{calendarEdits}:{})}),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(120000)]):AbortSignal.timeout(120000),redirect:'error'});
+ const timeoutMs=operation==='residentStart'?310000:120000;
+ const response=await fetch('/__alpha-browser-cloud',{method:'POST',headers:{'Content-Type':'application/json','X-Alpha-Browser-Cloud':'1'},body:JSON.stringify({...keys,operation,environment:browserCloudResidentEnvironment,credentialId,...(operation==='residentGoogleCalendarAccess'?{calendarEdits}:{})}),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(timeoutMs)]):AbortSignal.timeout(timeoutMs),redirect:'error'});
  signal?.throwIfAborted();
  if(!response.ok)throw Error(operation==='residentOwn'?OWN_KEYS_NOT_SET_UP:'Cloud resident binding unavailable');
  return response.json();
