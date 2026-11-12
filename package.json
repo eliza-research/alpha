@@ -66,7 +66,7 @@
     "test:only": "bun scripts/run-tests.ts",
     "test:node": "bun scripts/run-node-only-tests.ts",
     "build:only": "vite build",
-    "quint:tests": "bun scripts/prepare-quint-history.ts && bun scripts/run-tests.ts 'test/quint-*.test.mjs' && bun run test:node"
+    "quint:tests": "bun scripts/prepare-quint-history.ts && bun scripts/run-tests.ts 'test/quint-*.test.mjs' 'test/quint-*.test.ts' && bun run test:node"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",

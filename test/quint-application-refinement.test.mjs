@@ -9,19 +9,14 @@ import {filesAndSharing, notificationCollection, developmentHost} from '../specs
 import {checkShellCoordinator} from '../specs/quint/refinement/application/shell-coordinator.mjs';
 import {checkCompletedViewDelivery} from '../specs/quint/refinement/application/completed-view-delivery.mjs';
 import {filesPreview} from '../specs/quint/refinement/application/files-preview.mjs';
-import {checkNotesRecorderMediaAdmission} from '../specs/quint/refinement/application/notes-recorder-media-admission.mjs';
 import {checkModalScrimOwnership} from '../specs/quint/refinement/application/modal-scrim-ownership.mjs';
-import {checkBrowserExternalHandoff} from '../specs/quint/refinement/application/browser-external-handoff.mjs';
-import {checkNotesTrashReadPublication} from '../specs/quint/refinement/application/notes-trash-read-publication.mjs';
-import {checkScheduledTaskControls} from '../specs/quint/refinement/application/scheduled-task-controls.mjs';
 
 // Application source campaigns that share adapters across several models. Each runs the product
 // source against its model's transitions; a model with a single adapter has its own test file.
 for (const check of [application, assistantConversation, startupPermissions, callbackLanding, preferences, browserSession,
   permanentVoiceDeletion, draftDispatch, durableStore, notesLifecycle, calendarPresentation, credentialVault,
   permissionWalkthrough, filesAndSharing, notificationCollection, developmentHost, checkShellCoordinator,
-  checkCompletedViewDelivery, filesPreview, checkNotesRecorderMediaAdmission, checkModalScrimOwnership,
-  checkBrowserExternalHandoff, checkNotesTrashReadPublication, checkScheduledTaskControls]) {
+  checkCompletedViewDelivery, filesPreview, checkModalScrimOwnership]) {
   test(`${check.name} source observations match its Quint model`, {timeout: scaledTimeout(600000)}, async () => {
     const result = await check();
     const receipt = result.receipt ?? result;
