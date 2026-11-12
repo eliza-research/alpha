@@ -23,10 +23,25 @@ test('publication workflow preserves protected review, exact source and verifica
   assert.match(workflow.jobs.admit.if,/inputs.workflow_commit == github.sha/);
   const steps=publish.steps;
   assert(steps.filter(step=>step.uses?.startsWith('actions/checkout@')).every(step=>step.with['persist-credentials']===false));
-  const verification=steps.findIndex(step=>step.run?.includes('bun run android:verify -- --cloud-voice-evidence='));
-  const delivery=steps.findIndex(step=>step.run?.includes('bun scripts/deliver-app-update.ts --variant launcher'));
-  assert(verification>=0&&delivery>verification);
+  const toolchain=steps.find(step=>step.id==='product_toolchain');
+  assert.equal(toolchain['working-directory'],'qualified-product');
+  assert.match(toolchain.run,/test -f bun\.lock[\s\S]*manager=bun[\s\S]*test -f package-lock\.json[\s\S]*manager=npm[\s\S]*exit 1/);
+  const node=steps.find(step=>step.uses?.startsWith('actions/setup-node@'));
+  assert.equal(node.if,"steps.product_toolchain.outputs.runtime == 'node'");
+  assert.equal(node.with['node-version'],'26.13.0');
+  const install=steps.findIndex(step=>step['working-directory']==='qualified-product'&&step.run?.includes('install --frozen-lockfile'));
+  assert(install>steps.indexOf(toolchain));
+  assert.match(steps[install].run,/bun install --frozen-lockfile --ignore-scripts[\s\S]*npm ci --ignore-scripts/);
+  const projection=steps.findIndex(step=>step.run?.includes('run upstream:prepare-client'));
+  const verification=steps.findIndex(step=>step.run?.includes('run android:verify -- --cloud-voice-evidence='));
+  const delivery=steps.findIndex(step=>step.run?.includes('scripts/deliver-app-update.ts --variant launcher'));
+  assert(projection>install&&verification>projection&&delivery>verification);
+  for(const index of [install,projection,verification]){
+    assert.equal(steps[index]['working-directory'],'qualified-product');
+    assert.equal(steps[index].env.PRODUCT_PACKAGE_MANAGER,'${{ steps.product_toolchain.outputs.manager }}');
+  }
   assert.equal(steps[delivery]['working-directory'],'qualified-product');
+  assert.equal(steps[delivery].env.PRODUCT_RUNTIME,'${{ steps.product_toolchain.outputs.runtime }}');
   assert.match(steps[delivery].run,/scripts\/deliver-app-update\.mjs/);
   assert.match(steps[verification].run,/qualified-stage\/cloud-voice.json/);
   const restore=steps.findIndex(step=>step.run?.includes('--product \"$GITHUB_WORKSPACE/qualified-product\"'));

@@ -72,6 +72,22 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
+      - name: Select the toolchain locked by the qualified producer
+        id: product_toolchain
+        working-directory: qualified-product
+        run: |
+          if test -f bun.lock; then
+            printf 'manager=bun\nruntime=bun\n' >> "$GITHUB_OUTPUT"
+          elif test -f package-lock.json; then
+            printf 'manager=npm\nruntime=node\n' >> "$GITHUB_OUTPUT"
+          else
+            echo "Qualified producer has no supported dependency lockfile" >&2
+            exit 1
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.product_toolchain.outputs.runtime == 'node'
+        with:
+          node-version: '26.13.0'
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -115,13 +131,24 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Install locked product verifier dependencies without lifecycle scripts
         working-directory: qualified-product
-        run: bun install --frozen-lockfile --ignore-scripts
+        env:
+          PRODUCT_PACKAGE_MANAGER: ${{ steps.product_toolchain.outputs.manager }}
+        run: |
+          if test "$PRODUCT_PACKAGE_MANAGER" = bun; then
+            bun install --frozen-lockfile --ignore-scripts
+          else
+            npm ci --ignore-scripts
+          fi
       - name: Project the exact product's reviewed client sources
         working-directory: qualified-product
-        run: bun run upstream:prepare-client
+        env:
+          PRODUCT_PACKAGE_MANAGER: ${{ steps.product_toolchain.outputs.manager }}
+        run: '"$PRODUCT_PACKAGE_MANAGER" run upstream:prepare-client'
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
         working-directory: qualified-product
-        run: bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+        env:
+          PRODUCT_PACKAGE_MANAGER: ${{ steps.product_toolchain.outputs.manager }}
+        run: '"$PRODUCT_PACKAGE_MANAGER" run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"'
       - name: Require both qualified release rows before publication
         run: |
           python3 - <<'PY'
@@ -146,12 +173,13 @@ jobs:
       - name: Publish launcher APK first and anonymously verify the stable pointer
         env:
           GH_TOKEN: ${{ github.token }}
+          PRODUCT_RUNTIME: ${{ steps.product_toolchain.outputs.runtime }}
         working-directory: qualified-product
         run: |
           if test -f scripts/deliver-app-update.mjs; then
-            bun scripts/deliver-app-update.mjs --variant launcher --apk-manifest artifacts/apk-manifest.json
+            "$PRODUCT_RUNTIME" scripts/deliver-app-update.mjs --variant launcher --apk-manifest artifacts/apk-manifest.json
           else
-            bun scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
+            "$PRODUCT_RUNTIME" scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

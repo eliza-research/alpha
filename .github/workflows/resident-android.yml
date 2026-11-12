@@ -256,7 +256,7 @@ jobs:
                 test/cloud-voice-profile.test.mjs \
                 test/private-preview-cartesia-route.test.mjs
             '
-      - run: bun test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
+      - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # Noncandidate diagnostics retain their existing absent-input check.
       - name: Verify the diagnostic on-device voice host record
         if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'

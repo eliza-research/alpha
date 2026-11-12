@@ -295,7 +295,7 @@ if (qualification && listenerDescriptor) {
   };
 }
 execFileSync(
-  "node",
+  process.execPath,
   [
     "vendor/eliza/packages/os/scripts/android/stage-launcher-overlay.ts",
     "--descriptor",

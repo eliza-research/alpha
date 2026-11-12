@@ -14,7 +14,8 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const hash = path => digest(readFileSync(path));
 const hashPattern = /^[a-f0-9]{64}$/;
 const snapshotDirectory = join(root, 'test-results/quint-refinement/input-snapshots');
-const checkerSources = [fileURLToPath(import.meta.url), join(root, 'scripts/quint-lib.ts')];
+const checkerSources = [fileURLToPath(import.meta.url), join(root, 'scripts/quint-lib.ts'),
+  fileURLToPath(new URL('./timeouts.mjs', import.meta.url))];
 
 function containsPath(directory, file) {
   const name = relative(directory, file);
