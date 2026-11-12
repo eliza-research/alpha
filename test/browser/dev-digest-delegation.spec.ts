@@ -64,6 +64,8 @@ test('local authorization review survives reload and revocation disables its sou
  expect(await calls()).toEqual([]);
 
  await reviewRemoval.click();
+ await expect(removal).toContainText('Same grant, second connection');
+ await expect(removal).not.toContainText('Another source added during review');
  await page.evaluate(()=>{(window as any).removalFixture.newSource=true;});
  await removal.getByRole('button',{name:'Confirm removal',exact:true}).click();
  await expect(panel(page).getByText('Sources or schedules changed. Review the updated list.',{exact:true})).toBeVisible();
