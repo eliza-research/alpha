@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "1d5a89838cedaff328445c050cef6d2a6292bef1",
-  "head": "f3233f52cfabeeef544a7e8b9dd7c8d3e71da639",
+  "head": "4f93d71ad113f6977423d410f3f45bfe3a38539c",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...f3233f52cfabeeef544a7e8b9dd7c8d3e71da639",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...4f93d71ad113f6977423d410f3f45bfe3a38539c",
   "status": "diverged",
-  "aheadBy": 36,
+  "aheadBy": 37,
   "behindBy": 614,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -150,6 +150,10 @@
     {
       "sha": "f3233f52cfabeeef544a7e8b9dd7c8d3e71da639",
       "subject": "Remove false rename notices after Files recovery"
+    },
+    {
+      "sha": "4f93d71ad113f6977423d410f3f45bfe3a38539c",
+      "subject": "fix(scheduling): compose the default morning reminder from canonical sources"
     }
   ],
   "pullRequests": []
