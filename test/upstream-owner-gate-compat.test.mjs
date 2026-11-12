@@ -1,7 +1,7 @@
 // Alpha's agent routes against the pinned agent's owner-only API gate (packages/agent/src/api/server.ts,
 // isOwnerOnlyApiRequest). The gate answers 403 "Owner role required" to a request whose session is not the owner.
 // Alpha's native enrollment pairs with the operator code, so its session keeps OWNER authority; this test also
-// checks that no route Alpha issues falls under that gate. Upstream has separate owner checks outside it: the
+// checks that its only call under that gate is the reviewed Calendar approval resolution. Upstream has separate owner checks outside it: the
 // trigger and automation routes resolve the presented credential without loopback promotion and need OWNER, and
 // Alpha's automations surface uses them, so it depends on the owner-paired session. The last tests pin that set.
 // Source-level evidence only: no APK, emulator or device result.
@@ -18,7 +18,7 @@ const LOCAL_AGENT = 'android/app/src/main/java/ai/elizaresearch/alphaphone/Alpha
 // SHA-256 of isOwnerOnlyApiRequest as reviewed at elizaOS/eliza 86ab55fd81 (#37702, #37733, #37786, #37840,
 // #37861, #38121, #38126 /api/logs and /api/security/audit, and the other owner-only gates since 1f2a922f86). A pin that changes the gate fails here until its
 // new routes are checked against Alpha's route surface below and this hash is updated.
-// The delta from b1817660 is the write-only approval-resolution gate; Alpha reads this queue with GET.
+// The delta from b1817660 is the write-only approval-resolution gate; Alpha uses its owner-paired session to resolve a reviewed Calendar request.
 const REVIEWED_GATE_SHA256 = 'f0137b23e44c4efd4639679f8ed4f7816a1561e690303e935c13a6abe18b409d';
 
 function gateSource() {
@@ -86,6 +86,17 @@ function alphaAgentPathLiterals() {
  * Keep every declaration and use accounted for; a new caller is not exempted.
  */
 function literalMethods(literal, files) {
+  // The table and sole caller are checked below. Other approval writes remain forbidden.
+  if (literal === '/api/approvals/{id}/resolve') {
+    assert.deepEqual([...files], ['apps/app/src/product/owner-route-table.ts']);
+    return [];
+  }
+  if (literal === '/api/approvals/') {
+    assert.deepEqual([...files], ['apps/app/src/runtime/connection-ui.tsx']);
+    assert.match(fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8'),
+      /selected\.remote\.request\(\s*`\/api\/approvals\/\$\{encodeURIComponent\(row\.id\)\}\/resolve`,\s*calendarApprovalBody\(row, decision\), signal, \{\}, 'POST'/);
+    return [];
+  }
   if (literal !== '/api/approvals') return ['POST'];
   assert.deepEqual([...files].sort(), [
     'apps/app/src/product/owner-route-table.ts',
@@ -98,8 +109,12 @@ function literalMethods(literal, files) {
     expected, 'A new approval path occurrence needs its own method review: '+file);
   assert.deepEqual(OWNER_ROUTE_TABLE.groups.approvals, {
     prefixes: ['/api/approvals'],
-    routes: [{methods: ['GET'], paths: ['/api/approvals?state=all&limit=500']}],
-  }, 'The renderer/native admission table must permit only this exact GET');
+    id: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$',
+    routes: [
+      {methods: ['GET'], paths: ['/api/approvals?state=all&limit=500']},
+      {methods: ['POST'], paths: ['/api/approvals/{id}/resolve'], query: []},
+    ],
+  }, 'The renderer/native admission table must limit approval writes to the reviewed UUID resolution route');
   const constant = 'CALENDAR_APPROVAL_READ_PATH';
   const uses = walk('apps/app/src', /\.(?:ts|tsx|js|mjs)$/).flatMap(file =>
     [...fs.readFileSync(file, 'utf8').matchAll(new RegExp('\\b'+constant+'\\b', 'g'))].map(() => file));
@@ -154,7 +169,7 @@ test('the gate model reads the clauses Alpha was reviewed against', () => {
   ]) assert.ok(!ownerOnly(model, method, pathname), `${method} ${pathname} should stay open to the session gate`);
 });
 
-test('no route Alpha issues to its agent is behind the owner-only gate', () => {
+test('Alpha owner-only calls are limited to the reviewed Calendar resolution route', () => {
   const model = gateModel(gateSource());
   const refused = [];
   for (const [method, pathname] of ownerRouteTable())
@@ -166,7 +181,7 @@ test('no route Alpha issues to its agent is behind the owner-only gate', () => {
   for (const [literal, files] of literals)
     for (const method of literalMethods(literal, files))
       if (ownerOnly(model, method, literal.replace(/[{}]/g, ''))) refused.push(`${method} ${literal} (${[...files].join(', ')})`);
-  assert.deepEqual(refused, []);
+  assert.deepEqual(refused, ['POST /api/approvals/id-1/resolve (apps/app/src/product/owner-route-table.ts)']);
 });
 
 test('native enrollment pairs as the owner, never through a guest invitation', () => {
