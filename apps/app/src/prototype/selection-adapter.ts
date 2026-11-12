@@ -15,14 +15,6 @@ import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 type Bag = Record<string, any>;
 type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number; mediaFailed?:boolean };
 
-async function readFilesListing<T extends {status:string;message?:string}>(reply:Promise<T>) {
-  const result=await reply;
-  // The shared view handles denied access and navigation away from a missing folder.
-  // Other read failures go through its existing persistent error state.
-  if(!['ready','denied','missing'].includes(result.status))throw Error(result.message||'Files could not be read.');
-  return result;
-}
-
 function previewMedia(result:NativeResult) {
   const native=Capacitor.isNativePlatform(),uri=result.uri,mime=result.mimeType||'';
   if(!uri||!(native?uri.startsWith('content://'):uri.startsWith('blob:')))return undefined;
@@ -251,13 +243,8 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       current = { ...current, text: undefined, status: 'Unreadable' }; refresh();
     }
   }
-  const storage=registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles');
-  const observedReads:Partial<FilesStoragePort<NativeResult>>={
-    storageList(input){return readFilesListing(storage.storageList(input));},
-    storageCategory(input){return input.countOnly?storage.storageCategory(input):readFilesListing(storage.storageCategory(input));},
-  };
   Component.prototype.filesAgent=installFilesBrowserAdapter(views.files as Parameters<typeof installFilesBrowserAdapter>[0],accept,clear,{
-    storage:new Proxy(storage,{get:(target,key)=>Object.hasOwn(observedReads,key)?Reflect.get(observedReads,key):Reflect.get(target,key)}),
+    storage:registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles'),
     createInlineModal,
     menuFocus:()=>document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="Files options"]'),
     forgetSelected:selectionId=>DailyApps.forgetSelected({selectionId}),
@@ -267,10 +254,6 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;
     const storageAccessible=!out.browse?.denied&&!out.browse?.unavailable;
     out.filterVisible=!!out.chip&&storageAccessible;
-    if(out.fd?.empty&&!storageAccessible){
-      out.fd.empty=false;
-      out.nativeTreeStatus||='Files could not be read.';
-    }
     if(out.toolbar?.ready&&!out.toolbar.canCreate){const create=out.toolbar.newFolder;out.toolbar.canCreate=true;out.toolbar.newFolder=()=>{out.browse.allFiles();create();};}
     if(out.fd?.menuRows){
       const modes=[{mode:'name',icon:'type',up:'Name A–Z',down:'Name Z–A'},{mode:'date',icon:'calendar',up:'Newest first',down:'Oldest first'},{mode:'size',icon:'hard-drive',up:'Largest first',down:'Smallest first'}];
