@@ -20,7 +20,7 @@ public class Probe {
  static int generation(){try{Field f=controller.getClass().getDeclaredField("generation");f.setAccessible(true);return f.getInt(controller);}catch(Exception e){throw new RuntimeException(e);}}
  static String keyboard(){String v=activity.resolver.get(Settings.Secure.DEFAULT_INPUT_METHOD);return v==null||v.isEmpty()?"none":v.contains("LatinIME")?"latin":"owner";}
  static JSONObject state(){return new JSONObject().put("s.eligible",AlphaFreshPresets.eligible(activity)).put("s.alive",!activity.isDestroyed()&&!activity.isFinishing())
- .put("s.phase",activity.isDestroyed()?"idle":complete?"done":bool("waiting")?"waiting":presets?"presets":"idle").put("s.generation",generation())
+ .put("s.phase",activity.isDestroyed()?"idle":complete?"done":presets?"presets":bool("waiting")?"waiting":"idle").put("s.generation",generation())
  .put("s.keyboard",keyboard()).put("s.complete",complete).put("s.completionAuthorized",complete&&AlphaFreshPresets.eligible(activity)&&roles.held&&!keyboard().equals("none"));}
  static void mark(String label,Object action,JSONObject observation){trace.getJSONArray("steps").put(new JSONObject().put("label",label).put("action",action==null?JSONObject.NULL:action).put("expect",observation));}
  static void mark(String label,Object action){mark(label,action,state());}

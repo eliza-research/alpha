@@ -25,20 +25,25 @@ export function androidPorts(identity){
  'android/content/Context.java':`package android.content; import java.util.*; public class Context {
  public final Map<Class<?>,Object> services=new HashMap<>(); public final ContentResolver resolver=new ContentResolver();
  public <T>T getSystemService(Class<T> type){return type.cast(services.get(type));}
- public ContentResolver getContentResolver(){return resolver;} public Object getPackageManager(){return this;}
+ public ContentResolver getContentResolver(){return resolver;} public final android.content.pm.PackageManager packages=new android.content.pm.PackageManager();public android.content.pm.PackageManager getPackageManager(){return packages;}
  }`,
  'android/content/ContentResolver.java':`package android.content; import java.util.*; public class ContentResolver {
  public final Map<String,String> values=new HashMap<>(); public boolean writeOk=true; public int writes;
  public String get(String key){return values.get(key);} public boolean put(String key,String value){if(!writeOk)return false;values.put(key,value);writes++;return true;}
  }`,
  'android/app/Activity.java':`package android.app; import android.content.*; import android.content.res.*; import android.os.*; import android.view.*;
- public class Activity extends Context {public boolean finishing,destroyed;public View content; public int starts;
+ public class Activity extends Context {public static final int RESULT_CANCELED=0,RESULT_OK=-1;public boolean finishing,destroyed;public View content; public int starts;
  public boolean isFinishing(){return finishing;}public boolean isDestroyed(){return destroyed;} public void finish(){finishing=true;}
  public java.util.concurrent.Executor getMainExecutor(){return Runnable::run;}public Resources getResources(){return new Resources();}
  public Window getWindow(){return new Window();} public String getString(int id){return "string-"+id;}
- public void setContentView(View view){content=view;}public void startActivity(Intent intent){starts++;}public void onCreate(Bundle bundle){}
+ public void setContentView(View view){content=view;}public void startActivity(Intent intent){starts++;}
+ public void sendOrderedBroadcast(Intent intent,String permission,BroadcastReceiver result,Handler scheduler,int code,String data,Bundle extras){throw new AssertionError("The host port declares no telephony");}
+ public void onCreate(Bundle bundle){}
  }`,
- 'android/content/Intent.java':`package android.content;public class Intent {public final String action;public Intent(String a){action=a;}public Object resolveActivity(Object pm){return pm;}}`,
+ 'android/content/Intent.java':`package android.content;public class Intent {public static final int FLAG_INCLUDE_STOPPED_PACKAGES=32;public final String action;public Intent(String a){action=a;}public Object resolveActivity(Object pm){return pm;}
+ public Intent setClassName(String owner,String name){return this;}public Intent addFlags(int flags){return this;}}`,
+ 'android/content/BroadcastReceiver.java':`package android.content;public abstract class BroadcastReceiver {public int resultCode;public abstract void onReceive(Context context,Intent intent);public final int getResultCode(){return resultCode;}}`,
+ 'android/content/pm/PackageManager.java':`package android.content.pm;public class PackageManager {public static final String FEATURE_TELEPHONY="android.hardware.telephony";public boolean hasSystemFeature(String name){return false;}}`,
  'android/content/res/Resources.java':`package android.content.res;public class Resources {public static class Metrics {public float density=1;}public Metrics getDisplayMetrics(){return new Metrics();}}`,
  'android/content/res/ColorStateList.java':`package android.content.res;public class ColorStateList {public static ColorStateList valueOf(int color){return new ColorStateList();}}`,
  'android/graphics/Color.java':`package android.graphics;public class Color {public static final int WHITE=-1,BLUE=255;public static int rgb(int r,int g,int b){return r*65536+g*256+b;}}`,
@@ -50,12 +55,12 @@ export function androidPorts(identity){
  'android/os/Handler.java':`package android.os;import java.util.*;public class Handler {public static final List<Runnable> delayed=new ArrayList<>();public Handler(Looper l){}public boolean postDelayed(Runnable task,long delay){if(delay!=15000)throw new AssertionError("Timeout changed");delayed.add(task);return true;}}`,
  'android/app/admin/DevicePolicyManager.java':`package android.app.admin;public class DevicePolicyManager {public boolean managed;public Object getDeviceOwnerComponentOnCallingUser(){return managed?this:null;}public Object getDeviceOwnerComponentOnAnyUser(){return managed?this:null;}}`,
  'android/app/role/RoleManager.java':`package android.app.role;import java.util.*;import java.util.function.*;import java.util.concurrent.*;import android.os.*;public class RoleManager {
- public static final String ROLE_HOME="home";public boolean available=true,held;public final List<Consumer<Boolean>> callbacks=new ArrayList<>();
+ public static final String ROLE_HOME="home",ROLE_DIALER="dialer",ROLE_SMS="sms";public boolean available=true,held;public final List<Consumer<Boolean>> callbacks=new ArrayList<>();
  public boolean isRoleAvailable(String r){return available;}public List<String> getRoleHoldersAsUser(String r,UserHandle u){return held?List.of(${JSON.stringify(identity)}):List.of();}
  public void addRoleHolderAsUser(String r,String name,int flags,UserHandle u,Executor e,Consumer<Boolean> callback){callbacks.add(callback);}
  }`,
  'android/provider/Settings.java':`package android.provider;import android.content.*;public class Settings {
- public static final String ACTION_WIFI_SETTINGS="wifi",ACTION_HOME_SETTINGS="home",ACTION_INPUT_METHOD_SETTINGS="ime",ACTION_SETTINGS="settings";
+ public static final String ACTION_WIFI_SETTINGS="wifi",ACTION_HOME_SETTINGS="home",ACTION_MANAGE_DEFAULT_APPS_SETTINGS="default-apps",ACTION_INPUT_METHOD_SETTINGS="ime",ACTION_SETTINGS="settings";
  public static class Secure {public static final String USER_SETUP_COMPLETE="complete",DEFAULT_INPUT_METHOD="selected",ENABLED_INPUT_METHODS="enabled",THEME_CUSTOMIZATION_OVERLAY_PACKAGES="palette";
  public static int getInt(ContentResolver c,String key,int fallback){String v=c.get(key);return v==null?fallback:Integer.parseInt(v);}
  public static String getString(ContentResolver c,String key){return c.get(key);}public static boolean putString(ContentResolver c,String key,String value){return c.put(key,value);}}
