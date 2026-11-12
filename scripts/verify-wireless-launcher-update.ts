@@ -2,14 +2,15 @@
 /** Record an operator-run wireless launcher replacement using read-only ADB commands. */
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {readFileSync, lstatSync, writeFileSync} from 'node:fs';
+import {lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {parseArgs} from 'node:util';
 import {readReleaseSigner} from './build-android.ts';
 import {readHome} from './android-instrumentation.ts';
 import {parseOffer, publicObject} from './deliver-app-update.ts';
-import {adbFor, admitUnitApk, apkRuntimeIdentity, deviceFacts, PACKAGE, packageFacts} from './provision-unit.ts';
+import {adbFor, admitUnitApk, apkRuntimeIdentity, deviceFacts, PACKAGE, packageFacts, snapshotUnitApk} from './provision-unit.ts';
 import {inspectUpdateApk} from './update-apk-admission.ts';
 import {APP_UPDATE_TAG, appUpdateManifestUrl, isPublishedUpdateApkUrl} from './update-channel.ts';
 import {verifiedBootProblem} from './verify-pixel10a-image.ts';
@@ -25,6 +26,21 @@ const EMPTY_SHA256 = createHash('sha256').digest('hex');
 const SCHEMA = 'alpha-wireless-launcher-readback/v2';
 const HOME = 'android.intent.category.HOME';
 const sha256 = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
+
+function inspectReadbackApk(apk: ReturnType<typeof admitUnitApk>, descriptor: ReturnType<typeof readReleaseSigner>) {
+  const {versionCode} = apk;
+  assert.ok(versionCode !== null, 'Release version code is missing');
+  const directory = mkdtempSync(path.join(tmpdir(), 'alpha-wireless-apk-'));
+  try {
+    const snapshot = snapshotUnitApk(apk, directory);
+    const {signerRootSha256} = inspectUpdateApk({...snapshot, versionCode}, {descriptor});
+    const runtime = apkRuntimeIdentity(snapshot.file);
+    assert.ok(runtime.runtime === 'PACKAGED' && runtime.base && GIT_COMMIT.test(runtime.base), 'Release SDK revision is missing');
+    return {signerRootSha256, sdkCommit: runtime.base, versionCode};
+  } finally {
+    rmSync(directory, {recursive: true, force: true});
+  }
+}
 
 interface ImageExpectation {
   releaseRecordSha256: string;
@@ -311,21 +327,18 @@ async function main() {
   assert.equal(updateManifestUrl, appUpdateManifestUrl(), 'The configured launcher channel differs from the public release');
   const descriptor = readReleaseSigner();
   const apk = admitUnitApk(values['apk-manifest'], {variant: 'launcher', build: 'release'}, {descriptor, installedReadback: true});
-  assert.ok(apk.versionCode !== null, 'Release version code is missing');
-  const {signerRootSha256} = inspectUpdateApk({...apk, versionCode: apk.versionCode}, {descriptor});
-  const runtime = apkRuntimeIdentity(apk.file);
-  assert.ok(runtime.runtime === 'PACKAGED' && runtime.base && GIT_COMMIT.test(runtime.base), 'Release SDK revision is missing');
+  const {signerRootSha256, sdkCommit, versionCode} = inspectReadbackApk(apk, descriptor);
   const image = recordFile && vbmetaDigest ? readImageExpectation(recordFile, vbmetaDigest, apk)
     : baseline?.record.image ?? previous?.record.image;
   const offer = await readPublicLauncherOffer();
   assert.equal(offer.signerSha256, signerRootSha256, 'Public offer has a different signing family');
   if (!baseline) {
-    assert.ok(offer.versionCode > apk.versionCode, 'Public launcher version must advance the baseline');
+    assert.ok(offer.versionCode > versionCode, 'Public launcher version must advance the baseline');
     await verifyPublicLauncherBytes(offer);
   }
   const adb = adbFor(values.serial);
   const observation = captureLauncher(adb, values.serial);
-  assert.ok(observation.installed.sha256 === apk.sha256 && observation.installed.versionCode === apk.versionCode,
+  assert.ok(observation.installed.sha256 === apk.sha256 && observation.installed.versionCode === versionCode,
     'Installed launcher differs from the locally admitted APK');
   if (baseline) checkReplacement(baseline.record, observation, signerRootSha256, offer);
   else if (previous) checkFollowup(previous.record, distribution, observation, signerRootSha256);
@@ -343,7 +356,7 @@ async function main() {
   assert.deepEqual(await readPublicLauncherOffer(), offer, 'Public offer changed during device readback');
   writeFileSync(values.out, JSON.stringify({
     schema: SCHEMA, phase, packageName: PACKAGE, distribution, capturedAt: new Date().toISOString(),
-    observation, signerRootSha256, sdkCommit: runtime.base, offer, ...(image ? {image} : {}),
+    observation, signerRootSha256, sdkCommit, offer, ...(image ? {image} : {}),
     ...(baseline ? {beforeReceiptSha256: baseline.sha256, automaticInstall} : previous ? {previousReceiptSha256: previous.sha256} : {}),
   }, null, 2) + '\n', {flag: 'wx', mode: 0o600});
 }
