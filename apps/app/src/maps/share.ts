@@ -1,7 +1,7 @@
-import {copySelectedText,platformSharingAvailable,shareSelectedText} from '../runtime/text-share';
+import {platformSharingAvailable,shareSelectedText} from '../runtime/text-share';
 import { type MapShare } from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/share.ts';
 export { placeShare, routeShare, type MapShare } from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/share.ts';
-export const mapShareLabel=()=>platformSharingAvailable()?'Share':'Copy link';
+export const mapShareLabel=()=> 'Share';
 
 /** One selected place or route, handed to the OS as a portable link. */
 export async function shareMap(data:MapShare,signal:AbortSignal):Promise<'shared'|'copied'|'closed'> {
@@ -18,11 +18,7 @@ export async function shareMap(data:MapShare,signal:AbortSignal):Promise<'shared
  if(!link)throw Error('This place has no share link.');
  const url=new URL(link);
  if(url.protocol!=='https:'||url.username||url.password)throw Error('This place has no share link.');
- if(!platformSharingAvailable()){
-  await copySelectedText(url.href);
-  signal.throwIfAborted();
-  return 'copied';
- }
+ if(!platformSharingAvailable())throw Error('Sharing is unavailable in this preview.');
  const result=await shareSelectedText(Object.freeze({title:data.title,text:url.href}),signal);
  return result==='opened'?'shared':result;
 }

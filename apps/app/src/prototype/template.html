@@ -1995,18 +1995,18 @@
   
   <sc-if value="{{maps.isResults}}">
     <div class="enter" data-alpha-maps-sheet="results" style="position: absolute; left: 0; right: 0; bottom: 0; height: {{maps.sheetH}}px; border-radius: 28px 28px 0 0; background: var(--bg); box-shadow: 0 -10px 40px var(--shc), 0 -1px 0 var(--line); display: flex; flex-direction: column; z-index: 4; transition: height .45s cubic-bezier(.19,1,.22,1)">
-      <button aria-label="Resize results" onPointerDown="{{maps.sheetSw.down}}" onPointerUp="{{maps.sheetSw.up}}" onClick="{{maps.sheetTap}}" style="height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; touch-action: none; cursor: grab"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></button>
+      <button aria-label="Resize results" onPointerDown="{{maps.sheetSw.down}}" onPointerMove="{{maps.sheetSw.move}}" onPointerUp="{{maps.sheetSw.up}}" onPointerCancel="{{maps.sheetSw.cancel}}" onClick="{{maps.sheetTap}}" style="height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; touch-action: none; cursor: grab"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></button>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; padding: 0 0 120px; touch-action: pan-y">
 
         <sc-for list="{{maps.savedRows}}" key="{{r.id}}" as="r">
           <button data-alpha-map-row="{{r.id}}" class="tap" onClick="{{r.go}}" style="width:100%;display:flex;align-items:center;gap:14px;padding:10px 20px">
-            <svg class="i" viewBox="0 0 24 24"><path d="{{r.d}}"></path></svg><span style="text-align:left">{{r.name}}</span>
+            <svg class="i" viewBox="0 0 24 24"><path d="{{r.d}}"></path></svg><span style="text-align:left;flex:1">{{r.name}}</span><sc-if value="{{r.distance}}"><span style="font-size:13px;color:var(--mut);white-space:nowrap">{{r.distance}}</span></sc-if>
           </button>
         </sc-for>
         <sc-for list="{{maps.results}}" key="{{r.id}}" as="r">
           <button data-alpha-map-row="{{r.id}}" class="tap" onClick="{{r.go}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 20px">
             <span style="width: 42px; height: 42px; border-radius: 21px; background: var(--s2); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{r.d}}"></path></svg></span>
-            <div style="min-width: 0; text-align: left"><div style="font-size: 16px; font-weight: 600">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{r.sub}}</div></div>
+            <div style="min-width: 0; flex:1; text-align: left"><div style="font-size: 16px; font-weight: 600">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{r.sub}}</div></div><sc-if value="{{r.distance}}"><span style="font-size:13px;color:var(--mut);white-space:nowrap">{{r.distance}}</span></sc-if>
           </button>
         </sc-for>
         <sc-if value="{{maps.noResults}}">

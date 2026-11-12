@@ -83,3 +83,30 @@ test('an empty automatic search gives compact feedback without an empty sheet',a
  await expect(page.getByText('No places',{exact:true})).toBeVisible();
  await expect(page.locator('[data-alpha-maps-sheet="results"]')).toHaveCount(0);
 });
+
+
+test('Maps uses allowed location, shows result distances and dismisses results from the handle',async({page})=>{
+ await page.context().grantPermissions(['geolocation']);
+ await page.context().setGeolocation({latitude:43.7,longitude:7.425});
+ await setup(page);
+ await expect(page.getByText('Finding location…',{exact:true})).toHaveCount(0);
+ await page.getByRole('textbox',{name:'Search places',exact:true}).fill('place');
+ const sheet=page.locator('[data-alpha-maps-sheet="results"]');
+ await expect(sheet.getByRole('button',{name:/^One/})).toContainText(/ft|mi|m|km/);
+ const grip=sheet.getByRole('button',{name:'Resize results',exact:true});
+ const bounds=(await grip.boundingBox())!;
+ await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
+ await page.mouse.down();await page.mouse.move(bounds.x+bounds.width/2,bounds.y+110,{steps:8});await page.mouse.up();
+ await expect(sheet).toHaveCount(0);
+});
+
+test('place hours have one row per day and its website opens inside Alpha',async({page})=>{
+ await setup(page);
+ await page.evaluate(()=>{const f=(window as any).mapFocus;f.items=[{...f.place('1','Public place'),openingHours:'Monday: 8:00 AM–6:00 PM · Tuesday: 8:00 AM–6:00 PM · Wednesday: Closed',website:'https://example.com/'}];});
+ await page.getByRole('textbox',{name:'Search places',exact:true}).fill('public place');
+ await page.getByRole('button',{name:/^Public place/}).click();
+ await expect(page.getByLabel('Opening hours').locator('dt')).toHaveText(['Monday','Tuesday','Wednesday']);
+ await expect(page.getByRole('button',{name:'Share',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Website',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.dataset.activeView)).toBe('browser');
+});

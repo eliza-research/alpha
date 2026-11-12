@@ -1,3 +1,6 @@
+import {openContentLink} from './content-links';
+import {guidanceDistance} from '../maps/guidance';
+import {distanceToRoute} from '../maps/route-distance';
 import {mapsChatText} from '../runtime/action-message-presentation';
 import {BackgroundNavigation,type NavigationBridge} from '../maps/background-navigation';
 import {registerPlugin} from '../platform-plugins';
@@ -42,12 +45,37 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const module = views.maps; if (!module) return () => {};
   const original = { render: module.render, back: module.back, onLeave: module.onLeave, reply: module.reply, suggestions: module.suggestions, ongoing: module.ongoing };
   let api: Bag | undefined, disposed=false, renders=0;
+  let startupLocationChecked=false,locationGeneration=0;
   let planeBasemap:MapBasemap|undefined, plane: MapPlane | undefined, planeElement: HTMLElement | undefined;
   let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined;
   let mapCopyright='';
   let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
   let searchTimer:ReturnType<typeof setTimeout>|undefined;
+  let resultDrag:{id:number;y:number;distance:number;sheet:HTMLElement}|undefined;
+  const resetResultDrag=()=>{if(resultDrag)resultDrag.sheet.style.translate='';resultDrag=undefined;};
+  const resultGrip={
+    down:(event:PointerEvent)=>{
+      if(event.button!==0)return;
+      const target=event.currentTarget as HTMLElement,sheet=target.closest<HTMLElement>('[data-alpha-maps-sheet]');
+      if(!sheet)return;
+      resultDrag={id:event.pointerId,y:event.clientY,distance:0,sheet};
+      target.setPointerCapture(event.pointerId);
+    },
+    move:(event:PointerEvent)=>{
+      if(!resultDrag||event.pointerId!==resultDrag.id)return;
+      resultDrag.distance=Math.max(0,event.clientY-resultDrag.y);
+      resultDrag.sheet.style.translate=`0 ${resultDrag.distance}px`;
+      event.preventDefault();
+    },
+    up:(event:PointerEvent)=>{
+      if(!resultDrag||event.pointerId!==resultDrag.id)return;
+      const dismiss=resultDrag.distance>=72;
+      resetResultDrag();
+      if(dismiss){cancelSearch();submittedSearch=undefined;screen.back();}
+    },
+    cancel:resetResultDrag,
+  };
   let submittedSearch:{kind:'place'|'origin';text:string}|undefined;
   const cancelSearch=()=>{if(searchTimer!==undefined)clearTimeout(searchTimer);searchTimer=undefined;};
   const runSearch=(kind:'place'|'origin',text:string)=>{
@@ -95,15 +123,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       }
     },
     openWebsite: url => {
-      if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(result.message || 'The browser could not open.'); }, () => api?.toast('The browser could not open.'));
-      else window.open(url.href, '_blank', 'noopener,noreferrer');
+      if (shell) void openContentLink(shell as any, url.href).catch(error => api?.toast(error instanceof Error ? error.message : 'The browser could not open.'));
     },
     active,
     invalidate: () => { if (active()) api?.set({ nativeMapsRevision: ++renders }); },
     toast: text => api?.toast(text==='Copied'?'Link copied':text),
     discardHandoff: () => { pendingHandoff=undefined; if(api?.get('maps').query!=null)api.set({query:null}); },
     handoffReturn: () => !!mapsEventReturnOffered(api?.get('maps').fromEvent,api?.S.stack,screen.isNavigating()),
-    released: ()=>{cancelSearch();submittedSearch=undefined;dropPlane();},
+    released: ()=>{resetResultDrag();cancelSearch();submittedSearch=undefined;dropPlane();},
     // With no Maps provider on Android, an event's location can be handed to an installed map
     // app, only when the user taps for it. The exact hand-off text is sent; no route is shown.
     ...(isAndroid ? { mapsApp: {
@@ -159,6 +186,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   module.back = () => screen.back();
   module.onLeave = () => {
+    startupLocationChecked=false;locationGeneration++;
     retireEventReturn();
     screen.release();
   };
@@ -179,6 +207,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       });
     }
     const view = screen.view();
+    if(!startupLocationChecked){
+      startupLocationChecked=true;
+      const generation=locationGeneration;
+      void locationPermissionGranted().then(granted=>{
+        const current=screen.view();
+        if(granted&&generation===locationGeneration&&active()&&current.mode==='base'&&!current.query&&!pendingHandoff)screen.recenter();
+      });
+    }
     // Calling the original with neutral state retains visual tokens without
     // generating sample place cards, address guesses, routes or timers.
     const data = original.render({ ...st, query: null, place: null, directions: null, nav: false, saved: [], pan: null }, currentApi);
@@ -204,6 +240,11 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const savedMatches=view.mode!=='origin'&&view.query.trim()?view.saved.filter(item=>item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())):[];
     const isResults=(view.mode==='results'||view.mode==='origin')&&!view.emptyQuery&&(view.hasResults||savedMatches.length>0);
     const emptySearch=view.noResults&&!view.emptyQuery&&!savedMatches.length&&status.map!=='error';
+    const snapshot=mapsController?.snapshot();
+    const position=snapshot?.position.phase==='ready'?snapshot.position.value?.coordinate:undefined;
+    const places=new Map((view.mode==='origin'?snapshot?.originSearch.value:snapshot?.search.value)?.map(place=>[`place:${place.providerId}:${place.id}`,place.coordinate]));
+    for(const saved of snapshot?.saved.value??[])places.set(`saved:${saved.id}`,saved.coordinate);
+    const distanceFor=(key:string)=>{const point=places.get(key);return position&&point?guidanceDistance(distanceToRoute(position,[point])):'';};
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
@@ -224,7 +265,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         }
         plane?.update(view.map.selected,view.map.route,view.map.overlay);
       },
-      native: true, nativeStatusVisible:status.visible||emptySearch, nativeStatus: emptySearch?'No places':statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
+      native: true, nativeStatusVisible:(status.visible&&statusText!=='Finding location…')||emptySearch, nativeStatus: emptySearch?'No places':statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
       nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy, nativeLocation: () => screen.locate(),
       nativeLocationState:status.location,nativeMapState:status.map,nativeMapStatus:status.mapText,
       nativeLocationLabel:status.locationLabel,nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,
@@ -243,11 +284,11 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       clearQ: () => {cancelSearch();submittedSearch=undefined;screen.clearQuery();},
       chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => {cancelSearch();screen.chooseSaved(item.id);submittedSearch=undefined;} })),
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => screen.searchFor(category.label) })),
-      savedRows: savedMatches.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: '', d: PIN, go: () => {cancelSearch();screen.chooseSaved(item.id);submittedSearch=undefined;} })),
-      results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => {cancelSearch();screen.choose(row.key);submittedSearch=undefined;} })),
+      savedRows: savedMatches.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: '', distance:distanceFor(`saved:${item.id}`), d: PIN, go: () => {cancelSearch();screen.chooseSaved(item.id);submittedSearch=undefined;} })),
+      results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, distance:distanceFor(row.key), d: PIN, go: () => {cancelSearch();screen.choose(row.key);submittedSearch=undefined;} })),
       hasResults: view.hasResults||savedMatches.length>0, noResults: view.noResults&&!savedMatches.length, emptyQ: view.emptyQuery,
       recenter: () => screen.recenter(), recBottom: isPlace ? 414 : view.mode === 'results' ? 534 : 124, recCss: '',
-      sheetH: sheetHeight, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
+      sheetH: sheetHeight, sheetSw: resultGrip, sheetTap: () => {},
       askAlpha: () => currentApi.send(view.query || 'Help me with Maps.'), noResTxt: `Ask ${currentApi.name} about this search`,
     });
     const place = view.place;
@@ -256,7 +297,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       // source has them. Phone is shown as text; calling stays deferred with Phone.
       data.pc = {
         name: place.name, meta: place.meta, addr: place.address,
-        hasHours: !!place.hours, hoursRows: (place.hours || '').split(';').map((text,index)=>{const separator=text.indexOf(':');return {id:String(index),day:separator>0?text.slice(0,separator).trim():'',hours:separator>0?text.slice(separator+1).trim():text.trim()};}).filter(row=>row.hours),
+        hasHours: !!place.hours, hoursRows: (place.hours || '').split(/;|\s+·\s+/).map((text,index)=>{const separator=text.indexOf(':');return {id:String(index),day:separator>0?text.slice(0,separator).trim():'',hours:separator>0?text.slice(separator+1).trim():text.trim()};}).filter(row=>row.hours),
         hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
         canDir: place.canDirections, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
@@ -348,7 +389,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   };
   window.addEventListener('pagehide', pagehide);
   document.addEventListener('visibilitychange', visibility);
-  return () => { disposed = true; retireEventReturn(); stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
+  return () => { disposed = true; resetResultDrag(); retireEventReturn(); stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
 }
 
 /** Presentation only: stored messages, model context and copied source text remain unchanged.
