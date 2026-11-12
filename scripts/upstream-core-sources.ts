@@ -1,12 +1,13 @@
 export default {
   "schema": 1,
-  "baseCommit": "c518127a025ab173874af9c7d304f26b25213b0d",
+  "baseCommit": "f2d1a2df2c7c0a2b71560f3409ac5942271bc524",
   "files": {
     "packages/core/src/services/task.ts": "d1aed0e788fecb0dffacd15a8d8ecc7a1046d103db561915faaffa7a3f6d36bf",
-    "plugins/plugin-notes/src/service.ts": "b25222d39bf98551b26795bc369e614bf8332e263848c7f6dab0beb460ece97a",
-    "plugins/plugin-notes/src/store.ts": "7cf45a1d43d900c18d930296bdb85d12ff6833ec3c52db7f061b39083a6520bf",
-    "plugins/plugin-notes/src/types.ts": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c",
-    "plugins/plugin-notes/src/validation.ts": "6bb3d21aa78263462a234c6b04580ef2bceddeab227db8deba9c7568362f37a4",
+    "plugins/plugin-notes/src/service.ts": "b1628e3e107bd680dd70eb40d15223257aefb3381d1aac72bee85e45bcab6619",
+    "plugins/plugin-notes/src/store.ts": "cb2a645f9d17db5247e34592d1f03f4c7339444c0bac4d8961235dc243ee6583",
+    "plugins/plugin-notes/src/types.ts": "aeba1c54daa4335b4305a07ff0c346f76ac9717527298a19ef22d80513932156",
+    "plugins/plugin-notes/src/validation.ts": "1f82f920f76405a012e668ec5276213da9d215701ac6eb6a10f83dcbc42e821d",
+    "plugins/plugin-notes/src/trash-retention.ts": "2ea18ea211446db52b8e47782e79af8d7a4b7fbfa5141c0823c7579e585ae40a",
     "packages/core/src/runtime/turn-controller.ts": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111",
     "packages/core/src/runtime/room-handler-queue.ts": "4733782d1486a9f3caf2314e4e18ad35dfa8770fc3235e60f944b57a8840e68e",
     "packages/core/src/runtime/embeddings.ts": "eb6bd91bad9e60ee137e088562e59de7e9babac5673e26a4061845c4b02d6188",

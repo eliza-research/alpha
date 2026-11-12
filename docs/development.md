@@ -484,12 +484,12 @@ tracks the overall release gate. A successful host test or model does not close
 these release and device gates. Alpha consumes the reviewed rejected-download
 retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) and the
 reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255)
-and the Maps opening view from [eliza#39408](https://github.com/elizaOS/eliza/pull/39408)
-at `c518127a025ab173874af9c7d304f26b25213b0d`, a commit on upstream develop. The
-native engine gitlink is unchanged; three recorded producer inputs changed only
-in their version string. No native build or qualification was run at this pin.
-Earlier APK, voice and device evidence does not qualify this pin; rebuild and
-qualify the exact product inputs before OS enrollment.
+and the Maps opening view from [eliza#39408](https://github.com/elizaOS/eliza/pull/39408).
+The current pin includes [native Android sign-in recovery and renewal](https://github.com/elizaOS/eliza/pull/39445)
+and [reproducible native browser resource generation](https://github.com/elizaOS/eliza/pull/39450)
+at `f2d1a2df2c7c0a2b71560f3409ac5942271bc524` on upstream develop. The native engine
+gitlink and recorded embedding producer inputs match the previous pin. Rebuild
+and qualify the exact product inputs before OS enrollment.
 
 The protected [preserving OS OTA signing workflow](../.github/workflows/release-os-ota-signing.yml)
 signs only an admitted OTA package with the existing release key. Its committed
