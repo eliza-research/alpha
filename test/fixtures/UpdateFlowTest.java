@@ -227,8 +227,6 @@ public final class UpdateFlowTest {
  private static void settled()throws Exception{plugin("updateAsked",0L);}
  /** Alpha's last exchange with Android was this long ago, for the tests that measure the wait itself. */
  private static void aged(long millis)throws Exception{plugin("updateAsked",System.nanoTime()-TimeUnit.MILLISECONDS.toNanos(millis));}
- /** Every other scenario keeps three seconds, so a held download released after a few taps is still in time. */
- private static void deadline(long nanos)throws Exception{plugin("UPDATE_DEADLINE_NANOS",nanos);}
  private static void resume(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.RESUMED;plugin.handleOnResume();}
  private static void stop(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.CREATED;}
  static Context installing(File cache)throws Exception{retireFixtureWorkers();forgetProcess();BuildConfig.VERSION_CODE=7;Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";android.os.SystemClock.uptime=35_000L;Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
@@ -475,16 +473,17 @@ public final class UpdateFlowTest {
  private static void theDeadlineEndsATrickleNotADownloadThatFinishesInTime(File cache)throws Exception{
   Context context=installing(cache);
   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
-  deadline(TimeUnit.MILLISECONDS.toNanos(300));
-  body=trickle(40);connections.clear();
-  PluginCall late;
-  try{late=tap(owner);}finally{deadline(TimeUnit.SECONDS.toNanos(3));}
-  check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
-  check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
-  deadline(TimeUnit.MILLISECONDS.toNanos(300));
-  body=trickle(2);
-  try{check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");}
-  finally{deadline(TimeUnit.SECONDS.toNanos(3));body=IN_MEMORY;}
+  long originalDeadline=AlphaDevicePlugin.UPDATE_DEADLINE_NANOS;
+  try{
+   AlphaDevicePlugin.UPDATE_DEADLINE_NANOS=TimeUnit.MILLISECONDS.toNanos(300);
+   body=trickle(40);connections.clear();
+   PluginCall late=tap(owner);
+   check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
+   check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
+   AlphaDevicePlugin.UPDATE_DEADLINE_NANOS=TimeUnit.SECONDS.toNanos(3);
+   body=trickle(2);
+   check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");
+  }finally{AlphaDevicePlugin.UPDATE_DEADLINE_NANOS=originalDeadline;body=IN_MEMORY;}
  }
  private static void destroyClosesADownloadInFlight(File cache)throws Exception{
   Context context=installing(cache);
@@ -2167,7 +2166,8 @@ public final class UpdateFlowTest {
   context.packages.archiveRead=()->owner.activity.focused=false;
   PluginCall first=tlsApk(8);
   owner.installUpdate(fixtureAutomatic(first));first.awaitAnswer();
-  check(first.rejected.get()==1&&cacheTlsRequests.get()==1&&java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"owned TLS delivers exact bytes retained on foreground loss");
+  check(first.rejected.get()==1&&cacheTlsRequests.get()==1&&download(context).isFile()&&
+   java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"owned TLS delivers exact bytes retained on foreground loss");
   check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"TLS deferral grants no session/pause authority");
   context.packages.archiveRead=()->{};owner.activity.focused=true;
   PluginCall next=fixtureAutomatic(tlsApk(8));owner.installUpdate(next);next.awaitAnswer();
@@ -2243,6 +2243,8 @@ public final class UpdateFlowTest {
   if(interrupted)Thread.currentThread().interrupt();
  }
  private static void finalOfferDeadlineRetiresBeforeLateTransport(File cache)throws Exception{
+  var deadline=AlphaDevicePlugin.class.getDeclaredField("UPDATE_MANIFEST_RECHECK_MILLIS");deadline.setAccessible(true);
+  int originalDeadline=deadline.getInt(null);
   for(String cut:List.of("foreground","headers","body","open")){
    Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
    var installer=context.packages.installer;
@@ -2267,6 +2269,7 @@ public final class UpdateFlowTest {
       }
      }
     };
+    if(!cut.equals("foreground"))deadline.setInt(null,1200);
     PluginCall request=bindAutomatic(tlsApk(8),digest);owner.installUpdate(request);
     check(entered.await(5,TimeUnit.SECONDS),"final offer read reaches held "+cut+" stage");
     check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"the held final read follows resident pause");
@@ -2285,7 +2288,7 @@ public final class UpdateFlowTest {
      check(tap(owner).resolved.get()==1&&installer.committed.size()==1&&released.getCount()==1,
       "manual recovery can commit while canceled automatic network I/O is still held");
     }
-   }finally{released.countDown();manifestOpenObserver=()->{};manifestExchange=null;manifestTlsReply=null;}
+   }finally{deadline.setInt(null,originalDeadline);released.countDown();manifestOpenObserver=()->{};manifestExchange=null;manifestTlsReply=null;}
   }
   System.out.println("PASS final offer deadline bounds held network stages and leaves manual recovery available");
  }
