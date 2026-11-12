@@ -21,12 +21,16 @@ test('publication workflow preserves protected review, exact source and verifica
   assert.match(workflow.jobs.admit.if,/inputs.workflow_commit == github.sha/);
   const steps=publish.steps;
   assert(steps.filter(step=>step.uses?.startsWith('actions/checkout@')).every(step=>step.with['persist-credentials']===false));
-  const verification=steps.findIndex(step=>step.run?.includes('bun run android:verify -- --cloud-voice-evidence='));
+  const verification=steps.findIndex(step=>step.run?.includes('android:verify --'));
   const delivery=steps.findIndex(step=>step.run?.includes('bun scripts/deliver-app-update.ts --variant launcher'));
   assert(verification>=0&&delivery>verification);
   assert.equal(steps[delivery]['working-directory'],'qualified-product');
   assert.match(steps[delivery].run,/scripts\/deliver-app-update\.mjs/);
   assert.match(steps[verification].run,/qualified-stage\/cloud-voice.json/);
+  assert.match(steps[verification].run,/--runtime-profile=cloud/);
+  assert.match(steps[verification].run,/npm run android:verify/);
+  const node=steps.find(step=>step.uses?.startsWith('actions/setup-node@'));
+  assert.equal(node.with['node-version-file'],'qualified-product/.nvmrc');
   const restore=steps.findIndex(step=>step.run?.includes('--product \"$GITHUB_WORKSPACE/qualified-product\"'));
   assert(restore>=0&&restore<verification);
   assert.match(steps[restore].run,/cp android\/release-signer\.json qualified-product\/android\/release-signer\.json/);
@@ -41,11 +45,11 @@ test('artifact identity is confined to protected signing and publication jobs',(
  const identity=JSON.parse(fs.readFileSync(new URL('../scripts/ci/private-artifact-identity.json',import.meta.url),'utf8'));
  assert.equal(identity.projectId,'alpha-aosp-lab-20261024');
  assert.deepEqual(identity.roles.map(role=>role.includedPermissions),[['storage.objects.get'],['storage.objects.create']]);
- for(const claim of ["assertion.repository_id == '1396333361'","assertion.ref == 'refs/heads/main'","assertion.environment == 'release'","assertion.event_name == 'workflow_dispatch'"])assert(identity.attributeCondition.includes(claim));
+ for(const claim of ["assertion.repository_id == '1396333361'","assertion.repository_owner_id == '314117943'","assertion.ref == 'refs/heads/main'","assertion.environment == 'release'","assertion.event_name == 'workflow_dispatch'"])assert(identity.attributeCondition.includes(claim));
  assert.deepEqual([...identity.attributeCondition.matchAll(/"([^"]+\.yml@refs\/heads\/main)"/g)].map(match=>match[1]),[
-  'alphacompute/alpha/.github/workflows/release-cloud-app-signing.yml@refs/heads/main',
-  'alphacompute/alpha/.github/workflows/publish-qualified-app-update.yml@refs/heads/main',
-  'alphacompute/alpha/.github/workflows/release-os-ota-signing.yml@refs/heads/main',
+  'eliza-research/alpha/.github/workflows/release-cloud-app-signing.yml@refs/heads/main',
+  'eliza-research/alpha/.github/workflows/publish-qualified-app-update.yml@refs/heads/main',
+  'eliza-research/alpha/.github/workflows/release-os-ota-signing.yml@refs/heads/main',
  ]);
  assert(identity.roles[1].condition.expression.endsWith("/objects/signed/')"));
  const cases=[['release-cloud-app-signing.yml','sign'],['publish-qualified-app-update.yml','publish']];
