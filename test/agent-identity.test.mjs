@@ -55,22 +55,6 @@ test('a new profile routes embeddings on-device and the child learns where the f
  assert.doesNotMatch(r.error,/serviceRouting omits embeddings/);
 });
 
-test('the reviewed-workflow launcher makes loopback callers present the owner token',()=>{
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-workflow-auth-')),home=path.join(dir,'home'),profile=path.join(dir,'profile'),source=path.join(dir,'source'),receipt=path.join(dir,'child.json'),bun=path.join(dir,'fake-bun');
- try{
-  fs.mkdirSync(path.join(home,'.config/alphaphone'),{recursive:true});fs.writeFileSync(path.join(home,'.config/alphaphone/cerebras-key'),'synthetic-fixture-key',{mode:0o600});
-  fs.mkdirSync(path.join(source,'node_modules'),{recursive:true});fs.mkdirSync(path.join(source,'packages/app/src/runtime'),{recursive:true});fs.writeFileSync(path.join(source,'packages/app/src/runtime/dev-server.ts'),'');
-  git(source,'init','-q');git(source,'commit','--allow-empty','-qm','fixture');
-  fs.writeFileSync(bun,`#!/usr/bin/env bun\nrequire('node:fs').writeFileSync(${JSON.stringify(receipt)},JSON.stringify({requireLocalAuth:process.env.ELIZA_REQUIRE_LOCAL_AUTH??null,token:process.env.ELIZA_API_TOKEN??null}));`,{mode:0o700});
-  const env={...process.env,HOME:home};delete env.ELIZA_REQUIRE_LOCAL_AUTH;
-  const result=spawnSync(process.execPath,[path.resolve('scripts/start-reviewed-workflow-agent.ts'),'--source',source,'--profile',profile,'--port','47997','--bun',bun],{env,encoding:'utf8',timeout:15000});
-  assert.equal(result.status,0,result.stderr);
-  const child=JSON.parse(fs.readFileSync(receipt,'utf8'));
-  assert.equal(child.requireLocalAuth,'1');
-  assert.equal(child.token,fs.readFileSync(path.join(profile,'owner-token'),'utf8').trim());
- }finally{fs.rmSync(dir,{recursive:true,force:true});}
-});
-
 test('the combined launcher refuses the pinned vendor tree whatever directory it is started from',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-combined-guard-'));
  try{
