@@ -72,14 +72,19 @@ export function chainMethods(plugin) {
     ),
     ACTUAL_ACK: between(
       plugin,
-      " private boolean acknowledge(",
-      " /** A key stored before",
+      " private CloudSignInFlow.Ack acknowledge(",
+      " /**\n  * A key stored before an interrupted ack",
     ),
     ACTUAL_RESUME_ACKS: between(
       plugin,
       " private void resumeAcknowledgements()",
-      " // ── Outcomes and transport",
+      " // ── Silent key renewal",
     ),
+    ACTUAL_RENEWAL: between(
+      plugin,
+      " /** One renewal check of a deployment's saved key.",
+      " // ── Outcomes and transport",
+    ).replace("@PluginMethod ", ""),
     ACTUAL_DESTROY: between(
       plugin,
       " @Override protected void handleOnDestroy()",
