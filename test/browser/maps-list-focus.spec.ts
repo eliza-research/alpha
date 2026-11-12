@@ -104,7 +104,7 @@ test('place hours have one row per day and its website opens inside Alpha',async
  await setup(page);
  await page.evaluate(()=>{const f=(window as any).mapFocus;f.items=[{...f.place('1','Public place'),openingHours:'Monday: 8:00 AM–6:00 PM · Tuesday: 8:00 AM–6:00 PM · Wednesday: Closed',website:'https://example.com/'}];});
  await page.getByRole('textbox',{name:'Search places',exact:true}).fill('public place');
- await page.getByRole('button',{name:/^Public place/}).click();
+ await page.locator('[data-alpha-maps-sheet="results"]').getByRole('button',{name:/^Public place/}).click();
  await expect(page.getByLabel('Opening hours').locator('dt')).toHaveText(['Monday','Tuesday','Wednesday']);
  await expect(page.getByRole('button',{name:'Share',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Website',exact:true}).click();

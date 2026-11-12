@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
   "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "head": "9e354ab050638579d9d288aaf13cac5f6bd2d644",
+  "head": "bb60e77895bd5a872fd0c407a357507041f95f7b",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...9e354ab050638579d9d288aaf13cac5f6bd2d644",
+  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...bb60e77895bd5a872fd0c407a357507041f95f7b",
   "status": "diverged",
-  "aheadBy": 69,
+  "aheadBy": 71,
   "behindBy": 617,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -286,6 +286,14 @@
     {
       "sha": "9e354ab050638579d9d288aaf13cac5f6bd2d644",
       "subject": "Resume an early search after initial Maps provider discovery"
+    },
+    {
+      "sha": "b64dd0e2def0d5b9d49f62e0e7a5e0e305b119ec",
+      "subject": "Wait for provider setup before resuming the pending Maps query"
+    },
+    {
+      "sha": "bb60e77895bd5a872fd0c407a357507041f95f7b",
+      "subject": "Keep loading raster tiles available across zoom gestures"
     }
   ]
 }
