@@ -47,8 +47,9 @@ are not run by PR CI: run `bun run test:browser` and `bun run test:browser:produ
 finalising a PR and say so in its description. CI runs them with the formal models when
 `develop` is promoted to `main`.
 
-On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) lengthens refinement
-subprocess deadlines so slow but live checkers are not reported as failures; CI uses 1.
+On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) lengthens subprocess
+deadlines for refinement, host JVM fixtures and LemmaScript. CI uses 1. Dafny's
+per-proof limits and the update deadlines measured by fixtures stay the same.
 
 ## Development
 

@@ -5,6 +5,7 @@ import {homedir,tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {preparePatchedNative} from '../../scripts/prepare-patched-native.ts';
+import {scaledTimeout} from '../../specs/quint/refinement/timeouts.mjs';
 
 export const root=resolve(import.meta.dirname,'../..');
 export const nativeSource=name=>join(root,'android/app/src/main/java/ai/alphacompute/alphaphone',name);
@@ -25,8 +26,8 @@ export const javaBinary=name=>{const home=javaHome();return home?join(home,'bin'
 const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/20250517');
 const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(name=>name==='json-20250517.jar').map(name=>join(cache,hash,name)))[0]:undefined;
 export const jsonJar=process.env.ALPHA_JSON_JAR||cached;
-/** One timeout for every host javac and java run. */
-export const jvmTimeout=120000;
+/** Default process budget for host JVM fixtures and their build tools. */
+export const jvmTimeout=scaledTimeout(120_000);
 
 const runs=command=>{const result=spawnSync(command,['-version'],{stdio:'ignore',timeout:30000});return !result.error&&result.status===0;};
 const tools={
@@ -46,12 +47,12 @@ export function jvmSkip(...names){
 export const jsonJarSkip=jvmSkip('json');
 
 /** Compiles the sources (plus org.json when needed) and returns the main class's stdout for the given stdin. */
-export function runJvm(sources,mainClass,{json=false,args=[],input,timeout=jvmTimeout}={}){
+export function runJvm(sources,mainClass,{json=false,args=[],input,timeout=120_000}={}){
  const temporary=mkdtempSync(join(tmpdir(),'alpha-jvm-'));
  try{
   const classpath=json?['-cp',jsonJar]:[];
   execFileSync(javaBinary('javac'),['--release','11',...classpath,'-d',temporary,...sources],{timeout:jvmTimeout});
-  return execFileSync(javaBinary('java'),['-cp',json?temporary+':'+jsonJar:temporary,mainClass,...args],{encoding:'utf8',timeout,input});
+  return execFileSync(javaBinary('java'),['-cp',json?temporary+':'+jsonJar:temporary,mainClass,...args],{encoding:'utf8',timeout:scaledTimeout(timeout),input});
  }finally{rmSync(temporary,{recursive:true,force:true});}
 }
 
