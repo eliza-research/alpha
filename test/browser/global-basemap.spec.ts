@@ -41,6 +41,12 @@ test('a global manual pin composes with the actual configured route provider wit
 
 test('pinching over the Maps chat controls cannot zoom the whole page',async({page})=>{
  await setup(page);const map=page.locator('[data-alpha-map-plane]');await expect(map).toHaveAttribute('data-map-ready','true');
+ await expect.poll(async()=>Number(await map.getAttribute('data-map-zoom'))).toBeGreaterThan(0);
+ const zoom=Number(await map.getAttribute('data-map-zoom')),scale=await page.evaluate(()=>visualViewport!.scale),bounds=(await map.boundingBox())!;
+ await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/3);
+ await page.keyboard.down('Control');await page.mouse.wheel(0,-120);await page.keyboard.up('Control');
+ await expect.poll(async()=>Number(await map.getAttribute('data-map-zoom'))).toBeGreaterThan(zoom);
+ expect(await page.evaluate(()=>visualViewport!.scale)).toBe(scale);
  const result=await page.evaluate(()=>{
   const shell=document.querySelector('.alpha-phone')!,pill=shell.querySelector('[data-alpha-layer="pill"]')!;
   const wheel=new WheelEvent('wheel',{bubbles:true,cancelable:true,ctrlKey:true,deltaY:-120});pill.dispatchEvent(wheel);
