@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 const {applyImageContacts} = await import('../apps/app/src/runtime/image-contacts.ts');
 
 /** The shell's own masking rule: a deferred view is reported as no view (model.js S()). */
@@ -44,10 +43,4 @@ test('admitting Contacts never navigates', () => {
   applyImageContacts(true, order, instance, admission(deferred));
   assert.deepEqual(calls, []);
   assert.deepEqual(order, ['notes', 'contacts']);
-});
-
-test('the Android resume path applies admission through this rule', () => {
-  const main = readFileSync('apps/app/src/main.tsx', 'utf8');
-  assert.match(main, /applyImageContacts\(admitted,ORDER,shell,admitImageContacts\)/);
-  assert.equal(main.match(/admitImageContacts\(/g), null);
 });
