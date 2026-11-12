@@ -53,6 +53,19 @@ test("a pilot release must be signed by the recorded signer, advance versionCode
   assert.throws(() => admitUnitApk(changed, { variant: "launcher", build: "debug" }, { descriptor: descriptor() }), /does not match/);
 });
 
+test("installed release readback bypasses only the new-release version floor", t => {
+  const selection = { variant: "launcher", build: "release" };
+  const current = descriptor(SIGNER, 5);
+  const recorded = build(t, DISTRIBUTABLE);
+  const readback = { descriptor: current, installedReadback: true };
+  assert.throws(() => admitUnitApk(recorded, selection, { descriptor: current }), /not greater/);
+  assert.equal(admitUnitApk(recorded, selection, readback).versionCode, 5);
+  assert.throws(() => admitUnitApk(build(t, { ...DISTRIBUTABLE, signerSha256: "b".repeat(64) }), selection, readback), /does not match/);
+  assert.throws(() => admitUnitApk(build(t, { ...DISTRIBUTABLE, runtimeNotices: false }), selection, readback), /notices lack the packaged runtime/);
+  fs.writeFileSync(path.join(path.dirname(recorded), "launcher-release.apk"), "different bytes");
+  assert.throws(() => admitUnitApk(recorded, selection, readback), /does not match its verified manifest row/);
+});
+
 test("a pilot or acceptance unit never gets a non-distributable release, and every blocker is named", t => {
   const admit = (row, extra) => admitUnitApk(build(t, { ...DISTRIBUTABLE, ...row }, extra), { variant: "launcher", build: "release" }, { descriptor: descriptor() });
   const refusal = (row, extra) => { try { admit(row, extra); } catch (error) { return error.message; } return assert.fail(`admitted ${JSON.stringify(row)}`); };

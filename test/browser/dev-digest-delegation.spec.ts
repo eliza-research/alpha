@@ -54,6 +54,7 @@ test('local authorization review survives reload and revocation disables its sou
  expect(await calls()).toEqual([]);
 
  await reviewRemoval.click();
+ await expect(removal.getByRole('button',{name:'Confirm removal',exact:true})).toBeEnabled();
  await page.evaluate(()=>{(window as any).removalFixture.holdNext=true;});
  await removal.getByRole('button',{name:'Confirm removal',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>typeof (window as any).removalFixture.releaseImpact)).toBe('function');
@@ -64,6 +65,9 @@ test('local authorization review survives reload and revocation disables its sou
  expect(await calls()).toEqual([]);
 
  await reviewRemoval.click();
+ // Change the sources only after the original impact has been presented for review.
+ await expect(removal.getByRole('button',{name:'Confirm removal',exact:true})).toBeEnabled();
+ await expect(removal).not.toContainText('Another source added during review');
  await page.evaluate(()=>{(window as any).removalFixture.newSource=true;});
  await removal.getByRole('button',{name:'Confirm removal',exact:true}).click();
  await expect(panel(page).getByText('Sources or schedules changed. Review the updated list.',{exact:true})).toBeVisible();

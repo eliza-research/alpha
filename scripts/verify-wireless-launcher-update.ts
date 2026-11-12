@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Record an operator-run wireless launcher replacement using read-only ADB commands. */
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -193,7 +193,7 @@ async function main() {
   const {updateManifestUrl} = JSON.parse(readFileSync(new URL('../app.config.json', import.meta.url), 'utf8'));
   assert.equal(updateManifestUrl, appUpdateManifestUrl(), 'The configured launcher channel differs from the public release');
   const descriptor = readReleaseSigner();
-  const apk = admitUnitApk(values['apk-manifest'], {variant: 'launcher', build: 'release'}, {descriptor});
+  const apk = admitUnitApk(values['apk-manifest'], {variant: 'launcher', build: 'release'}, {descriptor, installedReadback: true});
   assert.ok(apk.versionCode !== null, 'Release version code is missing');
   const {signerRootSha256} = inspectUpdateApk({...apk, versionCode: apk.versionCode}, {descriptor});
   const runtime = apkRuntimeIdentity(apk.file);
