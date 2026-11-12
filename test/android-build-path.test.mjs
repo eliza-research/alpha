@@ -28,6 +28,22 @@ test('scrubbed children leave a turbo-style AGENTS.md updater with nothing to de
   assert.notEqual(read(path.join(dir, 'AGENTS.md')), 'upstream\n');
 });
 
+test('prepared SDK children discard the inherited Bun node alias', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-upstream-node-'));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const suffix = process.platform === 'win32' ? '.exe' : '';
+  const bun = path.join(root, 'bun' + suffix);
+  const alias = path.join(root, 'alias');
+  const tools = path.join(root, 'tools');
+  fs.mkdirSync(alias);
+  fs.mkdirSync(tools);
+  fs.writeFileSync(bun, '');
+  fs.symlinkSync(bun, path.join(alias, 'node' + suffix));
+  fs.writeFileSync(path.join(tools, 'node' + suffix), '');
+  const inherited = [alias, tools, root].join(path.delimiter);
+  assert.equal(preparedSourceEnv({PATH: inherited}).PATH, [tools, root].join(path.delimiter));
+});
+
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-android-preflight-')));
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));

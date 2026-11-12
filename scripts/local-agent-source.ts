@@ -38,7 +38,14 @@ export const TURBO_AGENT_DETECTION_ENV=Object.freeze(['AI_AGENT','AUGMENT_AGENT'
 export function preparedSourceEnv(env=process.env, extra: NodeJS.ProcessEnv = {}) {
  const result: NodeJS.ProcessEnv = {...env,...extra};
  for(const name of TURBO_AGENT_DETECTION_ENV)delete result[name];
+ if(result.PATH)result.PATH=result.PATH.split(path.delimiter).filter(directory=>!bunAsNode(directory)).join(path.delimiter);
  return result;
+}
+// Alpha's Bun scripts prepend a temporary node alias. The pinned SDK's generators need Node.
+function bunAsNode(directory: string): boolean {
+ if(!directory)return false;
+ try{return /^bun(?:\.exe)?$/.test(path.basename(fs.realpathSync(path.join(directory,process.platform==='win32'?'node.exe':'node'))));}
+ catch{return false;}
 }
 export function sourceDirectory(root: string, env=process.env) {
  const supplied=env.ALPHA_LOCAL_AGENT_SOURCE_DIR;

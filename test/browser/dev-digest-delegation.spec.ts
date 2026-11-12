@@ -54,8 +54,12 @@ test('local authorization review survives reload and revocation disables its sou
  expect(await calls()).toEqual([]);
 
  await reviewRemoval.click();
- await page.evaluate(()=>{(window as any).removalFixture.holdNext=true;});
- await removal.getByRole('button',{name:'Confirm removal',exact:true}).click();
+ await expect(removal).toContainText('Same grant, second connection');
+ const confirmRemoval=removal.getByRole('button',{name:'Confirm removal',exact:true});
+ await confirmRemoval.evaluate(button=>button.addEventListener('click',()=>{
+  (window as any).removalFixture.holdNext=true;
+ },{capture:true,once:true}));
+ await confirmRemoval.click();
  await expect.poll(()=>page.evaluate(()=>typeof (window as any).removalFixture.releaseImpact)).toBe('function');
  await liveGoogle.evaluate(element=>{(element as HTMLElement).click();(element as HTMLElement).click();});
  await expect(removal).toHaveCount(0);
@@ -64,6 +68,7 @@ test('local authorization review survives reload and revocation disables its sou
  expect(await calls()).toEqual([]);
 
  await reviewRemoval.click();
+ await expect(removal).toContainText('Same grant, second connection');
  await page.evaluate(()=>{(window as any).removalFixture.newSource=true;});
  await removal.getByRole('button',{name:'Confirm removal',exact:true}).click();
  await expect(panel(page).getByText('Sources or schedules changed. Review the updated list.',{exact:true})).toBeVisible();
