@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "repository": "elizaOS/eliza",
-  "base": "1cb9c5378c975d08082d528af454b9c9b931a430",
-  "baseCommit": "1cb9c5378c975d08082d528af454b9c9b931a430",
-  "head": "973f79bad75dbce787ea8101279724ee178fd2c1",
+  "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
+  "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
+  "head": "c4b126bb3c5dffb208d3943e052d3b44aa7de784",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...973f79bad75dbce787ea8101279724ee178fd2c1",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...c4b126bb3c5dffb208d3943e052d3b44aa7de784",
   "status": "diverged",
-  "aheadBy": 51,
-  "behindBy": 616,
+  "aheadBy": 53,
+  "behindBy": 617,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -214,6 +214,14 @@
     {
       "sha": "973f79bad75dbce787ea8101279724ee178fd2c1",
       "subject": "test(lifeops): verify summary generation and persistence outcomes"
+    },
+    {
+      "sha": "334c24bf16a6fb6362886eecbf0ddbddeb85f0d1",
+      "subject": "Format the summary conformance imports"
+    },
+    {
+      "sha": "c4b126bb3c5dffb208d3943e052d3b44aa7de784",
+      "subject": "Format the owner-clock conformance imports"
     }
   ]
 }
