@@ -20,11 +20,14 @@ test('encrypted successful CAS with failed readback has durable data but no succ
  const m=await loaded,f=await notesFixture(m,{mode:'encrypted'});
  try{
   const service=await f.open();f.backend.nextRead='fail';
-  await assert.rejects(f.interact('create-note',{content:'Durable unknown'}),/controlled encrypted read failure/);
-  assert.equal((await f.raw()).revision,1);assert.equal(service.snapshot().revision,0);assert.equal(service.snapshot().notes.length,0);
+  await assert.rejects(f.interact('create-note',{content:'Durable unknown'}),error=>{
+   assert.equal(error.code,'NOTES_STORE_WRITE_FAILED');assert.equal(error.cause?.message,'controlled encrypted read failure');return true;
+  });
+  assert.equal((await f.raw()).revision,1);assert.equal(service.status().phase,'error');
+  assert.throws(()=>service.snapshot(),{code:'NOTES_STORE_WRITE_FAILED'});
   assert.equal(f.events.length,0);
-  const conflict=await f.interact('create-note',{content:'Must not overwrite'});
-  assert.equal(conflict.success,false);assert.equal(conflict.error.code,'NOTES_EDIT_CONFLICT');
+  await assert.rejects(f.interact('create-note',{content:'Must not overwrite'}),{code:'NOTES_STORE_WRITE_FAILED'});
+  assert.equal(f.events.length,0);
   assert.equal((await f.raw()).notes[0].title,'Durable unknown');
   await service.stop();const restarted=await f.open();assert.equal(restarted.snapshot().notes[0].title,'Durable unknown');
  }finally{await f.close();}

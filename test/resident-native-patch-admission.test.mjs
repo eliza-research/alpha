@@ -20,8 +20,9 @@ test('pinned recovery and lifecycle sources match the reviewed upstream repair',
  // VoiceBundleAssets.bundleRoot the service already calls, which reads the manifest and writes nothing.
  // elizaOS/eliza#39007 also checks the durable update pause before resident start and recovery restart.
  // The reviewed DAE source also stages both PGlite snapshots from the mobile producer.
+ // The current pin removes the unsupported riscv64 slice; recovery and lifecycle code is unchanged.
  // Terminal failure notices, detached health, previous-tree staging recovery and Stop remain intact.
- ['ElizaAgentService','97afb73fc97b503c1f013038841d6b34efbab7b7d2aadf0ec5d5f6a2096708c6'],
+ ['ElizaAgentService','564a20b3c23bebacee12d3350634f805dcd5d503386f88f606ca2ce786172b24'],
  // The reviewed source retains directory/inode checks and now rotates oldest well-formed IPC
  // evidence into a bounded reviewed archive after process classification. Malformed/changing
  // records and interrupted explicit archive still refuse admission.

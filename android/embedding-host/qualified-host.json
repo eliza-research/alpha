@@ -64,7 +64,7 @@
   "producerInputs": [
     {
       "path": "package.json",
-      "sha256": "37d7ad2af909aaf259bebbdebe1d4daa9a2493e121989e581aebfce9252a9e4a"
+      "sha256": "072b1e6831d843940f4587421e5f4f3d5d00a0aa0cb90d2935b4b3c33a318b21"
     },
     {
       "path": "packages/agent/package.json",
@@ -72,7 +72,7 @@
     },
     {
       "path": "packages/app/package.json",
-      "sha256": "c460e236ce79ef27e4b3ecebc0ee8d4d1d90a583ce5ea41c072880da56948163"
+      "sha256": "0c4caddc17b888c93e1e3e69c009f64fa055ba74708f78dfc48d8bb090cdedba"
     },
     {
       "path": "packages/app/scripts/aosp/compile-libllama-paths.ts",

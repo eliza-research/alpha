@@ -5,15 +5,19 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {realNode} from '../scripts/run-node-only-tests.ts';
 
 const script = fileURLToPath(new URL('../scripts/check-lemma.ts', import.meta.url));
 const SOURCE = 'apps/app/src/sample.ts';
+const node = realNode();
+assert.ok(node, 'LemmaScript fixtures require genuine Node.js 24+');
 
 // Stand-in for lsc: no TypeScript project, no Dafny. It records each command, "generates" a
 // model that depends only on the source text, and reports a verifier summary for `check`.
 const STUB_LSC = `
 import fs from 'node:fs';
 import path from 'node:path';
+if (process.versions.bun) throw Error('LemmaScript must run on genuine Node.js');
 const [command, ...rest] = process.argv.slice(2);
 fs.appendFileSync(process.env.STUB_LOG, command + '\\n');
 if (command === 'version') { console.log('0.0.0-stub'); process.exit(0); }
@@ -44,6 +48,7 @@ function fixture(t, source = 'export function sample(x: number): number {\n  //@
   write('bun.lock', '{}');
   write('scripts/check-lemma.ts', fs.readFileSync(script));
   write('scripts/quint-lib.ts', fs.readFileSync(new URL('../scripts/quint-lib.ts', import.meta.url)));
+  write('scripts/run-node-only-tests.ts', fs.readFileSync(new URL('../scripts/run-node-only-tests.ts', import.meta.url)));
   write('specs/quint/refinement/timeouts.mjs', fs.readFileSync(new URL('../specs/quint/refinement/timeouts.mjs', import.meta.url)));
   write('node_modules/lemmascript/package.json', '{"version":"0.6.6","type":"module"}');
   write('LemmaScript-files.txt', `# targets\n${SOURCE}\n`);
@@ -60,7 +65,7 @@ function fixture(t, source = 'export function sample(x: number): number {\n  //@
   const run = (env = {}, ...args) => {
     // PATH holds nothing, so no real dafny on this machine can be picked up.
     const result = spawnSync(process.execPath, [path.join(root, 'scripts/check-lemma.ts'), ...args], {cwd: root, encoding: 'utf8', env: {
-      PATH: env.DAFNY ? path.dirname(env.DAFNY) : path.join(root, 'empty-path'), STUB_LOG: log, ...env,
+      PATH: env.DAFNY ? path.dirname(env.DAFNY) : path.join(root, 'empty-path'), ALPHA_NODE: node, STUB_LOG: log, ...env,
     }});
     const receiptFile = path.join(root, 'test-results/lemma/check.json');
     return {...result, receipt: fs.existsSync(receiptFile) ? JSON.parse(fs.readFileSync(receiptFile, 'utf8')) : null, commands: fs.readFileSync(log, 'utf8').split('\n').filter(Boolean)};

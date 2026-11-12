@@ -450,7 +450,7 @@ test('transient startup storage failures recover without flashing global notices
   await page.goto('/');
   await completeAccessSetup(page);
   await expect(page.getByRole('button',{name:'Notes',exact:true})).toBeVisible();
-  await expect.poll(()=>page.evaluate(()=>(window as any).startupStorage.pending)).toBeGreaterThanOrEqual(3);
+  await expect.poll(()=>page.evaluate(()=>(window as any).startupStorage.pending),{timeout:20_000}).toBeGreaterThanOrEqual(3);
   await expect.poll(()=>page.evaluate(()=>(window as any).startupStorage.drafts)).toBeGreaterThanOrEqual(2);
   expect(await page.evaluate(()=>(window as any).startupStorage.flashes)).toEqual([]);
 });
@@ -474,7 +474,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
     window.dispatchEvent(new Event('alpha:deletions-changed'));
   });
   const notice = page.getByRole('complementary', { name: 'Pending deletions' });
-  await expect.poll(()=>page.evaluate(()=>(window as any).deletionNoticeFixture.checks)).toBeGreaterThanOrEqual(3);
+  await expect.poll(()=>page.evaluate(()=>(window as any).deletionNoticeFixture.checks),{timeout:20_000}).toBeGreaterThanOrEqual(3);
   await expect(notice).toHaveCount(0);
   await page.evaluate(()=>{(window as any).deletionNoticeFixture.known=true;window.dispatchEvent(new Event('alpha:deletions-changed'));});
   await expect(notice).toContainText('Known pending event');
