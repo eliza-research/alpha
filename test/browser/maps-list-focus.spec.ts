@@ -26,7 +26,7 @@ async function setup(page:Page){
   MapsController.prototype.search=function(...args:any[]){(window as any).mapFocus.controller=this;return original.apply(this,args as any);};
   const place=(id:string,name:string)=>({providerId:'focus-fixture',id,name,coordinate:{latitude:43.7+Number(id)*.001,longitude:7.425},attribution:'Fixture',fetchedAt:Date.now()});
   const f=(window as any).mapFocus={items:[place('1','One'),place('2','Two')],place,searches:[]};
-  configureMapsProvider({status:'configured',providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',revision:'fixture1',capabilities:{map:false,search:true,placeDetails:true,modes:['walk'],traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}}},{providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',search:async(query:string)=>{f.searches.push(query);return f.items;},detail:async(id:string)=>f.items.find((item:any)=>item.id===id),route:async()=>{throw Error('No route requested');}} as any);
+  configureMapsProvider({status:'configured',providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',revision:'fixture1',capabilities:{map:false,search:true,placeDetails:true,modes:['walk'],traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}}},{providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',search:async(query:string)=>{f.searches.push(query);return f.pending?await f.pending:f.items;},detail:async(id:string)=>f.items.find((item:any)=>item.id===id),route:async()=>{throw Error('No route requested');}} as any);
  });
  await page.getByRole('button',{name:'Maps',exact:true}).click();
 }
@@ -123,4 +123,24 @@ test('saving a named place stays quiet and the saved name remains searchable',as
  await page.getByRole('button',{name:'Close place',exact:true}).click();
  await query.fill('My named');
  await expect(page.locator('[data-alpha-maps-sheet="results"]').getByRole('button',{name:'My named place',exact:true})).toBeVisible();
+});
+
+
+test('typing a new Maps search keeps the current panel until replacement results arrive',async({page})=>{
+ await setup(page);const query=page.getByRole('textbox',{name:'Search places',exact:true});
+ await query.fill('first');const panel=page.locator('[data-alpha-maps-sheet="results"]');
+ await expect(panel.getByRole('button',{name:/^One/})).toBeVisible();
+ await panel.evaluate(element=>(window as any).originalResultPanel=element);
+ await page.evaluate(()=>{const f=(window as any).mapFocus;f.pending=new Promise(resolve=>f.resolveSearch=resolve);});
+ await query.fill('replacement');
+ await expect(panel).toHaveAttribute('aria-busy','true');
+ await expect(panel.getByRole('button',{name:/^One/})).toBeVisible();
+ expect(await panel.evaluate(element=>element===(window as any).originalResultPanel)).toBe(true);
+ await panel.getByRole('button',{name:/^One/}).click();
+ await expect(page.locator('[data-alpha-maps-sheet="place"]')).toHaveCount(0);
+ await expect.poll(()=>page.evaluate(()=>(window as any).mapFocus.searches.length)).toBe(2);
+ await page.evaluate(()=>{const f=(window as any).mapFocus;f.resolveSearch([f.place('3','Three')]);});
+ await expect(panel.getByRole('button',{name:/^Three/})).toBeVisible();
+ await expect(panel).toHaveAttribute('aria-busy','false');
+ await expect(panel.getByRole('button',{name:/^One/})).toHaveCount(0);
 });
