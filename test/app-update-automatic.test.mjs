@@ -27,7 +27,7 @@ function fixture(voiceShell, seed) {
   const shell={screen:'home',view:null,voice:'off',typing:false,chat:'input'};
   const context=vm.createContext({URL,Number,Date:{now:()=>clock},Capacitor:{isNativePlatform:()=>true},
     localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
-    document:{querySelector:()=>editor?{}:null},
+    document:{querySelector:selector=>editor&&selector.startsWith('input:focus,')?{}:null,querySelectorAll:()=>[]},
     owner:voiceShell??{S:()=>shell,voiceConversationActive:()=>false},connectionController:{getSnapshot:()=>({busy:false,open:false})},
     updateBusy:'',changed(){},
     device:{checkForUpdate:()=>{checks++;return check();},snapshot:()=>read(),updateState:async()=>({pending}),installUpdate:async input=>{
