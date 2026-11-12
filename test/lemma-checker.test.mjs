@@ -12,6 +12,8 @@ test('function checker distinguishes proofs, skips, failed verification and rege
   try {
     mkdirSync(join(root, 'scripts'), {recursive: true});
     for (const script of ['check-lemma.ts', 'quint-lib.ts']) copyFileSync(join(repositoryRoot, 'scripts', script), join(root, 'scripts', script));
+    const timeoutHelper = 'specs/quint/refinement/timeouts.mjs';
+    write(timeoutHelper, readFileSync(join(repositoryRoot, timeoutHelper)));
     write('bun.lock', '{}'); write('lemmascript.json', '{"proof-dir":"specs/lemma"}');
     write('LemmaScript-files.txt', 'apps/app/src/policy.ts 30\n');
     write('apps/app/src/policy.ts', '//@ verify\nexport function policy() { return true; }\n');

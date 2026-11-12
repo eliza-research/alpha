@@ -1,4 +1,5 @@
 """Drive the current release admission and private media helpers through closed ports."""
+import argparse
 import copy
 import hashlib
 import importlib.util
@@ -95,7 +96,7 @@ def blank():
             "candidateAttempt": 0, "protectedAttempt": 0, "privateReceipt": False, "review": False, "restored": False}
 
 
-def campaign(scratch, signing_commit, name, schedule):
+def campaign(scratch, signing_commit, name, schedule, signing_timeout):
     fixture = fixtures.QualifiedUpdateTest()
     fixture.setUp()
     if schedule[0][0] == "admitCandidate":
@@ -184,7 +185,7 @@ def campaign(scratch, signing_commit, name, schedule):
         args = ["bash", "scripts/ci/verify-cloud-signing-input.sh"]
         if stage_path:
             args.extend(["--stage", str(stage_path)])
-        result = subprocess.run(args, cwd=scratch, capture_output=True, timeout=30, env={
+        result = subprocess.run(args, cwd=scratch, capture_output=True, timeout=signing_timeout, env={
             "PATH": str(scratch / "closed-bin") + os.pathsep + os.environ["PATH"],
             "GITHUB_SHA": signing_commit, "GITHUB_REPOSITORY": repo, "GITHUB_REF": "refs/heads/main",
             "GITHUB_REPOSITORY_ID": str(producer.REPOSITORY_ID),
@@ -303,6 +304,11 @@ def campaign(scratch, signing_commit, name, schedule):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--signing-timeout-ms", type=int, default=30_000)
+    args = parser.parse_args()
+    if not 30_000 <= args.signing_timeout_ms <= 300_000:
+        parser.error("signing timeout must be between 30000 and 300000 milliseconds")
     with tempfile.TemporaryDirectory(prefix="alpha-promotion-refinement-") as directory:
         scratch = Path(directory)
         (scratch / "closed-bin").mkdir()
@@ -349,7 +355,8 @@ def main():
         for failure in ("generation", "signed-bytes"):
             schedules.append((f"{failure} refuses exact signed restore",
                               [plan, stage, upload, review, ("restoreSigned", [False], failure)]))
-        results = [campaign(scratch, commit, name, schedule) for name, schedule in schedules]
+        results = [campaign(scratch, commit, name, schedule, args.signing_timeout_ms / 1000)
+                   for name, schedule in schedules]
         candidate_index = next(i for i, (trace, _) in enumerate(results)
                                if trace["name"] == "exact main candidate and repeated protected attempt")
         print(json.dumps({"traces": [trace for trace, _ in results], "launcherBytes": results[0][1],

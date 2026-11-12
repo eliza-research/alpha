@@ -2,10 +2,33 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import YAML from 'yaml';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 test('qualified publication binds source, private output and exact reviewed voice without signing keys',()=>{
-  execFileSync('python3',['-B','test/qualified-app-update.test.py'],{cwd:new URL('..',import.meta.url),stdio:'pipe',timeout:30_000});
+  execFileSync('python3',['-B','test/qualified-app-update.test.py'],{cwd:new URL('..',import.meta.url),stdio:'pipe',timeout:scaledTimeout(30_000)});
+});
+
+test('qualified publication passes legacy profile flags only to historical producers',t=>{
+  const workflow=YAML.parse(fs.readFileSync(new URL('../.github/workflows/publish-qualified-app-update.yml',import.meta.url),'utf8'));
+  const step=workflow.jobs.publish.steps.find(step=>step.run?.includes('bun run android:verify --'));
+  const root=fs.mkdtempSync(join(tmpdir(),'alpha-publication-verifier-'));
+  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  fs.mkdirSync(join(root,'qualified-stage'));
+  const summary=join(root,'qualified-stage/qualification-summary.json');
+  const evidence=join(root,'qualified-stage/cloud-voice.json');
+  const bunLock=join(root,'bun.lock');
+  const commands=`bun() { printf '%s\\n' bun "$@"; }\nnpm() { printf '%s\\n' npm "$@"; }\n`;
+  const run=()=>execFileSync('bash',['-c',commands+step.run],{cwd:root,env:{...process.env,RUNNER_TEMP:root},encoding:'utf8'}).trim().split('\n');
+  for(const [profile,launcher] of [['cloud','npm'],['cloud','bun'],['native','bun']]){
+    if(launcher==='bun')fs.writeFileSync(bunLock,'{}');
+    fs.writeFileSync(summary,JSON.stringify({runtimeProfile:profile}));
+    assert.deepEqual(run(),[launcher,'run','android:verify','--',...(profile==='cloud'?['--runtime-profile=cloud']:[]),`--cloud-voice-evidence=${evidence}`]);
+  }
+  fs.writeFileSync(summary,JSON.stringify({runtimeProfile:'unexpected'}));
+  assert.throws(run,error=>error.status===1&&error.stderr.includes('Unsupported qualified runtime profile'));
 });
 
 test('publication workflow preserves protected review, exact source and verification before writes',()=>{

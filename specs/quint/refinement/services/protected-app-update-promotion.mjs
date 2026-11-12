@@ -75,9 +75,13 @@ function checkWorkflows() {
   assert.match(restored.run, /\$EXPECTED_QUALIFICATION/);
   assert.equal(publishing.publish.steps.find(step => step.with?.path === 'qualified-product').with.ref,
     '$' + '{{ needs.admit.outputs.source_commit }}');
-  const reverify = publishing.publish.steps.find(runs('bun run android:verify -- --cloud-voice-evidence='));
+  const reverify = publishing.publish.steps.find(runs('bun run android:verify --'));
   assert.equal(reverify?.['working-directory'], 'qualified-product');
-  assert.equal(reverify.run, 'bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
+  assert.match(reverify.run, /qualification-summary\.json[\s\S]*cloud-voice\.json/);
+  assert.match(reverify.run, /cloud\) args=\(--runtime-profile=cloud "\$\{args\[@\]\}"\)/);
+  assert.match(reverify.run, /native\) ;;/);
+  assert.match(reverify.run, /bun run android:verify -- "\$\{args\[@\]\}"/);
+  assert.match(reverify.run, /npm run android:verify -- "\$\{args\[@\]\}"/);
   assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'bun scripts/verify-apks.ts');
   ordered(publishing.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
     step => step === reverify, runs("manifest['runtimeProfile'] == summary['runtimeProfile']"),
@@ -217,7 +221,8 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
   ];
   const driverHashes = captureInputs(sources);
   checkWorkflows();
-  const {traces, launcherBytes, mainCandidate, versionCode} = JSON.parse(execFileSync('python3', ['-B', python], {
+  const {traces, launcherBytes, mainCandidate, versionCode} = JSON.parse(execFileSync('python3', ['-B', python,
+    '--signing-timeout-ms', String(scaledTimeout(30_000))], {
     encoding: 'utf8', timeout: scaledTimeout(120000),
   }));
   for (const trace of traces) {

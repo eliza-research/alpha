@@ -78,7 +78,7 @@ const requested = requestedNames.map(family => {
 const familyModule = (family: Family) => `specs/quint/refinement/${family}/index.mjs`;
 const reportingInputs = ['scripts/check-quint-refinement.ts', 'specs/quint/refinement/model-state.mjs',
   'specs/quint/refinement/check-traces.mjs', 'specs/quint/refinement/campaigns.mjs', 'bun.lock',
-  'scripts/quint-lib.ts',
+  'scripts/quint-lib.ts', 'specs/quint/refinement/timeouts.mjs',
   ...['application', 'services', 'native', 'legacy'].map(family => `specs/quint/${family}/manifest.json`),
   ...families.map(familyModule).filter(path => existsSync(join(repositoryRoot, path)))];
 const inputHashes = Object.fromEntries(reportingInputs.map(path =>

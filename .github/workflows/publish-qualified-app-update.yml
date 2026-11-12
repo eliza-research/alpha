@@ -138,10 +138,19 @@ jobs:
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
         working-directory: qualified-product
         run: |
+          set -euo pipefail
+          profile=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["runtimeProfile"])' \
+            "$RUNNER_TEMP/qualified-stage/qualification-summary.json")
+          args=("--cloud-voice-evidence=$RUNNER_TEMP/qualified-stage/cloud-voice.json")
+          case "$profile" in
+            cloud) args=(--runtime-profile=cloud "${args[@]}") ;;
+            native) ;;
+            *) echo 'Unsupported qualified runtime profile' >&2; exit 1 ;;
+          esac
           if test -f bun.lock || test -f bun.lockb; then
-            bun run android:verify -- --runtime-profile=cloud --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+            bun run android:verify -- "${args[@]}"
           else
-            npm run android:verify -- --runtime-profile=cloud --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+            npm run android:verify -- "${args[@]}"
           fi
       - name: Require both qualified release rows before publication
         run: |

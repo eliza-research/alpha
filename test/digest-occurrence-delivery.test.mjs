@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 // MVP-38 at the source level: one retained record and one delivery per digest occurrence across
 // reconnect, a lost acknowledgement, an interrupted notice and a restart, and an honest presentation
 // of an occurrence the agent recorded without running it. This drives the app's own inbox and
 // presentation code against a synthetic result stream. It is not resident-runtime, emulator or
 // device evidence.
 const root=resolve(import.meta.dirname,'..');
-const run=script=>JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
+const run=script=>JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:scaledTimeout(120_000)}));
 const prelude=`
 const d=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/hosted-digests.ts'))});
 const row=(cursor,runId,status,scheduledAt,extra={})=>({cursor,runId,workflowId:'loop-'+(extra.loop||'morning'),workflowVersionId:'v1',templateVersion:'t1',scheduledAt,source:{id:'s-'+(extra.loop||'morning'),revision:'r1',observedAt:'2026-10-01T06:00:00.000Z',expiresAt:'2026-10-08T06:00:00.000Z',type:'explicit_snapshot'},status,startedAt:scheduledAt,completedAt:extra.completedAt||scheduledAt,output:status==='missed'?{status:'missed',text:'The scheduled time was missed. No backlog was executed.'}:status==='overlap'?{status:'overlap',text:'An earlier occurrence is still active. This occurrence did not run.'}:'Brief '+runId,error:null});
