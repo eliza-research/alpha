@@ -1725,6 +1725,7 @@
         "vendor/eliza/plugins/plugin-notes/src/interact.ts",
         "vendor/eliza/plugins/plugin-notes/src/types.ts",
         "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+        "vendor/eliza/plugins/plugin-notes/src/trash-retention.ts",
         ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
       ],
       "tests": [
@@ -2375,6 +2376,7 @@
         "vendor/eliza/plugins/plugin-notes/src/store.ts",
         "vendor/eliza/plugins/plugin-notes/src/types.ts",
         "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+        "vendor/eliza/plugins/plugin-notes/src/trash-retention.ts",
         "vendor/eliza/packages/core/src/plugin-lifecycle.ts",
         "vendor/eliza/packages/core/src/runtime/room-handler-queue.ts",
         "vendor/eliza/packages/core/src/services/task.ts",
