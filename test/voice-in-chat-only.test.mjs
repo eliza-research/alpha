@@ -37,19 +37,27 @@ test('in-chat-only startup requests the canonical native listener stop and repor
  const end=source.indexOf('\n}\n',start)+2;
  assert.ok(start>=0&&end>start);
  const code=stripTypeScriptTypes(source.slice(start,end).replace('export ',''));
- for(const result of [{available:true,state:'OFF',listening:false,microphoneOpen:false},{available:true,state:'LISTENING',listening:true,microphoneOpen:true},{available:false},new Error('unavailable')]){
+ const {stopSenseListenerForChatOnly}=await import('../vendor/eliza/plugins/plugin-native-system/src/sense.ts');
+ const cases=[
+  [{available:true,state:'OFF',listening:false,microphoneOpen:false},true],
+  [{available:false,reason:'not-installed'},true],
+  [{available:false,reason:'not-installed',microphoneOpen:true},false],
+  [{available:true,state:'LISTENING',listening:true,microphoneOpen:true},false],
+  [{available:false},false],
+  [new Error('unavailable'),false],
+ ];
+ for(const [result,expected] of cases){
   let stops=0;
-  const context=vm.createContext({Capacitor:{isNativePlatform:()=>true},externalVoiceInvocationEnabled:false,nativeListener:()=>true,parseListenerStatus:value=>value,listener:{turnOff:async()=>{stops++;if(result instanceof Error)throw result;return result;}},wakeStopUnconfirmed:false,Promise,Error,setTimeout,clearTimeout});
+  const context=vm.createContext({Capacitor:{isNativePlatform:()=>true},externalVoiceInvocationEnabled:false,nativeListener:()=>true,stopSenseListenerForChatOnly,listener:{turnOff:async()=>{stops++;if(result instanceof Error)throw result;return result;}},wakeStopUnconfirmed:false,Promise,Error,setTimeout,clearTimeout});
   const stop=vm.runInContext(code+'\nstopWakeListenerForChatOnly;',context);
   const confirmed=await stop();
-  assert.equal(stops,1,'startup must request turnOff, not only hide the controls');
-  const expected=!(result instanceof Error)&&result.available===true&&result.state==='OFF';
+  assert.equal(stops,1,'startup uses the canonical native stop');
   assert.equal(confirmed,expected);
   assert.equal(context.wakeStopUnconfirmed,!expected);
  }
  for(const native of [true,false]){
   let stops=0;
-  const context=vm.createContext({Capacitor:{isNativePlatform:()=>native},externalVoiceInvocationEnabled:false,nativeListener:()=>false,parseListenerStatus:value=>value,listener:{turnOff:async()=>{stops++;throw Error('must not call missing bridge');}},wakeStopUnconfirmed:false,Promise,Error,setTimeout,clearTimeout});
+  const context=vm.createContext({Capacitor:{isNativePlatform:()=>native},externalVoiceInvocationEnabled:false,nativeListener:()=>false,stopSenseListenerForChatOnly,listener:{turnOff:async()=>{stops++;throw Error('must not call missing bridge');}},wakeStopUnconfirmed:false,Promise,Error,setTimeout,clearTimeout});
   const stop=vm.runInContext(code+'\nstopWakeListenerForChatOnly;',context);
   assert.equal(await stop(),!native,'missing Android bridge cannot confirm the companion stopped');
   assert.equal(context.wakeStopUnconfirmed,native);

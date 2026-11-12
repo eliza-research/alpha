@@ -1,6 +1,14 @@
 import { externalVoiceInvocationEnabled } from './voice-entry-policy';
 import { Capacitor } from '@capacitor/core';
-import {Sense,createSenseInvocationController,parseAssistantInvocation,parseListenerStatus,type AssistantInvocation,type ListenerStatus} from '@elizaos/capacitor-system/sense';
+import {
+  Sense,
+  stopSenseListenerForChatOnly,
+  createSenseInvocationController,
+  parseAssistantInvocation,
+  parseListenerStatus,
+  type AssistantInvocation,
+  type ListenerStatus,
+} from '@elizaos/capacitor-system/sense';
 
 export type { AssistantInvocation, ListenerState, ListenerStatus } from '@elizaos/capacitor-system/sense';
 
@@ -26,22 +34,9 @@ export const wakeListeningStopUnconfirmed = () => wakeStopUnconfirmed;
 export async function stopWakeListenerForChatOnly(): Promise<boolean> {
   if (externalVoiceInvocationEnabled || !Capacitor.isNativePlatform()) return true;
   if (!nativeListener()) { wakeStopUnconfirmed = true; return false; }
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const reply = await Promise.race([
-      listener.turnOff(),
-      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Wake listener stop timed out')), 5000); }),
-    ]);
-    const status = parseListenerStatus(reply);
-    const stopped = status.available && status.state === 'OFF' && status.listening === false && status.microphoneOpen === false;
-    wakeStopUnconfirmed = !stopped;
-    return stopped;
-  } catch {
-    wakeStopUnconfirmed = true;
-    return false;
-  } finally {
-    if (timer !== undefined) clearTimeout(timer);
-  }
+  const stopped = await stopSenseListenerForChatOnly(listener);
+  wakeStopUnconfirmed = !stopped;
+  return stopped;
 }
 
 /** Opens the listener's consent and settings screen. */

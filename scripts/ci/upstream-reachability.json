@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
-  "head": "fd860a0a600e63eeee44c19b6af1e85c4a5ff641",
-  "recordedAt": "2026-11-11",
-  "command": "Prior recorded comparison, extended by git rev-list a44ecebb5f7708c45d9b166c3c7205ee2264722a..fd860a0a600e63eeee44c19b6af1e85c4a5ff641",
+  "baseCommit": "a13a21d66e1bdbfeb6527657e1a387e5725c3dcf",
+  "head": "2404942e6194bbc15ad219a44b657d844b2c6794",
+  "recordedAt": "2026-11-12",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...2404942e6194bbc15ad219a44b657d844b2c6794",
   "status": "diverged",
-  "aheadBy": 21,
-  "behindBy": 380,
+  "aheadBy": 25,
+  "behindBy": 411,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -94,6 +94,22 @@
     {
       "sha": "fd860a0a600e63eeee44c19b6af1e85c4a5ff641",
       "subject": "fix(calendar): preserve client clock and native extraction refusal"
+    },
+    {
+      "sha": "6e1ad3829e2d115b433cfcd0548f4a57bfc27e15",
+      "subject": "fix(reminders): preserve recovery of unknown delivery choices"
+    },
+    {
+      "sha": "063476754fd552e8337143d11300bfaa312feef5",
+      "subject": "fix(scheduling): retire resolved approval follow-ups"
+    },
+    {
+      "sha": "3508d92c2c19c520b8ef17d16e427f3329b62071",
+      "subject": "fix(scheduling): reconcile deferred approval follow-ups"
+    },
+    {
+      "sha": "2404942e6194bbc15ad219a44b657d844b2c6794",
+      "subject": "Report confirmed absence of the image listener"
     }
   ],
   "pullRequests": [
