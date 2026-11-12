@@ -2,7 +2,7 @@
 // for example) and hands its transport nothing. Synthetic in-memory transport; no model is called.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 
 const {AlphaClient,AlphaClientError}=await tsImport('../apps/app/src/runtime/alpha-client.ts',import.meta.url);
 

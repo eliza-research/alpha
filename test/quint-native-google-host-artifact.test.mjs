@@ -1,10 +1,11 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkNativeGoogleHostArtifact, checkNativeGoogleHostLoaderCompatibility}
   from '../specs/quint/refinement/services/native-google-host-artifact.mjs';
 
-test('native Google host candidate binds emitted and compiled source bytes and preserves the previous pair', {timeout: 120000}, async () => {
+test('native Google host candidate binds emitted and compiled source bytes and preserves the previous pair', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkNativeGoogleHostArtifact([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 18);
   assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);
@@ -22,7 +23,7 @@ test('native Google host candidate binds emitted and compiled source bytes and p
 
 test('pinned Bun preserves real loader semantics and the exact reviewed core bytes in the host graph', {
   skip: !process.env.ALPHA_QUINT_BUN && 'set ALPHA_QUINT_BUN to the pinned Bun 1.4.2 binary',
-  timeout: 30000,
+  timeout: scaledTimeout(30000),
 }, () => {
   const result = checkNativeGoogleHostLoaderCompatibility(process.env.ALPHA_QUINT_BUN);
   assert.equal(result.bun, '1.4.2');

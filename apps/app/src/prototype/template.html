@@ -2657,7 +2657,7 @@
   <sc-if value="{{notes.trashAskOpen}}">
     <div ref="{{notes.askModal}}" data-alpha-popup class="photo-delete-modal" style="position:absolute;inset:0;z-index:20">
     <button aria-hidden="true" tabindex="-1" aria-label="Close" onClick="{{notes.trashAskClose}}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim)"></button>
-    <div role="dialog" aria-modal="true" aria-label="{{notes.trashAskTitle}}" class="enter" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height:calc(100% - 44px);overflow:auto;box-sizing:border-box; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
+    <div role="dialog" aria-modal="true" aria-label="{{notes.trashAskLabel}}" class="enter" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height:calc(100% - 44px);overflow:auto;box-sizing:border-box; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
       <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
       <div class="serif" style="font-size: 26px; line-height: 1.15; overflow-wrap: anywhere">{{notes.trashAskTitle}}</div>
       <sc-if value="{{notes.trashAskDescription}}"><p style="margin:8px 0 0;color:var(--mut)">{{notes.trashAskDescription}}</p></sc-if>
@@ -2669,7 +2669,7 @@
     </div>
   </sc-if>
   <sc-if value="{{notes.trashConfirmOpen}}">
-    <div ref="{{notes.emptyModal}}" class="photo-delete-modal" style="position:absolute;inset:0;z-index:20">
+    <div ref="{{notes.emptyModal}}" data-alpha-popup class="photo-delete-modal" style="position:absolute;inset:0;z-index:20">
     <button aria-hidden="true" tabindex="-1" aria-label="Close" onClick="{{notes.trashCancel}}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim)"></button>
     <div role="dialog" aria-modal="true" aria-label="{{notes.trashConfirmTitle}}" class="enter" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height:calc(100% - 44px);overflow:auto;box-sizing:border-box; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
       <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
@@ -2923,13 +2923,19 @@
   <sc-if value="{{files.top}}">
   <div class="scr" data-alpha-app-scroll="files" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 0 8px 150px; box-sizing: border-box">
     <sc-if value="{{files.chip}}">
+      <sc-if value="{{files.filterReadNotice}}"><div role="status" style="padding: 8px 24px; color: var(--mut); font-size: 14px">{{files.filterReadNotice}}</div></sc-if>
       <sc-for list="{{files.filterRows}}" as="r" key="{{r.id}}">
         <button onClick="{{r.tap}}" aria-label="{{r.label}}" class="tap" style="display: flex; align-items: center; gap: 14px; padding: 10px 8px; border-radius: 18px; text-align: left; width: 100%">
           <span style="width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--s2); color: var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{r.d}}"></path></svg></span>
           <div style="min-width: 0; flex-grow: 1"><div style="font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.sub}}</div></div>
         </button>
       </sc-for>
-      <sc-if value="{{files.filterEmpty}}"><div style="display: flex; justify-content: center; padding-top: 96px; color: var(--mut)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 40px; height: 40px"><path d="{{ic.search}}"></path></svg></div></sc-if>
+      <sc-if value="{{files.filterEmpty}}">
+        <div class="files-empty-state" role="status">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 40px; height: 40px"><path d="{{ic.search}}"></path></svg>
+          <span>No results to show</span>
+        </div>
+      </sc-if>
     </sc-if>
     <sc-if value="{{files.browse.denied}}">
       <div role="alert" style="display: flex; align-items: center; gap: 12px; margin: 8px; padding: 14px 16px; border-radius: 20px; background: var(--s2)">
@@ -2993,7 +2999,10 @@
       <sc-if value="{{files.nativeTreeStatus}}"><div role="status" style="padding: 8px 24px; color: var(--mut); font-size: 14px">{{files.nativeTreeStatus}}</div></sc-if>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 0 8px 150px; box-sizing: border-box">
         <sc-if value="{{files.fd.empty}}">
-          <div style="display: flex; justify-content: center; padding: 96px 16px; color: var(--mut)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 44px; height: 44px"><path d="{{files.fd.emptyD}}"></path></svg></div>
+          <div class="files-empty-state" role="status">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 44px; height: 44px"><path d="{{files.fd.emptyD}}"></path></svg>
+            <span>No files to show</span>
+          </div>
         </sc-if>
         <sc-if value="{{files.isList}}">
           <sc-for list="{{files.fd.items}}" as="r" key="{{r.id}}">
@@ -3583,7 +3592,7 @@
 
       </div>
     </sc-for>
-    <sc-if value="{{workflows.listToggles}}"><button class="workflow-row-open" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><span class="workflow-row-title">Alarms</span></button></sc-if>
+    <sc-if value="{{workflows.listToggles}}"><div class="workflow-row"><button class="workflow-row-open" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><span class="workflow-row-content"><span class="workflow-row-title">Alarms</span></span><svg class="i workflow-row-chevron" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></div></sc-if>
     <sc-for list="{{workflows.automation.managementCards}}" as="control"><button class="automation-management" aria-disabled="{{control.busy}}" onClick="{{control.open}}"><span>{{control.name}}</span><span>{{control.short}}</span><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></sc-for>
   </div>
 

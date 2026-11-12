@@ -2138,14 +2138,21 @@
         "unconfirmedTombstoneDoesNotAuthorizeReconnectTest",
         "coldAutomaticCannotAcquireBarrierPauseOrStopTest",
         "manualColdBootStillUsesExactBarrierTest",
-        "processReplacementPreservesWarmBootTest"
+        "processReplacementPreservesWarmBootTest",
+        "unreadAutomaticOfferCannotMarkCommittingTest",
+        "unavailableAutomaticOfferCannotMarkCommittingTest",
+        "unavailableAutomaticOfferAbandonsBeforeCommitTest",
+        "revokedAutomaticCannotMarkCommittingTest",
+        "revokedAutomaticConsentAbandonsBeforeCommitTest",
+        "lateConsentChangeDoesNotGateExplicitManualCommitTest"
       ],
       "invariants": [
         "DurablePauseHasExactBarrier",
         "StopRequiresOwnedPause",
         "CommitRequiresConfirmedStop",
         "ResumeRequiresReleasedLease",
-        "AutomaticAuthorityHadReadyBoot"
+        "AutomaticAuthorityHadReadyBoot",
+        "AutomaticCommitHadFinalOffer"
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
@@ -2160,12 +2167,15 @@
         "startupAdmitted": "Actual journal-plus-activation start gate and native renderer pending readback",
         "residentStartAdmitted": "Start gate combined with the actual service shutdown lease policy",
         "resumeAudience": "Exact native terminal readback recipient while startup is admitted",
-        "admission.platform/admission.captured": "The shared staging boot-admission policy and captured automatic authority; cold deferral frames activation, durable pause, shutdown lease, stop and commit components"
+        "admission.platform/admission.captured": "The shared staging boot-admission policy and captured automatic authority; cold deferral frames activation, durable pause, shutdown lease, stop and commit components",
+        "admission.finalOffer": "Observed fresh native feed response matching the discovery SHA-256 and exact APK tuple, a failed confirmation, or no read. The replay checks the served bytes, request binding and read count."
       },
       "abstractions": [
         "One activation and one committed Android session with two synthetic renderer receipts. Source checkpoints use the actual updater, POSIX journal and exact shutdown lease under controlled Android and stop observation ports.",
         "An observed confirmed stop is a macrostep. Session handoff retains the native reconnect receipt until exact settlement; a visible unconfirmed tombstone still retains the separate service lease. Independent journal and activation campaigns exercise additional branches.",
         "The staging policy uses SDK classes 30/31 and monotonic uptime observations 0,26681,29999,30000,30001,35000. This composition permits one pre-attempt process boundary (same-boot replacement or new boot), at most two boots/processes, and leaves in-flight process-death/reboot recovery to the unchanged RuntimeUpdatePause model.",
+        "The final offer read precedes the last consent observation and durable commit mark. Changed, withdrawn and unavailable offers share the same precommit refusal. A successful abandonment and confirmed lease release form one cleanup checkpoint.",
+        "The JVM replay changes only the fresh response's whitespace after a confirmed stop and observes exact precommit abandonment. The owned TLS fixture separately covers a changed offer, wrong tuple, HTTP 404 and transport failures, plus consent revocation during the final HTTPS response.",
         "Actual extracted-Java traces exercise cold and unsupported automatic no-effect paths, later warm exact barrier/pause/stop/commit handoff, cold manual readiness and warm same-boot replacement. Bounded safety and selected traces do not prove uptime progress, Android acceptance, network availability or eventual installation."
       ],
       "bounds": {
@@ -2841,7 +2851,17 @@
         "coldPowerNeverReturnsAfterFocusLossTest",
         "newNativeOwnerRetiresColdPinTest",
         "stalePowerPreservesSuccessorTest",
-        "tileCancellationAndImmutableDispatchTest"
+        "tileCancellationAndImmutableDispatchTest",
+        "ordinarySystemAndWrongListenerUidAreSurfaceOnlyTest",
+        "listenerNeedsImageAndItsOwnSignerOnlyTest",
+        "coldPowerWithoutCallerIsSurfaceOnlyTest",
+        "coldPowerWrongSystemUidIsSurfaceOnlyTest",
+        "coldPowerBeforeApi34IsSurfaceOnlyTest",
+        "coldPowerNeedsImageAndBothSignersTest",
+        "warmPowerRequiresModernTrustedSystemCallerTest",
+        "warmPowerNeedsImageAndBothSignersTest",
+        "coldListenerAttributionDoesNotTransferTest",
+        "stalePowerPreservesListenerSuccessorTest"
       ],
       "invariants": [
         "sanitizedSurface",
@@ -2860,10 +2880,14 @@
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/AssistantEntryTile.java",
         "android/app/src/main/AndroidManifest.xml",
-        "android/consumer-host.json"
+        "android/consumer-host.json",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSenseAdmission.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaImageCapabilities.java",
+        "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/ImageCapability.java",
+        "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java"
       ],
       "stateMapping": {
-        "sdk/now/locked/policy/account/epoch/signers/protected": "Controlled platform clock, Activity metadata, signers, keyguard and native credential admission snapshot",
+        "sdk/now/locked/policy/account/epoch/signers/systemSigner/image/protected": "Controlled platform clock, Activity metadata, companion and platform signer partitions, exact caller package+UID classes, image qualification conjunction, keyguard and native credential snapshot",
         "latest/bound/invocation": "Actual package-wide Sense lease, recorded origin, lock, arrival and native owner adoption",
         "surfaces": "Intent projection, virtual bridge-load reentry, window events, Activity lease, focus and exact protected launch grant",
         "tile": "Inactive presentation, callback custody and exact explicit immutable or legacy dispatch request",
@@ -2873,7 +2897,8 @@
         "Two Activity/bridge identities, fixed renderer generation, exact or foreign binding, one bound account snapshot and selected elapsed-time boundaries.",
         "Closed bridge port mirrors installed Capacitor bridge assignment and virtual intent reentry. Exact sanitized object forwarding during load preserves the authenticated cold receipt. A copied argument or public delivery takes the ordinary path.",
         "Power entry uses exact product pin and readback members with controlled credential and Android permission ports. Tile has at most one pending controlled unlock callback.",
-        "No Activity launches, microphone capture, Android Settings or app runtime process. OS authority and delivery are external."
+        "No Activity launches, microphone capture, Android Settings or app runtime process. OS authority and delivery are external.",
+        "Only the current companion with its actual UID, image facts and current signer may record listener voice. Ordinary SystemUI is surface-only. Cold protected Power additionally needs API 34+, and warm Power needs the API 35+ reported SystemUI caller. Caller UID mismatches are explicit rejected input classes; previously minted grants retain their existing credential/lifecycle readback boundary."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -3744,6 +3769,7 @@
       "invariant": "safety",
       "tests": [
         "limitReachedStillSavesTest",
+        "unreadablePrefixDoesNotSaveTest",
         "exactLimitKeepsChunkTest",
         "emptyRecordingFailsTest",
         "leaveFinalisesFirstTest",
@@ -3751,6 +3777,7 @@
       ],
       "invariants": [
         "LimitTruncatesNotDiscards",
+        "VerifiedRetainedPrefix",
         "WithinSizeLimit",
         "SettledExactlyOnce",
         "CancelledSessionNeverWritesRow",
@@ -3760,15 +3787,21 @@
       "witnesses": [
         "LimitReachedWithVideoWitness",
         "OverflowChunkDroppedWitness",
+        "InvalidPrefixWitness",
         "SavedRowWitness",
         "LeavingWhileRecordingWitness",
         "FailedFinalisationWitness"
       ],
       "sources": [
         "apps/app/src/browser/video-capture.ts",
+        "apps/app/src/browser/video-capture-prefix.ts",
         "apps/app/src/prototype/camera-adapter.ts"
       ],
       "symbols": [
+        {
+          "path": "apps/app/src/browser/video-capture-prefix.ts",
+          "name": "measureVideoPrefix"
+        },
         {
           "path": "apps/app/src/browser/video-capture.ts",
           "name": "BrowserVideoCapture"
@@ -3800,13 +3833,14 @@
       ],
       "stateMapping": {
         "session/generation/settles/cause": "One recorder Session, its settled latch and the error it settled with",
-        "bytes/chunks/full": "Bytes admitted against maxFileSize, chunks kept, and the limit having stopped the recording",
+        "bytes/chunks/full/truncated": "Admitted bytes, kept chunks, size-limit stop and whether nonempty media was dropped",
+        "prefix": "Bounded retained-media read before reporting a truncated recording as saved",
         "adapter/finalizing/leaving/previewStopped": "The camera view recording flags and the order of finalisation and preview stop on leave",
         "rows/resolved/savedGeneration/failures": "Saved video rows, resolved recordings and finalisation failures"
       },
       "abstractions": [
         "Sizes are units with a limit of two; three recordings. The duration limit and an ended camera track are one stop event.",
-        "A chunk that would pass the size limit is left out and the recording stops with what it has. Microphone loss and frame-draw failures are the recorder error.",
+        "A chunk that would pass the size limit is left out. A retained prefix with nonempty dropped data needs a successful media read before saving. The prefix read port groups an unreadable prefix and its deadline into one refusal. Microphone loss and frame-draw failures are the recorder error.",
         "No reachable state has a recorder session cancelled by the stopped preview: leaving finalises first, so the cancelled branch of stopPreview is unreachable.",
         "Trace replay: test/quint-video-recorder.test.mjs replays simulator traces step by step against BrowserVideoCapture with MediaRecorder, the camera track and timers as ports; the Camera view half (shutter, leaving, preview) is supplied by the driver as the calls the camera adapter makes and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
       ],

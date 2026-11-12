@@ -1,0 +1,195 @@
+name: Promotion checks
+# Checks for promoting develop to main: the Chromium browser suite and the production surface,
+# the Quint gate and its node tests, source refinement, bounded symbolic checking, the
+# historical comparisons and temporal properties, and the LemmaScript proofs. Nothing here runs
+# on pull requests into develop or on pushes; authors run `bun run test:browser`,
+# `bun run test:browser:production`, `bun run quint:check`, `bun run quint:tests` and
+# `bun run lemma:check` locally.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Comma-separated module names for symbolic checking (empty checks every model)
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: promotion-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  symbolic:
+    name: Bounded symbolic safety
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: bun run upstream:prepare-client
+      - name: Bounded symbolic safety and additional proof inits
+        env:
+          MODELS: ${{ inputs.models }}
+        run: bun run quint:verify -- --steps=6 ${MODELS:+--models=$MODELS}
+      # Every declared comparison and expected counterexample runs on promotion.
+      - name: Expected counterexamples and current-design comparisons
+        if: ${{ !inputs.models }}
+        run: bun run quint:compare
+      # Every declared temporal property runs on promotion.
+      - name: Fairness-guarded temporal properties
+        if: ${{ !inputs.models }}
+        run: bun run quint:temporal
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: quint-symbolic
+          path: test-results/quint/
+  conformance:
+    name: Quint gate, source refinement and function proofs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.0"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - name: Install browser for source-refinement checks
+        run: bash scripts/ci/install-playwright-browser.sh chromium
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare pinned JSON dependency for native refinement
+        shell: bash
+        run: bash scripts/ci/prepare-host-test-json.sh
+      - name: Prepare reviewed Kotlin compiler for native refinement
+        run: bun test/fixtures/kotlin-tools.mjs --prepare
+      - name: Prepare hash-pinned Dafny function verifier
+        run: bash scripts/ci/prepare-dafny.sh
+      - name: Prepare pinned SDK for refinement against the real runtime
+        shell: bash
+        run: |
+          ALPHA_BUN="$(command -v bun)"
+          export ALPHA_BUN
+          test "$("$ALPHA_BUN" --version)" = '1.4.2'
+          bun scripts/prepare-local-agent.ts
+          prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
+          echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
+          echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
+      - run: bun run upstream:prepare-client && bun run quint:prepare-history
+      - name: Typecheck, scenarios and sampled simulation of every model
+        run: bun run quint:check
+      - name: Function proofs
+        env:
+          LEMMA_REQUIRE_BACKEND: '1'
+        run: bun run lemma:check
+      - name: Quint node tests
+        env:
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
+          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
+          ALPHA_QUINT_BUN: ${{ env.ALPHA_BUN }}
+          # Give each aggregate the runner's resources; retain every test and deadline.
+          ALPHA_TEST_CONCURRENCY: '1'
+        run: bun run quint:tests
+      - name: Check composed source transitions against Quint
+        run: bun run quint:refinement -- --families=composition --out=test-results/quint-refinement/composition-summary.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: quint-verification
+          path: |
+            test-results/quint/
+            test-results/quint-refinement/
+            test-results/lemma/
+          retention-days: 7
+  browser:
+    name: Browser development surface (shard ${{ matrix.shard }}/6)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    steps:
+      - name: Free disk on the disposable browser runner
+        if: runner.environment == 'github-hosted'
+        run: |
+          for unused in /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$unused" ]; then sudo rm -rf -- "$unused"; fi
+          done
+          df -h "$GITHUB_WORKSPACE"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - run: bash scripts/ci/install-playwright-browser.sh chromium
+      - name: Chromium suite on the flag-on development server
+        env:
+          # Development shards opt into test mocks, fixtures and device controls explicitly.
+          ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
+        run: bun run test:browser -- --shard=${{ matrix.shard }}/6
+      # Every case in these files needs the local-agent bridge profile. The bridge answers the
+      # reminder spec's storage route itself, so the unreachable synthetic agent origin is enough.
+      - name: Exercise synthetic local-agent speech profile and host reminder recovery
+        if: matrix.shard == 1
+        run: |
+          bun -e "import fs from 'node:fs'; fs.writeFileSync(process.env.RUNNER_TEMP + '/alpha-synthetic-owner-token', 'a'.repeat(64), {mode: 0o600});"
+          PLAYWRIGHT_HTML_OUTPUT_DIR=test-results/browser-agent-profile-report ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE="$RUNNER_TEMP/alpha-synthetic-owner-token" ALPHA_LOCAL_AGENT_ORIGIN=http://127.0.0.1:1 bun run test:browser -- test/browser/browser-agent-tts.spec.ts test/browser/browser-host-disclosure.spec.ts test/browser/host-reminder-recovery.spec.ts --output=test-results/browser-agent-profile
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: browser-development-shard-${{ matrix.shard }}-of-6
+          path: |
+            test-results/browser/
+            test-results/browser-report/
+            test-results/browser-agent-profile/
+            test-results/browser-agent-profile-report/
+          retention-days: 3
+  production:
+    name: Browser production surface (flag off)
+    # Runs production-surface.spec.ts and every *.production.spec.ts (playwright.config.ts).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - run: bash scripts/ci/install-playwright-browser.sh chromium
+      - run: bun run upstream:prepare-client
+      - name: Test-mocks bundle records its flag
+        run: |
+          bun run build:test-mocks -- --outDir ../../test-results/test-mocks-web
+          bun scripts/audit-production-bundle.ts test-results/test-mocks-web --expect-test-mocks
+      # Builds and previews a flag-off bundle; the flag is deliberately unset here.
+      - run: bun run test:browser:production
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: browser-production-surface
+          path: |
+            test-results/browser/
+            test-results/browser-report/
+          retention-days: 3

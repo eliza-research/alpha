@@ -166,9 +166,9 @@ test("exact native verify/connect/token/ack chain keeps failures explicit and cu
   const { file, directory } = harness("CloudSignInChainTest.java.txt", chainMethods(plugin));
   try {
     const output=runJvm([...pure, ...support, file],"ai.eliza.auth.cloud.CloudSignInChainTest");
-    assert.match(output,/^PASS native sign-in chain \(64 scenarios; no browser facilities\)/m);
-    assert.match(output,/^PASS native code verification ownership \(3 scenarios\)$/m);
-    assert.match(output,/^PASS native startup acknowledgement recovery \(17 scenarios\)$/m);
+    assert.match(output,/^PASS native sign-in chain \(66 scenarios; no browser facilities\)/m);
+    assert.match(output,/^PASS native code verification ownership \(4 scenarios\)$/m);
+    assert.match(output,/^PASS native startup acknowledgement recovery \(18 scenarios\)$/m);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

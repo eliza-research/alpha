@@ -73,7 +73,8 @@ export async function checkAutomaticAppUpdateSchedule() {
       if(!identities.has(saved))identities.set(saved,++nextIdentity);
       return identities.get(saved);
     };
-    const observed={capability:'unread',pending:false,candidate:false,requests:0,cachedOffer:0,attemptedOffer:0,
+    const cachedManual=()=>!!api.parseUpdateManifest(api.savedUpdate().manifest,{versionCode:7,launcher:true,signerSha256:signer});
+    const observed={capability:'unread',pending:false,candidate:false,requests:0,cachedOffer:0,attemptedOffer:0,cachedManual:false,
       lastCapability:'unread',lastPending:false,lastCandidate:false,lastCurrent:false,lastIdle:false};
     const idle=()=>api.automaticUpdateIdle(shell,{busy:false,open:false},false,false);
     const context=vm.createContext({URL,Number,Date:{now:()=>wallClock},Capacitor:{isNativePlatform:()=>true},
@@ -137,7 +138,7 @@ export async function checkAutomaticAppUpdateSchedule() {
         const answer={appVersionCode:7,appSigner:signer,appAutomaticUpdates:capability};
         const before=observed.requests;
         observed.capability=capability;observed.pending=pendingRead;
-        observed.candidate=!!api.parseUpdateManifest(api.savedUpdate().manifest,{versionCode:7,launcher:true,signerSha256:signer});
+        observed.candidate=cachedManual();observed.cachedManual=observed.candidate;
         observed.cachedOffer=cachedOffer();
         factsWait.resolve(answer);await tick();
         const actions=[call('readFacts',capability,pendingRead,observed.candidate,idle(),observed.cachedOffer)];
@@ -150,18 +151,18 @@ export async function checkAutomaticAppUpdateSchedule() {
         // creates a new authoritative cache object that the old attempt cannot retire.
         manualReply=reply();
         try{assert.equal(await api.checkForUpdate(true),true);}finally{manualReply=undefined;}
-        observed.cachedOffer=cachedOffer();
+        observed.cachedOffer=cachedOffer();observed.cachedManual=cachedManual();
         save('the manual check replaces the exact cached object',call('replaceOffer',observed.cachedOffer));
       },
-      async reply(status='answered'){
-        installWait.resolve(status==='answered'?{}:{status});await tick();assert.equal(scheduler.snapshot().busy,false);
-        observed.cachedOffer=cachedOffer();
-        save('actual native result retires only the attempted offer and feeds bounded backoff',
+      async reply(status='answered',nativeReply=status==='answered'?{}:{status}){
+        installWait.resolve(nativeReply);await tick();assert.equal(scheduler.snapshot().busy,false);
+        observed.cachedOffer=cachedOffer();observed.cachedManual=cachedManual();
+        save('actual native result reconciles only the attempted offer and feeds bounded backoff',
           [call('installReply',status),call('finishPoll',failed)]);
       },
       dispose(){scheduler.dispose();save('dispose invalidates actual renderer callback',call('dispose'));},
       snapshot:()=>scheduler.snapshot(),jobs,requests:()=>observed.requests,
-      cachedOffer,persisted:()=>storage.get('alpha.app-update.v1'),
+      cachedOffer,cachedManual,persisted:()=>storage.get('alpha.app-update.v1'),
     };
     try{await sequence(f);assert.ok(maxInFlight<=1,'actual native calls never overlap');traces.push(result);}
     finally{scheduler.dispose();assert.equal(jobs.size,0);}
@@ -203,24 +204,36 @@ export async function checkAutomaticAppUpdateSchedule() {
     f.bind(true);f.advance(1);await f.begin(false);await f.check();await f.facts('supported');await f.reply();
     assert.equal(f.requests(),1);
   });
-  await runPoll('renderer_unavailable_offer_clears_exact_cache_then_rechecks',async f=>{
-    f.active(true);await f.begin();await f.check();await f.facts('supported');await f.reply('offer-unavailable');
+  const withdrawn={status:'offer-withdrawn'};
+  const replacement={status:'offer-response-changed',manifest:JSON.stringify({...offer,versionCode:9})};
+  const malformed={status:'offer-response-changed',manifest:replacement.manifest+'// trailing'};
+  const unavailable={status:'offer-unavailable'};
+  for(const answer of [withdrawn,replacement])await runPoll('renderer_'+answer.status.replaceAll('-','_')+'_clears_exact_cache_then_rechecks',async f=>{
+    f.active(true);await f.begin();await f.check();await f.facts('supported');await f.reply('offer-retired',answer);
     assert.equal(f.cachedOffer(),0);assert.equal(f.persisted(),undefined);assert.equal(f.snapshot().wakeAt,1);
+    assert.equal(f.cachedManual(),false);
     f.advance(1);await f.begin(false);await f.check();await f.facts('supported');await f.reply();
     assert.equal(f.requests(),2);
   });
-  await runPoll('renderer_unavailable_offer_preserves_concurrent_refresh',async f=>{
+  for(const answer of [unavailable,malformed])await runPoll('renderer_'+answer.status.replaceAll('-','_')+'_retains_manual_then_rechecks',async f=>{
+    f.active(true);await f.begin();await f.check();await f.facts('supported');await f.reply('offer-unavailable',answer);
+    assert.equal(f.cachedOffer(),0);assert.equal(f.cachedManual(),true);assert.equal(f.snapshot().wakeAt,1);
+    assert.equal(JSON.parse(f.persisted()).manifestSha256,undefined);
+    f.advance(1);await f.begin(false);await f.check();await f.facts('supported');await f.reply();
+    assert.equal(f.requests(),2);
+  });
+  for(const answer of [withdrawn,unavailable])await runPoll('renderer_'+answer.status.replaceAll('-','_')+'_preserves_concurrent_refresh',async f=>{
     f.active(true);await f.begin();await f.check();await f.facts('supported');
     const original=f.cachedOffer();
     await f.replaceOffer();const refreshed=f.cachedOffer();
     assert.notEqual(refreshed,original);
     const stored=f.persisted();
-    await f.reply('offer-unavailable');
+    await f.reply(answer===withdrawn?'offer-retired':'offer-unavailable',answer);
     assert.equal(f.cachedOffer(),refreshed);assert.equal(f.persisted(),stored);assert.equal(f.snapshot().wakeAt,1);
   });
   return checkTraces(boundInputs({model,modelPath,sources,traces,scope:'bounded-component',
     assumptions:['Actual authenticated shared timer scheduler and actual Alpha cache and poll execute with controlled promise cutpoints. Generic scheduler scenarios remain distinct from product-poll scenarios.',
-      'Positive offer identities follow observed cache object identity and a native digest; zero is absent or unbound. The native staging model owns actual feed byte and selected APK tuple validation.',
+      'Positive offer identities follow observed cache object identity and a native digest; zero is absent or unbound. The manual row is observed independently. The native staging model owns actual feed byte and selected APK tuple validation.',
       'Cache wall time is controlled separately from the scheduler model clock. Ordinary scenarios advance the cache interval to reach a native check; stale and unbound recovery runs before that interval to prove forced refresh.',
       'Native capability classes are starting, supported, permission-required and unsupported. SDK/consent/uptime ownership belongs to the native admission model; no native boot clock is duplicated here.',
       'One scheduler instance, interval4/retry1 clock units, at most two native requests in source traces. A native request is a bridge call, not proof of a created PackageInstaller session or installation.',

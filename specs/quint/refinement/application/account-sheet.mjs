@@ -76,7 +76,7 @@ export async function checkAccountSheet(extraSources=[]){
  const sources=[...filesWithin(resolve(root,'apps/app/src')),...filesWithin(resolve(root,'.eliza/client-features')),
   ...configInputs,...ocrInputs,'app.config.json',
   cloudJava,'android/app/cloud-deployment.generated.gradle',
-  'apps/app/index.html','vite.config.ts','upstream.lock.json','package-lock.json','scripts/prepare-client-features.ts',
+  'apps/app/index.html','vite.config.ts','upstream.lock.json','bun.lock','scripts/prepare-client-features.ts',
   'test/browser/flag-off-android.ts','test/browser/helpers/native-cloud-plan-fixture.ts',
   'test/browser/helpers/resident-agent-plugin.ts','test/browser/helpers/native-navigation-protocol.ts',
   'specs/quint/refinement/application/index.mjs','test/quint-application-refinement.test.mjs',driver,...extraSources];
@@ -93,7 +93,7 @@ export async function checkAccountSheet(extraSources=[]){
   writeFileSync(initializer,await nativeFixture(null,input),{mode:0o600});
   const driverHashes={...before,...captureInputs([generated,initializer])},loaded=new Set();
   process.env.ELIZA_DEV_ALLOW_TEST_MOCKS='';
-  server=await createServer({configFile:resolve(root,'vite.config.ts'),logLevel:'error',
+  server=await createServer({configLoader: 'runner', configFile:resolve(root,'vite.config.ts'),logLevel:'error',
    cacheDir:resolve(root,'test-results/quint-refinement/account-sheet-vite-cache'),server:{host:'127.0.0.1',port:0,hmr:false,watch:null},
    define:{'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS':JSON.stringify('')},plugins:[{name:'bound-account-observer',enforce:'pre',transform(code,id){
     const path=id.split('?')[0];if(path!==resolve(root,product))return;

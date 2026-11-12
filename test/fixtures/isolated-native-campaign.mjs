@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../../specs/quint/refinement/timeouts.mjs';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -53,7 +54,7 @@ else
  printf '%s\\n' 'E: manifest' '  E: instrumentation' '    A: android:name="androidx.test.runner.AndroidJUnitRunner"' '    A: android:targetPackage="${pkg}"' '  E: instrumentation' '    A: android:name="${pkg}.WorkflowNoticeProcessRunner"' '    A: android:targetPackage="${pkg}"'
 fi
 `,{mode:0o700});
-  fs.writeFileSync(adb,`#!/usr/bin/env node
+  fs.writeFileSync(adb,`#!/usr/bin/env bun
 const fs=require('node:fs'),a=process.argv.slice(4),file=${JSON.stringify(state)},s=JSON.parse(fs.readFileSync(file)),pkg=${JSON.stringify(pkg)},mode=${JSON.stringify(mode)};const save=()=>{const next=file+'.'+process.pid+'.tmp';fs.writeFileSync(next,JSON.stringify(s));fs.renameSync(next,file);};fs.appendFileSync(${JSON.stringify(log)},JSON.stringify(a)+'\\n');
 if(a[0]==='emu')console.log('calendar-fixture\\nOK');
 else if(a.includes('persist.sys.timezone'))console.log(s.timeZone);
@@ -146,7 +147,7 @@ else if(a.includes('instrument')){
 else{console.error('Unexpected command '+JSON.stringify(a));process.exit(1);}
 `,{mode:0o700});
   const testClass=mode==='companion-pin'?'CalendarExternalEditorInstrumentedTest':selectedClass;
-  const run=spawnSync(process.execPath,[restartCampaign?path.resolve('scripts/test-native-restart.ts'):scripts[kind]??scripts.calendar,...(kind==='workflow'?extraArguments:permissionCase||restartCampaign?[kind,apk,cameraTest,path.join(root,'output')]:reminderCampaign?[apk,cameraTest,path.join(root,'output')]:[`--case=${['agent','options','home-card','home-card-revoked'].includes(kind)?testClass+'#'+selectedMethod:testClass}`,'--variant=standalone',...(mode==='companion-pin'?['--external']:[])])],{cwd:root,env:{...process.env,ALPHA_CALENDAR_TEST_ROOT:root,ALPHA_CALENDAR_TEST_SERIAL:'emulator-5580',ALPHA_CALENDAR_TEST_AVD:'calendar-fixture',ALPHA_CALENDAR_TEST_ABI:'x86_64',ANDROID_HOME:root,ANDROID_SDK_ROOT:root,JAVA_HOME:jdk,ANDROID_SERIAL:'emulator-5580',ALPHA_TEST_HOME_PACKAGE:homePackage,ALPHA_NATIVE_TEST_AVD:'calendar-fixture',ALPHA_NATIVE_TEST_ABI:'x86_64',ALPHA_BUILD_ARCHIVE:path.join(root,'artifacts'),ALPHA_TEST_MOCKS_ARCHIVE:kind==='workflow'&&mode!=='no-mocks-archive'?mocksArchive:'',ALPHA_CAMPAIGN_OUTPUT:path.join(root,'test-results/workflow'),ALPHA_WORKFLOW_TEST_AVD:'calendar-fixture',ALPHA_WORKFLOW_TEST_ABI:'x86_64',ELIZA_DEVICE_LEASE_DIR:path.join(root,'leases')},encoding:'utf8',timeout:kind==='workflow'?360000:120000});
+  const run=spawnSync(process.execPath,[restartCampaign?path.resolve('scripts/test-native-restart.ts'):scripts[kind]??scripts.calendar,...(kind==='workflow'?extraArguments:permissionCase||restartCampaign?[kind,apk,cameraTest,path.join(root,'output')]:reminderCampaign?[apk,cameraTest,path.join(root,'output')]:[`--case=${['agent','options','home-card','home-card-revoked'].includes(kind)?testClass+'#'+selectedMethod:testClass}`,'--variant=standalone',...(mode==='companion-pin'?['--external']:[])])],{cwd:root,env:{...process.env,ALPHA_CALENDAR_TEST_ROOT:root,ALPHA_CALENDAR_TEST_SERIAL:'emulator-5580',ALPHA_CALENDAR_TEST_AVD:'calendar-fixture',ALPHA_CALENDAR_TEST_ABI:'x86_64',ANDROID_HOME:root,ANDROID_SDK_ROOT:root,JAVA_HOME:jdk,ANDROID_SERIAL:'emulator-5580',ALPHA_TEST_HOME_PACKAGE:homePackage,ALPHA_NATIVE_TEST_AVD:'calendar-fixture',ALPHA_NATIVE_TEST_ABI:'x86_64',ALPHA_BUILD_ARCHIVE:path.join(root,'artifacts'),ALPHA_TEST_MOCKS_ARCHIVE:kind==='workflow'&&mode!=='no-mocks-archive'?mocksArchive:'',ALPHA_CAMPAIGN_OUTPUT:path.join(root,'test-results/workflow'),ALPHA_WORKFLOW_TEST_AVD:'calendar-fixture',ALPHA_WORKFLOW_TEST_ABI:'x86_64',ELIZA_DEVICE_LEASE_DIR:path.join(root,'leases')},encoding:'utf8',timeout:scaledTimeout(kind==='workflow'?360000:120000)});
   // Source authentication alone can exceed the old whole-fixture deadline.
   // Surface process failures before reading output that may never have been created.
   assert.ifError(run.error);

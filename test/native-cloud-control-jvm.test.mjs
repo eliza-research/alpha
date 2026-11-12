@@ -4,9 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {runJvm,jsonJarSkip,sharedSpeechSource} from './fixtures/jvm-tools.mjs';
-const javaPath='plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/';
-const speechSource=name=>process.env.SPEECH_TEST_TREE?path.join(process.env.SPEECH_TEST_TREE,javaPath,name):sharedSpeechSource(name);
-const source=fs.readFileSync(speechSource('SpeechStreamBridgePlugin.java'),'utf8');
+const source=fs.readFileSync(sharedSpeechSource('SpeechStreamBridgePlugin.java'),'utf8');
 function method(s,needle){const start=s.indexOf(needle);assert.ok(start>=0,needle);let at=s.indexOf('{',start),depth=1,i=at+1;for(;depth&&i<s.length;i++){if(s[i]==='{')depth++;else if(s[i]==='}')depth--;}return s.slice(start,i);}
 function jvm(name,body,{json=false}={}){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-control-'));try{const f=path.join(dir,name+'.java');fs.writeFileSync(f,body);return runJvm([f],name,{json});}finally{fs.rmSync(dir,{recursive:true,force:true});}}
 test('microphone permission result cannot start after Stop, replacement, background or destruction',()=>{
@@ -74,7 +72,7 @@ test('relay renewal is offered-only and replaces one expiry; output bound belong
  const extendedAt=source.indexOf('if("extended".equals(type))'),extended=method(source,'if("extended".equals(type))');
  const arm=method(source,'private void arm(');
  const bound=/if\(u\.finished\|\|[^;]+throw new IOException\("Invalid speech output"\);/.exec(source)?.[0];assert.ok(bound);
- const wire=fs.readFileSync(speechSource('CloudSpeechWire.java'),'utf8');
+ const wire=fs.readFileSync(sharedSpeechSource('CloudSpeechWire.java'),'utf8');
  const renewal=method(wire,'static long renewal(');
  assert.match(jvm('RenewalControlTest',`import java.util.*;import java.io.*;import java.time.*;
  public class RenewalControlTest {

@@ -120,7 +120,7 @@ class TransportTests(unittest.TestCase):
 
 class OfflineCommandTests(unittest.TestCase):
     def test_pinned_bun_install_uses_process_cwd_not_global_cwd_flag(self):
-        bun = os.environ.get('ALPHA_TEST_BUN') or shutil.which('bun')
+        bun = shutil.which('bun')
         self.assertTrue(bun, 'Pinned Bun must be installed before command contract tests')
         self.assertEqual(subprocess.check_output([bun, '--version'], text=True).strip(), '1.4.2')
         with tempfile.TemporaryDirectory() as tmp:

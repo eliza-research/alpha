@@ -1,0 +1,77 @@
+name: Verify
+# The one check every pull request runs: `bun run verify`. Browser tests, the Quint models and
+# the Lemma proofs run in promotion.yml when develop is promoted to main; authors run the
+# browser tests locally before finalising a pull request.
+on:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    name: Repository verification
+    runs-on: ubuntu-24.04
+    # The 70-115 minute runs measured on main (Nov 2026) included the Quint gate, its
+    # node tests and the Lemma proofs, which now run in promotion.yml. The limit
+    # is unchanged until runs without them are measured.
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      # The pinned upstream SDK still invokes Node during preparation.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.0"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - name: Install browser for host tests that drive a page
+        run: bash scripts/ci/install-playwright-browser.sh chromium
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare pinned JSON dependency for host contract tests
+        shell: bash
+        run: bash scripts/ci/prepare-host-test-json.sh
+      - name: Prepare reviewed Kotlin compiler for native routing checks
+        run: bun test/fixtures/kotlin-tools.mjs --prepare
+      - name: Prepare pinned SDK for canonical host contract tests
+        shell: bash
+        run: |
+          ALPHA_BUN="$(command -v bun)"
+          export ALPHA_BUN
+          test "$("$ALPHA_BUN" --version)" = '1.4.2'
+          bun scripts/prepare-local-agent.ts
+          prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
+          echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
+          echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
+      - run: bun run verify
+        env:
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
+          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
+      # Reuses the product dependencies and client projection prepared by bun run verify.
+      - name: Build the connected browser proof renderer
+        env:
+          VITE_ALPHA_CLOUD_RESIDENT: '1'
+          VITE_ALPHA_CLOUD_ENVIRONMENT: staging
+          VITE_LOCAL_AGENT: '1'
+          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ''
+          ELIZA_DEV_ALLOW_TEST_MOCKS: ''
+        run: |
+          bunx --bun vite build --outDir ../../test-results/browser-proof-renderer
+          bun scripts/audit-production-bundle.ts test-results/browser-proof-renderer
+          bun scripts/ci/export-browser-proof.ts renderer
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-proof-renderer-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/browser-proof/renderer/
+          retention-days: 3
+          if-no-files-found: error
+      # Recorded develop compare; warns (never networks) when develop cannot reach the pin.
+      - name: Report upstream develop reachability
+        run: bun scripts/verify-upstream.ts --reachability-only

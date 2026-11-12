@@ -9,5 +9,5 @@ The in-memory receipt ledger retains its state between successive invocations. A
 The 45 traces compare 299 checkpoints. Bounds are one selected grant, two representative IDs and revisions and at most two sequential invocations. The ledger models external replies as test inputs. Concurrent invocations, provider durability and mutation, outer agent account selection and installed account acceptance remain separate.
 
 ```sh
-node --test --test-concurrency=1 test/quint-gmail-agent-mailbox-recovery.test.mjs
+bun test test/quint-gmail-agent-mailbox-recovery.test.mjs
 ```

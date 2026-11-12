@@ -7,8 +7,17 @@ import {execFileSync,spawnSync} from 'node:child_process';
 import child from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {createHash,randomBytes} from 'node:crypto';
+import {registerHooks} from './support/module-hooks.mjs';
 import {copyFilesClone,planCloneBatches,cloneArgumentBytes,CLONE_ARGUMENT_BYTES} from '../scripts/copy-file-clone.ts';
 const root=path.resolve(import.meta.dirname,'..');
+// Bun binds a named node:child_process import once (syncBuiltinESMExports does nothing there). Where a test
+// instruments execFileSync, the clone helper is loaded with that one name bound through the mutable module object.
+const liveChild='data:text/javascript,'+encodeURIComponent("import child from 'node:child_process';export * from 'node:child_process';export const execFileSync=(...args)=>child.execFileSync(...args);");
+const liveChildResolve=(specifier,context,next)=>specifier==='node:child_process'&&context.parentURL?.endsWith('/scripts/copy-file-clone.ts')?{url:liveChild,shortCircuit:true}:next(specifier,context);
+const liveChildPreload=`import {registerHooks} from ${JSON.stringify(path.join(root,'test/support/module-hooks.mjs'))};const liveChild=${JSON.stringify(liveChild)};registerHooks({resolve:${liveChildResolve}});`;
+const instrumented=registerHooks({resolve:liveChildResolve});
+const {copyFilesClone:copyFilesCloneLive}=await import(path.join(root,'scripts/copy-file-clone.ts')+'?live-child');
+instrumented.deregister();
 const hash=file=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 function fixture(t){
  const directory=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-source-clone-')));
@@ -37,7 +46,7 @@ function fixture(t){
  write(path.join(consumer,'upstream.lock.json'),JSON.stringify({commit,url:cache}));
  fs.mkdirSync(path.join(consumer,'vendor'),{recursive:true});fs.symlinkSync(cache,path.join(consumer,'vendor/eliza'));
  const snapshot=()=>({head:git('rev-parse','HEAD'),index:hash(path.join(cache,'.git/index')),data:hash(path.join(cache,'packages/example/data.bin')),tool:fs.statSync(path.join(cache,'packages/example/tool.sh')).mode,ignored:hash(path.join(cache,'ignored/native-build.bin')),submoduleHead:subgit('rev-parse','HEAD'),submoduleFile:hash(path.join(external,'submodule-only.txt')),files:Object.fromEntries(git('ls-files','-z').split('\0').filter(Boolean).map(name=>{const file=path.join(cache,name),stat=fs.lstatSync(file);return [name,{mode:stat.mode,value:stat.isSymbolicLink()?fs.readlinkSync(file):stat.isFile()?hash(file):null}];}))});
- const run=(options={})=>spawnSync(process.execPath,[...(options.preload?['--import',options.preload]:[]),path.join(consumer,'scripts/prepare-local-agent.ts'),...(options.full?[]:['--source-only'])],{cwd:consumer,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:destination,ALPHA_RUNTIME_GIT_CACHE:options.cache??cache,...options.env},encoding:'utf8',timeout:20000});
+ const run=(options={})=>spawnSync(process.execPath,[...(options.preload?['--preload',options.preload]:[]),path.join(consumer,'scripts/prepare-local-agent.ts'),...(options.full?[]:['--source-only'])],{cwd:consumer,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:destination,ALPHA_RUNTIME_GIT_CACHE:options.cache??cache,...options.env},encoding:'utf8',timeout:20000});
  return {directory,cache,consumer,destination,commit,git,write,snapshot,run};
 }
 test('verified cache seeds independent committed files and metadata, excluding ignored output',t=>{
@@ -85,7 +94,7 @@ test('cache executable without group or other execute bits (umask 027) seeds as 
 });
 test('interrupted clone preserves its incomplete destination and cannot be silently reused',t=>{
  const f=fixture(t),before=f.snapshot(),preload=path.join(f.directory,'interrupt.mjs');
- f.write(preload,`import fs from 'node:fs';import child from 'node:child_process';import path from 'node:path';import {syncBuiltinESMExports} from 'node:module';const copy=fs.copyFileSync,run=child.execFileSync;const fail=target=>{fs.writeFileSync(target,'partial');throw Object.assign(Error('simulated disk full'),{code:'ENOSPC'});};fs.copyFileSync=(source,target,flags)=>source.endsWith('/data.bin')?fail(target):copy(source,target,flags);child.execFileSync=(command,args,options)=>command==='/bin/cp'&&args.some(arg=>arg.endsWith('/data.bin'))?fail(path.join(args.at(-1),'data.bin')):run(command,args,options);syncBuiltinESMExports();`);
+ f.write(preload,liveChildPreload+`import fs from 'node:fs';import child from 'node:child_process';import path from 'node:path';import {syncBuiltinESMExports} from 'node:module';const copy=fs.copyFileSync,run=child.execFileSync;const fail=target=>{fs.writeFileSync(target,'partial');throw Object.assign(Error('simulated disk full'),{code:'ENOSPC'});};fs.copyFileSync=(source,target,flags)=>source.endsWith('/data.bin')?fail(target):copy(source,target,flags);child.execFileSync=(command,args,options)=>command==='/bin/cp'&&args.some(arg=>arg.endsWith('/data.bin'))?fail(path.join(args.at(-1),'data.bin')):run(command,args,options);syncBuiltinESMExports();`);
  const result=f.run({preload});assert.notEqual(result.status,0);assert.match(result.stderr,/simulated disk full/);assert.equal(fs.readFileSync(path.join(f.destination,'packages/example/data.bin'),'utf8'),'partial');assert.equal(fs.existsSync(path.join(f.destination,'.alpha-runtime-source.json')),false);assert.deepEqual(f.snapshot(),before);
  const retry=f.run();assert.notEqual(retry.status,0);assert.match(retry.stderr,/preparation was interrupted/);assert.equal(fs.readFileSync(path.join(f.destination,'packages/example/data.bin'),'utf8'),'partial');
 });
@@ -118,7 +127,7 @@ test('matching sparse cache falls back to a complete independent admitted checko
 });
 test('copy-on-write hints retain correct independent files when the filesystem falls back to normal copying',t=>{
  const f=fixture(t),before=f.snapshot(),preload=path.join(f.directory,'fallback.mjs'),metrics=path.join(f.directory,'copies.json');
- f.write(preload,`import fs from 'node:fs';import child from 'node:child_process';import path from 'node:path';import {syncBuiltinESMExports} from 'node:module';const copy=fs.copyFileSync,run=child.execFileSync,copies=[];let nativeAttempts=0;child.execFileSync=(command,args,options)=>{if(command==='/bin/cp'){nativeAttempts++;throw Object.assign(Error('clone unsupported'),{code:'ENOTSUP'});}return run(command,args,options);};fs.copyFileSync=(source,target,flags)=>{const result=copy(source,target,flags&~fs.constants.COPYFILE_FICLONE),stat=fs.statSync(target);copies.push({target,bytes:fs.statSync(source).size,exclusive:!!(flags&fs.constants.COPYFILE_EXCL),inode:stat.ino,mtime:stat.mtimeMs});return result;};syncBuiltinESMExports();process.on('exit',()=>fs.writeFileSync(${JSON.stringify(metrics)},JSON.stringify({copies,nativeAttempts})));`);
+ f.write(preload,liveChildPreload+`import fs from 'node:fs';import child from 'node:child_process';import path from 'node:path';import {syncBuiltinESMExports} from 'node:module';const copy=fs.copyFileSync,run=child.execFileSync,copies=[];let nativeAttempts=0;child.execFileSync=(command,args,options)=>{if(command==='/bin/cp'){nativeAttempts++;throw Object.assign(Error('clone unsupported'),{code:'ENOTSUP'});}return run(command,args,options);};fs.copyFileSync=(source,target,flags)=>{const result=copy(source,target,flags&~fs.constants.COPYFILE_FICLONE),stat=fs.statSync(target);copies.push({target,bytes:fs.statSync(source).size,exclusive:!!(flags&fs.constants.COPYFILE_EXCL),inode:stat.ino,mtime:stat.mtimeMs});return result;};syncBuiltinESMExports();process.on('exit',()=>fs.writeFileSync(${JSON.stringify(metrics)},JSON.stringify({copies,nativeAttempts})));`);
  const result=f.run({preload});assert.equal(result.status,0,result.stderr);const measured=JSON.parse(fs.readFileSync(metrics)),copies=measured.copies;assert.ok(copies.length>0);assert.ok(copies.every(copy=>copy.exclusive&&fs.statSync(copy.target).ino===copy.inode&&fs.statSync(copy.target).mtimeMs===copy.mtime));if(process.platform==='darwin')assert.ok(measured.nativeAttempts<copies.length);assert.deepEqual(f.snapshot(),before);assert.equal(hash(path.join(f.destination,'packages/example/data.bin')),before.data);
  t.diagnostic(JSON.stringify({resourceGraph:{files:copies.length,trackedRegularBytes:copies.reduce((sum,copy)=>sum+copy.bytes,0),oldCheckoutMaterializedBytes:copies.reduce((sum,copy)=>sum+copy.bytes,0),nativeCloneProcesses:measured.nativeAttempts,normalCopyFallbackVerified:true}}));
 });
@@ -141,14 +150,14 @@ test('directory batches reduce real clone processes and preserve renamed files a
  child.execFileSync=(command,args,options)=>{if(command==='/bin/cp')calls.push(args);return original(command,args,options);};syncBuiltinESMExports();
  try{
   const one=entries(baseline),many=entries(batched);
-  let start=performance.now();for(const file of one)copyFilesClone([file],{exclusive:true});const beforeMs=performance.now()-start,beforeProcesses=calls.length;
-  start=performance.now();copyFilesClone(many,{exclusive:true});const afterMs=performance.now()-start,afterProcesses=calls.length-beforeProcesses;
+  let start=performance.now();for(const file of one)copyFilesCloneLive([file],{exclusive:true});const beforeMs=performance.now()-start,beforeProcesses=calls.length;
+  start=performance.now();copyFilesCloneLive(many,{exclusive:true});const afterMs=performance.now()-start,afterProcesses=calls.length-beforeProcesses;
   for(let index=0;index<one.length;index++)assert.equal(hash(one[index].destination),hash(many[index].destination));
   if(process.platform==='darwin'){assert.equal(beforeProcesses,files.length);assert.equal(afterProcesses,3);}
   t.diagnostic(JSON.stringify({copyPhase:{files:files.length,beforeProcesses,afterProcesses,beforeMs,afterMs}}));
   const long=path.join(f.directory,'long-sources'),target=path.join(f.directory,'long-target');fs.mkdirSync(long);fs.mkdirSync(target);
   const largeBatch=Array.from({length:240},(_,index)=>{const name=`part-${index}-`+'x'.repeat(210)+'.txt',source=path.join(long,name),destination=path.join(target,name);fs.writeFileSync(source,'small');return {source,destination};});
-  const previous=calls.length;copyFilesClone(largeBatch,{exclusive:true});
+  const previous=calls.length;copyFilesCloneLive(largeBatch,{exclusive:true});
   for(const file of largeBatch)assert.equal(fs.readFileSync(file.destination,'utf8'),'small');
   if(process.platform==='darwin'){assert.ok(calls.length-previous>=2);for(const args of calls.slice(previous))assert.ok(args.reduce((sum,arg)=>sum+Buffer.byteLength(arg)+16,0)<=64*1024);}
  }finally{child.execFileSync=original;syncBuiltinESMExports();}
@@ -178,7 +187,8 @@ test('clone batches keep renamed files alone and every Darwin argv under the bou
 
 test('full source preparation uses the calling Bun frozen install and preserves the vendor on installer failure',t=>{
  const f=fixture(t),before=f.snapshot(),bun=path.join(f.directory,'bin/bun'),receipt=path.join(f.directory,'installer.json');
- f.write(bun,`#!/usr/bin/env node\nif(process.argv[2]==='--version'){console.log('1.4.2');process.exit(0);}const fs=require('node:fs');fs.writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({args:process.argv.slice(2),cwd:process.cwd()}));if(process.env.ALPHA_INSTALL_FAIL)process.exit(9);fs.mkdirSync('node_modules',{recursive:true});`);fs.chmodSync(bun,0o700);
+ // The installer runs with this directory first on PATH, so the stand-in names the real Bun absolutely.
+ f.write(bun,`#!${process.execPath}\nif(process.argv[2]==='--version'){console.log('1.4.2');process.exit(0);}const fs=require('node:fs');fs.writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({args:process.argv.slice(2),cwd:process.cwd()}));if(process.env.ALPHA_INSTALL_FAIL)process.exit(9);fs.mkdirSync('node_modules',{recursive:true});`);fs.chmodSync(bun,0o700);
  const env={ALPHA_BUN:'',npm_execpath:bun,ALPHA_INSTALL_RECEIPT:receipt};
  const first=f.run({full:true,env});assert.equal(first.status,0,first.stderr);
  assert.deepEqual(JSON.parse(fs.readFileSync(receipt)),{args:['install','--frozen-lockfile'],cwd:f.destination});assert.ok(fs.existsSync(path.join(f.destination,'node_modules')));assert.deepEqual(f.snapshot(),before);
@@ -189,12 +199,24 @@ for(const selection of ['override','npm_execpath','bare'])test(`nested installer
  const f=fixture(t),before=f.snapshot(),selected=path.join(f.directory,'selected/bun'),old=path.join(f.directory,'old/bun'),receipt=path.join(f.directory,'nested.json');
  const executable=(file,body)=>{f.write(file,`#!${process.execPath}\n${body}`);fs.chmodSync(file,0o700);};
  executable(old,`require('node:fs').writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({wrongBun:true}));process.exit(71);`);
- executable(selected,`if(process.argv[2]==='--version'){console.log('1.4.2');process.exit(0);}const fs=require('node:fs'),{execFileSync}=require('node:child_process');if(process.argv[2]==='nested'){fs.writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({args:JSON.parse(process.env.ALPHA_INSTALL_ARGS),executable:process.argv[1],path:process.env.PATH,agent:process.env.CLAUDECODE??null}));}else{execFileSync('bun',['nested'],{env:{...process.env,ALPHA_INSTALL_ARGS:JSON.stringify(process.argv.slice(2))}});fs.mkdirSync('node_modules',{recursive:true});}`);
+ executable(selected,`if(process.argv[2]==='--version'){console.log('1.4.2');process.exit(0);}const fs=require('node:fs'),{execFileSync}=require('node:child_process');if(process.argv[2]==='nested'){fs.writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({args:JSON.parse(process.env.ALPHA_INSTALL_ARGS),executable:process.argv[1],path:process.env.PATH,agent:process.env.CLAUDECODE??null,extra:process.env.ALPHA_INSTALL_EXTRA,node:JSON.parse(execFileSync('node',['-p','JSON.stringify({executable:process.execPath,bun:process.versions.bun??null})'],{encoding:'utf8'}))}));}else{execFileSync('bun',['nested'],{env:{...process.env,ALPHA_INSTALL_ARGS:JSON.stringify(process.argv.slice(2))}});fs.mkdirSync('node_modules',{recursive:true});}`);
  const inheritedPath=[selection==='bare'?path.dirname(selected):path.dirname(old),process.env.PATH].filter(Boolean).join(path.delimiter);
- const env={PATH:inheritedPath,ALPHA_BUN:selection==='override'?selected:selection==='bare'?'bun':'',npm_execpath:selection==='npm_execpath'?selected:process.execPath,ALPHA_INSTALL_RECEIPT:receipt,CLAUDECODE:'1'};
+ const env={PATH:inheritedPath,ALPHA_BUN:selection==='override'?selected:selection==='bare'?'bun':'',npm_execpath:selection==='npm_execpath'?selected:process.execPath,ALPHA_INSTALL_RECEIPT:receipt,ALPHA_INSTALL_EXTRA:'retained-extra',CLAUDECODE:'1'};
  const result=f.run({full:true,env});assert.equal(result.status,0,result.stderr);
  const actual=JSON.parse(fs.readFileSync(receipt));assert.deepEqual(actual.args,['install','--frozen-lockfile']);assert.equal(actual.executable,selected);assert.equal(actual.agent,null);
- assert.equal(actual.path,selection==='bare'?inheritedPath:[path.dirname(selected),inheritedPath].join(path.delimiter));assert.deepEqual(f.snapshot(),before);
+ const requested=(selection==='bare'?inheritedPath:[path.dirname(selected),inheritedPath].join(path.delimiter)).split(path.delimiter);
+ const actualPath=actual.path.split(path.delimiter),omitted=new Set(requested.filter(directory=>!actualPath.includes(directory)));
+ for(const directory of omitted){
+  assert.deepEqual(fs.readdirSync(directory).sort(),['bun','node'],'only the injected aliases may leave PATH');
+  for(const name of ['bun','node'])assert.ok(fs.lstatSync(path.join(directory,name)).isSymbolicLink());
+  assert.equal(fs.realpathSync(path.join(directory,'node')),fs.realpathSync(path.join(directory,'bun')));
+  assert.match(execFileSync(path.join(directory,'bun'),['--print','process.versions.bun??""'],{encoding:'utf8'}).trim(),/^\d+\.\d+\.\d+/,'omitted aliases execute Bun rather than genuine Node');
+ }
+ assert.deepEqual(actualPath,requested.filter(directory=>!omitted.has(directory)),'legitimate PATH entries retain their order');
+ assert.equal(actualPath[0],path.dirname(selected),'nested Bun resolves from the selected toolchain, never a dot prefix');
+ assert.notEqual(actualPath[0],'.');assert.equal(actual.extra,'retained-extra');assert.equal(actual.node.bun,null);
+ assert.ok(path.isAbsolute(actual.node.executable));if(process.versions.bun)assert.notEqual(fs.realpathSync(actual.node.executable),fs.realpathSync(process.execPath));
+ assert.deepEqual(f.snapshot(),before);
 });
 
 for(const version of ['1.3.14','unavailable'])test(`full preparation refuses ${version} Bun before dependency installation`,t=>{

@@ -92,14 +92,14 @@ print('PASS: shared resident archive admission and ten synthetic fixture refusal
 });
 
 
-test('Calendar bridge CI admits the current reviewed pin, Node declaration and exact owning fixture bytes',()=>{
+test('Calendar bridge CI admits the current reviewed pin, Bun declaration and exact owning fixture bytes',()=>{
  const result=execFileSync('python3',['-c',String.raw`
 import hashlib,json,runpy
 from pathlib import Path
 root=Path.cwd()
 bridge=runpy.run_path(str(root/'scripts/ci/calendar-bridge.py'))
 assert bridge['SDK']==json.loads((root/'upstream.lock.json').read_text())['commit'], 'Calendar CI source pin is stale'
-assert bridge['NODE']==(root/'.nvmrc').read_text().strip(), 'Calendar CI Node declaration is stale'
+assert 'bun@'+bridge['BUN']==json.loads((root/'package.json').read_text())['packageManager'], 'Calendar CI Bun declaration is stale'
 h=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
 assert h(root/'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
 for relative,expected in bridge['OWNING_SHA256'].items():
@@ -134,9 +134,8 @@ test('disposable admission refuses either installed Alpha identity before fixtur
   if(args.join(' ')==='shell pm list packages -u')return packages;
   throw Error('Unexpected device effect before admission');
  };
- const retainedIdentity=['ai','elizaresearch','alphaphone'].join('.');
  const currentIdentity='ai.alphacompute.alphaphone';
- for(const identity of [retainedIdentity, currentIdentity].flatMap(id=>[id,`${id}.test`]))
+ for(const identity of [currentIdentity].flatMap(id=>[id,`${id}.test`]))
   assert.throws(()=>admitResidentEmulator(environment,inventory('package:com.android.settings\npackage:'+identity)),/fresh emulator/);
  assert.doesNotThrow(()=>admitResidentEmulator(environment,inventory('package:com.android.settings')));
  assert.throws(()=>admitResidentEmulator({...environment,ANDROID_SERIAL:'physical-device'},inventory('package:com.android.settings')),/Explicit disposable/);

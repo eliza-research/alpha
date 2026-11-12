@@ -8,11 +8,6 @@ import {fileURLToPath} from 'node:url';
 import {checkWorkflowExecutionAuditAdmission} from '../specs/quint/refinement/services/workflow-execution-audit-admission.mjs';
 
 // The existing renderer fixture imports the application's extensionless TS graph.
-if (!process.versions.bun && !process.execArgv.some(value => value === 'tsx' || value === '--import=tsx')) {
-  const child = spawnSync(process.execPath, ['--import=tsx', process.argv[1]], {stdio: 'inherit', timeout: 180000});
-  if (child.error) throw child.error;
-  process.exit(child.status ?? 1);
-}
 
 const own = fileURLToPath(import.meta.url);
 test('workflow admission audit observes actual protocol, journal and renderer recovery', {timeout: 180000}, async () => {

@@ -31,7 +31,7 @@ import {planAdmission} from '../runtime/subscription-entitlement';
 import { exportVoiceTiming, exportRealtimeVoiceTiming, voiceStartupTiming } from '../runtime/voice-timing';
 import { readNativeVoiceTiming } from '../runtime/native-voice-turn';
 import { readNativeCloudStreamTiming } from '../runtime/cloud-voice';
-import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
+import { imageSenseAvailable, listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
 import {createAppUpdateScheduler} from '../../../../.eliza/client-features/packages/ui/src/state/app-update-gate';
@@ -118,9 +118,10 @@ const device = registerPlugin<{
   diagnosticsFacts(): Promise<Bag>;
   shareDiagnostics(input: { text: string }): Promise<{ status: string }>;
   checkForUpdate(): Promise<{manifest?: string; manifestSha256?: string}>;
+  openUpdatePermissionSettings(): Promise<{status: 'opened' | 'unsupported'}>;
   updateState(): Promise<{pending?: boolean}>;
   installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'> &
-    ({automatic: true; manifestSha256: string} | {automatic?: never; manifestSha256?: never})): Promise<{status?: string}>;
+    ({automatic: true; manifestSha256: string} | {automatic?: never; manifestSha256?: never})): Promise<{status?: string; manifest?: string}>;
 }>('AlphaDevice');
 const notifications = registerPlugin<{status():Promise<Bag>;setAlertPreferences(input:{appEnabled?:boolean;channelId?:string;enabled?:boolean}):Promise<Bag>;openAppSettings():Promise<Bag>;openChannelSettings(input:{id:string}):Promise<{status:string}>;crossAppStatus():Promise<Bag>;notificationApps():Promise<{apps:Bag[]}>;setNotificationPolicy(input:Bag):Promise<Bag>;resumeCrossApp(input:{expectedRevision:string}):Promise<Bag>;openNotificationAccess():Promise<Bag>;notificationHistory():Promise<{items:Bag[]}>;clearNotificationHistory():Promise<void>}>('AlphaNotifications');
 const system = registerPlugin<{ getDeviceSettings(): Promise<Bag>; getStatus(): Promise<{ roles?: Bag[] }>; requestRole(input: { role: string }): Promise<{ role: string; held: boolean; resultCode: number }>; getBuildInfo(): Promise<{ launcher?: boolean; version?: string }> }>('ElizaSystem');
@@ -157,38 +158,53 @@ export const UPDATE_SCHEMA = 'alpha-update/v1';
 export const UPDATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 export const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 type AppUpdate = {versionCode: number; versionName: string; apkUrl: string; sha256: string; sizeBytes: number; notes: string};
+/** The bounded index admits unique variant and signer pairs. A single offer has the same row shape. */
+function updateManifestRows(value: unknown): Array<Record<string, unknown>> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const document = value as Record<string, unknown>;
+  if (document.schema !== 'alpha-update/index-v1') return [document];
+  if (!Array.isArray(document.releases) || document.releases.length < 1 || document.releases.length > 16) return null;
+  const pairs = new Set<string>();
+  const rows: Array<Record<string, unknown>> = [];
+  for (const entry of document.releases) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    const row = entry as Record<string, unknown>;
+    if (row.schema !== UPDATE_SCHEMA || (row.variant !== 'launcher' && row.variant !== 'standalone') || typeof row.signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(row.signerSha256)) return null;
+    const pair = row.variant + ':' + row.signerSha256;
+    if (pairs.has(pair)) return null;
+    pairs.add(pair);
+    rows.push(row);
+  }
+  return rows;
+}
 /**
  * The update a manifest offers this install, or null unless it is complete and HTTPS, newer than the
  * installed versionCode, and for this flavor and signer. Android refuses another signer after the whole
  * download, and the other flavor would silently change what the phone admits (HOME, Phone, SMS).
  */
 export function parseUpdateManifest(value: unknown, installed: {versionCode: unknown; launcher: unknown; signerSha256: unknown}): AppUpdate | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  let offer = value as Record<string, unknown>;
   // One canonical feed can serve distinct APK flavors and installed signing families.
   // Select an exact pair only; never fall back to another signer or an ambiguous offer.
-  if (offer.schema === 'alpha-update/index-v1') {
-    if (!Array.isArray(offer.releases) || offer.releases.length < 1 || offer.releases.length > 16) return null;
-    const pairs = new Set<string>();
-    let selected: Record<string, unknown> | undefined;
-    for (const entry of offer.releases) {
-      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
-      const row = entry as Record<string, unknown>;
-      if (row.schema !== UPDATE_SCHEMA || (row.variant !== 'launcher' && row.variant !== 'standalone') || typeof row.signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(row.signerSha256)) return null;
-      const pair = row.variant + ':' + row.signerSha256;
-      if (pairs.has(pair)) return null;
-      pairs.add(pair);
-      if (typeof installed.launcher === 'boolean' && row.variant === (installed.launcher ? 'launcher' : 'standalone') && row.signerSha256 === installed.signerSha256) selected = row;
-    }
-    if (!selected) return null;
-    offer = selected;
-  }
-  const {schema, versionCode, versionName, variant, signerSha256, apkUrl, sha256, sizeBytes, notes} = offer;
+  if (typeof installed.launcher !== 'boolean') return null;
+  const offer = updateManifestRows(value)?.find(row => row.variant === (installed.launcher ? 'launcher' : 'standalone') && row.signerSha256 === installed.signerSha256);
+  if (!offer) return null;
+  const {schema, versionCode, versionName, signerSha256, apkUrl, sha256, sizeBytes, notes} = offer;
   if (schema !== UPDATE_SCHEMA || !Number.isSafeInteger(installed.versionCode) || !Number.isSafeInteger(versionCode) || (versionCode as number) <= (installed.versionCode as number)) return null;
-  if (typeof installed.launcher !== 'boolean' || variant !== (installed.launcher ? 'launcher' : 'standalone') || typeof signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(signerSha256) || signerSha256 !== installed.signerSha256) return null;
+  if (typeof signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(signerSha256)) return null;
   if (typeof sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(sha256) || !Number.isSafeInteger(sizeBytes) || (sizeBytes as number) <= 0 || (sizeBytes as number) > UPDATE_MAX_BYTES || typeof apkUrl !== 'string' || apkUrl.length > 2048) return null;
   try { const url = new URL(apkUrl); if (url.protocol !== 'https:' || url.username || url.password) return null; } catch { return null; }
   return {versionCode: versionCode as number, versionName: typeof versionName === 'string' && /^[^\u0000-\u001f\u007f]{1,64}$/.test(versionName) ? versionName : '', apkUrl, sha256, sizeBytes: sizeBytes as number, notes: typeof notes === 'string' && notes.length <= 500 ? notes : ''};
+}
+/** Only a complete feed can replace or evict the saved manual offer. */
+function parseCompleteUpdateManifest(manifest: unknown): unknown {
+  if (typeof manifest !== 'string') return null;
+  try {
+    const value: unknown = JSON.parse(manifest);
+    const rows = updateManifestRows(value);
+    if (rows?.every(row => parseUpdateManifest(row, {versionCode: 0,
+      launcher: row.variant === 'launcher', signerSha256: row.signerSha256}))) return value;
+  } catch { /* Invalid JSON cannot replace a saved offer. */ }
+  return null;
 }
 /** Fifteen minutes after the last answer, or at once for an unknown/future clock. */
 export function updateCheckDue(checkedAt: number, now: number): boolean {
@@ -219,13 +235,18 @@ export function updateIdle(facts: UpdateIdleFacts): boolean {
     !facts.homeEdit && !facts.homeAdd && !facts.drawerMenu &&
     !facts.busy && !facts.open && !facts.editor;
 }
-/** Field updates wait for Home, outside voice, edits and foreground reviews. */
-export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean): boolean {
+/** Field updates wait for idle Home, including behind the empty required first-run sign-in landing. */
+export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean, page?: Pick<Document, 'querySelector'>): boolean {
+  // Access setup and other reviews can cover Home without changing the shell view.
+  if (page?.querySelector('dialog[open]:not(.alpha-update-startup)')) return false;
+  const signIn = connection.open ? page?.querySelector('[data-alpha-app-update-sign-in]') : null;
+  // The uncontrolled input can retain typed or autofilled text even after it loses focus.
+  const signInIdle = signIn && !signIn.matches(':active') && Array.from(signIn.querySelectorAll('input')).every(input => input.value === '');
   return updateIdle({
     voiceInactive: voiceActive === false, home: shell.screen === 'home', view: !!shell.view, voiceOff: shell.voice === 'off',
     typing: !!shell.typing, chatResting: shell.chat === 'input' || shell.chat === 'hidden', drawer: !!shell.drawer, shade: !!shell.shade,
     homeEdit: !!shell.homeEdit, homeAdd: !!shell.homeAdd, drawerMenu: !!shell.drawerMenu,
-    busy: !!connection.busy, open: !!connection.open, editor: !!editor,
+    busy: !!connection.busy, open: !!connection.open && !signInIdle, editor: !!editor,
   });
 }
 /** The Privacy page's voice fact: the speech route in use now (voice-selection.ts) and what it sends.
@@ -305,12 +326,15 @@ function retainUpdate(value: SavedUpdate) {
   lastUpdate = value;
   try { localStorage.setItem(UPDATE_KEY, JSON.stringify(value)); } catch { /* Kept for this session. */ }
 }
-function invalidateUpdate(used: SavedUpdate): boolean {
+function retireUpdate(used: SavedUpdate, changed: boolean): boolean {
   if (lastUpdate !== used) return false;
-  lastUpdate = {checkedAt: Number.NaN, manifest: null};
+  lastUpdate = changed ? {checkedAt: Number.NaN, manifest: null} : {checkedAt: used.checkedAt, manifest: used.manifest};
   try {
-    if (localStorage.getItem(UPDATE_KEY) === JSON.stringify(used)) localStorage.removeItem(UPDATE_KEY);
-  } catch { /* Invalidated for this session. */ }
+    if (localStorage.getItem(UPDATE_KEY) === JSON.stringify(used)) {
+      if (changed) localStorage.removeItem(UPDATE_KEY);
+      else localStorage.setItem(UPDATE_KEY, JSON.stringify(lastUpdate));
+    }
+  } catch { /* Automatic authority is retired for this session. */ }
   return true;
 }
 /**
@@ -330,8 +354,8 @@ function checkForUpdate(force: boolean, automatic = false): Promise<boolean> | u
     }
     if (typeof manifest !== 'string' || (manifestSha256 !== undefined && !isManifestSha256(manifestSha256)))
       throw Error('Malformed update check reply');
-    const parsed: unknown = JSON.parse(manifest);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Error('Malformed update manifest');
+    const parsed = parseCompleteUpdateManifest(manifest);
+    if (!parsed) throw Error('Malformed update manifest');
     retainUpdate({checkedAt: Date.now(), manifest: parsed, manifestSha256});
     return true;
   }).catch(() => {
@@ -427,7 +451,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     changed();
     const idle = () => automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),
       !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),
-      owner?.voiceConversationActive?.() !== false);
+      owner?.voiceConversationActive?.() !== false, document);
     if (updateBusy || !idle())
       throw Error('Current activity must finish');
     const [installed, build, pending] = await Promise.all([device.snapshot(), system.getBuildInfo(), device.updateState()]);
@@ -445,8 +469,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     // renderer's saved-draft receipt before stopping the resident or committing.
     const result = await device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,
       sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true,manifestSha256:saved.manifestSha256});
-    if (result?.status === 'offer-unavailable') {
-      if (invalidateUpdate(saved) && current()) changed();
+    if (result?.status === 'offer-unavailable' || result?.status === 'offer-withdrawn' || result?.status === 'offer-response-changed') {
+      const withdrawn = result.status === 'offer-withdrawn' ||
+        (result.status === 'offer-response-changed' && Boolean(parseCompleteUpdateManifest(result.manifest)));
+      if (retireUpdate(saved, withdrawn) && current()) changed();
       throw Error('Update offer unavailable');
     }
     if (result?.status === 'starting') throw Error('Android is still starting');
@@ -469,6 +495,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if (owner !== instance) return;
       listener = next;
       if (!next.available) api.toast('Not responding · Use notification');
+      else if (next.microphoneOpen) api.toast('Microphone is still open · Use notification');
       else if (next.listening) api.toast('Still listening · Use notification');
     } finally { listenerReads.endAction(); if (owner === instance) changed(); }
   }
@@ -501,7 +528,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       await Promise.allSettled([
         (async () => {
           // A status read never replaces a Pause or Turn off result: none starts during the action, and an older one is dropped.
-          if (!externalVoiceInvocationEnabled) return;
+          if (!imageSenseAvailable()) return;
           const read = listenerReads.beginRead();
           if (read === null) return;
           const status = await listenerStatus();
@@ -782,9 +809,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const pending = agentPendingText(connection, 'Not connected');
     const target = connection.session ? connection.name : pending;
     const runtimeLocation=!connection.session?pending:connection.kind==='resident'?(Capacitor.isNativePlatform()?'This phone':'This computer · dev'):testMocksEnabled?'Remote':'Unsupported';
-    // About and Models read the model the resident reports the same way, so the two pages agree.
-    const residentProvider=connection.kind==='resident'&&connection.session?connection.providerStatus:null;
-    const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported';
+    // Use the current controller readback for both provider and model. Failed or pending
+    // confirmation can retain a previous selection without verifying its model.
+    const residentProvider=connection.kind==='resident'&&connection.session&&!connection.providerStatusError?connection.providerStatus:null;
+    const providerName=residentProvider?.provider==='elizacloud'?serviceName:'Cerebras';
+    const providerModelPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
+    const inferenceModel=residentProvider?.configured===true&&typeof residentProvider.model==='string'&&providerModelPattern.test(residentProvider.model)
+      ?modelLabel(providerName,residentProvider.model):'Not reported';
     const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('Unavailable'));
     const info = (label: string, val: string, id = label): Bag => ({ id, kInfo: true, label, val, hasVal: true, noAB: true });
@@ -792,8 +823,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     // Permission state: one word beside a dot (never colour alone).
     const permissionDot = (val: string) => val === 'Allowed' || val === 'All' || val === 'Precise' ? 'ok' : val === 'Ask' || val === 'Selected' || val === 'Limited' || val === 'Approx.' || val === 'Chosen files' || val === 'Alpha only' ? 'warn' : 'off';
     const permissionInfo = (label: string, val: string): Bag => ({ ...info(label, val), hasDot: val !== '—' && val !== 'Unavailable', dot: permissionDot(val) });
-    // Listening could not be confirmed off: a red row at the top that opens the listener's settings.
-    const micMayBeOn = (): Bag => ({ kNav:true, label:'Microphone', lbl:'Microphone may be on, open listener settings', val:'Mic may be on', hasVal:true, hasDot:true, dot:'err', valCss:'color:var(--fg)', lucide:'mic-off', hasExt:true, chev:false, noAB:true, go:()=>void openListenerSettings().then(opened => { if (!opened) api.toast('Unavailable'); }) });
+    // Listening could not be confirmed off: offer Android settings even if Sense is unavailable.
+    const micMayBeOn = (): Bag => ({ kNav:true, label:'Microphone', lbl:'Microphone may be on, open Android settings', val:'Mic may be on', hasVal:true, hasDot:true, dot:'err', valCss:'color:var(--fg)', lucide:'mic-off', hasExt:true, chev:false, noAB:true, go:manage('system') });
     // Android hand-offs: a short label and an external-link mark; the accessible name keeps the destination.
     const nav = (label: string, page: string, aria = label): Bag => ({ kNav: true, label, lbl: aria, chev: false, hasExt: true, noAB: true, go: manage(page) });
     const group = (rows: Bag[], id?: string) => ({ ...(id ? {id} : {}), css: 'background:var(--s2);padding:4px 0', rows });
@@ -809,15 +840,18 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     ];
     const action = (label: string, go: () => void, id = label): Bag => ({ id, kNav:true, label, lbl:label, chev:true, noAB:true, go });
     const listenerRows = (): Bag[] => {
-      if (!externalVoiceInvocationEnabled) return [];
-      if (!listener.available) return [];
-      const status = listener, on = !!status.consented && status.state !== 'OFF';
+      if (!imageSenseAvailable()) return [];
       const settings = () => void openListenerSettings().then(opened => { if (!opened) api.toast('Unavailable'); });
+      const settingsRow = {...action('Listening settings', settings), hasExt:true, chev:false};
+      if (!listener.available) return [settingsRow];
+      const status = listener;
+      const on = status.microphoneOpen || status.listening || (!!status.consented && status.state !== 'OFF');
+      const label = status.state === 'OFF' && (status.microphoneOpen || status.listening) ? 'Microphone still open' : status.label;
       // One Listening switch: off goes through the listener; on (and resume) only in its own consent screen.
       return [
-        {kTog:true, label:'Listening', aria:'Listening', hasSub:true, sub:listenerReads.busy()?'':status.label, on, track:on?'background:var(--acc)':'background:var(--line)', kx:on?20:0, dis:listenerReads.busy(), toggle:()=>on?void listenerAction(api, 'turnOff'):settings()},
+        {kTog:true, label:'Listening', aria:'Listening', hasSub:true, sub:listenerReads.busy()?'':label, on, track:on?'background:var(--acc)':'background:var(--line)', kx:on?20:0, dis:listenerReads.busy(), toggle:()=>on?void listenerAction(api, 'turnOff'):settings()},
         ...(status.listening || status.microphoneOpen ? [{...action('Pause', () => void listenerAction(api, 'pause')), lbl:'Pause listening', busy:listenerReads.busy(), hasSpin:listenerReads.busy()}] : []),
-        {...action('Listening settings', settings), hasExt:true, chev:false},
+        settingsRow,
       ];
     };
     const problemCount = crashLog ? crashLog.entries.length : null;
@@ -944,9 +978,17 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           page.groups.push(group([role('Home app',home),role('Assistant app',roles?.assistant),
             ...(canRequestHome?[{kNav:true,label:'Set as Home',lbl:'Make Alpha your Home app',busy:roleBusy,hasSpin:roleBusy,chev:!roleBusy,noAB:true,go:()=>void requestHome(api)}]:[]),
             nav('Default apps','default-apps','Default apps in Android')]));
+          const updatePermission = facts.appAutomaticUpdates;
           // Install update only for the version the last manifest offers this install, and an explicit check whose answer stays below it.
           const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});
           page.groups.push(group([
+            ...(updatePermission === 'permission-required' ? [{
+              ...action('Allow automatic updates', () => void device.openUpdatePermissionSettings()
+                .then(result => { if (result.status !== 'opened') api.toast('Couldn’t open Android settings'); },
+                  () => api.toast('Couldn’t open Android settings')), 'update-permission'),
+              lucide: 'shield',
+            }] : updatePermission === 'supported' ? [info('Automatic updates', 'Allowed')]
+              : updatePermission === 'starting' ? [info('Automatic updates', 'Starting')] : []),
             ...(update?[{...action('Update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),lbl:updateBusy==='install'?'Downloading update':'Install update',lucide:'download',val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,busy:!!updateBusy,hasSpin:updateBusy==='install',chev:false,id:'update-install'}]:[]),
             {...action('Check',()=>void updateAction('check',()=>checkForUpdate(true)),'update-check'),lbl:updateBusy==='check'?'Checking for updates':'Check for updates',lucide:'rotate-cw',busy:!!updateBusy,hasSpin:updateBusy==='check',chev:false},
             ...(updateResult?[{...info('Update check',updateResult),role:'status',live:'polite'}]:[])]));
@@ -1068,7 +1110,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           ...(externalVoiceInvocationEnabled ? [{kNav:true,label:'Wake assistant',lbl:'Wake assistant',chev:true,noAB:true,go:()=>void owner?.startVoice()}] : []),
           {kNav:true,label:'Open conversation',lbl:'Open conversation',chev:true,noAB:true,go:()=>api.composeContentQuestion('')},
           {kNav:true,label:'Agent connection',lbl:'Agent connection',chev:true,noAB:true,go:()=>connectionController.open()},
-        ])]:[group([...speechRows(), ...listenerRows()])];
+        ])]:[group(speechRows())];
       } else if (page.title === 'Battery') {
         page.hero = { ...page.hero, big: percent, sub: facts.charging === true ? 'Charging' : '', hasMeter: typeof facts.batteryPercent === 'number', meter: facts.batteryPercent ?? 0 };
         page.groups = [group([info('Battery saver', typeof facts.powerSave === 'boolean' ? facts.powerSave ? 'On' : 'Off' : 'Unavailable'), nav('Battery', 'battery', 'Manage battery in Android')])];
@@ -1090,7 +1132,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
         page.hero = { ...page.hero, big: target, sub: '' };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?providerName:'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Not reported':pending)]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
@@ -1228,7 +1270,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       }).filter(section => section.rows.length);
       // General: network hand-offs, the device, updates, then the destructive reset alone and last.
       const take = (names: string[]) => names.flatMap(name => { const row = rows.get(name); rows.delete(name); return row ? [row] : []; });
-      const network = take(['Wi-Fi', 'Bluetooth', 'Mobile data']), updates = take(['Update', 'Check', 'Update check']), reset = take(['Erase all data']);
+      const network = take(['Wi-Fi', 'Bluetooth', 'Mobile data']);
+      const updates = take(['Allow automatic updates', 'Automatic updates', 'Update', 'Check', 'Update check']);
+      const reset = take(['Erase all data']);
       settingsTop.groups.splice(2, 0, ...[['Network', network], ['Device', [...rows.values()]], ['Updates', updates], ['Reset', reset]]
         .filter(([, list]) => (list as Bag[]).length).map(([cap, list]) => ({...group(list as Bag[]), cap, hasCap:true})));
       for (const page of out.stack) {
@@ -1251,6 +1295,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         // An app with nothing to set here opens the app itself (owner decision: no one-row pages).
         const direct=new Set(['browser','files',...(Capacitor.isNativePlatform()?[]:['photos'])]);
         if(key==='settings-apps')groups=[group(appCatalog.map(([label,id])=>({kNav:true,label,lbl:label,chev:true,noAB:true,go:()=>{const existing=existingAppRow(id);if(existing&&id!=='workflows'){api.set({settingsCategory:'settings-apps'});existing.go();}else if(direct.has(id)){api.set({settingsCategory:'settings-apps'});owner?.openView(id);}else api.set({page:'app-settings-'+id,settingsCategory:'settings-apps'});}})))];
+        if(key==='settings-privacy'){
+          const listening=listenerRows();
+          if(listening.length)groups.push(group(listening,'image-listening'));
+        }
         if(key==='settings-general'&&phoneLoader())groups.push(group([{kNav:true,label:'Phone',lbl:'Phone',chev:true,noAB:true,go:()=>api.set({page:'phone-info',settingsCategory:'settings-general'})}]));
         out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title,hasTitle:true,backLabel:'Back to Settings',back:()=>{api.set({page:null,settingsCategory:null});},hero:{},groups});
       }

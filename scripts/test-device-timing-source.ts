@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Authenticated HTTP, real approval service, and disk-backed SQL over pinned source.
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';

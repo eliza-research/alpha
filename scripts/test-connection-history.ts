@@ -21,9 +21,6 @@ import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from '../test/support/strip-types.mjs';
 import { exitFromChild, runChild } from './child-command.ts';
 import { installWorkflowDeviceBindings } from '../test/fixtures/workflow-device-bindings.mjs';
-if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
-  exitFromChild(await runChild(process.execPath, ['--import=tsx', process.argv[1]], { stdio: 'inherit' }));
-}
 const cloudSignInModule = await import('../apps/app/src/runtime/cloud-sign-in.ts');
 const {clockHandoffCapabilities}=await import('../apps/app/src/runtime/clock-contract.ts');
 const {PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities}=await import('../apps/app/src/runtime/phone-dial-contract.ts');

@@ -39,7 +39,8 @@ async function fresh(){
  const v=new BrowserStorageVolume(lib,{trashFolder:TRASH_FOLDER,trashKey:'alpha.files.trash.v1'},()=>changes.push(clock),()=>clock,store);
  for(const f of ['DCIM','Documents','Download','Movies','Pictures','Recordings'])await lib.createFolder({id:'root',name:f});
  await v.createFolder('DCIM','Camera');
- v.add=async(folder,name,text='x',type)=>{const id=folder?await idOf(lib,folder):'root';await lib.importFile(new File([text],name,{type:type??storage.mimeFromName(name)}),id);};
+ // The file carries exactly the type it was given, as in a browser: Bun's File turns text/plain into text/plain;charset=utf-8.
+ v.add=async(folder,name,text='x',type)=>{const id=folder?await idOf(lib,folder):'root',mimeType=type??storage.mimeFromName(name);await lib.importFile(Object.defineProperty(new File([text],name,{type:mimeType}),'type',{value:mimeType}),id);};
  v.lib=lib;v.changes=changes;v.fixtureStore=store;return v;
 }
 async function idOf(lib,path){let id='root';for(const part of path.split('/')){id=(await lib.list({id})).entries.find(e=>e.name===part).id;}return id;}

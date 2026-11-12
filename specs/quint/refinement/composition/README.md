@@ -17,8 +17,8 @@ full Inbox/Resident/Reset composition and installed provider behavior still need
 separate evidence.
 
 ```sh
-node --import=tsx specs/quint/refinement/composition/index.mjs
-node --test test/quint-composition-refinement.test.mjs
+bun specs/quint/refinement/composition/index.mjs
+bun test test/quint-composition-refinement.test.mjs
 ```
 
 Receipts are written under `test-results/quint-refinement`. Each binds model,

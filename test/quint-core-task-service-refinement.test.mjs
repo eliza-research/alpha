@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkTaskServiceRefinement} from '../specs/quint/legacy/core/check-task-service-refinement.mjs';
 
-test('original TaskService profiles match actual claims, timers and wake revisions', {timeout: 120000}, async () => {
+test('original TaskService profiles match actual claims, timers and wake revisions', {timeout: scaledTimeout(120000)}, async () => {
   const {receipts, mismatch} = await checkTaskServiceRefinement([fileURLToPath(import.meta.url)]);
   assert.deepEqual(receipts.map(receipt => receipt.model),
     ['CoreTaskService', 'CoreTaskServiceDaemonRepeat', 'CoreTaskServiceLocalOneshot', 'CoreTaskServiceLocalRepeat']);

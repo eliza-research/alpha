@@ -99,11 +99,11 @@ async function installFixture() {
 async function drive(extraSources=[],mutation) {
  checkClientFeatures();
  const sources=[...new Set([...filesWithin(resolve(root,'apps/app/src')),...filesWithin(resolve(root,'.eliza/client-features')),
-  'vite.config.ts','package.json','package-lock.json','upstream.lock.json','scripts/prepare-client-features.ts','scripts/browser-full-reload.ts',
+  'vite.config.ts','package.json','bun.lock','upstream.lock.json','scripts/prepare-client-features.ts','scripts/browser-full-reload.ts',
   'test/browser/browser-photo-edit.spec.ts','test/browser/helpers/page-modules.ts',driver,...extraSources])];
  const driverHashes=captureInputs(sources),loaded=new Set();let server,browser;
  try{
-  server=await createServer({configFile:resolve(root,'vite.config.ts'),logLevel:'error',cacheDir,
+  server=await createServer({configLoader: 'runner', configFile:resolve(root,'vite.config.ts'),logLevel:'error',cacheDir,
    server:{host:'127.0.0.1',port:0,strictPort:true,hmr:false,watch:null},
    define:{'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS':JSON.stringify('')},
    plugins:[{name:'quint-copy-receipt',enforce:'pre',configureServer(server){server.middlewares.use((request,response,next)=>{

@@ -31,7 +31,7 @@ const models = allModels.filter(model => requested.length === 0 || requested.inc
 const configurations = option('configurations', '').split(',').filter(Boolean);
 for (const name of configurations) if (!models.some(model => model.configurations.some(config => config.name === name))) throw Error(`Unknown configuration ${name}`);
 const inputPaths = [documentPath, 'specs/quint/legacy/check-view-refresh.mjs', 'scripts/quint-lib.ts',
-  'specs/quint/tlc.json', 'package-lock.json', ...models.map(model => model.path)];
+  'specs/quint/tlc.json', 'bun.lock', ...models.map(model => model.path)];
 const hashes = () => Object.fromEntries(inputPaths.map(path => [path, sha256(readFileSync(resolve(root, path)))]));
 const inputHashes = hashes();
 const output = resolve(root, option('out', `test-results/quint-view-refresh/${phase}.json`));

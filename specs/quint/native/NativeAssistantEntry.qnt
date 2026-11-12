@@ -9,12 +9,12 @@ module NativeAssistantEntry {
     launches: int, dispatch: str, clean: bool}
   type Reply = {kind: str, origin: str, assistant: bool, locked: bool}
   type State = {sdk: int, now: int, locked: bool, policy: str, account: int, epoch: int,
-    signers: bool, protected: bool, latest: int, bound: int, invocation: Invocation,
+    signers: bool, systemSigner: bool, image: bool, protected: bool, latest: int, bound: int, invocation: Invocation,
     surfaces: int -> Surface, tile: Tile, reply: Reply}
   var s: State
 
   val ids = Set(1, 2)
-  val callers = Set("none", "listener", "system", "foreign")
+  val callers = Set("none", "listener", "system", "foreign", "listener-uid-mismatch", "system-uid-mismatch")
   val policies = Set("current", "no-mic", "stopping", "mutation", "shutdown", "unavailable", "nonproduction")
   val times = Set(100, 5100, 5101, 15100, 15101)
   val emptyGrant: Grant = {present:false,invalid:false,focused:false,bridge:0,bound:false,at:0,account:0,epoch:0}
@@ -28,7 +28,7 @@ module NativeAssistantEntry {
   action initWith(sdk: int): bool = all {
     sdk.in(Set(33, 34, 36)),
     s' = {sdk:sdk,now:100,locked:false,policy:"current",account:1,epoch:0,
-      signers:true,protected:true,latest:0,bound:0,invocation:emptyInvocation,
+      signers:true,systemSigner:true,image:true,protected:true,latest:0,bound:0,invocation:emptyInvocation,
       surfaces:Map((1,emptySurface),(2,emptySurface)),tile:emptyTile,reply:reply("none","none",true)}
   }
   action init = { nondet sdk = Set(33,34,36).oneOf(); initWith(sdk) }
@@ -37,10 +37,16 @@ module NativeAssistantEntry {
   pure def record(st: State, origin: str): Invocation = {origin:origin,locked:st.locked,at:st.now,
     coldOwner:if (startsVoice(origin) and st.bound==0 and not(st.locked)) st.account else 0,adopted:false}
   pure def classify(st: State, caller: str): str =
-    if (st.signers and startsVoice(caller)) caller else "assist"
+    if (st.image and st.signers and caller=="listener") "listener" else "assist"
   action environment(locked: bool, policy: str, signers: bool, protected: bool): bool = all {
-    policy.in(policies), s'={...s,locked:locked,policy:policy,signers:signers,protected:protected}
+    policy.in(policies), s'={...s,locked:locked,policy:policy,signers:signers,systemSigner:signers,protected:protected}
   }
+  // These inputs summarize separately observed image qualification and current certificates.
+  action imageAdmission(image: bool): bool = s'={...s,image:image}
+  action trustedSigners(listener: bool, system: bool): bool =
+    s'={...s,signers:listener,systemSigner:system}
+  pure def trustedPower(st: State, caller: str): bool =
+    st.image and st.signers and st.systemSigner and caller=="system"
   action replaceAuthority(account: int): bool = all {
     account.in(Set(1,2)), s.epoch<3, s'={...s,account:account,epoch:s.epoch+1}
   }
@@ -53,7 +59,7 @@ module NativeAssistantEntry {
     kind.in(Set("assist","power")), caller.in(callers),
     val origin = if (kind=="assist" and not(restored) and s.sdk>=34) classify(s,caller) else "assist"
     val first = record(s,origin)
-    val grant = if (kind=="power" and not(restored) and s.protected and not(s.locked) and s.policy=="current")
+    val grant = if (kind=="power" and not(restored) and s.sdk>=34 and trustedPower(s,caller) and s.protected and not(s.locked) and s.policy=="current")
       {...emptyGrant,present:true,at:s.now,account:s.account,epoch:s.epoch} else emptyGrant
     val surface = {...emptySurface,kind:kind,live:true,bridge:bridge,clean:true,events:if (bridge) 1 else 0,
       beforeLoad:if (bridge) first.origin else "none",beforeCold:if (bridge) first.coldOwner else 0,
@@ -67,7 +73,7 @@ module NativeAssistantEntry {
     id.in(ids), caller.in(callers), not(modern) or s.sdk>=35,
     val view = s.surfaces.get(id)
     val inv = if (view.kind=="power" and view.bridge)
-      (if (s.protected and view.activityBinding!=0 and view.activityBinding==s.bound)
+      (if (modern and trustedPower(s,caller) and s.protected and view.activityBinding!=0 and view.activityBinding==s.bound)
         record(s,"power") else s.invocation)
       else record(s,if (view.kind=="assist" and modern) classify(s,caller) else "assist")
     all { view.live, view.events<8, s'={...s,invocation:inv,surfaces:s.surfaces.set(id,{...view,clean:true,events:view.events+(if (view.bridge) 1 else 0)})} }
@@ -179,6 +185,8 @@ module NativeAssistantEntry {
     { nondet id=ids.oneOf(); nondet front=Bool.oneOf(); nondet exact=Bool.oneOf(); take(id,front,exact) },
     { nondet id=ids.oneOf(); nondet account=Set(1,2).oneOf(); nondet front=Bool.oneOf(); nondet exact=Bool.oneOf(); claim(id,account,front,exact) },
     { nondet lock=Bool.oneOf(); nondet policy=policies.oneOf(); nondet signers=Bool.oneOf(); nondet protection=Bool.oneOf(); environment(lock,policy,signers,protection) },
+    { nondet image=Bool.oneOf(); imageAdmission(image) },
+    { nondet listener=Bool.oneOf(); nondet system=Bool.oneOf(); trustedSigners(listener,system) },
     { nondet account=Set(1,2).oneOf(); replaceAuthority(account) },
     { nondet now=times.oneOf(); tick(now) },
     { nondet value=Bool.oneOf(); tileListen(value) },
@@ -202,20 +210,60 @@ module NativeAssistantEntry {
     .then(take(1,true,false)).expect(s.reply.origin=="none" and s.invocation.origin=="listener")
     .then(take(1,true,true)).expect(s.reply.origin=="listener")
     .then(take(1,true,true)).expect(s.reply.origin=="none")
-  run coldPowerExactOnceTest = initWith(36).then(create(1,"power",false,true,"none")).then(bind(1))
+  run coldPowerExactOnceTest = initWith(36).then(create(1,"power",false,true,"system")).then(bind(1))
     .then(focus(1,true)).then(tick(5100)).then(claim(1,1,true,true)).expect(s.reply.origin=="power")
     .then(claim(1,1,true,true)).expect(s.reply.origin=="none")
-  run coldPowerNeverReturnsAfterFocusLossTest = initWith(36).then(create(1,"power",false,true,"none")).then(bind(1))
+  run coldPowerNeverReturnsAfterFocusLossTest = initWith(36).then(create(1,"power",false,true,"system")).then(bind(1))
     .then(focus(1,true)).then(focus(1,false)).then(focus(1,true)).then(claim(1,1,true,true))
     .expect(s.reply.origin=="none" and s.surfaces.get(1).grant.invalid)
-  run newNativeOwnerRetiresColdPinTest = initWith(36).then(create(1,"power",false,true,"none")).then(bind(1))
+  run newNativeOwnerRetiresColdPinTest = initWith(36).then(create(1,"power",false,true,"system")).then(bind(1))
     .then(focus(1,true)).then(replaceAuthority(2)).then(claim(1,1,true,true)).expect(s.reply.origin=="none")
-  run stalePowerPreservesSuccessorTest = initWith(36).then(create(1,"power",false,true,"none")).then(bind(1))
+  run stalePowerPreservesSuccessorTest = initWith(36).then(create(1,"power",false,true,"system")).then(bind(1))
     .then(create(2,"assist",false,true,"none")).then(bind(2)).then(offer(2,"system",true))
     .then(offer(1,"none",true)).then(retire(1,true)).then(release(1))
-    .then(take(2,true,true)).expect(s.reply.origin=="system")
+    .then(take(2,true,true)).expect(s.reply.origin=="assist")
   run tileCancellationAndImmutableDispatchTest = initWith(34).then(environment(true,"current",true,true))
     .then(tileListen(true)).then(tileClick).expect(s.tile.inactive and s.tile.launches==0 and s.tile.awaitingUnlock)
     .then(tileUnlock(false)).expect(s.tile.launches==0)
     .then(tileClick).then(tileUnlock(true)).expect(s.tile.launches==1 and s.tile.dispatch=="pending-intent")
+
+  run ordinarySystemAndWrongListenerUidAreSurfaceOnlyTest = initWith(36)
+    .then(create(1,"assist",false,true,"system")).expect(s.invocation.origin=="assist" and s.invocation.coldOwner==0)
+    .then(bind(1)).then(offer(1,"listener-uid-mismatch",true)).expect(s.invocation.origin=="assist")
+    .then(offer(1,"listener",true)).expect(s.invocation.origin=="listener")
+  run listenerNeedsImageAndItsOwnSignerOnlyTest = initWith(36).then(imageAdmission(false))
+    .then(create(1,"assist",false,true,"listener")).expect(s.invocation.origin=="assist")
+    .then(bind(1)).then(imageAdmission(true)).then(trustedSigners(false,true))
+    .then(offer(1,"listener",true)).expect(s.invocation.origin=="assist")
+    .then(trustedSigners(true,false)).then(offer(1,"listener",true)).expect(s.invocation.origin=="listener")
+  run coldPowerWithoutCallerIsSurfaceOnlyTest = initWith(36)
+    .then(create(1,"power",false,true,"none")).expect(not(s.surfaces.get(1).grant.present))
+  run coldPowerWrongSystemUidIsSurfaceOnlyTest = initWith(34)
+    .then(create(1,"power",false,true,"system-uid-mismatch")).expect(not(s.surfaces.get(1).grant.present))
+    .then(create(2,"power",false,true,"system")).expect(s.surfaces.get(2).grant.present)
+  run coldPowerBeforeApi34IsSurfaceOnlyTest = initWith(33)
+    .then(create(1,"power",false,true,"system")).expect(not(s.surfaces.get(1).grant.present))
+  run coldPowerNeedsImageAndBothSignersTest = initWith(36).then(imageAdmission(false))
+    .then(create(1,"power",false,true,"system")).expect(not(s.surfaces.get(1).grant.present))
+    .then(imageAdmission(true)).then(trustedSigners(true,false))
+    .then(create(2,"power",false,true,"system")).expect(not(s.surfaces.get(2).grant.present))
+  run warmPowerRequiresModernTrustedSystemCallerTest = initWith(36)
+    .then(create(1,"power",false,true,"system")).then(bind(1))
+    .then(offer(1,"none",true)).expect(s.invocation.origin=="none")
+    .then(offer(1,"listener",true)).expect(s.invocation.origin=="none")
+    .then(offer(1,"system-uid-mismatch",true)).expect(s.invocation.origin=="none")
+    .then(offer(1,"system",false)).expect(s.invocation.origin=="none")
+    .then(offer(1,"system",true)).expect(s.invocation.origin=="power")
+  run warmPowerNeedsImageAndBothSignersTest = initWith(36)
+    .then(create(1,"power",false,true,"system")).then(bind(1)).then(imageAdmission(false))
+    .then(offer(1,"system",true)).expect(s.invocation.origin=="none")
+    .then(imageAdmission(true)).then(trustedSigners(false,true)).then(offer(1,"system",true))
+    .expect(s.invocation.origin=="none").then(trustedSigners(true,true))
+    .then(offer(1,"system",true)).expect(s.invocation.origin=="power")
+  run coldListenerAttributionDoesNotTransferTest = initWith(36).then(create(1,"assist",false,true,"listener"))
+    .then(replaceAuthority(2)).then(bind(1)).then(take(1,true,true)).expect(s.reply.origin=="none")
+  run stalePowerPreservesListenerSuccessorTest = initWith(36).then(create(1,"power",false,true,"system")).then(bind(1))
+    .then(create(2,"assist",false,true,"none")).then(bind(2)).then(offer(2,"listener",true))
+    .then(offer(1,"none",true)).then(retire(1,true)).then(release(1))
+    .then(take(2,true,true)).expect(s.reply.origin=="listener")
 }

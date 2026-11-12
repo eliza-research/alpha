@@ -3,6 +3,8 @@ import { MapPlane as SharedMapPlane, type MapBasemap } from '../../../../.eliza/
 import fontUrl from '@fontsource/public-sans/files/public-sans-latin-400-normal.woff2?url';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { nativeRegion, nativeRegionRequest } from './regional-provider';
+/** The world map opens on North America. */
+const NORTH_AMERICA = { latitude: 45, longitude: -98 } as const;
 /** MapLibre paint colors are concrete values, not CSS variable expressions. Resolve against
  * this connected host on each construction/retry; never cache a previous theme's palette. */
 export function resolveMapColors(container: HTMLElement, colors: Record<string, string>): Record<string, string> {
@@ -55,6 +57,6 @@ export class MapPlane extends SharedMapPlane {
    const sheet=container.parentElement?.querySelector('[data-alpha-maps-sheet]')?.getBoundingClientRect();
    const right=sheet&&sheet.left>bounds.left+30?Math.max(30,bounds.right-sheet.left+30):30;
    return {top:header?header.bottom-bounds.top+60:100,bottom:credits?bounds.bottom-credits.top+16:Math.min(430,container.clientHeight*.52+30),left:30,right};
-  }:undefined,onPin});
+  }:undefined,onPin,initialView:region.kind==='global'?{center:NORTH_AMERICA,zoom:2.4}:{center:NORTH_AMERICA}});
  }
 }

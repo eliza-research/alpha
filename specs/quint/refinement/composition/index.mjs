@@ -15,7 +15,7 @@ const accounts = [
 ];
 
 async function runIdentityCompositionRefinement(extraSources = []) {
-  const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'package-lock.json',
+  const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'bun.lock',
     'scripts/quint-lib.ts', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts', 'test/browser/helpers/native-navigation-protocol.ts', 'upstream.lock.json',
     ...filesWithin(resolve(root, '.eliza/client-features'), path => /\.(?:ts|tsx|js|json|css|html)$/.test(path)).map(relativePath),
     'upstream.lock.json', 'scripts/prepare-client-features.ts',
@@ -25,7 +25,7 @@ async function runIdentityCompositionRefinement(extraSources = []) {
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
-    server = await createServer({configFile: resolve(root, 'vite.config.ts'), logLevel: 'error',
+    server = await createServer({configLoader: 'runner', configFile: resolve(root, 'vite.config.ts'), logLevel: 'error',
       cacheDir: resolve(root, 'test-results/quint-refinement/composition-cache'),
       server: {host: '127.0.0.1', port: 0, strictPort: false},
       define: {'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify('')},

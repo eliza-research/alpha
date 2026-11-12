@@ -202,6 +202,8 @@ test('voice timing: the export carries the timing records, aggregator-ready, and
  assert.equal(sent.text,'Remind me to call the dentist');
  clock=3100;timing.markVoiceTiming('first-token');clock=4000;timing.markVoiceTiming('final-reply');timing.finishVoiceTurn();
  // A stored record carrying extra fields (as a tampered or future store might) keeps only timing.
+ // The shared recorder defers its storage write; reading the records writes them first.
+ timing.voiceTimingRecords();
  const rows=JSON.parse(store.get('alphaphone:voice-timing:v1'));
  rows.push({version:1,id:'0b0c7a52-6d5e-4e0f-9a43-5c1d2e3f4a5b',recordedAt:now,route:'on-device',cold:false,entry:'notes',marks:{'recording-end':0,'transcript-ready':300},transcript:secrets[0],reply:secrets[0],accountId:secrets[3],outcome:'abandoned'});
  rows.push({version:1,id:secrets[4]+'x',recordedAt:now,route:'eliza-cloud',cold:false,marks:{}},{version:1,id:'1b0c7a52-6d5e-4e0f-9a43-5c1d2e3f4a5b',recordedAt:now,route:secrets[6],cold:false,marks:{}});

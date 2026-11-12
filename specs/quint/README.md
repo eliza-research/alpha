@@ -17,16 +17,18 @@ actions, invariants, scenarios, source files and abstractions.
 
 ## Running checks
 
-Install the root lockfile with `npm ci`. The development tool is pinned to
-`@informalsystems/quint` 0.33.1. Repository verification includes the default
-Quint gate and implementation conformance tests.
+Install the root lockfile with `bun install --frozen-lockfile`. The development tool is pinned to
+`@informalsystems/quint` 0.33.1. `bun run verify` and `bun run test` leave out the default
+Quint gate and the `test/quint-*` tests; run them before merging. CI runs them only for
+pull requests into `main` and on manual dispatch (`.github/workflows/promotion.yml`).
 
 ```sh
-npm run quint:check
-npm run quint:typecheck
-npm run quint:test
-npm run quint:simulate -- --samples=1000 --steps=60 --seed=123
-npm run quint:conformance
+bun run quint:check
+bun run quint:tests
+bun run quint:typecheck
+bun run quint:test
+bun run quint:simulate -- --samples=1000 --steps=60 --seed=123
+bun run quint:conformance
 ```
 
 The default gate parses/typechecks every model and runs every manifest scenario
@@ -49,16 +51,16 @@ processes concurrently, since a single server does not isolate concurrent jobs.
 
 ```sh
 # Bounded symbolic safety checking
-npm run quint:verify -- --steps=4
+bun run quint:verify -- --steps=4
 
 # Exhaustive finite-state safety checking
-npm run quint:verify -- --backend=tlc --models=ChatInput
+bun run quint:verify -- --backend=tlc --models=ChatInput
 
 # Fairness-guarded temporal properties for the historical models
-npm run quint:temporal -- --backend=tlc --models=SignIn,GoogleConnect,Maps
+bun run quint:temporal -- --backend=tlc --models=SignIn,GoogleConnect,Maps
 
 # Require the expected current-design passes and counterexamples
-npm run quint:compare -- --backend=tlc --models=ChatInput
+bun run quint:compare -- --backend=tlc --models=ChatInput
 ```
 
 `--models` selects comma-separated module names. `--out` selects the JSON

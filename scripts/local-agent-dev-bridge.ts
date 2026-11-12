@@ -11,6 +11,12 @@ import { readFileSync, statSync } from 'node:fs';
 import {randomUUID,createHash} from 'node:crypto';
 import {request as httpRequest,type IncomingMessage,type ServerResponse} from 'node:http';
 import type {Duplex} from 'node:stream';
+// A backed-up response has drained only once its connection has. Node reports the two together; Bun reports
+// 'drain' on the response one tick after any write to a connection handed to the server rather than accepted by it.
+async function responseDrained(res: ServerResponse,signal: AbortSignal): Promise<void>{
+  await once(res,'drain',{signal});
+  const socket=res.socket;if(socket&&!socket.destroyed&&socket.writableNeedDrain)await once(socket,'drain',{signal});
+}
 
 export const LOCAL_AGENT_BRIDGE_PATH='/__alpha-local-agent';
 export const LOCAL_RENDERER_WS_PATH='/__alpha-local-renderer/ws';
@@ -204,7 +210,7 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
         // A listener misses an earlier abort (a request that resolved late), so the signal is checked before the first read.
         const reader=result.body.getReader();let received=0;
         const cancel=()=>{void reader.cancel(upstream.reason).catch(()=>{});};upstream.addEventListener('abort',cancel,{once:true});
-        try{upstream.throwIfAborted();while(true){const part=await reader.read();upstream.throwIfAborted();if(part.done)break;received+=part.value.byteLength;if(received>LIMIT)throw Error('Stream too large');if(!res.write(part.value))await once(res,'drain',{signal:upstream});}}
+        try{upstream.throwIfAborted();while(true){const part=await reader.read();upstream.throwIfAborted();if(part.done)break;received+=part.value.byteLength;if(received>LIMIT)throw Error('Stream too large');if(!res.write(part.value))await responseDrained(res,upstream);}}
         finally{upstream.removeEventListener('abort',cancel);await reader.cancel(upstream.reason).catch(()=>{});}
         if(!abort.signal.aborted)res.end();return;
       }
@@ -227,7 +233,7 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
             if(!owned()){if(committed)throw Error('Cloud voice owner changed');fail(409,'Cloud voice owner changed');return;}
             if(!committed){committed=true;res.writeHead(200,{'Content-Type':'audio/mpeg','Cache-Control':'no-store, no-transform','X-Content-Type-Options':'nosniff','X-Request-Id':input.requestId,'X-Eliza-Speech-Provider':'cartesia','X-Eliza-Speech-Route':'cloud',
               ...(timings.length?{'Server-Timing':timings.map(value=>`${value.name};dur=${value.durationMs}`).join(', ')}:{}),...(moderation==='reviewed'||moderation==='approved-hit'?{'X-Eliza-TTS-Moderation':moderation}:{})});}
-            if(!res.write(part.value))await once(res,'drain',{signal:upstream});
+            if(!res.write(part.value))await responseDrained(res,upstream);
           }
         }finally{upstream.removeEventListener('abort',cancel);await reader?.cancel(upstream.reason).catch(()=>{});}
         if(abort.signal.aborted)return;

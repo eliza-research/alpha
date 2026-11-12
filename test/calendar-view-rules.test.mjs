@@ -98,9 +98,10 @@ test('device calendar rows reach the view when the reminder store cannot be read
 });
 
 const adapterSource=load('apps/app/src/prototype/calendar-adapter.ts');
-async function deviceCalendar({}={}){
+async function deviceCalendar({native=true}={}){
   const time=clock(),timers=[],cleared=[],calls=[],toasts=[],reminderRefreshes=[];
   const state={events:[],day:0,month:null,open:null,form:null,calPrefs:{}};
+  const window=Object.assign(new EventTarget(),{confirm:()=>true});
   const provider={events:[],saveResult:null,
     async requestAccess(){calls.push('requestAccess');return {status:'granted'};},
     async list(range){calls.push('list');return {status:'ready',events:provider.events,calendars:[{id:'local',local:true,writable:true,account:'Alpha Phone',name:'Phone'}],truncated:false,range};},
@@ -110,19 +111,111 @@ async function deviceCalendar({}={}){
     async prepareAgentSource(){return {status:'unavailable'};}};
   const ctx=vm.createContext({Date:time.FixedDate,Intl,JSON,Map,Math,Number,Object,Promise,console,queueMicrotask,crypto,
     setTimeout:(run,ms)=>{timers.push({run,ms});return timers.length;},clearTimeout:id=>cleared.push(id),
-    window:Object.assign(new EventTarget(),{confirm:()=>true}),document:Object.assign(new EventTarget(),{hidden:false}),
-    registerPlugin:()=>provider,Capacitor:{getPlatform:()=>'android',isNativePlatform:()=>true,isPluginAvailable:()=>true},
-    DailyApps:{async addListener(){return {remove(){}};}},refreshDeletionViews(){},
+    window,document:Object.assign(new EventTarget(),{hidden:false}),
+    registerPlugin:()=>provider,Capacitor:{getPlatform:()=>native?'android':'web',isNativePlatform:()=>native,isPluginAvailable:()=>true},
+    DailyApps:{async addListener(){return {remove(){}};}},refreshDeletionViews(){},presentCalendarIntervals(){},
+    reminderEvents:rows=>rows.map(row=>({id:'reminder:'+row.id,alphaReminderId:row.id,off:0})),
     openCalendarRecovery(){},openReminderRecovery(){},openReminderCreationRecovery(){},openReminderActionRecovery(){},
     calendarFormTimeProblem:()=>'',mapsEventOriginFor:()=>null,rememberNoteOrigin:async()=>true,forgetNoteOrigin:async()=>{},noteOriginSupported:()=>false,eventNoteOriginId:()=>undefined});
   vm.runInContext('const currentSurfaceLayout=()=>({split:false,calendarDays:1,agenda:false});\n'+daysSource+'\n{'+adapterSource+'\nglobalThis.install=installCalendarAdapter;}',ctx);
   class Shell{live=true;S(){return {view:'calendar'};}vget(){return state;}vset(_key,patch){Object.assign(state,patch);}async refreshReminders(){reminderRefreshes.push(time.box.now);state.events=[...(this.nativeCalendarRows||[])];}toast(text){toasts.push(text);}calendarFormCommitted(){}componentDidMount(){}componentWillUnmount(){}}
   // The base renderer draws the form; everything this adapter adds is layered on its output.
-  const views={calendar:{render:current=>({hours:[],week:[],nowTop:0,events:[],calToggles:[],f:current.form?{cals:[]}:undefined})}};
+  const views={calendar:{render:current=>({hours:[],week:[],nowTop:0,events:current.events,calToggles:[],f:current.form?{cals:[]}:undefined})}};
   ctx.install(Shell,views);const shell=new Shell();shell.componentDidMount();await settle();
   const api={now:new time.FixedDate(),get:()=>state,set:patch=>Object.assign(state,patch),isActive:()=>true,toast:text=>toasts.push(text)};
-  return {time,timers,cleared,calls,toasts,reminderRefreshes,state,shell,provider,render:()=>views.calendar.render(state,api),close:()=>shell.componentWillUnmount()};
+  return {time,timers,cleared,calls,toasts,reminderRefreshes,state,shell,provider,window,render:()=>views.calendar.render(state,api),displaySources:()=>views.calendar.displaySources(),close:()=>shell.componentWillUnmount()};
 }
+
+test('a ready device Calendar range is published while creation and reminder reads remain pending',async()=>{
+  const h=await deviceCalendar();
+  const at=new Date(2026,10,6,9).getTime();
+  const event=(id,begin)=>({id,calendarId:'local',title:id,begin,end:begin+3600000});
+  let releaseCreation,releaseReminder;
+  let reads=0;
+  const creation=new Promise(resolve=>{releaseCreation=resolve;});
+  const reminder=new Promise(resolve=>{releaseReminder=resolve;});
+  const initialCreations=h.provider.pendingCreations,initialReminders=h.shell.refreshReminders;
+  try{
+    h.shell.reminderRows=[{id:'last-known'}];
+    h.provider.events=[event('current',at)];
+    h.provider.pendingCreations=()=>creation;
+    h.shell.refreshReminders=async()=>{reads++;await reminder;};
+    const first=h.shell.refreshAgentCalendar();
+    await settle();
+    assert.equal(reads,1,'the reminder read does not wait for the creation journal');
+    assert.equal(h.displaySources().ready,true);
+    assert.equal(h.state.nativeCalendarReadAt,h.time.box.now);
+    assert.deepEqual(plain(h.render().events).map(row=>row.id),['calendar:current:'+at,'reminder:last-known']);
+
+    // The older recovery work still waits when another Calendar range completes.
+    h.shell.reminderRows=undefined;
+    h.provider.pendingCreations=initialCreations;
+    h.shell.refreshReminders=initialReminders;
+    h.provider.events=[event('next-range',at+30*DAY)];
+    h.state.month=1;
+    h.render();
+    await settle();
+    assert.equal(h.displaySources().ready,true);
+    assert.deepEqual(plain(h.render().events).map(row=>row.id),['calendar:next-range:'+(at+30*DAY)]);
+    releaseCreation({status:'ready',creations:[]});
+    releaseReminder();
+    await first;
+    assert.deepEqual(plain(h.render().events).map(row=>row.id),['calendar:next-range:'+(at+30*DAY)]);
+  }finally{releaseCreation({status:'ready',creations:[]});releaseReminder();h.close();}
+});
+
+test('a Calendar deep link opens its event while reminder and creation recovery reads wait',async()=>{
+  const h=await deviceCalendar({native:false});
+  const begin=new Date(2026,10,6,9).getTime();
+  h.provider.events=[{id:'linked',calendarId:'local',title:'Linked event',begin,end:begin+3600000}];
+  let releaseCreation,releaseReminder,opened;
+  const creation=new Promise(resolve=>{releaseCreation=resolve;});
+  const reminder=new Promise(resolve=>{releaseReminder=resolve;});
+  h.provider.pendingCreations=()=>creation;
+  h.shell.refreshReminders=()=>reminder;
+  try{
+    const link=new CustomEvent('alpha:calendar-open',{cancelable:true,detail:{
+      id:'linked',begin,complete:value=>{opened=value;},
+    }});
+    h.window.dispatchEvent(link);
+    await settle();
+    assert.equal(opened,true);
+    assert.equal(h.state.open,'calendar:linked:'+begin);
+    assert.equal(h.state.deepOpening,null);
+  }finally{
+    releaseCreation({status:'ready',creations:[]});
+    releaseReminder();
+    h.close();
+  }
+});
+
+test('a retired range cannot publish creation recovery after Calendar access is lost',async()=>{
+  const h=await deviceCalendar();
+  let releaseCreation;
+  const creation=new Promise(resolve=>{releaseCreation=resolve;});
+  const receipts={status:'ready',creations:[{creationId:'unconfirmed',status:'unknown'}]};
+  const list=h.provider.list;
+  try{
+    h.provider.pendingCreations=()=>creation;
+    const first=h.shell.refreshAgentCalendar();
+    await settle();
+    assert.equal(h.displaySources().ready,true);
+
+    h.provider.list=async()=>({status:'permission-required'});
+    h.state.month=1;
+    h.render();
+    await settle();
+    assert.equal(h.displaySources().status,'Connect device calendars');
+
+    releaseCreation(receipts);
+    await first;
+    assert.equal(h.render().creationRecovery,false);
+
+    h.provider.list=list;
+    await h.shell.refreshAgentCalendar();
+    assert.equal(h.render().creationRecovery,true);
+  }finally{releaseCreation(receipts);h.close();}
+});
 
 test('device calendar rows and reminders are read again just after local midnight',async()=>{
   const h=await deviceCalendar();

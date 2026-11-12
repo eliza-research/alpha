@@ -55,9 +55,18 @@ const calls=(page:Page)=>page.evaluate(()=>(window as any).planFixture.calls as 
 const admitted=(page:Page)=>expect.poll(()=>page.evaluate(()=>typeof(window as any).planFixture.releaseProvider)).toBe('function');
 const configured=async(page:Page)=>(await calls(page)).filter(c=>c.method==='configureCloudProvider').length;
 const idle=(page:Page)=>expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().busy)).toBe(false);
+const observedBalance=(page:Page)=>page.evaluate(()=>(window as any).planController.getSnapshot().membershipCredits?.usd);
 /** Ends the held admission (the fixture has no runnable agent) without leaving work behind. */
 async function release(page:Page){await page.evaluate(()=>{const w=window as any;w.planController.cancel();w.planFixture.releaseProvider?.();});await idle(page);}
 const fixture=(page:Page,patch:Record<string,unknown>)=>page.evaluate(patch=>Object.assign((window as any).planFixture,patch),patch);
+async function changeNativeNetwork(page:Page,connected:boolean){
+ await page.evaluate(connected=>{
+  (window as any).planFixture.networkConnected=connected;
+  window.dispatchEvent(new Event(connected?'online':'offline'));
+ },connected);
+ // A browser event asks Android for a fresh fact. Wait until that fact owns the connection state.
+ await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().inferenceOffline)).toBe(!connected);
+}
 const started=(page:Page)=>expect.poll(async()=>(await calls(page)).some(c=>c.plugin==='Agent'&&c.method==='start')).toBe(true);
 /** This focused composition mounts account/plan UI. Agent controls themselves now live in
  * the actual Settings stack, covered by signed-out-page.production.spec.ts. */
@@ -298,7 +307,7 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   expect(record.status).toBe('credit-funded');expect(record.userId).toBe(USER);await release(page);
  });
  test('credits-mode code entry uses the existing client and an invalid code leaves billing unchanged',async({page})=>{
-  await boot(page,{route:'absent',limits:'none',holdProvider:false,redeem:'invalid',cashBalance:0});await expect.poll(()=>configured(page)).toBe(1);await idle(page);
+  await boot(page,{route:'absent',limits:'none',holdProvider:false,redeem:'invalid',credits:'0'});await expect.poll(()=>configured(page)).toBe(1);await idle(page);
   await page.evaluate(()=>(window as any).planController.openPlan());
   const panel=accountPanel(page);await expect(panel).toBeVisible();
   const before=await configured(page);
@@ -309,13 +318,14 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   await expect(panel.getByRole('alert')).toHaveText('This code could not be redeemed. Check the code and try again.');
   await expect(panel.getByRole('textbox',{name:'Membership code'})).toHaveValue(CODE);
   await expect(planDetails(page).getByText('No plan',{exact:true})).toBeVisible();
+  await expect.poll(()=>observedBalance(page)).toBe('0');
   expect(await configured(page)).toBe(before);
   const routes=(await calls(page)).filter(c=>c.method==='request');
   expect(routes.filter(c=>c.path==='/api/v1/subscription/redeem').map(c=>[c.httpMethod,c.url])).toEqual([['POST','https://api.eliza.app/api/v1/subscription/redeem']]);
   expect(routes.some(c=>c.path==='/api/signup-code/redeem'||c.path==='/api/v1/credits/balance')).toBe(false);
  });
  test('a valid signed allowance remains usable with zero USD without a cash preflight or automatic redemption',async({page})=>{
-  await boot(page,{...await entitlements(),plan:'active',holdProvider:false,cashBalance:0});
+  await boot(page,{...await entitlements(),plan:'active',limits:'balance-only',holdProvider:false,credits:'0'});
   await expect.poll(()=>configured(page)).toBe(1);await idle(page);
   await page.evaluate(()=>(window as any).planController.openPlan());
   const panel=accountPanel(page);await expect(panel).toBeVisible();
@@ -324,13 +334,13 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   await expect(panel.getByRole('textbox',{name:'Membership code'})).toBeVisible();
   const routes=(await calls(page)).filter(c=>c.method==='request').map(c=>c.path);
   expect(routes).not.toContain('/api/v1/credits/balance');expect(routes).not.toContain('/api/v1/subscription/redeem');
-  expect(await page.evaluate(()=>(window as any).planFixture.cashBalance)).toBe(0);
+  await expect.poll(()=>observedBalance(page)).toBe('0');
   expect(await page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription.kind)).toBe('active');
  });
  test('an active plan at zero credit balance shows its balance without requiring a top-up',async({page})=>{
   await boot(page,{...await entitlements(),plan:'active',limits:'active',credits:'0',holdProvider:false});
   await expect.poll(()=>configured(page)).toBe(1);await idle(page);
-  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().membershipCredits?.usd)).toBe('0');
+  await expect.poll(()=>observedBalance(page)).toBe('0');
   await page.evaluate(()=>(window as any).planController.openPlan());
   const panel=accountPanel(page);await expect(panel).toBeVisible();
   const subscription=panel.getByRole('region',{name:'Balance and membership',exact:true});
@@ -458,13 +468,12 @@ test.describe('outages and offline use',()=>{
   // unknown with no notice or sign-in, and repeated online events read nothing more.
   // Android re-reads native connectivity. Observe the offline result before returning online;
   // synchronous browser hints would let the generation fence correctly discard that old read.
-  await page.evaluate(()=>{(window as any).planFixture.networkConnected=false;window.dispatchEvent(new Event('offline'));});
-  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().inferenceOffline)).toBe(true);
+  await changeNativeNetwork(page,false);
   expect(await page.evaluate(()=>(window as any).planFixture.networkObservations.includes(false))).toBe(true);
   expect(await identityReads()).toBe(before+1);
   await page.evaluate(()=>{(window as any).planFixture.networkConnected=true;window.dispatchEvent(new Event('online'));window.dispatchEvent(new Event('online'));});
   await expect.poll(identityReads).toBe(before+2);
-  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription?.kind)).toBe('unavailable');
+  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription?.kind)).toBe('unavailable');await idle(page);
   expect(await identityReads()).toBe(before+2);
   await page.evaluate(()=>{window.dispatchEvent(new Event('online'));window.dispatchEvent(new Event('pageshow'));});await idle(page);
   expect(await identityReads()).toBe(before+2);
@@ -473,15 +482,14 @@ test.describe('outages and offline use',()=>{
   await noCloudNotice(page);
   // The network goes away and returns again: the plan is read again at once and Cloud AI is bound, with no tap.
   await fixture(page,{identity:'ok'});
-  await page.evaluate(()=>{(window as any).planFixture.networkConnected=false;window.dispatchEvent(new Event('offline'));});
-  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().inferenceOffline)).toBe(true);
+  await changeNativeNetwork(page,false);
   if(background){
    // Wi-Fi and Airplane mode open Android Settings, so the network often returns while Alpha is hidden.
-   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});(window as any).planFixture.networkConnected=true;window.dispatchEvent(new Event('online'));});
-   await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().inferenceOffline)).toBe(false);await idle(page);
+   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});});
+   await changeNativeNetwork(page,true);await idle(page);
    expect(await identityReads()).toBe(before+2);
    await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));});
-  }else await page.evaluate(()=>{(window as any).planFixture.networkConnected=true;window.dispatchEvent(new Event('online'));});
+  }else await changeNativeNetwork(page,true);
   // Within the minute only the network's return could have read Cloud again (the rebind reads it once more).
   await admitted(page);
   expect(await identityReads()).toBeGreaterThan(before+2);
@@ -504,12 +512,16 @@ test.describe('outages and offline use',()=>{
 
 test.describe('redeem a subscription code',()=>{
  test('success redeems once with a fresh key, admits the verified grant at zero USD and refreshes the entitlement',async({page},info)=>{
-  await boot(page,{...await entitlements(),plan:'none',cashBalance:0});
-  await needsPlan(page);await idle(page);
+  await boot(page,{...await entitlements(),plan:'none',limits:'balance-only',credits:'0'});
+  const panel=accountPanel(page);
+  await expect(planDetails(page).getByText('No plan',{exact:true})).toBeVisible();
+  await expect.poll(()=>observedBalance(page)).toBe('0');
+  expect(await configured(page)).toBe(0);
   const beforeReads=(await calls(page)).filter(c=>c.path==='/api/v1/subscription/entitlement').length;
-  await page.getByRole('textbox',{name:'Membership code'}).fill(CODE);
+  await panel.getByRole('button',{name:'Use code',exact:true}).click();
+  await panel.getByRole('textbox',{name:'Membership code'}).fill(CODE);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('redeem-code.png'),animations:'disabled'});
-  await page.getByRole('button',{name:'Redeem',exact:true}).click();
+  await panel.getByRole('button',{name:'Redeem',exact:true}).click();
   await admitted(page);
   const bodies=await page.evaluate(()=>(window as any).planFixture.bodies);
   expect(bodies).toHaveLength(1);
@@ -519,12 +531,12 @@ test.describe('redeem a subscription code',()=>{
   expect(redeem.map(c=>[c.httpMethod,c.url])).toEqual([['POST','https://api.eliza.app/api/v1/subscription/redeem']]);
   // The entitlement is read again after redemption.
   const reads=(await calls(page)).filter(c=>c.path==='/api/v1/subscription/entitlement');expect(reads.length).toBe(beforeReads+1);
-  expect(await page.evaluate(()=>(window as any).planFixture.cashBalance)).toBe(0);
   expect((await calls(page)).some(c=>c.path==='/api/v1/credits/balance'||c.path==='/api/signup-code/redeem')).toBe(false);
   await expect(page.getByText(/^Code redeemed for Plus\. It runs until /)).toBeVisible();
   // The membership refresh follows the actual provider binding. Complete the held native
   // promise instead of cancelling it, then verify the new subscription and its access window.
   await page.evaluate(()=>(window as any).planFixture.releaseProvider());await idle(page);
+  await expect.poll(()=>observedBalance(page)).toBe('0');
   await expect(planDetails(page).getByText('Active',{exact:true})).toBeVisible();
   await expect(planDetails(page).getByText(/^\d+d left$/)).toBeVisible();
   // The code is not kept anywhere the renderer can read back.
@@ -669,7 +681,7 @@ test.beforeEach(async({page})=>seedCompletedAccessSetup(page));
 
 test.describe('explicit membership code entry',()=>{
  async function notice(page:Page){
-  await boot(page,{...await entitlements(),plan:'none',cashBalance:5,holdProvider:false});await started(page);await idle(page);
+  await boot(page,{...await entitlements(),plan:'none',holdProvider:false});await started(page);await idle(page);
   const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});await expect(notice).toBeVisible();return notice;
  }
  // On the phone's own agent the plan action opens the resident account & plan panel, which carries
@@ -697,7 +709,7 @@ test.describe('explicit membership code entry',()=>{
   await sheet(page).getByRole('button',{name:'Use code',exact:true}).click();await expect(input).toHaveValue('');await expect(input).toBeFocused();await noEffects(page);
  });
  test('Settings Redeem code opens the existing field directly',async({page})=>{
-  await boot(page,{...await entitlements(),plan:'none',cashBalance:5,holdProvider:false,fullApp:true});await started(page);await idle(page);
+  await boot(page,{...await entitlements(),plan:'none',holdProvider:false,fullApp:true});await started(page);await idle(page);
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await openCloudPlanFromSettings(page);
   await sheet(page).getByRole('button',{name:'Use code',exact:true}).click();

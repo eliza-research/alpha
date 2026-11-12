@@ -1,16 +1,16 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Release SBOM: a CycloneDX 1.6 JSON inventory of what the product ships, built offline and
  * deterministically from committed pins (no timestamp; the serial number is derived from content).
  *
- *   node scripts/generate-sbom.ts                 # writes artifacts/sbom/alphaphone.cdx.json
- *   node scripts/generate-sbom.ts --out <file>
- *   node scripts/generate-sbom.ts --stdout
- *   node scripts/generate-sbom.ts --packaged-runtime            # add the staged resident runtime
- *   node scripts/generate-sbom.ts --apks artifacts              # add the APKs verify-apks recorded
+ *   bun scripts/generate-sbom.ts                 # writes artifacts/sbom/alphaphone.cdx.json
+ *   bun scripts/generate-sbom.ts --out <file>
+ *   bun scripts/generate-sbom.ts --stdout
+ *   bun scripts/generate-sbom.ts --packaged-runtime            # add the staged resident runtime
+ *   bun scripts/generate-sbom.ts --apks artifacts              # add the APKs verify-apks recorded
  *
  * Sources, and the hash each one can prove:
- *   - package-lock.json production packages: registry tarball SHA-512 (lock integrity).
+ *   - bun.lock production packages: registry tarball SHA-512 (lock integrity).
  *   - apps/app/public font files: SHA-256 of the committed bytes.
  *   - licenses/tesseract-core/sources.json: SHA-256 of the shipped OCR WebAssembly cores.
  *   - licenses/android-runtime-classpath.json: resolved Gradle runtime coordinates, each with the
@@ -29,7 +29,7 @@
  *
  * The default document is a source-pin inventory: it needs no build and is identical on every
  * checkout of a commit. Two options extend it to a release candidate on the machine that built it:
- *   --packaged-runtime  reads the staged payload (after `npm run agent:stage-android`): SHA-256 of
+ *   --packaged-runtime  reads the staged payload (after `bun run agent:stage-android`): SHA-256 of
  *     every staged file under android/app/src/main/assets/agent and android/app/src/main/jniLibs,
  *     and Bun plus every npm package bundled into the agent and the workflow worker (name, version
  *     and licence from the prepared source; those packages are bundled, so their bytes are covered
@@ -46,6 +46,7 @@ import {fileURLToPath} from 'node:url';
 import {AGENT_ASSETS, ANDROID_CLASSPATH, BUN_ENTRY, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, KNOWN_LICENSES, NO_FONT_LICENCE, ROOT, TESSERACT_CORE_SOURCES, UNKNOWN, UNVERIFIED, VOICE_HOST, collectNotices, exists, fontLicense, fontNames, listFonts, mavenFamily, packagedRuntimePresent, pinnedVoiceModels, productionLockPackages, readJson, sha256, voiceHostProblems, type PackageLock} from './generate-licenses.ts';
 import {METADATA as GRADLE_METADATA, coordinateChecksum, parseVerificationMetadata} from './gradle-verification.ts';
 import {classifyLicence, orderFlags} from './licence-policy.ts';
+import {LOCKFILE, readBunLock} from './bun-lock.ts';
 import {verifyEmbeddingInputs} from './stage-embedding-host.ts';
 
 export const LICENCE_NOT_RECORDED = 'not recorded in this inventory';
@@ -120,10 +121,10 @@ export function integrityHash(integrity?: string): Hash | null {
 function npmComponents(root: string, lock: PackageLock): Component[] {
   return productionLockPackages(lock, root).map(pkg => {
     const hash = integrityHash(lock.packages?.[pkg.key]?.integrity);
-    if (!hash) throw new Error(`${pkg.key}: package-lock.json records no integrity hash`);
+    if (!hash) throw new Error(`${pkg.key}: bun.lock records no integrity hash`);
     const purl = `pkg:npm/${pkg.name.startsWith('@') ? `%40${pkg.name.slice(1)}` : pkg.name}@${pkg.version}`;
     return {type: 'library', 'bom-ref': `${purl}#${pkg.key}`, name: pkg.name, version: pkg.version, purl, hashes: [hash], licenses: licenses(pkg.license),
-      properties: [property('ships-in', 'web,apk'), property('source', `package-lock.json ${pkg.key}`)]};
+      properties: [property('ships-in', 'web,apk'), property('source', `bun.lock ${pkg.key}`)]};
   });
 }
 
@@ -218,7 +219,7 @@ function walkFiles(directory: string, base = directory, out: string[] = []): str
  * Reads the payload that Gradle would package from this checkout; throws when none is staged.
  */
 function residentRuntimeComponents(root: string): Component[] {
-  if (!packagedRuntimePresent(root)) throw new Error('--packaged-runtime: no resident runtime is staged. Run: npm run agent:build-workflow-worker && npm run agent:stage-android');
+  if (!packagedRuntimePresent(root)) throw new Error('--packaged-runtime: no resident runtime is staged. Run: bun run agent:build-workflow-worker && bun run agent:stage-android');
   const out: Component[] = [];
   const record: EmbeddingRecord | null = exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null;
   // Only current source inputs make the recorded hashes authoritative. A superseded record
@@ -233,7 +234,7 @@ function residentRuntimeComponents(root: string): Component[] {
       const pinned = embedding && (file === embedding.model.path ? embedding.model : base === JNI_LIBS && rel.startsWith(`${embedding.abi}/`) ? embedding.libraries.find(library => `${embedding.abi}/${library.name}` === rel) : null);
       if (pinned) { if (pinned.sha256 !== digest) throw new Error(`${file} is staged but is not the bytes pinned in ${EMBEDDING_HOST}`); continue; }
       out.push({type: 'file', 'bom-ref': `resident-runtime:${file}`, name: file, hashes: [{alg: 'SHA-256', content: digest}],
-        properties: [property('ships-in', 'apk'), property('bytes', bytes.length), property('kind', `staged resident runtime ${kind}`), property('source', 'staged by npm run agent:stage-android from the prepared pinned source')]});
+        properties: [property('ships-in', 'apk'), property('bytes', bytes.length), property('kind', `staged resident runtime ${kind}`), property('source', 'staged by bun run agent:stage-android from the prepared pinned source')]});
     }
   const notices = collectNotices(root, {packagedRuntime: true});
   if (notices.errors.length) throw new Error(`--packaged-runtime: ${notices.errors.join('; ')}`);
@@ -255,7 +256,7 @@ function residentRuntimeComponents(root: string): Component[] {
 /** APKs recorded by scripts/verify-apks.ts. Each file must still be the recorded bytes. */
 function apkComponents(root: string, directory: string): Component[] {
   const manifestFile = path.join(directory, 'apk-manifest.json');
-  if (!fs.existsSync(manifestFile)) throw new Error(`--apks: ${manifestFile} is missing; scripts/verify-apks.ts writes it at the end of npm run android:build`);
+  if (!fs.existsSync(manifestFile)) throw new Error(`--apks: ${manifestFile} is missing; scripts/verify-apks.ts writes it at the end of bun run android:build`);
   const manifest: ApkManifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
   return manifest.results.map(row => {
     const file = path.resolve(root, row.file);
@@ -323,8 +324,8 @@ function withLicenceFlags(root: string, components: Component[]) {
 
 export function buildSbom(root = ROOT, {packagedRuntime = false, apks = null}: SbomOptions = {}) {
   const pkg = readJson(root, 'package.json');
-  const lockText = fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8');
-  const lock = JSON.parse(lockText);
+  const lockText = fs.readFileSync(path.join(root, LOCKFILE), 'utf8');
+  const lock = readBunLock(root);
   const components = withLicenceFlags(root, [
     ...npmComponents(root, lock), ...fontComponents(root), ...ocrComponents(root),
     ...gradleComponents(root), ...voiceHostComponents(root), ...embeddingHostComponents(root), upstreamComponent(root),
@@ -348,7 +349,7 @@ export function buildSbom(root = ROOT, {packagedRuntime = false, apks = null}: S
       tools: {components: [{type: 'application', name: 'scripts/generate-sbom.ts'}]},
       properties: [
         property('evidence', `${evidence}; not a scan of the contents of built APK or web bundle bytes`),
-        property('package-lock-sha256', sha256(lockText)),
+        property('bun-lock-sha256', sha256(lockText)),
         property('android-application-id', identity.appId ?? identity.applicationId ?? 'see app.config.json'),
         property('gradle-verification-metadata-sha256', exists(root, GRADLE_METADATA) ? sha256(fs.readFileSync(path.join(root, GRADLE_METADATA))) : 'absent'),
         ...(packagedRuntime ? [property('resident-runtime-source-stamp-sha256', sha256(fs.readFileSync(path.join(root, AGENT_ASSETS, 'alpha-source.json'))))] : [property('not-covered', NOT_COVERED)]),
@@ -365,7 +366,7 @@ function main(argv: string[]) {
   const value = (name: string) => argv.includes(name) ? argv[argv.indexOf(name) + 1] : null;
   const out = value('--out') ?? DEFAULT_OUTPUT, apks = value('--apks');
   const unknown = argv.filter((arg, index) => arg.startsWith('--') ? ![...valued, '--stdout', '--packaged-runtime'].includes(arg) : !valued.includes(argv[index - 1]));
-  if (unknown.length || !out || valued.some(name => argv.includes(name) && !value(name))) { console.error('Usage: node scripts/generate-sbom.ts [--out <file> | --stdout] [--packaged-runtime] [--apks <directory>]'); return 2; }
+  if (unknown.length || !out || valued.some(name => argv.includes(name) && !value(name))) { console.error('Usage: bun scripts/generate-sbom.ts [--out <file> | --stdout] [--packaged-runtime] [--apks <directory>]'); return 2; }
   let sbom;
   try { sbom = buildSbom(ROOT, {packagedRuntime: argv.includes('--packaged-runtime'), apks: apks ? path.resolve(apks) : null}); }
   catch (error) { console.error(error instanceof Error ? error.message : String(error)); return 1; }

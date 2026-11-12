@@ -27,7 +27,7 @@ class AndroidAppAbis(unittest.TestCase):
         self.assertTrue(groovy_json.is_file(), 'Matching Groovy JSON library is required')
         classpath = os.pathsep.join([str(GROOVY_JARS[0]), str(groovy_json)])
         source = (ROOT/'android/app/product.gradle').read_text()
-        selection = source[source.index('// Debug ABIs use the same explicit target'):].split('def envValue', 1)[0]
+        selection = source[source.index('// Debug ABIs use the same explicit target'):].split('apply from: file(', 1)[0]
         build_types = block(source, ' buildTypes {')
         descriptor = json.loads((ROOT/'android/consumer-host.json').read_text())['profile']['buildTypes']
         release_filters = descriptor['release']['abiFilters']

@@ -197,9 +197,9 @@ test('accepted session reset retires busy traces and old frames cannot revive th
 
 
 // The paired client compiles the SDK's own packages/ui source, whose @elizaos/* imports resolve only in
-// the prepared SDK (npm run agent:prepare). npm test skips it without one; npm run verify in CI sets
+// the prepared SDK (bun run agent:prepare). bun run test skips it without one; bun run verify in CI sets
 // ALPHA_REQUIRE_PREPARED_SDK=1 with ALPHA_CLOUD_COLLECTOR_SOURCE, where a missing SDK fails.
-const skipUnprepared=!process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE':false;
+const skipUnprepared=!process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run bun run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE':false;
 for (const cloudRealtime of [false,true]) test(`actual SDK ${cloudRealtime?'Cloud':'Direct'} preserves playback and recovers an admitted socket`,{skip:skipUnprepared},async()=>{
  assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE,'ALPHA_REQUIRE_PREPARED_SDK=1 needs ALPHA_CLOUD_COLLECTOR_SOURCE');
  const observed=[];let readAutomaticMute;

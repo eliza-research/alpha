@@ -48,7 +48,14 @@ export async function googleAccountsRefinement() {
       await until(() => disconnectCalls === 1, 'one remote revocation');
       trace.steps.push({label: 'remote privacy revocation runs once', action: action('disconnect'), expect: {'s.disconnectSent': disconnectCalls === 1}});
       const result = await disconnecting;
-      trace.steps.push({label: 'provider readback distinguishes confirmed and unknown outcomes', action: action('disconnectReadback', result.outcome === 'disconnected'), expect: {'s.revoked': result.outcome === 'disconnected', 's.account': result.outcome === 'disconnected' ? 0 : rows.length}});
+      const known = result.accounts !== null;
+      const selectedStillConnected = (result.accounts ?? rows).some(row => row.connectionId === 'grant-A' && row.connected);
+      trace.steps.push({
+        label: 'provider readback preserves the outcome and observed rows',
+        action: action('disconnectReadback', result.outcome, known),
+        expect: {'s.disconnectOutcome': result.outcome, 's.disconnectRowsKnown': known,
+          's.revoked': result.outcome === 'disconnected', 's.account': selectedStillConnected ? 1 : 0},
+      });
       assert.equal(disconnectCalls, 1); assert.ok(notifications >= 1);
       traces.push(trace);
     }

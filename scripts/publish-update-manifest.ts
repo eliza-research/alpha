@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Write the one-tap update manifest from a verified release.
  *
- *   node scripts/publish-update-manifest.ts --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]
+ *   bun scripts/publish-update-manifest.ts --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]
  *
  * Phones install whatever alpha-update-stable.json names, so it is written only for a release row of
  * the verify-apks manifest that is distributable, signed and signed by android/release-signer.json, and
@@ -25,7 +25,7 @@ import type { ApkVariant } from "./apk.ts";
 export { MANIFEST_NAME };
 // parseUpdateManifest's UPDATE_MAX_BYTES: phones silently drop a manifest naming a larger APK.
 const UPDATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
-const USAGE = "Usage: node scripts/publish-update-manifest.ts --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]";
+const USAGE = "Usage: bun scripts/publish-update-manifest.ts --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]";
 
 function parseArgs(argv: readonly string[]) {
   const options: {variant: string | null; apkManifest: string; outDir: string; notes: string | null} = {
@@ -85,7 +85,7 @@ export function main(argv: readonly string[], { root = process.cwd(), log = cons
   try {
     const versionCode = admitted.versionCode;
     if (versionCode === null) throw Error('Verified APK versionCode is missing');
-    ({ signerRootSha256 } = inspectApk({file: apk, sha256: admitted.sha256, build: 'release', variant: options.variant, versionCode}, { descriptor }));
+    ({ signerRootSha256 } = inspectApk({...admitted, file: apk, versionCode}, { descriptor }));
     if (!/^[0-9a-f]{64}$/.test(signerRootSha256 || '')) throw Error('Verified signing-family root is missing');
   }
   catch (failed) { fs.rmSync(apk,{force:true}); error(`Refusing to publish ${options.variant}: ${failed instanceof Error ? failed.message : String(failed)}`); return 1; }

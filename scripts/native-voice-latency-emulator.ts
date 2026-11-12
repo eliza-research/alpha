@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Issue #395 emulator campaign: runs NativeVoiceLatencyInstrumentedTest on an owned emulator while
  * scripts/inject-emulator-audio.py streams speech WAVs into its virtual microphone, then pulls the
  * alpha-native-voice-timing-v3 export and aggregates it.
  *
- *   node scripts/native-voice-latency-emulator.ts --serial emulator-5610 --avd <name> \
+ *   bun scripts/native-voice-latency-emulator.ts --serial emulator-5610 --avd <name> \
  *     --python <venv python with grpcio> --wav q1.wav [--wav q2.wav ...] \
  *     [--trials 60] [--cold-every 6] [--gap-seconds 9] [--feed] --out <new directory>
  *

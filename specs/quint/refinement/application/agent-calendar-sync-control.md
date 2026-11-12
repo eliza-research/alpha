@@ -23,5 +23,5 @@ a controlled caller. Settings dialog state, Google grant and link
 orchestration, provider replay and remote effects have separate scope.
 
 ```sh
-node --test test/quint-agent-calendar-sync-control.test.mjs
+bun test test/quint-agent-calendar-sync-control.test.mjs
 ```

@@ -271,6 +271,7 @@ const ALWAYS_LOCAL = 'On this phone';
  * runs meanwhile (without Cloud inference). Offline is not a sign-in requirement.
  */
 let providerStatusGeneration=0;
+let providerStatusReadSequence=0;
 function ownProviderSelected(snapshot: Pick<ConnectionSnapshot,'providerStatus'>=state): boolean { return snapshot.providerStatus?.selected===true&&snapshot.providerStatus.provider==='cerebras'; }
 function residentSignInRequired(): boolean { return !ownProviderSelected()&&residentCloudFlow() && !state.cloudAccount && state.residentPlanNotice !== 'offline' && !state.residentStarting; }
 function residentEnvironment(): CloudEnvironment { return browserCloudResidentEnabled?browserCloudResidentEnvironment:residentQa() ?? 'production'; }
@@ -2661,7 +2662,7 @@ export const connectionController = {
           try { await verifyService(makeCloud(environment), signal); }
           catch (error) { signal.throwIfAborted(); detachService(); update({ message: 'Cloud offline' }); }
         }
-        // `npm run dev` starts the agent on this computer; P-43 always connects it (a stored offline
+        // `bun run dev` starts the agent on this computer; P-43 always connects it (a stored offline
         // or "none" choice reads as the resident). A host agent that is down recovers with Retry.
         if (saved?.kind === 'resident' || (!saved && residentAlwaysPresent)) { try { await connectResident(signal); } catch (error) { if (residentAlwaysPresent && !active) update({ kind: 'recovering', message: 'Reconnecting' }); throw error; } return; }
         if (!saved || saved.kind === 'none') { update({ open: !service, message: '' }); return; }
@@ -2719,7 +2720,9 @@ export const connectionController = {
     // a newer provider operation with this cancelled attempt's late readback.
     finally { if(cancelled&&generation===providerStatusGeneration){
       const status=await this.refreshProviderStatus(generation);
-      if(status&&generation===providerStatusGeneration&&status.selected&&status.provider==='cerebras'){update({message:''});}
+      if(status&&generation===providerStatusGeneration&&state.providerStatus===status&&!state.providerStatusError&&status.selected&&status.provider==='cerebras'){
+        update({message:''});
+      }
     } }
   },
   async selectCloudProvider(){return this.selectSavedProvider('cloud');},
@@ -2750,10 +2753,22 @@ export const connectionController = {
     }
   },
   // A failed read keeps the last known choice: a transient native error never switches the owner to Cloud.
-  // A read for an older provider operation (a cancelled check's late readback) never overwrites a newer one.
+  // A read belongs to the latest request and the provider facts it started from.
+  // A selection can publish its confirmed readback while a passive read is still pending.
   async refreshProviderStatus(generation=providerStatusGeneration) {
-    try { const status=await localProviderStatus();if(generation!==providerStatusGeneration)return null;update({providerStatus:status,providerStatusError:false});return status; }
-    catch { if(generation===providerStatusGeneration)update({providerStatusError:true});return null; }
+    if(generation!==providerStatusGeneration)return null;
+    const read=++providerStatusReadSequence,previous=state.providerStatus,unavailable=state.providerStatusError;
+    const current=()=>generation===providerStatusGeneration&&read===providerStatusReadSequence&&
+      state.providerStatus===previous&&state.providerStatusError===unavailable;
+    try {
+      const status=await localProviderStatus();
+      if(!current())return null;
+      update({providerStatus:status,providerStatusError:false});
+      return status;
+    } catch {
+      if(current())update({providerStatusError:true});
+      return null;
+    }
   },
   dismissError() { if (!operation) update({ error: '' }); },
   /** Stops the running agent (its process holds the key), deletes the key and confirms removal. */
@@ -3209,13 +3224,18 @@ export const connectionController = {
   /**
    * The card under a reply the agent gave without AI while Alpha believed Cloud AI was bound. Reads
    * what native has bound and shows that; with no Cloud provider there, one rebind is queued (it
-   * never interrupts a reply). Once per failed turn.
+   * never interrupts a reply). Once a check is confirmed, it cannot be repeated for that turn.
    */
   async recheckResidentProvider(turnId:string){
     if(!residentCloudFlow()||active?.kind!=='resident'||providerRechecks.has(turnId))return;
     providerRechecks.add(turnId);
-    const selected=active,status=await connectionController.refreshProviderStatus();
-    if(!status||active!==selected||ownProviderSelected())return;
+    const selected=active,generation=providerStatusGeneration,status=await connectionController.refreshProviderStatus(generation);
+    if(active!==selected||generation!==providerStatusGeneration)return;
+    if(!status||state.providerStatus!==status||state.providerStatusError){
+      providerRechecks.delete(turnId);
+      return;
+    }
+    if(ownProviderSelected())return;
     const bound=status.configured&&status.provider==='elizacloud';
     update({residentInference:bound?'cloud':'unavailable'});
     if(!bound){residentBinding='unbound';queueResidentRebind();}
@@ -3882,8 +3902,15 @@ export function ConnectionChooser() {
   const ownKeyForm=offerOwnKeys&&ownKeyEntry?<OwnKeyForm busy={snapshot.busy&&!probing} replying={!!sending} saving={ownKeySaving} error={ownKeyAttempted?snapshot.error:''} idleCancelLabel="Back"
     onSave={(key,voice)=>{setOwnKeyAttempted(true);return connectionController.configureLocal(key,LOCAL_PROVIDER_MODEL,voice,{onboarding:true});}}
     onCancel={()=>{setOwnKeyEntry(false);setOwnKeyAttempted(false);connectionController.dismissError();const current=connectionController.getSnapshot();if(!current.signIn&&!current.busy)void connectionController.beginSignIn(residentEnvironment(),false,true);}}/>:undefined;
-  if (signInPageShown) return <div className={signInPage?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${signInPage?' alpha-auth-content':''}`} role={signInPage?'main':'dialog'} aria-modal={signInPage?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
-    <CloudSignInPanel phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!signInPage} google={inAppGoogle} message={snapshot.message} error={signInError} errorIsNotice={signInError===RESIDENT_UNPACKAGED}
+  // The required first-run landing can sit here before an account exists. Keep explicit
+  // account sheets, recovery, verification and key entry outside the update admission.
+  const firstSignInLanding = productionSignInRequired && signInPage && snapshot.startupResolved === true &&
+    !snapshot.cloudAccount && snapshot.residentSavedCredential === false && !snapshot.residentRecoveryReason &&
+    (snapshot.purpose === undefined || snapshot.purpose === 'agent') && !ownKeyEntry &&
+    requiredSignInView.step === 'choose' && !requiredSignInView.email && !requiredSignInView.phone;
+  if (signInPageShown) return <div className={signInPage?'alpha-auth-page':'alpha-connection-scrim'}><div className={`alpha-connection alpha-connection-native alpha-cloud-sign-in${signInPage?' alpha-auth-content':''}`} role={signInPage?'main':'dialog'} aria-modal={signInPage?undefined:true} aria-labelledby="cloud-sign-in-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}
+    data-alpha-app-update-sign-in={firstSignInLanding && !snapshot.busy ? '' : undefined}>
+    <CloudSignInPanel phone={cloudSignInPhone && inAppPhone} emailEnabled={inAppEmail} view={requiredSignInView} busy={snapshot.busy} ready={!!snapshot.signIn} dismissible={!signInPage} google={inAppGoogle} message={snapshot.message} error={signInError} errorIsNotice={signInError===RESIDENT_UNPACKAGED} focusEmailOnChoose={!firstSignInLanding}
       probing={probing} unavailable={!snapshot.signIn&&!snapshot.busy&&(!!signInError||automaticSignInProbe.current)}
       ownKeys={offerOwnKeys?()=>{connectionController.dismissError();setOwnKeyAttempted(false);setOwnKeyEntry(true);}:undefined} alternate={ownKeyForm}
       actions={{phone:number=>void connectionController.signInPhone(number),google:()=>void connectionController.signInGoogle(),email:address=>void connectionController.signInEmail(address),verify:code=>void connectionController.verifySignInCode(code),resend:()=>void connectionController.resendSignInCode(),cancel:()=>connectionController.cancelSignIn(),reopenGoogle:()=>void connectionController.reopenGoogle(),retry:()=>void connectionController.beginSignIn(requiredSignInView.environment,true)}}

@@ -55,7 +55,7 @@ test('an earlier version opened from Drafts is retained, and what is saved from 
   assert.equal(d.chips(chip).some(row => row.label === 'Earlier version of a sent email'), false);
 });
 
-test('retained edits are written once per task with the latest copy, and read back without parsing again', async () => {
+test('retained edits are written once per task with the latest copy, and read back without parsing again', async t => {
   const store = {slots: new Map(), writes: 0};
   globalThis.unsavedStoreFixture = store;
   const listeners = new Map(); globalThis.document = {hidden: false, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name)};
@@ -70,21 +70,23 @@ test('retained edits are written once per task with the latest copy, and read ba
     });
     const owner = ownerOf('grant-unsaved'), value = body => ({version: 1, owner, baseRevision: null, draft: local('grant-unsaved', {body}), toQ: ''});
     const stored = () => [...store.slots.values()][0]?.text || '';
-    const until = async (ready, what) => { const deadline = performance.now() + 5000; while (!ready()) { assert.ok(performance.now() < deadline, 'Timed out waiting for ' + what); await new Promise(resolve => setTimeout(resolve, 5)); } };
+    // Keep the next-task timer separate from the asynchronous storage work.
+    t.mock.timers.enable({apis: ['setTimeout']});
+    const runScheduledEdit = async () => { t.mock.timers.tick(0); await settle(); };
     let restored = null; const unsaved = inboxUnsaved(owner, () => {}, v => { restored = v; });
     await unsaved.ready;
     let last; for (let i = 0; i < 40; i++) unsaved.edit(last = value('keystroke ' + i));
     // The write waits for the next task, so nothing is written within the typing task itself.
     assert.equal(store.writes, 0, 'typing alone writes nothing'); assert.equal(unsaved.available, true);
     assert.equal(unsaved.peek(), last, 'the waiting edit is the retained copy');
-    await until(() => store.writes > 0, 'the coalesced write'); await settle();
+    await runScheduledEdit();
     assert.equal(store.writes, 1, 'forty edits, one store write'); assert.equal(readInboxUnsaved(stored(), owner).draft.body, 'keystroke 39');
     const parse = JSON.parse; let parses = 0; JSON.parse = (...args) => { parses++; return parse(...args); };
     let copy; try { copy = unsaved.peek(); assert.equal(unsaved.peek(), copy, 'the same parsed object'); unsaved.peek(); } finally { JSON.parse = parse; }
     assert.equal(parses, 1, 'the stored text is parsed once'); assert.equal(copy.draft.body, 'keystroke 39');
     // Leaving the app writes the waiting edit at once.
     unsaved.edit(value('before leaving')); globalThis.document.hidden = true; listeners.get('visibilitychange')(); globalThis.document.hidden = false;
-    await settle(); await until(() => store.writes === 2, 'the write on hide');
+    await settle(); assert.equal(store.writes, 2, 'hide writes without advancing the timer');
     assert.equal(readInboxUnsaved(stored(), owner).draft.body, 'before leaving'); assert.notEqual(unsaved.peek(), copy);
     // Resume and clear act on the latest edit, not the last written one.
     unsaved.edit(value('resumed')); unsaved.resume(); assert.equal(restored.draft.body, 'resumed');
@@ -92,9 +94,11 @@ test('retained edits are written once per task with the latest copy, and read ba
     assert.equal(stored(), ''); assert.equal(unsaved.available, false); assert.equal(unsaved.peek(), null);
     // An edit made while the retained copy is being cleared is not cleared with it.
     unsaved.edit(value('kept')); const clearing = unsaved.clear(); unsaved.edit(value('typed during the clear'));
-    await assert.rejects(clearing); await until(() => readInboxUnsaved(stored() || JSON.stringify(value('')), owner).draft.body === 'typed during the clear', 'the edit made during the clear');
+    await assert.rejects(clearing); await runScheduledEdit();
+    assert.equal(readInboxUnsaved(stored(), owner).draft.body, 'typed during the clear');
     // A copy the record refuses is reported once it is written, and the stored copy stays.
-    unsaved.edit({...value('refused'), draft: {...value('refused').draft, body: 'x'.repeat(64001)}}); await until(() => unsaved.status === 'Too large to keep', 'the refusal');
+    unsaved.edit({...value('refused'), draft: {...value('refused').draft, body: 'x'.repeat(64001)}}); await runScheduledEdit();
+    assert.equal(unsaved.status, 'Too large to keep');
     assert.equal(readInboxUnsaved(stored(), owner).draft.body, 'typed during the clear');
     // An app update waits for the waiting edit to be stored.
     unsaved.edit(value('before update')); await unsaved.flushForAppUpdate(() => true);

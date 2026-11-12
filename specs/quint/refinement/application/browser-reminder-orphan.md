@@ -40,4 +40,4 @@ Resolution of an orphan requires separate reviewed policy. Actual IndexedDB,
 Web Locks arbitration, browser/device sound, recurring timing and expiry
 remain separate boundaries.
 
-Run `node --test test/quint-browser-reminder-orphan-refinement.test.mjs`.
+Run `bun test test/quint-browser-reminder-orphan-refinement.test.mjs`.

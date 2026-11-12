@@ -8,7 +8,6 @@
   "attributeMapping": {
     "google.subject": "assertion.sub",
     "attribute.repository_id": "assertion.repository_id",
-    "attribute.repository_owner_id": "assertion.repository_owner_id",
     "attribute.ref": "assertion.ref",
     "attribute.event_name": "assertion.event_name",
     "attribute.workflow_ref": "assertion.workflow_ref",

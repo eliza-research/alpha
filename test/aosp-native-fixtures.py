@@ -2,7 +2,6 @@
 import importlib.util
 import hashlib
 import json
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,7 +26,7 @@ def load(name, file):
 native = load('stage_native', 'stage-aosp-native.py')
 NATIVE_VIEW_POLICY = ROOT / 'scripts/native-view-policy.ts'
 NATIVE_VIEW_DECLARATIONS = subprocess.check_output(
-    [os.environ.get('ALPHA_NODE', 'node'), NATIVE_VIEW_POLICY], timeout=30)
+    ['bun', NATIVE_VIEW_POLICY], timeout=30)
 ELF = b'\x7fELF\x02\x01' + bytes(12) + b'\xb7\x00' + bytes(44)
 ELF_X86 = ELF[:18] + b'\x3e\x00' + ELF[20:]
 BP = '''// Generated from a hash- and signer-verified downstream launcher.
@@ -133,7 +132,7 @@ class Packaging(unittest.TestCase):
         # A new/removed field in production must exercise the native verifier too.
         expression = re.search(r'const stamp=(.+);', pin_files['scripts/prepare-local-agent.ts'].decode()).group(1)
         script = "const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');const root=process.argv[1];const lock=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json')));const digest=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');console.log(JSON.stringify(" + expression + "))"
-        stamp = json.loads(subprocess.check_output(['node', '-e', script, str(trust)]))
+        stamp = json.loads(subprocess.check_output(['bun', '-e', script, str(trust)]))
         stamp_bytes = json.dumps(stamp).encode()
         if bun_target == 'android':
             entries = {'lib/' + abi + '/libeliza_bun.so': android_bun, 'assets/agent/' + abi + '/bun': android_bun}

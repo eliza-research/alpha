@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
 import {deliver} from '../../../../scripts/deliver-app-update.ts';
 import {
-  APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY, APP_UPDATE_REPOSITORY_ID, APP_UPDATE_REPOSITORY_OWNER_ID,
+  APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY, APP_UPDATE_REPOSITORY_ID,
   APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl,
 } from '../../../../scripts/update-channel.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
@@ -54,7 +54,7 @@ function checkWorkflows() {
   const verify = YAML.parse(read(verifier)).jobs.admit;
   assert.equal(verify.outputs.plan_sha256, '$' + '{{ steps.verify.outputs.plan_sha256 }}');
   assert.ok(verify.steps.some(runs('bash scripts/ci/verify-cloud-signing-input.sh')));
-  ordered(signing.sign.steps, runs('verify-cloud-signing-input.sh --stage'), runs('node scripts/sign-release-apks.ts --keystore'),
+  ordered(signing.sign.steps, runs('verify-cloud-signing-input.sh --stage'), runs('bun scripts/sign-release-apks.ts --keystore'),
     runs('apksigner" verify'), step => step.with?.name?.startsWith('private-cloud-apk-delivery-'));
   const staged = signing.sign.steps.find(runs('verify-cloud-signing-input.sh --stage'));
   assert.equal(staged.env.EXPECTED_PLAN, '$' + '{{ needs.admit.outputs.plan_sha256 }}');
@@ -75,10 +75,10 @@ function checkWorkflows() {
   assert.match(restored.run, /\$EXPECTED_QUALIFICATION/);
   assert.equal(publishing.publish.steps.find(step => step.with?.path === 'qualified-product').with.ref,
     '$' + '{{ needs.admit.outputs.source_commit }}');
-  const reverify = publishing.publish.steps.find(runs('npm run android:verify -- --cloud-voice-evidence='));
+  const reverify = publishing.publish.steps.find(runs('bun run android:verify -- --cloud-voice-evidence='));
   assert.equal(reverify?.['working-directory'], 'qualified-product');
-  assert.equal(reverify.run, 'npm run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
-  assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'node scripts/verify-apks.ts');
+  assert.equal(reverify.run, 'bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
+  assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'bun scripts/verify-apks.ts');
   ordered(publishing.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
     step => step === reverify, runs("manifest['runtimeProfile'] == summary['runtimeProfile']"),
     runs('scripts/deliver-app-update.ts --variant launcher'));
@@ -98,6 +98,9 @@ function publicFixture(directory, launcherBytes, version) {
   fs.writeFileSync(path.join(directory, manifestName), manifest);
   let release = false, apk = null, pointer = null, floor = 1;
   let apkVerified = false, pointerWrite = false, receipt = null;
+  // An interrupted replacement can leave inventory metadata without a public pointer.
+  const emptyStarter = {name: manifestName, id: 'RA_manifest_starter', state: 'starter', size: 0, digest: null};
+  let starter = null;
   return {
     observe() {
       return {release, apk: !apk ? 'missing' : apk.sha256 === sha(bytes) ? 'exact' : 'partial',
@@ -127,9 +130,9 @@ function publicFixture(directory, launcherBytes, version) {
           wait: async () => {},
           run(args) {
             if (args[0] === 'api') {
-              assert.deepEqual(args, ['api', 'repos/eliza-research/alpha']);
-              return JSON.stringify({id: 1396333361, owner: {id: 314117943},
-                full_name: 'eliza-research/alpha', private: false});
+              assert.deepEqual(args, ['api', 'repos/alphacompute/alpha']);
+              return JSON.stringify({id: 1396333361,
+                full_name: 'alphacompute/alpha', private: false});
             }
             if (args[0] !== 'release') assert.fail('Unexpected command: ' + args.join(' '));
             if (args[1] === 'view' && args[2] === LEGACY_APP_UPDATE_TAG) {
@@ -145,7 +148,9 @@ function publicFixture(directory, launcherBytes, version) {
               if (apkVerified && fault === 'late-stable-floor') floor = 3;
               if (apkVerified && fault === 'lost-apk') apk = null;
               const names = [apk && apkName, pointer && manifestName, floor === 3 && ('alpha-phone-' + (version + 1) + '.apk')];
-              return release ? JSON.stringify({isDraft: false, assets: names.filter(Boolean).map(name => ({name}))}) : null;
+              const assets = names.filter(Boolean).map(name => ({name}));
+              if (starter) assets.push(starter);
+              return release ? JSON.stringify({isDraft: false, assets}) : null;
             }
             effects.push(args[1] === 'upload' ? path.basename(args[3]) : args[1]);
             if (args[1] === 'create') {
@@ -167,7 +172,8 @@ function publicFixture(directory, launcherBytes, version) {
               assert.equal(apk?.sha256, offer.sha256, 'Final inventory must still contain the verified APK');
               pointerWrite = true;
               fail('manifest-before');
-              pointer = fault === 'manifest-partial' ? null : object(fs.readFileSync(args[3]));
+              starter = fault === 'manifest-partial' ? emptyStarter : null;
+              pointer = starter ? null : object(fs.readFileSync(args[3]));
               fail('manifest-partial');
               fail('manifest-after');
             }

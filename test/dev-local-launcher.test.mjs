@@ -1,4 +1,4 @@
-// `npm run dev` (scripts/dev-local.ts) runs here with recording stand-ins for the local agent and
+// `bun run dev` (scripts/dev-local.ts) runs here with recording stand-ins for the local agent and
 // Vite, so the exact environment each child receives is observed without starting either. The
 // renderer flags are then read through the real build-flags.ts with that environment.
 import test from 'node:test';
@@ -43,7 +43,7 @@ function renderer(processEnv,DEV){
  return vm.runInNewContext(flags+'\n({testMocksEnabled,devSurfacesEnabled,privateLocalPreviewEnabled})',{env});
 }
 
-test('npm run dev opens the product connection sheet, on the development server only',async()=>{
+test('bun run dev opens the product connection sheet, on the development server only',async()=>{
  for(const tools of [undefined,'0','true']){
   const {stdout,agent,vite}=await launch(tools===undefined?{}:{ALPHA_DEV_CONNECTION_TOOLS:tools});
   assert.equal(vite.env.VITE_ALPHA_PRIVATE_LOCAL_PREVIEW,'1');assert.equal(vite.env.VITE_LOCAL_AGENT,'1');assert.equal(vite.env.ELIZA_DEV_ALLOW_TEST_MOCKS,'1');

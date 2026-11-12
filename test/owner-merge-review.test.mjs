@@ -5,12 +5,12 @@ import assert from 'node:assert/strict';
 import {addedLinesFromDiff, binaryChanges, descriptorCoverage, diffScripts, forgedMarkers, FORGED_COMMITS, markerPatterns} from '../scripts/owner/merge-review.ts';
 
 test('package scripts are reported as added, removed and changed', () => {
- const before = JSON.stringify({scripts: {build: 'vite build', old: 'node old.mjs', test: 'node --test'}});
- const after = JSON.stringify({scripts: {build: 'vite build', test: 'node --test test/*.mjs', 'android:host': 'node scripts/android-host.ts'}});
+ const before = JSON.stringify({scripts: {build: 'vite build', old: 'node old.mjs', test: 'bun test'}});
+ const after = JSON.stringify({scripts: {build: 'vite build', test: 'bun test test/*.mjs', 'android:host': 'bun scripts/android-host.ts'}});
  assert.deepEqual(diffScripts(before, after), {
-  added: [{name: 'android:host', command: 'node scripts/android-host.ts'}],
+  added: [{name: 'android:host', command: 'bun scripts/android-host.ts'}],
   removed: [{name: 'old', command: 'node old.mjs'}],
-  changed: [{name: 'test', before: 'node --test', after: 'node --test test/*.mjs'}],
+  changed: [{name: 'test', before: 'bun test', after: 'bun test test/*.mjs'}],
  });
  assert.deepEqual(diffScripts(null, JSON.stringify({scripts: {a: 'b'}})).added, [{name: 'a', command: 'b'}]);
 });

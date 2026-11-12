@@ -22,7 +22,7 @@ def fetch(root,name,url,sha256,size):
  p=root/name;partial=pathlib.Path(str(p)+'.partial')
  if p.exists():return check(p,name,sha256,size)
  p.parent.mkdir(parents=True,exist_ok=True)
- request=urllib.request.Request(url,headers={'User-Agent':'AlphaPhone-RegionalMaps/0.1 (+https://github.com/eliza-research/alphaphone)'})
+ request=urllib.request.Request(url,headers={'User-Agent':'AlphaPhone-RegionalMaps/0.1 (+https://github.com/alphacompute/alphaphone)'})
  try:
   with urllib.request.urlopen(request,timeout=60) as response, open(partial,'wb') as out:
    total=0

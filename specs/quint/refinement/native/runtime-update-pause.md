@@ -41,4 +41,4 @@ power-loss recovery and end-to-end
 resident startup to separate verification. The in-memory bridge activation
 and renderer continuation own distinct state.
 
-Run `node --test test/quint-runtime-update-pause-refinement.test.mjs`.
+Run `bun test test/quint-runtime-update-pause-refinement.test.mjs`.
