@@ -280,7 +280,7 @@ test('a permanent deletion that fails inside the process that started it is neve
  });
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await page.getByRole('dialog',{name:'Full'}).getByRole('button',{name:'Delete permanently',exact:true}).click();
- await expect(page.getByText(/Deletion (?:is|remains) unconfirmed/).first()).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:"Voice note deletion not confirmed. Check Notes. It won't be repeated."}).first()).toBeVisible();
  const before=await pendingDeletions(page);
  expect(before.map(row=>[row.note.id,row.audioId,row.permanent,row.audioRequested])).toEqual([['late-voice','late-audio',true,undefined]]);
  const operation=before[0].id as string;

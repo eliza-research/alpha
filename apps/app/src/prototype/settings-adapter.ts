@@ -31,7 +31,7 @@ import {planAdmission} from '../runtime/subscription-entitlement';
 import { exportVoiceTiming, exportRealtimeVoiceTiming, voiceStartupTiming } from '../runtime/voice-timing';
 import { readNativeVoiceTiming } from '../runtime/native-voice-turn';
 import { readNativeCloudStreamTiming } from '../runtime/cloud-voice';
-import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
+import { imageSenseAvailable, listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
 import {createAppUpdateScheduler} from '../../../../.eliza/client-features/packages/ui/src/state/app-update-gate';
@@ -493,6 +493,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if (owner !== instance) return;
       listener = next;
       if (!next.available) api.toast('Not responding · Use notification');
+      else if (next.microphoneOpen) api.toast('Microphone is still open · Use notification');
       else if (next.listening) api.toast('Still listening · Use notification');
     } finally { listenerReads.endAction(); if (owner === instance) changed(); }
   }
@@ -525,7 +526,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       await Promise.allSettled([
         (async () => {
           // A status read never replaces a Pause or Turn off result: none starts during the action, and an older one is dropped.
-          if (!externalVoiceInvocationEnabled) return;
+          if (!imageSenseAvailable()) return;
           const read = listenerReads.beginRead();
           if (read === null) return;
           const status = await listenerStatus();
@@ -806,9 +807,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const pending = agentPendingText(connection, 'Not connected');
     const target = connection.session ? connection.name : pending;
     const runtimeLocation=!connection.session?pending:connection.kind==='resident'?(Capacitor.isNativePlatform()?'This phone':'This computer · dev'):testMocksEnabled?'Remote':'Unsupported';
-    // About and Models read the model the resident reports the same way, so the two pages agree.
-    const residentProvider=connection.kind==='resident'&&connection.session?connection.providerStatus:null;
-    const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported';
+    // Use the current controller readback for both provider and model. Failed or pending
+    // confirmation can retain a previous selection without verifying its model.
+    const residentProvider=connection.kind==='resident'&&connection.session&&!connection.providerStatusError?connection.providerStatus:null;
+    const providerName=residentProvider?.provider==='elizacloud'?serviceName:'Cerebras';
+    const providerModelPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
+    const inferenceModel=residentProvider?.configured===true&&typeof residentProvider.model==='string'&&providerModelPattern.test(residentProvider.model)
+      ?modelLabel(providerName,residentProvider.model):'Not reported';
     const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('Unavailable'));
     const info = (label: string, val: string, id = label): Bag => ({ id, kInfo: true, label, val, hasVal: true, noAB: true });
@@ -816,8 +821,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     // Permission state: one word beside a dot (never colour alone).
     const permissionDot = (val: string) => val === 'Allowed' || val === 'All' || val === 'Precise' ? 'ok' : val === 'Ask' || val === 'Selected' || val === 'Limited' || val === 'Approx.' || val === 'Chosen files' || val === 'Alpha only' ? 'warn' : 'off';
     const permissionInfo = (label: string, val: string): Bag => ({ ...info(label, val), hasDot: val !== '—' && val !== 'Unavailable', dot: permissionDot(val) });
-    // Listening could not be confirmed off: a red row at the top that opens the listener's settings.
-    const micMayBeOn = (): Bag => ({ kNav:true, label:'Microphone', lbl:'Microphone may be on, open listener settings', val:'Mic may be on', hasVal:true, hasDot:true, dot:'err', valCss:'color:var(--fg)', lucide:'mic-off', hasExt:true, chev:false, noAB:true, go:()=>void openListenerSettings().then(opened => { if (!opened) api.toast('Unavailable'); }) });
+    // Listening could not be confirmed off: offer Android settings even if Sense is unavailable.
+    const micMayBeOn = (): Bag => ({ kNav:true, label:'Microphone', lbl:'Microphone may be on, open Android settings', val:'Mic may be on', hasVal:true, hasDot:true, dot:'err', valCss:'color:var(--fg)', lucide:'mic-off', hasExt:true, chev:false, noAB:true, go:manage('system') });
     // Android hand-offs: a short label and an external-link mark; the accessible name keeps the destination.
     const nav = (label: string, page: string, aria = label): Bag => ({ kNav: true, label, lbl: aria, chev: false, hasExt: true, noAB: true, go: manage(page) });
     const group = (rows: Bag[], id?: string) => ({ ...(id ? {id} : {}), css: 'background:var(--s2);padding:4px 0', rows });
@@ -833,15 +838,18 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     ];
     const action = (label: string, go: () => void, id = label): Bag => ({ id, kNav:true, label, lbl:label, chev:true, noAB:true, go });
     const listenerRows = (): Bag[] => {
-      if (!externalVoiceInvocationEnabled) return [];
-      if (!listener.available) return [];
-      const status = listener, on = !!status.consented && status.state !== 'OFF';
+      if (!imageSenseAvailable()) return [];
       const settings = () => void openListenerSettings().then(opened => { if (!opened) api.toast('Unavailable'); });
+      const settingsRow = {...action('Listening settings', settings), hasExt:true, chev:false};
+      if (!listener.available) return [settingsRow];
+      const status = listener;
+      const on = status.microphoneOpen || status.listening || (!!status.consented && status.state !== 'OFF');
+      const label = status.state === 'OFF' && (status.microphoneOpen || status.listening) ? 'Microphone still open' : status.label;
       // One Listening switch: off goes through the listener; on (and resume) only in its own consent screen.
       return [
-        {kTog:true, label:'Listening', aria:'Listening', hasSub:true, sub:listenerReads.busy()?'':status.label, on, track:on?'background:var(--acc)':'background:var(--line)', kx:on?20:0, dis:listenerReads.busy(), toggle:()=>on?void listenerAction(api, 'turnOff'):settings()},
+        {kTog:true, label:'Listening', aria:'Listening', hasSub:true, sub:listenerReads.busy()?'':label, on, track:on?'background:var(--acc)':'background:var(--line)', kx:on?20:0, dis:listenerReads.busy(), toggle:()=>on?void listenerAction(api, 'turnOff'):settings()},
         ...(status.listening || status.microphoneOpen ? [{...action('Pause', () => void listenerAction(api, 'pause')), lbl:'Pause listening', busy:listenerReads.busy(), hasSpin:listenerReads.busy()}] : []),
-        {...action('Listening settings', settings), hasExt:true, chev:false},
+        settingsRow,
       ];
     };
     const problemCount = crashLog ? crashLog.entries.length : null;
@@ -1100,7 +1108,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           ...(externalVoiceInvocationEnabled ? [{kNav:true,label:'Wake assistant',lbl:'Wake assistant',chev:true,noAB:true,go:()=>void owner?.startVoice()}] : []),
           {kNav:true,label:'Open conversation',lbl:'Open conversation',chev:true,noAB:true,go:()=>api.composeContentQuestion('')},
           {kNav:true,label:'Agent connection',lbl:'Agent connection',chev:true,noAB:true,go:()=>connectionController.open()},
-        ])]:[group([...speechRows(), ...listenerRows()])];
+        ])]:[group(speechRows())];
       } else if (page.title === 'Battery') {
         page.hero = { ...page.hero, big: percent, sub: facts.charging === true ? 'Charging' : '', hasMeter: typeof facts.batteryPercent === 'number', meter: facts.batteryPercent ?? 0 };
         page.groups = [group([info('Battery saver', typeof facts.powerSave === 'boolean' ? facts.powerSave ? 'On' : 'Off' : 'Unavailable'), nav('Battery', 'battery', 'Manage battery in Android')])];
@@ -1122,7 +1130,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
         page.hero = { ...page.hero, big: target, sub: '' };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?providerName:'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Not reported':pending)]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
@@ -1285,6 +1293,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         // An app with nothing to set here opens the app itself (owner decision: no one-row pages).
         const direct=new Set(['browser','files',...(Capacitor.isNativePlatform()?[]:['photos'])]);
         if(key==='settings-apps')groups=[group(appCatalog.map(([label,id])=>({kNav:true,label,lbl:label,chev:true,noAB:true,go:()=>{const existing=existingAppRow(id);if(existing&&id!=='workflows'){api.set({settingsCategory:'settings-apps'});existing.go();}else if(direct.has(id)){api.set({settingsCategory:'settings-apps'});owner?.openView(id);}else api.set({page:'app-settings-'+id,settingsCategory:'settings-apps'});}})))];
+        if(key==='settings-privacy'){
+          const listening=listenerRows();
+          if(listening.length)groups.push(group(listening,'image-listening'));
+        }
         if(key==='settings-general'&&phoneLoader())groups.push(group([{kNav:true,label:'Phone',lbl:'Phone',chev:true,noAB:true,go:()=>api.set({page:'phone-info',settingsCategory:'settings-general'})}]));
         out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title,hasTitle:true,backLabel:'Back to Settings',back:()=>{api.set({page:null,settingsCategory:null});},hero:{},groups});
       }

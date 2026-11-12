@@ -475,7 +475,7 @@ test('a restored conversation longer than the chat window scrolls up to its firs
 });
 
 // One notice for every stop the single check could not settle (not run, not finished, overtaken).
-const UNCHECKED = 'Stopped';
+const UNCHECKED = 'Outcome unknown';
 
 test('a rate limit before the message is posted keeps the text instead of reporting an unknown outcome', async ({ page }) => {
   test.setTimeout(90_000);

@@ -197,10 +197,12 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       let input = parseBrowserAddressInput(raw, {defaultProtocol: 'https:'});
       // The shared parser reads any word:digits as host:port; an all-digit, dotless host (10:30, 3:16) is a search, not 0.0.0.10:30.
       if (input.kind === 'url' && /^\d+:\d+(?:[/?#]|$)/.test(raw.trim())) input = {kind: 'search', query: raw.trim()};
-      // Typed search operators, bare email text and short decimals stay searches.
-      // Explicit web schemes and user-info inputs stay refused; never search a password.
-      const typed = raw.trim();
-      if (!approvedSignal && !/^https?:/i.test(typed) && (input.kind === 'rejected' ? (input.reason === 'unsupported-protocol' && !typed.includes('@')) || (input.reason === 'credentials' && /^[^\s/:@?#%]+@[^\s/:@?#%]+$/.test(typed)) : input.kind === 'url' && /^\d+(?:\.\d+){0,2}$/.test(typed))) input = {kind:'search',query:typed};
+      // Typed search operators, simple @ text and short decimals stay searches.
+      // Classify normalized text conservatively; preserve the owner's original query bytes.
+      const typed = raw.trim(), atText = typed.normalize('NFKC');
+      const simpleAtSearch = /^[^/:@?#%]*@[^/:@?#%]*$/.test(atText) && !/[\p{C}\p{Zl}\p{Zp}\\]/u.test(atText);
+      if (!approvedSignal && !/^https?:/i.test(typed) && (input.kind === 'rejected' ? (input.reason === 'unsupported-protocol' && !atText.includes('@')) || (input.reason === 'credentials' && simpleAtSearch) : input.kind === 'url' && /^\d+(?:\.\d+){0,2}$/.test(typed))) input = {kind:'search',query:typed};
+      if (input.kind === 'search' && (approvedSignal || (atText.includes('@') && !simpleAtSearch))) throw new Error();
       if (input.kind === 'rejected') throw new Error();
       if (input.kind === 'url') { url = new URL(input.href); if (!url.hostname) throw new Error(); }
       // Alpha's alias: a bare localhost (with an optional path) stays an address, as it was before the shared parser.

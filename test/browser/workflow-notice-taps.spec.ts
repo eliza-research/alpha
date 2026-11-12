@@ -43,7 +43,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
      if(method==='request'){
       const path=input.path;let body:any;
       if(input.method==='POST'&&path.startsWith('/api/workflow/'))throw Error('Unexpected effect');
-      if(path.startsWith('/api/workflow/executions/')){f.reads=(f.reads||0)+1;if(f.queueChanged){f.taps.reverse();f.queueChanged=false;}if(f.hold)await new Promise(r=>f.release=r);body={execution:{id:path.split('/').at(-1),workflowId:'flow',workflowVersionId:f.wrongVersion?'v2':'v1',status:'completed',finished:true,startedAt:'2026-10-01T12:00:00Z',output:'Verified retained result '+path.split('/').at(-1),events:[]}};return {status:200,body:JSON.stringify(body)};}
+      if(path.startsWith('/api/workflow/executions/')){f.reads=(f.reads||0)+1;if(f.receiptUnavailable){f.receiptFailures=(f.receiptFailures||0)+1;return {status:503,body:'{"error":"Synthetic retained receipt unavailable"}'};}if(f.queueChanged){f.taps.reverse();f.queueChanged=false;}if(f.hold)await new Promise(r=>f.release=r);body={execution:{id:path.split('/').at(-1),workflowId:'flow',workflowVersionId:f.wrongVersion?'v2':'v1',status:'completed',finished:true,startedAt:'2026-10-01T12:00:00Z',output:'Verified retained result '+path.split('/').at(-1),events:[]}};return {status:200,body:JSON.stringify(body)};}
       if(path==='/api/workflow/workflows/flow')return {status:200,body:JSON.stringify({id:'flow',name:'Notice workflow',versionId:'v1',active:false,steps:[]})};
 
       if(path==='/api/auth/me')body={identity:{kind:'owner',id:f.owner||'fixture-owner'},access:{role:'OWNER',mode:'session'}};
@@ -102,11 +102,21 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.lookupFailures)).toBeGreaterThan(0);
   expect(await page.evaluate(()=>(window as any).deliveryFixture.noticeToasts)).toEqual([]);
   expect(await page.evaluate(()=>({reads:(window as any).deliveryFixture.reads||0,consumed:(window as any).deliveryFixture.consumed||[]}))).toEqual({reads:0,consumed:[]});
+  await expect(page.getByRole('button',{name:/^Open notification/})).toHaveCount(0);
+  // An unavailable native probe proves no retained notification, so it creates no
+  // retry row. First establish a real retained tap whose authenticated receipt
+  // read fails; only that known pending tap offers a user retry.
+  await page.evaluate(()=>{const f=(window as any).deliveryFixture;f.lookupUnavailable=false;f.receiptUnavailable=true;document.dispatchEvent(new Event('visibilitychange'));});
+  await expect(page.getByText('Couldn’t open · Kept',{exact:true})).toBeVisible();
+  const knownReceiptReads=await page.evaluate(()=>{const f=(window as any).deliveryFixture;f.lookupUnavailable=true;f.receiptUnavailable=false;return f.reads||0;});
+  expect(knownReceiptReads).toBeGreaterThan(0);
+  expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed||[])).toEqual([]);
   await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Workflows',exact:true}).click();
+  await expect(page.getByRole('button',{name:/^Open notification/})).toBeVisible();
   // A user retry queued during a resume lookup keeps its feedback, even if another resume arrives.
   await page.evaluate(()=>{const f=(window as any).deliveryFixture;f.holdLookup=true;document.dispatchEvent(new Event('visibilitychange'));});
   await expect.poll(()=>page.evaluate(()=>Boolean((window as any).deliveryFixture.lookupRelease))).toBe(true);
-  await page.getByRole('button',{name:/^Notification/}).click();
+  await page.getByRole('button',{name:/^Open notification/}).click();
   if(scenario==='lookup-unavailable-navigation'){
    const statusReads=await page.evaluate(()=>{const before=(window as any).deliveryFixture.workflowStatusReads||0;window.dispatchEvent(new Event('launcher-home'));return before;});
    await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.workflowStatusReads||0)).toBeGreaterThan(statusReads);
@@ -117,12 +127,14 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
    expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed||[])).toEqual([]);
    await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
    await page.getByRole('button',{name:'Workflows',exact:true}).click();
-   await page.getByRole('button',{name:/^Notification/}).click();
+   await page.getByRole('button',{name:/^Open notification/}).click();
   }else await page.evaluate(()=>{const f=(window as any).deliveryFixture;document.dispatchEvent(new Event('visibilitychange'));f.holdLookup=false;f.lookupRelease();});
   const message='Couldn’t check';
   await expect(page.getByText(message,{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>(window as any).deliveryFixture.noticeToasts)).toEqual([message]);
   expect(await page.evaluate(()=>(window as any).deliveryFixture.taps.map((tap:any)=>tap.runId))).toEqual(['run1','run2']);
+  expect(await page.evaluate(()=>(window as any).deliveryFixture.reads||0)).toBe(knownReceiptReads);
+  expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed||[])).toEqual([]);
   await page.evaluate(()=>{(window as any).deliveryFixture.lookupUnavailable=false;document.dispatchEvent(new Event('visibilitychange'));});
   await expect(page.getByText('Verified retained result run1',{exact:true})).toBeVisible();
   await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.consumed||[])).toEqual(['run1']);

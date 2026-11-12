@@ -26,7 +26,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { signerDigest } from "./apk.ts";
+import { parseXmlTree, signerDigest } from "./apk.ts";
 import type {ApkMode, ApkVariant} from "./apk.ts";
 import type {ReleaseSigner} from "./build-android.ts";
 import {aaptManifestTree, manifestTreeIsDebuggable, readApkBuildFlags} from "../vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs";
@@ -34,6 +34,7 @@ import { readReleaseSigner, releaseAdmission } from "./build-android.ts";
 import { releaseBlockers } from "./release-blockers.ts";
 import { androidEnv, tool } from "./toolchain.ts";
 import { updateArtifactDigest } from "./update-artifact.ts";
+import { apkUpdateChannelOrLegacy, assertProvisioningUpdateChannel, recordedProvisioningUpdateChannel, type UpdateChannel } from "./update-channel.ts";
 
 export const PACKAGE = "ai.alphacompute.alphaphone";
 const sha256 = (bytes: string | NodeJS.ArrayBufferView) => createHash("sha256").update(bytes).digest("hex");
@@ -55,6 +56,7 @@ export interface VerifiedApkRow extends Record<string, unknown> {
 }
 interface ApkManifest {
   testMocks?: boolean;
+  updateChannel?: unknown;
   results?: VerifiedApkRow[];
 }
 interface UnitArgs {
@@ -118,6 +120,7 @@ export function admitUnitApk(manifestFile: string, { variant, build }: {variant:
   if (actual !== row.sha256) throw new Error(`${file} does not match its verified manifest row`);
   // The manifest-level flag is checked above; a row that disagrees with it is refused for either build.
   if (row.testMocks !== false) throw new Error(`${file} is recorded as a test-mocks build; pilot units get distribution builds only`);
+  const updateChannel = build === "release" ? recordedProvisioningUpdateChannel(manifest.updateChannel, row.updateChannel) : null;
   if (build === "release") {
     // Judged against the current signer descriptor and against what verify-apks recorded:
     // signing, versionCode, flag-off audit, packaged runtime, speech qualification and the one
@@ -128,15 +131,17 @@ export function admitUnitApk(manifestFile: string, { variant, build }: {variant:
       "Pilot and acceptance units get distributable releases only; --build debug rehearses the same steps on a disposable emulator.");
   }
   return { file, sha256: actual, variant, build, versionCode: row.versionCode, versionName: row.versionName, signed: row.signed === true,
-    signerSha256: row.signerSha256 ?? null, signerApiLevel: row.signerApiLevel ?? null, distributable: row.distributable === true, runtime: row.runtime ?? null, rehearsal: build === "debug" };
+    updateChannel, signerSha256: row.signerSha256 ?? null, signerApiLevel: row.signerApiLevel ?? null, distributable: row.distributable === true, runtime: row.runtime ?? null, rehearsal: build === "debug" };
 }
 
 /** Facts read from the APK file itself. A fact that cannot be read is null, which no check accepts. */
 export function apkFacts(file: string, {apiLevel}: {apiLevel?: number} = {}) {
   const attempt = <T,>(read: () => T): T | null => { try { return read(); } catch { return null; } };
+  const tree = attempt(() => aaptManifestTree(file, {aapt: tool("aapt"), env: androidEnv()}));
   return {
     testMocks: attempt(() => (readApkBuildFlags(file) as {testMocks?: unknown} | null)?.testMocks ?? null),
-    debuggable: attempt(() => manifestTreeIsDebuggable(aaptManifestTree(file, {aapt: tool("aapt"), env: androidEnv()}))),
+    debuggable: tree === null ? null : manifestTreeIsDebuggable(tree),
+    updateChannel: tree === null ? null : attempt(() => apkUpdateChannelOrLegacy(parseXmlTree(tree)) ?? ("legacy" as const)),
     signerSha256: attempt(() => signerDigest(file, {apiLevel})),
     runtime: attempt(() => apkRuntimeIdentity(file).runtime),
   };
@@ -146,17 +151,25 @@ export function apkFacts(file: string, {apiLevel}: {apiLevel?: number} = {}) {
  * Ways the admitted file contradicts the manifest row that admitted it. apk-manifest.json is an
  * unsigned record, so a row edited by hand (and re-hashed) could describe a release the file is
  * not. What the file itself proves is checked before anything is installed: flag-off web bundle,
- * build type, the packaged resident runtime and the signing certificate against
+ * build type, the packaged resident runtime, update channel and the signing certificate against
  * android/release-signer.json. Speech qualification and licence blockers cannot be re-derived
  * from the file; for those the manifest written by verify-apks remains the record.
  */
-export function apkContradictions(apk: {file: string; build: ApkMode},
+export function apkContradictions(apk: {file: string; build: ApkMode; updateChannel?: UpdateChannel | null},
   { descriptor = readReleaseSigner(), apiLevel, facts = apkFacts(apk.file, {apiLevel}) }: ApkConsistencyOptions = {}) {
   const problems: string[] = [];
   if (facts.testMocks !== false) problems.push("its web bundle is not a verified flag-off build");
   if (apk.build === "release") {
     if (facts.debuggable !== false) problems.push("it is debuggable or its build type could not be read, so it is not a release build");
     if (facts.runtime !== "PACKAGED") problems.push("it does not package the resident runtime");
+    if (!facts.updateChannel) problems.push("its compiled update channel could not be verified");
+    else {
+      try {
+        assertProvisioningUpdateChannel(facts.updateChannel === "legacy" ? null : facts.updateChannel, apk.updateChannel ?? null);
+      } catch (error) {
+        problems.push(error instanceof Error ? error.message : String(error));
+      }
+    }
     if (!facts.signerSha256 || facts.signerSha256 !== descriptor.signerSha256)
       problems.push(`it is signed by ${facts.signerSha256 ?? "no verified signer"}, not the certificate in android/release-signer.json`);
   } else if (facts.debuggable !== true) problems.push("it is not a debuggable build, so it is not the debug rehearsal APK");
@@ -164,9 +177,18 @@ export function apkContradictions(apk: {file: string; build: ApkMode},
 }
 
 /** Refuse, before any device is touched, an APK whose own contents contradict its admitted row. */
-export function requireConsistentApk(apk: {file: string; build: ApkMode}, options?: ApkConsistencyOptions) {
+export function requireConsistentApk(apk: Parameters<typeof apkContradictions>[0], options?: ApkConsistencyOptions) {
   const problems = apkContradictions(apk, options);
   if (problems.length) throw new Error(`${apk.file} contradicts the manifest row that admitted it:\n${problems.map(item => `  - ${item}`).join("\n")}`);
+}
+
+/** Copy the admitted bytes into the caller's private temporary directory before inspecting and installing them. */
+export function snapshotUnitApk(apk: ReturnType<typeof admitUnitApk>, directory: string) {
+  const file = path.join(directory, "candidate.apk");
+  fs.copyFileSync(apk.file, file, fs.constants.COPYFILE_EXCL | fs.constants.COPYFILE_FICLONE);
+  fs.chmodSync(file, 0o400);
+  if (updateArtifactDigest(file).sha256 !== apk.sha256) throw new Error(`${apk.file} changed after APK admission`);
+  return { ...apk, file };
 }
 
 /** Parse `dumpsys package <pkg>` for the facts a unit record needs. */
@@ -243,16 +265,23 @@ async function main() {
   if (adb(["get-state"]) !== "device") throw new Error("Unit is not online");
   const device = deviceFacts(adb, options.serial);
   if (device.sdk === null || !Number.isSafeInteger(device.sdk) || device.sdk < 1) throw new Error("Device Android API level is unavailable");
-  requireConsistentApk(apk, {apiLevel: device.sdk});
   if (apk.rehearsal && !device.emulator) throw new Error("--build debug is an emulator rehearsal; physical pilot units get the signed release");
   if (adb(["shell", "pm", "list", "packages", PACKAGE], { allowFailure: true }).split(/\r?\n/).includes(`package:${PACKAGE}`))
     throw new Error("Alpha Phone is already installed on this unit; use scripts/pilot-update.ts for an update");
   const output = path.resolve(options.output, `${options.alias}.json`);
   if (fs.existsSync(output)) throw new Error(`${output} already exists; a unit is provisioned once`);
-  // Read before install so an unreadable bundle fails with nothing on the unit.
-  const runtimeIdentity = apkRuntimeIdentity(apk.file);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-provision-"));
+  let runtimeIdentity: ReturnType<typeof apkRuntimeIdentity>;
+  try {
+    const candidate = snapshotUnitApk(apk, directory);
+    requireConsistentApk(candidate, {apiLevel: device.sdk});
+    // Read before install so an unreadable bundle fails with nothing on the unit.
+    runtimeIdentity = apkRuntimeIdentity(candidate.file);
+    adb(["install", candidate.file], { timeout: 600_000 });
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 
-  adb(["install", apk.file], { timeout: 600_000 });
   const installedSha256 = installedApkSha256(adb);
   if (installedSha256 !== apk.sha256) throw new Error("Installed bytes differ from the admitted APK");
   const installed = packageFacts(adb(["shell", "dumpsys", "package", PACKAGE]));
