@@ -347,7 +347,8 @@
       "abstractions": [
         "Two route generations, two owners and boolean fix freshness summarize coordinate geometry and timestamps.",
         "Travel modes, polylines, route-distance calculations and detailed maneuver rendering remain stateless/runtime-tested transformations.",
-        "A route callback must retain its request generation and account epoch. Direct agent start requires separate opt-in."
+        "A route callback must retain its request generation and account epoch. Direct agent start requires separate opt-in.",
+        "Swapping endpoints starts a new route generation. Endpoint reversal itself is checked by the shared controller and browser tests."
       ],
       "path": "specs/quint/services/MapsNavigation.qnt",
       "module": "MapsNavigation",
@@ -359,7 +360,8 @@
         "staleReplyTest",
         "assistantAndRerouteTest",
         "accountRetirementTest",
-        "sameAccountRefreshTest"
+        "sameAccountRefreshTest",
+        "swapRouteTest"
       ],
       "invariants": [
         "GuidanceHasRoute",
@@ -375,7 +377,9 @@
       },
       "sharedSources": [
         "plugins/plugin-maps/src/client/navigation-fix.ts",
-        "plugins/plugin-maps/src/client/cloud-session.ts"
+        "plugins/plugin-maps/src/client/cloud-session.ts",
+        "plugins/plugin-maps/src/client/maps-screen.ts",
+        "plugins/plugin-maps/src/client/state.ts"
       ]
     },
     {
