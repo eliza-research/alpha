@@ -9,6 +9,7 @@ import {syncBuiltinESMExports} from 'node:module';
 import {createHash,randomBytes} from 'node:crypto';
 import {registerHooks} from './support/module-hooks.mjs';
 import {copyFilesClone,planCloneBatches,cloneArgumentBytes,CLONE_ARGUMENT_BYTES} from '../scripts/copy-file-clone.ts';
+import {preparedSourceEnv} from '../scripts/local-agent-source.ts';
 const root=path.resolve(import.meta.dirname,'..');
 // Bun binds a named node:child_process import once (syncBuiltinESMExports does nothing there). Where a test
 // instruments execFileSync, the clone helper is loaded with that one name bound through the mutable module object.
@@ -200,8 +201,11 @@ for(const selection of ['override','npm_execpath','bare'])test(`nested installer
  const executable=(file,body)=>{f.write(file,`#!${process.execPath}\n${body}`);fs.chmodSync(file,0o700);};
  executable(old,`require('node:fs').writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({wrongBun:true}));process.exit(71);`);
  executable(selected,`if(process.argv[2]==='--version'){console.log('1.4.2');process.exit(0);}const fs=require('node:fs'),{execFileSync}=require('node:child_process');if(process.argv[2]==='nested'){fs.writeFileSync(process.env.ALPHA_INSTALL_RECEIPT,JSON.stringify({args:JSON.parse(process.env.ALPHA_INSTALL_ARGS),executable:process.argv[1],path:process.env.PATH,agent:process.env.CLAUDECODE??null}));}else{execFileSync('bun',['nested'],{env:{...process.env,ALPHA_INSTALL_ARGS:JSON.stringify(process.argv.slice(2))}});fs.mkdirSync('node_modules',{recursive:true});}`);
- const inheritedPath=[selection==='bare'?path.dirname(selected):path.dirname(old),process.env.PATH].filter(Boolean).join(path.delimiter);
- const env={PATH:inheritedPath,ALPHA_BUN:selection==='override'?selected:selection==='bare'?'bun':'',npm_execpath:selection==='npm_execpath'?selected:process.execPath,ALPHA_INSTALL_RECEIPT:receipt,CLAUDECODE:'1'};
+ const inheritedPath=[selection==='bare'?path.dirname(selected):path.dirname(old),preparedSourceEnv().PATH].filter(Boolean).join(path.delimiter);
+ const bunAlias=path.join(f.directory,'bun-alias');
+ fs.mkdirSync(bunAlias);
+ fs.symlinkSync(selected,path.join(bunAlias,'node'));
+ const env={PATH:[bunAlias,inheritedPath].join(path.delimiter),ALPHA_BUN:selection==='override'?selected:selection==='bare'?'bun':'',npm_execpath:selection==='npm_execpath'?selected:process.execPath,ALPHA_INSTALL_RECEIPT:receipt,CLAUDECODE:'1'};
  const result=f.run({full:true,env});assert.equal(result.status,0,result.stderr);
  const actual=JSON.parse(fs.readFileSync(receipt));assert.deepEqual(actual.args,['install','--frozen-lockfile']);assert.equal(actual.executable,selected);assert.equal(actual.agent,null);
  assert.equal(actual.path,selection==='bare'?inheritedPath:[path.dirname(selected),inheritedPath].join(path.delimiter));assert.deepEqual(f.snapshot(),before);
