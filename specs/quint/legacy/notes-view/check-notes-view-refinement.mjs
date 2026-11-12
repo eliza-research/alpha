@@ -136,7 +136,7 @@ async function recover(page, title, legacy = false) {
   await expect(trash(page)).toBeVisible();
   if (!legacy) await expect(button(page, 'Empty Recently deleted')).toHaveCount(0);
   await trash(page).getByRole('button', {name: legacy ? new RegExp('^'+title+', ') : title, exact: !legacy}).click();
-  const review = page.getByRole('dialog', {name: title, exact: true});
+  const review = page.getByRole('dialog', {name: `${legacy ? 'Recover or delete' : 'Recover'} “${title}”?`, exact: true});
   if (!legacy) await expect(review.getByRole('button', {name: 'Delete now', exact: true})).toHaveCount(0);
   await review.getByRole('button', {name: 'Recover', exact: true}).click();
   await expect(trash(page)).toHaveCount(0);

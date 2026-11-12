@@ -56,15 +56,15 @@ test('the installed ruleset matches, and an unreadable branch is never a match',
   const result = compareRequiredChecks({intended, branchRules: [...baselineRules, requiredRule], rulesets: [baseline, installed], protection: null});
   assert.deepEqual(result.problems, []);
   assert.equal(result.ok, true);
-  assert.deepEqual(result.enforced.map(row => row.context).sort(), ['Android foundation result', 'Browser MVP result', 'Repository verification']);
+  assert.deepEqual(result.enforced.map(row => row.context), ['Repository verification']);
   assert.equal(compareRequiredChecks({intended, branchRules: null, rulesets: [baseline, installed]}).ok, false);
 });
 
 test('renamed, sharded, unbound, bypassable and weakened configurations are reported', () => {
   const problems = input => compareRequiredChecks({intended, rulesets: [baseline, installed], protection: null, ...input}).problems.join('\n');
   const renamed = clone(requiredRule);
-  renamed.parameters.required_status_checks[1].context = 'Chromium (shard 1/4)';
-  assert.match(problems({branchRules: [renamed]}), /MISSING required check "Browser MVP result"[\s\S]*UNEXPECTED required check "Chromium \(shard 1\/4\)"/);
+  renamed.parameters.required_status_checks[0].context = 'Chromium (shard 1/4)';
+  assert.match(problems({branchRules: [renamed]}), /MISSING required check "Repository verification"[\s\S]*UNEXPECTED required check "Chromium \(shard 1\/4\)"/);
   const unbound = clone(requiredRule);
   delete unbound.parameters.required_status_checks[0].integration_id;
   assert.match(problems({branchRules: [unbound]}), /"Repository verification" is not bound to integration 15368/);

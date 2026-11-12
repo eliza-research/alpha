@@ -16,9 +16,7 @@
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "Repository verification", "integration_id": 15368 },
-          { "context": "Browser MVP result", "integration_id": 15368 },
-          { "context": "Android foundation result", "integration_id": 15368 }
+          { "context": "Repository verification", "integration_id": 15368 }
         ]
       }
     }

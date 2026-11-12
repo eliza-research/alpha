@@ -41,6 +41,12 @@ Function proofs require Dafny 4.11.0 on `PATH`; `LEMMA_REQUIRE_BACKEND=1` makes 
 missing backend fail. A generation-only run records a skipped proof. Promotion CI installs the
 hash-pinned backend and requires proofs.
 
+A pull request runs one CI job, `bun run verify`. The Android build also runs when a pull
+request changes Android, renderer, script, lockfile or upstream-pin paths. The browser tests
+are not run by PR CI: run `bun run test:browser` and `bun run test:browser:production` before
+finalising a PR and say so in its description. CI runs them with the formal models when
+`develop` is promoted to `main`.
+
 On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) lengthens refinement
 subprocess deadlines so slow but live checkers are not reported as failures; CI uses 1.
 

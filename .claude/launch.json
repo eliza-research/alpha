@@ -5,9 +5,9 @@
       "name": "alphaphone-production",
       "runtimeExecutable": "bun",
       "runtimeArgs": [
-        "exec",
+        "x",
+        "--bun",
         "vite",
-        "--",
         "preview",
         "--host",
         "127.0.0.1",
