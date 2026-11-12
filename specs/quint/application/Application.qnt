@@ -10,6 +10,8 @@ module Application {
     reset: false, resident: true, pending: false, capturedOwner: 0,
     capturedEpoch: 0, reviewed: false, dispatched: false, outcome: "none",
     voice: false, cachedOwner: 0, commits: 0 }
+  // An in-flight request retains its durable uncertainty without displaying failure.
+  val visibleOutcome = if (s.pending and s.outcome == "unknown") "pending" else s.outcome
   val admitted = s.owner != 0 and s.foreground and not(s.sensitive) and not(s.reset)
   action signIn(owner: int): bool = all { owner.in(Set(1, 2)), s.epoch < 2, not(s.reset),
     s' = { ...s, owner: owner, epoch: s.epoch + 1, pending: false, reviewed: false,
@@ -47,6 +49,9 @@ module Application {
   val safety = ResetStopsInitialization and CurrentOwnerCache and ReviewedDispatch and ActiveVoiceAdmission and PendingIsCurrent
   run reviewedEffectTest = init.then(signIn(1)).then(begin).then(review).then(dispatch)
     .then(finish).expect(safety and s.outcome == "observed")
+  run inFlightFeedbackTest = init.then(signIn(1)).then(begin).then(review).then(dispatch)
+    .expect(s.pending and visibleOutcome == "pending" and safety)
+    .then(hide).expect(visibleOutcome == "unknown" and safety)
   run ownerSwitchTest = init.then(signIn(1)).then(begin).then(signIn(2))
     .then(staleCallback).expect(safety and not(s.pending) and s.cachedOwner == 0)
   run resetDuringVoiceTest = init.then(signIn(1)).then(startVoice).then(requestReset)

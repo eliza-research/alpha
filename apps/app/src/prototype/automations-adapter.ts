@@ -61,6 +61,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const readClock=()=>{const hour=Number(scheduleHour),minute=Number(scheduleMinute);return /^\d{1,2}$/.test(scheduleHour)&&/^\d{1,2}$/.test(scheduleMinute)&&hour>=1&&hour<=12&&minute<=59?String(hour%12+(schedulePeriod==='PM'?12:0)).padStart(2,'0')+':'+String(minute).padStart(2,'0'):'';};
  const repeatFor=(days:number[])=>days.length===7?'daily':days.join(',')==='1,2,3,4,5'?'weekdays':days.join(',')==='0,6'?'weekends':'custom';
  let completionDirty=false;
+ let activeMutationKey:string|undefined;
  const uncertain=new Set<string>();
  let intentStore:WorkflowIntentStore|null=null,suspended=document.hidden;
  let homeCache:{sessionId:string;rows:Array<{name:string;status:string}>;total:number;complete:boolean;partial:boolean;stale:boolean;error:boolean;loadedAt:number}|null=null;
@@ -93,7 +94,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const automationBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh agent automations before creating one.':issues.find(issue=>issue.source==='automations'&&issue.unavailable)?.message||'';
  const scheduleBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh scheduled items before changing one.':issues.find(issue=>issue.source==='schedules')?.message||'';
  const publish=()=>{if(owner?.live&&!suspended&&!document.hidden)owner.vset('workflows',{automationTick:Date.now()});};
- const retire=(clear=false)=>{dismissFilters();confirmationModal.ref(null);listMenu=false;selecting=false;selection.clear();recoveryReview=null;epoch++;controller?.abort();controller=null;homeRead?.abort();homeRead=null;homeVisit=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message='';if(clear){recentlyDeleted=false;completionDirty=false;rows=[];issues=[];intentStore=null;state='idle';loadedSession=null;}publish();};
+ const retire=(clear=false)=>{dismissFilters();confirmationModal.ref(null);listMenu=false;selecting=false;selection.clear();recoveryReview=null;epoch++;controller?.abort();controller=null;activeMutationKey=undefined;homeRead?.abort();homeRead=null;homeVisit=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message='';if(clear){recentlyDeleted=false;completionDirty=false;rows=[];issues=[];intentStore=null;state='idle';loadedSession=null;}publish();};
  const requestKey=(id:string)=>{const owner=connectionController.getSnapshot().session;return owner?workflowIntentKey(owner,'automation:'+id):'offline:'+id;};
  const key=(row:AutomationRow)=>requestKey(row.key);
  const locked=(row:AutomationRow)=>uncertain.has(key(row))||(!!binding()&&(intentStore?.locked(key(row))??true));
@@ -166,13 +167,13 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  async function work(task:(client:AutomationsProtocol,signal:AbortSignal)=>Promise<unknown>,rowKey?:string){
   if(controller)return false;const selected=binding();if(!selected){showAgentStatus(owner);return false;}
   const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return false;
-  const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';message='';publish();
+  const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';activeMutationKey=rowKey;message='';publish();
   const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected.sessionId===binding()?.sessionId;
   const client=new AutomationsProtocol(async(path,method,body,signal)=>{if(!valid())throw Error('Automation connection changed.');if(method!=='GET'){const blocked=path.startsWith('/api/lifeops/scheduled-tasks/')?scheduleBlock():path.startsWith('/api/lifeops/definitions')||path.startsWith('/api/lifeops/occurrences/')?reminderBlock():path.startsWith('/api/triggers')?automationBlock():'';if(blocked)throw new AutomationOutcomeError(blocked);if(!rowKey)throw Error('Missing automation request identity.');retained=await intents.admit(rowKey,{kind:'automation',path,method,body},signal);sent=method+' '+path;if(!valid())throw Error('Automation connection changed.');dispatched=true;uncertain.add(rowKey);}return selected.request(path,method,body,signal);},selected.conversationId);
   let completed=false;
   try{await intents.load(abort.signal);await task(client,abort.signal);if(!valid())return false;if(rowKey&&retained)await intents.acknowledge(rowKey,retained,abort.signal);if(!valid())return false;if(rowKey)uncertain.delete(rowKey);completed=true;if(dispatched){editor=null;review=null;creating=false;message=sent.endsWith('/fire')?'Run started.':'';}}
   catch(error){const status=error&&typeof error==='object'&&'status' in error?Number(error.status):0,code=error&&typeof error==='object'&&'code' in error&&typeof error.code==='string'?error.code:'',known=error instanceof AutomationOutcomeError,rejected=([400,401,403,404,405,409,410,413,414,415,422].includes(status)||status===429&&sent==='POST /api/triggers')&&!/unknown|unconfirmed|ambiguous/i.test(code);if(rowKey&&(rejected||known)&&retained&&valid()){try{await intents.acknowledge(rowKey,retained,abort.signal);uncertain.delete(rowKey);}catch{/* Keep unconfirmed requests in the existing journal. */}}if(valid())message=dispatched&&!rejected&&!known?'Outcome unknown. Check the current record and history before repeating this action.':error instanceof Error?error.message:'Automation request failed.';}
-  finally{if(ticket===epoch){intentStore=intents;controller=null;publish();}}
+  finally{if(ticket===epoch){intentStore=intents;controller=null;activeMutationKey=undefined;publish();}}
   if(valid()&&!editor&&!review)await refresh(true);
   return completed;
  }
@@ -204,7 +205,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();message='';publish();
   try{const raw=await intents.read(id,abort.signal);if(raw!==null)await intents.acknowledge(id,raw,abort.signal);if(ticket===epoch)uncertain.delete(id);}
   catch{if(ticket===epoch)message='The earlier change could not be released. Try again.';}
-  finally{if(ticket===epoch){intentStore=intents;controller=null;publish();}}
+  finally{if(ticket===epoch){intentStore=intents;controller=null;activeMutationKey=undefined;publish();}}
  }
  function show(row:AutomationRow){
   if(controller)return;creating=false;editor=null;review=null;message='';history=[];
@@ -238,7 +239,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   api=current;if(visible()&&homeRead){homeRead.abort();homeRead=null;homeVisit=null;}const workflow=render(value,current),currentBinding=binding(),currentSession=currentBinding?.sessionId||'offline';
   if(visible()&&(state==='idle'||completionDirty)&&!controller&&!editor&&!detail&&!creating&&!review&&!workflow.detail&&!workflow.builder&&!workflow.runOpen&&!workflow.removedList){completionDirty=false;state='loading';queueMicrotask(()=>void refresh(true));}
   if(workflow.detail||workflow.builder||workflow.runOpen||workflow.removedList)return {...workflow,workflowDetail:workflow.detail,automation:null};
-  const cards=displayed().map(row=>({name:row.title,icon:current.ic[row.kind==='reminder'||row.kind==='device-reminder'?'bell':row.kind==='prompt'?'spark':row.kind==='schedule'||row.kind==='routine'?'cal':'flow'],short:row.schedule||row.source.replace(/^Agent /,''),statusLabel:locked(row)?'Outcome unknown':recentlyDeleted?'':row.kind==='workflow'&&row.workflowId&&workflow.waitingFor?.(row.workflowId)?'Waiting for you':rowStatus(row),selecting,selected:selection.has(row.key),disabled:batchBusy||selecting&&!selectionAllowed(row),on:row.enabled,track:current.track(row.enabled),kx:current.kx(row.enabled),dim:'',failed:row.status==='failed',open:()=>{if(selecting){if(selectionAllowed(row)&&!batchBusy){selection.has(row.key)?selection.delete(row.key):selection.add(row.key);publish();}}else if(recentlyDeleted){selection.clear();selection.add(row.key);prepareRecovery();}else show(row);},toggle:()=>show(row)}));
+  const cards=displayed().map(row=>({name:row.title,icon:current.ic[row.kind==='reminder'||row.kind==='device-reminder'?'bell':row.kind==='prompt'?'spark':row.kind==='schedule'||row.kind==='routine'?'cal':'flow'],short:row.schedule||row.source.replace(/^Agent /,''),statusLabel:locked(row)&&!(controller&&activeMutationKey===key(row))?'Outcome unknown':recentlyDeleted?'':row.kind==='workflow'&&row.workflowId&&workflow.waitingFor?.(row.workflowId)?'Waiting for you':rowStatus(row),selecting,selected:selection.has(row.key),disabled:batchBusy||selecting&&!selectionAllowed(row),on:row.enabled,track:current.track(row.enabled),kx:current.kx(row.enabled),dim:'',failed:row.status==='failed',open:()=>{if(selecting){if(selectionAllowed(row)&&!batchBusy){selection.has(row.key)?selection.delete(row.key):selection.add(row.key);publish();}}else if(recentlyDeleted){selection.clear();selection.add(row.key);prepareRecovery();}else show(row);},toggle:()=>show(row)}));
   const confirmedRead=state==='ready'&&!!currentBinding&&loadedSession===currentSession;
   const empty=confirmedRead&&!cards.length&&!issues.length;
   const managementCards=[...(workflow.managementCards||[])];
@@ -334,7 +335,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
     const expression=scheduleClock?workflowClockExpression(time,scheduleDays):'';
     const trigger=scheduleClock&&(expression!==workflowClockExpression(scheduleClock.time,scheduleClock.days)||scheduled.record.trigger.tz!==timeZone())?{kind:'cron' as const,expression,tz:timeZone()}:undefined;
     ask('Save schedule',scheduled,(client,signal)=>client.editSchedule(scheduled.id,instructions,trigger,signal));scheduleDraft=null;publish();},
-   locked:selectedLocked||formLocked,allowAnother:()=>void allowAnother(lockId),
+   locked:(selectedLocked||formLocked)&&!(controller&&activeMutationKey===lockId),allowAnother:()=>void allowAnother(lockId),
    review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''}?`,reviewModal:confirmationModal.ref,confirm:()=>{const selected=review;if(selected){review=null;void work(selected.run,selected.key);}},cancelReview:()=>{review=null;publish();},
   }};
  };
