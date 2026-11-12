@@ -291,7 +291,8 @@ public final class AlphaDevicePlugin extends Plugin {
    // A grant arriving after Telecom returned false cannot authenticate that read.
    if(calls==null||!canReadUpdateCallState(context,calls)||calls.isInCall())return false;
    return canReadUpdateCallState(context,calls);
-  }catch(RuntimeException unknown){return false;}
+  }catch(SecurityException denied){return false;}
+  catch(RuntimeException unknown){return false;}
  }
  /** Telecom can report false when phone-state access is denied. Only use a negative with known access. */
  private static boolean canReadUpdateCallState(Context context,android.telecom.TelecomManager calls){
