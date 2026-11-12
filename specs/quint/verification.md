@@ -195,12 +195,12 @@ The four manifests now register 335 models and 2,439 scenarios: 165 application,
 witnesses and 86 models declare 827 source symbols. The default gate now also
 requires a counterexample for the negation of every witness and a detected
 failing-scenario canary, checks source symbols when the manifests load, and no
-longer runs a separate typecheck phase. `quint:verify` runs an additional
+longer runs a separate typecheck phase. `check-quint.ts verify` runs an additional
 one-transition pass for models that declare `additionalProofInit`.
 
 No aggregate result for this registry is recorded here. A fresh full
 `bun run quint:check` receipt and fresh model-checking receipts
-(`quint:verify`, and `quint:compare` and `quint:temporal` for the legacy modules
+(`check-quint.ts verify`, and `compare` and `temporal` for the legacy modules
 that declare those checks) are required for the 335-model total before any pass
 is claimed for it. Earlier receipts remain evidence only for the model and source
 hashes they recorded.

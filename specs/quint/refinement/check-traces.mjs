@@ -82,7 +82,7 @@ function registeredModelInputs() {
     const manifest = join(root, 'specs/quint', family, 'manifest.json');
     paths.add(manifest);
     const document = JSON.parse(readFileSync(manifest));
-    for (const model of Array.isArray(document) ? document : document.models) {
+    for (const model of document) {
       for (const path of modelDependencies(join(root, model.path))) paths.add(path);
     }
   }
@@ -139,7 +139,7 @@ function modelFile(model, requested) {
   if (requested) return isAbsolute(requested) ? requested : resolve(root, requested);
   for (const family of ['application', 'services', 'native', 'legacy']) {
     const document = JSON.parse(readFileSync(join(root, 'specs/quint', family, 'manifest.json')));
-    const found = (Array.isArray(document) ? document : document.models).find(row => row.module === model);
+    const found = document.find(row => row.module === model);
     if (found) return join(root, found.path);
   }
   throw new Error(`Unknown model ${model}`);
@@ -148,7 +148,7 @@ function modelFile(model, requested) {
 function invariantFor(model) {
   for (const family of ['application', 'services', 'native', 'legacy']) {
     const document = JSON.parse(readFileSync(join(root, 'specs/quint', family, 'manifest.json')));
-    const found = (Array.isArray(document) ? document : document.models).find(row => row.module === model);
+    const found = document.find(row => row.module === model);
     if (found) return found.invariant;
   }
   return null;

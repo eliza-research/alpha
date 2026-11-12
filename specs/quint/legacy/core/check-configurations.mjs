@@ -46,7 +46,7 @@ const sourceRevision = inventory.revision;
 if (!/^[a-f0-9]{40}$/.test(sourceRevision)) throw Error('Invalid historical specification revision');
 const manifest = json(manifestPath);
 const metadataFiles = get('metadata', '').split(',').filter(Boolean);
-const metadata = metadataFiles.length ? metadataFiles.flatMap(json) : Array.isArray(manifest) ? manifest : manifest.models;
+const metadata = metadataFiles.length ? metadataFiles.flatMap(json) : manifest;
 const requested = get('models', '').split(',').filter(Boolean);
 const requestedProfiles = get('profiles', '').split(',').filter(Boolean);
 const selected = inventory.models.filter(model => !requested.length || requested.includes(model.module) || requested.includes(model.quintModule));

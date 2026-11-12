@@ -92,9 +92,7 @@ export interface CheckerResult {
 type InterruptedAttempt = Pick<CheckerResult, 'signal'> & {exitCode: null};
 
 function readModelFamily(family: ModelFamily) {
-  const document = readJson<ModelDefinition[] | {models: ModelDefinition[]}>(join(quintRoot, family, 'manifest.json'));
-  const models = Array.isArray(document) ? document : document.models;
-  return models.map(model => ({...model, family,
+  return readJson<ModelDefinition[]>(join(quintRoot, family, 'manifest.json')).map(model => ({...model, family,
     sources: [...new Set([...(model.sources || []), ...(model.sharedSources || []).map(path => `vendor/eliza/${path}`)])]}));
 }
 

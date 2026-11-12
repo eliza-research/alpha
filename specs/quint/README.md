@@ -12,36 +12,35 @@ code. All checks execute models or isolated test adapters.
 | [Native](native/README.md) | Resident runtime, voice, speech resources, listener, reset, deletions, media, device actions and composed cross-domain behavior |
 | [Legacy](legacy/README.md) | Eleven translated historical current/proposed design comparisons, original properties, fairness and expected counterexamples |
 
-Each family's `manifest.json` names its executable modules, initial and next
-actions, invariants, scenarios, source files and abstractions.
+Each family's `manifest.json` is one array of model entries: the executable module, its initial
+and next actions, invariants, scenarios, source files and abstractions.
 
 ## Running checks
 
 Install the root lockfile with `bun install --frozen-lockfile`. The development tool is pinned to
-`@informalsystems/quint` 0.33.1. `bun run verify` and `bun run test` leave out the default
-Quint gate and the `test/quint-*` tests; run them before merging. CI runs them only for
-pull requests into `main` and on manual dispatch (`.github/workflows/promotion.yml`).
+`@informalsystems/quint` 0.33.1. `bun run verify` and `bun run test` leave out the Quint gate and
+the `test/quint-*` tests; run them before merging. CI runs them only for pull requests into `main`
+and on manual dispatch (`.github/workflows/promotion.yml`).
 
 ```sh
 bun run quint:check
 bun run quint:tests
-bun run quint:typecheck
-bun run quint:test
-bun run quint:simulate -- --samples=1000 --steps=60 --seed=123
-bun run quint:conformance
 ```
 
-The default gate parses/typechecks every model and runs every manifest scenario
-through an explicit matcher, including named setup scenarios. It requires a
-successful CLI execution record for each registration. Simulation uses each
+`quint:check` (`scripts/check-quint.ts`) parses and typechecks every model, runs every manifest
+scenario through an explicit matcher, including named setup scenarios, and simulates each model.
+It requires a successful CLI execution record for each registration. Simulation uses each
 model's `bounds.maxSamples`, `bounds.maxSteps` and `bounds.seed`, falling back to
-80 traces, 40 transitions and seed 20261107. Explicit CLI values override them.
+80 traces, 40 transitions and seed 20261107. `--samples`, `--steps` and `--seed` override them.
 The gate requires both a deliberately false invariant and a failing scenario
 assertion to be detected; a syntax/tooling error cannot satisfy either canary.
 Manifest invariant names must resolve to top-level values or imported instances.
 `additionalProofInit` runs an extra one-transition simulation and symbolic check
 when its corresponding command is selected. `bounds.maxVerifyDepth` sets the
 default symbolic depth for that model; explicit `--steps` overrides it.
+
+`quint:tests` runs the `test/quint-*` files. Each drives product code against one model's
+transitions and compares what the code did with the model after every step.
 
 Model checking is separate and needs JDK 21 in this repository. Quint fetches its
 pinned Apalache 0.62.4 distribution when needed. The CLI also uses that
@@ -51,16 +50,16 @@ processes concurrently, since a single server does not isolate concurrent jobs.
 
 ```sh
 # Bounded symbolic safety checking
-bun run quint:verify -- --steps=4
+bun scripts/check-quint.ts verify --steps=4
 
 # Exhaustive finite-state safety checking
-bun run quint:verify -- --backend=tlc --models=ChatInput
+bun scripts/check-quint.ts verify --backend=tlc --models=ChatInput
 
 # Fairness-guarded temporal properties for the historical models
-bun run quint:temporal -- --backend=tlc --models=SignIn,GoogleConnect,Maps
+bun scripts/check-quint.ts temporal --backend=tlc --models=SignIn,GoogleConnect,Maps
 
 # Require the expected current-design passes and counterexamples
-bun run quint:compare -- --backend=tlc --models=ChatInput
+bun scripts/check-quint.ts compare --backend=tlc --models=ChatInput
 ```
 
 `--models` selects comma-separated module names. `--out` selects the JSON
@@ -72,10 +71,45 @@ transition bound and may take substantially longer on large finite models.
 
 ## Source changes and review
 
-After changing implementation behavior, review the corresponding executable model,
-scenarios and source entry points in its family manifest. Conformance campaigns
-capture their actual model and implementation inputs for each invocation. Shared
-behavior stays pinned by `upstream.lock.json`; the vendor checkout is immutable.
+After changing implementation behavior, review the corresponding executable model, its scenarios
+and its source entry points in the family manifest, and run that model's `test/quint-*` file.
+Shared behavior stays pinned by `upstream.lock.json`; the vendor checkout is immutable.
+
+## Implementation refinement
+
+A refinement test runs product code with controlled environmental ports and maps its concrete
+state through an explicit abstraction. Every recorded implementation event must correspond to a
+named model transition or leave the abstract state unchanged; a rejected command must find the
+model transition disabled. The test imports, bundles or compiles the whole product source file.
+A check that cuts a region out of a source file, asserts on source text or restates the model in
+JavaScript is not refinement and does not belong here.
+
+Each adapter has one test file, `test/quint-<name>.test.mjs`, and its driver in
+`specs/quint/refinement/<family>/`. Adapters that cover several models at once run from
+`test/quint-<family>-refinement.test.mjs`. `specs/quint/refinement/check-traces.mjs` evaluates the
+generated checks with the pinned Quint interpreter, compares observations after every checkpoint
+and fails on a mismatch; `test/quint-refinement-harness.test.mjs` includes a deliberately wrong
+observation. A trace has this shape:
+
+```js
+{
+  name: 'two speech windows',
+  init: { name: 'init' },
+  expect: { 's.speaking': false },
+  steps: [
+    { action: { name: 'accept', args: [500] }, expect: { 's.speaking': false } },
+    { action: { name: 'accept', args: [500] }, expect: { 's.speaking': true } }
+  ]
+}
+```
+
+Keys in `expect` name model expressions under the imported namespace; values come from observed
+implementation state. A step with `action: null` checks an event that preserves abstract state.
+An action with `reject: true` also checks that the model transition is disabled. Native adapters
+need a JDK and the pinned org.json jar.
+
+A passing test covers its recorded finite traces. Controlled ports stand in for Android, providers,
+storage and scheduling; they are no evidence of device, provider or installed behavior.
 
 ## Interpretation of results
 
@@ -91,9 +125,9 @@ identity, voice, resident execution, Calendar, Inbox and reset. It exercises
 coordinated account changes and reset and has a canary for omitted coordination.
 The full Cartesian product of all application details is not enumerated.
 
-Implementation correspondence is checked by selected ITF trace adapters and
-existing source tests. It remains a different obligation from proving all
-TypeScript/Java execution refines all models. APK build and audit results,
+Implementation correspondence is checked by the refinement tests above. It
+remains a different obligation from proving all TypeScript/Java execution
+refines all models. APK build and audit results,
 installed emulator behavior, AOSP image boot, provider integrations and device
 acceptance retain their separate gates in the repository.
 
@@ -116,15 +150,6 @@ original design directories and retain their original evidence dates.
 
 ## Registry review
 
-The November 10 registry has 259 models and 1,841 registered scenarios. Its
-per-family model and total scenario floors are checked in `quint-checker.test.mjs`;
-intentional retirements require an explicit review of that baseline. The model
-source lists, implementation adapters and run receipts bind each invocation's
-inputs. The retired coverage hash ledger is not an additional admission gate.
-Historical receipts retain their original source and model set and do not certify
-later additions.
-
-
-## Complementary audit models
-
-The integrated registry also retains the November audit models, witnesses and source symbols. Distinct admission/readback state shapes are registered separately from the current source-correspondence models. Manifest entries state their partial scope; new model execution is not Android, service or device acceptance. The manifests and new run receipts, rather than earlier registry totals, define current coverage.
+`quint-checker.test.mjs` checks per-family model floors and a total scenario floor; an intentional
+retirement requires an explicit review of that baseline. A model listed in a manifest without a
+`test/quint-*` file has model checks only.

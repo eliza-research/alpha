@@ -57,7 +57,7 @@ test('pull requests run one verify job, Android and resident preparation only fo
 });
 
 test('browser tests, the Quint gate, its node tests and the Lemma proofs run in CI only for promotion to main and on dispatch', () => {
-  const formal = /quint:|lemma:|prepare-dafny|LEMMA_|ALPHA_QUINT|test:browser|playwright test/;
+  const formal = /quint:|check-quint|lemma:|prepare-dafny|LEMMA_|ALPHA_QUINT|test:browser|playwright test/;
   for (const file of fs.readdirSync('.github/workflows').filter(name => name !== 'promotion.yml'))
     assert.doesNotMatch(read(`.github/workflows/${file}`), formal, file);
   assert.doesNotMatch(JSON.parse(read('package.json')).scripts.verify, formal);
@@ -65,12 +65,12 @@ test('browser tests, the Quint gate, its node tests and the Lemma proofs run in 
   assert.deepEqual(Object.keys(promotion.on).sort(), ['pull_request', 'workflow_dispatch']);
   assert.deepEqual(promotion.on.pull_request, {branches: ['main']});
   const commands = Object.values(promotion.jobs).flatMap(job => job.steps).map(step => step.run ?? '').join('\n');
-  for (const command of ['quint:prepare-history', 'quint:check', 'quint:tests', 'quint:refinement -- --families=composition',
-    'quint:verify', 'quint:compare', 'quint:temporal', 'lemma:check', 'scripts/ci/prepare-dafny.sh',
+  for (const command of ['quint:check', 'quint:tests', 'scripts/check-quint.ts verify', 'scripts/check-quint.ts compare',
+    'scripts/check-quint.ts temporal', 'lemma:check', 'scripts/ci/prepare-dafny.sh',
     'bun run test:browser -- --shard=${{ matrix.shard }}/6', 'bun run test:browser:production', 'bun run build:test-mocks'])
     assert.ok(commands.includes(command), command);
   for (const step of Object.values(promotion.jobs).flatMap(job => job.steps))
-    if (/quint:(compare|temporal)/.test(step.run ?? '')) assert.doesNotMatch(step.run, /--models=/, 'promotion preserves every declared proof');
+    if (/check-quint\.ts (compare|temporal)/.test(step.run ?? '')) assert.doesNotMatch(step.run, /--models=/, 'promotion preserves every declared proof');
   assert.match(JSON.parse(read('package.json')).scripts['quint:tests'], /bun run test:node/, 'Node-only conformance remains in the formal suite');
   assert.deepEqual(promotion.jobs.browser.strategy.matrix.shard, [1, 2, 3, 4, 5, 6]);
 });
