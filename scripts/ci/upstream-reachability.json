@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
   "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "head": "a8b17349d2ff5f2345504a7bfafc412677118459",
+  "head": "5cce233f5b9b34a97690ac95400b775277dde9a6",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...a8b17349d2ff5f2345504a7bfafc412677118459",
+  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...5cce233f5b9b34a97690ac95400b775277dde9a6",
   "status": "diverged",
-  "aheadBy": 63,
+  "aheadBy": 64,
   "behindBy": 617,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -262,6 +262,10 @@
     {
       "sha": "a8b17349d2ff5f2345504a7bfafc412677118459",
       "subject": "Condense Maps data explanation without repeating recipients"
+    },
+    {
+      "sha": "5cce233f5b9b34a97690ac95400b775277dde9a6",
+      "subject": "Expose selected map geometry for host-native share links"
     }
   ]
 }
