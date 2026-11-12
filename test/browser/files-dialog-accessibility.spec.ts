@@ -10,7 +10,10 @@ for(const theme of ['light','dark'])test(`${theme} Files folder dialog owns keyb
  await expect(input).toBeFocused();
  await expect(menu).toHaveCount(0);
  await input.fill('Do not create');
+ const close=dialog.getByRole('button',{name:'Close',exact:true});
+ await page.keyboard.press('Shift+Tab');await expect(close).toBeFocused();
  await page.keyboard.press('Shift+Tab');await expect(dialog.getByRole('button',{name:'Create',exact:true})).toBeFocused();
+ await page.keyboard.press('Tab');await expect(close).toBeFocused();
  await page.keyboard.press('Tab');await expect(input).toBeFocused();
  await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
  await expect(menu).toBeFocused();
