@@ -39,6 +39,8 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
     for(const source of ['plugins/plugin-native-secure-store/android-nativeonly','plugins/plugin-native-agent/android'])
       cpSync(join(root,'vendor/eliza',source),join(temporary,source),{recursive:true});
     const env={...process.env};
+    // The pinned SDK's resident sign-in tests use this name for the same org.json jar.
+    if (env.ALPHA_JSON_JAR) env.ELIZA_JSON_JAR=env.ALPHA_JSON_JAR;
     delete env.NODE_TEST_CONTEXT;
     // A nested Bun test run, read through its JUnit report (Bun has no TAP reporter).
     const runSuite=(label,minimumTests)=>{
