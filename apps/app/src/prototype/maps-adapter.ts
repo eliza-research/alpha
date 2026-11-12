@@ -249,7 +249,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const emptySearch=view.noResults&&!view.emptyQuery&&!savedMatches.length&&status.map!=='error';
     const snapshot=mapsController?.snapshot();
     const position=snapshot?.position.phase==='ready'?snapshot.position.value?.coordinate:undefined;
-    const locationReady=startupLocationSettled&&snapshot?.position.phase!=='loading';
+    const locationReady=!!plane||(startupLocationSettled&&snapshot?.position.phase!=='loading');
     const places=new Map((view.mode==='origin'?snapshot?.originSearch.value:snapshot?.search.value)?.map(place=>[`place:${place.providerId}:${place.id}`,place.coordinate]));
     for(const saved of snapshot?.saved.value??[])places.set(`saved:${saved.id}`,saved.coordinate);
     const distanceFor=(key:string)=>{const point=places.get(key);return position&&point?guidanceDistance(distanceToRoute(position,[point])):'';};
