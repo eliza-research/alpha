@@ -188,6 +188,8 @@ public final class SignInTestPorts {
         case "/api/v1/api-keys/current":
           if (!method.equals("DELETE"))
             throw new IOException("Expected revoke DELETE");
+          if (scenario.equals("ack-restart") && !("Bearer " + secret(1)).equals(getRequestProperty("Authorization")))
+            throw new IOException("Revocation must authenticate with the replaced key");
           revocations++;
           code = 204;
           break;

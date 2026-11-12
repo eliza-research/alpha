@@ -115,8 +115,9 @@ module IdentitySession {
   action ackWithReceipt(success: bool, retained: bool): bool = all {
     s.activation.phase == "acknowledging", s.activation.receipt,
     s.owner == s.activation.owner, s.activation.ackTries < 3,
-    val phase = if (success) { if (s.activation.oldKey) "revoking-previous" else "authenticated" }
-      else if (s.activation.ackTries == 2) "activation-pending" else "acknowledging"
+    val finished = success or s.activation.ackTries == 2
+    val phase = if (finished and s.activation.oldKey) "revoking-previous"
+      else if (success) "authenticated" else if (finished) "activation-pending" else "acknowledging"
     val current = s.key and s.attemptOwner == s.activation.owner
     val updated = { ...s.activation, phase: phase, acknowledged: success, receipt: not(success) or retained,
       ackTries: s.activation.ackTries + 1,
@@ -128,7 +129,7 @@ module IdentitySession {
       ackTries: if (current) updated.ackTries else s.ackTries }
   }
   action ack(success: bool): bool = ackWithReceipt(success, false)
-  /// Restart keeps durable pending work, restores the stored owner, and drops transient revocation capability.
+  /// Restart drops transient revocation authority and preserves any already-observed server revocation.
   action restart = if (s.owner == 0) {
     s' = { ...s, phase: if (s.pending) "browser" else "idle",
       attemptOwner: if (s.pending) s.attemptOwner else 0,
@@ -140,21 +141,22 @@ module IdentitySession {
     val phase = if (s.activation.receipt) "acknowledging"
       else if (s.activation.acknowledged) "authenticated" else "activation-pending"
     val recovered = { ...s.activation, phase: phase, ackTries: 0, oldKey: false,
-      revoked: false, steward: false, running: s.activation.receipt }
+      steward: false, running: s.activation.receipt }
     s' = if (s.pending) { ...s, phase: "browser", activation: recovered,
       pendingWrite: false, liveIntent: false, cleanupOwner: 0, steward: false, callbackAccepted: false, cancelRequested: false }
     else { ...s, activation: recovered, phase: phase, attemptOwner: s.owner,
       pendingWrite: false, liveIntent: false, cleanupOwner: 0, key: true, receipt: recovered.receipt,
-      acknowledged: recovered.acknowledged, ackTries: 0, oldKey: false, revoked: false,
+      acknowledged: recovered.acknowledged, ackTries: 0, oldKey: false, revoked: recovered.revoked,
       steward: false, callbackAccepted: false }
   }
   action revokePrevious(success: bool): bool = all {
     s.activation.phase == "revoking-previous", s.activation.oldKey,
+    val phase = if (s.activation.acknowledged) "authenticated" else "activation-pending"
     val current = s.key and s.attemptOwner == s.activation.owner
     s' = { ...s,
-      activation: { ...s.activation, phase: "authenticated", oldKey: false, revoked: success,
+      activation: { ...s.activation, phase: phase, oldKey: false, revoked: success,
         running: s.activation.steward },
-      phase: if (current) "authenticated" else s.phase,
+      phase: if (current) phase else s.phase,
       oldKey: if (current) false else s.oldKey,
       revoked: if (current) success else s.revoked }
   }
@@ -224,11 +226,13 @@ module IdentitySession {
   run failedCancelBurnTest = init.then(begin("google")).then(cancelBurnFailed)
     .expect(s.pending and s.cancelRequested and safety).then(restorePending)
     .then(callback(1)).expect(s.pending and not(s.liveIntent or s.callbackAccepted) and safety)
-  run recoveredAckLosesPreviousRevocationTest = init.then(begin("google")).then(callback(1))
+  run pendingAckRevokesPreviousBeforeRestartTest = init.then(begin("google")).then(callback(1))
     .then(exchanged).then(writeReceipt).then(writeKey).then(ack(true)).then(releaseSteward)
     .then(begin("google")).then(callback(2)).then(exchanged).then(writeReceipt).then(writeKey)
-    .then(ack(false)).then(ack(false)).then(ack(false)).then(restart).then(ack(true))
-    .expect(s.phase == "authenticated" and not(s.oldKey or s.revoked) and safety)
+    .then(ack(false)).then(ack(false)).then(ack(false)).then(revokePrevious(true))
+    .expect(s.phase == "activation-pending" and s.receipt and s.revoked and safety)
+    .then(restart).then(ack(true))
+    .expect(s.phase == "authenticated" and not(s.oldKey) and s.revoked and safety)
   run googleReturnTest = init.then(begin("google")).then(callback(0))
     .expect(s.pending).then(callback(1)).expect(not(s.pending))
     .then(exchanged).then(writeReceipt).then(writeKey).then(ack(true)).expect(safety)
