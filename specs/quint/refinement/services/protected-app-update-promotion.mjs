@@ -75,9 +75,12 @@ function checkWorkflows() {
   assert.match(restored.run, /\$EXPECTED_QUALIFICATION/);
   assert.equal(publishing.publish.steps.find(step => step.with?.path === 'qualified-product').with.ref,
     '$' + '{{ needs.admit.outputs.source_commit }}');
-  const reverify = publishing.publish.steps.find(runs('bun run android:verify -- --cloud-voice-evidence='));
+  const reverify = publishing.publish.steps.find(runs('bun run android:verify --'));
   assert.equal(reverify?.['working-directory'], 'qualified-product');
-  assert.equal(reverify.run, 'bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
+  assert.match(reverify.run, /--cloud-voice-evidence="\$RUNNER_TEMP\/qualified-stage\/cloud-voice\.json"/);
+  assert.match(reverify.run, /qualification-summary\.json"[\s\S]*cloud\) arguments\+=\(--runtime-profile=cloud\) ;;\s+native\) ;;/);
+  assert.match(reverify.run, /bun run android:verify -- "\$\{arguments\[@\]\}"/);
+  assert.match(reverify.run, /npm run android:verify -- "\$\{arguments\[@\]\}"/);
   assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'bun scripts/verify-apks.ts');
   ordered(publishing.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
     step => step === reverify, runs("manifest['runtimeProfile'] == summary['runtimeProfile']"),
@@ -130,9 +133,9 @@ function publicFixture(directory, launcherBytes, version) {
           wait: async () => {},
           run(args) {
             if (args[0] === 'api') {
-              assert.deepEqual(args, ['api', 'repos/alphacompute/alpha']);
+              assert.deepEqual(args, ['api', 'repos/eliza-research/alpha']);
               return JSON.stringify({id: 1396333361,
-                full_name: 'alphacompute/alpha', private: false});
+                full_name: 'eliza-research/alpha', private: false});
             }
             if (args[0] !== 'release') assert.fail('Unexpected command: ' + args.join(' '));
             if (args[1] === 'view' && args[2] === LEGACY_APP_UPDATE_TAG) {

@@ -47,6 +47,7 @@ test('the update flow runs one attempt per process, fences a session Android sti
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
   assert.match(result,/PASS fresh HTTPS offer rejects cached withdrawal, change and transport failure before one current commit/);
   assert.match(result,/PASS final offer deadline bounds held network stages and leaves manual recovery available/);
+  assert.match(result,/PASS call changes during final HTTPS defer automatic commit/);
   assert.match(result,/PASS revoked install consent during final HTTPS leaves no commit or pause/);
   assert.match(result,/PASS exact pending installer callback survives process replacement once/);
   assert.match(result,/PASS explicit update permission opens only Alpha Android settings before an offer/);
@@ -99,7 +100,7 @@ test('Alpha stays nonprivileged and reads one configured HTTPS manifest from its
  const url=JSON.parse(readFileSync(join(root,'app.config.json'),'utf8')).updateManifestUrl;
  assert.equal(new URL(url).protocol,'https:');
  // Not releases/latest: any newer release of the repository without the manifest would answer 404 and withdraw a valid offer.
- assert.equal(url,'https://github.com/alphacompute/alpha/releases/download/app-stable-alphacompute/alpha-update-stable.json');
+ assert.equal(url,'https://github.com/eliza-research/alpha/releases/download/app-stable-alphacompute/alpha-update-stable.json');
  // Reads enforce a soft download ceiling rather than interrupting a blocked read.
  assert.ok(plugin.includes('Soft ceiling on one update download'));
  assert.match(readFileSync(join(root,'android/app/product.gradle'),'utf8'),/buildConfigField 'String', 'ALPHA_UPDATE_MANIFEST_URL', "\\"\$\{updateManifestUrl\}\\""/);

@@ -72,11 +72,26 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
-      - name: Select the qualified producer's Node toolchain
-        if: ${{ hashFiles('qualified-product/.nvmrc') != '' }}
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - name: Select the toolchain locked by the qualified producer
+        id: product_toolchain
+        working-directory: qualified-product
+        run: |
+          if test -f bun.lock || test -f bun.lockb; then
+            printf 'manager=bun\nruntime=bun\n' >> "$GITHUB_OUTPUT"
+          elif test -f package-lock.json; then
+            printf 'manager=npm\nruntime=node\n' >> "$GITHUB_OUTPUT"
+          else
+            echo "Qualified producer has no supported dependency lockfile" >&2
+            exit 1
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: hashFiles('qualified-product/.nvmrc') != ''
         with:
           node-version-file: qualified-product/.nvmrc
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.product_toolchain.outputs.runtime == 'node' && hashFiles('qualified-product/.nvmrc') == ''
+        with:
+          node-version: '26.13.0'
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -118,38 +133,43 @@ jobs:
           cp android/release-signer.json qualified-product/android/release-signer.json
       - name: Install locked verifier dependencies without lifecycle scripts
         run: bun install --frozen-lockfile --ignore-scripts
-      # Signed producers keep the lockfile and runtime that built their reviewed APKs.
       - name: Install locked product verifier dependencies without lifecycle scripts
         working-directory: qualified-product
+        env:
+          PRODUCT_PACKAGE_MANAGER: ${{ steps.product_toolchain.outputs.manager }}
         run: |
-          if test -f bun.lock || test -f bun.lockb; then
+          if test "$PRODUCT_PACKAGE_MANAGER" = bun; then
             bun install --frozen-lockfile --ignore-scripts
           else
             npm ci --ignore-scripts
           fi
       - name: Project the exact product's reviewed client sources
         working-directory: qualified-product
-        run: |
-          if test -f bun.lock || test -f bun.lockb; then
-            bun run upstream:prepare-client
-          else
-            npm run upstream:prepare-client
-          fi
+        env:
+          PRODUCT_PACKAGE_MANAGER: ${{ steps.product_toolchain.outputs.manager }}
+        run: '"$PRODUCT_PACKAGE_MANAGER" run upstream:prepare-client'
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
         working-directory: qualified-product
+        env:
+          PRODUCT_PACKAGE_MANAGER: ${{ steps.product_toolchain.outputs.manager }}
+        shell: bash
         run: |
-          if test -f bun.lock || test -f bun.lockb; then
-            bun run android:verify -- --runtime-profile=cloud --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
-          else
-            npm run android:verify -- --runtime-profile=cloud --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
-          fi
+          profile=$(jq -er '.runtimeProfile' "$RUNNER_TEMP/qualified-stage/qualification-summary.json")
+          case "$profile" in
+            native) args=() ;;
+            cloud) args=(--runtime-profile=cloud) ;;
+            *) echo 'Unknown qualified runtime profile' >&2; exit 1 ;;
+          esac
+          "$PRODUCT_PACKAGE_MANAGER" run android:verify -- "${args[@]}" --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
       - name: Require both qualified release rows before publication
         run: |
           python3 - <<'PY'
           import json, os
           from pathlib import Path
-          summary = json.loads((Path(os.environ['RUNNER_TEMP']) / 'qualified-stage/qualification-summary.json').read_text())
-          manifest = json.loads(Path('qualified-product/artifacts/apk-manifest.json').read_text())
+          evidence = Path(os.environ['RUNNER_TEMP']) / 'qualified-stage'
+          summary = json.loads((evidence / 'qualification-summary.json').read_text())
+          manifest_bytes = Path('qualified-product/artifacts/apk-manifest.json').read_bytes()
+          manifest = json.loads(manifest_bytes)
           assert manifest['testMocks'] is False and manifest['runtimeProfile'] == summary['runtimeProfile'] and 'localEmbeddings' not in manifest
           assert manifest['updateChannel']['kind'] == 'public'
           rows = [row for row in manifest['results'] if row['mode'] == 'release']
@@ -158,16 +178,20 @@ jobs:
               assert row['distributable'] is True and row['versionCode'] == summary['versionCode']
               assert row['sha256'] == summary['signedApkSHA256'][row['variant']]
               assert row['cloudVoice']['evidenceSha256'] == summary['voiceEvidenceSHA256']
+          if summary['runtimeProfile'] == 'native' and all(row['packageName'] == 'ai.alphacompute.alphaphone' for row in rows):
+              with (evidence / 'apk-manifest.json').open('xb') as receipt:
+                  receipt.write(manifest_bytes)
           PY
       - name: Publish launcher APK first and anonymously verify the stable pointer
         env:
           GH_TOKEN: ${{ github.token }}
+          PRODUCT_RUNTIME: ${{ steps.product_toolchain.outputs.runtime }}
         working-directory: qualified-product
         run: |
           if test -f scripts/deliver-app-update.mjs; then
-            node scripts/deliver-app-update.mjs --variant launcher --apk-manifest artifacts/apk-manifest.json
+            "$PRODUCT_RUNTIME" scripts/deliver-app-update.mjs --variant launcher --apk-manifest artifacts/apk-manifest.json
           else
-            bun scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
+            "$PRODUCT_RUNTIME" scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -177,4 +201,5 @@ jobs:
           if-no-files-found: warn
           path: |
             ${{ runner.temp }}/qualified-stage/qualification-summary.json
+            ${{ runner.temp }}/qualified-stage/apk-manifest.json
             qualified-product/artifacts/app-update-delivery.json

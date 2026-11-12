@@ -1,7 +1,7 @@
 /**
  * Verify the four APKs of one build and record the result in apk-manifest.json.
  *
- *   bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime]
+ *   bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--signer-api-level=N]
  *
  * Default: the distribution APKs in artifacts/. They must be flag-off
  * (testMocks:false), pass the shared production bundle audit, carry no
@@ -37,7 +37,7 @@ import { createHash } from "node:crypto";
 import { CLOUD_DEPLOYMENT } from "./cloud-deployment-policy.ts";
 import {apkUpdateChannel,validateUpdateChannel} from './update-channel.ts';
 import type {UpdateChannel} from './update-channel.ts';
-import {releaseDistributable} from './release-distributable.ts';
+import {nativeCartesiaBlockers, releaseDistributable} from './release-distributable.ts';
 import {
   auditBundle, distributionProblems, extractWebPayload, parseXmlTree, readBuildFlags, signerDigest, validateApk, verifyOwnerRouteTable,
 } from "./apk.ts";
@@ -53,9 +53,9 @@ import { appLinkFilters, requiredAppLinkProblems, webViewFilterProblems } from "
 import { readVoiceHost, voiceBundleAdmission } from "./voice-host.ts";
 import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, listenerPackage } from "./aosp-listener.ts";
 
-import {cloudVoiceAdmission, cloudVoiceBlockers} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
+import {cloudVoiceAdmission} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
 import { preparePatchedNative, nativePatchReceipt, verifyNativePatchReceipt } from './prepare-patched-native.ts';
-const USAGE = "Usage: bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--cloud-voice-evidence=FILE]";
+const USAGE = "Usage: bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--signer-api-level=N] [--cloud-voice-evidence=FILE]";
 interface RuntimePackaging {
   apk: string;
   runtime: "PACKAGED" | "NOT_PACKAGED";
@@ -99,7 +99,13 @@ const modes = ["debug", "release"] as const;
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 const args = process.argv.slice(2);
 for (const arg of args)
-  if (!["--test-mocks", "--allow-unpackaged-runtime"].includes(arg) && !/^--cloud-voice-evidence=.+$/.test(arg)) throw new Error(`Unknown option ${arg}. ${USAGE}`);
+  if (!["--test-mocks", "--allow-unpackaged-runtime"].includes(arg) && !/^--signer-api-level=[1-9][0-9]*$/.test(arg) && !/^--cloud-voice-evidence=.+$/.test(arg)) throw new Error(`Unknown option ${arg}. ${USAGE}`);
+// Artifact signing admission is explicitly scoped to this Android API. Device
+// install/update independently verify the certificate applicable to the actual device.
+const signerApiArgs = args.filter(arg => arg.startsWith("--signer-api-level="));
+if (signerApiArgs.length > 1) throw new Error("Specify --signer-api-level only once");
+const signerApiLevel = signerApiArgs.length ? Number(signerApiArgs[0].split("=")[1]) : undefined;
+if (signerApiLevel !== undefined && !Number.isSafeInteger(signerApiLevel)) throw new Error("Invalid signer API level");
 const testMocks = args.includes("--test-mocks");
 // The one profile's name in records; a build record naming another profile is refused below.
 const runtimeProfile="native";
@@ -140,7 +146,7 @@ const buildRecord: BuildRecord = JSON.parse(fs.readFileSync(buildRecordFile, "ut
 const updateChannel=validateUpdateChannel(buildRecord?.updateChannel);
 if(updateChannel.kind==='public'&&updateChannel.manifestUrlSha256!==createHash('sha256').update(identity.updateManifestUrl).digest('hex'))throw Error('Public update channel differs from source configuration');
 if(updateChannel.kind==='private-qa'&&(testMocks||allowUnpackaged))throw Error('Private update QA requires a complete packaged build with test mocks off');
-if((buildRecord?.runtimeProfile||"native")!==runtimeProfile||buildRecord?.localEmbeddings!==undefined)throw Error("Build record is not a native-profile build record; rebuild");
+if((buildRecord?.runtimeProfile||"native")!==runtimeProfile||buildRecord?.localEmbeddings!==undefined)throw Error("Build record names a removed runtime profile; rebuild (there is one profile now)");
 if (buildRecord && buildRecord.testMocks !== testMocks)
   throw new Error(`${buildRecordFile} records testMocks=${buildRecord.testMocks}; refusing to verify it as testMocks=${testMocks}`);
 
@@ -205,6 +211,7 @@ for (const variant of variants)
     } catch { runtimeNotices = false; }
     try {
       flags = readBuildFlags(payload.public);
+      if (Object.hasOwn(flags, "runtimeProfile")) problems.push("Packaged web bundle names a removed runtime profile");
       if (flags.testMocks !== testMocks)
         problems.push(`Packaged web bundle has testMocks=${flags.testMocks}; expected ${testMocks}`);
       auditBundle(payload.public, { testMocks });
@@ -221,7 +228,7 @@ for (const variant of variants)
     catch (error) { problems.push(`Owner route table: ${message(error)}`); }
     let signerSha256: string | null = null;
     if (signed) {
-      try { signerSha256 = signerDigest(file); }
+      try { signerSha256 = signerDigest(file, {apiLevel: signerApiLevel}); }
       catch (error) { problems.push(`apksigner verify failed for ${file}: ${message(error)}`); }
     }
     if (problems.length) failures.push(`${file}:\n  - ${problems.join("\n  - ")}`);
@@ -236,7 +243,7 @@ for (const variant of variants)
       versionName: facts.versionName,
       signed,
       signerSha256,
-      signerApiLevel: null,
+      signerApiLevel: signerApiLevel ?? null,
       exportedComponents: facts.exported.map(component => component.name).sort(),
       appLinks: appLinkFilters(xml),
       testMocks: flags?.testMocks ?? null,
@@ -322,11 +329,14 @@ for (const row of release) {
   row.voiceHost = checkedVoiceHost(row.file);
   if (row.voiceHost.differences.length)
     throw new Error(`On-device voice in ${row.file} is not admitted:\n  - ${row.voiceHost.differences.join("\n  - ")}`);
-  if(cloudEvidence)row.cloudVoice=cloudVoiceAdmission(row.sha256,cloudEvidence,cloudEvidenceSha256);
+  const cartesia = cloudEvidenceSha256 === undefined ? undefined : {
+    apkSha256: row.sha256,
+    admission: cloudVoiceAdmission(row.sha256, cloudEvidence, cloudEvidenceSha256),
+  };
+  if (cartesia) row.cloudVoice = cartesia.admission;
   // releaseDistributable requires packaged on-device voice with ASR (voiceHost.packaged and .asr).
   const releaseReady = releaseDistributable({testMocks, signed: row.signed, releaseAdmission: row.releaseAdmission,
-      runtime, runtimeNotices: row.runtimeNotices, voiceHost: row.voiceHost, licenceBlockers: row.licenceBlockers})
-    && (!cloudEvidence || cloudVoiceBlockers(row,'cartesia').length===0);
+      runtime, runtimeNotices: row.runtimeNotices, voiceHost: row.voiceHost, licenceBlockers: row.licenceBlockers, cartesia});
   row.distributable = releaseReady && updateChannel.kind === 'public';
 }
 for (const row of results.filter(row => row.mode === "debug")) {
@@ -343,7 +353,7 @@ function listenerFacts(file: string, mode: ApkMode, signed: boolean) {
     voiceBundle?: {packaged: boolean; abis?: ReturnType<typeof checkListenerSpeechBundle>; problem?: string};
   } = { file, mode, signed, sha256: createHash("sha256").update(fs.readFileSync(file)).digest("hex") };
   if (signed) {
-    try { facts.signerSha256 = signerDigest(file); }
+    try { facts.signerSha256 = signerDigest(file, {apiLevel: signerApiLevel}); }
     catch (error) { facts.permissionProblem = `apksigner verify failed: ${message(error)}`; }
   }
   const dump = execFileSync(tool("aapt"), ["dump", "permissions", file], { encoding: "utf8", env: androidEnv(), maxBuffer: 16 << 20 });
@@ -417,6 +427,8 @@ fs.writeFileSync(
         release: release.every(row => row.signed) ? { signed: true, signerSha256: release[0].signerSha256 } : { signed: false },
         debugSignerSha256: results.find(row => row.mode === "debug")?.signerSha256 ?? null,
         apksigner: apksignerVersion,
+        apiLevel: signerApiLevel ?? null,
+        scope: signerApiLevel === undefined ? "unscoped legacy signer" : "specified Android API; device admission is checked separately",
         descriptor: { file: RELEASE_SIGNER_FILE, signerSha256: releaseSigner.signerSha256, lastReleaseVersionCode: releaseSigner.lastRelease.versionCode },
       },
       mappings,
@@ -434,7 +446,21 @@ fs.writeFileSync(
 console.log(JSON.stringify(results, null, 2));
 const undistributable = release.filter(row => !row.distributable);
 if (undistributable.length)
-  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", updateChannel.kind === "private-qa" && "private QA update channel", !row.runtimeNotices && "notices lack the packaged runtime (run bun scripts/generate-licenses.ts --packaged-runtime after staging)", !row.voiceHost?.packaged && "no on-device voice packaged", row.voiceHost?.packaged && !row.voiceHost.asr && "on-device voice has no ASR", ...(cloudEvidence ? cloudVoiceBlockers(row, "cartesia") : []), ...(row.releaseAdmission?.blockers ?? []), ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
+  console.warn(`Not distributable: ${undistributable.map(row => {
+    const cartesia = cloudEvidenceSha256 === undefined ? [] : nativeCartesiaBlockers(row.sha256, row.cloudVoice);
+    const blockers = [
+      row.runtime !== "PACKAGED" && "no packaged runtime",
+      testMocks && "test-mocks build",
+      updateChannel.kind === "private-qa" && "private QA update channel",
+      !row.runtimeNotices && "notices lack the packaged runtime (run bun scripts/generate-licenses.ts --packaged-runtime after staging)",
+      !row.voiceHost?.packaged && "no on-device voice packaged",
+      row.voiceHost?.packaged && !row.voiceHost.asr && "on-device voice has no ASR",
+      ...cartesia,
+      ...(row.releaseAdmission?.blockers ?? []),
+      ...row.licenceBlockers,
+    ];
+    return `${row.file} (${blockers.filter(Boolean).join(", ")})`;
+  }).join("; ")}`);
 // Licence flags are warnings: recorded per APK above, printed once here, never a failure.
 for (const line of flagLines) console.warn(line);
 const fontItems = new Map(release.flatMap(row => [...row.fontLicenceCheck.items, ...row.fontLicenceCheck.resolved].map(item => [item, row.fontLicenceCheck.blocksDistribution] as const)));

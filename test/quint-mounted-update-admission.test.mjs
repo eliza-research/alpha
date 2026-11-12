@@ -5,7 +5,7 @@ import {checkMountedUpdateAdmission} from '../specs/quint/refinement/application
 
 test('mounted Android updates require the current renderer and exact native activation', {timeout: scaledTimeout(60000)}, async () => {
   const receipt = await checkMountedUpdateAdmission();
-  assert.equal(receipt.traceInputs.length, 10);
+  assert.equal(receipt.traceInputs.length, 12);
   assert.equal(receipt.observedFields.length, 17);
   assert.ok(receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound);
 });

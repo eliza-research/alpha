@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 
-REPOSITORY = 'alphacompute/alpha'
+REPOSITORY = 'eliza-research/alpha'
 REPOSITORY_ID = 1396333361
 LIBRARIES = ('libelizainference.so', 'libelizavoicejni.so', 'libc++_shared.so')
 MAX_ARCHIVE = 128 * 1024 * 1024
