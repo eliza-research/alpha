@@ -1990,14 +1990,7 @@
   
 
   
-  <sc-if value="{{maps.showRec}}">
-    <sc-if value="{{maps.isNav}}">
-      <button aria-label="Recenter" onClick="{{maps.recenter}}" style="position: absolute; right: 16px; bottom: 136px; width: 54px; height: 54px; border-radius: 27px; background: var(--alpha-gray-15); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; z-index: 3; box-shadow: 0 6px 20px rgba(0,0,0,.5)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mapsLoc}}"></path></svg></button>
-    </sc-if>
-    <sc-if value="{{maps.showSearch}}">
-      <button aria-label="Recenter" onClick="{{maps.recenter}}" style="position: absolute; right: 16px; bottom: min({{maps.recBottom}}px, calc(100% - 176px)); width: 50px; height: 50px; border-radius: 25px; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 3; box-shadow: 0 6px 20px var(--shc), 0 0 0 1px var(--line); transition: bottom .45s cubic-bezier(.19,1,.22,1); {{maps.recCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mapsLoc}}"></path></svg></button>
-    </sc-if>
-  </sc-if>
+  <button class="alpha-map-recenter" aria-label="Recenter" title="My location" onClick="{{maps.recenter}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mapsLoc}}"></path></svg></button>
 
   
   <sc-if value="{{maps.isResults}}">
