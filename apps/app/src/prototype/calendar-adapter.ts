@@ -322,6 +322,7 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
     }
     const selected=providerState.events?.find((e:Bag)=>e.id===state.open);
     if(selected?.alphaCalendarId&&out.ev){
+      out.ev.hasActions=true;
       const key=JSON.stringify([selected.id,selected.nativeEvent]);
       if(agentSelectionKey!==key){agentSelectionKey=key;agentSelection=undefined;const token=++agentSelectionEpoch,currentOwner=owner,event=selected.nativeEvent;queueMicrotask(async()=>{try{const request={id:event.id,calendarId:event.calendarId,expected:{title:event.title||'',body:event.body||'',location:event.location||'',begin:event.begin,end:event.end}};let value=await calendar.inspect(request);if(Capacitor.isNativePlatform()&&value.status!=='ready')value=await calendar.inspectDeletion(request);if(owner===currentOwner&&token===agentSelectionEpoch&&api.get('calendar').open===selected.id&&value.status==='ready'){agentSelection={kind:'calendar-event',id:value.eventId||event.id,open:selected.id,revision:value.revision,accountId:event.calendarId,sourceRevision:value.sourceRevision};api.set({nativeAgentRevision:value.revision});}}catch{}});}
       out.ev.close=()=>{agentSelection=undefined;agentSelectionKey='';agentSelectionEpoch++;api.set({open:null,openDay:null,day:calendarReturnDay(Number(state.day||0),state.openDay??state.day??selected.off)});};

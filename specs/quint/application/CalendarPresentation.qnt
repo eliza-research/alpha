@@ -123,6 +123,8 @@ module CalendarPresentation {
     .then(expandChat).then(askDelete).then(back).expect(not(s.deleteSheet) and s.chat == "sheet")
     .then(back).expect(s.chat == "rest" and s.openEvent == 1)
     .then(back).expect(s.openEvent == 0 and s.day == 1 and safety)
+  run localEventActionMenuTest = init.then(request).then(reply(0, 1, false)).then(showEvent(1, 0))
+    .expect(CanEditSelected).then(editForm).expect(s.form == "edit" and safety)
   run staleRangeReplyTest = init.then(request).then(openSearch).then(reply(0, 1, false))
     .expect(not(s.localRows) and not(s.googleRows)).then(request).then(reply(1, 1, true))
     .expect(s.localRows and s.googleRows and s.truncated and safety)

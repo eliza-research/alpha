@@ -447,6 +447,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
       };
       out.ev.reminderReopenable=event.reminderStatus==='completed'&&!event.reminderRecurrence&&!!renderedDecisionTarget;
       out.ev.reminderReopen=()=>reopen('open');out.ev.reminderReopenTomorrow=()=>reopen('tomorrow');
+      out.ev.hasActions=true;
       out.ev.edit=()=>{if(!requireFresh())return;const repeat=event.reminderRecurrence?.rule||'none',target=event.reminderTarget;api.set({form:{...event,repeat,id:event.id,cal:'alpha-reminders',where:'',video:false,who:[],notes:event.reminderBody||'',alphaReminderId:event.alphaReminderId,reminderEditSession:{uncertain:false},reminderEditTarget:target?structuredClone(target):undefined,reminderEditSchedule:[event.off,event.t,repeat,event.alert]}});};
       const renderedTarget=event.reminderTarget?structuredClone(event.reminderTarget):undefined;
       out.ev.del=async()=>{

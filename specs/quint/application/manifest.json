@@ -630,7 +630,8 @@
       "scheduleReturnTest",
       "draftClockAndIdentityTest",
       "failedSaveRetainsFormTest",
-      "editsAfterSubmitPreserveSnapshotTest"
+      "editsAfterSubmitPreserveSnapshotTest",
+      "localEventActionMenuTest"
     ],
     "sources": [
       "apps/app/src/prototype/model.js",
