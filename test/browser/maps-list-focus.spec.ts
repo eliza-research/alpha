@@ -114,7 +114,7 @@ test('place hours have one row per day and its website opens inside Alpha',async
 
 test('saving a named place stays quiet and the saved name remains searchable',async({page})=>{
  await setup(page);const query=page.getByRole('textbox',{name:'Search places',exact:true});
- await query.fill('place');await page.getByRole('button',{name:/^One/}).click();
+ await query.fill('place');await page.locator('[data-alpha-maps-sheet="results"]').getByRole('button',{name:/^One/}).click();
  await page.getByRole('button',{name:'Save',exact:true}).click();
  await page.getByRole('textbox',{name:'Place name',exact:true}).fill('My named place');
  await page.getByRole('button',{name:'Apply place name',exact:true}).click();

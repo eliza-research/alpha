@@ -84,7 +84,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const failed=(kind==='origin'?snapshot?.originSearch:snapshot?.search)?.phase==='error';
     if(!active()||!text.trim()||!failed&&submittedSearch?.kind===kind&&submittedSearch.text===text)return;
     submittedSearch={kind,text};
-    if(kind==='origin')screen.planOrigin();else screen.submit();
+    if(kind==='origin')screen.planOrigin();else screen.searchFor(text);
   };
   const queueSearch=(kind:'place'|'origin',text:string)=>{
     cancelSearch();submittedSearch=undefined;
@@ -259,7 +259,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
           mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;
           const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();
           try{
-            plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>id.startsWith('saved:')?screen.chooseSaved(id.slice(6)):screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}});
+            plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>id.startsWith('saved:')?screen.chooseSaved(id.slice(6)):screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}},point=>{cancelSearch();submittedSearch=undefined;screen.selectPoint(point);});
             mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapReady==='true'?'ready':'loading');});
             mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});
           }catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(current())screen.setMapState('error');});}

@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
   "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "head": "35944100790ad40962d0265e54c846b15c1cefee",
+  "head": "6c87f7c1b03d571db24c77762be5a5fd216c7820",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...35944100790ad40962d0265e54c846b15c1cefee",
+  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...6c87f7c1b03d571db24c77762be5a5fd216c7820",
   "status": "diverged",
-  "aheadBy": 66,
+  "aheadBy": 68,
   "behindBy": 617,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -274,6 +274,14 @@
     {
       "sha": "35944100790ad40962d0265e54c846b15c1cefee",
       "subject": "Keep Maps results and recovery copy free of raw coordinates"
+    },
+    {
+      "sha": "ad8a55495017a6fb80e16ffe5af18d6cf994bb75",
+      "subject": "Select a map point without interrupting zoom gestures"
+    },
+    {
+      "sha": "6c87f7c1b03d571db24c77762be5a5fd216c7820",
+      "subject": "Verify map tap cancellation and the current map copyright"
     }
   ]
 }
