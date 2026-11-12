@@ -63,8 +63,10 @@ export async function checkAutomaticAppUpdateSchedule() {
   async function runPoll(name,sequence){
     let now=0,next=0,wallClock=0,current,api,phase='idle',checkWait,factsWait,installWait;
     let failed=false,inFlight=0,maxInFlight=0,pendingRead=false,manualReply,nextIdentity=0;
+    let modalOpen=false;
     const jobs=new Map(),storage=new Map(),identities=new WeakMap();
     const shell={screen:'home',view:null,voice:'off',typing:false,chat:'input'};
+    const document={querySelector:()=>null,querySelectorAll:()=>modalOpen?[{closest:()=>null}]:[]};
     const input={pending:false,offer,manifestSha256};
     const reply=()=>({manifest:JSON.stringify(input.offer),manifestSha256:input.manifestSha256});
     const cachedOffer=()=>{
@@ -76,10 +78,10 @@ export async function checkAutomaticAppUpdateSchedule() {
     const cachedManual=()=>!!api.parseUpdateManifest(api.savedUpdate().manifest,{versionCode:7,launcher:true,signerSha256:signer});
     const observed={capability:'unread',pending:false,candidate:false,requests:0,cachedOffer:0,attemptedOffer:0,cachedManual:false,
       lastCapability:'unread',lastPending:false,lastCandidate:false,lastCurrent:false,lastIdle:false};
-    const idle=()=>api.automaticUpdateIdle(shell,{busy:false,open:false},false,false);
+    const idle=()=>api.automaticUpdateIdle(shell,{busy:false,open:false},false,false,document);
     const context=vm.createContext({URL,Number,Date:{now:()=>wallClock},Capacitor:{isNativePlatform:()=>true},
       localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
-      document:{querySelector:()=>null},
+      document,
       owner:{S:()=>shell,voiceConversationActive:()=>false},connectionController:{getSnapshot:()=>({busy:false,open:false})},
       updateBusy:'',changed(){},
       device:{
@@ -119,6 +121,7 @@ export async function checkAutomaticAppUpdateSchedule() {
       pending(value){input.pending=value;},invalidOffer(){input.offer={...offer,signerSha256:'6d'.repeat(32)};},
       bind(value){input.manifestSha256=value?manifestSha256:undefined;},
       idle(value){shell.view=value?null:'notes';},
+      modal(open){modalOpen=open;},
       async begin(elapseCacheInterval=true){
         const due=[...jobs].find(([,job])=>job.due<=now);assert.ok(due);jobs.delete(due[0]);
         if(elapseCacheInterval)wallClock+=api.UPDATE_CHECK_INTERVAL_MS;
@@ -171,6 +174,12 @@ export async function checkAutomaticAppUpdateSchedule() {
     f.active(true);await f.begin();await f.check();await f.facts('starting');
     assert.equal(f.requests(),0);assert.equal(f.snapshot().wakeAt,1);
     f.advance(1);await f.begin();await f.check();await f.facts('supported');await f.reply();assert.equal(f.requests(),1);
+  });
+  await runPoll('renderer_modal_after_manifest_defers_install_until_closed',async f=>{
+    f.active(true);await f.begin();await f.check();f.modal(true);await f.facts('supported');
+    assert.equal(f.requests(),0);assert.equal(f.snapshot().wakeAt,1);
+    f.modal(false);f.advance(1);await f.begin();await f.check();await f.facts('supported');await f.reply();
+    assert.equal(f.requests(),1);
   });
   await runPoll('renderer_install_starting_then_supported',async f=>{
     f.active(true);await f.begin();await f.check();await f.facts('supported');await f.reply('starting');

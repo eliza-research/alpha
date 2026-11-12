@@ -103,9 +103,13 @@ export function shadeRowCustodyFixture() {
       const {shade, screen} = shell.state;
       const identity = shell.alphaNoticeVisit;
       if (!visits.has(identity)) visits.set(identity, ++lastVisit);
+      // The model tracks exact producer keys for row actions. Agent context receives a separate opaque revision.
+      const selected = shell.alphaNoticeSelection;
+      assert.deepEqual(copy(shell.notificationSelection()), selected ?
+        {kind: 'notification', id: selected.id, revision: selected.revision, accountId: 'own'} : undefined);
       return {shade, screen, visit: visits.get(identity), epoch: shell.alphaNoticeEpoch, hidden: document.hidden, live: shell.alphaNoticesLive,
         items: copy(shell.alphaNotices.map(({id, revision, source, canOpen, clearable}) => ({id, revision, source, canOpen, clearable}))),
-        selection: shell.alphaNoticeSelection ? copy(shell.alphaNoticeSelection) : null,
+        selection: selected ? copy(selected) : null,
         renderedSelection: JSON.parse(shell.alphaNoticeSelectionRendered),
         busy: !!shell.alphaNoticesBusy, error: !!shell.alphaNoticeError, calendarError: !!shell.alphaCalendarAlertError,
         reads: requests.length, renders: shell.renders,

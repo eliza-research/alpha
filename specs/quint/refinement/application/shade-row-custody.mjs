@@ -11,9 +11,8 @@ const emptyKey = {id: '', revision: '', source: ''};
 const row = ({id, revision, source, canOpen, clearable}) => ({id, revision, source, canOpen, clearable});
 const selection = selected => {
   if (!selected) return emptyKey;
-  const {id, revision, source, ...context} = selected;
-  assert.deepEqual(context, {kind: 'notification', accountId: 'own'});
-  return {id, revision, source: source ?? 'own'};
+  const {id, revision, source} = selected;
+  return {id, revision, source};
 };
 const diagnostics = new Map([
   ['Changed', 'action-error'],
