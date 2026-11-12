@@ -45,7 +45,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const module = views.maps; if (!module) return () => {};
   const original = { render: module.render, back: module.back, onLeave: module.onLeave, reply: module.reply, suggestions: module.suggestions, ongoing: module.ongoing };
   let api: Bag | undefined, disposed=false, renders=0;
-  let startupLocationChecked=false,locationGeneration=0;
+  let startupLocationChecked=false,locationGeneration=0,saveNamedPlace=false;
   let planeBasemap:MapBasemap|undefined, plane: MapPlane | undefined, planeElement: HTMLElement | undefined;
   let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined;
   let mapCopyright='';
@@ -239,6 +239,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
     const savedMatches=view.mode!=='origin'&&view.query.trim()?view.saved.filter(item=>item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())):[];
     const isResults=(view.mode==='results'||view.mode==='origin')&&!view.emptyQuery&&(view.hasResults||savedMatches.length>0);
+    const routineStatus=['Finding location…','Place saved on this device.','Place removed from saved.','Saved place renamed.','Name updated. Tap Save to keep this place.'].includes(statusText);
     const emptySearch=view.noResults&&!view.emptyQuery&&!savedMatches.length&&status.map!=='error';
     const snapshot=mapsController?.snapshot();
     const position=snapshot?.position.phase==='ready'?snapshot.position.value?.coordinate:undefined;
@@ -258,14 +259,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
           mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;
           const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();
           try{
-            plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}});
+            plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>id.startsWith('saved:')?screen.chooseSaved(id.slice(6)):screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}});
             mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapReady==='true'?'ready':'loading');});
             mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});
           }catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(current())screen.setMapState('error');});}
         }
-        plane?.update(view.map.selected,view.map.route,view.map.overlay);
+        plane?.update(view.map.selected,view.map.route,{...view.map.overlay,pins:[...(view.map.overlay.pins??[]),...savedMatches.map(item=>({id:`saved:${item.id}`,label:item.label,coordinate:item.coordinate}))]});
       },
-      native: true, nativeStatusVisible:(status.visible&&statusText!=='Finding location…')||emptySearch, nativeStatus: emptySearch?'No places':statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
+      native: true, nativeStatusVisible:(status.visible&&!routineStatus)||emptySearch, nativeStatus: emptySearch?'No places':statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
       nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy, nativeLocation: () => screen.locate(),
       nativeLocationState:status.location,nativeMapState:status.map,nativeMapStatus:status.mapText,
       nativeLocationLabel:status.locationLabel,nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,
@@ -301,15 +302,15 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
         canDir: place.canDirections, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
-        close: () => screen.closePlace(), save: () => screen.toggleSaved(),
+        close: () => {saveNamedPlace=false;screen.closePlace();}, save: () => {if(place.saved)screen.toggleSaved();else {saveNamedPlace=true;screen.startRename();}},
         dirs: () => screen.openDirections(),
         share: () => screen.sharePlace(),
-        nativeName: place.name, nativeEditing: place.editingName,
+        nativeName: place.name, nativeEditing: place.editingName, nativeNameAction:saveNamedPlace?'Save':'Done',
         nativeTitleRole: 'button', nativeTitleTabIndex: 0, nativeTitleLabel: 'Rename place',
-        nativeEdit: () => screen.startRename(),
-        nativeEditKey: (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); screen.startRename(); } },
+        nativeEdit: () => {saveNamedPlace=false;screen.startRename();},
+        nativeEditKey: (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); saveNamedPlace=false;screen.startRename(); } },
         nativeRename: (event: Event) => screen.rename((event.target as HTMLInputElement).value),
-        nativeApplyName: () => screen.applyName(),
+        nativeApplyName: () => {screen.applyName();const updated=screen.view().place;if(saveNamedPlace&&updated&&!updated.editingName){saveNamedPlace=false;if(!updated.saved)screen.toggleSaved();}},
       };
     }
     const directions = view.directions;

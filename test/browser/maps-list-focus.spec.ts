@@ -110,3 +110,17 @@ test('place hours have one row per day and its website opens inside Alpha',async
  await page.getByRole('button',{name:'Website',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>document.documentElement.dataset.activeView)).toBe('browser');
 });
+
+
+test('saving a named place stays quiet and the saved name remains searchable',async({page})=>{
+ await setup(page);const query=page.getByRole('textbox',{name:'Search places',exact:true});
+ await query.fill('place');await page.getByRole('button',{name:/^One/}).click();
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('textbox',{name:'Place name',exact:true}).fill('My named place');
+ await page.getByRole('button',{name:'Apply place name',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Remove from saved',exact:true})).toBeVisible();
+ await expect(page.locator('[data-alpha-maps-status]')).toHaveCount(0);
+ await page.getByRole('button',{name:'Close place',exact:true}).click();
+ await query.fill('My named');
+ await expect(page.getByRole('button',{name:'My named place',exact:true})).toBeVisible();
+});
