@@ -727,11 +727,13 @@ public final class AlphaDevicePlugin extends Plugin {
  /** The installer stops waiting even if opening, redirecting or closing the connection is blocked. */
  private static byte[] readFinalUpdateManifest()throws Exception{
   long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(UPDATE_MANIFEST_RECHECK_MILLIS);
-  var result=updateOfferReader.submit(()->{
+  var result=new java.util.concurrent.FutureTask<>(()->{
    checkOfferDeadline(deadline);
    return readUpdateManifest(openUpdateConnection(BuildConfig.ALPHA_UPDATE_MANIFEST_URL,
     UPDATE_MANIFEST_RECHECK_MILLIS,UPDATE_MANIFEST_RECHECK_MILLIS),deadline);
   });
+  if(!PluginWorkers.submit(updateOfferReader,result,()->result.cancel(false)))
+   throw new java.io.IOException("Update offer reader unavailable");
   try{
    byte[] manifest=result.get(Math.max(0,deadline-System.nanoTime()),java.util.concurrent.TimeUnit.NANOSECONDS);
    checkOfferDeadline(deadline);
