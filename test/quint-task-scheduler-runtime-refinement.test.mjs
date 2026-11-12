@@ -9,8 +9,9 @@ import {runtimeSchedulerFixture} from '../specs/quint/refinement/services/task-s
 const model = 'TaskSchedulerRuntime';
 const modelPath = `specs/quint/services/${model}.qnt`;
 const action = (name, ...args) => ({name, args});
-const sources = ['fixture.mjs', 'runtime-fixture.mjs', 'runtime.mjs']
-  .map(name => fileURLToPath(new URL(`./${name}`, import.meta.url))).concat(modelPath);
+const sources = ['fixture.mjs', 'runtime-fixture.mjs']
+  .map(name => `specs/quint/refinement/services/task-scheduler/${name}`)
+  .concat(fileURLToPath(import.meta.url), modelPath);
 
 async function runTaskSchedulerRuntimeRefinement(extraSources = []) {
   const loaded = await loadSchedulerSource([...sources, ...extraSources]);
