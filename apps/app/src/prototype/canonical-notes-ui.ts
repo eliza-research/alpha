@@ -6,10 +6,13 @@ import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
 import {agentPendingText,agentAvailabilityNotice} from '../runtime/connection-ui';
 import {DailyApps} from '../daily';
+import {noteAudio} from '../runtime/note-audio';
+import {withAudioDeletionLock} from '../runtime/note-audio-lock';
 import {CanonicalNotesController,type NotesPhase} from './canonical-notes-controller';
 import {CanonicalNotesEditor} from './canonical-notes-editor';
 import type {CanonicalNoteSaveIntent} from './note-recorder';
 type Bag=Record<string,any>;
+type TrashEraseReview={canonical:true;id:string;title:string;revision:number;operationId?:string};
 const UNAVAILABLE='Notes is unavailable for this agent connection. Check Settings › Agent connection.';
 /** Device-local handles (a recording, a picked document, a web source) belong to Older notes adapters, never to an agent record's view. */
 const LOCAL_HANDLES=['audio','documentSource','webSource'];
@@ -48,11 +51,13 @@ export class CanonicalNotesUi {
  private defaultTitle:{token:string;title:string}|null=null;
  private openValue:string|null=null;
  private blankCreationValue:string|null=null;
- private trashValue:{id:string;title:string;kind:string}[]=[];
+ private trashValue:{id:string;title:string;kind:string;eraseOperation?:string}[]=[];
+ private trashEraseBusy=false;
+ private trashEraseError='';
  constructor(port:AppRecordPort,private readonly hooks:{paint():void;review():void;committed?(id:string):void;dropped?(title:string):void;preview?():Bag[];remember?(rows:Bag[],revision:number):void}){
   this.controller=new CanonicalNotesController(port,{
    snapshot:(snapshot,reason)=>{
-    this.trashValue=(snapshot.trash??[]).map(entry=>({id:entry.note.id,title:entry.note.title,kind:entry.note.format?.kind??'text'}));
+    this.trashValue=(snapshot.trash??[]).map(entry=>({id:entry.note.id,title:entry.note.title,kind:entry.note.format?.kind??'text',eraseOperation:entry.eraseOperation}));
     this.baseRows=snapshot.notes.map(note=>this.row(note,snapshot.revision));
     this.hooks.remember?.(this.baseRows,snapshot.revision);
     this.editor?.reconcile();
@@ -112,7 +117,7 @@ export class CanonicalNotesUi {
   if(this.phase==='review')return this.editor.draft?.version?'Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.':this.failure==='read'&&this.reviewPending==='read'?'Notes could not be opened. Check the agent connection, then reload.':'That change could not be confirmed. Reload Notes to see what was saved.';
   return this.controller.revision===null&&!this.list.length?'Loading notes…':'';
  }
- renderState(previous:Bag):Bag{return {...previous,...DEVICE_ONLY_STATE,list:this.list,open:this.open,storageStatus:this.status(),blankCreationId:this.blankCreationValue};}
+ renderState(previous:Bag):Bag{return {...previous,...DEVICE_ONLY_STATE,trashConfirm:previous.trashConfirm?.canonical===true?previous.trashConfirm:null,list:this.list,open:this.open,storageStatus:this.status(),blankCreationId:this.blankCreationValue};}
  async refresh():Promise<void>{await this.controller.refresh();}
  /** A connection change ends this binding; an unsaved edit is not carried over, so the owner is told. */
  retire():void{const draft=this.editor.draft;if(draft?.version)this.hooks.dropped?.(draft.title||'Untitled');this.editor.close();this.controller.retire();this.baseRows=[];this.rowsValue=[];this.openValue=null;this.trashValue=[];}
@@ -255,20 +260,92 @@ export class CanonicalNotesUi {
    await this.update(id,{body});
   }catch{api.toast('Speech recognition is unavailable.');}
  }
- /** Canonical behaviour on top of Alpha's Notes view: the restore-only Trash as the Recently deleted
-  * folder, review and reload, and the Notes recorder saving one voice record with an owned opaque audio attachment. */
+ private async eraseTrash(review:TrashEraseReview,api:Bag):Promise<void>{
+  if(this.trashEraseBusy||this.controller.pending||!this.controller.current)return;
+  const active=()=>this.controller.current&&api.isActive()&&!document.hidden&&api.get('notes').folder==='deleted';
+  const checkActive=()=>{if(!active())throw Error('Notes view changed.');};
+  const archived=()=>this.controller.snapshot?.trash?.find(entry=>entry.note.id===review.id);
+  const entry=archived();
+  if(!entry||entry.eraseOperation!==review.operationId||(!review.operationId&&this.controller.revision!==review.revision)){
+   api.set({trashConfirm:null});this.trashEraseError='This note changed. Open it again to review.';this.hooks.paint();return;
+  }
+  this.trashEraseBusy=true;this.trashEraseError='';this.hooks.paint();
+  try{
+   const format=entry.note.format;
+   const audio=format?.kind==='voice'?voiceAudio(format.data):undefined;
+   if(format?.kind==='voice'&&Object.hasOwn(format.data,'audio')&&!audio)throw Error('Recording identity changed.');
+   const operationId=review.operationId??crypto.randomUUID();
+   if(!audio){
+    checkActive();
+    if(review.operationId)throw Error('Recording identity changed.');
+    await this.controller.eraseArchived({phase:'begin',id:review.id,expectedRevision:review.revision,operationId});
+   }else{
+    await withAudioDeletionLock(async()=>{
+     checkActive();
+     const input={audioId:audio.audioId,noteId:review.id,operationId};
+     const describe=async()=>{
+      const recording=await noteAudio.describe({audioId:input.audioId});
+      checkActive();
+      if(recording.audioId!==input.audioId||recording.noteId!==input.noteId)throw Error('Recording owner changed.');
+      return recording;
+     };
+     const recording=await describe();
+     if(!review.operationId){
+      if(recording.deletedAt)throw Error('Recording is already in another deletion.');
+      await this.controller.eraseArchived({phase:'begin',id:review.id,expectedRevision:review.revision,operationId,audioId:input.audioId});
+     }
+     const checkClaim=()=>{checkActive();if(archived()?.eraseOperation!==operationId)throw Error('The deletion claim changed.');};
+     const readReceipt=async()=>{
+      const receipt=await noteAudio.deletionStatus(input);
+      checkClaim();
+      if(receipt.audioId!==input.audioId||receipt.noteId!==input.noteId||receipt.operationId!==operationId)
+       throw Error('Recording receipt changed.');
+      return receipt.status;
+     };
+     let status=await readReceipt();
+     if(status==='unknown'){
+      if(recording.deletedAt)throw Error('Recording is already in another deletion.');
+      checkClaim();
+      await noteAudio.remove(input);
+      status=await readReceipt();
+     }
+     if(status==='removed'){
+      checkClaim();
+      await noteAudio.purge(input);
+      status=await readReceipt();
+     }
+     if(status!=='purged')throw Error('Recording deletion is unconfirmed.');
+     checkClaim();
+     await this.controller.eraseArchived({phase:'finish',id:review.id,audioId:input.audioId,operationId,status});
+    });
+   }
+  }catch{
+   if(active())this.trashEraseError='Deletion was not confirmed. Reopen Recently deleted to check.';
+  }finally{
+   this.trashEraseBusy=false;
+   if(active()){api.set({trashConfirm:null,trashAsk:null});this.hooks.paint();}
+  }
+ }
+ /** The canonical Trash uses the same bottom sheets as other Notes actions. */
  decorate(view:Bag,api:Bag,state:Bag):Bag{
-  const rows=this.controller.current?this.trashValue:[],ready=this.controller.revision!==null,busy=this.controller.pending,open=this.open,saved=!!open&&this.controller.hasViewNote(open);
+  const rows=this.controller.current?this.trashValue:[],ready=this.controller.revision!==null,busy=this.controller.pending||this.trashEraseBusy,open=this.open,saved=!!open&&this.controller.hasViewNote(open);
   const trashOpen=state.folder==='deleted';
   const ask=state.trashAsk as Bag|null,asked=ask&&trashOpen?rows.find(row=>row.id===ask.id):undefined;
+  const confirm=trashOpen&&state.trashConfirm?.canonical===true?state.trashConfirm as TrashEraseReview:null;
   const restore=(id:string)=>{api.set({trashAsk:null});void this.editor.restore(id);};
   const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,selectionBusy:busy||!ready,loadingNotes:!ready,
    canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard draft and reload':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
-   trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
-   trashRows:rows.map(row=>{const title=row.title||'Untitled';return {id:row.id,title,label:title,preview:'',left:'',disabled:busy,restore:()=>restore(row.id),ask:()=>api.set({trashAsk:{id:row.id,title}})};}),
-   trashAskOpen:!!asked,trashAskTitle:asked?ask!.title:'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked.id);},trashAskDelete:()=>{},
-   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current){api.set({folder:'deleted',filter:null,folderSheet:null,sheet:null,q:null,menu:null,selectingNotes:false,selectedNotes:[]});void this.controller.refresh().catch(()=>{});}});},
-   closeTrash:()=>api.set({folder:null,trashAsk:null}),emptyTrash:()=>{},trashConfirmGo:()=>{},trashCancel:()=>api.set({trashConfirm:null,trashFull:null})};
+   trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:!!asked,trashCanEmpty:false,trashError:this.trashEraseError,trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:!!confirm,trashCovered:!!confirm||!!asked,trashFullOpen:false,
+   trashConfirmTitle:'Delete permanently?',trashConfirmText:confirm?.title??'',trashConfirmLabel:'Delete permanently',trashConfirmText2:'Delete',
+   trashRows:rows.map(row=>{const title=row.title||'Untitled';return {id:row.id,title,label:title,preview:row.eraseOperation?'Deletion pending':'',left:'',disabled:busy,restore:row.eraseOperation?undefined:()=>restore(row.id),ask:()=>api.set({trashAsk:{id:row.id,title}})};}),
+   trashAskOpen:!!asked,trashAskTitle:asked?ask!.title:'',trashAskClose:()=>api.set({trashAsk:null}),trashAskCanRecover:!!asked&&!asked.eraseOperation,trashAskDeleteLabel:asked?.eraseOperation?'Finish deleting':'Delete now',
+   trashAskRecover:()=>{if(asked&&!asked.eraseOperation)restore(asked.id);},trashAskDelete:()=>{
+    const revision=this.controller.revision;
+    if(!asked||busy||revision===null)return;
+    api.set({trashAsk:null,trashConfirm:{canonical:true,id:asked.id,title:asked.title||'Untitled',revision,...(asked.eraseOperation?{operationId:asked.eraseOperation}:{})}});
+   },
+   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current){this.trashEraseError='';api.set({folder:'deleted',filter:null,folderSheet:null,sheet:null,q:null,menu:null,selectingNotes:false,selectedNotes:[]});void this.controller.refresh().catch(()=>{});}});},
+   closeTrash:()=>api.set({folder:null,trashAsk:null,trashConfirm:null}),emptyTrash:()=>{},trashConfirmGo:()=>{if(confirm)void this.eraseTrash(confirm,api);},trashCancel:()=>api.set({trashConfirm:null,trashFull:null})};
   if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),
    toCal:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'reminder',api);}:undefined,
    toEvent:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'event',api);}:undefined,

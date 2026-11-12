@@ -2376,7 +2376,7 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; padding: 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" aria-label="Back to notes" onClick="{{notes.closeTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <h1 class="serif" style="margin: 0 0 0 4px; font-size: 28px; flex-grow: 1; letter-spacing: -.01em">Recently deleted</h1>
-        <sc-if value="{{notes.trashCanErase}}"><button class="tap" aria-label="Empty Recently deleted" disabled="{{notes.trashEmptyDisabled}}" onClick="{{notes.emptyTrash}}" style="min-height: 44px; padding: 0 14px; border-radius: 22px; color: var(--fg); font-size: 15px; font-weight: 600">Empty</button></sc-if>
+        <sc-if value="{{notes.trashCanEmpty}}"><button class="tap" aria-label="Empty Recently deleted" disabled="{{notes.trashEmptyDisabled}}" onClick="{{notes.emptyTrash}}" style="min-height: 44px; padding: 0 14px; border-radius: 22px; color: var(--fg); font-size: 15px; font-weight: 600">Empty</button></sc-if>
       </div>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 0 16px 190px; box-sizing: border-box">
         <sc-if value="{{notes.trashError}}"><div role="status" style="margin: 0 8px 12px; font-size: 13px; color: var(--mut)">{{notes.trashError}}</div></sc-if>
@@ -2401,8 +2401,8 @@
       <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
       <div class="serif" style="font-size: 26px; line-height: 1.15; overflow-wrap: anywhere">{{notes.trashAskTitle}}</div>
       <div style="display: flex; gap: 10px; margin-top: 24px">
-        <sc-if value="{{notes.trashCanErase}}"><button disabled="{{notes.trashBusy}}" onClick="{{notes.trashAskDelete}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--s2); color: var(--fg)">Delete now</button></sc-if>
-        <button disabled="{{notes.trashBusy}}" onClick="{{notes.trashAskRecover}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--fg); color: var(--bg)">Recover</button>
+        <sc-if value="{{notes.trashCanErase}}"><button disabled="{{notes.trashBusy}}" onClick="{{notes.trashAskDelete}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--s2); color: var(--fg)">{{notes.trashAskDeleteLabel}}</button></sc-if>
+        <sc-if value="{{notes.trashAskCanRecover}}"><button disabled="{{notes.trashBusy}}" onClick="{{notes.trashAskRecover}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--fg); color: var(--bg)">Recover</button></sc-if>
       </div>
     </div>
     </div>

@@ -51,18 +51,20 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.length)).toBe(0);
  await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
- // The agent's restore-only Trash is the Recently deleted folder: no retention line, no Empty, no Delete now.
+ // Canonical Trash supports per-note review and recovery.
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
  await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
  await expect(trash.getByRole('button',{name:'Empty Recently deleted',exact:true})).toHaveCount(0);
  await trash.getByRole('button',{name:'Canonical browser note',exact:true}).click();
  const ask=page.getByRole('dialog',{name:'Canonical browser note'});
- await expect(ask.getByRole('button',{name:'Delete now',exact:true})).toHaveCount(0);
+ await expect(ask.getByRole('button',{name:'Delete now',exact:true})).toBeVisible();
  await ask.getByRole('button',{name:'Recover',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.length)).toBe(1);
  const after=(await snapshot(page)).notes[0];expect(after.id).toBe(before.id);expect(after.body).toBe('\nUpdated exact text.');expect((await snapshot(page)).trash).toEqual([]);
- // The last item recovered: the folder closes and the chip goes.
- await expect(trash).toHaveCount(0);await expect(page.getByRole('button',{name:'Recently deleted',exact:true})).toHaveCount(0);
+ // Recovery retains the current screen until Back, including when the folder is empty.
+ await expect(trash.getByRole('button',{name:'Canonical browser note',exact:true})).toHaveCount(0);
+ await trash.getByRole('button',{name:'Back to notes',exact:true}).click();
  await page.getByRole('button',{name:'Open Canonical browser note',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Updated exact text.');
  const requests=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests);
@@ -72,6 +74,95 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
  expect(requests.every((r:any)=>['/api/notes/state','/api/views/notes/interact'].includes(r.path))).toBe(true);expect(requests.filter((r:any)=>r.path==='/api/notes/state').length).toBeGreaterThanOrEqual(2);
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
+
+test('canonical Notes confirms permanent delete and keeps the other archived note',async({page})=>{
+ const {foreign,errors}=await canonicalNotesFixture(page);
+ await page.evaluate(()=>{
+  const fixture=(window as any).canonicalNotesFixture;
+  const at=new Date().toISOString();
+  fixture.state={revision:1,notes:[],trash:['Delete fixture','Keep fixture'].map((title,index)=>({
+   deletedAt:at,note:{id:index?'keep-fixture':'delete-fixture',title,body:'Exact test text',color:'yellow',createdAt:at,updatedAt:at},
+  }))};
+ });
+ await openCanonicalNotes(page);
+ const openErase=async()=>{
+  const trash=page.locator('[data-alpha-subview="notes-trash"]');
+  await trash.getByRole('button',{name:'Delete fixture',exact:true}).click();
+  await page.getByRole('dialog',{name:'Delete fixture'}).getByRole('button',{name:'Delete now',exact:true}).click();
+  const confirmation=page.getByRole('dialog',{name:'Delete permanently?'});
+  await expect(confirmation).toBeVisible();
+  return confirmation;
+ };
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
+ await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ let confirmation=await openErase();
+ await confirmation.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(confirmation).toHaveCount(0);
+ expect((await snapshot(page)).trash).toHaveLength(2);
+ const requests=()=>page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((request:any)=>request.path==='/api/notes/trash/erase'));
+ expect(await requests()).toHaveLength(0);
+
+ confirmation=await openErase();
+ await confirmation.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expect.poll(()=>snapshot(page).then(s=>s.trash.map((entry:any)=>entry.note.id))).toEqual(['keep-fixture']);
+ await expect(page.locator('[data-alpha-subview="notes-trash"]').getByRole('button',{name:'Keep fixture',exact:true})).toBeVisible();
+ expect(await requests()).toMatchObject([{method:'POST',body:{phase:'begin',id:'delete-fixture',expectedRevision:1}}]);
+ expect(foreign).toEqual([]);
+ expect(errors).toEqual([]);
+});
+
+test('canonical Notes resumes an interrupted recording erase from the actual browser receipt',async({page})=>{
+ await canonicalNotesFixture(page);
+ const id='recording-fixture',audioId='owned-recording-fixture';
+ await page.evaluate(async({id,audioId})=>{
+  const fixture=(window as any).canonicalNotesFixture;
+  const at=new Date().toISOString();
+  const note={id,title:'Recording fixture',body:'',color:'yellow',createdAt:at,updatedAt:at,
+   format:{kind:'voice',data:{recordingId:audioId,audio:{audioId,durationMs:200}}}};
+  fixture.state={revision:1,notes:[],trash:[{note,deletedAt:at}]};
+  const {retainAudio}=await import('/src/browser/note-audio-store.ts');
+  await retainAudio(audioId,id,'Fixture transcript',{blob:new Blob([new Uint8Array([1,2,3,4])],{type:'audio/wav'}),durationMs:200});
+  const {BrowserVoice}=await import('/src/browser/voice.ts');
+  const remove=BrowserVoice.prototype.remove;
+  fixture.removeCalls=0;
+  BrowserVoice.prototype.remove=async function(input){
+   fixture.removeCalls++;
+   await remove.call(this,input);
+   throw Error('Fixture dropped the recording removal reply');
+  };
+ },{id,audioId});
+ await openCanonicalNotes(page);
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
+ await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ const trash=page.locator('[data-alpha-subview="notes-trash"]');
+ const row=trash.getByRole('button',{name:'Recording fixture',exact:true});
+ const action=async(name:string)=>{
+  await row.click();
+  await page.getByRole('dialog',{name:'Recording fixture'}).getByRole('button',{name,exact:true}).click();
+  await page.getByRole('dialog',{name:'Delete permanently?'}).getByRole('button',{name:'Delete permanently',exact:true}).click();
+ };
+ await action('Delete now');
+ await expect(trash.getByText('Deletion was not confirmed. Reopen Recently deleted to check.',{exact:true})).toBeVisible();
+ const pending=(await snapshot(page)).trash[0];
+ expect(pending.note.id).toBe(id);
+ expect(typeof pending.eraseOperation).toBe('string');
+ await expect(row).toBeEnabled();
+ await action('Finish deleting');
+ await expect.poll(()=>snapshot(page).then(s=>s.trash)).toEqual([]);
+ const proof=await page.evaluate(async({audioId})=>{
+  const fixture=(window as any).canonicalNotesFixture;
+  const {audioRecord}=await import('/src/browser/note-audio-store.ts');
+  const row=await audioRecord(audioId,true);
+  return {removedCalls:fixture.removeCalls,bytes:row.blob.size,transcript:row.transcript,
+   phases:fixture.requests.filter((r:any)=>r.path==='/api/notes/trash/erase').map((r:any)=>r.body)};
+ },{audioId});
+ expect(proof).toMatchObject({removedCalls:1,bytes:0,transcript:'',phases:[
+  {phase:'begin',id,audioId,operationId:pending.eraseOperation},
+  {phase:'finish',id,audioId,operationId:pending.eraseOperation,status:'purged'},
+ ]});
+});
+
+
 
 test('Stop saves canonical audio locally and Generate transcript later uses its retained recording only on request',async({page})=>{
  const {foreign,errors}=await canonicalNotesFixture(page);await openCanonicalNotes(page);

@@ -217,7 +217,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
  };
  notes.render=(state:Bag,api:Bag)=>{
   const view=render(state,api),trash=api.notesTrash as Bag|undefined;
-  view.trashAvailable=!!trash;view.trashCanErase=true;
+  view.trashAvailable=!!trash;view.trashCanErase=true;view.trashCanEmpty=true;view.trashAskCanRecover=true;view.trashAskDeleteLabel='Delete now';
   if(!trash)return view;
   // Notes opened: purge due entries. Navigation resets this flag, so every open checks again.
   if(!state.trashChecked){queueMicrotask(()=>{api.set({trashChecked:true});void trash.maintain();});}

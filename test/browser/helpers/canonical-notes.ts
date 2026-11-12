@@ -36,6 +36,20 @@ export async function canonicalNotesFixture(page:Page,{path='/',notes=[],failRea
    if(path.startsWith('/api/lifeops/calendar')){f.otherRequests.push({path,method});throw Error('Calendar is outside this closed Notes fixture');}
    f.requests.push({path,method,body:structuredClone(body)});
    if(path==='/api/notes/state'&&method==='GET'){if(f.failReads)throw Error('Closed canonical fixture read failure');return {success:true,data:structuredClone(f.state)};}
+   if(path==='/api/notes/trash/erase'&&method==='POST'){
+    const index=f.state.trash.findIndex((entry:any)=>entry.note.id===body.id);
+    if(index<0)throw Error('Canonical fixture erase target missing');
+    const entry=f.state.trash[index];
+    if(body.phase==='begin'){
+     if(body.expectedRevision!==f.state.revision||entry.eraseOperation)throw Error('Canonical fixture erase review changed');
+     if(body.audioId)entry.eraseOperation=body.operationId;
+     else f.state.trash.splice(index,1);
+    }else if(body.phase==='finish'&&body.status==='purged'&&body.operationId===entry.eraseOperation){
+     f.state.trash.splice(index,1);
+    }else throw Error('Canonical fixture erase phase changed');
+    f.state.revision++;
+    return {success:true,data:structuredClone(f.state)};
+   }
    if(path!=='/api/views/notes/interact'||method!=='POST')throw Error('Unexpected canonical Notes fixture request');
    if(f.fail)throw Error('Closed canonical fixture save failure');
    const {capability,params={}}=body;let note:any;const now=new Date().toISOString();

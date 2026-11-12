@@ -8,11 +8,11 @@ export const OWNER_ROUTE_TABLE = {
   unsafe: "[\\\\#\\t\\n\\u000B\\f\\r \\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]",
   groups: {
     records: {
-      prefixes: ["/api/notes/state", "/api/views/notes/interact", "/api/lifeops/calendar"],
+      prefixes: ["/api/notes/state", "/api/notes/trash/erase", "/api/views/notes/interact", "/api/lifeops/calendar"],
       id: "^[A-Za-z0-9][A-Za-z0-9._:@+_-]{0,511}$",
       routes: [
         {methods: ["GET"], paths: ["/api/notes/state"]},
-        {methods: ["POST"], paths: ["/api/views/notes/interact"]},
+        {methods: ["POST"], paths: ["/api/views/notes/interact", "/api/notes/trash/erase"]},
         {methods: ["POST"], paths: ["/api/lifeops/calendar/events"], query: []},
         {methods: ["GET", "POST"], paths: ["/api/lifeops/calendar/sync-control"], query: []},
         {methods: ["GET"], paths: ["/api/lifeops/calendar/links"], query: ["view"]},

@@ -42,6 +42,7 @@ import { connectionController } from '../runtime/connection-ui';
 import { workflowReplyText } from '../runtime/action-message-presentation';
 import { NoteRecorderSession, addSavedNoteTranscript, formatRecordingClock, type CanonicalNoteSaveIntent, type SavedNoteAudio } from './note-recorder';
 import { createNoteRecorderDriver } from '../runtime/note-recorder-driver';
+import { noteAudio } from '../runtime/note-audio';
 import { setNotesRecorderControl, type NotesRecordStart } from './notes-recorder-control';
 const voiceServiceName = () => connectionController.getSnapshot().residentInference==='direct'?'Cartesia':cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().cloudAccount?.environment ?? connectionController.getSnapshot().signIn?.environment ?? 'production');
 // Reading a note aloud sends only that note's text, never recordings or replies, so Notes names it.
@@ -62,17 +63,6 @@ const deviceVoice = registerPlugin<{
   getRecordingMetrics(input: { recordingId: string }): Promise<{ recordingId: string; peak: number; rms?: number }>;
 }>('AlphaVoiceCloud');
 const appSettings = registerPlugin<{ openSettings(input: { page: 'privacy' }): Promise<unknown> }>('AlphaDevice');
-
-type SavedAudio = { audioId: string; noteId: string; durationMs: number; transcript: string };
-const noteAudio = registerPlugin<{
-  play(input: { audioId: string }): Promise<void>; stop(): Promise<void>;
-  state(): Promise<{ playing: boolean; audioId?: string; positionMs: number }>;
-  describe(input:{audioId:string}):Promise<SavedAudio & {deletedAt?:number}>;
-  remove(input: { audioId: string; noteId: string; operationId:string }): Promise<unknown>;
-  deletionStatus(input:{audioId:string;noteId:string;operationId:string}):Promise<{audioId:string;noteId:string;operationId:string;status:string}>;
-  restore(input: { audioId: string; noteId: string; operationId:string }): Promise<unknown>;
-  purge(input: { audioId: string; noteId: string; operationId:string }): Promise<{audioId:string;noteId:string;operationId:string;status:string}>;
-}>('AlphaNoteAudio');
 
 /** The passage Read aloud speaks: title, then body or checklist items. */
 function noteSpeechText(note: Bag | undefined): string {
