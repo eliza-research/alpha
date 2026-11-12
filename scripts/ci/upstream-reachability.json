@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "1cb9c5378c975d08082d528af454b9c9b931a430",
   "baseCommit": "1cb9c5378c975d08082d528af454b9c9b931a430",
-  "head": "f70e188037f48a22fdebb08859c01f110322fc9f",
+  "head": "973f79bad75dbce787ea8101279724ee178fd2c1",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...f70e188037f48a22fdebb08859c01f110322fc9f",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...973f79bad75dbce787ea8101279724ee178fd2c1",
   "status": "diverged",
-  "aheadBy": 49,
+  "aheadBy": 51,
   "behindBy": 616,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -206,7 +206,14 @@
     {
       "sha": "f70e188037f48a22fdebb08859c01f110322fc9f",
       "subject": "test(scheduling): bind owner timezone model to runtime cases"
+    },
+    {
+      "sha": "9fc6adbb5e3e5c9dc50adf77541fef0e7106abf0",
+      "subject": "fix(lifeops): generate morning summaries through the configured model"
+    },
+    {
+      "sha": "973f79bad75dbce787ea8101279724ee178fd2c1",
+      "subject": "test(lifeops): verify summary generation and persistence outcomes"
     }
-  ],
-  "pullRequests": []
+  ]
 }
