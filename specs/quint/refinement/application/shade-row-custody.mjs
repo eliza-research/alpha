@@ -12,8 +12,9 @@ const row = ({id, revision, source, canOpen, clearable}) => ({id, revision, sour
 const selection = selected => {
   if (!selected) return emptyKey;
   const {id, revision, source, ...context} = selected;
-  assert.deepEqual(context, {kind: 'notification', accountId: 'own'});
-  return {id, revision, source: source ?? 'own'};
+  assert.deepEqual(context, {}, 'raw row custody contains no expanded agent context');
+  assert.equal(source, 'own', 'only the exact own row may remain selected');
+  return {id, revision, source};
 };
 const diagnostics = new Map([
   ['Changed', 'action-error'],
