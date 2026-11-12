@@ -17,5 +17,5 @@ test('the native connected grant opens the same removal review as the account pi
  assert.match(nativeDelegation,/if \(valid\(\)\) onReviewRemoval\(grantId\)/);
  assert.match(picker,/onReviewRemoval=\{grantId => void removeAccess\(\{ grantId \}\)\}/);
  assert.equal(nativeDelegation.match(/client\.delegation\("revoke"/g)?.length,1,'only pending disconnect retries call revoke here');
- assert.match(nativeDelegation,/client\.delegation\("revoke",\{grantId:g\.grantId,confirmed:true\},signal\)/);
+ assert.match(nativeDelegation,/client\.delegation\("revoke", \{grantId: id, confirmed: true\}, signal\)/);
 });

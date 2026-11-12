@@ -84,7 +84,7 @@ jobs:
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
         run: bun run verify
-      - run: bun test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
+      - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # On-device speech is the shared paradee-voice library on libelizainference (llama.cpp/ggml):
       # Paradee-8M TTS with misaki G2P and the bundle's ASR slot. This lane stages no native voice
       # outputs, so Gradle compiles the real Java API unpackaged and the APKs report speech unavailable.

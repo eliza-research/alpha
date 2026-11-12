@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { createServer } from 'node:net';
+import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
 
 test('all registered scenarios need an actual successful execution record', () => {
@@ -77,7 +80,7 @@ test('only a silent native checker fault gets one retained retry', async () => {
   }
 });
 
-test('runner records backend routing, unexpected exceptions and unfinished results', () => {
+test('runner records backend routing, unexpected exceptions and unfinished results', async () => {
   const root = mkdtempSync(join(tmpdir(), 'alpha-quint-runner-'));
   const write = (path, contents) => {
     const target = join(root, path);
@@ -118,9 +121,43 @@ test('runner records backend routing, unexpected exceptions and unfinished resul
       assert.equal(result.status, 0, result.stderr);
       const proof = readJson(join(root, 'verify.json'));
       assert.equal(proof.passed, true);
+      assert.equal(proof.jobs, 1);
       assert.equal(proof.backend, override.length ? 'apalache' : 'mixed');
       assert.deepEqual(proof.results.map(row => [row.model, row.backend, row.output.trim()]),
         [['Fixture', 'apalache', '--backend=apalache'], ['Routed', override.length ? 'apalache' : 'tlc', override[0] ?? '--backend=tlc']]);
+    }
+
+    const parallelProof = spawnSync(process.execPath, ['scripts/check-quint.ts', 'verify', '--jobs=2'],
+      {cwd: root, encoding: 'utf8', timeout: 10000});
+    assert.equal(parallelProof.status, 1);
+    assert.match(parallelProof.stderr, /one job per server endpoint/);
+
+    if (availableParallelism() >= 2) {
+      write('node_modules/@informalsystems/quint/dist/src/cli.js', `
+        const {existsSync, writeFileSync} = require('node:fs');
+        const name = require('node:path').basename(process.argv[3]);
+        if (name === 'Routed.qnt') {
+          writeFileSync('routed-started', '');
+          console.log(name);
+        } else {
+          const timer = setInterval(() => {
+            if (existsSync('routed-started')) {
+              clearInterval(timer);
+              clearTimeout(deadline);
+              console.log(name);
+            }
+          }, 10);
+          const deadline = setTimeout(() => process.exit(1), 4000);
+        }
+      `);
+      const parallel = spawnSync(process.execPath, ['scripts/check-quint.ts', 'typecheck', '--out=parallel.json'],
+        {cwd: root, encoding: 'utf8', timeout: 10000, env: {...process.env, ALPHA_QUINT_JOBS: '2'}});
+      assert.equal(parallel.status, 0, parallel.stderr);
+      const evidence = readJson(join(root, 'parallel.json'));
+      assert.equal(evidence.jobs, 2);
+      assert.deepEqual(evidence.results.map(row => [row.model, row.phase, row.passed]),
+        [['Fixture', 'typecheck', true], ['Routed', 'typecheck', true]]);
+      assert.deepEqual(evidence.finalInputErrors, []);
     }
 
     write('node_modules/@informalsystems/quint/dist/src/cli.js', 'setTimeout(() => {}, 60000);');
@@ -129,6 +166,44 @@ test('runner records backend routing, unexpected exceptions and unfinished resul
     const unfinished = readJson(join(root, 'interrupted.json'));
     assert.equal(unfinished.passed, false);
     assert.equal(unfinished.status, 'running');
+
+    if (process.platform !== 'win32') {
+      write('node_modules/@informalsystems/quint/dist/src/cli.js', `
+        const command = process.argv[2];
+        const name = require('node:path').basename(process.argv[3]);
+        if (command === 'typecheck' || name === 'CounterexampleCanary.qnt') {
+          require('node:net').createConnection(process.env.ALPHA_QUINT_TEST_SOCKET);
+        } else if (command === 'test') {
+          console.log('ok exampleTest passed 1 test(s)');
+        }
+      `);
+      for (const [command, expectedChildren] of [['typecheck', Math.min(2, availableParallelism())], ['check', 1]]) {
+        const socketPath = join(root, `${command}.sock`);
+        const sockets = [];
+        const server = createServer(socket => {
+          sockets.push(socket);
+          socket.resume();
+        });
+        server.listen(socketPath);
+        await once(server, 'listening');
+        const runner = spawn(process.execPath, ['scripts/check-quint.ts', command, '--jobs=2', '--out=interrupted.json'], {
+          cwd: root, stdio: 'ignore', env: {...process.env, ALPHA_QUINT_TEST_SOCKET: socketPath},
+        });
+        const signal = AbortSignal.timeout(10000);
+        try {
+          while (sockets.length < expectedChildren) await delay(20, undefined, {signal});
+          const exited = once(runner, 'exit', {signal});
+          runner.kill('SIGTERM');
+          assert.deepEqual(await exited, [130, null]);
+          while (sockets.some(socket => !socket.destroyed)) await delay(20, undefined, {signal});
+          assert.equal(readJson(join(root, 'interrupted.json')).status, 'running');
+        } finally {
+          runner.kill('SIGKILL');
+          for (const socket of sockets) socket.destroy();
+          server.close();
+        }
+      }
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -39,6 +39,11 @@ if(!process.argv.includes('--source-only')){
  try{actual=execFileSync(bun,['--version'],{cwd:directory,encoding:'utf8',env:preparedSourceEnv(process.env,installEnv)}).trim();}
  catch{throw Error(`Cannot run selected Bun ${JSON.stringify(bun)}. This source requires Bun ${expected}. Install that version and set ALPHA_BUN to its absolute executable, or put it on PATH.`);}
  if(actual!==expected)throw Error(`Selected Bun ${JSON.stringify(bun)} is ${actual}; this source requires Bun ${expected}. Set ALPHA_BUN to the absolute Bun ${expected} executable, or put that version on PATH.`);
+ // The install's postinstall and turbo builds call `node`; see preparedSourceEnv.
+ try {
+  const version=execFileSync('node',['-p','process.versions.bun ? "" : process.versions.node'],{cwd:directory,env:preparedSourceEnv(process.env,installEnv),encoding:'utf8',timeout:5_000}).trim();
+  if(!version)throw Error('Bun node alias');
+ } catch {throw Error('The pinned elizaOS source builds with Node.js (its package.json engines.node). Put genuine Node.js on PATH before installing; Alpha itself runs on Bun.');}
  run(bun,['install','--frozen-lockfile'],directory,installEnv);
  verifySource(directory,lock.commit);
 }

@@ -28,7 +28,7 @@ public final class GoogleBrowserReturnClaimTraces extends CloudSignInChainTest {
   owner = live ? new Attempt(REQUEST) : null;
   waiter = live ? new PluginCall() : null;
   if (live) {
-   owner.google = owner.browserLaunched = true;
+   owner.google = owner.browserLaunched = owner.browserInHostTask = true;
    owner.browserState = original.state;
    owner.pendingRecord = original.serialize();
    owner.credentialGuard = reserveCredentialCommit();
@@ -90,7 +90,7 @@ public final class GoogleBrowserReturnClaimTraces extends CloudSignInChainTest {
    check(label != null, "every actual worker is labeled");
    work.put(label);
   }
-  for (Runnable task : main.queue) {
+  for (Runnable task : main.delayed) {
    String label = graceLabels.get(task);
    check(label != null, "every actual grace timer is labeled");
    grace.put(label);
@@ -135,7 +135,7 @@ public final class GoogleBrowserReturnClaimTraces extends CloudSignInChainTest {
     case "pause" -> handleOnPause();
     case "resume" -> handleOnResume();
     case "runWorker" -> queued.remove().run();
-    case "runGrace" -> main.queue.remove().run();
+    case "runGrace" -> main.delayed.remove().run();
     case "receive" -> capture(arg);
     case "cancelScope" -> {
      boolean matching = Boolean.parseBoolean(arg);

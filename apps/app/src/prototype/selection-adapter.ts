@@ -46,7 +46,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   let epoch = 0;
   let current: Selection | undefined;
   let selectedApi: Bag | undefined;
-  let restoreAttempted = false;
+  let restoreAttempted = false, restoringPicker = false;
   let pdfBusySelection: string | undefined;
   let pdfRequest = 0;
   let renameBusy = false;
@@ -57,6 +57,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     if(element){element.controls=true;if(element instanceof HTMLVideoElement)element.playsInline=true;}
   };
   const marker = '__native_selected_document';
+  const rememberedPicker = (id:string) => filesIndex.list().some(row=>row.selectionId===id&&row.kind==='selected'&&row.status==='ready');
   let closeQuestion:(()=>void)|undefined;
   const release = (id: string) => { void DailyApps.forgetSelected({ selectionId: id }).catch(() => selectedApi?.toast('Reopen Files')); };
   /** Closing keeps a Recent selection's grant so Recent can reopen it; Forget
@@ -132,7 +133,8 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       // Keep Recent on the new name: same row, or the replacement capability when the provider issued one.
       const old=filesIndex.list().find(row=>row.selectionId===selected.result.selectionId);
       if(old&&response.selectionId){if(old.selectionId!==response.selectionId)filesIndex.remove(old.key);for(const evicted of filesIndex.record({kind:old.kind,...(old.treeId?{treeId:old.treeId}:{}),name:response.name||'Selected document',mimeType:response.mimeType||'application/octet-stream',selectionId:response.selectionId}))if(evicted!==response.selectionId)release(evicted);}
-      if(response.selectionId)filesIndex.setOpen(response.selectionId);
+      if(response.selectionId&&old?.kind==='selected'&&rememberedPicker(response.selectionId))filesIndex.setOpen(response.selectionId);
+      else if(filesIndex.open()===selected.result.selectionId)filesIndex.setOpen(null);
       current={...selected,result:response,pdf:undefined,renames:(selected.renames||0)+1};api.set({renaming:false});publish();refresh();
       if(response.mimeType==='application/pdf')await pdfPage(selected.pdf?.page || 0,api);
     } catch {if(current === selected)api.toast('Unconfirmed');}
@@ -144,9 +146,25 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     const render = definition.render;
     definition.render = (st: Bag, api: Bag) => {
       const data = render(st, api);
-      if(module === 'files' && api.active && !restoreAttempted && Capacitor.isNativePlatform()) {
-        restoreAttempted = true; const requestedEpoch = epoch;
-        const openId = filesIndex.open(); if (openId) void DailyApps.describeSelected({ selectionId: openId }).then(result => {if(epoch === requestedEpoch && !current && result.status === 'selected')void accept('files',result,api);}).catch(()=>{});
+      if(module === 'files') {
+        const browse = api.isActive()&&!document.hidden&&!st.open&&!st.folder;
+        if(!browse)restoringPicker=false;
+        else if(!restoreAttempted&&Capacitor.isNativePlatform()) {
+          restoreAttempted=true;
+          const requestedEpoch=epoch,openId=filesIndex.open();
+          if(openId&&!current){
+            // Earlier renderers also saved transient Files-browser selections here.
+            if(!rememberedPicker(openId))filesIndex.setOpen(null);
+            else {
+              restoringPicker=true;
+              void DailyApps.describeSelected({selectionId:openId}).then(result=>{
+                if(!restoringPicker||epoch!==requestedEpoch||current||!api.isActive()||document.hidden||api.get('files').open||api.get('files').folder||filesIndex.open()!==openId||!rememberedPicker(openId))return;
+                if(result.status==='selected'&&result.selectionId===openId&&result.action==='files')void accept('files',result,api,{kind:'selected'});
+                else if(result.status==='unavailable')filesIndex.setOpen(null);
+              }).catch(()=>{}).finally(()=>{restoringPicker=false;});
+            }
+          }
+        }
       }
       if (st.open !== marker || !current) return data;
       const selected = current;
@@ -204,6 +222,10 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       }
       return data;
     };
+    if(module==='files') {
+      const leave=definition.onLeave;
+      definition.onLeave=(...args:unknown[])=>{restoringPicker=false;return leave?.(...args);};
+    }
     const back = definition.back;
     definition.back = (st: Bag, api: Bag) => { if (st.open === marker) { clear(); api.set({ open: null }); return true; } return back?.(st, api); };
   }
@@ -212,7 +234,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     if (result.status !== 'selected' || !result.selectionId) return;
     clear();
     if (recent) for (const evicted of filesIndex.record({ ...recent, name: result.name || 'Selected document', mimeType: result.mimeType || 'application/octet-stream', selectionId: result.selectionId })) if (evicted !== result.selectionId) release(evicted);
-    filesIndex.setOpen(result.selectionId);
+    if(recent&&recent.kind==='selected'&&rememberedPicker(result.selectionId))filesIndex.setOpen(result.selectionId);
     const requestEpoch = epoch;
     current = { result, status: 'Reading selected document…', epoch: requestEpoch };
     publish();

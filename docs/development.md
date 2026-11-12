@@ -73,6 +73,43 @@ requests. Its default URL is `http://127.0.0.1:5318`.
 resident profiles live under `~/.local/share/alphaphone/`. Existing accounts,
 credentials and histories are not copied or reset.
 
+### Standalone Cloud (development)
+
+Distributed builds use the Cloud in `scripts/cloud-deployment-policy.ts` (Eliza Cloud
+today). The product's own Cloud is being prepared; see `docs/standalone-cloud-plan.md`.
+
+```sh
+bun run cloud:local -- prepare                              # export the pinned upstream source and install it (slow, once per pin)
+ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun run cloud:local -- start   # Steward, Cloud API and a TLS front door on https://127.0.0.1:8787
+ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun run cloud:local -- check   # email-code sign-in, credential, account, entitlement, revocation
+```
+
+The local Cloud runs from the pinned `vendor/eliza` source with Alpha's own tenant,
+client registration, entitlement key and service documents. It lives in
+`~/.cache/alphaphone-local-cloud` (`--dir` or `ALPHA_LOCAL_CLOUD_DIR` to change) and
+never contacts a deployed Cloud. `check` fails if any answer names an Eliza Cloud
+host. A pass is a local source-build result only, not a deployed Cloud, an APK or a
+device result.
+
+`ALPHA_CLOUD_DEPLOYMENT_FILE=<file.json>` points the build and operator tools at a
+candidate Cloud (the same `production` and `staging` rows as the policy). Run
+`bun scripts/cloud-deployment.ts` with it set to regenerate the authorities. A
+candidate build has its own credential namespace, and the production bundle audit
+refuses it.
+
+`cloud/` holds the product Cloud's data: `policy.example.json` (the same rows the app
+is built with) and `resources.example.json` (the operator's Cloudflare ids). There is
+no route code here.
+
+```sh
+bun run cloud:worker -- check --policy cloud/policy.example.json --resources cloud/resources.example.json \
+  --upstream <upstream checkout with packages/cloud/deploy> --out <dir>
+```
+
+This renders the Worker configuration and bundles it with `wrangler deploy --dry-run`.
+Nothing is deployed, and it needs an upstream revision that carries the deployment
+tool, which is not merged upstream yet.
+
 ## Android builds
 
 ```sh
@@ -164,7 +201,8 @@ reads `app-stable`. Publication keeps each package on its own release and
 checks retained versions on both. Android may require installation confirmation.
 New builds use the live `eliza-research/alpha` URL. Previously issued
 `eliza-research/alphaphone` GitHub release URLs use its redirect.
-Protected release jobs check the immutable repository and owner IDs. The
+Protected release jobs check the immutable repository and owner IDs and bind
+dispatches to the reviewed commit on `main`. The
 release owner applies the reviewed workflow reference allowlist in
 [`scripts/ci/private-artifact-identity.json`](../scripts/ci/private-artifact-identity.json)
 to the existing Workload Identity Federation provider before protected signing
@@ -528,12 +566,15 @@ tracks the overall release gate. A successful host test or model does not close
 these release and device gates. Alpha consumes the reviewed rejected-download
 retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) and the
 reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255)
-and the Maps opening view from [eliza#39408](https://github.com/elizaOS/eliza/pull/39408)
-at `c518127a025ab173874af9c7d304f26b25213b0d`, a commit on upstream develop. The
-native engine gitlink is unchanged; three recorded producer inputs changed only
-in their version string. No native build or qualification was run at this pin.
-Earlier APK, voice and device evidence does not qualify this pin; rebuild and
-qualify the exact product inputs before OS enrollment.
+and the Maps opening view from [eliza#39408](https://github.com/elizaOS/eliza/pull/39408).
+The current pin includes [native Android sign-in recovery and renewal](https://github.com/elizaOS/eliza/pull/39445)
+and [reproducible native browser resource generation](https://github.com/elizaOS/eliza/pull/39450).
+It also includes the [selected-tab permission](https://github.com/elizaOS/eliza/pull/39423),
+[prepared speech](https://github.com/elizaOS/eliza/pull/39424), [download publication](https://github.com/elizaOS/eliza/pull/39425),
+[held update offer](https://github.com/elizaOS/eliza/pull/39440) and [updater scratch storage](https://github.com/elizaOS/eliza/pull/39446) changes
+at `9e87d1ce947018c9ee201527b74798387c7bf694` on upstream develop. The native engine
+gitlink and recorded embedding producer inputs match the previous pin. Rebuild
+and qualify the exact product inputs before OS enrollment.
 
 The protected [preserving OS OTA signing workflow](../.github/workflows/release-os-ota-signing.yml)
 signs only an admitted OTA package with the existing release key. Its committed

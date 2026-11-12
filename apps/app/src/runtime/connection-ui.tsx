@@ -192,7 +192,7 @@ export interface ConnectionSnapshot {
  */
 export type SignInView =
   /** `email`/`phone` refill the chooser after an attempt that cannot continue, so nothing is retyped. */
-  | { step: 'choose'; environment: CloudEnvironment; email?: string; phone?: string }
+  | { step: 'choose'; environment: CloudEnvironment; email?: string; phone?: string; sendAfter?: Partial<Record<'email' | 'phone', number>> }
   | { step: 'google'; environment: CloudEnvironment }
   /** `stale`: the code expired or ran out of attempts; only Resend continues. */
   | { step: 'code'; environment: CloudEnvironment; email: string; phone?: string; attemptId: string; expiresAt: number; resendAt: number; stale?: true }
@@ -718,6 +718,28 @@ async function inAppSignInMethods(environment: CloudEnvironment, signal: AbortSi
 function signInFailed(environment: CloudEnvironment, keepStep = false, prefill: {email?: string; phone?: string} = {}) {
   if (!keepStep) update({ signIn: { step: 'choose', environment, ...(prefill.phone ? {phone: prefill.phone} : prefill.email ? {email: prefill.email} : {}) } });
 }
+/** Apply the host's method-specific send deadline to the same live screen. */
+async function sendSignInCode(view: SignInView, method: 'email' | 'phone', address: string, signal: AbortSignal) {
+  const client = signInClient(view.environment);
+  const contact = method === 'phone' ? { phone: address } : { email: address };
+  try {
+    const started = method === 'phone' ? await client.startPhoneSignIn(address, signal) : await client.startEmailSignIn(address, signal);
+    signal.throwIfAborted();
+    if (state.signIn === view) update({ signIn: { step: 'code', environment: view.environment, email: '', ...contact, ...started }, message: '' });
+  } catch (error) {
+    signal.throwIfAborted();
+    if (state.signIn !== view) return;
+    const deadline = error instanceof CloudSignInError ? error.resendAt : undefined;
+    if (view.step === 'code') {
+      if (deadline && deadline > view.resendAt) update({ signIn: { ...view, resendAt: deadline } });
+    } else if (view.step === 'choose') {
+      const previous = view.sendAfter;
+      const sendAfter = deadline ? { ...previous, [method]: Math.max(previous?.[method] ?? 0, deadline) } : previous;
+      update({ signIn: { step: 'choose', environment: view.environment, ...contact, ...(sendAfter ? { sendAfter } : {}) } });
+    }
+    throw error;
+  }
+}
 /** The provider authenticated only the first factor; keep the credential and agent unchanged. */
 function showGoogleMfa(outcome: Extract<CloudSignInGoogleOutcome, { status: 'mfa' }>) {
   update({ open: true, signIn: { step: 'mfa', environment: outcome.environment, attemptId: outcome.attemptId, method: outcome.method, expiresAt: outcome.expiresAt },
@@ -1107,7 +1129,7 @@ function rebindResident() {
 /** A native sign-in return that arrived while another step was running; handled once it ends. */
 let queuedSignInReturn: unknown = null;
 /** A return without a sign-in result that arrived during a step or before startup settled. */
-let queuedSignInIncomplete: { restarted: boolean; code?: 'storage'; epoch?: number; signIn?: typeof state.signIn } | null = null;
+let queuedSignInIncomplete: { restarted: boolean; code?: 'storage' | 'activation-expired'; epoch?: number; signIn?: typeof state.signIn } | null = null;
 function runQueuedSignInReturn() {
   if (queuedSignInReturn !== null && !operation) { const value = queuedSignInReturn; queuedSignInReturn = null; void connectionController.signInReturned(value); }
   if (queuedSignInIncomplete && !operation && state.startupResolved) {
@@ -1115,8 +1137,12 @@ function runQueuedSignInReturn() {
     if (notice.epoch === undefined || notice.epoch === epoch && notice.signIn === state.signIn) showSignInIncomplete(notice.restarted, notice.code);
   }
 }
-function showSignInIncomplete(restarted: boolean, code?: 'storage') {
-  update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: code === 'storage' ? signInFailureMessage(code) : restarted ? 'Sign in again' : signInFailureMessage('app-link-unverified') });
+function showSignInIncomplete(restarted: boolean, code?: 'storage' | 'activation-expired') {
+  const signIn = state.signIn;
+  const error = code ? signInFailureMessage(code) : restarted ? 'Sign in again' : signInFailureMessage('app-link-unverified');
+  // Activation expiry concerns a stored key. An independent sign-in can already be waiting for its code.
+  update({ open: true, message: '', error, ...(signIn && code !== 'activation-expired'
+    ? { signIn: { step: 'choose' as const, environment: signIn.environment } } : {}) });
 }
 function runQueuedResidentRebind() { if (residentRebindQueue?.pending && residentCloudFlow()) void residentRebindQueue.resume(rebindResident, residentRebindBlocked)?.catch(() => {}); }
 async function remoteIdentity(remote: RemoteProtocol, signal: AbortSignal) {
@@ -2997,22 +3023,13 @@ export const connectionController = {
     const view = state.signIn; if (!view) return;
     const address = email.trim();
     if (!validSignInEmail(address)) { update({ error: signInFailureMessage('invalid-email') }); return; }
-    await work('Sending your code…', async signal => {
-      const started = await signInClient(view.environment).startEmailSignIn(address, signal).catch(error => { signal.throwIfAborted(); throw error; });
-      signal.throwIfAborted();
-      update({ signIn: { step: 'code', environment: view.environment, email: address, ...started }, message: '' });
-    });
-    if (state.error && state.signIn?.step !== 'code') update({ signIn: { step: 'choose', environment: view.environment, email: address } });
+    await work('Sending your code…', signal => sendSignInCode(view, 'email', address, signal));
   },
   async signInPhone(phone: string) {
     const view = state.signIn; if (!view || !cloudSignInPhone || !inAppPhone) return;
     const number = phone.trim();
     if (!validSignInPhone(number)) { update({ error: signInFailureMessage('invalid-phone') }); return; }
-    await work('Sending your code…', async signal => {
-      const started = await signInClient(view.environment).startPhoneSignIn(number, signal);
-      update({ signIn: { step: 'code', environment: view.environment, email: '', phone: number, ...started }, message: '' });
-    });
-    if (state.error && state.signIn?.step !== 'code') update({ signIn: { step: 'choose', environment: view.environment, phone: number } });
+    await work('Sending your code…', signal => sendSignInCode(view, 'phone', number, signal));
   },
   async resendSignInCode() { const view = state.signIn; if (view?.step === 'code') { if (view.phone) await connectionController.signInPhone(view.phone); else await connectionController.signInEmail(view.email); } },
   /** Verifies the emailed code, or the second verification Cloud asked for. */
@@ -3042,10 +3059,10 @@ export const connectionController = {
         // Only native verification failures retire the attempt. Once authenticated, resident
         // startup failures must not reopen sign-in over the stored key and permission setup.
         const code = error instanceof CloudSignInError ? error.code : null;
-        if (code === 'invalid-code') signInFailed(view.environment, true);
-        // An expired or exhausted code keeps the address on screen with a new code ready to send.
-        else if (view.step === 'code' && (code === 'expired' || code === 'attempts-exhausted')) {
-          update({ signIn: { ...view, resendAt: 0, stale: true } });
+        if (error instanceof CloudSignInError && (error.attemptKept || code === 'invalid-code')) throw error;
+        // An expired or exhausted code can be replaced after the host’s send deadline.
+        if (view.step === 'code' && (code === 'expired' || code === 'attempts-exhausted')) {
+          update({ signIn: { ...view, stale: true } });
           if (code === 'expired') throw new CodeExpiredError();
         }
         else signInFailed(view.environment, false, view.step === 'code' ? (view.phone ? { phone: view.phone } : { email: view.email }) : { email: view.email });
@@ -3086,15 +3103,15 @@ export const connectionController = {
    */
   signInIncomplete(value: unknown) {
     const code = value && typeof value === 'object' ? (value as { code?: unknown }).code : undefined;
-    if (code !== 'app-link-unverified' && code !== 'storage') return;
+    if (code !== 'app-link-unverified' && code !== 'storage' && code !== 'activation-expired') return;
     // Retained across a process restart, the event can land while startup runs; it waits for startup
     // to settle so the start does not clear it, and then says the restart is why.
     if (operation || !state.startupResolved) {
       queuedSignInIncomplete = { restarted: queuedSignInIncomplete?.restarted || !state.startupResolved,
-        ...(state.startupResolved ? {epoch, signIn: state.signIn} : {}), ...(code === 'storage' ? {code} : {}) };
+        ...(state.startupResolved ? {epoch, signIn: state.signIn} : {}), ...(code !== 'app-link-unverified' ? {code} : {}) };
       return;
     }
-    showSignInIncomplete(false, code === 'storage' ? code : undefined);
+    showSignInIncomplete(false, code === 'app-link-unverified' ? undefined : code);
   },
   /**
    * The Cloud sign-in hand-off in the browser (cli-session), used by the explicit browser

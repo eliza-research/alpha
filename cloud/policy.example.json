@@ -1,0 +1,4 @@
+{
+  "production": {"api": "https://api.cloud.example.org", "web": "https://cloud.example.org", "services": "https://services.cloud.example.org", "tenant": "examplecloud", "name": "Example Cloud", "entitlementAudience": "example-phone"},
+  "staging": {"api": "https://api-staging.cloud.example.org", "web": "https://staging.cloud.example.org", "services": "https://services-staging.cloud.example.org", "tenant": "examplecloud-staging", "name": "Example Cloud", "entitlementAudience": "example-phone"}
+}

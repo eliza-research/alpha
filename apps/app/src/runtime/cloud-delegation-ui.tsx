@@ -73,8 +73,21 @@ export function CloudDelegationPanel({
 	revocation: { grantId: string; removed: boolean } | null;
 }) {
 	const [expanded, setExpanded] = useState(false);
-    const [revocations,setRevocations]=useState<Array<{grantId:string;expiresAt:string}>>([]);
-    async function refreshRevocations(){ const result=await client.delegation("revocations",{},signal); if(valid()&&Array.isArray(result.grants)){setRevocations(result.grants.filter((g: any)=>typeof g.grantId==="string"&&typeof g.expiresAt==="string"));if(result.grants.length)setExpanded(true);} }
+	const [revocations, setRevocations] = useState<string[]>([]);
+	const revocationsRead = useRef(0);
+	async function refreshRevocations() {
+		const revision = ++revocationsRead.current;
+		const result = await client.delegation("revocations", {}, signal);
+		if (!valid() || revision !== revocationsRead.current || !Array.isArray(result.grants)) return;
+		const pending: string[] = result.grants.flatMap((grant: {grantId?: unknown; expiresAt?: unknown} | null) =>
+			typeof grant?.grantId === "string" && typeof grant.expiresAt === "string" ? [grant.grantId] : []);
+		setRevocations([...new Set(pending)]);
+		if (pending.length) setExpanded(true);
+	}
+	function recordRevocation(id: string, removed: boolean) {
+		setRevocations(ids => removed ? ids.filter(value => value !== id) : [...new Set([...ids, id])]);
+		if (!removed) setExpanded(true);
+	}
 	const [pending, setPending] = useState<Pending | null>(null),
 		[busy, setBusy] = useState(false),
 		[message, setMessage] = useState(
@@ -100,6 +113,7 @@ export function CloudDelegationPanel({
 			setGrantId("");
 			setMessage(revocation.removed ? "Revoked" : "Off · retry");
 		}
+		recordRevocation(revocation.grantId, revocation.removed);
 		void refreshRevocations().catch(() => { /* The removal outcome above stands. */ });
 	}, [revocation]);
 	async function clear(expected: Pending) {
@@ -390,7 +404,17 @@ export function CloudDelegationPanel({
 					</button>
 				</>
 			)}
-            {revocations.filter(g=>g.grantId!==grantId).map(g=><div key={g.grantId} style={{display:"flex",alignItems:"center",gap:8}}><p style={{flex:1}}><span aria-hidden="true" style={{display:"inline-block",width:8,height:8,borderRadius:"50%",marginRight:6,verticalAlign:"middle",background:"#b26a00"}}/>Disconnect pending</p><button aria-label="Retry Cloud disconnect" disabled={busy} onClick={()=>void run(async()=>{const result=await client.delegation("revoke",{grantId:g.grantId,confirmed:true},signal);if(!valid())return;setMessage(result.remoteRevocation==="confirmed"?"Revoked":"Off · retry");await refreshRevocations().catch(()=>{/* The revoke outcome above stands; the list is read again on the next open. */});})}><span aria-hidden="true" style={iconStyle("rotate-cw")}/></button></div>)}
+			{revocations.filter(id => id !== grantId).map(id => <div key={id} style={{display:"flex",alignItems:"center",gap:8}}>
+				<p style={{flex:1}}><span aria-hidden="true" style={{display:"inline-block",width:8,height:8,borderRadius:"50%",marginRight:6,verticalAlign:"middle",background:"#b26a00"}}/>Disconnect pending</p>
+				<button aria-label="Retry Cloud disconnect" disabled={busy || removalBusy} onClick={() => void run(async () => {
+					const result = await client.delegation("revoke", {grantId: id, confirmed: true}, signal);
+					if (!valid()) return;
+					const removed = result.remoteRevocation === "confirmed";
+					setMessage(removed ? "Revoked" : "Off · retry");
+					recordRevocation(id, removed);
+					await refreshRevocations().catch(() => { /* The retry outcome above stands. */ });
+				})}><span aria-hidden="true" style={iconStyle("rotate-cw")}/></button>
+			</div>)}
 			{grantId && (
 				<button
 					disabled={busy || removalBusy}

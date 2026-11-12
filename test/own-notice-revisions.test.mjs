@@ -22,9 +22,8 @@ const {reminderNoticeRevision,calendarAlerts}=await import('data:text/javascript
 const target={sourceRevision:'a'.repeat(64),reminderId:'reminder-one',occurrenceId:'occurrence-one',revision:'b'.repeat(64)};
 const own=(id,revision,kind)=>({id,revision,source:'own',...(kind?{kind}:{}),appLabel:'Alpha Phone',title:'Reviewed title',text:'Reviewed body',at:1,canOpen:true});
 const reminder=async()=>own(target.reminderId,await reminderNoticeRevision(target));
-// Retained tuple revisions still have a compatibility parser and wire-cache boundary.
-const legacyReminderRevision=selected=>JSON.stringify([selected.sourceRevision,selected.reminderId,selected.occurrenceId,selected.revision]);
-const legacyReminder=()=>own(target.reminderId,legacyReminderRevision(target));
+// Older browser notices retain the structured revision form accepted by the readback parser.
+const legacyReminder=(selected=target)=>own(selected.reminderId,JSON.stringify([selected.sourceRevision,selected.reminderId,selected.occurrenceId,selected.revision]));
 function calendar(){const now=Date.UTC(2026,10,11,12),start=now-86400000-300000;const rows=calendarAlerts([{id:'series',calendarId:'local',title:'Recurring title',body:'Reviewed body',location:'',begin:start,end:start+3600000,revision:'c'.repeat(64),repeat:'daily',timeZone:'UTC',alert:10}],{},now);const row=rows.find(item=>item.at<=now&&item.at>now-86400000);assert.ok(row);assert.match(row.eventId,/:occ:/);return {...row,source:'own',appLabel:'Calendar',canOpen:true};}
 const plain=value=>JSON.parse(JSON.stringify(value));
 for(const [name,make] of [['reminder',reminder],['recurring Calendar',calendar]]){
@@ -32,7 +31,7 @@ for(const [name,make] of [['reminder',reminder],['recurring Calendar',calendar]]
   const row=await make();assert.equal(selection.noticeReviewable(row),true);assert.equal(selection.ownNoticeRevisionValid(row),true);
   const f=shadeNoticeQuestionFixture({initialRows:[row]});try{
    f.ask(row.id);assert.equal(f.rawSelection().revision,row.revision);
-   const wire=f.selection();assert.deepEqual(Object.keys(wire).sort(),['accountId','id','kind','revision']);assert.equal(wire.id,row.id);if(name==='reminder'){assert.match(row.revision,/^[a-f0-9]{64}$/);assert.equal(wire.revision,row.revision);}else{assert.match(wire.revision,/^notice-[a-f0-9]{12}-[1-9]\d*$/);assert.notEqual(wire.revision,row.revision);}assert.ok(wire.revision.length<=128);
+   const wire=f.selection();assert.deepEqual(Object.keys(wire).sort(),['accountId','id','kind','revision']);assert.equal(wire.id,row.id);if(name==='reminder'){assert.match(wire.revision,/^[a-f0-9]{64}$/);assert.equal(wire.revision,row.revision);}else{assert.match(wire.revision,/^notice-[a-f0-9]{12}-[1-9]\d*$/);assert.notEqual(wire.revision,row.revision);}assert.ok(wire.revision.length<=128);
    assert.deepEqual(plain(sanitizePhoneContext({view:'home',revision:1,sensitive:false,selectedObject:wire}).selectedObject),wire);
    assert.doesNotMatch(JSON.stringify(wire),/Reviewed|sourceRevision|occurrence-one|\[|%/);
    await f.approve();assert.equal(f.requests.length,1);await f.finish(0);assert.deepEqual(f.drafts,['Help me with this notification.\n\nSource: '+row.appLabel+' notification\n\n'+row.title+'\n'+row.text]);assert.equal(f.selection(),undefined);
@@ -66,13 +65,14 @@ test('legacy structured revision parsers refuse wrong source, kind, row, shape, 
   {...cal,revision:encodeURIComponent(JSON.stringify([calendarFields[0],calendarFields[1],5]))+':'+ 'c'.repeat(64)}];
  for(const candidate of bad){assert.equal(selection.ownNoticeRevisionValid(candidate),false,JSON.stringify(candidate));assert.equal(selection.noticeReviewable(candidate),false,JSON.stringify(candidate));assert.equal(selection.createOwnNoticeRevisions()(candidate),undefined);}
 });
-test('native opaque identity stays exact; structured wire counters cover all tuple fields and bounded eviction',async()=>{
+test('native and digested opaque identities stay exact; structured wire counters cover all tuple fields and bounded eviction',async()=>{
  const native=own('native-reminder','native-revision','reminder'),revisions=selection.createOwnNoticeRevisions();assert.equal(revisions(native),native.revision);assert.equal(selection.noticeReviewable(native),true);
- const current=await reminder();assert.match(current.revision,/^[a-f0-9]{64}$/);assert.equal(revisions(current),current.revision);
+ const current=await reminder();assert.match(current.revision,/^[a-f0-9]{64}$/);assert.equal(revisions(current),current.revision);assert.equal(await reminderNoticeRevision(target),current.revision);
+ for(const field of ['sourceRevision','reminderId','occurrenceId','revision']){const changed={...target,[field]:field==='reminderId'?'reminder-two':field==='occurrenceId'?'occurrence-two':'d'.repeat(64)},revision=await reminderNoticeRevision(changed);assert.notEqual(revision,current.revision,field);assert.equal(revisions({...current,id:changed.reminderId,revision}),revision,field);}
  const first=legacyReminder(),one=revisions(first);assert.equal(revisions(first),one);assert.notEqual(selection.createOwnNoticeRevisions()(first),one);
- for(const field of ['sourceRevision','occurrenceId','revision']){const changed={...target,[field]:field==='occurrenceId'?'occurrence-two':'d'.repeat(64)},revision=await reminderNoticeRevision(changed),next={...first,revision:legacyReminderRevision(changed)};assert.notEqual(revision,current.revision,field);assert.equal(revisions({...current,revision}),revision);assert.notEqual(revisions(next),one,field);}
+ for(const field of ['sourceRevision','occurrenceId','revision']){const changed={...target,[field]:field==='occurrenceId'?'occurrence-two':'d'.repeat(64)},next=legacyReminder(changed);assert.notEqual(revisions(next),one,field);}
  const again=revisions(first);assert.notEqual(again,one);
- for(let i=0;i<130;i++){const next={...target,reminderId:'row-'+i};revisions(own(next.reminderId,legacyReminderRevision(next)));}assert.notEqual(revisions(first),again);
+ for(let i=0;i<130;i++){const next={...target,reminderId:'row-'+i};revisions(legacyReminder(next));}assert.notEqual(revisions(first),again);
  const f=shadeNoticeQuestionFixture({initialRows:[native]});try{f.ask(native.id);assert.deepEqual(f.selection(),{kind:'notification',id:native.id,revision:native.revision,accountId:'own'});}finally{f.close();}
  for(const kind of ['navigation','workflow']){const f=shadeNoticeQuestionFixture({initialRows:[native]});try{f.ask(native.id);await f.approve();f.rows[0].kind=kind;await f.finish(0);assert.deepEqual(f.drafts,[],kind);assert.deepEqual(f.toasts,['Gone'],kind);}finally{f.close();}}
  const refreshed=shadeNoticeQuestionFixture({initialRows:[native]});try{refreshed.ask(native.id);refreshed.rows[0].kind='navigation';await refreshed.refresh();assert.equal(refreshed.selection(),undefined);assert.equal(refreshed.rawSelection(),undefined);}finally{refreshed.close();}

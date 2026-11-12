@@ -75,12 +75,12 @@ function checkWorkflows() {
   assert.match(restored.run, /\$EXPECTED_QUALIFICATION/);
   assert.equal(publishing.publish.steps.find(step => step.with?.path === 'qualified-product').with.ref,
     '$' + '{{ needs.admit.outputs.source_commit }}');
-  const reverify = publishing.publish.steps.find(runs('bun run android:verify --'));
+  const reverify = publishing.publish.steps.find(runs('run android:verify --'));
   assert.equal(reverify?.['working-directory'], 'qualified-product');
-  assert.match(reverify.run, /--cloud-voice-evidence="\$RUNNER_TEMP\/qualified-stage\/cloud-voice\.json"/);
-  assert.match(reverify.run, /qualification-summary\.json"[\s\S]*cloud\) arguments\+=\(--runtime-profile=cloud\) ;;\s+native\) ;;/);
-  assert.match(reverify.run, /bun run android:verify -- "\$\{arguments\[@\]\}"/);
-  assert.match(reverify.run, /npm run android:verify -- "\$\{arguments\[@\]\}"/);
+  assert.equal(reverify.env.PRODUCT_PACKAGE_MANAGER, '$' + '{{ steps.product_toolchain.outputs.manager }}');
+  assert.match(reverify.run, /profile=\$\(jq -er '\.runtimeProfile' "\$RUNNER_TEMP\/qualified-stage\/qualification-summary\.json"\)/);
+  assert.match(reverify.run, /native\) args=\(\) ;;\s+cloud\) args=\(--runtime-profile=cloud\) ;;/);
+  assert.equal(reverify.run.trim().split('\n').at(-1), '"$PRODUCT_PACKAGE_MANAGER" run android:verify -- "${args[@]}" --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
   assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'bun scripts/verify-apks.ts');
   ordered(publishing.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
     step => step === reverify, runs("manifest['runtimeProfile'] == summary['runtimeProfile']"),
@@ -226,7 +226,8 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
   ];
   const driverHashes = captureInputs(sources);
   checkWorkflows();
-  const {traces, launcherBytes, mainCandidate, versionCode} = JSON.parse(execFileSync('python3', ['-B', python], {
+  const pythonArgs = ['-B', python, '--signing-timeout-ms', String(scaledTimeout(30_000))];
+  const {traces, launcherBytes, mainCandidate, versionCode} = JSON.parse(execFileSync('python3', pythonArgs, {
     encoding: 'utf8', timeout: scaledTimeout(120000),
   }));
   for (const trace of traces) {
