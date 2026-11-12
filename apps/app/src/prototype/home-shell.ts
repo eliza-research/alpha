@@ -74,6 +74,10 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     changed: () => { reportHomeFailure(); owner?.setState({launcherRevision: Date.now()}); },
   });
   const {launcher} = shell, prefix = ALPHA_PRODUCT.storage.launcherBuiltinPrefix;
+  let homeProjection: Pick<ReturnType<typeof launcher.snapshot>, 'apps' | 'favorites'> & {
+    views: ReturnType<typeof alphaViews.available>;
+    entries?: MobileHomeEntry[];
+  } | undefined;
   const icon = (id: string) => mobileShellIconUrl(ALPHA_PRODUCT, id);
   const grid = icon(ALPHA_PRODUCT.icons.allApps);
   // Installed apps exist on Android, or through the explicitly enabled browser fixture; without
@@ -125,6 +129,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   p.componentWillUnmount = function (...args: any[]) {
     if (owner === this) {
       stop?.(); launcher.cancelPending(); stop = undefined; endPress(); endDrag(); swallow = ''; owner = null;
+      homeProjection = undefined;
     }
     return unmount?.apply(this, args);
   };
@@ -152,8 +157,17 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   };
   p.renderVals = function () {
     const out = render.call(this), S = this.S(), self = this;
-    shell.syncViews();
-    const snapshot = launcher.snapshot();
+    const available = alphaViews.available(), previous = homeProjection;
+    let snapshot = launcher.snapshot();
+    let projection: NonNullable<typeof homeProjection>;
+    // Availability can change after startup. Compare it each render and keep the
+    // post-sync snapshot identities, since syncing builtins replaces the apps array.
+    if (!previous || snapshot.apps !== previous.apps || snapshot.favorites !== previous.favorites ||
+        available.length !== previous.views.length || !available.every((view, index) => view === previous.views[index])) {
+      shell.syncViews();
+      snapshot = launcher.snapshot();
+      homeProjection = projection = {apps: snapshot.apps, favorites: snapshot.favorites, views: available};
+    } else projection = previous;
     const showDrawer = !!inventory && !out.assistantSurface;
     const drawerOpen = showDrawer && !!S.drawer && !!out.isOn && !out.isView;
     const editing = !!inventory && !!S.homeEdit && !!out.isOn && !out.isView && !drawerOpen && !out.assistantSurface;
@@ -174,7 +188,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       return {...base, face: face(entry.key, base), ...(editing ? {ariaLabel: `Remove ${base.label} from Home`, onOpen: () => {}} : {})};
     };
     const appsTile = {key: 'alpha:apps-drawer', label: 'Apps', glyphUrl: grid, iconId: ALPHA_PRODUCT.icons.allApps, onOpen: () => self.openAllApps(), dialog: true};
-    const tiles = out.assistantSurface ? [] : [...shell.homeEntries().map(tile), ...(editing || !showDrawer ? [] : [appsTile])];
+    const tiles = out.assistantSurface ? [] : [...(projection.entries ??= shell.homeEntries()).map(tile), ...(editing || !showDrawer ? [] : [appsTile])];
     const gridProps: Bag = {
       'data-alpha-home-apps': '', 'data-alpha-home-editing': editing ? 'true' : undefined,
       onPointerDown: (event: PointerEvent) => {
