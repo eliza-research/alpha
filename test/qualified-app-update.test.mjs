@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {execFileSync} from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import {execFileSync, spawnSync} from 'node:child_process';
 import YAML from 'yaml';
 
 test('qualified publication binds source, private output and exact reviewed voice without signing keys',()=>{
@@ -34,6 +36,55 @@ test('publication workflow preserves protected review, exact source and verifica
   assert.equal(secretSteps.length,0,'private delivery must not depend on a copied storage token');
   assert(!/APP_RELEASE_KEYSTORE|RELEASE_KEY_PASSPHRASE|RECIPIENT_PRIVATE|openssl cms|sign-release-apks/.test(source));
   for(const step of steps.filter(step=>step.uses))assert.match(step.uses,/@[0-9a-f]{40}$/);
+});
+
+test('publication retains the exact Alpha Compute manifest only after both signed release rows qualify', () => {
+  const workflow = YAML.parse(fs.readFileSync(new URL('../.github/workflows/publish-qualified-app-update.yml', import.meta.url), 'utf8'));
+  const steps = workflow.jobs.publish.steps;
+  const gate = steps.find(step => step.name === 'Require both qualified release rows before publication');
+  const upload = steps.find(step => step.uses?.startsWith('actions/upload-artifact@'));
+  assert.ok(gate && upload);
+  assert.ok(upload.with.path.split('\n').includes('${{ runner.temp }}/qualified-stage/apk-manifest.json'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-qualified-manifest-'));
+  try {
+    const staged = path.join(root, 'qualified-stage');
+    const artifacts = path.join(root, 'qualified-product', 'artifacts');
+    fs.mkdirSync(staged);
+    fs.mkdirSync(artifacts, {recursive: true});
+    const input = path.join(artifacts, 'apk-manifest.json');
+    const retained = path.join(staged, 'apk-manifest.json');
+    const summary = {
+      runtimeProfile: 'native', versionCode: 72, voiceEvidenceSHA256: 'c'.repeat(64),
+      signedApkSHA256: {launcher: 'a'.repeat(64), standalone: 'b'.repeat(64)},
+    };
+    fs.writeFileSync(path.join(staged, 'qualification-summary.json'), JSON.stringify(summary));
+    const rows = ['launcher', 'standalone'].map(variant => ({
+      variant, mode: 'release', packageName: 'ai.alphacompute.alphaphone', distributable: true,
+      versionCode: summary.versionCode, sha256: summary.signedApkSHA256[variant],
+      cloudVoice: {evidenceSha256: summary.voiceEvidenceSHA256},
+    }));
+    const manifest = {testMocks: false, runtimeProfile: 'native', updateChannel: {kind: 'public'}, results: rows};
+    const run = () => spawnSync('bash', ['-e', '-c', gate.run], {
+      cwd: root, env: {...process.env, RUNNER_TEMP: root}, encoding: 'utf8', timeout: 10_000,
+    });
+    fs.writeFileSync(input, JSON.stringify({...manifest, results: [rows[0], {...rows[1], sha256: 'd'.repeat(64)}]}));
+    const refused = run();
+    assert.equal(refused.status, 1);
+    assert.equal(fs.existsSync(retained), false);
+    fs.writeFileSync(path.join(staged, 'qualification-summary.json'), JSON.stringify({...summary, runtimeProfile: 'cloud'}));
+    fs.writeFileSync(input, JSON.stringify({...manifest, runtimeProfile: 'cloud'}));
+    const legacy = run();
+    assert.equal(legacy.status, 0, legacy.stderr);
+    assert.equal(fs.existsSync(retained), false);
+    fs.writeFileSync(path.join(staged, 'qualification-summary.json'), JSON.stringify(summary));
+    const bytes = JSON.stringify(manifest, null, 4) + '\n';
+    fs.writeFileSync(input, bytes);
+    const verified = run();
+    assert.equal(verified.status, 0, verified.stderr);
+    assert.equal(fs.readFileSync(retained, 'utf8'), bytes);
+  } finally {
+    fs.rmSync(root, {recursive: true, force: true});
+  }
 });
 
 // Only reviewed main-branch release jobs can mint the short-lived artifact credential.

@@ -234,9 +234,6 @@ const cameraSource = source || !development
   ? verifySecureCameraSource(source, undefined, cameraOverrides)
   : { sourceVerified: false, imageVerified: false, lockedCaptureVerified: false, deviceAcceptanceVerified: false, reason: "Development staging without reviewed AOSP source" };
 const env = androidEnv();
-const tree = execFileSync(tool("aapt"), ["dump", "xmltree", apk, "AndroidManifest.xml"], { encoding: "utf8", env, maxBuffer: 64 << 20 });
-assertImageLauncherManifest(tree, production);
-if (senseImage) assertSenseLauncher(tree, identity.appId);
 if (!descriptor) {
   if (!development)
     throw new Error(
@@ -264,8 +261,6 @@ if (!descriptor) {
 }
 const reviewedBytes = fs.readFileSync(descriptor);
 const reviewed = JSON.parse(reviewedBytes.toString('utf8'));
-if (senseImage && reviewed.apkSha256 !== hash)
-  throw Error('Sense launcher descriptor differs from the admitted release APK');
 // Identifier access is all or nothing and never wider: a reviewed descriptor either names exactly
 // the one permission below (the launcher is then staged as a privileged app with an allow-list for
 // it alone) or none, in which case Settings → Phone shows no IMEI and links to Android's status screen.
@@ -276,6 +271,8 @@ if (
   reviewed.moduleName !== identity.moduleName
 )
   throw new Error("Descriptor does not belong to this product");
+if (reviewed.apkSha256 !== hash)
+  throw new Error("Launcher descriptor hash differs from the admitted APK");
 const destination = path.resolve(get("--output") || `artifacts/aosp/${identity.slug}-${hash.slice(0, 12)}`);
 // Every product is staged in a sibling temporary directory (same filesystem, so the rename is atomic)
 // and published only after the last check; a refusal leaves the destination absent.
@@ -284,14 +281,13 @@ fs.mkdirSync(path.dirname(destination), {recursive:true});
 const temporary = fs.mkdtempSync(path.join(path.dirname(destination), `.${physical ? 'pixel10a' : cuttlefish ? 'cuttlefish' : identity.slug}-stage-`));
 const output = path.join(temporary, 'overlay');
 try {
-let admittedLauncherDescriptor = path.resolve(descriptor);
+const admittedLauncherDescriptor = path.join(temporary, 'launcher-descriptor.json');
+fs.writeFileSync(admittedLauncherDescriptor, reviewedBytes, {flag:'wx', mode:0o600});
 let admittedListenerDescriptor = listenerDescriptor;
 let descriptorDigests: {launcherDescriptorSha256: string; listenerDescriptorSha256: string} | null = null;
 if (qualification && listenerDescriptor) {
-  admittedLauncherDescriptor = path.join(temporary, 'launcher-descriptor.json');
   admittedListenerDescriptor = path.join(temporary, 'listener-descriptor.json');
   const listenerDescriptorBytes = fs.readFileSync(listenerDescriptor);
-  fs.writeFileSync(admittedLauncherDescriptor, reviewedBytes, {flag:'wx', mode:0o600});
   fs.writeFileSync(admittedListenerDescriptor, listenerDescriptorBytes, {flag:'wx', mode:0o600});
   descriptorDigests = {
     launcherDescriptorSha256: createHash('sha256').update(reviewedBytes).digest('hex'),
@@ -322,6 +318,7 @@ if (updateArtifactDigest(stagedLauncher).sha256 !== hash)
 const provisioningTree = aaptManifestTree(stagedLauncher, {aapt: tool("aapt"), env});
 assertImageLauncherManifest(provisioningTree, production);
 if (production) aospTelephonyRoleComponents(provisioningTree, identity.appId);
+if (senseImage) assertSenseLauncher(provisioningTree, identity.appId);
 if (!development || senseImage)
   assertProvisioningUpdateChannel(apkUpdateChannelOrLegacy(parseXmlTree(provisioningTree)), reviewedUpdateChannel);
 fs.appendFileSync(path.join(output, "product.mk"), clockProductRequirement);
