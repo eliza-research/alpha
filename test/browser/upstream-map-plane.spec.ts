@@ -62,7 +62,7 @@ for(const mode of ['granted','outside-coverage','webgl','tiles'] as const)test(`
  await expect(map).toHaveAttribute('data-map-ready','true');await expect(map.locator('canvas')).toBeVisible();await page.getByRole('button',{name:'Recenter',exact:true}).click();await expect(map.getByRole('img',{name:'Your position',exact:true})).toHaveCount(1);
  if(mode==='outside-coverage'){await expect(status).toHaveAttribute('data-map-state','outside-coverage');await expect(status).toContainText('outside Synthetic Monaco fixture map coverage');await expect(map.locator('.maplibregl-marker:not([data-map-position])')).toHaveCount(0);}else{await expect(map).toHaveAttribute('data-map-ready','true');await expect(map.locator('.maplibregl-marker:not([data-map-position])')).toHaveCount(1);}
  await expect(map.getByRole('img',{name:'Your position',exact:true})).toHaveCount(1);
- if(mode==='granted'){await page.getByRole('button',{name:'Directions',exact:true}).click();await page.getByRole('button',{name:'Use current location for route',exact:true}).click();await expect(page.getByRole('textbox',{name:'Starting point',exact:true})).toHaveValue('My location');}
+ if(mode==='granted'){const destination=page.getByRole('textbox',{name:'Search places',exact:true});await destination.fill('43.74, 7.426');await destination.press('Enter');await page.getByRole('button',{name:'Directions',exact:true}).click();await page.getByRole('button',{name:'Use current location for route',exact:true}).click();await expect(page.getByRole('textbox',{name:'Starting point',exact:true})).toHaveValue('My location');}
  await expect(page.getByRole('region',{name:'Maps'})).toBeVisible();
 });
 

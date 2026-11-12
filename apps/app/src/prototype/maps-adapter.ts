@@ -185,6 +185,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
     const isPlace = view.mode === 'place', isResults = (view.mode === 'results' || view.mode === 'origin') && !view.emptyQuery, isNav = view.mode === 'navigation';
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
+    const savedMatches=view.mode!=='origin'&&view.query.trim()?view.saved.filter(item=>item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())):[];
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
@@ -224,9 +225,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       clearQ: () => screen.clearQuery(),
       chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => screen.chooseSaved(item.id) })),
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => screen.searchFor(category.label) })),
-      savedRows: view.saved.filter(item=>view.mode!=='origin'&&view.query.trim()&&item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())).map(item => ({ id: 'saved:' + item.id, name: item.label, sub: '', d: PIN, go: () => screen.chooseSaved(item.id) })),
+      savedRows: savedMatches.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: '', d: PIN, go: () => screen.chooseSaved(item.id) })),
       results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
-      hasResults: view.hasResults, noResults: view.noResults, emptyQ: view.emptyQuery,
+      hasResults: view.hasResults||savedMatches.length>0, noResults: view.noResults&&!savedMatches.length, emptyQ: view.emptyQuery,
       recenter: () => screen.recenter(), recBottom: isPlace ? 414 : view.mode === 'results' ? 534 : 124, recCss: '',
       sheetH: sheetHeight, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
       askAlpha: () => currentApi.send(view.query || 'Help me with Maps.'), noResTxt: `Ask ${currentApi.name} about this search`,
