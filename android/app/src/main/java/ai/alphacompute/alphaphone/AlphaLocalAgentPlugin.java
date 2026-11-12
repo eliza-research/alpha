@@ -666,6 +666,7 @@ private static final class ResidentAttachDiagnostic {
   // Shared provider admission and native embedding order. Keep the verified
   // product module independently of credential availability for Alpha identity.
   if(!NativeProviderSlot.applyLaunchEnvironment(BuildConfig.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,new File(context.getApplicationInfo().nativeLibraryDir),context.getFilesDir(),env,System.currentTimeMillis())){provider=null;saved=null;cloudSaved=null;googleBinding=null;}
+  if(provider!=null&&"elizacloud".equals(provider.optString("provider")))env.put("ELIZAOS_CLOUD_BASE_URL",CloudDeployment.PRODUCTION_API+"/api/v1");
   if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
   if(googleBinding!=null)env.putAll(googleBinding);
   // The agent process has no /etc/localtime on Android and would run in UTC; calendar dates and

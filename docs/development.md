@@ -73,6 +73,43 @@ requests. Its default URL is `http://127.0.0.1:5318`.
 resident profiles live under `~/.local/share/alphaphone/`. Existing accounts,
 credentials and histories are not copied or reset.
 
+### Standalone Cloud (development)
+
+Distributed builds use the Cloud in `scripts/cloud-deployment-policy.ts` (Eliza Cloud
+today). The product's own Cloud is being prepared; see `docs/standalone-cloud-plan.md`.
+
+```sh
+bun run cloud:local -- prepare                              # export the pinned upstream source and install it (slow, once per pin)
+ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun run cloud:local -- start   # Steward, Cloud API and a TLS front door on https://127.0.0.1:8787
+ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun run cloud:local -- check   # email-code sign-in, credential, account, entitlement, revocation
+```
+
+The local Cloud runs from the pinned `vendor/eliza` source with Alpha's own tenant,
+client registration, entitlement key and service documents. It lives in
+`~/.cache/alphaphone-local-cloud` (`--dir` or `ALPHA_LOCAL_CLOUD_DIR` to change) and
+never contacts a deployed Cloud. `check` fails if any answer names an Eliza Cloud
+host. A pass is a local source-build result only, not a deployed Cloud, an APK or a
+device result.
+
+`ALPHA_CLOUD_DEPLOYMENT_FILE=<file.json>` points the build and operator tools at a
+candidate Cloud (the same `production` and `staging` rows as the policy). Run
+`bun scripts/cloud-deployment.ts` with it set to regenerate the authorities. A
+candidate build has its own credential namespace, and the production bundle audit
+refuses it.
+
+`cloud/` holds the product Cloud's data: `policy.example.json` (the same rows the app
+is built with) and `resources.example.json` (the operator's Cloudflare ids). There is
+no route code here.
+
+```sh
+bun run cloud:worker -- check --policy cloud/policy.example.json --resources cloud/resources.example.json \
+  --upstream <upstream checkout with packages/cloud/deploy> --out <dir>
+```
+
+This renders the Worker configuration and bundles it with `wrangler deploy --dry-run`.
+Nothing is deployed, and it needs an upstream revision that carries the deployment
+tool, which is not merged upstream yet.
+
 ## Android builds
 
 ```sh
