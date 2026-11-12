@@ -10,6 +10,13 @@ import {fontLicenceFindings, fontLicenceLine} from './font-license-blockers.ts';
 import {licenceFlagLines} from './licence-policy.ts';
 import {assetLinksProblems} from './render-assetlinks.ts';
 import {regularFiles} from './regular-files.ts';
+import {CLOUD_DEPLOYMENT,CLOUD_DEPLOYMENT_IS_CANDIDATE,CLOUD_SIGN_IN_REGISTRATION} from './cloud-deployment-policy.ts';
+
+/** The staging Cloud's authorities, return page and tenant, from the deployment policy: test-mocks builds only. */
+export const STAGING_CLOUD_TEXT = Object.freeze([new URL(CLOUD_DEPLOYMENT.staging.api).host, new URL(CLOUD_DEPLOYMENT.staging.services).host,
+  new URL(CLOUD_DEPLOYMENT.staging.web).host + CLOUD_SIGN_IN_REGISTRATION.callbackPath.replace(/\/auth\/callback$/, ''),
+  // The former 'cloud-staging' entry also caught the staging tenant name.
+  CLOUD_DEPLOYMENT.staging.tenant]);
 
 /** Decision P-43: production copy that offered or described a "no agent" state. */
 export const RETIRED_NO_AGENT_TEXT = Object.freeze(['without AI', 'Continue offline', 'continue offline', 'Connect an agent']);
@@ -33,7 +40,7 @@ export const DENYLIST = Object.freeze([
   'Connect remote agent', 'Agent HTTPS address', 'Development Cloud agent infrastructure', 'Dedicated hosting requires a reviewed setup',
   'alpha:force-render-error', 'alpha:render-error-check', 'Forced render failure',
   'Enter mock mode', 'Try mock mode', 'Exit mock mode', 'mock-mode-banner', 'Mock mode ·',
-  '10.0.2.2:2138', 'cloud-staging', 'api-staging.eliza.app',
+  '10.0.2.2:2138', ...STAGING_CLOUD_TEXT,
   'alpha-dev-tools', 'Development connections', 'Development card', 'Device controls',
   'Browser development device', 'Development reply', '__alpha-local-agent', '__alpha-browser-cloud',
   'emulator development agent', 'Simulate Clock request',
@@ -72,7 +79,7 @@ export const DENYLIST = Object.freeze([
   // In-app Eliza Cloud sign-in (owner directive 2026-10-14): the native host is the one product
   // sign-in path. The diagnostic button, the staging return host and the Cloud sign-in hand-off
   // (cli-session, the hosted cli-login page and its browser waiting copy) are test-mocks only.
-  'Browser sign-in (diagnostic)', 'staging.eliza.app/alphaphone',
+  'Browser sign-in (diagnostic)',
   ...RETIRED_SIGN_IN_HAND_OFF_TEXT,
   'Browser calendar (development)',
   // The read-only OS update-channel check is registered off; its About row is development only.
@@ -129,6 +136,7 @@ export function readBuildFlags(dir: string) {
 
 interface BundleAuditOptions {
   testMocks?: boolean;
+  candidateCloud?: boolean;
   debugFingerprints?: readonly string[];
 }
 
@@ -143,6 +151,8 @@ export function auditWebBundle(dir: string, options: BundleAuditOptions = {}) {
   else if (flags.valid === false) errors.push('build-flags.json is malformed.');
   if (flags.present && flags.testMocks !== expected) errors.push(`build-flags.json records testMocks:${flags.testMocks}, expected ${expected}.`);
   if (!existsSync(path.join(dir, 'index.html'))) errors.push('index.html is missing.');
+  // A candidate Cloud (ALPHA_CLOUD_DEPLOYMENT_FILE) is for development and rehearsal; distributed builds use the shipped policy.
+  if (!expected && (options.candidateCloud ?? CLOUD_DEPLOYMENT_IS_CANDIDATE)) errors.push('This build addresses a candidate Cloud deployment (ALPHA_CLOUD_DEPLOYMENT_FILE); a production bundle must use the shipped Cloud deployment policy.');
   let files = 0;
   // Only an explicitly requested and recorded mock build skips the denylist.
   const skip = expected && flags.testMocks;
