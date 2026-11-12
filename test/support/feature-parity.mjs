@@ -489,6 +489,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/google-connection-ui.tsx",
     "apps/app/src/runtime/google-workspace-return.ts",
     "apps/app/src/runtime/home-calendar-selection.ts",
+    "apps/app/src/runtime/home-startup-cache.ts",
     "apps/app/src/runtime/hosted-background.ts",
     "apps/app/src/runtime/hosted-digest-ui.tsx",
     "apps/app/src/runtime/hosted-digests.ts",
