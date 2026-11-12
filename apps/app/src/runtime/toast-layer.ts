@@ -57,7 +57,7 @@ export function installToastLayer(): () => void {
     // and push the panel off screen, even when the live region is empty.
     const panel = dialog.firstElementChild;
     const container = !(dialog instanceof HTMLDialogElement) && dialog.children.length === 1 &&
-      panel instanceof HTMLElement && panel.tagName === 'DIV' ? panel : dialog;
+      panel instanceof HTMLElement && panel.matches('div,section') ? panel : dialog;
     container.prepend(region);
     return region;
   };

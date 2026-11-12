@@ -716,9 +716,6 @@
           </div>
           <sc-if value="{{inbox.c.local}}"><button class="ib" aria-label="Cc and Bcc" aria-expanded="{{inbox.c.showRecipientDetails}}" onClick="{{inbox.c.toggleRecipientDetails}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/chevron-down.svg');-webkit-mask-image:url('/icons/lucide/chevron-down.svg')"></span></button></sc-if>
         </div>
-        <sc-if value="{{inbox.c.hasRaw}}">
-          <button onClick="{{inbox.c.addRaw}}" style="display: flex; align-items: center; gap: 12px; padding: 10px 0; font-size: 15px"><span style="width: 36px; height: 36px; border-radius: 18px; background: var(--s2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.mail}}"></path></svg></span>{{inbox.c.rawAddr}}</button>
-        </sc-if>
         <sc-if value="{{inbox.c.hasSugg}}">
           <div class="scr" style="display: flex; flex-direction: column; padding: 6px 0; border-bottom: 1px solid var(--line); max-height: 330px; overflow-y: auto; flex-shrink: 0">
             <sc-for list="{{inbox.c.sugg}}" as="p">
