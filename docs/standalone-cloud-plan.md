@@ -260,7 +260,7 @@ certificate fingerprints for asset links.
 
 ## 7. Built so far (this repository)
 
-- **Local standalone Cloud** (`scripts/local-cloud.ts`, `npm run cloud:local`): exports the
+- **Local standalone Cloud** (`scripts/local-cloud.ts`, `bun run cloud:local`): exports the
   pinned upstream source outside the checkout, runs Steward and the Cloud API worker with
   Alpha's own tenant (`alphacloud-local`), client registration, entitlement signing key and
   service documents, behind one TLS front door.
@@ -337,7 +337,7 @@ Neither branch is pushed or proposed upstream; that needs the owner's go-ahead.
   Eliza's own definition reproduces the current `wrangler.toml` identity and bindings apart
   from six added deployment variables. 18 tests.
 - This repository: `cloud/` (example policy and resources) and `scripts/cloud-worker.ts`
-  (`npm run cloud:worker`). It derives the upstream deployment file from the app's own policy
+  (`bun run cloud:worker`). It derives the upstream deployment file from the app's own policy
   rows, refuses the shipped Eliza policy and any Eliza host, renders both environments and
   bundles them.
 - Evidence (2026-11-11): both environments rendered outside the upstream tree and bundled
@@ -355,7 +355,7 @@ Neither branch is pushed or proposed upstream; that needs the owner's go-ahead.
   file gains `components` (Steward login Worker, speech Worker, admission Worker, Pages web
   front end), each rendered with the product's own names, hosts and cross-bindings, and the
   Pages proxy refuses to fall back to Eliza's API for a product deployment.
-- `npm run cloud:worker -- check` now renders and checks all five components for both
+- `bun run cloud:worker -- check` now renders and checks all five components for both
   environments. On 2026-11-11 all ten passed with networking disabled, bundling from the
   installed tree of the earlier branch revision. Limits of that check: the login container
   image is not built, the web check compiles Pages Functions only (not the web app), and
@@ -376,7 +376,7 @@ Neither branch is pushed or proposed upstream; that needs the owner's go-ahead.
 - Pack check: 23 tarballs (24.5 MB) installed into an empty directory; a thin `worker.ts`
   bundled with 14,150 inputs, none outside that directory.
 - This repository: `cloud/worker.ts` is that thin entry, and
-  `npm run cloud:worker -- check --packages <install dir>` bundled Alpha's example Cloud API
+  `bun run cloud:worker -- check --packages <install dir>` bundled Alpha's example Cloud API
   Worker for both environments from the installed tarballs with networking disabled
   (33.97 MB). Login, speech, admission and web still build from an upstream checkout.
 - Not done: publication, so `cloud/` has no `package.json` yet; the install is about 2.8 GB

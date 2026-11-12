@@ -3,9 +3,9 @@
  * The product's own Cloud API Worker, described by data this repository owns and built from
  * upstream source. No route code lives here.
  *
- *   node scripts/cloud-worker.ts deployment --policy FILE --resources FILE
- *   node scripts/cloud-worker.ts render --policy FILE --resources FILE --upstream DIR [--tree DIR] --out DIR
- *   node scripts/cloud-worker.ts check  --policy FILE --resources FILE --upstream DIR [--tree DIR] --out DIR
+ *   bun scripts/cloud-worker.ts deployment --policy FILE --resources FILE
+ *   bun scripts/cloud-worker.ts render --policy FILE --resources FILE --upstream DIR [--tree DIR] --out DIR
+ *   bun scripts/cloud-worker.ts check  --policy FILE --resources FILE --upstream DIR [--tree DIR] --out DIR
  *
  * --policy     the Cloud's public identity: the same `production` and `staging` rows the app is built
  *              with (scripts/cloud-deployment-policy.ts, ALPHA_CLOUD_DEPLOYMENT_FILE). The app and its
@@ -95,7 +95,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const {values: o, positionals} = parseArgs({allowPositionals: true, options: {policy: {type: 'string'}, resources: {type: 'string'}, upstream: {type: 'string'}, packages: {type: 'string'}, tree: {type: 'string'}, out: {type: 'string'}}});
   const command = positionals[0];
   if (!['deployment', 'render', 'check'].includes(command) || !o.policy || !o.resources || (command !== 'deployment' && (!o.out || !o.upstream === !o.packages))) {
-    console.error('Usage: node scripts/cloud-worker.ts deployment|render|check --policy FILE --resources FILE [--upstream DIR [--tree DIR] | --packages DIR] --out DIR'); process.exit(2);
+    console.error('Usage: bun scripts/cloud-worker.ts deployment|render|check --policy FILE --resources FILE [--upstream DIR [--tree DIR] | --packages DIR] --out DIR'); process.exit(2);
   }
   const deployment = workerDeployment(JSON.parse(fs.readFileSync(o.policy, 'utf8')), JSON.parse(fs.readFileSync(o.resources, 'utf8')));
   if (command === 'deployment') { console.log(JSON.stringify(deployment, null, 1)); process.exit(0); }

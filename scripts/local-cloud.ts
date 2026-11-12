@@ -3,12 +3,12 @@
  * A standalone Cloud for Alpha Phone on this computer, built from the pinned vendor/eliza
  * source with Alpha's own identity. Development only; it never contacts a deployed Cloud.
  *
- *   node scripts/local-cloud.ts prepare [--dir DIR]         export the pin and install it
+ *   bun scripts/local-cloud.ts prepare [--dir DIR]         export the pin and install it
  *     --source REPO   export REPO's HEAD instead (an upstream branch under review; never vendor/eliza edits)
  *     --deployment-id ID   (start) run as a product deployment (upstream CLOUD_DEPLOYMENT_ID), which must
  *                          refuse to start or answer rather than fall back to any Eliza identity
- *   ELIZA_DEV_ALLOW_TEST_MOCKS=1 node scripts/local-cloud.ts start [--dir DIR] [--port 8787]
- *   node scripts/local-cloud.ts check [--dir DIR] [--json]  sign in and call the product routes
+ *   ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun scripts/local-cloud.ts start [--dir DIR] [--port 8787]
+ *   bun scripts/local-cloud.ts check [--dir DIR] [--json]  sign in and call the product routes
  *
  * What `start` runs, all on loopback (the Android emulator reaches it as 10.0.2.2):
  * - The pinned vendor/eliza commit, exported with `git archive` into DIR/eliza. The submodule
@@ -246,7 +246,7 @@ async function start({dir, exportDir, front, ports, deploymentId}: Layout) {
   await new Promise<void>(resolve => proxy.listen(ports.front, '127.0.0.1', resolve));
   writePrivate(path.join(dir, 'local-cloud.json'), JSON.stringify({api: front, web: front, steward, tenant: LOCAL_CLOUD.tenant, name: LOCAL_CLOUD.name, deploymentId, registration, caCertificate: cert}, null, 1));
   say(`ready at ${front}; description in ${path.join(dir, 'local-cloud.json')}`);
-  say('check:  node scripts/local-cloud.ts check');
+  say('check:  bun scripts/local-cloud.ts check');
   say('Ctrl-C stops the local Cloud.');
 }
 
@@ -365,7 +365,7 @@ export async function checkLocalCloud(cloud: {api: string; steward: string; tena
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const {values: options, positionals} = parseArgs({allowPositionals: true, options: {dir: {type: 'string'}, port: {type: 'string', default: '8787'}, source: {type: 'string'}, 'deployment-id': {type: 'string'}, json: {type: 'boolean', default: false}}});
   const command = positionals[0];
-  if (!['prepare', 'start', 'check'].includes(command)) { console.error('Usage: node scripts/local-cloud.ts prepare|start|check [--dir DIR] [--port PORT] [--json]'); process.exit(2); }
+  if (!['prepare', 'start', 'check'].includes(command)) { console.error('Usage: bun scripts/local-cloud.ts prepare|start|check [--dir DIR] [--port PORT] [--json]'); process.exit(2); }
   const paths = layout(options.dir, options.port!, options.source, options['deployment-id']);
   if (command === 'prepare') await prepare(paths);
   else if (command === 'start') { try { await start(paths); } catch (error) { stopAll(); throw error; } }
