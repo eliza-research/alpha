@@ -19,7 +19,7 @@ console.log(JSON.stringify({
  protocol1:await run(1,null),
 }));`;
 test('workflow device registration falls back from protocol 3 only when the agent refuses it',()=>{
- const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
+ const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
  assert.deepEqual(out,{
   accepted:{calls:[3],protocol:3},
   olderAgent:{calls:[3,2],protocol:2},

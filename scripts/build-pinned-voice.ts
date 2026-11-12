@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Invoke the unmodified pinned builder, attesting only a fresh output from clean source. */
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';

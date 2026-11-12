@@ -32,7 +32,7 @@ loss remain separate verification obligations. Older builds could leave a Remind
 with `pendingDeletion` set but no durable deletion when the identity was `__proto__`.
 Those orphaned markers still need a reviewed recovery protocol.
 
-Run the witness with `node --test test/quint-browser-journal-retention-refinement.test.mjs`.
+Run the witness with `bun test test/quint-browser-journal-retention-refinement.test.mjs`.
 
 The model represents wall timestamps as a UTC day and milliseconds within that
 day. TLC accepts both integers, and comparing the pair with the same time of
@@ -51,5 +51,5 @@ stable order. Both checks retain the limits described above for input histories
 and installed browser scheduling.
 
 ```sh
-node scripts/check-quint.ts verify --models=BrowserJournalRetention
+bun scripts/check-quint.ts verify --models=BrowserJournalRetention
 ```

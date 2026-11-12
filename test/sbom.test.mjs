@@ -11,6 +11,7 @@ import {LICENCE_NOT_RECORDED, buildSbom, integrityHash, renderSbom} from '../scr
 import {METADATA as GRADLE_METADATA, coordinateChecksum, parseVerificationMetadata} from '../scripts/gradle-verification.ts';
 import {packagedRuntimePresent} from '../scripts/generate-licenses.ts';
 import {sbomArgs} from '../scripts/build-android.ts';
+import {readBunLock} from '../scripts/bun-lock.ts';
 import {FLAGS} from '../scripts/licence-policy.ts';
 import {stageAgentBundleDependencies} from '../scripts/agent-bundle-dependencies.ts';
 import {execFileSync} from 'node:child_process';
@@ -19,7 +20,7 @@ import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
 
 const sbom = buildSbom(ROOT);
 const read = rel => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-const lock = read('package-lock.json');
+const lock = readBunLock(ROOT);
 const byRef = new Map(sbom.components.map(component => [component['bom-ref'], component]));
 const prop = (component, name) => component.properties.find(item => item.name === `alphaphone:${name}`)?.value;
 
@@ -45,7 +46,7 @@ test('every shipped npm package is listed with its lockfile integrity, and no de
   const npm = sbom.components.filter(component => component.purl?.startsWith('pkg:npm/'));
   assert.equal(npm.length, shipped.length);
   for (const pkg of shipped) {
-    const component = npm.find(item => prop(item, 'source') === `package-lock.json ${pkg.key}`);
+    const component = npm.find(item => prop(item, 'source') === `bun.lock ${pkg.key}`);
     assert.ok(component, pkg.key);
     assert.equal(component.version, pkg.version);
     assert.deepEqual(component.hashes, [integrityHash(lock.packages[pkg.key].integrity)]);
@@ -54,7 +55,7 @@ test('every shipped npm package is listed with its lockfile integrity, and no de
   }
   for (const name of Object.keys(read('package.json').dependencies)) assert.ok(npm.some(component => component.name === name), name);
   for (const name of ['vite', 'typescript', '@capacitor/cli', 'source-map-js', 'uuid']) assert.ok(!npm.some(component => component.name === name), `${name} is build tooling`);
-  assert.equal(prop(sbom.metadata, 'package-lock-sha256'), createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'package-lock.json'))).digest('hex'));
+  assert.equal(prop(sbom.metadata, 'bun-lock-sha256'), createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'bun.lock'))).digest('hex'));
 });
 
 test('fonts and OCR cores carry the hashes of the pinned bytes, and no web speech files ship', () => {
@@ -148,7 +149,7 @@ test('release-candidate options list what was built and never upgrade it', t => 
   assert.throws(() => buildSbom(ROOT, {apks: dir}), /standalone-release-unsigned\.apk is missing or is not the APK verify-apks recorded/);
   assert.throws(() => buildSbom(ROOT, {apks: path.join(dir, 'none')}), /apk-manifest\.json is missing/);
   // The staged runtime is read, never assumed: without a staged payload the option fails by name.
-  if (!packagedRuntimePresent(ROOT)) assert.throws(() => buildSbom(ROOT, {packagedRuntime: true}), /--packaged-runtime: no resident runtime is staged\. Run: npm run agent:build-workflow-worker && npm run agent:stage-android/);
+  if (!packagedRuntimePresent(ROOT)) assert.throws(() => buildSbom(ROOT, {packagedRuntime: true}), /--packaged-runtime: no resident runtime is staged\. Run: bun run agent:build-workflow-worker && bun run agent:stage-android/);
   else {
     const staged = buildSbom(ROOT, {packagedRuntime: true});
     assert.ok(staged.components.some(component => component['bom-ref'] === 'resident-runtime:android/app/src/main/assets/agent/agent-bundle.js'));
@@ -160,7 +161,7 @@ test('release-candidate options list what was built and never upgrade it', t => 
   fs.mkdirSync(path.join(dir, 'android/app/src/main/assets/agent'), {recursive: true});
   fs.writeFileSync(path.join(dir, 'android/app/src/main/assets/agent/agent-bundle.js'), '');
   assert.deepEqual(sbomArgs('artifacts', dir).slice(-1), ['--packaged-runtime']);
-  assert.match(fs.readFileSync(path.join(ROOT, 'scripts/build-android.ts'), 'utf8'), /else run\("node", \["scripts\/generate-sbom\.ts", \.\.\.sbomArgs\(outDir, root\)\]\);/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'scripts/build-android.ts'), 'utf8'), /else run\("bun", \["scripts\/generate-sbom\.ts", \.\.\.sbomArgs\(outDir, root\)\]\);/);
 });
 
 test('staged native candidates retain their actual hashes when the embedding source record is superseded', t => {
@@ -172,7 +173,7 @@ test('staged native candidates retain their actual hashes when the embedding sou
     fs.writeFileSync(target, bytes);
   };
   // Reuse read-only source dependencies while keeping all staged inputs isolated.
-  for (const file of ['package.json', 'package-lock.json', 'upstream.lock.json', 'app.config.json',
+  for (const file of ['package.json', 'bun.lock', 'upstream.lock.json', 'app.config.json',
     'licenses', 'node_modules', 'vendor', '.eliza', 'apps/app/public', 'android/consumer-host.json',
     'android/local-speech', GRADLE_METADATA]) {
     const target = path.join(root, file);

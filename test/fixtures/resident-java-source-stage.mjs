@@ -97,7 +97,7 @@ fs.writeFileSync = (file, ...args) => {
   return write(file, ...args);
 };
 `);
-    const result = spawnSync(process.execPath, [...(preload ? ['--import', preload] : []), stageScript], {
+    const result = spawnSync(process.execPath, [...(preload ? ['--preload', preload] : []), stageScript], {
       cwd: directory, encoding: 'utf8', timeout: 30000, env: {...gitEnv, ALPHA_LOCAL_AGENT_SOURCE_DIR: runtime},
     });
     assert.ifError(result.error);

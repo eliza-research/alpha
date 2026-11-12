@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {pathToFileURL,fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
-const sdk=process.env.ALPHA_TEST_SDK_SOURCE||path.join(root,'vendor/eliza');
+const sdk=path.join(root,'vendor/eliza');
 const expected=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;
 assert.equal(execFileSync('git',['-C',sdk,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),expected,'test the descriptor-pinned SDK');
 const {stageResidentHostSources,RESIDENT_HOST_CLASSES}=await import(pathToFileURL(path.join(sdk,'packages/app/scripts/mobile/android/resident-host-sources.mjs')).href);

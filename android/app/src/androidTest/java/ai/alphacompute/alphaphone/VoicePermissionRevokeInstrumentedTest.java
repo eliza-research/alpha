@@ -20,7 +20,7 @@ import static org.junit.Assert.*;
  *
  * Android kills the app process when a runtime permission is revoked, and instrumentation runs in
  * that process, so one process cannot observe both sides. The runner
- * (node scripts/test-native-permissions.ts voice-revoke APP.apk TEST.apk NEW_OUTPUT) owns the
+ * (bun scripts/test-native-permissions.ts voice-revoke APP.apk TEST.apk NEW_OUTPUT) owns the
  * permission state of a temporary emulator user and starts one phase per process:
  *   baseline  permission granted: the real recorder captures, stops and discards (this emulator can record)
  *   record    starts a real capture, proves bytes are being written, publishes a marker and waits;
@@ -88,7 +88,7 @@ public final class VoicePermissionRevokeInstrumentedTest {
 
  @Test public void microphoneRevokedWhileRecordingPhase() throws Exception {
   String phase = InstrumentationRegistry.getArguments().getString("voiceRevokePhase");
-  Assume.assumeTrue("Run through node scripts/test-native-permissions.ts voice-revoke (the runner owns permission state)", phase != null);
+  Assume.assumeTrue("Run through bun scripts/test-native-permissions.ts voice-revoke (the runner owns permission state)", phase != null);
   Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
   String runId = InstrumentationRegistry.getArguments().getString("voiceRevokeRunId");
   assertTrue("The runner supplies one run id for all phases", runId != null && runId.matches("[a-f0-9]{32}"));

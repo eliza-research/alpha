@@ -59,12 +59,18 @@ export function CloudDelegationPanel({
 	signal,
 	current,
 	onConnected,
+	onReviewRemoval,
+	removalBusy,
+	revocation,
 }: {
 	client: HostedDigestProtocol;
 	scope: string;
 	signal: AbortSignal;
 	current: () => boolean;
 	onConnected: () => void;
+	onReviewRemoval: (grantId: string) => void;
+	removalBusy: boolean;
+	revocation: { grantId: string; removed: boolean } | null;
 }) {
 	const [expanded, setExpanded] = useState(false);
     const [revocations,setRevocations]=useState<Array<{grantId:string;expiresAt:string}>>([]);
@@ -88,6 +94,14 @@ export function CloudDelegationPanel({
 		pendingCallback = useRef(false),
 		slot = "cloud-delegation:v1:" + scope;
 	const valid = () => authority.current === owner && current() && !signal.aborted;
+	useEffect(() => {
+		if (!revocation || !valid()) return;
+		if (grantId === revocation.grantId) {
+			setGrantId("");
+			setMessage(revocation.removed ? "Revoked" : "Off · retry");
+		}
+		void refreshRevocations().catch(() => { /* The removal outcome above stands. */ });
+	}, [revocation]);
 	async function clear(expected: Pending) {
 		if (!valid()) throw Error("The connection changed. Reopen this screen.");
 		const result = await secureConnectionStore.compareExchange(
@@ -379,29 +393,11 @@ export function CloudDelegationPanel({
             {revocations.filter(g=>g.grantId!==grantId).map(g=><div key={g.grantId} style={{display:"flex",alignItems:"center",gap:8}}><p style={{flex:1}}><span aria-hidden="true" style={{display:"inline-block",width:8,height:8,borderRadius:"50%",marginRight:6,verticalAlign:"middle",background:"#b26a00"}}/>Disconnect pending</p><button aria-label="Retry Cloud disconnect" disabled={busy} onClick={()=>void run(async()=>{const result=await client.delegation("revoke",{grantId:g.grantId,confirmed:true},signal);if(!valid())return;setMessage(result.remoteRevocation==="confirmed"?"Revoked":"Off · retry");await refreshRevocations().catch(()=>{/* The revoke outcome above stands; the list is read again on the next open. */});})}><span aria-hidden="true" style={iconStyle("rotate-cw")}/></button></div>)}
 			{grantId && (
 				<button
-					disabled={busy}
-					onClick={() =>
-						void run(async () => {
-							const result = await client.delegation(
-								"revoke",
-								{ grantId, confirmed: true },
-								signal,
-							);
-							if (!valid()) return;
-							setMessage(
-								result.remoteRevocation === "confirmed"
-									? "Revoked"
-									: "Off · retry",
-							);
-							if (result.remoteRevocation === "confirmed") setGrantId("");
-							// The revoke outcome above stands when the list cannot be read again.
-							await refreshRevocations().catch(() => {});
-							if (valid()) onConnected();
-						})
-					}
-					aria-label="Revoke Cloud read grant"
+					disabled={busy || removalBusy}
+					onClick={() => { if (valid()) onReviewRemoval(grantId); }}
+					aria-label="Review Cloud read grant removal"
 				>
-					Revoke
+					Review removal
 				</button>
 			)}
 		</details>

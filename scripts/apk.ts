@@ -221,7 +221,7 @@ export function extractWebPayload(file: string): {root: string; public: string} 
 }
 
 /** Read the build-time flag record that vite writes beside the web bundle. */
-export function readBuildFlags(publicDir: string): {testMocks: boolean; runtimeProfile?: unknown} {
+export function readBuildFlags(publicDir: string): {testMocks: boolean} {
   const file = path.join(publicDir, "build-flags.json");
   if (!fs.existsSync(file))
     throw new Error(`build-flags.json is missing from the packaged web bundle (${file}); the web build did not record its test-mocks flag`);

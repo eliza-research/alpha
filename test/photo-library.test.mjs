@@ -239,7 +239,7 @@ test('agent album observes only while open and falls back to a bounded fresh cat
 
 test('adapter: agent reads are identity-only; select, view requests and reviews act on the main Library',()=>{
  const root=resolve(import.meta.dirname,'..');
- assert.match(execFileSync(process.execPath,['--import=tsx',join(root,'test/fixtures/photo-library-adapter.mjs')],{cwd:root,encoding:'utf8',timeout:120000}),/PASS photo library adapter/);
+ assert.match(execFileSync(process.execPath,[join(root,'test/fixtures/photo-library-adapter.mjs')],{cwd:root,encoding:'utf8',timeout:120000}),/PASS photo library adapter/);
 });
 
 test('library operations are registered in Alpha device actions: Photos-only, negotiated, journaled and receipted',async()=>{
@@ -252,7 +252,7 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  out.locked=d.proposalContextNotice({type:'photo_library_search'},{view:'photos',revision:'1',sensitive:true});
  out.photos=d.proposalContextNotice({type:'photo_library_search'},{view:'photos',revision:'1',sensitive:false})??null;
  console.log(JSON.stringify(out));`;
- const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
+ const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
  assert.deepEqual(out.search,{type:'photo_library_search',limit:5});
  assert.equal(out.query,'refused');
  assert.equal(out.home,'Open Photos to review this action.');

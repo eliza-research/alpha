@@ -8,7 +8,7 @@ import {resolve} from 'node:path';
 // presentation code against a synthetic result stream. It is not resident-runtime, emulator or
 // device evidence.
 const root=resolve(import.meta.dirname,'..');
-const run=script=>JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
+const run=script=>JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
 const prelude=`
 const d=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/hosted-digests.ts'))});
 const row=(cursor,runId,status,scheduledAt,extra={})=>({cursor,runId,workflowId:'loop-'+(extra.loop||'morning'),workflowVersionId:'v1',templateVersion:'t1',scheduledAt,source:{id:'s-'+(extra.loop||'morning'),revision:'r1',observedAt:'2026-10-01T06:00:00.000Z',expiresAt:'2026-10-08T06:00:00.000Z',type:'explicit_snapshot'},status,startedAt:scheduledAt,completedAt:extra.completedAt||scheduledAt,output:status==='missed'?{status:'missed',text:'The scheduled time was missed. No backlog was executed.'}:status==='overlap'?{status:'overlap',text:'An earlier occurrence is still active. This occurrence did not run.'}:'Brief '+runId,error:null});
@@ -311,7 +311,6 @@ out.weeks=[];for(const [zone,localTime,start] of [['America/New_York','02:30','2
  for(let day=0;day<9;day++){const end=at(start)+day*86400000+86399000;const found=o.scheduledOccurrence(loop,end);if(found&&found.at<=at(agentAt.at(-1)))devAt.add(new Date(found.at).toISOString());}
  out.weeks.push({zone,localTime,agent:agentAt,dev:[...devAt].sort()});}
 console.log(JSON.stringify(out));`);
-  if(process.env.DIGEST_PARITY_DEBUG)console.log(JSON.stringify(out,null,1));
   for(const row of out.rows)assert.deepEqual(row.dev,row.agent,`${row.name}: development and agent admission agree`);
   // The table exercises every status, not only the happy path.
   assert.deepEqual([...new Set(out.rows.map(row=>row.agent?.status??'none'))].sort(),['missed','none','ready','unavailable']);

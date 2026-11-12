@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Disposable emulator probe of the actual PackageInstaller callback and receipt across a process kill. */
 import assert from 'node:assert/strict';
 import {execFileSync, type SpawnSyncReturns} from 'node:child_process';

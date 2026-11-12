@@ -18,8 +18,10 @@ const initial=():State=>({sourceRevision:revision(),reminders:[]});
 async function notificationsAllowed(signal?:AbortSignal){const state=await notificationState(signal);return state.appEnabled&&state.channels.reminders!==false;}
 async function scheduledStatus():Promise<'scheduled'|'permission-denied'>{return await notificationsAllowed()?'scheduled':'permission-denied';}
 function target(data:State,row:DeletableReminder):ReminderTarget {return {...(row.alertMinutes!==undefined?{timingVersion:2 as const}:{}),sourceId:'browser-reminders',sourceRevision:data.sourceRevision,reminderId:row.id,occurrenceId:row.occurrenceId!,revision:row.revision};}
-export function reminderNoticeRevision(selected:ReminderTarget):string{
-  return JSON.stringify([selected.sourceRevision,selected.reminderId,selected.occurrenceId,selected.revision]);
+/** A digest, so the revision stays an opaque token a notice selection can carry. */
+export async function reminderNoticeRevision(selected:ReminderTarget):Promise<string>{
+  const exact=JSON.stringify([selected.sourceRevision,selected.reminderId,selected.occurrenceId,selected.revision]);
+  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(exact))),byte=>byte.toString(16).padStart(2,'0')).join('');
 }
 function operationBinding(input:{operationId:string;bindingHash:string},operation:ReminderOperation|ReminderCreateOperation) {
   if(!/^[A-Za-z0-9_-]{1,128}$/.test(input.operationId)||!/^[a-f0-9]{64}$/.test(input.bindingHash))throw Error('Invalid reminder operation binding.');
@@ -62,10 +64,14 @@ export class BrowserDaily extends WebPlugin {
       for(const input of inputs){
         const row=data.reminders.find(row=>row.id===input.id);
         if(claimed.has(input.id)||!row?.occurrenceId||row.pendingDeletion||row.status!=='posted'||
-          row.noticeDismissedOccurrence===row.occurrenceId||reminderNoticeRevision(target(data,row))!==input.revision)continue;
+          row.noticeDismissedOccurrence===row.occurrenceId||await reminderNoticeRevision(target(data,row))!==input.revision)continue;
         row.noticeDismissedOccurrence=row.occurrenceId;
         claimed.add(input.id);dismissed.push(input);
       }
+      // Revision digests yield; recheck the action and alert policy before committing their marks.
+      if(!current()||noticeActionBlocked()||!await notificationsAllowed(signal))throw Error('Notification changed.');
+      signal.throwIfAborted();
+      if(!current()||noticeActionBlocked())throw Error('Notification changed.');
       return dismissed;
     },signal);
   }

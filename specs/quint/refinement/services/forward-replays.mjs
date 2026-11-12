@@ -1,13 +1,12 @@
 /** Existing source/model forward replays. The observer records actual per-checkpoint
  * comparisons; a successful summary alone never establishes a receipt. */
 import {fileURLToPath} from 'node:url';
-import {register} from 'tsx/esm/api';
 import {observedReplay} from '../observed-replay.mjs';
 import {modelNames} from './maps-model-traces.mjs';
 
 const load=(module,name,options)=>async()=>{
- const unregister=module.endsWith('-replay.mjs')&&!process.versions.bun?register():null;
- try{const loaded=await import(module);return await loaded[name](options);}finally{await unregister?.();}
+
+ const loaded=await import(module);return await loaded[name](options);
 };
 const named=(model,module,name)=>load(module,name,modelNames(`specs/quint/services/${model}.qnt`));
 const definitions=[

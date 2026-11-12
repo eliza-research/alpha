@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-// Alpha's re-export of the prepared plugin-maps module (npm run upstream:prepare-client).
+// Alpha's re-export of the prepared plugin-maps module (bun run upstream:prepare-client).
 import {distanceToRoute as d} from '../apps/app/src/maps/route-distance.ts';
 
 test('route distances cover segment interiors, endpoints, repeated points and the date line', () => {

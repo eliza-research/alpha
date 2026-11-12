@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Static check and dispatch plan for the hosted CI and emulator campaigns of issue #676 (H-31).
  *
- *   node scripts/owner/emulator-campaign-check.ts [--json]
- *   node scripts/owner/emulator-campaign-check.ts --dispatch-plan --sha <40-hex commit>
+ *   bun scripts/owner/emulator-campaign-check.ts [--json]
+ *   bun scripts/owner/emulator-campaign-check.ts --dispatch-plan --sha <40-hex commit>
  *
  * The check reads source files only: for every instrumented class the issue lists it confirms the
  * Java/Kotlin test source exists under android/(module)/src/(androidTest|testMocks/androidTest),
@@ -13,7 +13,7 @@
  * scripts/ci/pending-recovery-ui.py for resident-android.yml) or a campaign script names it, and
  * flags each gap. It prints the local command for every class and both flavors where they apply.
  *
- * --dispatch-plan prints the commands a person runs to dispatch the three workflows on one exact
+ * --dispatch-plan prints the commands a person runs to dispatch the two workflows on one exact
  * commit. It runs nothing: no `gh`, no `git push`, no network. workflow_dispatch takes a branch or
  * tag, not a SHA, so the plan pins the SHA to a dedicated ref first and then checks that each run's
  * headSha is that SHA.
@@ -40,7 +40,7 @@ export const ISSUE_676: readonly IssueGroup[] = Object.freeze([
   { group: "Shell/HOME", classes: ["LauncherApps", "LauncherHome", "SettingsRoles"] },
   { group: "Settings", classes: ["SettingsFlow", "ResetPolicy", "ResetExternalFixture"], items: ["Quick Settings tile placement and unlock"] },
   { group: "Assistant", classes: ["Assistant", "Flow", "ChatContinuity", "AssistantResidentReuse", "AccessibilityViews"], notes: { AccessibilityViews: "the 200% composer overlap rerun (#676 Assistant line)" } },
-  { group: "Workflows", classes: ["WorkflowNoticeTap", "WorkflowNoticeProcessDeath", "HostedProcessRestart"], items: ["npm run agent:test-digest-restart"] },
+  { group: "Workflows", classes: ["WorkflowNoticeTap", "WorkflowNoticeProcessDeath", "HostedProcessRestart"], items: ["bun run agent:test-digest-restart"] },
   { group: "Agent", classes: ["ResidentAlwaysPresent", "ResidentService", "ResidentEgressRedaction"], items: ["resident restart, history and missed-run checks on an installed APK"] },
   { group: "Browser (Chromium 157 WebView)", classes: ["BrowserDownload", "BrowserAutofill", "PasswordBrowserFill", "BrowserIsolatedReading"] },
   { group: "Accessibility", classes: ["Accessibility", "AccessibilityViews", "AccessibilityLifecycle", "AccessibilityHomeRole", "Rotation"] },
@@ -50,7 +50,7 @@ export const ISSUE_676: readonly IssueGroup[] = Object.freeze([
 
 /**
  * The local batches that cover every runnable #676 class, in run order. Each is argv for
- * `npm run test:android:instrumentation --` after `--owned-emulator --avd <avd> --serial <serial>`;
+ * `bun run test:android:instrumentation --` after `--owned-emulator --avd <avd> --serial <serial>`;
  * test/owner-emulator-campaign-check.test.mjs parses each with the runner's own parser.
  */
 export const CAMPAIGN_BATCHES = Object.freeze([
@@ -63,7 +63,7 @@ export const CAMPAIGN_BATCHES = Object.freeze([
 /** Non-class items: what runs each, or null when nothing in the repository does. */
 export const ITEM_RUNNERS = Object.freeze({
   "Quick Settings tile placement and unlock": { runner: null, gap: "no instrumented class drives AlphaQuickSettingsTile (scripts/apk.ts only checks the manifest declaration); manual emulator check only" },
-  "npm run agent:test-digest-restart": { runner: ".github/workflows/digest-restart.yml (job digest-restart) or locally `npm run agent:test-digest-restart`", gap: null, evidence: "host-runtime evidence (synthetic model, no emulator), not class E" },
+  "bun run agent:test-digest-restart": { runner: ".github/workflows/resident-prepare.yml (job prepare) or locally `bun run agent:test-digest-restart`", gap: null, evidence: "host-runtime evidence (synthetic model, no emulator), not class E" },
   "resident restart, history and missed-run checks on an installed APK": { runner: "resident-android.yml job native (scripts/ci/resident-native.py) for restart; no script covers history or missed runs on an installed APK", gap: "history and missed-run checks have no runner; record them as a manual emulator procedure" },
   "upgrade from earlier installs that saved mock state": { runner: null, gap: "manual procedure only; scripts/test-installed-upgrade.ts covers Calendar and reminder upgrades, not saved mock state" },
 });
@@ -101,13 +101,13 @@ type Runner = Pick<typeof import("../android-instrumentation.ts"),
   "DEFAULT_CLASSES" | "CLASS_REGISTRY" | "CAMPAIGN_RUNNERS" | "NOT_RUN_BY_A_RUNNER">;
 type ClassSpec = Runner["CLASS_REGISTRY"][string];
 type Suite = Pick<typeof import("../ci/emulator-suite.ts"),
-  "suitePlan" | "READING_CLASSES" | "READING_TEST_MOCKS_CLASSES" | "BROWSER_CONTROLS_CLASSES" | "FUSED_SPEECH_CLASSES">;
+  "suitePlan" | "READING_CLASSES" | "READING_TEST_MOCKS_CLASSES" | "BROWSER_CONTROLS_CLASSES">;
 
 /** Classes each hosted job runs, from the job's own scripts. */
-export function hostedSuites(root: string, { suitePlan, DEFAULT_CLASSES, READING_CLASSES, READING_TEST_MOCKS_CLASSES, BROWSER_CONTROLS_CLASSES, FUSED_SPEECH_CLASSES }: Suite & Pick<Runner, "DEFAULT_CLASSES">) {
+export function hostedSuites(root: string, { suitePlan, DEFAULT_CLASSES, READING_CLASSES, READING_TEST_MOCKS_CLASSES, BROWSER_CONTROLS_CLASSES }: Suite & Pick<Runner, "DEFAULT_CLASSES">) {
   const named = (file: string) => new Set([...read(root, file).matchAll(/(?<![A-Za-z0-9_])([A-Za-z0-9_]+)InstrumentedTest/g)].map(match => match[1]));
   // Bind the suite constants to the plan so a renamed suite cannot pass silently.
-  const plan = (suite: string) => suitePlan(suite).map(step => step.command?.join(" ") ?? step.action).join("\n");
+  const plan = (suite: string) => suitePlan(suite).map(step => step.command.join(" ")).join("\n");
   const inPlan = (suite: string, classes: readonly string[]) => {
     if (suite === "instrumentation") return classes;
     const commands = plan(suite);
@@ -118,7 +118,6 @@ export function hostedSuites(root: string, { suitePlan, DEFAULT_CLASSES, READING
     "android-emulator.yml suite=browser-reading (flag-off pair)": new Set(inPlan("browser-reading", READING_CLASSES)),
     "android-emulator.yml suite=browser-reading (test-mocks pair)": new Set(inPlan("browser-reading", READING_TEST_MOCKS_CLASSES)),
     "android-emulator.yml suite=browser-controls (test-mocks pair, both flavors)": new Set(inPlan("browser-controls", BROWSER_CONTROLS_CLASSES)),
-    "android-emulator.yml suite=fused-speech (refused until hosted voice staging exists)": new Set(inPlan("fused-speech", FUSED_SPEECH_CLASSES)),
     "resident-android.yml job native (scripts/ci/resident-native.py)": named("scripts/ci/resident-native.py"),
     "resident-android.yml job recovery-ui (scripts/ci/pending-recovery-ui.py)": named("scripts/ci/pending-recovery-ui.py"),
   };
@@ -131,7 +130,7 @@ export const needsTestMocks = (spec: ClassSpec | null) => Boolean(spec && (spec.
 export function localCommand(name: string, spec: ClassSpec | null) {
   if (!spec) return null;
   if (spec.campaign) return spec.campaign;
-  const base = "npm run test:android:instrumentation -- --owned-emulator --avd <avd> --serial emulator-NNNN";
+  const base = "bun run test:android:instrumentation -- --owned-emulator --avd <avd> --serial emulator-NNNN";
   const flags = [];
   if (spec.homeRole) flags.push("--variants launcher --home-role");
   if (needsTestMocks(spec)) flags.push("--test-mocks");
@@ -194,15 +193,14 @@ export function analyse(root: string, runner: Runner, suite: Suite) {
 }
 
 /** Commands for one exact commit; printed, never executed. */
-export function dispatchPlan(sha: string | undefined, { repo = "eliza-research/alphaphone", gh = "gh" } = {}) {
+export function dispatchPlan(sha: string | undefined, { repo = "alphacompute/alphaphone", gh = "gh" } = {}) {
   if (!sha || !/^[0-9a-f]{40}$/.test(sha)) throw new Error("--sha needs the full 40-character commit");
   const ref = `ci/h31-${sha.slice(0, 12)}`;
   const R = `-R ${repo}`;
   const runs = [
-    { workflow: "resident-android.yml", fields: ["-f runtime_profile=native"], jobs: "build, then native and recovery-ui", artifacts: ["resident-native-evidence-<RUN_ID>", "pending-recovery-ui-evidence-<RUN_ID>"] },
+    { workflow: "resident-android.yml", fields: [], jobs: "build, then native and recovery-ui", artifacts: ["resident-native-evidence-<RUN_ID>", "pending-recovery-ui-evidence-<RUN_ID>"] },
     { workflow: "android-emulator.yml", fields: ["-f suite=instrumentation"], jobs: "build, instrumentation", artifacts: ["android-emulator-build-evidence-<RUN_ID>-<ATTEMPT>", "the instrumentation job's evidence artifact"] },
     { workflow: "android-emulator.yml", fields: ["-f suite=browser-reading"], jobs: "build, browser-reading", artifacts: ["the browser-reading job's evidence artifact"] },
-    { workflow: "digest-restart.yml", fields: [], jobs: "digest-restart (host runtime, no emulator)", artifacts: ["the digest-restart artifact"] },
   ];
   return {
     sha, ref,
@@ -219,9 +217,8 @@ export function dispatchPlan(sha: string | undefined, { repo = "eliza-research/a
       `${gh} run view <RUN_ID> ${R} --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'   # native and recovery-ui must not be "skipped"`,
       `${gh} run download <RUN_ID> ${R} -D test-results/h31/<RUN_ID>`,
     ],
-    refused: ["android-emulator.yml -f suite=fused-speech and -f suite=all stop in the build job until hosted voice staging exists; do not dispatch them"],
     cleanup: [`git push origin --delete ${ref}   # after the evidence is downloaded and committed`],
-    evidenceClass: "Emulator HOME-role evidence (class E) on developer-override APKs for android-emulator.yml; PACKAGED developer APKs for resident-android.yml; host-runtime for digest-restart.yml. Not an image boot, real integration, device or user acceptance.",
+    evidenceClass: "Emulator HOME-role evidence (class E) on developer-override APKs for android-emulator.yml; PACKAGED developer APKs for resident-android.yml. Not an image boot, real integration, device or user acceptance.",
   };
 }
 
@@ -249,7 +246,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else {
       console.log(`# Dispatch plan for ${plan.sha} (printed only; nothing was run)\n\n# 1. Pin the commit to a ref\n${plan.pin.join("\n")}\n\n# 2. Dispatch`);
       for (const run of plan.dispatch) console.log(`${run.command}   # ${run.jobs}`);
-      console.log(`\n# Refused\n# ${plan.refused.join("\n# ")}\n\n# 3. Verify and download\n${plan.verify.join("\n")}\n\n# 4. Clean up\n${plan.cleanup.join("\n")}\n\n# ${plan.evidenceClass}`);
+      console.log(`\n# 3. Verify and download\n${plan.verify.join("\n")}\n\n# 4. Clean up\n${plan.cleanup.join("\n")}\n\n# ${plan.evidenceClass}`);
     }
   } else if (args.every(arg => arg === "--json")) {
     const { runner, suite } = await loadRunner(ROOT);
@@ -267,5 +264,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       console.log(`Classes listed: ${classes.length}; missing source: ${missing.join(", ") || "none"}; no runner: ${unrunnable.join(", ") || "none"}; no hosted job: ${localOnly.length}.`);
       console.log("Emulator HOME-role evidence (class E) only; this check ran nothing on an emulator.");
     }
-  } else { console.error("Usage: node scripts/owner/emulator-campaign-check.ts [--json] | --dispatch-plan --sha <commit> [--json]"); process.exitCode = 2; }
+  } else { console.error("Usage: bun scripts/owner/emulator-campaign-check.ts [--json] | --dispatch-plan --sha <commit> [--json]"); process.exitCode = 2; }
 }

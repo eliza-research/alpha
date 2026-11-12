@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const {createDeletionNoticePolicy}=await tsImport(new URL('../apps/app/src/runtime/deletions.ts',import.meta.url).href,{parentURL:import.meta.url});
 
 const row=(id='event',phase='queued')=>({kind:'calendar',id,phase,window:'open',target:{row:{title:id}}});

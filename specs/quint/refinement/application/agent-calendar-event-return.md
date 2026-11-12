@@ -21,5 +21,5 @@ navigation checks, duplicate taps and legacy native event returns.
 Provider effects and linked control also have separate scope.
 
 ```sh
-node --test test/quint-agent-calendar-event-return.test.mjs
+bun test test/quint-agent-calendar-event-return.test.mjs
 ```

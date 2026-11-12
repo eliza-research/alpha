@@ -6,7 +6,7 @@ export const referenceOnly = (path: string) => /^(docs\/|design\/)/.test(path) |
 
 // The retained product documentation is checked by test/docs-links.test.mjs.
 // Policy inputs under scripts/ remain executable build inputs and select normal lanes.
-export const testReadReference = (path: string) => path === 'README.md' || path === 'docs/prd.md';
+export const testReadReference = (path: string) => path === 'README.md' || path === 'docs/development.md' || path === 'docs/prd.md';
 
 // Android files that browser specs read; test/ci-affected.test.mjs scans test/browser to keep this complete.
 export const browserReadAndroid = new Set([
@@ -24,7 +24,7 @@ export function affected(paths: readonly string[]) {
     }
     result.verify = true;
     if (/^specs\/quint\//.test(path) || /^scripts\/(check-quint|quint-lib)\.ts$/.test(path)) {
-      // Executable formal models are checked by verify and do not change APK or browser bytes.
+      // Formal models change no APK or browser bytes; the promotion workflow checks them.
     } else if (/^test\/browser\//.test(path) || path === 'playwright.config.ts' || path === 'scripts/storage-specs.ts') {
       result.browser = true;
     } else if (/^test\//.test(path)) {
@@ -35,9 +35,9 @@ export function affected(paths: readonly string[]) {
       result.android = true;
     } else if (path === '.github/workflows/resident-prepare.yml') {
       result.prepare = true;
-    } else if (/^\.github\/workflows\/(resident-android|bun-spawn-seccomp|android-emulator|digest-restart)\.yml$/.test(path)) {
+    } else if (/^\.github\/workflows\/(resident-android|android-emulator)\.yml$/.test(path)) {
       // Explicit qualification/diagnostics; resident push/nightly runs are opt-in by repository variable,
-      // and the emulator evidence and digest process-recovery workflows have no trigger but a dispatch.
+      // and the emulator evidence workflow has no trigger but a dispatch.
     } else if (browserReadAndroid.has(path)) {
       result.browser = result.android = true;
     } else if (/^android\//.test(path)) {

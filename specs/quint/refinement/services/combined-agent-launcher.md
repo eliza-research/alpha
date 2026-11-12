@@ -46,5 +46,5 @@ speech assets and authenticated service readiness are separate obligations.
 Run the focused campaign with Node 26.
 
 ```sh
-node --test test/quint-combined-agent-launcher-refinement.test.mjs
+bun test test/quint-combined-agent-launcher-refinement.test.mjs
 ```

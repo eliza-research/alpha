@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from 'node:vm';
 const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 const begin=source.indexOf('const RESIDENT_AUTO_RETRY_MS'),end=source.indexOf('\n/** Start (or restart) the resident.',begin);
 assert.ok(begin>0&&end>begin);const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'strip'});

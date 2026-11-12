@@ -51,7 +51,7 @@ public final class SettingsCrashLogInstrumentedTest {
  }
 
  /**
-  * Two-phase forced crash, run by node scripts/test-native-restart.ts crash-log: prepare (the log
+  * Two-phase forced crash, run by bun scripts/test-native-restart.ts crash-log: prepare (the log
   * starts empty), crashLogPhase=crash (this process dies with the real default handler; the runner
   * confirms it exited), crashLogPhase=readback in a new process, then cleanup.
   */

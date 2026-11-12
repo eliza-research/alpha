@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { stripTypeScriptTypes } from "node:module";
+import {stripTypeScriptTypes} from "./support/strip-types.mjs";
 import { main, MANIFEST_NAME } from "../scripts/publish-update-manifest.ts";
 
 const root = path.resolve(import.meta.dirname, "..");

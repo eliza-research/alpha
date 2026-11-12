@@ -1,7 +1,7 @@
 # Function verification
 
-`npm run lemma:check` checks the pinned LemmaScript 0.6.6 generation against the
-committed proof companions, then runs Dafny 4.11.0. `npm run lemma:regen` updates
+`bun run lemma:check` checks the pinned LemmaScript 0.6.6 generation against the
+committed proof companions, then runs Dafny 4.11.0. `bun run lemma:regen` updates
 generation after an intentional source/specification change. Review and commit
 both companions. `lemmascript.json` selects JavaScript UTF-16 string semantics;
 these initial policies use no mathematical-number approximation or extern axiom.
@@ -13,8 +13,8 @@ The existing wrapper still handles a missing native snapshot. Native status
 delivery, lifecycle timing and recovery effects are outside this function proof.
 
 The source list is `LemmaScript-files.txt`. Missing or differently versioned Dafny
-records `skipped-no-qualified-backend`, never a passing proof. CI sets
-`LEMMA_REQUIRE_BACKEND=1`, so missing qualification fails verification. Receipts
+records `skipped-no-qualified-backend`, never a passing proof. The promotion
+workflow sets `LEMMA_REQUIRE_BACKEND=1`, so missing qualification fails it. Receipts
 under `test-results/lemma/check.json` bind the source, lockfile, configuration,
 generated companions and checker output. A changed generated artifact fails the
 check even when the compiler would otherwise refresh it in place.
@@ -80,8 +80,8 @@ proved about the same translated function.
 
 The check needs two tools.
 
-1. **LemmaScript 0.6.6.** It is an exact devDependency installed by `npm ci`; the checker verifies that installed package version before generation. The npm package named `lsc` is unrelated; do not
-   run bare `npx lsc`. `lsc` also needs `git` on `PATH`.
+1. **LemmaScript 0.6.6.** It is an exact devDependency installed by `bun install --frozen-lockfile`; the checker verifies that installed package version before generation. The npm package named `lsc` is unrelated; do not
+   run bare `bunx lsc`. `lsc` also needs `git` on `PATH`.
 2. **Dafny 4.11.0** (proofs were checked with 4.11.0). Download the release archive for your
    platform from <https://github.com/dafny-lang/dafny/releases/tag/v4.11.0> and unpack it; it
    includes Z3. Either put the unpacked directory on `PATH` or set `DAFNY` to the `dafny`
@@ -97,9 +97,9 @@ From the repository root:
 
 ```sh
 export PATH="<dafny dir>:$PATH"
-node scripts/check-lemma.ts                                  # every listed file
+bun scripts/check-lemma.ts                                  # every listed file
 node node_modules/lemmascript/tools/dist/lsc.js check --backend=dafny apps/app/src/browser/video-capture.ts # focused diagnosis; the gate checks every listed file
-node --test test/lemma-check.test.mjs                         # tests of the check itself
+bun test test/lemma-check.test.mjs                         # tests of the check itself
 ```
 
 For each listed file the script checks that every contract annotation is read by LemmaScript, that

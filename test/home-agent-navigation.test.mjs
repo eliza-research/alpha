@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {webcrypto} from 'node:crypto';
 import vm from 'node:vm';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 // Targets resolve through Alpha's product view registry (canonical ids, served ids, availability).
 const {alphaCanonicalViewId,alphaViewKey,alphaViewPaths}=await tsImport('../apps/app/src/product/alpha-product.ts',import.meta.url);
 const paths=['.eliza/client-features/packages/core/src/events.ts','.eliza/client-features/packages/core/src/views/view-interact-protocol.ts','.eliza/client-features/packages/core/src/views/view-action-handoff.ts','.eliza/client-features/packages/core/src/views/completed-action-navigation.ts','apps/app/src/runtime/view-navigation.ts'];

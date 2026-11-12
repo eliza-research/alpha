@@ -118,9 +118,10 @@ const device = registerPlugin<{
   diagnosticsFacts(): Promise<Bag>;
   shareDiagnostics(input: { text: string }): Promise<{ status: string }>;
   checkForUpdate(): Promise<{manifest?: string; manifestSha256?: string}>;
+  openUpdatePermissionSettings(): Promise<{status: 'opened' | 'unsupported'}>;
   updateState(): Promise<{pending?: boolean}>;
   installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'> &
-    ({automatic: true; manifestSha256: string} | {automatic?: never; manifestSha256?: never})): Promise<{status?: string}>;
+    ({automatic: true; manifestSha256: string} | {automatic?: never; manifestSha256?: never})): Promise<{status?: string; manifest?: string}>;
 }>('AlphaDevice');
 const notifications = registerPlugin<{status():Promise<Bag>;setAlertPreferences(input:{appEnabled?:boolean;channelId?:string;enabled?:boolean}):Promise<Bag>;openAppSettings():Promise<Bag>;openChannelSettings(input:{id:string}):Promise<{status:string}>;crossAppStatus():Promise<Bag>;notificationApps():Promise<{apps:Bag[]}>;setNotificationPolicy(input:Bag):Promise<Bag>;resumeCrossApp(input:{expectedRevision:string}):Promise<Bag>;openNotificationAccess():Promise<Bag>;notificationHistory():Promise<{items:Bag[]}>;clearNotificationHistory():Promise<void>}>('AlphaNotifications');
 const system = registerPlugin<{ getDeviceSettings(): Promise<Bag>; getStatus(): Promise<{ roles?: Bag[] }>; requestRole(input: { role: string }): Promise<{ role: string; held: boolean; resultCode: number }>; getBuildInfo(): Promise<{ launcher?: boolean; version?: string }> }>('ElizaSystem');
@@ -157,38 +158,51 @@ export const UPDATE_SCHEMA = 'alpha-update/v1';
 export const UPDATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 export const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 type AppUpdate = {versionCode: number; versionName: string; apkUrl: string; sha256: string; sizeBytes: number; notes: string};
+/** The bounded index admits unique variant and signer pairs. A single offer has the same row shape. */
+function updateManifestRows(value: unknown): Array<Record<string, unknown>> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const document = value as Record<string, unknown>;
+  if (document.schema !== 'alpha-update/index-v1') return [document];
+  if (!Array.isArray(document.releases) || document.releases.length < 1 || document.releases.length > 16) return null;
+  const pairs = new Set<string>();
+  const rows: Array<Record<string, unknown>> = [];
+  for (const entry of document.releases) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    const row = entry as Record<string, unknown>;
+    if (row.schema !== UPDATE_SCHEMA || (row.variant !== 'launcher' && row.variant !== 'standalone') || typeof row.signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(row.signerSha256)) return null;
+    const pair = row.variant + ':' + row.signerSha256;
+    if (pairs.has(pair)) return null;
+    pairs.add(pair);
+    rows.push(row);
+  }
+  return rows;
+}
 /**
  * The update a manifest offers this install, or null unless it is complete and HTTPS, newer than the
  * installed versionCode, and for this flavor and signer. Android refuses another signer after the whole
  * download, and the other flavor would silently change what the phone admits (HOME, Phone, SMS).
  */
 export function parseUpdateManifest(value: unknown, installed: {versionCode: unknown; launcher: unknown; signerSha256: unknown}): AppUpdate | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  let offer = value as Record<string, unknown>;
   // One canonical feed can serve distinct APK flavors and installed signing families.
   // Select an exact pair only; never fall back to another signer or an ambiguous offer.
-  if (offer.schema === 'alpha-update/index-v1') {
-    if (!Array.isArray(offer.releases) || offer.releases.length < 1 || offer.releases.length > 16) return null;
-    const pairs = new Set<string>();
-    let selected: Record<string, unknown> | undefined;
-    for (const entry of offer.releases) {
-      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
-      const row = entry as Record<string, unknown>;
-      if (row.schema !== UPDATE_SCHEMA || (row.variant !== 'launcher' && row.variant !== 'standalone') || typeof row.signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(row.signerSha256)) return null;
-      const pair = row.variant + ':' + row.signerSha256;
-      if (pairs.has(pair)) return null;
-      pairs.add(pair);
-      if (typeof installed.launcher === 'boolean' && row.variant === (installed.launcher ? 'launcher' : 'standalone') && row.signerSha256 === installed.signerSha256) selected = row;
-    }
-    if (!selected) return null;
-    offer = selected;
-  }
-  const {schema, versionCode, versionName, variant, signerSha256, apkUrl, sha256, sizeBytes, notes} = offer;
+  if (typeof installed.launcher !== 'boolean') return null;
+  const offer = updateManifestRows(value)?.find(row => row.variant === (installed.launcher ? 'launcher' : 'standalone') && row.signerSha256 === installed.signerSha256);
+  if (!offer) return null;
+  const {schema, versionCode, versionName, signerSha256, apkUrl, sha256, sizeBytes, notes} = offer;
   if (schema !== UPDATE_SCHEMA || !Number.isSafeInteger(installed.versionCode) || !Number.isSafeInteger(versionCode) || (versionCode as number) <= (installed.versionCode as number)) return null;
-  if (typeof installed.launcher !== 'boolean' || variant !== (installed.launcher ? 'launcher' : 'standalone') || typeof signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(signerSha256) || signerSha256 !== installed.signerSha256) return null;
+  if (typeof signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(signerSha256)) return null;
   if (typeof sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(sha256) || !Number.isSafeInteger(sizeBytes) || (sizeBytes as number) <= 0 || (sizeBytes as number) > UPDATE_MAX_BYTES || typeof apkUrl !== 'string' || apkUrl.length > 2048) return null;
   try { const url = new URL(apkUrl); if (url.protocol !== 'https:' || url.username || url.password) return null; } catch { return null; }
   return {versionCode: versionCode as number, versionName: typeof versionName === 'string' && /^[^\u0000-\u001f\u007f]{1,64}$/.test(versionName) ? versionName : '', apkUrl, sha256, sizeBytes: sizeBytes as number, notes: typeof notes === 'string' && notes.length <= 500 ? notes : ''};
+}
+/** A changed response evicts the saved manual offer only if it describes a complete feed. */
+function isCompleteUpdateManifest(manifest: unknown): boolean {
+  if (typeof manifest !== 'string') return false;
+  try {
+    const rows = updateManifestRows(JSON.parse(manifest));
+    return !!rows?.every(row => parseUpdateManifest(row, {versionCode: 0,
+      launcher: row.variant === 'launcher', signerSha256: row.signerSha256}));
+  } catch { return false; }
 }
 /** Fifteen minutes after the last answer, or at once for an unknown/future clock. */
 export function updateCheckDue(checkedAt: number, now: number): boolean {
@@ -312,12 +326,15 @@ function retainUpdate(value: SavedUpdate) {
   lastUpdate = value;
   try { localStorage.setItem(UPDATE_KEY, JSON.stringify(value)); } catch { /* Kept for this session. */ }
 }
-function invalidateUpdate(used: SavedUpdate): boolean {
+function retireUpdate(used: SavedUpdate, changed: boolean): boolean {
   if (lastUpdate !== used) return false;
-  lastUpdate = {checkedAt: Number.NaN, manifest: null};
+  lastUpdate = changed ? {checkedAt: Number.NaN, manifest: null} : {checkedAt: used.checkedAt, manifest: used.manifest};
   try {
-    if (localStorage.getItem(UPDATE_KEY) === JSON.stringify(used)) localStorage.removeItem(UPDATE_KEY);
-  } catch { /* Invalidated for this session. */ }
+    if (localStorage.getItem(UPDATE_KEY) === JSON.stringify(used)) {
+      if (changed) localStorage.removeItem(UPDATE_KEY);
+      else localStorage.setItem(UPDATE_KEY, JSON.stringify(lastUpdate));
+    }
+  } catch { /* Automatic authority is retired for this session. */ }
   return true;
 }
 /**
@@ -452,8 +469,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     // renderer's saved-draft receipt before stopping the resident or committing.
     const result = await device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,
       sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true,manifestSha256:saved.manifestSha256});
-    if (result?.status === 'offer-unavailable') {
-      if (invalidateUpdate(saved) && current()) changed();
+    if (result?.status === 'offer-unavailable' || result?.status === 'offer-withdrawn' || result?.status === 'offer-response-changed') {
+      const withdrawn = result.status === 'offer-withdrawn' ||
+        (result.status === 'offer-response-changed' && isCompleteUpdateManifest(result.manifest));
+      if (retireUpdate(saved, withdrawn) && current()) changed();
       throw Error('Update offer unavailable');
     }
     if (result?.status === 'starting') throw Error('Android is still starting');
@@ -955,9 +974,17 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           page.groups.push(group([role('Home app',home),role('Assistant app',roles?.assistant),
             ...(canRequestHome?[{kNav:true,label:'Set as Home',lbl:'Make Alpha your Home app',busy:roleBusy,hasSpin:roleBusy,chev:!roleBusy,noAB:true,go:()=>void requestHome(api)}]:[]),
             nav('Default apps','default-apps','Default apps in Android')]));
+          const updatePermission = facts.appAutomaticUpdates;
           // Install update only for the version the last manifest offers this install, and an explicit check whose answer stays below it.
           const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});
           page.groups.push(group([
+            ...(updatePermission === 'permission-required' ? [{
+              ...action('Allow automatic updates', () => void device.openUpdatePermissionSettings()
+                .then(result => { if (result.status !== 'opened') api.toast('Couldn’t open Android settings'); },
+                  () => api.toast('Couldn’t open Android settings')), 'update-permission'),
+              lucide: 'shield',
+            }] : updatePermission === 'supported' ? [info('Automatic updates', 'Allowed')]
+              : updatePermission === 'starting' ? [info('Automatic updates', 'Starting')] : []),
             ...(update?[{...action('Update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),lbl:updateBusy==='install'?'Downloading update':'Install update',lucide:'download',val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,busy:!!updateBusy,hasSpin:updateBusy==='install',chev:false,id:'update-install'}]:[]),
             {...action('Check',()=>void updateAction('check',()=>checkForUpdate(true)),'update-check'),lbl:updateBusy==='check'?'Checking for updates':'Check for updates',lucide:'rotate-cw',busy:!!updateBusy,hasSpin:updateBusy==='check',chev:false},
             ...(updateResult?[{...info('Update check',updateResult),role:'status',live:'polite'}]:[])]));
@@ -1239,7 +1266,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       }).filter(section => section.rows.length);
       // General: network hand-offs, the device, updates, then the destructive reset alone and last.
       const take = (names: string[]) => names.flatMap(name => { const row = rows.get(name); rows.delete(name); return row ? [row] : []; });
-      const network = take(['Wi-Fi', 'Bluetooth', 'Mobile data']), updates = take(['Update', 'Check', 'Update check']), reset = take(['Erase all data']);
+      const network = take(['Wi-Fi', 'Bluetooth', 'Mobile data']);
+      const updates = take(['Allow automatic updates', 'Automatic updates', 'Update', 'Check', 'Update check']);
+      const reset = take(['Erase all data']);
       settingsTop.groups.splice(2, 0, ...[['Network', network], ['Device', [...rows.values()]], ['Updates', updates], ['Reset', reset]]
         .filter(([, list]) => (list as Bag[]).length).map(([cap, list]) => ({...group(list as Bag[]), cap, hasCap:true})));
       for (const page of out.stack) {

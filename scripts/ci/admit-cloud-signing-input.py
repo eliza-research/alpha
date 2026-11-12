@@ -18,7 +18,7 @@ from app_update_producer import (
 )
 
 VARIANTS = ("standalone", "launcher")
-# The approved pre-migration Cloud producer keeps its installed Android identity.
+# Existing installed Cloud releases retain their Android identity during the branding migration.
 PACKAGE = ".".join(("ai", "elizaresearch", "alphaphone"))
 SHA = re.compile("[0-9a-f]{64}")
 COMMIT = re.compile("[0-9a-f]{40}")

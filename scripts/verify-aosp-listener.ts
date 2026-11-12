@@ -1,11 +1,10 @@
 // Read-only check of the always-on listener on a booted Alpha image (issue #424).
-// Usage: node scripts/verify-aosp-listener.ts --serial SERIAL --user USER_ID [--launcher-descriptor FILE]
+// Usage: bun scripts/verify-aosp-listener.ts --serial SERIAL --user USER_ID [--launcher-descriptor FILE]
 // Reports package-manager and SELinux observations. Indicator, invocation and device acceptance
 // require separate evidence.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { androidEnv } from "./toolchain.ts";
 import { verifyAospListener } from "./aosp-listener.ts";
 import { LAUNCHER_PRIVILEGED_PERMISSIONS } from "./stage-aosp.ts";
@@ -71,4 +70,4 @@ function main(args: string[]) {
   console.log(JSON.stringify(verifyListenerBoot(run, user, appId, launcherPrivileged), null, 2));
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main(process.argv.slice(2));
+if (import.meta.main) main(process.argv.slice(2));

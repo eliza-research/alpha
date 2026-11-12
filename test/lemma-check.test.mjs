@@ -41,7 +41,7 @@ function fixture(t, source = 'export function sample(x: number): number {\n  //@
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   const write = (file, text, mode) => { fs.mkdirSync(path.dirname(path.join(root, file)), {recursive: true}); fs.writeFileSync(path.join(root, file), text, mode ? {mode} : undefined); };
   write('lemmascript.json', '{"proof-dir":"specs/lemma"}\n');
-  write('package-lock.json', '{}');
+  write('bun.lock', '{}');
   write('scripts/check-lemma.ts', fs.readFileSync(script));
   write('scripts/quint-lib.ts', fs.readFileSync(new URL('../scripts/quint-lib.ts', import.meta.url)));
   write('node_modules/lemmascript/package.json', '{"version":"0.6.6","type":"module"}');

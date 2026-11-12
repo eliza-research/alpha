@@ -20,5 +20,5 @@ generations and four launches. Builtin dispatch, package watchers, favorites
 migration and real Android execution remain separate obligations.
 
 ```sh
-node --test test/quint-launcher-ownership.test.mjs
+bun test test/quint-launcher-ownership.test.mjs
 ```

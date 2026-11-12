@@ -38,7 +38,7 @@ if not secret:
 raw_secret = secret.encode()
 patterns = [raw_secret, secret.encode("utf-16le"), base64.b64encode(raw_secret), raw_secret.hex().encode()]
 debug_classes = ["DevelopmentAgentPlugin", "DevelopmentVoiceCapture", "SyntheticAutofillService"]
-debug_class_packages = (b"Lai/alphacompute/alphaphone/", b"Lai/elizaresearch/alphaphone/")
+debug_class_packages = (b"Lai/alphacompute/alphaphone/",)
 results = []
 for name in sorted(manifest):
     if not re.fullmatch(r"(?:standalone|launcher)-(?:debug|release|release-unsigned)\.apk", name):

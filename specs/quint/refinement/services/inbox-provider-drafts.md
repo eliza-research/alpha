@@ -71,8 +71,8 @@ attachment-byte mismatch is exercised in the source runner and represented throu
 an explicit read-compatibility input.
 
 ```sh
-node --test test/quint-inbox-provider-drafts.test.mjs
-node specs/quint/refinement/services/inbox-provider-drafts.mjs
+bun test test/quint-inbox-provider-drafts.test.mjs
+bun specs/quint/refinement/services/inbox-provider-drafts.mjs
 ```
 
 ## Validation on the retained source branch

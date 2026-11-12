@@ -56,5 +56,8 @@ export class MapPlane extends SharedMapPlane {
    const right=sheet&&sheet.left>bounds.left+30?Math.max(30,bounds.right-sheet.left+30):30;
    return {top:header?header.bottom-bounds.top+60:100,bottom:credits?bounds.bottom-credits.top+16:Math.min(430,container.clientHeight*.52+30),left:30,right};
   }:undefined,onPin});
+  // The world map opens on North America. The pinned shared plane has no opening-view option;
+  // elizaOS/eliza#39408 adds `initialView`. Pass that option and drop this once the pin includes it.
+  if(worldwide)(this as unknown as {map:{jumpTo(view:{center:[number,number];zoom?:number}):void}}).map.jumpTo(region.kind==='global'?{center:[-98,45],zoom:2.4}:{center:[-98,45]});
  }
 }

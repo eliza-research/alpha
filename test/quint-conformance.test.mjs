@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {nodeOnly} from './support/node-only.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -29,7 +30,7 @@ function modelTrace(module, scenario, stateName = 's', main = module) {
   } finally { rmSync(directory, { recursive: true, force: true }); }
 }
 
-test('delegation return page agrees with Quint validation, URL scrubbing and link exposure', () => {
+test('delegation return page agrees with Quint validation, URL scrubbing and link exposure', nodeOnly('jsdom runScripts needs a Proxy in the global prototype chain'), () => {
   const state = 'A'.repeat(43);
   const cases = [
     ['validCodeTest', `state=${state}&code=example`],

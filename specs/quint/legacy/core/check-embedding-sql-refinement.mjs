@@ -150,7 +150,7 @@ export async function checkEmbeddingSqlRefinement(extraSources = []) {
     export {RuntimeEmbeddings} from './packages/core/src/runtime/embeddings.ts';
     export {identifyEmbeddingVector, getEmbeddingVectorSpace} from './packages/core/src/embedding-vector-space.ts';
     export {ModelType} from './packages/core/src/types/model.ts';
-  `, [driver, 'package-lock.json', 'upstream.lock.json', ...extraSources], [sqlDependencies], historicalRuntime);
+  `, [driver, 'bun.lock', 'upstream.lock.json', ...extraSources], [sqlDependencies], historicalRuntime);
   const module = bundle.instantiate({});
   const traces = [
     await scenario(module, 'old-untagged-vector-can-be-retagged-during-activation', async f => {

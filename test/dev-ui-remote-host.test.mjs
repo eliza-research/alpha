@@ -1,8 +1,10 @@
-import test from 'node:test';
+import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {readFileSync} from 'node:fs';
+import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 
 // Execute the real CLI with only Vite replaced at its external module boundary.
 // The fake server records its configuration without starting a backend or network listener.
@@ -16,13 +18,15 @@ export async function createServer(config){
  console.log(JSON.stringify({fixture:'vite-config',env:Object.fromEntries(names.map(name=>[name,process.env[name]])),config}));
  return {listen:async()=>{},close:async()=>{}};
 }`;
-const preload = `import {registerHooks} from 'node:module';
-registerHooks({resolve(name,context,next){
- return name==='vite'?{url:${JSON.stringify('data:text/javascript,'+encodeURIComponent(vite))},shortCircuit:true}:next(name,context);
-}});`;
+// Bun resolves a static bare import before runtime resolve hooks run and ignores a data: preload,
+// so the replacement is a virtual module registered from a preload file.
+const preloadDirectory=mkdtempSync(join(tmpdir(),'alpha-dev-ui-remote-host-'));
+const preloadFile=join(preloadDirectory,'preload.mjs');
+writeFileSync(preloadFile,`Bun.plugin({name:'vite-fixture',setup(build){build.module('vite',()=>({contents:${JSON.stringify(vite)},loader:'js'}));}});`);
+after(()=>rmSync(preloadDirectory,{recursive:true,force:true}));
 const root=fileURLToPath(new URL('../',import.meta.url));
 function launch(extra={}){
- const result=spawnSync(process.execPath,['--import','data:text/javascript,'+encodeURIComponent(preload),'scripts/dev-ui-remote-host.ts','--port=5494','--remote=http://127.0.0.1:5518','--environment=staging'],{
+ const result=spawnSync(process.execPath,['--preload',preloadFile,'scripts/dev-ui-remote-host.ts','--port=5494','--remote=http://127.0.0.1:5518','--environment=staging'],{
   cwd:root,encoding:'utf8',timeout:10000,
   env:{...process.env,ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1',ALPHA_CLOUD_REALTIME_VOICE:'',VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE:'1',...extra},
  });

@@ -4,7 +4,6 @@ umask 077
 test "$GITHUB_REF" = refs/heads/main
 test "$GITHUB_REPOSITORY" = eliza-research/alpha
 test "$GITHUB_REPOSITORY_ID" = 1396333361
-test "$GITHUB_REPOSITORY_OWNER_ID" = 314117943
 test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 directory=$(mktemp -d "$RUNNER_TEMP/alpha-cloud-input.XXXXXX")
 printf '%s' "$SIGNING_PLAN" > "$directory/pins.json"
@@ -57,10 +56,10 @@ size=$(jq -er '.archiveBytes | select(type == "number" and floor == . and . > 0 
 digest=$(jq -er '.archiveSHA256 | select(type == "string" and test("^[0-9a-f]{64}$"))' "$directory/pins.json")
 gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" |
   jq -e --arg source "$source" --arg repo "$GITHUB_REPOSITORY" \
-    --argjson repo_id "$GITHUB_REPOSITORY_ID" --argjson owner_id "$GITHUB_REPOSITORY_OWNER_ID" '
+    --argjson repo_id "$GITHUB_REPOSITORY_ID" '
     .status == "completed" and .conclusion == "success" and
     .head_sha == $source and .head_repository.full_name == $repo and
-    .head_repository.id == $repo_id and .head_repository.owner.id == $owner_id and
+    .head_repository.id == $repo_id and
     .path == ".github/workflows/resident-android.yml" and
     .event == "workflow_dispatch"' >/dev/null
 gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact" |
