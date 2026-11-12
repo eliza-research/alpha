@@ -90,13 +90,9 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       await expect(account.getByRole('textbox',{name:'Membership code'})).toBeVisible();
       await page.screenshot({path:info.outputPath('membership-code-wide.png'),animations:'disabled'});
       await page.setViewportSize({width:412,height:915});
-      // Plan selection opens Cloud billing only after the account check; nothing is bought here.
-      await membership.getByRole('button', { name: 'Choose a monthly plan', exact: true }).click();
-      await expect(page.getByRole('heading',{name:'Billing',exact:true})).toBeVisible();
-      await expect(page.getByRole('button',{name:'Open billing',exact:true})).toBeEnabled();
-      expect(await stub(page,s=>s.opened)).toEqual([]);
-      await expect(page.getByRole('checkbox')).toHaveCount(0);
-      await page.getByRole('button',{name:'Open billing',exact:true}).click();
+      // The Account sheet opens the selected account's billing route directly.
+      await membership.getByRole('button', { name: 'Choose a plan', exact: true }).click();
+      await expect(page.getByRole('dialog', {name:'Review billing account',exact:true})).toHaveCount(0);
       await expect.poll(() => stub(page, s => s.opened)).toEqual(['https://cloud.eliza.app/cloud/billing']);
     } else {
       if (kind === 'no_provider') await expect(page.getByRole('button', { name: /^Check Eliza Cloud again/ })).toHaveCount(1);

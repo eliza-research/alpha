@@ -206,7 +206,7 @@ test('deferred apps are absent and root views show honest unconnected states', a
   for (const deferred of ['Phone', 'Messages', 'Contacts', 'Wallet']) await expect(page.getByRole('button', { name: deferred, exact: true })).toHaveCount(0);
   const states: Record<string, RegExp> = {
     Inbox: /Connect Eliza Cloud/, Workflows: /Your agent runs on your phone, not here\. Open Alpha on your Android phone to use it\. Reminders on this phone stay available\./, Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
-    Photos: /No photos/, Maps: /Add a location/, Calendar: /\d/, Files: /Internal storage|Storage is unavailable/, Settings: /General|Privacy|Apps|About/,
+    Photos: /No photos/, Maps: /OpenFreeMap/, Calendar: /\d/, Files: /Internal storage|Storage is unavailable/, Settings: /General|Privacy|Apps|About/,
   };
   for (const [view, expected] of Object.entries(states)) {
     await page.goto('/?tools=1');
@@ -455,7 +455,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   if(mode==='credits'){await expect(dialog).toContainText('Sign-in expires soon');await expect(dialog.getByRole('button',{name:'Use code',exact:true})).toBeVisible();await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toHaveCount(0);}
   for(const retired of ['Use local apps without AI','Continue offline'])await expect(dialog.getByRole('button',{name:retired,exact:true})).toHaveCount(0);
   // Every dialog but the required sign-in closes; the agent keeps running.
-  if(needsPlan){await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);}else if(mode==='replaced'){await dialog.getByRole('button',{name:'Back to About',exact:true}).click();await expect(dialog.getByRole('heading',{name:'About',exact:true})).toBeVisible();}else if(!signedOut){await dialog.getByRole('button',{name:'Close Account',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible();}
+  if(needsPlan){await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);}else if(mode==='replaced'){await dialog.getByRole('button',{name:'Back to General',exact:true}).click();await expect(dialog.getByRole('heading',{name:'General',exact:true})).toBeVisible();}else if(!signedOut){await dialog.getByRole('button',{name:'Close Account',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible();}
   if(mode==='legacy-offline'||mode==='signed-out')expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha.connection.selection.v1')!))).toEqual({kind:'resident'});
   const calls=await page.evaluate(()=>(window as any).residentCalls);
   expect(calls.some((c:any)=>c.url?.includes('/personal/')||c.url?.includes('/upgrade-tier')||c.url?.includes('/credits/'))).toBe(false);

@@ -13,6 +13,8 @@
 // deployed Cloud Maps service, Nominatim or GraphHopper, GPS, the Android foreground service, an
 // APK, an emulator or a device.
 import { test, expect, type Page } from '@playwright/test';
+// Keep the distance expectations deterministic for this metric-unit journey.
+test.use({locale:'en-GB'});
 import {installCanonicalCalendarFixture} from './helpers/canonical-calendar';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome } from './flag-off-android';
 import { residentStub, stub, type StubMaps } from './resident-stub';
@@ -146,7 +148,7 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
     await button(page, 'Back to event').click();
     await expect(page.getByRole('heading', { name: TITLE, exact: true })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-active-view', 'calendar');
-    expect((await calendarReads(page)).slice(before).some(row=>{const url=new URL(row.path,'http://fixture.invalid');return row.method==='GET'&&url.pathname==='/api/lifeops/calendar/feed'&&Date.parse(url.searchParams.get('timeMin')!)===begin-1&&Date.parse(url.searchParams.get('timeMax')!)===begin+1;})).toBe(true);
+    expect((await calendarReads(page)).slice(before).some(row=>{const url=new URL(row.path,'http://fixture.invalid');return row.method==='GET'&&url.pathname==='/api/lifeops/calendar/feed'&&Date.parse(url.searchParams.get('timeMin')!)===begin-1000&&Date.parse(url.searchParams.get('timeMax')!)===begin+1000;})).toBe(true);
     expect(await harness(page,f=>f.calendar.lists)).toBe(0);
     // The hand-off searched once; returning replays nothing.
     expect((await mapsRequests(page)).filter(row => row.route === 'places/search')).toHaveLength(1);

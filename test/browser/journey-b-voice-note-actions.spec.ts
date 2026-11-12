@@ -1,4 +1,4 @@
-import {installNoteScheduleContract,reviewNoteScheduleContract} from './helpers/note-schedule-contract';
+import {reviewNoteScheduleContract} from './helpers/note-schedule-contract';
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import {openBrowserCalendar,chooseCalendarEventAction} from './helpers/browser-calendar';
@@ -46,7 +46,6 @@ import {test,expect,type Page} from '@playwright/test';
 import {returnToApps} from './app-navigation';
 import {installCloudVoiceFixture} from './cloud-voice-fixture';
 import {localBrowserVoice} from './voice-fixture';
-test.beforeEach(async({page})=>installNoteScheduleContract(page));
 
 test.setTimeout(420_000);
 

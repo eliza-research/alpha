@@ -100,16 +100,17 @@ test('an unreachable saved sign-in stays available in agent settings and can be 
   expect(await selection(page)).toEqual({kind:'resident'});
 });
 
-test('a kept sign-in Cloud rejects is reported as no longer valid in the sign-in dialog that opens by itself; the agent keeps running', async ({ page }) => {
-  await boot(page, 'rejected');
-  // Every Alpha Phone needs an Eliza Cloud account: the sign-in dialog opens and cannot be dismissed.
-  const dialog = page.locator('[role="main"].alpha-cloud-sign-in');
-  await expect(dialog.getByText('Sign in to Eliza Cloud again to turn AI back on.', { exact: true })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Retry saved connection', exact: true })).toHaveCount(0);
-  await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled();
-  await expect(dialog.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);
+test('a rejected saved sign-in keeps local apps available and offers sign-in through Account',async({page})=>{
+  await boot(page,'rejected');
+  await expect(page.getByRole('button',{name:'Notes',exact:true})).toBeVisible();
+  await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0);
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  await page.getByRole('button',{name:'Account',exact:true}).click();
+  const dialog=page.locator('.alpha-cloud-sign-in');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled();
   await expect(dialog.locator('.alpha-cloud-account-summary')).toHaveCount(0);
-  await expect.poll(() => agentCalls(page)).toContain('start');
+  await expect.poll(()=>agentCalls(page)).toContain('start');
   expect(await agentCalls(page)).not.toContain('configureCloudProvider');
 });
 

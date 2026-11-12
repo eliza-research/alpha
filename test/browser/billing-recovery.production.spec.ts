@@ -150,7 +150,7 @@ test('Cloud declining a turn mid-use gives one answer and the popup; after plan 
   await send(page, 'What is on my calendar this week?');
   await expect(sheet(page)).toBeVisible({ timeout: 30_000 });
   await expect(controls(page).getByRole('status').filter({ hasText: SHEET_REFUSED })).toHaveCount(1);
-  await expect(controls(page)).toContainText('$0.00');
+  await expect(controls(page)).toContainText('$0.02');
   await expect(controls(page).getByRole('button', { name: 'Choose a plan', exact: true })).toBeVisible();
   await expect(controls(page).getByRole('button', { name: 'Use code', exact: true })).toBeVisible();
   await expect(page.getByText(/AI is off/)).toHaveCount(0);

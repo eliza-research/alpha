@@ -178,17 +178,18 @@ test('the Browser menu ends above the dock on short screens and its rows stay re
   }
 });
 
-test('the Maps notice sits beside the map in landscape and is bounded on a wide portrait screen', async ({ page }) => {
-  await open(page, 'Maps');
-  const notice = page.locator('[data-alpha-maps-status]');
-  await expect(notice).toBeVisible();
-  await resize(page, LANDSCAPE);
-  expect((await box(notice)).width).toBeLessThanOrEqual(915 / 2);
-  await expectTarget(page, page.getByRole('button', { name: 'Add location', exact: true }));
-  await resize(page, TABLET_PORTRAIT);
-  expect((await box(notice)).width).toBeLessThanOrEqual(561);
-  await resize(page, PORTRAIT);
-  expect((await box(notice)).width).toBeGreaterThan(360);
+test('Maps search remains reachable across landscape and portrait sizes',async({page})=>{
+  await open(page,'Maps');
+  const search=page.getByRole('textbox',{name:'Search places',exact:true});
+  await expect(search).toBeVisible();
+  for(const viewport of [LANDSCAPE,TABLET_PORTRAIT,PORTRAIT]){
+    await resize(page,viewport);
+    const bounds=await box(search);
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x+bounds.width).toBeLessThanOrEqual(viewport.width);
+    expect(bounds.height).toBeGreaterThanOrEqual(40);
+  }
+  await expect(page.locator('[data-alpha-maps-status]')).toHaveCount(0);
 });
 
 const fakeCamera = () => {

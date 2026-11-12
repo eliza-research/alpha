@@ -3,12 +3,12 @@ import { test, expect } from '@playwright/test';
 // Connection setup and the apps remain reachable without fabricating provider rows.
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
 
-test('unconnected Home hides empty widgets and keeps Google setup in Account', async ({ page }, info) => {
+test('unconnected Home hides empty widgets and keeps sign-in available through Account', async ({ page }, info) => {
  const errors: string[]=[];page.on('pageerror',error=>errors.push(error.message));await page.addInitScript(offline);await page.goto('/');
  const home=page.getByRole('region',{name:'Home',exact:true});await expect(home.locator('[data-alpha-home-date]')).toHaveCount(0);
  await expect(home.locator('[data-alpha-home-inbox]')).toHaveCount(0);await expect(home).not.toContainText(/unread|Accounts are not connected/);
  await page.screenshot({path:info.outputPath('home-not-connected.png')});
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).click();const account=page.getByRole('dialog',{name:'Account',exact:true});await expect(account.getByRole('button',{name:'Google & email',exact:true})).toBeVisible();expect(errors).toEqual([]);
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).click();const signIn=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});await expect(signIn.getByRole('button',{name:'Try again',exact:true})).toBeVisible();await expect(signIn.getByRole('alert')).toHaveText('Eliza Cloud sign-in is unavailable.');expect(errors).toEqual([]);
 });
 
 test('unloaded workflows and calendar stay hidden without fabricating data or avatars',async({page})=>{

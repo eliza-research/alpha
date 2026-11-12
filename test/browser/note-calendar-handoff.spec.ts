@@ -1,4 +1,4 @@
-import {installNoteScheduleContract,reviewNoteScheduleContract} from './helpers/note-schedule-contract';
+import {reviewNoteScheduleContract} from './helpers/note-schedule-contract';
 // Notes -> Calendar contract flow (programmatic entry; no scheduling menu control): a saved voice note's open action items become a reminder draft or a
 // calendar event draft. Nothing is written until Save in Calendar; the saved record then shows
 // "From note: <title>" and opens that exact note, or nothing.
@@ -12,7 +12,6 @@ import {openLegacyNotes,selectLegacyNotes} from './helpers/legacy-notes';
 import {openBrowserCalendar,chooseCalendarEventAction} from './helpers/browser-calendar';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 test.setTimeout(240_000);
-test.beforeEach(async({page})=>installNoteScheduleContract(page));
 const button=(page:Page,name:string|RegExp)=>page.getByRole('button',{name,exact:true});
 const notes=(page:Page)=>page.evaluate(async()=>JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records as any[]);
 const reminders=(page:Page)=>page.evaluate(async()=>(JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())||'{"reminders":[]}').reminders as any[]).filter(r=>r.status!=='cancelled'));

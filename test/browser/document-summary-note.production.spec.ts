@@ -35,7 +35,7 @@ const sent = (page: Page) => harness(page, f => f.posts.map((post: string) => po
 async function askAboutDocument(page: Page) {
   await page.evaluate(text => { (window as any).flagOff.replies.push(text); }, answer);
   await button(page, 'Files').click();
-  await button(page, 'Documents').click();
+  await button(page, 'Documents').filter({hasText:/Documents\s*1$/}).click();
   await button(page, 'Open garden-report.txt').click();
   await expect(page.getByText('PRIVATE OMIT: do not send this line.', { exact: true })).toBeVisible();
   // Documents lists the file from storage; opening it selected that one path, and nothing was sent.

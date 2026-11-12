@@ -34,6 +34,7 @@ const settle = async (page: Page) => {
 const press = async (page: Page, steps: string[]) => {
   for (const step of steps) {
     if(step==='Share photo'){await openPhotoShare(page);continue;}
+    if(step==='Recently deleted'&&await page.getByRole('button',{name:'Notes options',exact:true}).isVisible())await page.getByRole('button',{name:'Notes options',exact:true}).click();
     if (step === 'Edit event' || step === 'Delete event') {
       await chooseCalendarEventAction(page, step);
       continue;

@@ -505,9 +505,8 @@ test('the welcome own-key form offers Cancel during a slow key check without sel
 });
 
 
-test('successful sign-in selects Cloud only for an explicit mode choice and retains saved Own keys',async({page})=>{
+for(const explicit of [true,false])test(`successful sign-in retains Own keys; explicit Cloud selection ${explicit}`,async({page})=>{
  const observed=await fixture(page,true,false,true);
- for(const explicit of [true,false]){
   await page.goto('/');const welcome=welcomePage(page);await expect(welcome).toBeVisible();
   await enterKeys(page,welcome,'Use my own API keys');await welcome.getByRole('button',{name:'Save and use own keys',exact:true}).click();
   await expect(welcome).toHaveCount(0);await ownKeySetupReady(page);
@@ -537,7 +536,6 @@ test('successful sign-in selects Cloud only for an explicit mode choice and reta
   if(explicit)expect(result.events.indexOf('select:cloud')).toBeGreaterThan(result.events.indexOf('auth-verified'));
   else expect(result.events).not.toContain('select:cloud');
   await noLeaks(page,observed);
- }
 });
 
 

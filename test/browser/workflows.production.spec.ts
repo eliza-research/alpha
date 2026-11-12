@@ -1,4 +1,3 @@
-import {newWorkflow} from './workflow-navigation';
 // AP-11 on the FLAG-OFF bundle: the workflow library against the connected resident agent, with only
 // the Android bridge stubbed (test/browser/flag-off-android.ts plus the agent's workflow routes below).
 // Every other workflow spec runs the development build (?mode=dev&workflows=agent); this one runs the
@@ -8,7 +7,7 @@ import {newWorkflow} from './workflow-navigation';
 // its receipt, an approval waiting for confirmation (approve and deny, each with its second
 // confirmation), cancelling a running execution, pause and enable, history after a reload, a lost Run
 // request that leaves the outcome unknown until the owner explicitly sends the same submission again,
-// and the scope refusal before generation.
+// and the absence of retired generation controls.
 //
 // Evidence boundary: source/test evidence for the flag-off renderer. The agent's workflow routes answer
 // in plugin-workflow's wire shapes from an in-page stub that keeps its state in sessionStorage, so it
@@ -253,20 +252,13 @@ test('a lost Run request stays outcome unknown until the owner sends the same su
   expect(foreign).toEqual([]);
 });
 
-test('an out-of-scope workflow request is refused before anything is sent to the agent', async ({ page }) => {
-  test.setTimeout(120_000);
+test('retired workflow builder and generation controls are absent from creation', async ({ page }) => {
   const foreign = await start(page);
-  await newWorkflow(page);
-  await page.getByRole('textbox', { name: 'Workflow name', exact: true }).fill('Retained original draft');
-  await page.getByRole('button', { name: /Describe it to/ }).click();
-  await page.getByRole('textbox', { name: 'Workflow request', exact: true }).fill('Pay my rent on the first of the month');
-  await button(page, 'Generate workflow draft').click();
-  const refusal = page.locator('[role=status]').filter({ hasText: 'Workflows can’t make payments or move money' });
-  await expect(refusal).toBeVisible();
-  await expect(refusal).toContainText('Nothing was sent to the agent');
-  expect(await posts(page, '/phone/generate')).toEqual([]);
-  await expect(page.getByRole('region', { name: 'Generated draft', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('textbox', { name: 'Workflow name', exact: true })).toHaveValue('Retained original draft');
-  expect(await agent(page, s => s.unexpected)).toEqual([]);
+  await page.getByRole('button',{name:'New automation',exact:true}).click();
+  const choices=page.getByRole('region',{name:'Add to Workflows',exact:true});
+  await expect(choices).toBeVisible();
+  for(const name of [/More options/,/Build step by step/,/Reminder on this phone/,/Describe it/])await expect(choices.getByRole('button',{name})).toHaveCount(0);
+  expect(await posts(page,'/phone/generate')).toEqual([]);
+  expect(await agent(page,s=>s.unexpected)).toEqual([]);
   expect(foreign).toEqual([]);
 });

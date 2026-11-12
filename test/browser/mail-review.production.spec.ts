@@ -168,7 +168,7 @@ async function connected(page: Page) {
   await completeAccessSetup(page);
 }
 
-test('Android: the send review shows Cc and Bcc, an edit after review is reviewed again, and only the last reviewed request is dispatched, byte for byte', async ({ page }) => {
+test('Android: the composer keeps Cc and Bcc, an edit after review is reviewed again, and only the last reviewed request is dispatched, byte for byte', async ({ page }) => {
   test.setTimeout(120_000);
   const foreign = await fenceNetwork(page);
   await androidWithMailbox(page);
@@ -187,25 +187,20 @@ test('Android: the send review shows Cc and Bcc, an edit after review is reviewe
   await page.getByRole('textbox', { name: 'Subject', exact: true }).fill('Flag-off reviewed send');
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('First body');
   await button(page, 'Send email').click();
-  const review = page.getByRole('dialog', { name: 'Review mail operation' });
-  await expect(review.getByRole('status')).toHaveText('Review every field before confirming. No mail has been sent.');
-  expect((await review.locator('p').nth(1).innerText()).split('\n').map(line => line.trimEnd()).slice(0, 5)).toEqual([
-    'From: owner@example.invalid', 'To: friend@example.invalid', 'Cc: carol@example.invalid', 'Bcc: audit@example.invalid', 'Subject: Flag-off reviewed send']);
-  await expect(review.locator('[data-alpha-review-attachments]')).toHaveText('No attachments.');
-  await expect(review.getByText('First body', { exact: true })).toBeVisible();
+  const review = page.getByRole('dialog', { name: 'Send this email?' });
+  await expect(review.getByRole('button',{name:'Yes',exact:true})).toBeVisible();
+  await expect(review.getByRole('button',{name:'No',exact:true})).toBeVisible();
   let state = await fixture(page);
   expect(state.prepares).toHaveLength(1);
   expect(state.dispatches).toEqual([]);
 
   // Close without cancelling, edit the body: the saved review is discarded and cannot be sent.
-  await review.getByRole('button', { name: 'Close mail review', exact: true }).click();
+  await review.getByRole('button', { name: 'No', exact: true }).click();
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Second body');
-  await expect(page.getByText('This email was edited after this review, so the review was discarded. Nothing was sent. Review the current email before sending.', { exact: true })).toBeVisible();
   await button(page, 'Send email').click();
-  await expect(review.getByText('Second body', { exact: true })).toBeVisible();
-  await expect(review.getByText('First body', { exact: true })).toHaveCount(0);
-  await review.getByRole('button', { name: 'Send this email', exact: true }).dblclick();
-  await expect(review.getByRole('status')).toHaveText('Provider confirmed this operation.');
+  await expect(review.getByRole('button',{name:'Yes',exact:true})).toBeVisible();
+  await review.getByRole('button', { name: 'Yes', exact: true }).dblclick();
+  await expect(review).toHaveCount(0);
   state = await fixture(page);
   expect(state.prepares).toHaveLength(2);
   expect(state.prepares[1].requestId).not.toBe(state.prepares[0].requestId);

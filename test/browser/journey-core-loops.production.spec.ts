@@ -1,4 +1,5 @@
-import {installNoteScheduleContract,reviewNoteScheduleContract} from './helpers/note-schedule-contract';
+import {openRetainedDigests} from './helpers/retained-digests';
+import {reviewNoteScheduleContract} from './helpers/note-schedule-contract';
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {installNativeNavigationFixture} from './helpers/native-navigation-protocol';
 import {selectCalendarSource} from './helpers/browser-calendar';
@@ -19,7 +20,6 @@ import {seedCompletedAccessSetup} from './flag-off-android';
 // says the native side of that path works.
 import { test, expect, type Page } from '@playwright/test';
 import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork,openYourAgent} from './flag-off-android';
-test.beforeEach(async({page})=>installNoteScheduleContract(page));
 
 const SELECTION = 'alpha.connection.selection.v1';
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
@@ -65,6 +65,10 @@ async function android(page: Page, options: { clock?: 'opened' | 'unavailable' |
       const ok = (value: unknown) => ({ status: 200, data: value });
       const navigationResult=navigation().request(method,path,body,headers,owner);if(navigationResult)return navigationResult;
       // Mounted canonical views probe these sources; this native fixture provides none.
+      if (method === 'GET' && path === '/api/automations') return ok({automations:[]});
+      if (method === 'GET' && path === '/api/lifeops/scheduled-tasks?ownerVisibleOnly=1') return ok({tasks:[]});
+      if (method === 'GET' && path === '/api/lifeops/reminders') return ok({reminders:[]});
+      if (method === 'GET' && path === '/api/lifeops/definitions') return ok({definitions:[]});
       if (method === 'GET' && ['/api/notes/state', '/api/lifeops/calendar/feed', '/api/lifeops/calendar/calendars', '/api/lifeops/calendar/next-context'].includes(path.split('?')[0])) return { status: 503, data: { error: 'Canonical records unavailable in this fixture' } };
       if (path === '/api/auth/me') return ok({ identity: { id, kind: 'owner' }, access: { role: 'OWNER', mode: 'local' } });
       if (path === '/api/agents') return ok({ agents: [{ id: agentId, name: 'Alpha', status: 'running' }] });
@@ -306,7 +310,7 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   const account = await openYourAgent(page);
   await expect(account).toContainText('Running on this device');
   await expect(account.getByText('Eliza Cloud',{exact:true})).toBeVisible();
-  await account.getByRole('button',{name:'Back to About',exact:true}).click();
+  await account.getByRole('button',{name:'Back to General',exact:true}).click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
   await openCloudPlanFromSettings(page);
@@ -443,7 +447,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await page.goto('/');
   await button(page, 'Maps').click();
   await expect(page.getByRole('region', {name: 'Map', exact: true})).toBeVisible();
-  await expect(page.getByRole('region', {name: 'Maps', exact: true}).getByRole('status')).toContainText('Add a location');
+  await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toBeVisible();
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(page.getByRole('region', {name: 'Maps'})).not.toContainText(/\d+ min|\d km/);
   // The independent browser alarm list remains a durable local feature.
@@ -881,6 +885,7 @@ test('loop B / J02 on Android: recorded note UI and the retained scheduling cont
   await expect(page.getByText(/From note/)).toHaveCount(0);
 
   // 5. Reload once: both records are still there, exactly once, and nothing is written again.
+  const retained = (await savedNotes(page))[0];
   await page.reload();
   await expect.poll(() => native(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
