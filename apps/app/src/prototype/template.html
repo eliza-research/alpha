@@ -1955,6 +1955,7 @@
       </sc-if>
       <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
       <sc-if value="{{maps.cloudBasemap}}"><span class="alpha-map-credit-links"><strong>Google Maps</strong> · {{maps.mapAttribution}}</span></sc-if>
+      <button class="alpha-map-recenter" aria-label="Recenter" title="My location" onClick="{{maps.recenter}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mapsLoc}}"></path></svg></button>
 
     </div>
   </sc-if>
@@ -1990,7 +1991,7 @@
   
 
   
-  <button class="alpha-map-recenter" style="bottom:calc({{maps.attributionBottom}}px - 15px)" aria-label="Recenter" title="My location" onClick="{{maps.recenter}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mapsLoc}}"></path></svg></button>
+
 
   
   <sc-if value="{{maps.isResults}}">

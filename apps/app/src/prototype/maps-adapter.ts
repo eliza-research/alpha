@@ -96,7 +96,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
   // A Cloud read already made or under way for this account is not repeated: a second read would
   // uninstall the provider an open Maps search is using. An account change retires it first (cloud-maps.ts).
-  const readCloudMaps = () => { const read = cloudMapsDiagnostics(); return read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); };
+  const readCloudMaps = () => { const read = cloudMapsDiagnostics(); return cloudMapsCoverage() && read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); };
   const screen: MapsScreenController = new MapsScreenController({
     connection: mapsConnection,
     onConnectionChange: onMapsConnectionChange,

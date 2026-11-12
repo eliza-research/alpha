@@ -16,7 +16,17 @@ const maps = createCloudMaps(() => captureMapsSession(() => connectionController
   return async(z,x,y,signal)=>{const active=current();const bytes=await active.client.mapsTile(z,x,y,signal);current();signal.throwIfAborted();return bytes;};
  },
 });
-export const { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics } = maps;
+export const { cloudMapsCoverage, cloudMapsDiagnostics } = maps;
+let initializing: Promise<void> | undefined;
+/** Share the actual coverage read so opening Maps can await background setup. */
+export function initializeCloudMaps(): Promise<void> {
+  if (initializing) return initializing;
+  const attempt = Promise.resolve(maps.initializeCloudMaps()).finally(() => {
+    if (initializing === attempt) initializing = undefined;
+  });
+  initializing = attempt;
+  return attempt;
+}
 let basemapCoverage:CloudMapsCoverage|undefined,basemap:CloudMapsBasemap|undefined;
 /** Keep one plane identity for the current coverage/account, retiring it when coverage changes. */
 export function cloudMapsBasemap():CloudMapsBasemap|undefined {
@@ -31,6 +41,7 @@ connectionController.subscribe(() => {
  previous = next;
  // A rebuilt client for the same session and credential keeps guidance; requests resolve the client per call.
  if (changed) {
+  initializing = undefined;
   // Retry requires an explicit search; a new account never inherits automatic rerouting.
   if (maps.cloudMapsDiagnostics().configured) maps.retireCloudMaps();
  }

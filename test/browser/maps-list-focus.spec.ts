@@ -122,5 +122,5 @@ test('saving a named place stays quiet and the saved name remains searchable',as
  await expect(page.locator('[data-alpha-maps-status]')).toHaveCount(0);
  await page.getByRole('button',{name:'Close place',exact:true}).click();
  await query.fill('My named');
- await expect(page.getByRole('button',{name:'My named place',exact:true})).toBeVisible();
+ await expect(page.locator('[data-alpha-maps-sheet="results"]').getByRole('button',{name:'My named place',exact:true})).toBeVisible();
 });
