@@ -212,7 +212,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       const generation=locationGeneration;
       void locationPermissionGranted().then(granted=>{
         const current=screen.view();
-        if(granted&&generation===locationGeneration&&active()&&current.mode==='base'&&!current.query&&!pendingHandoff)screen.recenter();
+        if(granted&&generation===locationGeneration&&active()&&current.mode==='base'&&!current.query&&!pendingHandoff)void mapsController?.locate();
       });
     }
     // Calling the original with neutral state retains visual tokens without
@@ -249,7 +249,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
-      nativeShareLabel:mapShareLabel(),nativeSystemShare:mapShareLabel()==='Share',nativeCopyLink:mapShareLabel()==='Copy link',
+      nativeShareLabel:mapShareLabel(),
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
       notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
@@ -264,7 +264,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
             mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});
           }catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(current())screen.setMapState('error');});}
         }
-        plane?.update(view.map.selected,view.map.route,{...view.map.overlay,pins:[...(view.map.overlay.pins??[]),...savedMatches.map(item=>({id:`saved:${item.id}`,label:item.label,coordinate:item.coordinate}))]});
+        plane?.update(view.map.selected??(view.mode==='base'?position:undefined),view.map.route,{...view.map.overlay,pins:[...(view.map.overlay.pins??[]),...savedMatches.map(item=>({id:`saved:${item.id}`,label:item.label,coordinate:item.coordinate}))]});
       },
       native: true, nativeStatusVisible:(status.visible&&!routineStatus)||emptySearch, nativeStatus: emptySearch?'No places':statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
       nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy, nativeLocation: () => screen.locate(),
