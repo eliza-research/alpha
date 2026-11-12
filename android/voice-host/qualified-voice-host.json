@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "description": "On-device voice host: libelizainference (llama.cpp/ggml; Paradee-8M TTS with native misaki G2P and eSpeak NG out-of-lexicon fallback, Phonon-2 parakeet-tdt ASR with batch and streaming decode, Silero VAD) through the shared paradee-voice Java API (ai.eliza.voice) and RegisterNatives JNI. The only on-device speech engine; llama.cpp-based, no other neural runtime. These are the exact bytes scripts/android-stage-voice-models.ts may stage; component evidence is recorded separately from installed-app, hardware audio and user acceptance.",
-  "pin": "9e87d1ce947018c9ee201527b74798387c7bf694",
+  "pin": "c9247e6966b572612b51e6b5e6a1f15af2843af8",
   "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
   "identity": "ai.alphacompute.alphaphone",
   "provider": "libelizainference-paradee",
