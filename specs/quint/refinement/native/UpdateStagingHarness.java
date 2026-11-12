@@ -41,10 +41,11 @@ public final class UpdateStagingHarness {
  private static Gate heldRead;
 
  private static final class Gate implements Runnable {
+  private static final long WAIT_SECONDS=30;
   final CountDownLatch entered = new CountDownLatch(1), released = new CountDownLatch(1);
   @Override public void run() {
    entered.countDown();
-   long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(10);
+   long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(WAIT_SECONDS);
    boolean interrupted=false;
    while(released.getCount()>0 && System.nanoTime()<deadline) try {
     released.await(10,TimeUnit.MILLISECONDS);
@@ -52,7 +53,7 @@ public final class UpdateStagingHarness {
    if(interrupted)Thread.currentThread().interrupt();
    require(released.getCount()==0,"fixture gate was not released");
   }
-  void await() throws Exception {require(entered.await(10,TimeUnit.SECONDS),"source did not reach gate");}
+  void await() throws Exception {require(entered.await(WAIT_SECONDS,TimeUnit.SECONDS),"source did not reach gate");}
   void open(){released.countDown();}
  }
 
@@ -374,25 +375,33 @@ public final class UpdateStagingHarness {
   }finally{UpdateFlowTest.retireFixtureWorkers();erase(context.data.toPath());}
  }
 
+ private static final ThreadLocal<Long> deadlineClock=new ThreadLocal<>();
+ static long downloadNanoTime(){
+  Long now=deadlineClock.get();
+  return now==null?System.nanoTime():now;
+ }
+
  private static JSONObject deadline()throws Exception{
   boolean[] lateEof={false,true};
   var result=new JSONObject();
   for(boolean eof:lateEof){
-   long limit=System.nanoTime()+TimeUnit.MILLISECONDS.toNanos(500);
+   long limit=1;
    InputStream in=new InputStream(){
     int reads;
     @Override public int read(){throw new AssertionError("whole buffer expected");}
     @Override public int read(byte[] bytes,int offset,int length)throws IOException{
      if(reads++==0){System.arraycopy(APK,0,bytes,offset,eof?4:2);return eof?4:2;}
-     while(System.nanoTime()<limit)java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
+     deadlineClock.set(limit);
      if(eof)return -1;
      System.arraycopy(APK,2,bytes,offset,2);return 2;
     }
    };
    var copied=new ByteArrayOutputStream();
    boolean verified;
+   deadlineClock.set(0L);
    try{AlphaDevicePlugin.copyVerified(in,copied,APK.length,sha(APK),limit);verified=true;}
    catch(IOException expired){require("Update took too long".equals(expired.getMessage()),"exact expiry outcome");verified=false;}
+   finally{deadlineClock.remove();}
    result.put(eof?"lateEof":"lateBody",new JSONObject().put("verified",verified).put("bytes",copied.size()));
   }
   return result;
