@@ -92,8 +92,9 @@ module ControllerComposition {
   }
   action bindingReady = all {host.owner!=0,keepIdentity,keepCalendar,keepVoice,host'={...host,providerReady:true}}
   action cancelSignIn = all {Identity::cancel,keepCalendar,keepVoice,keepHost}
+  /// Returning users explicitly reopen Account settings after sign-out.
   action signOut = all {Identity::signOut,Calendar::switchOwner,stopVoice,host.epoch<3,
-    host'={...host,owner:0,epoch:host.epoch+1,providerReady:false,connectionOpen:true,calendarBound:false}}
+    host'={...host,owner:0,epoch:host.epoch+1,providerReady:false,connectionOpen:false,calendarBound:false}}
   action calendarBind = all {accountReady,host.foreground,host.calendarOwner==0 or host.calendarOwner==host.owner,
     keepIdentity,keepCalendar,keepVoice,host'={...host,calendarOwner:host.owner,calendarEpoch:host.epoch,calendarBound:true}}
   action calendarReview = all {calendarCurrent,Calendar::reviewSync,keepIdentity,keepVoice,keepHost}
@@ -148,7 +149,8 @@ module ControllerComposition {
     .then(revokePreviousIdentity).then(releaseIdentitySession).then(publishIdentity).then(calendarReturned("succeeded",true))
     .expect(Calendar::s.state=="dirty" and Calendar::s.pending=="create" and Calendar::s.remote==1 and safety)
   run signOutKeepsUnknownCalendarIntentTest = calendarSetup.then(calendarBegin).then(calendarAnalyze).then(calendarStage).then(calendarDispatch)
-    .then(signOut).then(calendarReturned("succeeded",true)).expect(Calendar::s.state=="dirty" and host.owner==0 and safety)
+    .then(signOut).expect(not(host.connectionOpen) and not(credentialPresent) and safety)
+    .then(calendarReturned("succeeded",true)).expect(Calendar::s.state=="dirty" and host.owner==0 and safety)
   run foregroundLossRejectsNewCalendarDispatchTest = calendarSetup.then(calendarBegin).then(calendarAnalyze).then(calendarStage).then(hide).expect(safety)
   run cancelledReplacementKeepsOldBindingTest = calendarSetup.then(startVoice).then(beginSignIn).then(cancelSignIn).then(calendarBegin)
     .expect(host.owner==1 and Calendar::s.writes==0 and Voice::s.phase=="idle" and safety)
