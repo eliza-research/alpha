@@ -58,7 +58,7 @@ test('Files browses real storage: categories, Internal storage and Trash, with n
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await page.addInitScript(offline);await page.goto('/');
  await page.getByRole('button',{name:'Files',exact:true}).click();
- for(const name of ['Downloads','Images','Videos','Audio','Documents','Internal storage','Trash'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ for(const name of ['Downloads','Images','Videos','Audio','Documents','Internal storage','Recently deleted'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
  for(const gone of ['Search files','Receipts','Photos','App files','Import folder'])await expect(page.getByRole('button',{name:gone,exact:true})).toHaveCount(0);
  await expect(page.locator('[data-screen]')).not.toContainText('No recent files');
  const documents=page.getByRole('button',{name:'Documents',exact:true});

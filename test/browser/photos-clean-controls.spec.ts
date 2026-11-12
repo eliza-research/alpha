@@ -45,6 +45,9 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
   return {height:box.height,screenHeight:screen.height,bottom:!!bottom?.closest('.chat-image-preview'),background:getComputedStyle(el).backgroundColor,composerInert:!!document.querySelector('[data-alpha-layer="conversation"][inert]')};
  });
  expect(coverage.height).toBeCloseTo(coverage.screenHeight,0);expect(coverage.bottom).toBe(true);expect(coverage.background).toBe('rgb(0, 0, 0)');expect(coverage.composerInert).toBe(true);
+ await expect(preview.locator('[data-alpha-dialog-toast]')).toHaveCount(1);
+ const centered=()=>image.evaluate(el=>{const image=el.getBoundingClientRect(),frame=el.closest('[role="dialog"]')!.getBoundingClientRect();return {inside:image.left>=frame.left-1&&image.right<=frame.right+1,centered:Math.abs((image.left+image.right-frame.left-frame.right)/2)<1};});
+ await expect.poll(centered).toEqual({inside:true,centered:true});
  await image.dblclick();
  await expect.poll(()=>image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBe(2);
  const imageBox=(await image.boundingBox())!;
@@ -145,10 +148,10 @@ test('Files selects the existing Photos items, saves original bytes and restores
  const file=await download;const {readFile}=await import('node:fs/promises');expect(await readFile((await file.path())!)).toEqual(Buffer.from(source.image.split(',')[1],'base64'));
  await actions.getByRole('button',{name:'Delete',exact:true}).click();
  await expect.poll(()=>page.evaluate(async id=>(await (await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.read({id})).trashed,source.id)).toBe(true);
- await page.reload();await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Trash',exact:true}).click();
+ await page.reload();await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  expect(await page.evaluate(async id=>{const {registerPlugin}=await import('/src/platform-plugins.ts');try{await registerPlugin<any>('AlphaFiles').storageEmptyTrash({ids:['photo:'+id],confirmed:false});return false;}catch{return true;}},source.id)).toBe(true);
 
- const photo=page.getByRole('button',{name:/^Photo /}).first();await photo.click();await page.getByRole('button',{name:'Restore',exact:true}).click();
+ const photo=page.getByRole('button',{name:/^Photo /}).first();await photo.click();await page.getByRole('button',{name:'Recover',exact:true}).click();
  await expect.poll(()=>page.evaluate(async id=>{const row=await (await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.read({id});return {trashed:row.trashed,image:row.image};},source.id)).toEqual({trashed:false,image:source.image});
 });
 

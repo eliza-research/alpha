@@ -6,7 +6,7 @@ for(const theme of ['light','dark'])test(`Files aligns category, storage and Tra
  const list=page.locator('[data-alpha-app-scroll="files"]');
  await expect(list.getByRole('heading',{name:'Storage',exact:true})).toBeVisible();
  const labels=[], rowTops=[];
- for(const name of ['Downloads','Images','Videos','Audio','Documents','Internal storage','Trash']){
+ for(const name of ['Downloads','Images','Videos','Audio','Documents','Internal storage','Recently deleted']){
   const row=list.getByRole('button',{name,exact:true});
   await expect(row).toBeVisible();
   const label=await row.getByText(name,{exact:true}).boundingBox();

@@ -693,7 +693,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         const preferences=devicePreferencesStatus();
         page.groups.push(group([{
           kTog:true,label:'Review phone actions first',aria:'Review phone actions first',hasSub:true,
-          sub:preferences==='loading'?'Loading…':preferences==='unavailable'?'Unavailable. Alpha asks before every action.':'Covers opening websites, browser controls, taking photos and choosing photos. Notes Alpha writes and screens it opens are not reviewed; deleted notes stay in Trash for 3 days. Calendar changes are handled separately.',
+          sub:preferences==='loading'?'Loading…':preferences==='unavailable'?'Unavailable. Alpha asks before every action.':'Browser, Camera and Photos.',
           on:preferences!=='ready'||cachedDevicePreferences()?.askBeforeAgentActions!==false,
           track:preferences!=='ready'||cachedDevicePreferences()?.askBeforeAgentActions!==false?'background:var(--acc)':'background:var(--line)',
           kx:preferences!=='ready'||cachedDevicePreferences()?.askBeforeAgentActions!==false?20:0,

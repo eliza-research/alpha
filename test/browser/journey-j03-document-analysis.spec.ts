@@ -187,8 +187,8 @@ test('J03: an Inbox attachment is saved to Files, analysed, and kept as a review
  // Delete moves to Trash; only a confirmed Empty deletes.
  await page.getByRole('toolbar',{name:'Selection actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open garden-report.txt',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Trash',exact:true}).click();
- await page.getByRole('button',{name:'Empty',exact:true}).click();await page.getByRole('dialog',{name:'Empty Trash?',exact:true}).getByRole('button',{name:'Empty',exact:true}).click();
+ await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();await page.getByRole('button',{name:'Select garden-report.txt',exact:true}).click();await page.getByRole('button',{name:'Delete selected files permanently',exact:true}).click();await page.getByRole('dialog',{name:'Delete permanently?',exact:true}).getByRole('button',{name:'Delete permanently',exact:true}).click();
  await expect(page.getByRole('button',{name:'garden-report.txt',exact:true})).toHaveCount(0);
  expect((await files(page)).filter(e=>!e.name.startsWith('.'))).toEqual([]);
  source=await openLinkedSource(page);
