@@ -37,7 +37,7 @@ for(const broken of [false,true])test(`Google raster transport and attribution $
  else{
   await expect(plane).toHaveAttribute('data-map-ready','true');
   await expect(page.locator('.alpha-map-credits')).toContainText('synthetic viewport');
-  await expect(page.getByRole('button',{name:'Synthetic harbour',exact:true})).toBeVisible();
+  await expect(page.locator('[data-alpha-maps-sheet="results"]').getByRole('button',{name:'Synthetic harbour',exact:true})).toBeVisible();
   const credits=await page.locator('.alpha-map-credits').boundingBox();
   const sheet=await page.locator('[data-alpha-maps-sheet="results"]').boundingBox();
   expect(credits).not.toBeNull();expect(sheet).not.toBeNull();
