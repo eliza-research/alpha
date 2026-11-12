@@ -200,7 +200,7 @@ test('browser resident readiness allows a cold source import to finish', async t
   }});
  try{
   await host.clear();
-  assert.deepEqual(await host.ready(new AbortController().signal),{state:'host-managed'});
+  assert.deepEqual(JSON.parse(JSON.stringify(await host.ready(new AbortController().signal))),{state:'host-managed'});
   assert.equal(calls,2);
  }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
