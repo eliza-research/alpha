@@ -11,7 +11,7 @@ test('select, move, recover and permanently delete only the reviewed Files selec
  for(const name of ['one.txt','two.txt'])await page.getByRole('button',{name:'Select '+name,exact:true}).click();
  await expect(page.getByText('2 selected',{exact:true})).toBeVisible();
  await page.getByRole('toolbar',{name:'Selection actions'}).getByRole('button',{name:'Move',exact:true}).click();
- const move=page.getByRole('dialog',{name:'Move to',exact:true});await move.getByRole('button',{name:'Open Destination',exact:true}).click();await move.getByRole('button',{name:'Move here',exact:true}).click();
+ const move=page.getByRole('dialog',{name:'Move to',exact:true});const actionBox=await move.getByRole('button',{name:'Move here',exact:true}).boundingBox(),pillBox=await page.locator('[data-alpha-layer="pill"]').boundingBox();expect(actionBox).not.toBeNull();if(pillBox)expect(actionBox!.y+actionBox!.height).toBeLessThanOrEqual(pillBox.y);await move.getByRole('button',{name:'Open Destination',exact:true}).click();await move.getByRole('button',{name:'Move here',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open one.txt',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Open Destination',exact:true}).click();await expect(page.getByRole('button',{name:'Open one.txt',exact:true})).toBeVisible();
  await expect(page.getByRole('navigation',{name:'Folder path'})).toContainText('Destination');
  await startSelect(page);await page.getByRole('button',{name:'Select all',exact:true}).click();await page.getByRole('toolbar',{name:'Selection actions'}).getByRole('button',{name:'Delete',exact:true}).click();

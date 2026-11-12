@@ -2901,8 +2901,8 @@
   </sc-if>
 
   <sc-if value="{{files.dlg}}">
-    <div ref="{{files.dlg.modalRef}}" data-alpha-popup role="dialog" aria-modal="true" aria-label="{{files.dlg.title}}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim); display: flex; align-items: flex-end; padding: 0; box-sizing: border-box">
-      <div data-alpha-bottom-sheet style="width: 100%; max-height: calc(100% - 44px); overflow-y: auto; background: var(--bg); border-radius: 28px 28px 0 0; padding: 12px 24px 40px; box-sizing: border-box">
+    <div ref="{{files.dlg.modalRef}}" data-alpha-popup style="position: absolute; inset: 0; z-index: 20; background: var(--scrim); display: flex; align-items: flex-end; padding: 0; box-sizing: border-box">
+      <div role="dialog" aria-modal="true" aria-label="{{files.dlg.title}}" data-alpha-bottom-sheet style="width: 100%; max-height: calc(100% - 44px); overflow-y: auto; background: var(--bg); border-radius: 28px 28px 0 0; padding: 12px 24px 40px; box-sizing: border-box">
         <div style="width:40px;height:4px;border-radius:2px;background:var(--s3);margin:0 auto 16px"></div>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><h2 class="serif" style="flex:1;min-width:0;font-size:26px;margin:0;overflow-wrap:anywhere">{{files.dlg.title}}</h2><button class="ib" aria-label="Close" disabled="{{files.dlg.busy}}" onClick="{{files.dlg.cancel}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></div>
         <sc-if value="{{files.dlg.message}}"><p style="font-size: 15px; color: var(--mut); line-height: 1.5; margin: 0 0 12px; overflow-wrap: anywhere">{{files.dlg.message}}</p></sc-if>
