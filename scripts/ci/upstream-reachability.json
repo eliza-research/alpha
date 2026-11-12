@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
-  "head": "3508d92c2c19c520b8ef17d16e427f3329b62071",
+  "head": "d8e6354d74ec287f29a649a840e4187bc6021277",
   "recordedAt": "2026-11-12",
-  "command": "Prior recorded comparison, extended by git rev-list 063476754fd552e8337143d11300bfaa312feef5..3508d92c2c19c520b8ef17d16e427f3329b62071",
+  "command": "Prior recorded comparison, extended by git rev-list 3508d92c2c19c520b8ef17d16e427f3329b62071..d8e6354d74ec287f29a649a840e4187bc6021277",
   "status": "diverged",
-  "aheadBy": 24,
+  "aheadBy": 25,
   "behindBy": 380,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -106,6 +106,10 @@
     {
       "sha": "3508d92c2c19c520b8ef17d16e427f3329b62071",
       "subject": "fix(scheduling): reconcile deferred approval follow-ups"
+    },
+    {
+      "sha": "d8e6354d74ec287f29a649a840e4187bc6021277",
+      "subject": "Apply reviewed approval cleanup budget and owner-bound diagnostics"
     }
   ],
   "pullRequests": [
