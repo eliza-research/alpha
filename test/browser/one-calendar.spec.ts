@@ -35,8 +35,8 @@ test('Calendar, Home and Google accounts show one merged calendar without a cale
  // Home reads the merged feed: Google's Holidays leads tomorrow, ahead of the owner's own calendars.
  await expect(card).toContainText('Public holiday');
  await card.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
- // Holidays is shown but read only in Google: its event names the source and offers no change.
- await expect(page.getByText('Holidays in United States · Read only',{exact:true})).toBeVisible();
+ // The merged view keeps Holidays read-only without exposing extra source labels.
+ await expect(page.getByRole('heading',{name:'Public holiday',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Edit event',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Delete event',exact:true})).toHaveCount(0);
  await settled(page);
@@ -48,7 +48,7 @@ test('Calendar, Home and Google accounts show one merged calendar without a cale
  await expect(panel.getByRole('status')).toHaveText('Calendar includes the calendars you show in Google.');
  await expect(panel.getByRole('radio')).toHaveCount(0);
  await expect(panel.getByText('Calendar to display')).toHaveCount(0);
- await expect(panel.getByRole('button',{name:'Add Google account',exact:true})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Allow Gmail changes',exact:true})).toBeVisible();
  await expect(panel.getByRole('button',{name:'Check Google connections',exact:true})).toHaveCount(0);
  // The kept slot is now only the device sync destination; it was read and did not narrow the merged view.
  expect(await page.evaluate(async()=>{const {readGoogleCalendarSelection}=await import('/src/runtime/google-calendar-selection.ts');return readGoogleCalendarSelection({environment:'production',userId:'8d0f6a3e-1c2b-4d5e-9f60-7a8b9c0d1e2f',organizationId:'1e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b'})?.name;})).toBe('Holidays in United States');
