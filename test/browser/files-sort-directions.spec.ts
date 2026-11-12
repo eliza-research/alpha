@@ -17,7 +17,8 @@ test('All files exposes direct folder/view controls and three persistent two-dir
  await page.getByRole('button',{name:'Files',exact:true}).click();
  await expect(page.getByRole('button',{name:'All files',exact:true})).toBeVisible();
  await page.getByLabel('Files tools',{exact:true}).click();
- for(const name of ['New folder','Sort files','Grid view'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'New folder',exact:true})).toBeVisible();
+ for(const name of ['Sort files','Grid view'])await expect(page.getByRole('button',{name,exact:true})).toHaveCount(0);
  await page.getByLabel('Files tools',{exact:true}).click();
  await page.getByRole('button',{name:'All files',exact:true}).click();
  await expect(page.getByRole('heading',{name:'All files',exact:true})).toBeVisible();
@@ -36,4 +37,32 @@ test('All files exposes direct folder/view controls and three persistent two-dir
  await expect.poll(names).toEqual(['Zulu.txt','Alpha.txt','Middle.txt']);
  await expect(page.getByRole('dialog',{name:'Sort and more',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Close menu',exact:true}).click();
+});
+
+test('folder creation stays in the current location and root folders open directly',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/?mode=dev');
+ await page.getByRole('button',{name:'Files',exact:true}).click();
+ await page.getByLabel('Files tools',{exact:true}).click();
+ await page.getByRole('button',{name:'New folder',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'New folder',exact:true});
+ await dialog.getByRole('textbox',{name:'Name'}).fill('Projects');
+ await dialog.getByRole('button',{name:'Create',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Files',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Projects',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Projects',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();
+ await page.getByRole('button',{name:'New folder',exact:true}).click();
+ await dialog.getByRole('textbox',{name:'Name'}).fill('Artwork');
+ await dialog.getByRole('button',{name:'Create',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Projects',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Open Artwork',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Back',exact:true}).click();
+ await page.getByRole('button',{name:'Downloads',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();
+ await page.getByRole('button',{name:'New folder',exact:true}).click();
+ await dialog.getByRole('textbox',{name:'Name'}).fill('Received');
+ await dialog.getByRole('button',{name:'Create',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Downloads',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Open Received',exact:true})).toBeVisible();
 });

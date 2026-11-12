@@ -93,8 +93,9 @@ export function installHomeOverviewCards(Component: any) {
   const p = Component.prototype, render = p.renderVals;
   p.renderVals = function () {
     const out = render.call(this);
-    const agenda = homeAgendaCard(out), attention = homeAttentionCard(out), brief = homeBriefCard(out);
-    const showWorkflow = out.homeShowWorkflows !== false && out.homeWorkflowHasRows === true && Array.isArray(out.homeWorkflowRows) && out.homeWorkflowRows.length > 0;
+    const ready = out.homeCalendarResolved !== false && out.homeInboxResolved !== false && out.homeWorkflowResolved !== false;
+    const agenda = ready ? homeAgendaCard(out) : null, attention = ready ? homeAttentionCard(out) : null, brief = ready ? homeBriefCard(out) : null;
+    const showWorkflow = ready && out.homeShowWorkflows !== false && out.homeWorkflowHasRows === true && Array.isArray(out.homeWorkflowRows) && out.homeWorkflowRows.length > 0;
     return {...out, homeAgendaCard: agenda, homeAttentionCard: attention, homeBriefCard: brief, homeShowWorkflow: showWorkflow,
       homeHasOverviewCards: !!(agenda || attention || brief || showWorkflow)};
   };

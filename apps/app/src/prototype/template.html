@@ -1507,9 +1507,9 @@
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{photos.title}}</h1>
         <details class="photo-import-menu"><summary aria-label="Photos tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
-          <sc-if value="{{photos.libTab}}"><button aria-label="Select photos" onClick="{{photos.selStart}}">Select</button></sc-if>
-          <sc-if value="{{photos.isAlb}}"><button aria-label="New album" onClick="{{photos.newAlbum}}">New album</button></sc-if>
-          <sc-if value="{{photos.importAvailable}}"><button onClick="{{photos.importImage}}">Choose image</button></sc-if>
+          <sc-if value="{{photos.libTab}}"><button aria-label="Select photos" onClick="{{photos.selStart}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.check}}"></path></svg>Select</button></sc-if>
+          <sc-if value="{{photos.isAlb}}"><button aria-label="New album" onClick="{{photos.newAlbum}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.plus}}"></path></svg>New album</button></sc-if>
+          <sc-if value="{{photos.importAvailable}}"><button onClick="{{photos.importImage}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm17 12-5-5L5 21M8.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path></svg>Choose image</button></sc-if>
         </div></details>
 
     </div>
@@ -1641,9 +1641,9 @@
         <span style="font-size: 13px; color: var(--mut); padding: 0 8px">{{photos.alb.count}}</span>
         <sc-if value="{{photos.alb.menu}}">
           <details class="photo-import-menu"><summary aria-label="Album options"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></summary><div>
-            <sc-if value="{{photos.alb.canSelect}}"><button aria-label="Select items" disabled="{{photos.selectionBusy}}" onClick="{{photos.alb.select}}">Select</button></sc-if>
-            <sc-if value="{{photos.alb.isCustom}}"><button aria-label="Rename album" onClick="{{photos.alb.manage}}">Rename album</button><button aria-label="Delete album" onClick="{{photos.alb.deleteAlbum}}">Delete album</button></sc-if>
-            <sc-if value="{{photos.alb.canEmpty}}"><button aria-label="Delete all forever" onClick="{{photos.alb.emptyTrash}}">Delete all forever</button></sc-if>
+            <sc-if value="{{photos.alb.canSelect}}"><button aria-label="Select items" disabled="{{photos.selectionBusy}}" onClick="{{photos.alb.select}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.check}}"></path></svg>Select</button></sc-if>
+            <sc-if value="{{photos.alb.isCustom}}"><button aria-label="Rename album" onClick="{{photos.alb.manage}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.edit}}"></path></svg>Rename album</button><button aria-label="Delete album" onClick="{{photos.alb.deleteAlbum}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>Delete album</button></sc-if>
+            <sc-if value="{{photos.alb.canEmpty}}"><button aria-label="Delete all forever" onClick="{{photos.alb.emptyTrash}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>Delete all forever</button></sc-if>
           </div></details>
         </sc-if>
         <sc-if value="{{photos.selAll}}"><button class="tap" aria-label="{{photos.selAllLabel}}" disabled="{{photos.selectionBusy}}" onClick="{{photos.selAll}}" style="min-height:44px;padding:0 12px;font-size:16px;font-weight:600;color:var(--acct)">{{photos.selAllLabel}}</button></sc-if>
@@ -2616,9 +2616,7 @@
   <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">Files</h1>
     <sc-if value="{{files.toolbar.ready}}"><details class="photo-import-menu"><summary aria-label="Files tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
-      <sc-if value="{{files.toolbar.canCreate}}"><button aria-label="New folder" onClick="{{files.toolbar.newFolder}}">New folder</button></sc-if>
-      <button aria-label="Sort files" onClick="{{files.toolbar.sort}}">Sort and select</button>
-      <button aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}">{{files.toolbar.viewLabel}}</button>
+      <sc-if value="{{files.toolbar.canCreate}}"><button aria-label="New folder" onClick="{{files.toolbar.newFolder}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.plus}}"></path></svg>New folder</button></sc-if>
     </div></details></sc-if>
   </div>
   <sc-if value="{{files.chip}}">
@@ -2645,6 +2643,9 @@
     </sc-if>
     <sc-if value="{{files.browse.unavailable}}"><div role="alert" style="margin: 8px; padding: 14px 16px; border-radius: 20px; background: var(--s2); font-size: 15px">Storage is unavailable</div></sc-if>
     <sc-if value="{{files.browse.ready}}">
+      <sc-for list="{{files.browse.folders}}" as="folder" key="{{folder.id}}">
+        <button onClick="{{folder.go}}" aria-label="{{folder.name}}" class="tap" style="display:flex;align-items:center;gap:14px;width:100%;min-height:60px;padding:8px;border-radius:18px;text-align:left"><span style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--s2);color:var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="{{folder.d}}"></path></svg></span><span style="font-size:16px;font-weight:500">{{folder.name}}</span></button>
+      </sc-for>
       <button onClick="{{files.browse.allFiles}}" aria-label="All files" class="tap" style="display:flex;align-items:center;gap:14px;width:100%;min-height:60px;padding:8px;border-radius:18px;text-align:left"><span style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--s2);color:var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="{{files.browse.allFilesIcon}}"></path></svg></span><span style="font-size:16px;font-weight:500">All files</span></button>
       <sc-for list="{{files.browse.cats}}" as="c" key="{{c.id}}">
         <button onClick="{{c.go}}" aria-label="{{c.label}}" class="tap" style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 60px; padding: 8px; border-radius: 18px; text-align: left">
@@ -3935,7 +3936,7 @@
   <sc-if value="{{browser.menu}}">
     <div ref="{{browser.menuModal}}" data-alpha-popup style="display: contents;pointer-events:auto">
     <button data-alpha-backdrop tabindex="-1" aria-label="Close menu" onClick="{{browser.closeMenu}}" style="position: absolute; inset: 0; z-index: 7; background: transparent"></button>
-    <div class="drop" role="dialog" aria-label="Browser menu" data-alpha-browser-menu style="position: absolute; top: 98px; right: 10px; z-index: 8; width: min(calc(236px * max(1, var(--alpha-text-scale, 1))), calc(100% - 20px)); box-sizing: border-box; border-radius: 24px; background: var(--s1); box-shadow: 0 0 0 1px var(--line), 0 20px 50px var(--shc); padding: 6px; display: flex; flex-direction: column; max-height: calc(100% - 120px); overflow-y: auto">
+    <div class="drop" role="dialog" aria-label="Browser menu" data-alpha-browser-menu style="position: absolute; top: 98px; right: 10px; z-index: 8; width: min(calc(236px * max(1, var(--alpha-text-scale, 1))), calc(100% - 20px)); box-sizing: border-box; border-radius: 24px; background: var(--s1); box-shadow: 0 0 0 1px var(--line), 0 20px 50px var(--shc); padding: 6px; display: flex; flex-direction: column; min-height: 0; max-height: calc(100% - 98px - var(--alpha-dock-reserve,108px) - 12px); overflow-y: auto; overscroll-behavior: contain">
       <sc-if value="{{browser.nativeControls}}">
         <sc-if value="{{browser.externalBrowserAvailable}}">
           <p role="note" aria-label="Passkeys unsupported" style="margin:0;padding:8px 14px;font-size:13px;line-height:1.4;color:var(--mut)">Passkeys are not supported in Alpha Browser. Use a password or another browser.</p>

@@ -25,6 +25,24 @@ const {renderToStaticMarkup,c,h,l}=await import(resolve(directory,'cards.mjs'));
 l.setLocalePreferences({locale:'en-US'});
 rmSync(directory,{recursive:true,force:true});
 const html=element=>element?renderToStaticMarkup(element):null;
+test('Home reveals its saved widget row together and keeps it visible during refresh', () => {
+  let values={homeCalendarResolved:false,homeInboxResolved:false,homeWorkflowResolved:false,
+    homeCalendarHasEvent:true,homeCalendarTitle:'Meeting',homeInboxHasRows:true,
+    homeInboxRows:[{subject:'Mail',from:'Sender'}],homeWorkflowHasRows:true,
+    homeWorkflowRows:[{name:'Morning summary'}]};
+  class Home {renderVals(){return values;}}
+  c.installHomeOverviewCards(Home);
+  const home=new Home();
+  const hidden=()=>{const out=home.renderVals();assert.equal(out.homeAgendaCard,null);assert.equal(out.homeAttentionCard,null);assert.equal(out.homeShowWorkflow,false);};
+  hidden();
+  values={...values,homeWorkflowResolved:true};hidden();
+  values={...values,homeCalendarResolved:true};hidden();
+  values={...values,homeInboxResolved:true};
+  let out=home.renderVals();assert.ok(out.homeAgendaCard);assert.ok(out.homeAttentionCard);assert.equal(out.homeShowWorkflow,true);
+  values={...values,homeCalendarStale:true,homeInboxState:'pending'};
+  out=home.renderVals();assert.ok(out.homeAgendaCard);assert.ok(out.homeAttentionCard);assert.equal(out.homeShowWorkflow,true);
+  values={...values,homeInboxResolved:false,homeInboxRows:[],homeInboxHasRows:false};hidden();
+});
 test('agenda card keeps the installed selectors for an event, an overdue reminder with its next item, and an empty state', () => {
   const out={};
   const base={homeCalendarTime:'Wed, Oct 7',homeCalendarOrigin:'Work',homeCalendarTitle:'Design review',homeCalendarFooter:'4:00 PM – 5:00 PM',homeCalendarHasEvent:true,homeCalendarHasMeta:true,homeCalendarSource:'',homeCalendarOverdue:false,homeCalendarHasNext:false,homeCalendarLabel:'Open calendar event: Design review',homeCalendarDescription:'Work. Read 3:04 PM from calendars on this device',homeCalendarVideo:true,ic:{video:'M1 1'},goCalendar:()=>{}};

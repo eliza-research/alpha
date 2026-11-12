@@ -570,7 +570,7 @@ dialog:is(.alpha-operation-review,.alpha-calendar-editor,.alpha-calendar-meeting
 [data-alpha-photo-frame] { top:0!important; bottom:0!important; margin:auto!important; width:min(100cqw, 75cqh); height:min(133.333cqw, 100cqh)!important; }
 [data-alpha-photo-frame] > span:first-child { background-size:contain!important; background-position:center!important; background-repeat:no-repeat!important; }
 /* The browser menu ends above the dock; its rows scroll inside it on short screens. */
-[data-alpha-browser-menu] { box-sizing:border-box; max-height:max(150px, calc(100% - 106px - var(--alpha-dock-clearance,102px)))!important; }
+[data-alpha-browser-menu] { box-sizing:border-box; }
 /* Maps: the provider/location notice stays beside the map in landscape and bounded when wide. */
 .alpha-landscape [data-alpha-maps-status] { right:auto!important; width:min(440px, calc(50% - 24px)); }
 .alpha-wide:not(.alpha-landscape) [data-alpha-maps-status] { right:auto!important; width:min(560px, calc(100% - 40px)); }
@@ -797,8 +797,9 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .photo-import-menu { position:relative; z-index:3; }
 .photo-import-menu summary { display:grid; place-items:center; width:44px; height:44px; list-style:none; cursor:pointer; }
 .photo-import-menu summary::-webkit-details-marker { display:none; }
-.photo-import-menu > div { position:absolute; top:100%; right:0; width:max-content; padding:4px; border-radius:16px; color:var(--fg); background:var(--bg); box-shadow:0 4px 20px var(--shc); }
-.photo-import-menu button { display:block; min-height:44px; width:100%; padding:0 14px; text-align:start; }
+.photo-import-menu > div { position:absolute; top:100%; right:0; width:max-content; max-width:calc(100vw - 32px); max-height:60dvh; overflow-y:auto; padding:4px; border-radius:16px; color:var(--fg); background:var(--bg); box-shadow:0 4px 20px var(--shc); }
+.photo-import-menu button { display:flex; align-items:center; gap:12px; min-height:44px; width:100%; padding:0 14px; text-align:start; }
+.photo-import-menu button > .i { width:20px; height:20px; flex-shrink:0; }
 
 dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;padding:20px;background:var(--bg)}
 .alarm-page::backdrop{background:transparent}.alarm-page .alpha-browser-dialog-content{flex:1}.alarm-page-header{display:flex;align-items:center;gap:16px;margin-bottom:16px}.alarm-page-header button[aria-label="Back"]{border:0;background:transparent}.alarm-page-header button[aria-label="Save alarm"]{background:var(--fg);color:var(--bg);flex-shrink:0}
@@ -948,4 +949,4 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 .mail-star{display:block;flex-shrink:0;width:16px;height:16px;background:var(--fg);mask-position:center;mask-size:contain;mask-repeat:no-repeat;-webkit-mask-position:center;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat}
 
 /* Browser options are a compact menu above the still-visible page. */
-[data-alpha-popup] [data-alpha-browser-menu][role="dialog"]{bottom:auto!important;height:auto}
+[data-alpha-popup] [data-alpha-browser-menu][role="dialog"]{bottom:auto!important;height:auto;min-height:0;max-height:max(0px,calc(100% - 98px - var(--alpha-dock-reserve,108px) - 12px))!important;overscroll-behavior:contain}

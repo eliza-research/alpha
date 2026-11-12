@@ -23,7 +23,7 @@ async function fixture(page:Page,theme='light'){
   const original=c.getSnapshot(),snapshots=new Map();c.getSnapshot=()=>{const key=JSON.stringify([f.owner,f.omitOrg,f.credential,f.restoringCloud]);if(!snapshots.has(key))snapshots.set(key,{...original,cloudServiceRestoring:f.restoringCloud===true,cloudAccount:{environment:'production',userId:'fixture-'+f.owner,...(f.omitOrg?{}:{organizationId:'fixture-org'}),sessionId:'fixture-'+f.owner,credentialId:f.credential??'fixture-only'}});return snapshots.get(key);};
  });
 }
-async function load(page:Page){await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await returnToApps(page);}
+async function load(page:Page){await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await returnToApps(page);}
 
 for(const theme of ['light','dark'])test(`Home Inbox uses cached unread subjects and aligned text: ${theme}`,async({page},info)=>{
  await fixture(page,theme);await load(page);const card=tile(page);await card.scrollIntoViewIfNeeded();

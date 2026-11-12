@@ -332,6 +332,9 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   // Canonical feed visibility is authoritative. Keep old device preferences stored, but do not hide its events.
   const now=Date.now(),hidden=new Set<string>();
   const target=port(),model=target?.current()?controller?.state.ownerKey===calendarOwnerKey(target)?controller.state:undefined:bootstrapCurrent()&&controller?.state.savedAt!=null?controller.state:undefined;
+  const connection=connectionController.getSnapshot();
+  out.homeCalendarResolved=!!model&&(!!model.feed||model.status!=='loading'&&model.status!=='disconnected')||
+    connection.startupResolved===true&&!connection.cloudServiceRestoring&&!target&&!bootstrapCurrent();
   const home=homeCalendarSelection(model,zone(),hidden,new Date(now)),event=home.event;
   const syncedAt=Date.parse(model?.feed?.syncedAt??'');
   const confirmedEmpty=home.verified&&!event&&Number.isFinite(syncedAt)&&syncedAt>0&&syncedAt<=now&&!homeReadIsStale(syncedAt,now);

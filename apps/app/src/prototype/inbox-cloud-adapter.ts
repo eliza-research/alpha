@@ -859,6 +859,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     const disconnected=connectionController.getSnapshot().startupResolved===true&&!connectionController.getSnapshot().cloudServiceRestoring&&(!binding||accountsChecked&&!connected);
     const cached=key&&inboxPreview?.key===key&&inboxPreview.sessionId===binding?.sessionId&&inboxPreview.accountId===selected?inboxPreview:restored;
     const pending=phase==='busy'||phase==='scheduled';
+    out.homeInboxResolved=!!cached||disconnected||!!homeFailure;
     // Home's Connect Google (installHomeCardVisibility): only while signed in to Eliza Cloud, after the
     // account list for this session was read and has no connected Google account. Any connected Google
     // account counts, including one that grants Calendar without Gmail; otherwise unknown.
