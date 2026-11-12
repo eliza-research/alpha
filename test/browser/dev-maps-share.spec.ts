@@ -33,9 +33,8 @@ test('platform sharing failure is reported without another destination',async({p
 });
 
 
-test('a browser without a share sheet reports availability without copying',async({page})=>{
+test('a browser without a system share sheet does not offer a dead Share button',async({page})=>{
  await page.addInitScript(()=>Object.defineProperty(navigator,'share',{configurable:true,value:undefined}));
- await pin(page);await page.getByRole('button',{name:'Share',exact:true}).click();
- await expect(page.getByText('Sharing is unavailable in this preview.',{exact:true})).toBeVisible();
+ await pin(page);await expect(page.getByRole('button',{name:'Share',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).copied)).toBeUndefined();
 });

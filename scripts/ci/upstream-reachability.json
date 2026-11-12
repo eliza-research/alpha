@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
   "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "head": "35b6d2ebd8fdf774d54e7a52aa9dc23ae84ae9fb",
+  "head": "abe823894434173128d6bd1b030a8c3f6fa31cab",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...35b6d2ebd8fdf774d54e7a52aa9dc23ae84ae9fb",
+  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...abe823894434173128d6bd1b030a8c3f6fa31cab",
   "status": "diverged",
-  "aheadBy": 72,
+  "aheadBy": 74,
   "behindBy": 617,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -298,6 +298,14 @@
     {
       "sha": "35b6d2ebd8fdf774d54e7a52aa9dc23ae84ae9fb",
       "subject": "Start Maps at an available authorized location"
+    },
+    {
+      "sha": "9ea544297682344c9190b6feeb5e9803d31acf5a",
+      "subject": "Plan directions from an allowed location and swap route endpoints"
+    },
+    {
+      "sha": "abe823894434173128d6bd1b030a8c3f6fa31cab",
+      "subject": "Keep a manually edited route origin over a late location fix"
     }
   ]
 }

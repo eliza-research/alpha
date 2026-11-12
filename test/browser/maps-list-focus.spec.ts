@@ -26,7 +26,7 @@ async function setup(page:Page){
   MapsController.prototype.search=function(...args:any[]){(window as any).mapFocus.controller=this;return original.apply(this,args as any);};
   const place=(id:string,name:string)=>({providerId:'focus-fixture',id,name,coordinate:{latitude:43.7+Number(id)*.001,longitude:7.425},attribution:'Fixture',fetchedAt:Date.now()});
   const f=(window as any).mapFocus={items:[place('1','One'),place('2','Two')],place,searches:[]};
-  configureMapsProvider({status:'configured',providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',revision:'fixture1',capabilities:{map:false,search:true,placeDetails:true,modes:['walk'],traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}}},{providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',search:async(query:string)=>{f.searches.push(query);return f.pending?await f.pending:f.items;},detail:async(id:string)=>f.items.find((item:any)=>item.id===id),route:async()=>{throw Error('No route requested');}} as any);
+  configureMapsProvider({status:'configured',providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',revision:'fixture1',capabilities:{map:false,search:true,placeDetails:true,modes:['drive','walk'],traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}}},{providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',search:async(query:string)=>{f.searches.push(query);return f.pending?await f.pending:f.items;},detail:async(id:string)=>f.items.find((item:any)=>item.id===id),route:async(...args:any[])=>{if(f.route)return f.route(...args);throw Error('No route requested');}} as any);
  });
  await page.getByRole('button',{name:'Maps',exact:true}).click();
 }
@@ -106,7 +106,7 @@ test('place hours have one row per day and its website opens inside Alpha',async
  await page.getByRole('textbox',{name:'Search places',exact:true}).fill('public place');
  await page.locator('[data-alpha-maps-sheet="results"]').getByRole('button',{name:/^Public place/}).click();
  await expect(page.getByLabel('Opening hours').locator('dt')).toHaveText(['Monday','Tuesday','Wednesday']);
- await expect(page.getByRole('button',{name:'Share',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Share',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Website',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>document.documentElement.dataset.activeView)).toBe('browser');
 });
@@ -136,11 +136,25 @@ test('typing a new Maps search keeps the current panel until replacement results
  await expect(panel).toHaveAttribute('aria-busy','true');
  await expect(panel.getByRole('button',{name:/^One/})).toBeVisible();
  expect(await panel.evaluate(element=>element===(window as any).originalResultPanel)).toBe(true);
- await panel.getByRole('button',{name:/^One/}).click();
+ await panel.getByRole('button',{name:/^One/}).click({force:true});
  await expect(page.locator('[data-alpha-maps-sheet="place"]')).toHaveCount(0);
  await expect.poll(()=>page.evaluate(()=>(window as any).mapFocus.searches.length)).toBe(2);
  await page.evaluate(()=>{const f=(window as any).mapFocus;f.resolveSearch([f.place('3','Three')]);});
  await expect(panel.getByRole('button',{name:/^Three/})).toBeVisible();
  await expect(panel).toHaveAttribute('aria-busy','false');
  await expect(panel.getByRole('button',{name:/^One/})).toHaveCount(0);
+});
+
+
+test('directions start from the allowed current location and can swap endpoints',async({page})=>{
+ await page.context().grantPermissions(['geolocation']);await page.context().setGeolocation({latitude:43.7,longitude:7.425});
+ await setup(page);await page.evaluate(()=>{const f=(window as any).mapFocus;f.routes=[];f.route=async(from:any,to:any,mode:string)=>{f.routes.push({from,to,mode});return {providerId:'focus-fixture',id:'route-'+f.routes.length,from,to,mode,geometry:[from,to],distanceMeters:111,durationSeconds:60,steps:[{coordinate:to,instruction:'Continue'}],attribution:'Fixture',fetchedAt:Date.now(),traffic:'none'};};});
+ await page.getByRole('textbox',{name:'Search places',exact:true}).fill('place');
+ await page.locator('[data-alpha-maps-sheet="results"]').getByRole('button',{name:/^One/}).click();
+ await page.getByRole('button',{name:'Directions',exact:true}).click();
+ await expect(page.locator('[data-alpha-maps-sheet="directions"]')).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Starting point',exact:true})).toHaveValue('My location');
+ await page.getByRole('button',{name:'Swap starting point and destination',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).mapFocus.routes.length)).toBe(2);
+ expect(await page.evaluate(()=>(window as any).mapFocus.routes.at(-1))).toMatchObject({from:{latitude:43.701,longitude:7.425},to:{latitude:43.7,longitude:7.425}});
 });

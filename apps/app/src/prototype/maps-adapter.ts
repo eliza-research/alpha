@@ -10,7 +10,7 @@ import {mapsEventReturnOffered,mapsEventStillThere,type MapsEventOrigin} from '.
 import {Capacitor} from '@capacitor/core';
 import {isAndroid} from '../native';
 import {NavigationVoice} from '../maps/navigation-voice';
-import {mapShareLabel,shareMap} from '../maps/share';
+import {mapShareLabel,shareMap,canShareMap} from '../maps/share';
 import { MapPlane } from '../maps/map-plane';
 import type {MapBasemap} from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/map-plane.ts';
 import { globalBasemap } from '../maps/basemap';
@@ -279,7 +279,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
-      nativeShareLabel:mapShareLabel(),
+      nativeShareLabel:mapShareLabel(),nativeCanShare:canShareMap(),
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
       notNative:false, hasNativeMap:!!basemap&&locationReady,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
@@ -333,7 +333,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         canDir: place.canDirections, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
         close: () => {saveNamedPlace=false;screen.closePlace();}, save: () => {if(place.saved)screen.toggleSaved();else {saveNamedPlace=true;screen.startRename();}},
-        dirs: () => screen.openDirections(),
+        dirs: () => screen.openDirections(true),
         share: () => screen.sharePlace(),
         nativeName: place.name, nativeEditing: place.editingName, nativeNameAction:saveNamedPlace?'Save':'Done',
         nativeTitleRole: 'button', nativeTitleTabIndex: 0, nativeTitleLabel: 'Rename place',
@@ -350,6 +350,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       data.onOrigin=(event:Event)=>{const text=(event.target as HTMLInputElement).value;screen.setOriginText(text);queueSearch('origin',text);};
       data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();runSearch('origin',(event.target as HTMLInputElement).value);}};
       data.originLocation=()=>{cancelSearch();submittedSearch=undefined;screen.locate();};
+      data.swapDirections=()=>screen.swapDirections();
+      data.swapDirectionsDisabled=!mapsController?.snapshot().origin||mapsController.snapshot().selection.phase!=='ready';
+      data.routeReady=view.mode==='directions'&&directions.routeReady;
       const nav = view.navigation;
       data.dr={name:directions.name,close:()=>screen.back(),min:directions.duration,meta:directions.meta,via:directions.via,shareLabel:mapShareLabel()==='Share'?'Share route':'Copy route link',shareEta:()=>screen.shareRoute(),
        modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode:TravelMode=reference.mode==='bike'?'bicycle':reference.mode;const on=!!directions.modes.find(choice=>choice.mode===mode)?.selected;return {label:reference.label,t:reference.label,d:reference.d,on,css:on?'background:var(--acc);color:#fff':'background:var(--s2);color:var(--fg)',go:()=>screen.setMode(mode)};}),

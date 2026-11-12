@@ -1916,7 +1916,7 @@
       <div style="display: flex; align-items: center; gap: 4px">
         <button class="ib" aria-label="Back to place" onClick="{{maps.dr.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
-          <sc-if value="{{maps.native}}"><div style="display:flex;align-items:center;gap:4px;min-width:0"><input aria-label="Starting point" placeholder="Place or address" value="{{maps.originText}}" onChange="{{maps.onOrigin}}" onKeyDown="{{maps.originKey}}" style="flex:1;min-width:0;height:44px;border:0;background:transparent;color:var(--fg);font-size:15px"><button class="ib" aria-label="Use my location" title="Use my location" disabled="{{maps.nativeLocationBusy}}" onClick="{{maps.originLocation}}" style="flex-shrink:0;width:44px;height:44px"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="{{ic.mapsLoc}}"></path></svg></button></div></sc-if>
+          <sc-if value="{{maps.native}}"><div style="display:flex;align-items:center;gap:4px;min-width:0"><input aria-label="Starting point" placeholder="Place or address" value="{{maps.originText}}" onChange="{{maps.onOrigin}}" onKeyDown="{{maps.originKey}}" style="flex:1;min-width:0;height:44px;border:0;background:transparent;color:var(--fg);font-size:15px"><button class="ib" aria-label="Use my location" title="Use my location" disabled="{{maps.nativeLocationBusy}}" onClick="{{maps.originLocation}}" style="flex-shrink:0;width:44px;height:44px"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="{{ic.mapsLoc}}"></path></svg></button><button class="ib" aria-label="Swap starting point and destination" disabled="{{maps.swapDirectionsDisabled}}" onClick="{{maps.swapDirections}}" style="flex-shrink:0;width:44px;height:44px"><svg class="i" viewBox="0 0 24 24"><path d="m3 16 4 4 4-4M7 20V4m14 4-4-4-4 4m4-4v16"></path></svg></button></div></sc-if>
           <sc-if value="{{maps.notNative}}"><div style="display: flex; align-items: center; gap: 12px; height: 32px; font-size: 15px; color: var(--mut)"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--acc); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--acc); margin: 0 4px; flex-shrink: 0"></span>Your location</div></sc-if>
           <div style="display: flex; align-items: center; gap: 12px; height: 32px; font-size: 15px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{ic.pin}}"></path></svg>{{maps.dr.name}}</div>
         </div>
@@ -2044,7 +2044,7 @@
           <button class="ib" aria-label="Call" onClick="{{maps.pc.call}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.phone}}"></path></svg></button>
         </sc-if>
         <button class="ib" aria-label="{{maps.pc.saveLabel}}" aria-pressed="{{maps.pc.saved}}" onClick="{{maps.pc.save}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2); {{maps.pc.starCss}}"><svg class="i" viewBox="0 0 24 24" style="{{maps.pc.starFill}}"><path d="{{ic.star}}"></path></svg></button>
-        <button class="ib" aria-label="{{maps.nativeShareLabel}}" onClick="{{maps.pc.share}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
+        <sc-if value="{{maps.nativeCanShare}}"><button class="ib" aria-label="{{maps.nativeShareLabel}}" onClick="{{maps.pc.share}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button></sc-if>
         <sc-if value="{{maps.pc.hasWeb}}">
           <button class="ib" aria-label="Website" onClick="{{maps.pc.web}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.globe}}"></path></svg></button>
         </sc-if>
@@ -2060,14 +2060,14 @@
   </sc-if>
 
   
-  <sc-if value="{{maps.isDir}}">
+  <sc-if value="{{maps.routeReady}}">
     <div class="enter" data-alpha-maps-sheet="directions" style="position: absolute; left: 0; right: 0; bottom: 0; --alpha-sheet-height: {{maps.sheetH}}px; border-radius: 28px 28px 0 0; background: var(--bg); box-shadow: 0 -10px 40px var(--shc), 0 -1px 0 var(--line); z-index: 4; padding: 22px 20px 0; box-sizing: border-box">
       <div style="display: flex; align-items: baseline; gap: 12px"><span class="serif" style="font-size: 44px; line-height: 1">{{maps.dr.min}}</span><span style="font-size: 15px; color: var(--mut)">{{maps.dr.meta}}</span></div>
       <div style="font-size: 14px; color: var(--mut); margin-top: 8px">{{maps.dr.via}}</div>
       <sc-if value="{{maps.dr.hasRoutes}}"><fieldset aria-label="Routes" data-alpha-maps-routes style="border: 0; padding: 0; margin: 14px 0 0; min-width: 0; display: flex; flex-direction: column; gap: 6px"><sc-for list="{{maps.dr.routes}}" as="rt"><button aria-label="{{rt.label}}" aria-pressed="{{rt.on}}" onClick="{{rt.go}}" style="min-height: 44px; border-radius: 22px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 600; {{rt.css}}"><span>{{rt.t}}</span><span>{{rt.sub}}</span></button></sc-for></fieldset></sc-if>
       <div style="display: flex; gap: 8px; margin-top: 20px">
         <button onClick="{{maps.dr.start}}" style="flex-grow: 1; height: 56px; border-radius: 28px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="fill: currentColor"><path d="{{ic.mapsNav}}"></path></svg>Start</button>
-        <button class="ib" aria-label="{{maps.dr.shareLabel}}" onClick="{{maps.dr.shareEta}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
+        <sc-if value="{{maps.nativeCanShare}}"><button class="ib" aria-label="{{maps.dr.shareLabel}}" onClick="{{maps.dr.shareEta}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button></sc-if>
       </div>
     </div>
   </sc-if>
