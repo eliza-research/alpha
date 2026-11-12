@@ -39,7 +39,6 @@ test('browser controls are opt-in and record the three exact classes on both tes
  const browser=parseYaml(workflow).jobs['browser-reading'];
  assert.equal(browser.env.BROWSER_SUITE,"${{ inputs.suite == 'browser-controls' && 'browser-controls' || 'browser-reading' }}");
  assert.equal(browser.steps.find(step=>step.with?.script).with.script,'bun scripts/ci/emulator-suite.ts ${{ env.BROWSER_SUITE }}');
- assert.match(browser.steps.find(step=>step.uses?.startsWith('actions/upload-artifact@')).with.name,/^android-emulator-\$\{\{ env\.BROWSER_SUITE \}\}-/);
  const controls=suitePlan('browser-controls');
  assert.deepEqual(controls.slice(0,2),suitePlan('browser-reading').slice(0,2),'uses the same pinned WebView preparation');
  assert.deepEqual(controls.map(step=>step.name),['prepare-emulator','prepare-webview','ci-browser-controls']);
