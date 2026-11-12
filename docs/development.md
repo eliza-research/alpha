@@ -97,6 +97,19 @@ candidate Cloud (the same `production` and `staging` rows as the policy). Run
 candidate build has its own credential namespace, and the production bundle audit
 refuses it.
 
+`cloud/` holds the product Cloud's data: `policy.example.json` (the same rows the app
+is built with) and `resources.example.json` (the operator's Cloudflare ids). There is
+no route code here.
+
+```sh
+bun run cloud:worker -- check --policy cloud/policy.example.json --resources cloud/resources.example.json \
+  --upstream <upstream checkout with packages/cloud/deploy> --out <dir>
+```
+
+This renders the Worker configuration and bundles it with `wrangler deploy --dry-run`.
+Nothing is deployed, and it needs an upstream revision that carries the deployment
+tool, which is not merged upstream yet.
+
 ## Android builds
 
 ```sh

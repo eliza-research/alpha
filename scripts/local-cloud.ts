@@ -4,6 +4,9 @@
  * source with Alpha's own identity. Development only; it never contacts a deployed Cloud.
  *
  *   node scripts/local-cloud.ts prepare [--dir DIR]         export the pin and install it
+ *     --source REPO   export REPO's HEAD instead (an upstream branch under review; never vendor/eliza edits)
+ *     --deployment-id ID   (start) run as a product deployment (upstream CLOUD_DEPLOYMENT_ID), which must
+ *                          refuse to start or answer rather than fall back to any Eliza identity
  *   ELIZA_DEV_ALLOW_TEST_MOCKS=1 node scripts/local-cloud.ts start [--dir DIR] [--port 8787]
  *   node scripts/local-cloud.ts check [--dir DIR] [--json]  sign in and call the product routes
  *
@@ -67,26 +70,28 @@ function resolveBun() {
 const say = (message: string) => console.log(`[local-cloud] ${message}`);
 const writePrivate = (file: string, text: string) => { fs.writeFileSync(file, text, {mode: 0o600}); fs.chmodSync(file, 0o600); };
 
-interface Layout { dir: string; exportDir: string; front: string; ports: {front: number; steward: number; api: number; pglite: number} }
-function layout(dirOption: string | undefined, portOption: string): Layout {
+interface Layout { source: string; deploymentId: string | null; dir: string; exportDir: string; front: string; ports: {front: number; steward: number; api: number; pglite: number} }
+function layout(dirOption: string | undefined, portOption: string, sourceOption?: string, deploymentId?: string): Layout {
   const dir = localCloudDirectory(dirOption);
   if (dir === root || dir.startsWith(root + path.sep)) throw new Error('The local Cloud directory must be outside this checkout');
   const front = Number(portOption);
   if (!Number.isInteger(front) || front < 1024 || front > 65000) throw new Error('--port must be 1024–65000');
   fs.mkdirSync(dir, {recursive: true, mode: 0o700});
-  return {dir, exportDir: path.join(dir, 'eliza'), front: `https://127.0.0.1:${front}`, ports: {front, steward: front + 13, api: front + 1, pglite: LOCAL_CLOUD.pglitePort}};
+  if (deploymentId !== undefined && !/^[a-z0-9-]{1,40}$/.test(deploymentId)) throw new Error('--deployment-id must match [a-z0-9-]');
+  return {source: sourceOption ? path.resolve(sourceOption) : vendorDir, deploymentId: deploymentId ?? null, dir, exportDir: path.join(dir, 'eliza'), front: `https://127.0.0.1:${front}`, ports: {front, steward: front + 13, api: front + 1, pglite: LOCAL_CLOUD.pglitePort}};
 }
 
-async function prepare({dir, exportDir}: Layout) {
-  const commit = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit as string;
-  const head = execFileSync('git', ['-C', vendorDir, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
+async function prepare({dir, exportDir, source}: Layout) {
+  const head = execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
+  const commit = source === vendorDir ? JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit as string : head;
   if (head !== commit) throw new Error('vendor/eliza is not at the pinned commit (upstream.lock.json)');
+  if (source !== vendorDir && execFileSync('git', ['-C', source, 'status', '--porcelain'], {encoding: 'utf8'}).trim()) throw new Error('--source has uncommitted changes; only a commit is exported');
   const marker = path.join(exportDir, '.alpha-export');
   if (!fs.existsSync(marker) || fs.readFileSync(marker, 'utf8').trim() !== commit) {
-    say('exporting the pinned vendor/eliza (git archive; the checkout is not written)');
+    say(`exporting ${source === vendorDir ? 'the pinned vendor/eliza' : source + ' at ' + commit.slice(0, 10)} (git archive; the checkout is not written)`);
     fs.rmSync(exportDir, {recursive: true, force: true});
     fs.mkdirSync(exportDir, {recursive: true});
-    const archive = spawn('git', ['-C', vendorDir, 'archive', '--format=tar', commit], {stdio: ['ignore', 'pipe', 'inherit']});
+    const archive = spawn('git', ['-C', source, 'archive', '--format=tar', commit], {stdio: ['ignore', 'pipe', 'inherit']});
     const extract = spawn('tar', ['-x', '-C', exportDir], {stdio: ['pipe', 'inherit', 'inherit']});
     archive.stdout.pipe(extract.stdin);
     const code = await new Promise(resolve => extract.on('close', resolve));
@@ -159,7 +164,7 @@ const stopAll = () => { for (const child of started) if (child.exitCode === null
 /** A placeholder legal document for the local Cloud's sign-in screen; a deployed Cloud carries the real text. */
 const legal = (title: string) => JSON.stringify({title: `${title} (local development)`, revision: 'local', sections: [{title, paragraphs: ['This local development Cloud has no legal text.']}]});
 
-async function start({dir, exportDir, front, ports}: Layout) {
+async function start({dir, exportDir, front, ports, deploymentId}: Layout) {
   if (process.env.ELIZA_DEV_ALLOW_TEST_MOCKS !== '1') throw new Error('The local Cloud uses mock mail and seeded rows: set ELIZA_DEV_ALLOW_TEST_MOCKS=1');
   if (!fs.existsSync(path.join(exportDir, 'node_modules'))) throw new Error('Run `prepare` first');
   for (const [name, port] of Object.entries(ports)) if (!await portFree(port)) throw new Error(`Port ${port} (${name}) is in use`);
@@ -200,6 +205,10 @@ async function start({dir, exportDir, front, ports}: Layout) {
     CLOUD_PUBLIC_SERVICE_NAME: LOCAL_CLOUD.name, CLOUD_PUBLIC_SERVICE_TERMS_JSON: legal('Terms'), CLOUD_PUBLIC_SERVICE_PRIVACY_JSON: legal('Privacy'),
     ELIZA_ENTITLEMENT_ISSUER: front, ELIZA_ENTITLEMENT_AUDIENCE: 'alpha-phone-local', ELIZA_ENTITLEMENT_SIGNING_KEY: s.entitlementKey, ELIZA_ENTITLEMENT_SIGNING_KEY_ID: 'alpha-local-1',
   };
+  // An upstream build with a deployment identity: every value is this Cloud's own, and upstream must fail
+  // closed on a missing one instead of using an Eliza default.
+  const product: Record<string, string> = deploymentId ? {CLOUD_DEPLOYMENT_ID: deploymentId, CLOUD_WEB_ORIGIN: front, CLOUD_BILLING_URL: `${front}/cloud/billing`, SENDGRID_FROM_EMAIL: 'cloud@alpha-local-cloud.invalid'} : {};
+  Object.assign(vars, product);
   // The launcher's sync step rewrites the Worker's dev vars from packages/cloud/shared/.env.local,
   // so the settings go into the EXPORT's file, never the checkout.
   for (const [name, value] of Object.entries(vars)) if (/[\r\n']/.test(value)) throw new Error(`${name} cannot be written to the local env file`);
@@ -213,7 +222,7 @@ async function start({dir, exportDir, front, ports}: Layout) {
     `ELIZA_ENTITLEMENT_ISSUER:${front}`, `ELIZA_ENTITLEMENT_AUDIENCE:${vars.ELIZA_ENTITLEMENT_AUDIENCE}`, `CLOUD_PUBLIC_SERVICE_NAME:${LOCAL_CLOUD.name}`,
     `ELIZA_MOBILE_APP_AUTH_APP_ID:${s.reservedAppId}`, `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON:${clients}`,
     `CLOUD_PUBLIC_SERVICE_TERMS_JSON:${vars.CLOUD_PUBLIC_SERVICE_TERMS_JSON}`, `CLOUD_PUBLIC_SERVICE_PRIVACY_JSON:${vars.CLOUD_PUBLIC_SERVICE_PRIVACY_JSON}`,
-    `ELIZA_ENTITLEMENT_SIGNING_KEY:${s.entitlementKey}`, 'ELIZA_ENTITLEMENT_SIGNING_KEY_ID:alpha-local-1'];
+    `ELIZA_ENTITLEMENT_SIGNING_KEY:${s.entitlementKey}`, 'ELIZA_ENTITLEMENT_SIGNING_KEY_ID:alpha-local-1', ...Object.entries(product).map(([name, value]) => `${name}:${value}`)];
   const wranglerArgs = ['dev', '--ip', '127.0.0.1', '--port', String(ports.api), '--local', '--env-file', devVars, '--persist-to', path.join(dir, 'wrangler'), ...override.flatMap(value => ['--var', value])];
   const pgConf = path.join(dir, 'pgdata', 'postgresql.conf');
   if (fs.existsSync(pgConf)) fs.writeFileSync(pgConf, fs.readFileSync(pgConf, 'utf8').replace(/^(log_)?timezone = .*$/gm, (_line, prefix) => `${prefix ?? ''}timezone = 'UTC'`));
@@ -222,7 +231,7 @@ async function start({dir, exportDir, front, ports}: Layout) {
     DEV_CLOUD_PGLITE_DATA_DIR: path.join(dir, 'pgdata'), DEV_CLOUD_WRANGLER_PERSIST_TO: path.join(dir, 'wrangler'), DATABASE_URL: '', TEST_DATABASE_URL: ''}});
   started.push(apiProcess);
   await waitFor(`${api}/api/health`, {child: apiProcess, timeoutMs: 600000});
-  seed({dir, exportDir, ports} as Layout, s, registration.redirectUri);
+  seed({dir, exportDir, ports}, s, registration.redirectUri);
   say(`Cloud API up (client ${registration.clientId} registered)`);
 
   // 3. The TLS front door.
@@ -235,14 +244,14 @@ async function start({dir, exportDir, front, ports}: Layout) {
     req.pipe(upstream);
   });
   await new Promise<void>(resolve => proxy.listen(ports.front, '127.0.0.1', resolve));
-  writePrivate(path.join(dir, 'local-cloud.json'), JSON.stringify({api: front, web: front, steward, tenant: LOCAL_CLOUD.tenant, name: LOCAL_CLOUD.name, registration, caCertificate: cert}, null, 1));
+  writePrivate(path.join(dir, 'local-cloud.json'), JSON.stringify({api: front, web: front, steward, tenant: LOCAL_CLOUD.tenant, name: LOCAL_CLOUD.name, deploymentId, registration, caCertificate: cert}, null, 1));
   say(`ready at ${front}; description in ${path.join(dir, 'local-cloud.json')}`);
   say('check:  node scripts/local-cloud.ts check');
   say('Ctrl-C stops the local Cloud.');
 }
 
 /** The rows Cloud's mobile App Auth requires: an owner organization and user, and an approved app per registered client. */
-function seed({dir, exportDir, ports}: Layout, s: Record<string, string>, redirect: string) {
+function seed({dir, exportDir, ports}: Pick<Layout, 'dir' | 'exportDir' | 'ports'>, s: Record<string, string>, redirect: string) {
   const script = path.join(dir, 'seed.ts');
   fs.writeFileSync(script, `
 import {createRequire} from "node:module";
@@ -354,10 +363,10 @@ export async function checkLocalCloud(cloud: {api: string; steward: string; tena
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const {values: options, positionals} = parseArgs({allowPositionals: true, options: {dir: {type: 'string'}, port: {type: 'string', default: '8787'}, json: {type: 'boolean', default: false}}});
+  const {values: options, positionals} = parseArgs({allowPositionals: true, options: {dir: {type: 'string'}, port: {type: 'string', default: '8787'}, source: {type: 'string'}, 'deployment-id': {type: 'string'}, json: {type: 'boolean', default: false}}});
   const command = positionals[0];
   if (!['prepare', 'start', 'check'].includes(command)) { console.error('Usage: node scripts/local-cloud.ts prepare|start|check [--dir DIR] [--port PORT] [--json]'); process.exit(2); }
-  const paths = layout(options.dir, options.port!);
+  const paths = layout(options.dir, options.port!, options.source, options['deployment-id']);
   if (command === 'prepare') await prepare(paths);
   else if (command === 'start') { try { await start(paths); } catch (error) { stopAll(); throw error; } }
   else {

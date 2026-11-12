@@ -294,3 +294,104 @@ What the local Cloud taught us (inputs to U1 to U3):
 
 Next in this repository: extend the check to inference, speech, Maps and the Google
 connector (needs provider keys), then point a test-mocks build at the local Cloud.
+
+## 8. Upstream and Grace branches (local only, not pushed)
+
+**Upstream** (`~/Work/eliza-cloud-config`, branch `cloud-deployment-config` on `a24e5aa6c5`, five commits):
+
+- `packages/cloud/shared/src/lib/deployment/cloud-deployment.ts`: `resolveCloudDeployment`.
+  `CLOUD_DEPLOYMENT_ID` unset or `eliza` resolves to today's values; any other id must set
+  `CLOUD_WEB_ORIGIN`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_API_URL`, `STEWARD_TENANT_ID`,
+  `CLOUD_PUBLIC_SERVICE_NAME`, `R2_PUBLIC_HOST`, `NEXT_PUBLIC_ASSETS_CDN_URL`,
+  `SENDGRID_FROM_EMAIL` (or `SMTP_FROM`) and `CLOUD_BILLING_URL`, and a missing one throws.
+- Credentialed CORS, CSRF, redirect validation, Stripe return origins, blob and avatar hosts,
+  tenant default, mail sender, speech consent seed, `topUpUrl` and 22 app-URL fallbacks read it.
+- Pages native callbacks validate against the deployment's origins.
+- The Android resident launch accepts a product Cloud provider base. Before this,
+  `NativeProviderAdmission.CLOUD_PROVIDER_BASE` sent every product's Cloud credential to
+  `api.eliza.app` (found from Grace's candidate APK). Both products must call the new overload.
+- Evidence: typecheck of `cloud-shared` and `cloud-api`; 28 new resolver tests; neighbouring
+  suites; the native connection tests; and this repo's `cloud:local` check (15 gates) run
+  against the branch with `--deployment-id alpha-local`. Not run: router contract, worker
+  bundle dry run, full suites, e2e. Fail-closed on a missing setting is unit-tested only.
+- Still Eliza-bound upstream: every `wrangler.toml`, host routing in `api/src/index.ts`, the
+  Pages middleware and project name, Steward mail and passkey defaults, per-organisation
+  tenant prefix, email templates and branding strings, plan catalog, migrations, publishing.
+
+**Grace** (`~/Work/grace`, branch `cloud-deployment-policy` on `6a62ceb7`, six commits):
+
+- One policy (`apps/app/scripts/cloud-deployment-policy.ts`) generates the gateway presets and
+  host allowlist, Java defaults, App Link hosts, APK policy rows and the user-facing Cloud
+  name; `GRACE_CLOUD_DEPLOYMENT_FILE` selects a candidate Cloud that is never signed.
+- Evidence reported by that work: `npm run verify` green on Node 24 (3373 tests, 0 fail), a
+  default `android:build -- --ci-shell`, and a candidate rehearsal whose manifest and dex
+  carry no `cloud.eliza.app`. Not run: device build with agent and voice, emulator, sign-in.
+
+Neither branch is pushed or proposed upstream; that needs the owner's go-ahead.
+
+## 9. Product Worker build (local only)
+
+- Upstream branch commit `f77df8ec8a` adds `packages/cloud/deploy`: a deployment-file schema,
+  `render` (a complete Worker configuration from upstream's structural settings plus the
+  product's identity and resource ids) and `check` (`wrangler deploy --dry-run`). Rendering
+  Eliza's own definition reproduces the current `wrangler.toml` identity and bindings apart
+  from six added deployment variables. 18 tests.
+- This repository: `cloud/` (example policy and resources) and `scripts/cloud-worker.ts`
+  (`npm run cloud:worker`). It derives the upstream deployment file from the app's own policy
+  rows, refuses the shipped Eliza policy and any Eliza host, renders both environments and
+  bundles them.
+- Evidence (2026-11-11): both environments rendered outside the upstream tree and bundled
+  with networking disabled; 33.1 MB bundle, 8.3 MB gzip; no Eliza host, account or resource
+  id in the configuration. The bundle still contains `eliza.app` strings as code defaults.
+- Not done: a real deploy, the Pages front end, the Steward login Worker, the speech and
+  admission Workers, a migrations baseline, resource provisioning, secret setting, and npm
+  publication. The real policy and resources files await the domain and Cloudflare account.
+
+## 10. All components and pull requests
+
+- Pull requests opened 2026-11-11 with the owner's go-ahead: `elizaOS/eliza#39439` (upstream,
+  seven commits) and `gracefultechnology/grace#340`. Neither is merged.
+- Two further upstream commits are local only (`e53527e4ca`, `4a015194f0`): the deployment
+  file gains `components` (Steward login Worker, speech Worker, admission Worker, Pages web
+  front end), each rendered with the product's own names, hosts and cross-bindings, and the
+  Pages proxy refuses to fall back to Eliza's API for a product deployment.
+- `npm run cloud:worker -- check` now renders and checks all five components for both
+  environments. On 2026-11-11 all ten passed with networking disabled, bundling from the
+  installed tree of the earlier branch revision. Limits of that check: the login container
+  image is not built, the web check compiles Pages Functions only (not the web app), and
+  nothing is deployed.
+- Still Eliza-bound in component source: Pages Functions compile in the Eliza domain map
+  (acting only on Eliza hostnames), Steward's email templates and default tenant names, and
+  compiled default hosts in the speech and admission bundles.
+
+## 11. Consuming the Cloud as packages (local only)
+
+- Three further local upstream commits (`a65ee5bcdf`, `27cfa5d8d7`, `82eec948c6`) make
+  `@elizaos/cloud-api`, `cloud-shared`, `cloud-services-common`, `plugin-network` and
+  `cloud-deploy` packable as source-shipping packages, add the `@elizaos/cloud-api/worker`
+  entry, and let `render --packages` build from an install. They stay `private`; publishing
+  is a maintainer decision with a checklist in `packages/cloud/deploy/README.md`.
+- The API's 135 internal alias imports became relative paths so they resolve from
+  `node_modules`. Checked here afterwards: `tsc --noEmit` and the router contract pass.
+- Pack check: 23 tarballs (24.5 MB) installed into an empty directory; a thin `worker.ts`
+  bundled with 14,150 inputs, none outside that directory.
+- This repository: `cloud/worker.ts` is that thin entry, and
+  `npm run cloud:worker -- check --packages <install dir>` bundled Alpha's example Cloud API
+  Worker for both environments from the installed tarballs with networking disabled
+  (33.97 MB). Login, speech, admission and web still build from an upstream checkout.
+- Not done: publication, so `cloud/` has no `package.json` yet; the install is about 2.8 GB
+  because `cloud-shared` pulls every plugin's dependencies.
+
+## 12. Regression check of the latest upstream branch (2026-11-11)
+
+Run in a clean export of the branch head, installed and built from scratch:
+
+- Upstream's own `typecheck` for `packages/cloud/api` passes end to end: `tsc --noEmit`, the
+  router contract and the production worker bundle dry run.
+- `cloud:local -- check` with `--deployment-id alpha-local`: all 15 gates pass.
+- API unit suite compared with the same suite on the untouched pin: no test fails only on the
+  branch except two speech retirement files whose env mock lacked `getCloudAwareEnv`. That
+  was a regression from the deployment change; it is fixed locally (40 tests pass, as on the
+  base). Both trees otherwise fail the same Miniflare and speech suites on this machine
+  (77 failures on the base, where the Workers runtime does not start reliably).
+- Not run: the `cloud-shared` suite baseline comparison, e2e, anything deployed.
