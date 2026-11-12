@@ -11,7 +11,7 @@ async function edit(page:any,kind:'event'|'reminder'){
  await page.evaluate(async kind=>{if(kind==='event'){const {BrowserCalendar}=await import('/src/browser/calendar.ts');const c=new BrowserCalendar(),id=crypto.randomUUID();await c.save({creationId:id,calendarId:'local',title:'Original event',body:'Original body',location:'Room',begin:Date.parse('2027-03-13T10:00Z'),end:Date.parse('2027-03-13T11:00Z')});await c.acknowledgeCreation({creationId:id});}else{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').scheduleReminder({id:'draft-reminder',title:'Original reminder',body:'Original body',at:Date.parse('2027-03-13T10:00Z'),dueAt:Date.parse('2027-03-13T10:00Z'),alertMinutes:null});}},kind);
  await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:kind==='event'?/^Original event,/:/^Original reminder,/}).click();await chooseCalendarEventAction(page, 'Edit event');await page.getByRole('textbox',{name:'Title',exact:true}).fill('Retained edits');await expectSavedCalendarDraft(page,'edit');await expect(page.getByRole('button',{name:'Back to calendar',exact:true})).toHaveCount(1);
 }
-async function resume(page:any){await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:'Resume unsaved calendar edits',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Retained edits');}
+async function resume(page:any){await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:'New event',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Retained edits');}
 for(const kind of ['event','reminder'] as const)test(`${kind} edits survive reload and save to their existing item`,async({page})=>{
  await edit(page,kind);await resume(page);await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Resume unsaved calendar edits',exact:true})).toHaveCount(0);
  const rows=await page.evaluate(async kind=>kind==='event'?(await new (await import('/src/browser/calendar.ts')).BrowserCalendar().list({begin:0,end:Date.parse('2030-01-01')})).events:(await new (await import('/src/browser/daily.ts')).BrowserDaily().listReminders()).reminders,kind);expect(rows).toHaveLength(1);expect(rows[0].title).toBe('Retained edits');
@@ -23,11 +23,25 @@ for(const kind of ['event','reminder'] as const)test(`restored ${kind} edits can
 test('reminder title-only recovery on another day preserves its original schedule',async({page})=>{
  await edit(page,'reminder');await page.clock.setFixedTime(new Date('2027-03-14T00:00Z'));await resume(page);await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveCount(0);expect(await page.evaluate(async()=>(await new (await import('/src/browser/daily.ts')).BrowserDaily().listReminders()).reminders[0].at)).toBe(Date.parse('2027-03-13T10:00Z'));
 });
-test('discarding retained edits leaves the original saved item intact',async({page})=>{
- await edit(page,'event');await resume(page);await page.getByRole('button',{name:'Back to calendar',exact:true}).click();page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Discard retained calendar edits',exact:true}).click();await expect(page.getByRole('button',{name:'Resume unsaved calendar edits',exact:true})).toBeVisible();page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Discard retained calendar edits',exact:true}).click();await expect(page.getByRole('button',{name:'Resume unsaved calendar edits',exact:true})).toHaveCount(0);await page.reload();await openBrowserCalendar(page);await expect(page.getByRole('button',{name:/^Original event,/})).toBeVisible();await expect(page.getByRole('button',{name:'Resume unsaved calendar edits',exact:true})).toHaveCount(0);
+test('closing retained edits keeps the original saved item and reopens the current edit',async({page})=>{
+ await edit(page,'event');
+ await page.getByRole('button',{name:'Back to calendar',exact:true}).click();
+ const rows=await page.evaluate(async()=>(await new (await import('/src/browser/calendar.ts')).BrowserCalendar().list({begin:0,end:Date.parse('2030-01-01')})).events);
+ expect(rows[0].title).toBe('Original event');
+ await resume(page);
+ await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Retained edits');
 });
-test('discard cannot erase newer edits retained by another tab',async({page,context})=>{
- await edit(page,'event');await resume(page);const other=await context.newPage();await other.clock.setFixedTime(new Date('2027-03-13T00:00Z'));await other.goto('/');await openBrowserCalendar(other);await other.getByRole('button',{name:'Resume unsaved calendar edits',exact:true}).click();await other.getByRole('textbox',{name:'Title',exact:true}).fill('Newer retained edits');await expectSavedCalendarDraft(other,'edit');await page.getByRole('button',{name:'Back to calendar',exact:true}).click();page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Discard retained calendar edits',exact:true}).click();await expect(page.getByText('This draft changed. Review it before discarding.',{exact:true})).toBeVisible();await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:'Resume unsaved calendar edits',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Newer retained edits');
+test('closing an older editor does not erase a newer retained edit from another tab',async({page,context})=>{
+ await edit(page,'event');
+ const other=await context.newPage();
+ await other.goto('/');await openBrowserCalendar(other);
+ await other.getByRole('button',{name:'New event',exact:true}).click();
+ await other.getByRole('textbox',{name:'Title',exact:true}).fill('Newer retained edit');
+ await expectSavedCalendarDraft(other,'edit');
+ await page.getByRole('button',{name:'Back to calendar',exact:true}).click();
+ await page.reload();await openBrowserCalendar(page);
+ await page.getByRole('button',{name:'New event',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Newer retained edit');
 });
 test('a committed reminder edit reconciled on reload cannot repeat its mutation',async({page})=>{
  await edit(page,'reminder');await page.evaluate(async()=>{const {BrowserDaily}=await import('/src/browser/daily.ts');const operate=BrowserDaily.prototype.operateReminder;BrowserDaily.prototype.operateReminder=async function(input){await operate.call(this,input);throw Error('Response lost');};BrowserDaily.prototype.reminderOperationReceipt=async()=>{throw Error('Receipt unavailable');};});await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByText('Not confirmed. Check its status in Calendar.',{exact:true})).toBeVisible();

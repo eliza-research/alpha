@@ -31,8 +31,28 @@ test.describe('Calendar draft accessibility', () => {
    const fields=page.getByRole('region',{name:'Event details',exact:true});await expect(fields).toBeVisible();await fields.focus();await page.keyboard.press('End');
    const notes=page.getByRole('textbox',{name:'Notes',exact:true});await notes.fill('First paragraph\n\nLong reference '+'abc'.repeat(80));await notes.scrollIntoViewIfNeeded();await expect(notes).toBeInViewport();
    expect(await fields.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1);
-   for(const name of ['In this app','Once','None','Add people']){const button=fields.getByRole('button',{name,exact:true});await button.scrollIntoViewIfNeeded();await expect(button).toBeInViewport();const box=(await button.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(44);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(360);}
-   const video=fields.getByRole('switch',{name:'Video link',exact:true});await video.scrollIntoViewIfNeeded();await expect(video).toHaveAttribute('aria-checked','false');const target=(await video.boundingBox())!,track=(await video.locator('.calendar-video-track').boundingBox())!,thumb=(await video.locator('.calendar-video-thumb').boundingBox())!;expect(target.width).toBeGreaterThanOrEqual(44);expect(target.height).toBeGreaterThanOrEqual(44);expect(await video.locator('.calendar-video-track').evaluate(el=>({width:getComputedStyle(el).width,height:getComputedStyle(el).height}))).toEqual({width:'52px',height:'32px'});expect(await video.locator('.calendar-video-thumb').evaluate(el=>({width:getComputedStyle(el).width,height:getComputedStyle(el).height}))).toEqual({width:'26px',height:'26px'});expect(track.width/track.height).toBeCloseTo(52/32,2);expect(thumb.width/track.width).toBeCloseTo(26/52,2);expect(thumb.width/thumb.height).toBeCloseTo(1,2);expect(await video.locator('.calendar-video-track').evaluate(el=>getComputedStyle(el).borderRadius)).toBe('16px');await page.screenshot({path:info.outputPath('video-off.png'),animations:'disabled'});await video.focus();await page.keyboard.press('Space');await expect(video).toHaveAttribute('aria-checked','true');await expect(video.locator('.calendar-video-thumb')).toHaveCSS('transform','matrix(1, 0, 0, 1, 20, 0)');await page.screenshot({path:info.outputPath('video-on.png'),animations:'disabled'});await page.keyboard.press('Space');await expect(video).toHaveAttribute('aria-checked','false');
+   for (const name of ['From date', 'From time', 'To date', 'To time']) {
+    const input = fields.getByLabel(name, {exact:true});
+    await input.scrollIntoViewIfNeeded();
+    await expect(input).toBeInViewport();
+    const box = (await input.boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(24);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(360);
+   }
+   const allDay = fields.getByRole('switch', {name:'All day', exact:true});
+   await allDay.scrollIntoViewIfNeeded();
+   await expect(allDay).toHaveAttribute('aria-checked','false');
+   await allDay.focus();
+   await page.keyboard.press('Space');
+   await expect(allDay).toHaveAttribute('aria-checked','true');
+   await expect(fields.getByLabel('From time',{exact:true})).toBeDisabled();
+   await expect(fields.getByLabel('To time',{exact:true})).toBeDisabled();
+   await page.screenshot({path:info.outputPath('all-day-on.png'),animations:'disabled'});
+   await page.keyboard.press('Space');
+   await expect(allDay).toHaveAttribute('aria-checked','false');
+   await expect(fields.getByLabel('From time',{exact:true})).toBeEnabled();
+   await expect(fields.getByLabel('To time',{exact:true})).toBeEnabled();
    await notes.scrollIntoViewIfNeeded();const notesBox=(await notes.boundingBox())!,dockBox=(await page.locator('[data-alpha-layer="pill"]').boundingBox())!;expect(notesBox.y+notesBox.height).toBeLessThanOrEqual(dockBox.y);await page.screenshot({path:info.outputPath('draft-notes.png'),animations:'disabled'});await expect(save).toBeInViewport();await page.getByRole('button',{name:'Back to calendar',exact:true}).click();await expect(fields).toHaveCount(0);
   });
 

@@ -63,3 +63,13 @@ export async function restoreBrowserCalendarReads(page: Page, {notify}: {notify:
     if (notify) window.dispatchEvent(new Event('alpha:calendar-preferences'));
   }, notify);
 }
+
+/** Adjust the current From fields through the visible editor controls. */
+export async function shiftCalendarStart(page:Page,minutes:number){
+  const date=page.getByLabel('From date',{exact:true});
+  const time=page.getByLabel('From time',{exact:true});
+  const next=new Date(`${await date.inputValue()}T${await time.inputValue()}:00Z`);
+  next.setUTCMinutes(next.getUTCMinutes()+minutes);
+  await date.fill(next.toISOString().slice(0,10));
+  await time.fill(next.toISOString().slice(11,16));
+}

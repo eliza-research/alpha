@@ -843,6 +843,11 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     if(mailReview){mailReview=null;publish();return true;}
     if(mailSelecting&&!mailBatch){resetMailSelection();publish();return true;}
     if (provider.close()) return true;
+    const composer = drafts.render();
+    if (composer.composing && composer.c) {
+      composer.c.discard();
+      return true;
+    }
     if (drafts.close()) return true;
     const menu=document.querySelector<HTMLDetailsElement>('.mail-message-menu[open],.mail-selection-menu[open]');if(menu){menu.open=false;menu.querySelector<HTMLElement>('summary')?.focus();return true;}
     if (st.open != null) { cancelOperation();body = null; current.set({ open: null, nativeMailSelection: null }); return true; }

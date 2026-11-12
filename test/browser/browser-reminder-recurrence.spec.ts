@@ -1,4 +1,4 @@
-import {chooseCalendarEventAction} from './helpers/browser-calendar';
+import {chooseCalendarEventAction,shiftCalendarStart} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 test.use({timezoneId:'Asia/Tokyo'});
 test('browser reminder repeats in its saved zone after reload and rejects old decisions',async({page})=>{
@@ -80,7 +80,7 @@ test('explicit time edit uses canonical update and adopts reviewed phone zone',a
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').scheduleReminder({id:'edit-boundary',title:'Boundary reminder',at:Date.parse('2027-03-13T14:00Z'),recurrence:{rule:'daily',zone:'America/New_York',date:'2027-03-13',time:'09:00',leadMinutes:0}});});
  await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Boundary reminder,/}).click();await chooseCalendarEventAction(page, 'Edit event');
  await page.evaluate(async()=>{const {BrowserDaily}=await import('/src/browser/daily.ts');const original=BrowserDaily.prototype.operateReminder;(window as any).updates=[];BrowserDaily.prototype.operateReminder=async function(input){(window as any).updates.push(input);return original.call(this,input);};BrowserDaily.prototype.scheduleReminder=async()=>{throw Error('Legacy edit must not execute');};});
- await page.getByRole('button',{name:'Start later',exact:true}).click();await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByRole('button',{name:'Save event',exact:true})).toHaveCount(0);
+ await shiftCalendarStart(page,15);await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByRole('button',{name:'Save event',exact:true})).toHaveCount(0);
  const saved=await page.evaluate(async ()=>({row:JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0],updates:(window as any).updates}));expect(saved.row.at).toBeGreaterThan(Date.parse('2027-03-13T14:00Z'));expect(saved.row.recurrence.zone).toBe('Asia/Tokyo');expect(saved.updates).toHaveLength(1);expect(saved.updates[0].operation.type).toBe('reminder_update');expect(saved.updates[0].operation.fields.schedule.at).toBe(saved.row.at);
 });
 

@@ -1,4 +1,4 @@
-import {chooseCalendarEventAction} from './helpers/browser-calendar';
+import {chooseCalendarEventAction,shiftCalendarStart} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 test.use({timezoneId:'Asia/Tokyo'});
 async function editor(page:any,completed=false){
@@ -6,7 +6,7 @@ async function editor(page:any,completed=false){
  await page.clock.setFixedTime(new Date('2027-03-13T00:00Z'));await page.goto('/');await page.getByRole('button',{name:'Calendar',exact:true}).waitFor();
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').scheduleReminder({id:'reschedule',title:'Reviewed reminder',body:'Original',at:Date.parse('2027-03-13T14:00Z')});});
  if(completed)await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const daily=registerPlugin<any>('DailyApps');const r=(await daily.listReminders()).reminders[0];await daily.reminderDecision({id:r.id,occurrenceId:r.occurrenceId,action:'done'});});
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Reviewed reminder,/}).click();await chooseCalendarEventAction(page, 'Edit event');await page.getByRole('button',{name:'Start later',exact:true}).click();
+ await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Reviewed reminder,/}).click();await chooseCalendarEventAction(page, 'Edit event');await shiftCalendarStart(page,15);
 }
 test('stale rendered schedule must not overwrite a newer canonical edit',async({page})=>{
  await editor(page);
@@ -15,7 +15,7 @@ test('stale rendered schedule must not overwrite a newer canonical edit',async({
  await expect.poll(()=>page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0])).toEqual(newer);
 });
 for(const metadata of [false,true])test(`committed ${metadata?'metadata':'reschedule'} response and receipt loss survives reload without replay`,async({page})=>{
- await editor(page);if(metadata)await page.getByRole('button',{name:'Start earlier',exact:true}).click();
+ await editor(page);if(metadata)await shiftCalendarStart(page,-15);
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Reviewed change');
  await page.evaluate(async()=>{const {BrowserDaily}=await import('/src/browser/daily.ts');const original=BrowserDaily.prototype.operateReminder;(window as any).editCalls=0;BrowserDaily.prototype.operateReminder=async function(input){(window as any).editCalls++;await original.call(this,input);throw Error('Synthetic committed response lost');};BrowserDaily.prototype.reminderOperationReceipt=async()=>{throw Error('Synthetic receipt unavailable');};});
  await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByText('Not confirmed. Check its status in Calendar.',{exact:true})).toBeVisible();
@@ -30,7 +30,7 @@ for(const metadata of [false,true])test(`committed ${metadata?'metadata':'resche
 });
 
 for(const scenario of ['metadata','reschedule-accept','reschedule-cancel'])test(`completed reminder editing: ${scenario}`,async({page})=>{
- await editor(page,true);if(scenario==='metadata')await page.getByRole('button',{name:'Start earlier',exact:true}).click();
+ await editor(page,true);if(scenario==='metadata')await shiftCalendarStart(page,-15);
  const before=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0]);
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Completed edited');
  let dialogs=0;page.on('dialog',async dialog=>{dialogs++;expect(dialog.message()).toContain('Schedule a new occurrence');if(scenario==='reschedule-accept')await dialog.accept();else await dialog.dismiss();});

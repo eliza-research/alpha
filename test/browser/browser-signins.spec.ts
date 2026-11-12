@@ -46,11 +46,10 @@ test('a private tab is labelled, created ephemeral and never enters saved tabs o
  // A new private tab opens on its address field, whose suggestions cover the page and its badge:
  // the disclosure must be on the covering surface itself (the covered page is inert).
  await expect(page.getByRole('textbox',{name:'Address',exact:true})).toBeFocused();
- await expect(page.getByRole('note',{name:'Private tab notice'})).toContainText('deleted when you close it, and it is not saved in history');
+ await expect(page.getByRole('img',{name:'Private tab',exact:true}).first()).toBeVisible();
  await page.getByRole('button',{name:'Cancel editing',exact:true}).click();
- await expect(page.getByRole('img',{name:'Private tab',exact:true})).toBeVisible();
- await expect(page.getByRole('note',{name:'Private tab notice'})).toContainText('deleted when you close it, and it is not saved in history');
- await navigate(page,'secret');await expect(page.getByRole('img',{name:'Private tab',exact:true})).toBeVisible();
+ await expect(page.getByRole('img',{name:'Private tab',exact:true}).first()).toBeVisible();
+ await navigate(page,'secret');await expect(page.getByRole('img',{name:'Private tab',exact:true}).first()).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>(window as any).privateEvents.some((e:any)=>e.private===true))).toBe(true);
  await page.getByRole('button',{name:'Tabs',exact:true}).click();
  await expect(page.getByRole('button',{name:'Switch to private tab https://signins.example/secret',exact:true})).toBeVisible();
@@ -76,7 +75,7 @@ test('Clear browsing data asks first, then clears history and saved tabs but kee
  await menu(page,'Clear browsing data');await page.getByRole('dialog',{name:'Clear browsing data?'}).getByRole('button',{name:'Clear data',exact:true}).click();
  await expect(page.getByText('Browsing data cleared',{exact:true})).toBeVisible();
  // The private tab stays open; the normal tabs are closed.
- await expect(page.getByRole('button',{name:'Tabs',exact:true})).toHaveText('1');await expect(page.getByRole('img',{name:'Private tab',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Tabs',exact:true})).toHaveText('1');await expect(page.getByRole('img',{name:'Private tab',exact:true}).first()).toBeVisible();
  await expect.poll(async()=>await saved(page)).toEqual({history:[],tabs:[],cur:''});
  await history(page);await expect(page.getByRole('button',{name:/^https:\/\/signins\.example\//})).toHaveCount(0);
  await page.getByRole('button',{name:'Bookmarks',exact:true}).click();await expect(page.getByRole('button',{name:'https://signins.example/kept-mark',exact:true})).toBeVisible();

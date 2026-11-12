@@ -8,6 +8,10 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await page.addInitScript(()=>{
  const devices=navigator.mediaDevices;Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:devices});
  localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
+ (window as any).sharedPhotos=[];
+ Object.defineProperty(document,'permissionsPolicy',{configurable:true,value:{allowsFeature:()=>true}});
+ Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});
+ Object.defineProperty(navigator,'share',{configurable:true,value:async(data:ShareData)=>{for(const file of data.files??[])(window as any).sharedPhotos.push({name:file.name,type:file.type,size:file.size,header:Array.from(new Uint8Array(await file.arrayBuffer()).slice(0,2))});}});
  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;const ctx=canvas.getContext('2d')!;
  ctx.fillStyle='#c33';ctx.fillRect(0,0,320,480);ctx.fillStyle='#3c3';ctx.fillRect(320,0,320,480);
  navigator.mediaDevices.getUserMedia=async()=>{const stream=canvas.captureStream(10);setInterval(()=>{ctx.fillStyle='#3c3';ctx.fillRect(320,0,320,480);},100);return stream;};
@@ -30,8 +34,11 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await page.reload();await page.getByRole('button',{name:'Photos',exact:true}).click();
  const saved=page.getByRole('button',{name:/^Photo, /});await expect(saved).toHaveCount(1);await saved.click();
  await expect(page.locator('[data-alpha-subview="photos-viewer"]').getByRole('heading',{name:'Today',exact:true})).toBeVisible();
- const download=page.waitForEvent('download');await openPhotoShare(page);await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Save file',exact:true}).click();
- expect((await download).suggestedFilename()).toMatch(/^Alpha-photo-\d+\.jpg$/);
+ await openPhotoShare(page);
+ await expect.poll(()=>page.evaluate(()=>(window as any).sharedPhotos.length)).toBe(1);
+ const shared=await page.evaluate(()=>(window as any).sharedPhotos[0]);
+ expect(shared.name).toMatch(/\.jpe?g$/i);expect(shared.type).toBe('image/jpeg');expect(shared.size).toBeGreaterThan(0);expect(shared.header).toEqual([255,216]);
+ await expect(page.getByRole('dialog',{name:'Share',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Favorite',exact:true}).click();
  await expect(page.getByRole('button',{name:'Remove from favorites',exact:true})).toBeVisible();
  await page.screenshot({path:info.outputPath('saved-photo.png'),animations:'disabled'});

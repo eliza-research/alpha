@@ -6,10 +6,12 @@ const require=createRequire(path.join(process.env.ALPHA_BROWSER_MODULES,'__notes
 const url=process.env.ALPHA_NOTES_TEST_URL||'http://127.0.0.1:5298';if(new URL(url).hostname!=='127.0.0.1')throw Error('Local Vite only');
 const browser=await chromium.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:412,height:915}});await page.addInitScript(()=>{
-  window.documentsFixture={status:'read',exports:[],imports:0};window.Capacitor={PluginHeaders:[{name:'AlphaNoteDocuments',methods:['importText','exportText'].map(name=>({name,rtype:'promise'}))}],nativePromise:async(plugin,method,input)=>{
+  window.documentsFixture={status:'read',shares:[],imports:0};
+  Object.defineProperty(document,'permissionsPolicy',{configurable:true,value:{allowsFeature:()=>true}});
+  Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{window.documentsFixture.shares.push({title:data.title,text:data.text});}});window.Capacitor={PluginHeaders:[{name:'AlphaNoteDocuments',methods:['importText'].map(name=>({name,rtype:'promise'}))}],nativePromise:async(plugin,method,input)=>{
    if(plugin!=='AlphaNoteDocuments')throw Error('Unexpected native call');
    if(method==='importText'){window.documentsFixture.imports++;return {status:window.documentsFixture.status,message:'Synthetic result',name:'Owned fixture.txt',text:'Exact 🧪 text\r\nline two\n'};}
-   window.documentsFixture.exports.push(input);return {status:'exported',message:'Saved.'};
+   throw Error('Unexpected document method: '+method);
   }};
  });
  const openOlder=async()=>{
@@ -28,8 +30,8 @@ const browser=await chromium.launch({headless:true});try{
  },initial+1);
  await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Exact 🧪 text\nline two\n');
  await page.getByRole('button',{name:'More',exact:true}).click();
-  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Save file',exact:true}).click();await page.waitForFunction(()=>window.documentsFixture.exports.length===1);assert.deepEqual(await page.evaluate(()=>window.documentsFixture.exports[0]),{title:'Owned fixture',text:'Owned fixture\n\nExact 🧪 text\r\nline two\n'});
- assert.equal(await page.getByRole('dialog',{name:'Share',exact:true}).count(),0);await page.keyboard.press('Escape');await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Back to notes',exact:true}).click();await page.evaluate(()=>window.documentsFixture.status='cancelled');await page.getByRole('button',{name:'Import text note',exact:true}).click();await page.waitForFunction(()=>window.documentsFixture.imports===2);assert.equal(await count(),initial+1);
+  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.waitForFunction(()=>window.documentsFixture.shares.length===1);assert.deepEqual(await page.evaluate(()=>window.documentsFixture.shares[0]),{title:'Owned fixture',text:'Owned fixture\n\nExact 🧪 text\r\nline two\n'});
+ assert.equal(await page.getByRole('dialog',{name:'Share',exact:true}).count(),0);await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Back to notes',exact:true}).click();await page.evaluate(()=>window.documentsFixture.status='cancelled');await page.getByRole('button',{name:'Import text note',exact:true}).click();await page.waitForFunction(()=>window.documentsFixture.imports===2);assert.equal(await count(),initial+1);
  await page.reload();await openOlder();await page.getByRole('button',{name:'Open Owned fixture',exact:true}).click();assert.equal(await page.getByRole('textbox',{name:'Note',exact:true}).inputValue(),'Exact 🧪 text\nline two\n');
- console.log('PASS rendered import/create-new, exact snapshot export, cancellation and reload; synthetic document boundary only.');
+ console.log('PASS rendered import/create-new, exact native-share payload, import cancellation and reload; synthetic document and share boundaries only.');
 }finally{await browser.close();}

@@ -1350,7 +1350,7 @@
   <sc-if value="{{browser.share}}">
     <div ref="{{browser.shareModal}}" data-alpha-popup style="display: contents">
     <button data-alpha-backdrop tabindex="-1" aria-label="Close share" onClick="{{browser.closeShare}}" style="position: absolute; inset: 0; z-index: 7; background: var(--scrim)"></button>
-    <div class="enter" role="dialog" aria-label="Share page" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; background: var(--bg); border-radius: 28px 28px 0 0; padding: 12px 20px 36px; box-shadow: 0 -20px 60px var(--shc)">
+    <div class="enter" role="dialog" data-alpha-bottom-sheet aria-label="Share page" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; background: var(--bg); border-radius: 28px 28px 0 0; padding: 12px 20px 36px; box-shadow: 0 -20px 60px var(--shc)">
       <div style="display: flex; justify-content: center; margin-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .4"></span></div>
       <div style="display: flex; align-items: flex-start; gap: 8px">
         <div style="flex-grow: 1; min-width: 0">
@@ -1509,7 +1509,7 @@
         <details class="photo-import-menu"><summary aria-label="Photos tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
           <sc-if value="{{photos.libTab}}"><button aria-label="Select photos" onClick="{{photos.selStart}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.check}}"></path></svg>Select</button></sc-if>
           <sc-if value="{{photos.isAlb}}"><button aria-label="New album" onClick="{{photos.newAlbum}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.plus}}"></path></svg>New album</button></sc-if>
-          <sc-if value="{{photos.importAvailable}}"><button onClick="{{photos.importImage}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm17 12-5-5L5 21M8.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path></svg>Choose image</button></sc-if>
+          <sc-if value="{{photos.importAvailable}}"><button onClick="{{photos.importImage}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.photo}}"></path></svg>Choose image</button></sc-if>
         </div></details>
 
     </div>
@@ -2867,7 +2867,7 @@
   <sc-if value="{{files.moveSheet}}">
     <div ref="{{files.moveModal}}" data-alpha-popup style="display: contents">
     <button data-alpha-backdrop tabindex="-1" aria-label="Close move" onClick="{{files.closeSheet}}" style="position: absolute; inset: 0; z-index: 8; background: var(--scrim)"></button>
-    <div class="enter" role="dialog" aria-label="Move to" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; max-height: 100%; overflow-y: auto; box-sizing: border-box; background: var(--bg); border-radius: 28px 28px 0 0; padding: 8px 12px 40px; box-shadow: 0 -10px 40px var(--shc)">
+    <div class="enter" role="dialog" data-alpha-bottom-sheet aria-label="Move to" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; max-height: 100%; overflow-y: auto; box-sizing: border-box; background: var(--bg); border-radius: 28px 28px 0 0; padding: 8px 12px 40px; box-shadow: 0 -10px 40px var(--shc)">
       <div style="width: 36px; height: 4px; border-radius: 2px; background: var(--s3); margin: 0 auto 6px"></div>
       <div style="display: flex; align-items: center; padding-left: 12px; margin-bottom: 6px"><h2 class="serif" style="margin: 0; flex-grow: 1; font-size: 26px; font-weight: 300">Move to</h2><button class="ib" aria-label="Close" onClick="{{files.closeSheet}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></div>
       <sc-for list="{{files.moveTo}}" as="m" key="{{m.id}}">
@@ -3583,7 +3583,7 @@
       <sc-if value="{{workflows.b.sheetOn}}">
         <div ref="{{workflows.stepModal}}" data-alpha-popup style="display: contents">
         <button data-alpha-backdrop tabindex="-1" aria-label="Close" onClick="{{workflows.b.closeSheet}}" style="position: absolute; inset: 0; background: var(--scrim); z-index: 8"></button>
-        <div class="enter" role="dialog" aria-label="Step editor" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; background: var(--bg); border-radius: 28px 28px 0 0; padding: 10px 20px 32px; box-shadow: 0 -12px 30px var(--shc); max-height: min(720px, 100%); overflow-y: auto; box-sizing: border-box">
+        <div class="enter" role="dialog" data-alpha-bottom-sheet aria-label="Step editor" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; background: var(--bg); border-radius: 28px 28px 0 0; padding: 10px 20px 32px; box-shadow: 0 -12px 30px var(--shc); max-height: min(720px, 100%); overflow-y: auto; box-sizing: border-box">
           <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding-bottom: 6px">
             <span style="width: 44px" aria-hidden="true"></span>
             <span style="width: 36px; height: 4px; border-radius: 2px; background: var(--line)" aria-hidden="true"></span>

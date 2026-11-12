@@ -44,6 +44,7 @@ const press = async (page: Page, steps: string[]) => {
       await page.getByLabel('Message actions', {exact: true}).click();
     }
     await (step === 'Photos tools' || step === 'Message actions' ? page.getByLabel(step, {exact: true}) : page.getByRole('button', {name: step, exact: true}).first()).click();
+    if(step==='Edit When step'||step==='Add Read step')await expect(page.getByRole('dialog',{name:'Step editor',exact:true})).toBeVisible();
   }
 };
 /** The named subview is on screen and exposed (not retired behind another subview). */
@@ -186,11 +187,10 @@ export const MOCK_STATES: State[] = [
   mock('photos:albums', ['Favorites'], 'photos-album'),
   mock('photos:viewer', ['Edit photo'], 'photos-edit'),
   mock('photos:viewer', ['Photo info']),
-  mock('photos:viewer', ['Share photo']),
   mock('photos', ['Photos tools', 'Select photos']),
   // Earlier folder-creation controls were retired; the live retained-record state above covers recovery.
   mock('notes', ['Open The case for on-device agents'], 'notes-link'),
-  mock('notes:editor', ['More', 'Share note']),
+  // Platform sharing has no in-app dialog; share-panel.spec.ts covers its handoff.
   {name:'live Files sort',open:async(page,theme)=>{await openFilesStorage(page,theme);await press(page,['Files options']);await settle(page);}},
   mock('files:preview', ['Rename']),
   mock('files:preview', ['Move file']),
@@ -200,8 +200,8 @@ export const MOCK_STATES: State[] = [
   mock('workflows:flow', ['Change'], 'workflows-builder'),
   // The builder's trigger and step sheets. (Settings' Connections page and its per-service sheets
   // were removed; the Google accounts panel is swept live as 'Settings Google'.)
-  mock('workflows', ['New automation', 'Edit When step'], 'workflows-builder'),
-  mock('workflows:new', ['Add Read step'], 'workflows-builder'),
+  mock('workflows:new', ['Edit When step']),
+  mock('workflows:new', ['Add Read step']),
   mock('settings', ['About']),
   // Calendars exists only in the live Settings adapter. Its accessibility audits
   // remain in the live Settings calendars state above, rather than a nonexistent mock page.

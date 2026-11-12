@@ -1,3 +1,4 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 import {expect,type Page,type BrowserContext,type Locator} from '@playwright/test';
 /** These storage fixtures never capture or play real media, including incidental alert priming. */
 export async function guardCalendarFixture(context:BrowserContext){await context.addInitScript(()=>{
@@ -17,8 +18,7 @@ export async function expectSavedCalendarDraft(page:Page,kind:'creation'|'edit'|
  }:{
   title:await page.getByRole('textbox',{name:'Title',exact:true}).inputValue(),
   notes:await page.getByRole('textbox',{name:'Notes',exact:true}).inputValue(),
-  where:await page.getByRole('textbox',{name:'Location',exact:true}).inputValue(),
-  video:(await page.getByRole('switch',{name:'Video link',exact:true}).getAttribute('aria-checked'))==='true',
+  ...((await page.getByRole('switch',{name:'All day',exact:true}).getAttribute('aria-checked'))==='true'?{allDay:true}:{}),
  };
  await expect.poll(()=>page.evaluate(async kind=>{
   const {assistantDraftStore}=await import('/src/runtime/assistant-draft-store.ts');let binding:string;
@@ -26,4 +26,18 @@ export async function expectSavedCalendarDraft(page:Page,kind:'creation'|'edit'|
   else binding=JSON.stringify([kind==='creation'?'calendar-creation-form':'calendar-inline-edit-form','app']);
   const text=(await(await assistantDraftStore(binding)).read())?.text;if(!text)return null;const data=JSON.parse(text);return kind==='modal'?data.fields:kind==='edit'?data.editable.form:data.form;
  },kind)).toMatchObject({...expected,...extra});
+}
+
+/** An old saved reminder form is still restorable after its creation tab was removed. */
+export async function restoreLegacyReminderForm(page:Page){
+ await page.evaluate(async()=>{
+  const {assistantDraftStore}=await import('/src/runtime/assistant-draft-store.ts');
+  const store=await assistantDraftStore(JSON.stringify(['calendar-creation-form','app']));
+  const saved=await store.read();
+  if(!saved?.text)throw Error('The existing creation form was not retained');
+  const value=JSON.parse(saved.text);value.form.cal='alpha-reminders';
+  await store.save(saved,JSON.stringify(value));
+ });
+ await page.reload();await openBrowserCalendar(page);
+ await page.getByRole('button',{name:'New event',exact:true}).click();
 }

@@ -1,7 +1,7 @@
 import {reviewNoteScheduleContract} from './helpers/note-schedule-contract';
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openLegacyNotes} from './helpers/legacy-notes';
-import {openBrowserCalendar,chooseCalendarEventAction} from './helpers/browser-calendar';
+import {openBrowserCalendar,chooseCalendarEventAction,shiftCalendarStart} from './helpers/browser-calendar';
 /*
  * Journey B / J02: Voice -> note -> calendar event and reminder, driven start to finish through
  * rendered controls in the browser build with the development agent profile. Notes-to-Calendar
@@ -300,10 +300,7 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  await chooseCalendarEventAction(page,'Edit event');
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Book the venue');
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Book the venue edited');
- const from=page.getByLabel('From time',{exact:true});
- const [reminderStartHour,reminderStartMinute]=(await from.inputValue()).split(':').map(Number);
- const movedReminderStart=reminderStartHour*60+reminderStartMinute+15;
- await from.fill(`${String(Math.floor(movedReminderStart/60)%24).padStart(2,'0')}:${String(movedReminderStart%60).padStart(2,'0')}`);
+ await shiftCalendarStart(page,15);
  await page.getByRole('button',{name:'Save event',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Book the venue edited',level:1})).toBeVisible();
  await page.reload();await ready(page,true);

@@ -753,6 +753,13 @@ export async function auditTabOrder(page: Page, limit = 120): Promise<Violation[
   const out: Violation[] = [];
   await page.evaluate(() => {
     (document.activeElement as HTMLElement | null)?.blur?.();
+    // blur() leaves the sequential starting point at the former composer. Reset
+    // it to the document so a full walk does not begin at the browser toolbar.
+    const bodyTabIndex = document.body.getAttribute('tabindex');
+    document.body.tabIndex = -1;
+    document.body.focus({preventScroll:true});
+    if (bodyTabIndex === null) document.body.removeAttribute('tabindex');
+    else document.body.setAttribute('tabindex',bodyTabIndex);
     for (const el of document.querySelectorAll('button,a[href],input:not([type=hidden]),select,textarea,summary,[tabindex]')) (el as any).__alphaTabCandidate = true;
   });
   const order: string[] = []; let previous = 'start', stuck = 0, wrapped = false, contained = false, edges = 0, idle = 0;

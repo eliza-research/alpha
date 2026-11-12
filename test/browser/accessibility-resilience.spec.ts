@@ -177,12 +177,20 @@ test.describe('menus and sheets over a scrim own focus', () => {
     ['live', ['Settings', 'Account', 'Google & email'], 'Google accounts', 'Close Google accounts', 'Google & email'],
   ] as const;
   for (const [start, steps, name, scrim, opener] of POPUPS) {
-    test(`${start} > ${steps.join(' > ')}: focus enters, stays, and returns on Escape`, async ({ page }) => {
+    const nativeHandoff = name === 'Share' && (start === 'photos:viewer' || start === 'notes:editor');
+    const behavior = nativeHandoff ? 'native share cancellation retains the current view' : 'focus enters, stays, and returns on Escape';
+    test(`${start} > ${steps.join(' > ')}: ${behavior}`, async ({ page }) => {
       const ownedInfo=start==='photos:viewer';
       const noteShare=start==='notes:editor'&&name==='Share',photoShare=start==='photos:viewer'&&name==='Share';
       const nativeShare=noteShare||photoShare;
+      if(nativeShare)await page.addInitScript(()=>{
+        (window as any).nativeShareCalls=[];
+        Object.defineProperty(document,'permissionsPolicy',{configurable:true,value:{allowsFeature:()=>true}});
+        Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});
+        Object.defineProperty(navigator,'share',{configurable:true,value:async(data:ShareData)=>{(window as any).nativeShareCalls.push({title:data.title,text:data.text,files:data.files?.map(file=>file.name)});throw new DOMException('Cancelled','AbortError');}});
+      });
       if(noteShare){
-        // Alpha's note editor opens the share panel for agent Notes and Older notes alike; Older notes needs no agent fixture.
+        // Exercise native sharing from the persistent browser Notes editor.
         await page.addInitScript(offline);await page.goto('/');await openLegacyNotes(page);
         await page.getByRole('button',{name:'New note',exact:true}).click();
         await page.getByRole('textbox',{name:'Title',exact:true}).fill('Owned share focus note');
@@ -201,26 +209,25 @@ test.describe('menus and sheets over a scrim own focus', () => {
         await expect(page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true})).toBeVisible();
         await last.focus();await page.keyboard.press('Enter');
       }else await last.click();
+      if(nativeShare){
+        await expect.poll(()=>page.evaluate(()=>(window as any).nativeShareCalls.length)).toBe(1);
+        await expect(page.getByRole('dialog',{name:'Share',exact:true})).toHaveCount(0);
+        await expect(page.locator(`[data-alpha-subview="${photoShare?'photos-viewer':'notes-editor'}"]:not([inert])`)).toBeVisible();
+        return;
+      }
       const dialog = page.getByRole('dialog', { name, exact: true });
       await expect(dialog).toBeVisible();
       const inside = () => page.evaluate(() => !!document.activeElement?.closest('dialog,[role="dialog"]'));
       await expect.poll(inside).toBe(true);
       // The page under the popup is out of the tab order and the accessibility tree; the
       // popup's own scrim still closes it for a pointer or an assistive-technology tap.
-      if(nativeShare){
-        // Native modal inertness is supplied by showModal, not copied inert attributes.
-        expect(await dialog.evaluate(el=>el.matches('dialog:modal'))).toBe(true);
-        if(photoShare){await expect(dialog.getByRole('button',{name:'Email',exact:true})).toHaveCount(0);await expect(dialog.getByRole('button',{name:'Share',exact:true})).toHaveCount(0);await expect(dialog.getByRole('button',{name:'Save file',exact:true})).toBeVisible();}
-        else{await expect(dialog.getByRole('button',{name:'Email',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Share',exact:true})).toBeVisible();}
-      }else{
         const exposed = await page.evaluate(() => Array.from(document.querySelectorAll('.os button, .os input, .os textarea, .os a[href]'))
           .filter(el => el.getClientRects().length && !el.closest('[inert],[aria-hidden="true"]') && !el.closest('[data-alpha-popup],[role="dialog"],[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]')).map(el => el.getAttribute('aria-label') || el.textContent));
         expect(exposed).toEqual([]);
         // Live provider views keep the assistant available. Pure prototype fixtures
         // can use a placeholder dock; they still must isolate the underlying app.
         if(start==='live'||start==='files-storage'||ownedInfo)await expect(page.getByRole('button',{name:'Open conversation',exact:true})).toBeVisible();
-      }
-      await expect(page.getByRole('button', { name: nativeShare?'Close share':scrim, exact: true })).toHaveCount(1);
+      await expect(page.getByRole('button', { name:scrim, exact:true })).toHaveCount(1);
       const stops = await dialog.locator('button:not(:disabled), input, textarea, select').count();
       for (let step = 0; step < stops + 2; step++) { await page.keyboard.press('Tab'); expect(await inside()).toBe(true); }
       for (let step = 0; step < 2; step++) { await page.keyboard.press('Shift+Tab'); expect(await inside()).toBe(true); }
@@ -230,36 +237,11 @@ test.describe('menus and sheets over a scrim own focus', () => {
       const stranded = await page.evaluate(() => Array.from(document.querySelectorAll('.os button, .os input, .os textarea, .os a[href]'))
         .filter(el => (el as any).__alphaBefore && el.isConnected && !!el.closest('[inert],[aria-hidden="true"]')).map(el => el.getAttribute('aria-label') || el.textContent));
       expect(stranded).toEqual([]);
-      if(noteShare){
-        // Closing the nested native share panel returns to its still-open menu, then Escape closes that menu.
-        await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toBeVisible();
-        await page.keyboard.press('Escape');
-        await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toHaveCount(0);
-        await expect(page.getByRole('button',{name:'More',exact:true})).toBeFocused();
-      }
+
     });
   }
 
-  test('a tap on the scrim still closes the popup, and Delete is not operable under the share sheet', async ({ page }) => {
-    await openOwnedPhotoViewer(page);
-    await openPhotoShare(page);
-    const dialog = page.getByRole('dialog', { name: 'Share', exact: true });
-    await expect(dialog).toBeVisible();
-    // Delete photo sits under the sheet: before, Tab reached it there and Enter deleted unseen.
-    await expect(page.getByRole('button',{name:'Delete photo',exact:true})).toBeHidden();
-    const shareBox=(await dialog.boundingBox())!;
-    await page.mouse.click(Math.max(1,shareBox.x-8),shareBox.y+shareBox.height/2);
-    await expect(dialog).toHaveCount(0);
-    await page.getByLabel('Photo actions',{exact:true}).click();
-    await expect(page.getByRole('button', { name: 'Delete photo', exact: true })).toBeVisible();
-    await page.getByLabel('Photo actions',{exact:true}).click();
-    // The Android Back gesture reaches the renderer as alpha-back: it closes the sheet, not the viewer.
-    await openPhotoShare(page);
-    await expect(dialog).toBeVisible();
-    expect(await page.evaluate(() => !window.dispatchEvent(new Event('alpha-back', { cancelable: true })))).toBe(true);
-    await expect(dialog).toHaveCount(0);
-    await expect(page.locator('[data-alpha-subview="photos-viewer"]:not([inert])')).toBeVisible();
-  });
+
 });
 
 test.describe('toast status messages', () => {
@@ -592,7 +574,7 @@ test.describe('screen titles with a large system font', () => {
         const header = el.closest('[data-alpha-app-header]')!, box = el.getBoundingClientRect(), frame = header.getBoundingClientRect();
         const range = document.createRange(); range.selectNodeContents(el);
         const ink = Array.from(range.getClientRects()).filter(rect => rect.width > 1);
-        const buttons = Array.from(header.querySelectorAll('button')).filter(button => button.getClientRects().length).map(button => button.getBoundingClientRect());
+        const buttons = Array.from(header.querySelectorAll('button')).filter(button => button.getClientRects().length && !button.closest('details:not([open])')).map(button => button.getBoundingClientRect());
         return {
           cut: el.scrollWidth - el.clientWidth, style: getComputedStyle(el).textOverflow, lines: new Set(ink.map(rect => Math.round(rect.top))).size,
           inside: ink.every(rect => rect.left >= frame.left - 1 && rect.right <= frame.right + 1 && rect.top >= frame.top - 1 && rect.bottom <= frame.bottom + 1 && rect.left >= box.left - 1 && rect.right <= box.right + 1),

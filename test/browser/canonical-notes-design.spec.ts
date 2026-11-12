@@ -54,7 +54,7 @@ test('live agent Notes use the mock-mode Notes design with typed cards',async({p
  expect(await layout(page)).toEqual(mock);
  await expect(page.getByRole('heading',{name:'Notes',exact:true})).toBeVisible();
  const header=page.locator('[data-alpha-subview="notes-list"] [data-alpha-app-header="main"]');
- expect(await header.getByRole('button').evaluateAll(list=>list.map(el=>el.getAttribute('aria-label')))).toEqual(['Back to apps','Record voice note','New note']);
+ expect(await header.getByRole('button').evaluateAll(list=>list.map(el=>el.getAttribute('aria-label')))).toEqual(['Back to apps','Record voice note','New note','Notes options']);
  for(const name of ['Back to apps','Record voice note','New note'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
  // No search pill and no Trash in the header (decisions P2, N2).
  await expect(page.getByRole('button',{name:'Search notes',exact:true})).toHaveCount(0);
@@ -99,8 +99,8 @@ test('live agent Notes in dark mode, the text editor and the checklist editor',a
  // More contains only the note actions and fits its content below the header.
  await page.getByRole('button',{name:'More',exact:true}).click();
  const menu=page.getByRole('dialog',{name:'Note actions'});
- for(const name of ['Share note','Unpin','Delete'])await expect(menu.getByRole('button',{name,exact:true})).toBeVisible();
- await expect(menu.getByRole('button')).toHaveCount(3);
+ for(const name of ['Copy text','Edit','Add to folder','Unpin','Delete'])await expect(menu.getByRole('button',{name,exact:true})).toBeVisible();
+ await expect(menu.getByRole('button')).toHaveCount(5);
  await expect(menu.getByText(/Review (reminder|calendar event) draft/)).toHaveCount(0);
  const menuBounds=await menu.evaluate(el=>{const box=el.getBoundingClientRect(),last=el.querySelector('button:last-child')!.getBoundingClientRect(),header=el.closest('[data-alpha-subview]')!.querySelector('[data-agent-id="notes-more"]')!.getBoundingClientRect();return {top:box.top,bottom:box.bottom,lastBottom:last.bottom,headerBottom:header.bottom};});
  expect(menuBounds.top).toBeGreaterThanOrEqual(menuBounds.headerBottom);
@@ -129,8 +129,8 @@ test('live agent Notes in dark mode, the text editor and the checklist editor',a
   expect.arrayContaining(['notes-back','notes-more','notes-action-0','notes-action-2']));
  await page.getByRole('button',{name:'More',exact:true}).click();
  const voiceMenu=page.getByRole('dialog',{name:'Note actions'});
- for(const name of ['Share note','Pin','Delete'])await expect(voiceMenu.getByRole('button',{name,exact:true})).toBeVisible();
- await expect(voiceMenu.getByRole('button')).toHaveCount(3);
+ for(const name of ['Copy text','Add to folder','Pin','Delete'])await expect(voiceMenu.getByRole('button',{name,exact:true})).toBeVisible();
+ await expect(voiceMenu.getByRole('button')).toHaveCount(4);
  const voiceBounds=await voiceMenu.evaluate(el=>({bottom:el.getBoundingClientRect().bottom,lastBottom:el.querySelector('button:last-child')!.getBoundingClientRect().bottom}));
  expect(voiceBounds.bottom-voiceBounds.lastBottom).toBeLessThanOrEqual(12);
  await page.keyboard.press('Escape');await expect(voiceMenu).toHaveCount(0);
@@ -138,7 +138,7 @@ test('live agent Notes in dark mode, the text editor and the checklist editor',a
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
-test('live agent Notes light editor, checklist and restore-only Recently deleted',async({page})=>{
+test('live agent Notes light editor, checklist and Recently deleted',async({page})=>{
  const {foreign,errors}=await openSeeded(page);
  await card(page,'Launch checklist').click();
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Launch checklist');
@@ -151,6 +151,7 @@ test('live agent Notes light editor, checklist and restore-only Recently deleted
  await card(page,'Gift ideas').click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).canonicalNotesFixture.state.trash.length)).toBe(1);
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
  await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
  await expect(trash.getByRole('button',{name:'Gift ideas',exact:true})).toBeVisible();

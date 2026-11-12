@@ -225,7 +225,7 @@ test('Stop saves canonical audio locally and Generate transcript later uses its 
  });
  await page.bringToFront();
  const header=page.locator('[data-alpha-subview="notes-list"] [data-alpha-app-header="main"]');
- expect(await header.getByRole('button').evaluateAll(list=>list.map(el=>el.getAttribute('aria-label')))).toEqual(['Back to apps','Record voice note','New note']);
+ expect(await header.getByRole('button').evaluateAll(list=>list.map(el=>el.getAttribute('aria-label')))).toEqual(['Back to apps','Record voice note','New note','Notes options']);
  await page.evaluate(async()=>{
   const {connectionController}=await import('/src/runtime/connection-ui.tsx');
   connectionController.getCloudEnvironment=()=> 'production';
@@ -529,6 +529,7 @@ test('read recovery cannot replace a no-draft uncertain interaction with a read-
   f.state.trash=[{note:{id:'restore-uncertain',title:'Uncertain restore',body:'\nExact recoverable body',color:'yellow',createdAt:'2026-10-31T10:00:00.000Z',updatedAt:'2026-10-31T10:00:00.000Z'},deletedAt:'2026-10-31T10:01:00.000Z'}];
  });
  await refreshCanonicalRead(page);
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
  await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  const restore=page.locator('[data-alpha-subview="notes-trash"]').getByRole('button',{name:'Uncertain restore',exact:true});
  await expect(restore).toBeVisible();

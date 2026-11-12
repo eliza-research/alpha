@@ -1,8 +1,56 @@
 import {openBrowserCalendar, chooseCalendarEventAction} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
+import {calendarEditorReady} from './calendar-draft-readiness';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:navigator.mediaDevices});});await page.goto('/?mode=dev');});
-test('Calendar attendees and video option persist through rendered creation, editing and reload',async({page},testInfo)=>{
- await openBrowserCalendar(page);await page.getByRole('button',{name:'New event',exact:true}).click();await page.getByRole('textbox',{name:'Title',exact:true}).fill('Team meeting');await page.getByRole('switch',{name:'Video link',exact:true}).click();await page.getByRole('button',{name:'Add people',exact:true}).click();await page.getByRole('textbox',{name:'Name or email',exact:true}).fill('Maya');await page.getByRole('button',{name:/^Add Maya/}).click();await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByRole('button',{name:'Join',exact:true})).toBeVisible();const before=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!).events[0]);expect(before.video).toBe(true);expect(before.who).toHaveLength(1);await chooseCalendarEventAction(page, 'Edit event');await page.getByRole('textbox',{name:'Title',exact:true}).fill('Renamed meeting');await page.getByRole('button',{name:'Save event',exact:true}).click();await expect.poll(()=>page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!).events[0].title)).toBe('Renamed meeting');await expect(page.getByRole('button',{name:'Join',exact:true})).toBeVisible();await page.reload();await openBrowserCalendar(page);await page.evaluate(async(id)=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaCalendar').open({id});},before.id);await page.getByRole('button',{name:'Join',exact:true}).click();const room=page.getByRole('dialog',{name:'Calendar meeting'});await expect(room).toContainText('Renamed meeting');await expect(room).toContainText('Maya');await page.screenshot({path:testInfo.outputPath('calendar-meeting.png')});await room.getByRole('button',{name:'Leave meeting',exact:true}).click();expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!).events[0].who)).toEqual(before.who);
+test('Calendar retains existing attendees and video through editing and reload', async ({page}, testInfo) => {
+ await openBrowserCalendar(page);
+ const before = await page.evaluate(async () => {
+  const {registerPlugin} = await import('/src/platform-plugins.ts');
+  const calendar = registerPlugin<any>('AlphaCalendar');
+  const created = await calendar.save({
+   creationId:crypto.randomUUID(), separateCreation:true, calendarId:'local',
+   title:'Team meeting', begin:Date.now()+3600000, end:Date.now()+7200000,
+   who:['Maya'], video:true,
+  });
+  await calendar.acknowledgeCreation({creationId:created.creationId});
+  return JSON.parse((await (await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!).events[0];
+ });
+ await page.evaluate(async id => {
+  const {registerPlugin} = await import('/src/platform-plugins.ts');
+  await registerPlugin<any>('AlphaCalendar').open({id});
+ }, before.id);
+ await expect(page.getByRole('button',{name:'Join',exact:true})).toBeVisible();
+ await chooseCalendarEventAction(page,'Edit event');
+ const editor=page.getByRole('dialog',{name:'Edit calendar event',exact:true});
+ await calendarEditorReady(editor);
+ await editor.getByLabel('Event title',{exact:true}).fill('Renamed meeting');
+ await editor.getByRole('button',{name:'Save event',exact:true}).click();
+ await expect(editor).toHaveCount(0);
+ await expect.poll(() => page.evaluate(async () =>
+  JSON.parse((await (await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!).events[0].title
+ )).toBe('Renamed meeting');
+ await page.evaluate(async id => {
+  const {registerPlugin} = await import('/src/platform-plugins.ts');
+  await registerPlugin<any>('AlphaCalendar').open({id});
+ }, before.id);
+ await expect(page.getByRole('button',{name:'Join',exact:true})).toBeVisible();
+ await page.reload();
+ await openBrowserCalendar(page);
+ await page.evaluate(async id => {
+  const {registerPlugin} = await import('/src/platform-plugins.ts');
+  await registerPlugin<any>('AlphaCalendar').open({id});
+ }, before.id);
+ await page.getByRole('button',{name:'Join',exact:true}).click();
+ const room=page.getByRole('dialog',{name:'Calendar meeting'});
+ await expect(room).toContainText('Renamed meeting');
+ await expect(room).toContainText('Maya');
+ await page.screenshot({path:testInfo.outputPath('calendar-meeting.png')});
+ await room.getByRole('button',{name:'Leave meeting',exact:true}).click();
+ const after=await page.evaluate(async () =>
+  JSON.parse((await (await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!).events[0]
+ );
+ expect(after.who).toEqual(before.who);
+ expect(after.video).toBe(true);
 });
 async function meeting(page:any){await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const cal=registerPlugin<any>('AlphaCalendar'),result=await cal.save({creationId:crypto.randomUUID(),separateCreation:true,calendarId:'local',title:'Preview meeting',body:'',location:'',begin:Date.now()+3600000,end:Date.now()+7200000,video:true});const row=JSON.parse((await (await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!).events[0];await cal.joinMeeting({id:result.id,revision:row.revision});});}
 test('meeting preview acquires media only on request and releases both sensors on leave',async({page})=>{
