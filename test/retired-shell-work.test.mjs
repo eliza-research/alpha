@@ -5,20 +5,24 @@ import {applyImageContacts} from '../apps/app/src/runtime/image-contacts.ts';
 
 test('image revocation retires the raw Contacts view after the presentation gate hides it',async()=>{
  const source=readFileSync('apps/app/src/main.tsx','utf8');
- const start=source.indexOf('    const refreshImage=async()=>');
- const end=source.indexOf('\n',start);
- assert.ok(start>=0&&end>start);
- let admitted=true,homes=0;
+ const declaration=source.match(/\bconst refreshImage\s*=\s*async\b[\s\S]*?\n[ \t]*};/);
+ assert.ok(declaration,'mountPhone owns the image refresh');
+ let admitted=true,homes=0,capabilities={aospImage:true,contacts:false};
+ const senseReads=[];
  const ORDER=['contacts','settings'];
  const shell={state:{view:'contacts'},S(){return {view:admitted?this.state.view:null};},goHome(){homes++;this.state.view=null;}};
- const refresh=new Function('DeviceApps','admitImageContacts','ORDER','shell','applyImageContacts',source.slice(start,end)+';return refreshImage;')(
-  {platformCapabilities:async()=>({aospImage:true,contacts:false})},value=>{admitted=value;},ORDER,shell,applyImageContacts);
+ const refresh=new Function('DeviceApps','admitImageContacts','ORDER','shell','applyImageContacts','admitImageSense',declaration[0]+'return refreshImage;')(
+  {platformCapabilities:async()=>capabilities},value=>{admitted=value;},ORDER,shell,applyImageContacts,image=>senseReads.push(image));
  await refresh();
  assert.equal(admitted,false);
  assert.equal(shell.state.view,null,'the hidden raw view must not return when image capability is later re-admitted');
  assert.equal(homes,1);
  assert.deepEqual(ORDER,['settings']);
- shell.state.view='settings';await refresh();assert.equal(homes,1,'a different current view stays open');
+ assert.deepEqual(senseReads,[]);
+ shell.state.view='settings';capabilities={aospImage:true,contacts:true};await refresh(true);
+ assert.equal(homes,1,'a different current view stays open');
+ assert.equal(admitted,true);
+ assert.deepEqual(senseReads,[capabilities]);
 });
 
 test('a retired send finally cannot clear the newer send typing lease',()=>{
