@@ -76,7 +76,7 @@ test('retained edits are written once per task with the latest copy, and read ba
     let restored = null; const unsaved = inboxUnsaved(owner, () => {}, v => { restored = v; });
     await unsaved.ready;
     let last; for (let i = 0; i < 40; i++) unsaved.edit(last = value('keystroke ' + i));
-    // The write waits for the next task, so nothing is written within the typing task itself.
+    await settle();
     assert.equal(store.writes, 0, 'typing alone writes nothing'); assert.equal(unsaved.available, true);
     assert.equal(unsaved.peek(), last, 'the waiting edit is the retained copy');
     await runScheduledEdit();
