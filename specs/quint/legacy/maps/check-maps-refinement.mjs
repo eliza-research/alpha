@@ -81,7 +81,7 @@ async function observe(page) {
     const f = window.closedMaps;
     const screen = document.documentElement.dataset.activeView !== 'maps' ? 'Away'
       : document.querySelector('[aria-label="End navigation"]') ? window.inspectHistoricalMaps().arrived ? 'Arrived' : 'Nav'
-      : document.querySelector('[data-alpha-maps-sheet="directions"]') ? 'Route'
+      : document.querySelector('[data-alpha-maps-sheet="directions"],[data-alpha-maps-directions]') ? 'Route'
       : document.querySelector('[data-alpha-maps-sheet="place"]') ? 'Place'
       : document.querySelector('[data-alpha-maps-sheet="results"]') || document.querySelector('input[aria-label="Search places"]')?.value ? 'Results' : 'Base';
     const configured = f.mapsConnection().config.status === 'configured';
@@ -307,7 +307,7 @@ async function guidanceTargets(page, viewports) {
           };
         }, width > height);
         assert.equal(noSubstituteMap, true, 'A provider without tiles does not expose a substitute basemap');
-        assert.equal(targets.length, 5, 'Four guidance controls and status remain usable without tiles');
+        assert.equal(targets.length, 3, 'End, reroute and status remain usable without tiles');
         for (const {label, owned} of targets) {
           assert.ok(owned.length && owned.every(Boolean), `${width}×${height} at ${percent}%: ${label} owns its sampled points`);
         }
@@ -494,7 +494,7 @@ export async function checkMapsRefinement(extraSources = []) {
     'Actual flag-off Maps renderer, shared Maps screen/controller, Cloud provider and browser location run in Chromium. The account transport, external map style and precise fixes are closed synthetic ports. No geographic request leaves the fixture.',
     'Connection observations are scoped to the captured synthetic owner and its actual capability requests. The network, subscription and Cloud service facts are controlled inputs. Informational and unmodeled notices have no historical error category.',
     'The accepted Directions projection includes the owner entering explicit origin coordinates. The real Arrived projection checks the screen and released location separately from the accepted route retained in the arrival state.',
-    'Mounted hit tests cover guidance, Map information, attribution and status at two sizes per orientation and two text scales. Landscape checks the right-docked assistant and taps Map information. Portrait taps Reroute and observes its exact admission.',
+    'Mounted hit tests cover End, reroute and status at two sizes per orientation and two text scales. The route-only fixture has no substitute basemap. Landscape checks the right-docked assistant; portrait checks exact reroute admission.',
     'Calendar return, native background service, remote agent requests, installed permission flow and fairness are independent obligations.',
   ]};
   const receipt = await checkTraces({...shared, traces: results.map(result => result.trace)});

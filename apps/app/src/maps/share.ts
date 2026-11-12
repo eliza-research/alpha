@@ -2,6 +2,7 @@ import {platformSharingAvailable,shareSelectedText} from '../runtime/text-share'
 import { type MapShare } from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/share.ts';
 export { placeShare, routeShare, type MapShare } from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/share.ts';
 export const mapShareLabel=()=> 'Share';
+export {platformSharingAvailable as canShareMap};
 
 /** One selected place or route, handed to the OS as a portable link. */
 export async function shareMap(data:MapShare,signal:AbortSignal):Promise<'shared'|'copied'|'closed'> {

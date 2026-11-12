@@ -13,9 +13,9 @@ result selection, Directions after explicit origin entry, Start, End,
 conversation minimization and arrival. A fresh off-route fix keeps guidance
 and prompts for an explicit reroute. A real touch on the rendered button
 checks the exact route request endpoints. The same mounted replay checks
-guidance controls, Map information, attribution links and status text at
+End and reroute controls and status text at
 412×915, 360×640, 915×412 and 640×360 with 100% and 150% browser text.
-The landscape checks also open and close Map information by touch, sample
+The landscape checks verify that removed Map information stays absent and sample
 the first disclosure action and check the controls on the right-docked
 assistant. These are derived renderer checks over the shell's measured
 dock clearance. End and arrival also release the synthetic location watch.

@@ -63,7 +63,7 @@ function fixture(compiled) {
     registerPlugin: name => name === 'AlphaCalendar' ? {list: input => request('native', input)} : {},
     NavigationVoice: class {}, BackgroundNavigation: class {}, MapsScreenController: ScreenPort,
     mapsConnection: () => undefined, onMapsConnectionChange: () => () => {}, NativeMapsLocation: class {},
-    locationPermissionGranted: async () => false, shareMap: () => {}, mapShareLabel: () => 'Share', isAndroid: false,
+    locationPermissionGranted: async () => false, shareMap: () => {}, mapShareLabel: () => 'Share', canShareMap: () => false, isAndroid: false,
     publishMapsSelection: () => {}, clearMapsSelection: () => {},
     bindAgentNavigation: () => ({dispose() {}}), residentMapsNavigationPort: {}, keepCloudMapsCoverage: () => () => {},
     devSurfacesEnabled: true, regionalMapsConfigured: false, regionalMap: () => undefined, cloudMapsBasemap: () => undefined,
