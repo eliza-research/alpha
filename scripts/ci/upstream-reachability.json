@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
-  "head": "063476754fd552e8337143d11300bfaa312feef5",
-  "recordedAt": "2026-11-11",
-  "command": "Prior recorded comparison, extended by git rev-list fd860a0a600e63eeee44c19b6af1e85c4a5ff641..063476754fd552e8337143d11300bfaa312feef5",
+  "head": "3508d92c2c19c520b8ef17d16e427f3329b62071",
+  "recordedAt": "2026-11-12",
+  "command": "Prior recorded comparison, extended by git rev-list 063476754fd552e8337143d11300bfaa312feef5..3508d92c2c19c520b8ef17d16e427f3329b62071",
   "status": "diverged",
-  "aheadBy": 23,
+  "aheadBy": 24,
   "behindBy": 380,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -102,6 +102,10 @@
     {
       "sha": "063476754fd552e8337143d11300bfaa312feef5",
       "subject": "fix(scheduling): retire resolved approval follow-ups"
+    },
+    {
+      "sha": "3508d92c2c19c520b8ef17d16e427f3329b62071",
+      "subject": "fix(scheduling): reconcile deferred approval follow-ups"
     }
   ],
   "pullRequests": [
