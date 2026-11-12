@@ -186,10 +186,9 @@ Main pushes automatically build unsigned native candidates in the existing
 Resident Android workflow. The separate `app-native-candidate-*` artifact holds
 the genuine distribution archive and `app-update-candidate.json`, which binds
 source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
-in the qualification archive. Primary main-push attempts share a canceling group;
-reruns use their own run ID group and do not cancel running work. GitHub does not
-guarantee commit order. Completion needs a quiet main, build capacity and admitted
-native inputs.
+in the qualification archive. Each main-push run and its reruns share a group
+keyed by run ID. Builds can complete out of order, so select the successful
+candidate for the reviewed source commit.
 
 Before enabling a successful automatic build, a maintainer supplies
 `android/hosted-native-inputs.json` in the reviewed checkout. Use these exact
@@ -239,11 +238,24 @@ python3 -B scripts/ci/export-native-inputs.py \
 The exporter creates `alpha-native-inputs.zip` after verifying the copied
 files against the committed records and existing embedding qualification.
 The component receipts preserve their original build provenance and paths.
-Extract the packet, then upload the contents of `voice/`,
-`embedding-component/` and `embedding-qualification/` as three separate
-artifacts through the approved path. Keep `packet.json` with the handoff.
-Use the resulting GitHub artifact IDs and archive digests in the hosted
-manifest.
+Record the packet SHA-256 on the producer host and supply it with the handoff.
+On the receiving host, set `packet_sha256` to that digest. Choose a fresh
+destination inside a directory owned and writable only by your account.
+
+```sh
+python3 -B scripts/ci/stage-native-input-packet.py \
+  --packet /absolute/alpha-native-inputs.zip --sha256 "$packet_sha256" \
+  --out /absolute/private/new-staging-directory
+```
+
+The receiver checks the complete ZIP, member hashes and qualification evidence
+against the package, SDK, voice and embedding records in the reviewed checkout
+before publishing the staged directory. Keep its original `packet.json`.
+After approval for transfer and redistribution, upload the contents of
+`voice/`, `embedding-component/` and `embedding-qualification/` as three
+separate artifacts. Record their GitHub artifact IDs and archive digests in
+the hosted manifest. Signed-in users with read access can download Actions
+artifacts from the repository. [GitHub artifact access](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
 
 Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
 manifest against the checkout without downloading. Automatic runs check the
@@ -251,14 +263,19 @@ three pins against GitHub metadata before setting up the Android toolchain.
 The check names each unavailable input and reports the expiry of admitted pins
 so the maintainer can renew them before a build fails. Acquisition checks the
 metadata again and verifies the exact archive bytes through the workflow's
-read-only token. The build stages with the existing voice and embedding tools,
-and retain the input IDs, hashes and sizes in `native-input-admission.json`.
+read-only token. The build stages with the existing voice and embedding tools
+and retains the input IDs, hashes and sizes in `native-input-admission.json`.
 The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
 from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
-Refresh the reviewed pins before an artifact expires or a bound source record
-changes. The candidate archive retains the distribution producer evidence
-before the test-mocks build can replace it.
+The expiry workflow on the default branch checks `main` on schedule and on
+manual dispatch from `develop`. A manual dispatch from `main` checks the
+selected commit. Its summary records the inspected revision and identifies
+pins expiring within four days. Renew the artifact IDs and digests while the
+old inputs remain available. Retain qualification receipts for identical
+files and review changed native bytes or source records before admission.
+The candidate archive retains the distribution producer evidence before
+the test-mocks build can replace it.
 
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
@@ -268,14 +285,15 @@ version migration. Manual builds keep their explicit version input.
 
 To prepare a candidate for protected signing, set `artifact_id` to the numeric
 ID of the `app-native-candidate-*` artifact from a successful main-push run.
-Download the original ZIP and inspect it using the reviewed checkout. The
-inspector compares the ZIP and unsigned APKs to the exact producer run and
-evidence. The candidate artifact is retained for three days and must remain
-available through both signing admissions. [Actions artifact archive endpoint](https://docs.github.com/en/rest/actions/artifacts#download-an-artifact)
+From the reviewed checkout, fetch it into a new file. The command checks the
+producer attempt and archive limits before download, verifies the ZIP digest
+and producer evidence, and writes the mirror request. Keep the three-day
+candidate artifact available through signing admission. If a downstream job
+failed after upload, rerun all jobs to obtain a candidate bound to the new
+attempt.
 
 ```sh
-gh api "repos/eliza-research/alpha/actions/artifacts/$artifact_id/zip" > candidate.zip &&
-python3 -B scripts/ci/admit-cloud-signing-input.py prepare-candidate \
+python3 -B scripts/ci/admit-cloud-signing-input.py fetch-candidate \
   candidate.zip "$artifact_id" > mirror-request.json
 ```
 
@@ -365,10 +383,12 @@ reviewed archives and verifies the APK digests when streaming the bytes.
 Release approval, signed-byte voice tests, publication and both sideload and
 image-preinstalled phone drills remain required for this batch.
 
-On the machine with the phone, record each [wireless drill](https://github.com/alphacompute/alphaphone/issues/889)
-with the release APK and its verification manifest available locally. Both captures
-verify the installed bytes against the reviewed `android/release-signer.json` signing
-policy, including for versions already recorded as released. This capture
+On the machine with the phone, keep each version's `apk-manifest.json` from its
+`qualified-launcher-publication-<run>-<attempt>` artifact beside the exact
+signed `launcher-release.apk`. For the baked launcher, use the post-signing
+manifest for the APK in the image. Both wireless captures verify the installed
+bytes against the reviewed `android/release-signer.json` policy, including for
+versions already recorded as released. The [wireless drill](https://github.com/eliza-research/alpha/issues/889)
 requires Android 14 or later for package installer provenance. Keep the phone
 offline from baseline installation through HOME selection, any one-time Android
 installation permission, and the `before` capture. Keep the host online and
@@ -386,26 +406,48 @@ bun scripts/verify-wireless-launcher-update.ts after --serial <serial> \
   --before <before.json> --apk-manifest <update>/apk-manifest.json --out <new-after.json>
 ```
 
-Repeat with `--distribution image-preinstalled` on the signed image while
-the launcher baked into the image is still active. The first replacement must
-move the active APK to Android's app data while retaining its system-app
-provenance. For the next advancing release, use `before --previous <after.json>`
-with the same distribution and the previous release's APK manifest. This
-binds the next drill to the exact phone, image, HOME and APK of the previous
-replacement. Keep the first drill signed out. For the signed-in follow-up,
-seed the account and data before the next offer goes live, then take the phone
-offline again for baseline capture. Keep each public offer stable until both
+Repeat with `--distribution image-preinstalled` while the baked launcher is
+active on the locked Pixel 10a. For its first `before` capture also pass
+`--image-release-record <release-record.json>` and
+`--image-vbmeta-digest <digest>`. On the image build host, verify the signed
+target-files ZIP against the release record. Extract `IMAGES/vbmeta.img`
+and the recorded chained partition images together, then calculate the digest
+with `avbtool calculate_vbmeta_digest --hash_algorithm sha256 --image <vbmeta.img>`.
+The capture compares the installed launcher, build fingerprint and chained
+VBMeta digest to the reviewed image. After replacement the active APK must
+reside in Android's app data and retain its system-app provenance.
+
+Start each distribution chain with fresh v2 receipts. Keep the first drill
+signed out. For the signed-in follow-up, seed the account and data before the
+next offer goes live, take the phone offline, then use
+`before --previous <first-after.json>` with the same distribution and the
+previous release's APK manifest. This binds both drills to the same phone,
+image, HOME and launcher history. Keep each public offer stable until both
 distribution paths have saved their `after` receipts.
 
-The readback uses the primary user and records the actual APK digest, update
-initiator, install identity, HOME, signing family, boot state and SDK revision.
-Retain the protected `qualification-summary.json` and
-`app-update-delivery.json` with each published APK and its verification manifest
-to bind the exact producer commit to the launcher digest. Keep the signed
-image's `release-record.json` with its baseline. An unattended pass requires no
-manual Check, Install or Continue action in Alpha and no approval tap in
-Android during the disconnected update. Record those observations along with
-retained data, Keystore, resident, voice and recovery.
+Capture `after` as soon as the disconnected update completes, before reboot.
+It needs one matching completed Android PackageInstaller session that identifies
+Alpha as the installer for the primary user, records automatic installation
+and shows no manual approval. Missing or ambiguous history prevents a receipt.
+Retain the protected `qualification-summary.json`, `app-update-delivery.json`
+and verification manifest with each published APK, and the signed image's
+`release-record.json` with its baseline. Record the observed hands-free update
+and the separate data, Keystore, resident, voice and recovery checks.
+
+After both rounds, compare the eight receipts offline. For each distribution
+supply the first before/after pair followed by the second before/after pair.
+
+```sh
+bun scripts/verify-wireless-launcher-update.ts matrix \
+  --sideload stock-1-before.json --sideload stock-1-after.json \
+  --sideload stock-2-before.json --sideload stock-2-after.json \
+  --image-preinstalled image-1-before.json --image-preinstalled image-1-after.json \
+  --image-preinstalled image-2-before.json --image-preinstalled image-2-after.json \
+  --out wireless-launcher-matrix.json
+```
+
+The matrix checks the receipt links, signing family, installed SDK revision
+and the same two offered releases across both distributions.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/alphacompute/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/alphacompute/alphaphone/issues/889).

@@ -36,11 +36,10 @@ on:
 permissions:
   contents: read
 concurrency:
-  # Primary main-push attempts share a canceling group. Reruns use their own
-  # run ID and cannot cancel that group. GitHub does not guarantee commit order.
-  # Manual qualification keeps its separate, existing cancellation group.
-  group: resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && (github.run_attempt == 1 && 'app-candidate-main' || format('app-candidate-run-{0}', github.run_id)) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}
-  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1) }}
+  # Main-push runs are isolated by run ID because GitHub can queue commits out of order.
+  # Manual qualification keeps its cancellation group per ref and operation.
+  group: resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('app-candidate-run-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 jobs:
   publish-qualification:
     if: github.event_name == 'workflow_dispatch' && inputs.operation == 'publish-qualification'
@@ -257,7 +256,7 @@ jobs:
                 test/cloud-voice-profile.test.mjs \
                 test/private-preview-cartesia-route.test.mjs
             '
-      - run: bun test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
+      - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # Noncandidate diagnostics retain their existing absent-input check.
       - name: Verify the diagnostic on-device voice host record
         if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'

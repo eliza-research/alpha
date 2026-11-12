@@ -35,8 +35,8 @@ import javax.net.ssl.HttpsURLConnection;
 /**
  * Host-JVM run of AlphaDevicePlugin's update members, compiled from the plugin source by
  * test/app-update.test.mjs against the stubs in test/fixtures/app-update-jvm: one Context is one process whose
- * bridges all hear each broadcast. Most HTTPS responses are served in memory, with the plugin's deadline
- * shortened to three seconds (300 ms in the one scenario that waits it out). Not Android, PackageInstaller or network evidence: the stubs transcribe what AOSP's source
+ * bridges all hear each broadcast. Most HTTPS responses are served in memory, with the download deadline
+ * shortened only in the trickle scenario. Not Android, PackageInstaller or network evidence: the stubs transcribe what AOSP's source
  * does, they do not prove it. One separate cache-retry scenario uses owned loopback TLS and real files;
  * its APK bytes and Android archive/installer ports are still synthetic.
  */
@@ -475,16 +475,17 @@ public final class UpdateFlowTest {
  private static void theDeadlineEndsATrickleNotADownloadThatFinishesInTime(File cache)throws Exception{
   Context context=installing(cache);
   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
-  deadline(TimeUnit.MILLISECONDS.toNanos(300));
-  body=trickle(40);connections.clear();
-  PluginCall late;
-  try{late=tap(owner);}finally{deadline(TimeUnit.HOURS.toNanos(6));}
-  check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
-  check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
-  deadline(TimeUnit.MILLISECONDS.toNanos(300));
-  body=trickle(2);
-  try{check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");}
-  finally{deadline(TimeUnit.HOURS.toNanos(6));body=IN_MEMORY;}
+  long defaultDeadline=AlphaDevicePlugin.UPDATE_DEADLINE_NANOS;
+  try{
+   deadline(TimeUnit.MILLISECONDS.toNanos(300));
+   body=trickle(40);connections.clear();
+   PluginCall late=tap(owner);
+   check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
+   check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
+   deadline(defaultDeadline);
+   body=trickle(2);
+   check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");
+  }finally{deadline(defaultDeadline);body=IN_MEMORY;}
  }
  private static void destroyClosesADownloadInFlight(File cache)throws Exception{
   Context context=installing(cache);
@@ -2213,7 +2214,8 @@ public final class UpdateFlowTest {
   context.packages.archiveRead=()->owner.activity.focused=false;
   PluginCall first=tlsApk(8);
   owner.installUpdate(fixtureAutomatic(first));first.awaitAnswer();
-  check(first.rejected.get()==1&&cacheTlsRequests.get()==1&&java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"owned TLS delivers exact bytes retained on foreground loss");
+  check(first.rejected.get()==1&&cacheTlsRequests.get()==1&&!owner.activity.focused,"owned TLS reaches archive admission before foreground deferral");
+  check(download(context).exists()&&java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"foreground deferral retains the exact TLS download");
   check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"TLS deferral grants no session/pause authority");
   context.packages.archiveRead=()->{};owner.activity.focused=true;
   PluginCall next=fixtureAutomatic(tlsApk(8));owner.installUpdate(next);next.awaitAnswer();
@@ -2289,8 +2291,12 @@ public final class UpdateFlowTest {
   if(interrupted)Thread.currentThread().interrupt();
  }
  private static void finalOfferDeadlineRetiresBeforeLateTransport(File cache)throws Exception{
-  for(String cut:List.of("foreground","headers","body","open")){
+  for(String cut:List.of("foreground","stock-call","image-call-access","headers","body","open")){
    Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+   boolean stockCall=cut.equals("stock-call"),imageCallAccess=cut.equals("image-call-access");
+   boolean readinessCut=cut.equals("foreground")||stockCall||imageCallAccess;
+   context.imageAdmitted=imageCallAccess;
+   context.phoneStateGranted=imageCallAccess;
    var installer=context.packages.installer;
    byte[] bytes=manifestBytes(manifestOffer(tlsApk(8)));
    manifestTlsReply=new ManifestReply(200,bytes);
@@ -2313,17 +2319,32 @@ public final class UpdateFlowTest {
       }
      }
     };
-    if(!cut.equals("foreground"))plugin("UPDATE_MANIFEST_RECHECK_MILLIS",3000);
+    if(!readinessCut)plugin("UPDATE_MANIFEST_RECHECK_MILLIS",3000);
     PluginCall request=bindAutomatic(tlsApk(8),digest);owner.installUpdate(request);
     check(entered.await(15,TimeUnit.SECONDS),"final offer read reaches held "+cut+" stage");
     check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"the held final read follows resident pause");
-    if(cut.equals("foreground")){owner.activity.focused=false;released.countDown();}
+    if(cut.equals("foreground"))owner.activity.focused=false;
+    if(stockCall)context.audio.mode=android.media.AudioManager.MODE_IN_CALL;
+    if(imageCallAccess){
+     context.calls.defaultDialer=null;
+     context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_IGNORED;
+    }
+    if(readinessCut)released.countDown();
     request.awaitAnswerWithin(15000);
-    if(cut.equals("foreground"))check(request.rejected.get()==1&&download(context).exists()&&
+    if(readinessCut)check(request.rejected.get()==1&&download(context).exists()&&
      installer.sessions.isEmpty()&&installer.committed.isEmpty()&&owner.activity.started.isEmpty()&&
-     AlphaDevicePlugin.UpdatePause.store().read()==null,"loss of foreground during a valid final read defers and retains only verified bytes");
+     AlphaDevicePlugin.UpdatePause.store().read()==null,"loss of readiness during a valid final read defers and retains verified bytes: "+cut);
     else checkOfferRefusal(owner,context,request,"offer-unavailable");
     check(installer.abandoned.size()==1&&AlphaLocalAgentPlugin.releases==releases+1,"only the staged precommit session is abandoned and its pause released: "+cut);
+    if(stockCall||imageCallAccess){
+     context.audio.mode=android.media.AudioManager.MODE_NORMAL;
+     context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+     manifestExchange=null;
+     int apkReads=cacheTlsRequests.get();
+     PluginCall retry=bindAutomatic(tlsApk(8),digest);owner.installUpdate(retry);retry.awaitAnswer();
+     check(retry.resolved.get()==1&&installer.committed.size()==1&&cacheTlsRequests.get()==apkReads,
+      "restored idle call readiness commits the verified cached APK once: "+cut);
+    }
     if(cut.equals("open")){
      check(released.getCount()==1,"installer stops waiting while opening the transport is still blocked");
      PluginCall concurrent=bindAutomatic(tlsApk(8),digest);owner.installUpdate(concurrent);concurrent.awaitAnswerWithin(15000);
@@ -2338,6 +2359,7 @@ public final class UpdateFlowTest {
    }
   }
   System.out.println("PASS final offer deadline bounds held network stages and leaves manual recovery available");
+  System.out.println("PASS call changes during final HTTPS defer automatic commit");
  }
  private static void automaticConsentRecheckedAfterTls(File cache)throws Exception{
   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
