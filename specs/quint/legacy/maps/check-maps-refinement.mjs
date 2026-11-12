@@ -83,7 +83,7 @@ async function observe(page) {
       : document.querySelector('[aria-label="End navigation"]') ? window.inspectHistoricalMaps().arrived ? 'Arrived' : 'Nav'
       : document.querySelector('[data-alpha-maps-sheet="directions"]') ? 'Route'
       : document.querySelector('[data-alpha-maps-sheet="place"]') ? 'Place'
-      : document.querySelector('[data-alpha-maps-sheet="results"]') ? 'Results' : 'Base';
+      : document.querySelector('[data-alpha-maps-sheet="results"]') || document.querySelector('input[aria-label="Search places"]')?.value ? 'Results' : 'Base';
     const configured = f.mapsConnection().config.status === 'configured';
     const diagnostic = f.diagnostic();
     const tried = f.requests.some(row => row.endpoint === 'capabilities');
@@ -134,7 +134,8 @@ async function open(page, t, online, submitWhileConnecting = false) {
   await t.point('Opening Maps dispatches one held capabilities read', [action('OpenMaps'), action('Connect')]);
   if (submitWhileConnecting) {
     await search(page);
-    await expect(sheet(page, 'results')).toBeVisible();
+    await expect(query(page)).toHaveValue(label);
+    await expect(sheet(page, 'results')).toHaveCount(0);
     await t.point('An explicit search waits for the held read', action('Search'));
   }
   await settleCapability(page, online);
@@ -169,7 +170,8 @@ async function offlineRecovery(page) {
   assert.deepEqual((await requests(page)).map(row => row.endpoint), ['capabilities']);
   await search(page);
   await waitForCapability(page);
-  await expect(sheet(page, 'results')).toBeVisible();
+  await expect(query(page)).toHaveValue(label);
+  await expect(sheet(page, 'results')).toHaveCount(0);
   await t.point('Explicit search admits a new read while the restored transport is held',
     [action('Heal'), action('Search'), action('Connect')], ['s.message']);
   await settleCapability(page, true);

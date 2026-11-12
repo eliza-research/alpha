@@ -142,7 +142,7 @@ async function replaced(page, retiredPublicId, early) {
   const t = await begin(page, early ? 'retired_reply_before_replacement_start'
     : retiredPublicId ? 'retired_success_after_replacement_start' : 'retired_refusal_after_replacement_start');
   await end(page, t);
-  const input = page.getByRole('textbox', {name:'Route origin coordinates', exact:true});
+  const input = page.getByRole('textbox', {name:'Starting point', exact:true});
   await expect(input).toBeVisible();
   await input.fill(replacement.latitude+', '+replacement.longitude);
   await input.press('Enter');
