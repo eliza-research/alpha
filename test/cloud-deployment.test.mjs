@@ -43,7 +43,7 @@ test('a different deployment changes actual native login, request admission and 
   assert.ok(registration.includes('static CloudSignInConfig registration(boolean testMocks)'));
   const staged=preparePatchedNative({root:path.resolve(import.meta.dirname,'..')});
   const shared=path.join(staged.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud');
-  const sharedFiles=['CloudSignInConfig.java','CloudSignInEnvironment.java','CloudSignInFlow.java','CloudSignInRoutes.java','CloudKeyRevocation.java','CloudEmailCode.java','CloudSmsCode.java'].map(file=>path.join(shared,file)).concat('vendor/eliza/packages/auth/android/test/org/json/JSONObject.java','vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/CloudConnectionPolicy.java');
+  const sharedFiles=['CloudSignInConfig.java','CloudSignInEnvironment.java','CloudSignInFlow.java','CloudSignInRoutes.java','CloudKeyRevocation.java','CloudKeyRenewal.java','CloudEmailCode.java','CloudSmsCode.java'].map(file=>path.join(shared,file)).concat('vendor/eliza/packages/auth/android/test/org/json/JSONObject.java','vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/CloudConnectionPolicy.java');
   fs.writeFileSync(path.join(temp,'AlphaRegistration.java'),`package ai.alphacompute.alphaphone;
 import ai.eliza.auth.cloud.*;
 final class BuildConfig {static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}
