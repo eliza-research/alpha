@@ -1,6 +1,8 @@
 package ai.alphacompute.alphaphone;
 
+import android.app.AppOpsManager;
 import android.content.Context;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.SystemClock;
 import androidx.lifecycle.Lifecycle;
@@ -229,27 +231,41 @@ public final class UpdateStagingHarness {
   require(AlphaDevicePlugin.appSigner(context).equals(offer.getString("signer")),"renderer fixture used actual synthetic signing lineage");
   switch(mode){
    case "verified-cache-reuse":
+   case "verified-cache-stock-call":
+   case "verified-cache-image-call-access":
    case "verified-cache-corrupt-refetch":
    case "verified-cache-restart-sweep":
+    boolean imageCallAccess=mode.equals("verified-cache-image-call-access");
+    boolean corrupt=mode.equals("verified-cache-corrupt-refetch");
+    boolean restarted=mode.equals("verified-cache-restart-sweep");
+    context.imageAdmitted=imageCallAccess;
     start(1,true);verified();staged();
-    bridges.get(1).activity.focused=false;stage.open();settled("deferred",false,true);
+    if(mode.equals("verified-cache-stock-call"))context.audio.mode=AudioManager.MODE_IN_CALL;
+    else if(imageCallAccess){
+     context.calls.defaultDialer=null;
+     context.phoneStateGranted=true;
+     context.appOps.phoneStateMode=AppOpsManager.MODE_IGNORED;
+    }else bridges.get(1).activity.focused=false;
+    stage.open();settled("deferred",false,true);
     register(2);trace.step("loadBridge",observe(),true);
     calls[1]=payload();bindAutomatic(calls[1]);bridges.get(1).installUpdate(calls[1]);answer(1,false);
     outcome="deferred";trace.step("deferBeforeWork",observe());
     bridges.get(1).activity.focused=true;
-    if(mode.equals("verified-cache-corrupt-refetch")){
+    context.audio.mode=AudioManager.MODE_NORMAL;
+    context.appOps.phoneStateMode=AppOpsManager.MODE_ALLOWED;
+    if(corrupt){
      Files.write(apk,new byte[]{1,2,3,5});trace.step("cacheChanged",observe());
     }
-    if(mode.equals("verified-cache-restart-sweep"))restart();
+    if(restarted)restart();
     heldRead=new Gate();heldRead.open();calls[1]=payload();bindAutomatic(calls[1]);
     bridges.get(1).installUpdate(calls[1]);answer(1,false);owner=0;phase="idle";outcome="barrier";
     java.util.List<JSONObject> actions=new java.util.ArrayList<>();
     actions.add(Trace.action("automaticTap",1));
-    if(mode.equals("verified-cache-corrupt-refetch"))actions.add(Trace.action("cacheMismatch"));
-    if(!mode.equals("verified-cache-reuse"))actions.add(Trace.action("chunk",4));
+    if(corrupt)actions.add(Trace.action("cacheMismatch"));
+    if(corrupt||restarted)actions.add(Trace.action("chunk",4));
     actions.add(Trace.action("verify",true,false));actions.add(Trace.action("stage",true));actions.add(Trace.action("settle","barrier",true,true));
     trace.macro("actual retry revalidates bytes/archive then refuses renderer activation",observe(),actions.toArray(new JSONObject[0]));
-    require(connections.size()==(mode.equals("verified-cache-reuse")?1:2),"only an intact same-process exact cache avoids another transport call");
+    require(connections.size()==(corrupt||restarted?2:1),"only an intact same-process exact cache avoids another transport call");
     break;
    case "boot-inclusive-boundary-and-process":
     reboot(31,true);deferred("starting");clock(26681);deferred("starting");clock(29999);restart();deferred("starting");

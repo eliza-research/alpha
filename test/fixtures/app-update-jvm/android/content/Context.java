@@ -9,7 +9,19 @@ public class Context {
  public boolean applicationPublished=true;
  public boolean imageAdmitted;
  public android.telecom.TelecomManager calls=new android.telecom.TelecomManager();
- public <T>T getSystemService(Class<T> type){return type==android.telecom.TelecomManager.class?type.cast(calls):null;}
+ public android.media.AudioManager audio=new android.media.AudioManager();
+ public android.app.AppOpsManager appOps=new android.app.AppOpsManager();
+ public boolean phoneStateGranted,privilegedPhoneStateGranted;
+ public int checkSelfPermission(String permission){
+  if("android.permission.READ_PHONE_STATE".equals(permission)&&phoneStateGranted)return 0;
+  if("android.permission.READ_PRIVILEGED_PHONE_STATE".equals(permission)&&privilegedPhoneStateGranted)return 0;
+  return -1;
+ }
+ public <T>T getSystemService(Class<T> type){
+  if(type==android.media.AudioManager.class)return type.cast(audio);
+  if(type==android.app.AppOpsManager.class)return type.cast(appOps);
+  return type==android.telecom.TelecomManager.class?type.cast(calls):null;
+ }
  public Context getApplicationContext(){return applicationPublished?this:null;}
  public java.io.File getNoBackupFilesDir(){return data;}
  public android.content.pm.ApplicationInfo getApplicationInfo(){android.content.pm.ApplicationInfo info=new android.content.pm.ApplicationInfo();info.sourceDir=new java.io.File(data,"base.apk").getPath();return info;}

@@ -22,7 +22,7 @@ export async function runControllerCompositionRefinement(extraSources=[]) {
   let server,browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS='';
-    server=await createServer({configFile:resolve(root,'vite.config.ts'),logLevel:'error',cacheDir:resolve(root,'test-results/quint-refinement/controller-composition-cache'),server:{host:'127.0.0.1',port:0,strictPort:false},
+    server=await createServer({configLoader: 'runner', configFile:resolve(root,'vite.config.ts'),logLevel:'error',cacheDir:resolve(root,'test-results/quint-refinement/controller-composition-cache'),server:{host:'127.0.0.1',port:0,strictPort:false},
       define:{'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS':JSON.stringify('')},plugins:[{name:'quint-current-composition',
         resolveId(id){if(id==='/quint-composition-entry.js')return '\0quint-composition-entry';},
         load(id){if(id==='\0quint-composition-entry')return compositionEntry;},

@@ -38,6 +38,40 @@ export const TURBO_AGENT_DETECTION_ENV=Object.freeze(['AI_AGENT','AUGMENT_AGENT'
 export function preparedSourceEnv(env=process.env, extra: NodeJS.ProcessEnv = {}) {
  const result: NodeJS.ProcessEnv = {...env,...extra};
  for(const name of TURBO_AGENT_DETECTION_ENV)delete result[name];
+ if(result.PATH){
+  // Product package scripts use Bun's node alias. Upstream generators require Node's
+  // original function source, so that inherited alias must not cross this boundary.
+  const executable=(name: string)=>process.platform==='win32'?name+'.exe':name;
+  const resolved=(file: string)=>{try{if(!fs.statSync(file).isFile())return undefined;fs.accessSync(file,fs.constants.X_OK);return fs.realpathSync(file);}catch(error){if(['ENOENT','ENOTDIR','EACCES','ELOOP'].includes(String(errorCode(error))))return undefined;throw error;}};
+  const directories=result.PATH.split(path.delimiter);
+  const configuredBun=result.ALPHA_BUN&&path.isAbsolute(result.ALPHA_BUN)?resolved(result.ALPHA_BUN):undefined;
+  const configuredBunDirectory=configuredBun?fs.realpathSync(path.dirname(result.ALPHA_BUN!)):undefined;
+  const bunTargets=new Set([
+   ...(process.versions.bun?[resolved(process.execPath)]:[]),
+   configuredBun,
+   ...directories.map(directory=>resolved(path.join(directory,executable('bun')))),
+  ].filter((target): target is string=>!!target));
+  const entries=directories.map(directory=>({directory,node:resolved(path.join(directory,executable('node'))),bun:resolved(path.join(directory,executable('bun')))}));
+  const selectedBun=entries.find(entry=>entry.bun)?.bun;
+  const isBunNode=(entry: typeof entries[number])=>!!entry.node&&bunTargets.has(entry.node);
+  if(entries.some(isBunNode)){
+   const node=entries.find(entry=>entry.node&&!isBunNode(entry)&&(!entry.bun||entry.bun===selectedBun));
+   if(!node)throw Error('Prepared upstream tooling requires genuine Node.js on PATH without overriding the selected Bun.');
+   const retained=entries.filter(entry=>{
+    if(!isBunNode(entry)||configuredBunDirectory&&fs.realpathSync(entry.directory||'.')===configuredBunDirectory)return true;
+    // Bun's injected directory contains only aliases for node and bun. Retain real tool directories,
+    // including the selected Bun installation, even if they also expose an alias.
+    return fs.readdirSync(entry.directory||'.').some(name=>{
+     const file=path.join(entry.directory,name);
+     return ![executable('node'),executable('bun')].includes(name)||!fs.lstatSync(file).isSymbolicLink()||resolved(file)!==entry.node;
+    });
+   });
+   const firstNode=retained.find(entry=>entry.node);
+   const prepared=firstNode&&isBunNode(firstNode)?[node,...retained.filter(entry=>entry!==node)]:retained;
+   if(prepared.find(entry=>entry.bun)?.bun!==selectedBun)throw Error('Prepared upstream PATH must retain the selected Bun executable.');
+   result.PATH=prepared.map(entry=>entry.directory).join(path.delimiter);
+  }
+ }
  return result;
 }
 export function sourceDirectory(root: string, env=process.env) {
