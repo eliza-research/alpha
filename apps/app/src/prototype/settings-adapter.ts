@@ -740,6 +740,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const agentStatus = connection.session ? (connection.kind==='resident'?'Running on this device':runtimeLocation) : connection.residentRecoveryReason ? (connection.residentRecoveryReason==='ipc-recovery-retention-limit'?'Restart needed':'Needs attention') : connection.kind==='recovering'?'Not running':'Starting…';
           const agentRows=[info('Agent',agentStatus),info('AI',connection.residentInference==='direct'?'Cerebras · own API key':connection.residentInference==='cloud'?serviceName:!connection.cloudAccount&&connection.residentPlanNotice!=='offline'?'Sign in required':!connection.session&&connection.kind==='starting'&&!connection.residentRecoveryReason?'Starting…':'Not available')];
           if(connection.message)agentRows.push(info('Status',connection.message));
+          if(connection.signOutNotice&&connection.signOutNotice!==connection.message)
+            agentRows.push(info('Sign-out result',connection.signOutNotice));
           if(connection.error)agentRows.push(info('Connection problem',connection.error));
           if(connection.residentRecoveryReason&&!connection.session){
             agentRows.push(info('Status',residentRecoveryCopy(connection.residentRecoveryReason,connection.residentRecovery)));

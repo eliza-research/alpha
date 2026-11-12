@@ -46,13 +46,15 @@ test('signing out of account A and into account B stops the resident before A is
   // Sign out of A: the resident stops before A's key is revoked and removed.
   dialog = await cloudPlan(page);
   await dialog.getByRole('button', { name: 'Sign out', exact: true }).click();await confirmCloudSignOut(page);
-  dialog=page.locator('[role="main"].alpha-cloud-sign-in');
-  await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'Account', exact: true })).toContainText('Sign in again');
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
+  await expect.poll(() => harness(page, f => f.slots['cloud:production'] ?? null)).toBeNull();
   const signOut = await stub(page, s => s.order.length) as number;
   // Sign in as B.
   await setStub(page, { nextToken: B.token });
+  await page.getByRole('button', { name: 'Account', exact: true }).click();
   await enterNativeEmailCode(page);
-  await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
 
   const order = await stub(page, s => s.order) as string[];
@@ -119,7 +121,7 @@ test('a second sign-in over a saved key uses the native replacement result witho
   await setStub(page, { nextToken: A.token });
   // P-43: the resident starts signed out; sign-in is offered from Settings › Agent connection.
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
-  let welcome = await openYourAgent(page);
+  await openYourAgent(page);
   await enterNativeEmailCode(page);
   await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
@@ -129,11 +131,13 @@ test('a second sign-in over a saved key uses the native replacement result witho
   await page.reload();
   // The resident starts again with AI off; Your agent says the saved sign-in is no longer valid.
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
-  welcome = await openYourAgent(page);
-  await expect(welcome.getByText('Sign in to Eliza Cloud again to turn AI back on.', { exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(welcome).not.toContainText(/pair/i);
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
+  await button(page, 'Settings').click();
+  const account = page.getByRole('button', { name: 'Account', exact: true });
+  await expect(account).toContainText('Sign in again');
+  await account.click();
   await enterNativeEmailCode(page);
-  await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
   const order = await stub(page, s => s.order) as string[];
   expect(order.filter(entry => entry.startsWith('revoke'))).toEqual(['revoke Bearer ' + A.token]);

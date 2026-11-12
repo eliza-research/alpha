@@ -244,10 +244,11 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
       await page.keyboard.press('Escape'); // The Account sheet cancels through Back/Escape while busy.
       await page.evaluate(() => { (window as any).holdStop = false; (window as any).releaseStop(); });
     }
-    // This bridge has no sign-in readiness service. Its automatic refusal must not erase
-    // the completed sign-out receipt or turn an unconfirmed revocation into success.
-    await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable.'})).toBeVisible();
-    const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
+    await expect.poll(async () => (await secureValues(page))['cloud:production'] ?? null).toBeNull();
+    await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
+    await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
+    const connection = await openYourAgent(page);
+    const status = connection.getByText(/^Signed out/);
     if (mode === 'revoked') await expect(status).toContainText('Signed out.');
     else {
       await expect(status).toContainText('Signed out here. Cloud could not confirm ending this session. Review your signed-in devices in your Cloud account.');
@@ -266,7 +267,6 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     expect(calls.slice(before).some(call => call.plugin === 'AlphaHostedResults' && call.method === 'disableBackground')).toBe(true);
     if (mode !== 'cancelled') expect(stop).toBeLessThan(calls.indexOf(revocations[0]));
     expect(await secureValues(page)).not.toHaveProperty('cloud:production');
-    await expect(page.getByRole('main', { name: 'Welcome to Alpha.', exact: true }).getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
     // P-43: sign-out unbinds inference only; the resident restarted and the outcome says so.
     if (mode !== 'cancelled') await expect(status).toContainText('Your agent is running. Sign in to Eliza Cloud to turn AI back on.');
     await expect.poll(async () => (await nativeCalls(page)).slice(before).filter(call => call.plugin === 'Agent' && call.method === 'start').length).toBeGreaterThan(0);
@@ -487,7 +487,8 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
     Object.assign(banner.style, { top: `${rect.top}px`, left: `${rect.left}px`, right: 'auto', bottom: 'auto', width: `${rect.width}px` });
   });
   await signout.click();await confirmCloudSignOut(page);
-  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out.');
+  await expect.poll(async () => (await secureValues(page))['cloud:production'] ?? null).toBeNull();
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
   await expect(notice).toHaveCount(0);
 });
 
