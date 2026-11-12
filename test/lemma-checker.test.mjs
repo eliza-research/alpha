@@ -10,8 +10,10 @@ test('function checker distinguishes proofs, skips, failed verification and rege
   const root = mkdtempSync(join(tmpdir(), 'alpha-lemma-checker-'));
   const write = (path, text, mode) => {mkdirSync(dirname(join(root, path)), {recursive: true}); writeFileSync(join(root, path), text, {mode});};
   try {
-    mkdirSync(join(root, 'scripts'), {recursive: true});
-    for (const script of ['check-lemma.ts', 'quint-lib.ts']) copyFileSync(join(repositoryRoot, 'scripts', script), join(root, 'scripts', script));
+    for (const file of ['scripts/check-lemma.ts', 'scripts/quint-lib.ts', 'specs/quint/refinement/timeouts.mjs']) {
+      mkdirSync(dirname(join(root, file)), {recursive: true});
+      copyFileSync(join(repositoryRoot, file), join(root, file));
+    }
     write('bun.lock', '{}'); write('lemmascript.json', '{"proof-dir":"specs/lemma"}');
     write('LemmaScript-files.txt', 'apps/app/src/policy.ts 30\n');
     write('apps/app/src/policy.ts', '//@ verify\nexport function policy() { return true; }\n');
