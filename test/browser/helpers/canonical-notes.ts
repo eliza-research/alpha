@@ -48,6 +48,7 @@ export async function canonicalNotesFixture(page:Page,{path='/',notes=[],failRea
      f.state.trash.splice(index,1);
     }else throw Error('Canonical fixture erase phase changed');
     f.state.revision++;
+    if(f.failEraseId===body.id)throw Error('Closed canonical fixture lost the committed erase reply');
     return {success:true,data:structuredClone(f.state)};
    }
    if(path!=='/api/views/notes/interact'||method!=='POST')throw Error('Unexpected canonical Notes fixture request');

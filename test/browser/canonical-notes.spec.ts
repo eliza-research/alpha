@@ -111,6 +111,51 @@ test('canonical Notes confirms permanent delete and keeps the other archived not
  expect(errors).toEqual([]);
 });
 
+test('Recently deleted recovers the reviewed selection and stops permanent delete after an uncertain reply',async({page})=>{
+ await canonicalNotesFixture(page);
+ await page.evaluate(()=>{
+  const fixture=(window as any).canonicalNotesFixture;
+  const at=new Date().toISOString();
+  fixture.state={revision:1,notes:[],trash:['First','Second','Third','Fourth','Keep'].map(title=>({
+   deletedAt:at,note:{id:`${title.toLowerCase()}-fixture`,title,body:'Disposable archive fixture.',color:'yellow',createdAt:at,updatedAt:at},
+  }))};
+ });
+ await openCanonicalNotes(page);
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
+ await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ const trash=page.locator('[data-alpha-subview="notes-trash"]');
+ await trash.getByRole('button',{name:'Recently deleted options',exact:true}).click();
+ await trash.getByRole('dialog',{name:'Recently deleted options'}).getByRole('button',{name:'Select notes',exact:true}).click();
+ const selection=trash.getByRole('group',{name:'Selected deleted notes'});
+ const row=(name:string)=>trash.getByRole('button',{name,exact:true});
+ await row('First').click();
+ await row('Second').click();
+ await expect(selection).toContainText('2 selected');
+ await selection.getByRole('button',{name:'Recover selected notes',exact:true}).click();
+ await page.getByRole('dialog',{name:'Recover selected notes?'}).getByRole('button',{name:'Recover selected notes',exact:true}).click();
+ await expect.poll(()=>snapshot(page).then(s=>s.notes.map((n:any)=>n.id).sort())).toEqual(['first-fixture','second-fixture']);
+ await expect(selection).toContainText('0 selected');
+
+ await selection.getByRole('button',{name:'Select all',exact:true}).click();
+ await expect(selection).toContainText('3 selected');
+ const confirmErase=async()=>{
+  await selection.getByRole('button',{name:'Delete selected notes permanently',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'Delete permanently?'});
+  await expect(dialog).toContainText('3 notes');
+  return dialog;
+ };
+ let dialog=await confirmErase();
+ await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+ expect((await snapshot(page)).trash).toHaveLength(3);
+ await page.evaluate(()=>{(window as any).canonicalNotesFixture.failEraseId='fourth-fixture';});
+ dialog=await confirmErase();
+ await dialog.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expect(trash.getByRole('status')).toContainText('1 of 3 notes updated');
+ const requests=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.path==='/api/notes/trash/erase').map((r:any)=>r.body.id));
+ expect(requests).toEqual(['third-fixture','fourth-fixture']);
+ expect((await snapshot(page)).trash.map((entry:any)=>entry.note.id)).toEqual(['keep-fixture']);
+});
+
 test('canonical Notes resumes an interrupted recording erase from the actual browser receipt',async({page})=>{
  await canonicalNotesFixture(page);
  const id='recording-fixture',audioId='owned-recording-fixture';

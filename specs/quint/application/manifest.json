@@ -3826,5 +3826,30 @@
       "Two selected records and one journaled request in flight. Unknown or rejected responses stop the batch. Archive preserves records; confirmed permanent deletion removes only selected records.",
       "Restore-inactive scenario represents prompts, workflows and definitions. Scheduled-task reopen uses existing resume semantics, disclosed in its review. Native device-reminder recovery is not covered. Progress assumes explicit approval, stable owner and successful replies."
     ]
+  },
+  {
+    "path": "specs/quint/application/NotesTrashSelection.qnt",
+    "module": "NotesTrashSelection",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "selectedRecovery",
+      "selectedErase",
+      "cancelNoSend",
+      "staleSelection",
+      "partialUnknown",
+      "committedReplyLost",
+      "ownerChange"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/template.html",
+      "test/browser/canonical-notes.spec.ts"
+    ],
+    "abstractions": [
+      "Two selected archived notes and one unselected note. Each recorded application receipt represents one complete note action. The recording claim and audio store are checked separately by the SDK CanonicalTrashErase model.",
+      "A failed or lost response stops the selection without replay. The model does not resolve an unknown committed effect. Progress assumes stable owner, no intervening writes, and success for each admitted action."
+    ]
   }
 ]

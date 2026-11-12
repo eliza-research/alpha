@@ -2376,13 +2376,27 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; padding: 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" aria-label="Back to notes" onClick="{{notes.closeTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <h1 class="serif" style="margin: 0 0 0 4px; font-size: 28px; flex-grow: 1; letter-spacing: -.01em">Recently deleted</h1>
+        <sc-if value="{{notes.trashHasOptions}}"><button class="ib" aria-label="Recently deleted options" aria-haspopup="dialog" aria-expanded="{{notes.trashOptionsOpen}}" onClick="{{notes.toggleTrashOptions}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button></sc-if>
         <sc-if value="{{notes.trashCanEmpty}}"><button class="tap" aria-label="Empty Recently deleted" disabled="{{notes.trashEmptyDisabled}}" onClick="{{notes.emptyTrash}}" style="min-height: 44px; padding: 0 14px; border-radius: 22px; color: var(--fg); font-size: 15px; font-weight: 600">Empty</button></sc-if>
       </div>
+      <sc-if value="{{notes.trashOptionsOpen}}"><div ref="{{notes.trashOptionsModal}}" data-alpha-popup>
+        <button aria-hidden="true" tabindex="-1" onClick="{{notes.closeTrashOptions}}" style="position:absolute;inset:0;z-index:11;background:transparent"></button>
+        <div class="notes-menu" role="dialog" aria-label="Recently deleted options">
+          <button onClick="{{notes.startTrashSelection}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg>Select notes</button>
+        </div>
+      </div></sc-if>
+      <sc-if value="{{notes.trashSelecting}}"><div class="notes-selection-bar" role="group" aria-label="Selected deleted notes">
+        <button disabled="{{notes.trashBusy}}" onClick="{{notes.endTrashSelection}}" aria-label="Close selection"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button><span>{{notes.trashSelectedCount}} selected</span>
+        <button disabled="{{notes.trashBusy}}" onClick="{{notes.selectAllTrash}}">Select all</button>
+        <button disabled="{{notes.trashSelectionDisabled}}" aria-label="Recover selected notes" onClick="{{notes.recoverSelectedTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
+        <button disabled="{{notes.trashSelectionDisabled}}" aria-label="Delete selected notes permanently" onClick="{{notes.eraseSelectedTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
+      </div></sc-if>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 0 16px 190px; box-sizing: border-box">
         <sc-if value="{{notes.trashError}}"><div role="status" style="margin: 0 8px 12px; font-size: 13px; color: var(--mut)">{{notes.trashError}}</div></sc-if>
         <ul aria-label="Recently deleted notes" style="list-style: none; margin: 0; padding: 0">
           <sc-for list="{{notes.trashRows}}" key="{{t.id}}" as="t">
-            <li><button class="tap" data-agent-id="notes-restore-{{t.id}}" aria-label="{{t.label}}" disabled="{{t.disabled}}" onClick="{{t.ask}}" style="display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px 8px; border-bottom: 1px solid var(--line); box-sizing: border-box; text-align: left">
+            <li><button class="tap" data-agent-id="notes-restore-{{t.id}}" aria-label="{{t.label}}" disabled="{{t.disabled}}" aria-pressed="{{t.selected}}" onClick="{{t.ask}}" style="display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px 8px; border-bottom: 1px solid var(--line); box-sizing: border-box; text-align: left">
+              <sc-if value="{{t.selecting}}"><span class="notes-selection-check" data-selected="{{t.selected}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg></span></sc-if>
               <span style="display: block; flex: 1 1 auto; min-width: 0">
                 <span style="display: block; font-weight: 600; font-size: 16px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{t.title}}</span>
                 <span style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; line-height: 1.4; color: var(--mut); margin-top: 2px; white-space: pre-line">{{t.preview}}</span>
@@ -2417,7 +2431,7 @@
       <sc-if value="{{notes.trashFullOpen}}"><button class="tap" disabled="{{notes.trashBusy}}" onClick="{{notes.trashFullReview}}" style="width: 100%; height: 52px; margin-top: 24px; border-radius: 26px; background: var(--s2); color: var(--fg); font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center">Open Recently deleted</button></sc-if>
       <div style="display: flex; gap: 10px; margin-top: 24px">
         <button aria-label="Cancel" disabled="{{notes.trashBusy}}" onClick="{{notes.trashCancel}}" style="flex: 1; height: 52px; border-radius: 26px; background: var(--s2); font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center">Cancel</button>
-        <button aria-label="{{notes.trashConfirmLabel}}" disabled="{{notes.trashBusy}}" onClick="{{notes.trashConfirmGo}}" style="flex: 1; height: 52px; border-radius: 26px; background: var(--fg); color: var(--bg); font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>{{notes.trashConfirmText2}}</button>
+        <button aria-label="{{notes.trashConfirmLabel}}" disabled="{{notes.trashBusy}}" onClick="{{notes.trashConfirmGo}}" style="flex: 1; height: 52px; border-radius: 26px; background: var(--fg); color: var(--bg); font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{notes.trashConfirmIcon}}"></path></svg>{{notes.trashConfirmText2}}</button>
       </div>
     </div>
     </div>
