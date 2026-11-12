@@ -301,9 +301,9 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Book the venue');
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Book the venue edited');
  const from=page.getByLabel('From time',{exact:true});
- const [hour,minute]=(await from.inputValue()).split(':').map(Number);
- const shifted=hour*60+minute+15;
- await from.fill(`${String(Math.floor(shifted/60)%24).padStart(2,'0')}:${String(shifted%60).padStart(2,'0')}`);
+ const [reminderStartHour,reminderStartMinute]=(await from.inputValue()).split(':').map(Number);
+ const movedReminderStart=reminderStartHour*60+reminderStartMinute+15;
+ await from.fill(`${String(Math.floor(movedReminderStart/60)%24).padStart(2,'0')}:${String(movedReminderStart%60).padStart(2,'0')}`);
  await page.getByRole('button',{name:'Save event',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Book the venue edited',level:1})).toBeVisible();
  await page.reload();await ready(page,true);
