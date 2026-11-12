@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
   "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "head": "c4b126bb3c5dffb208d3943e052d3b44aa7de784",
+  "head": "732de043757580ab10b09914344e1f7670ddc9ef",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...c4b126bb3c5dffb208d3943e052d3b44aa7de784",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...732de043757580ab10b09914344e1f7670ddc9ef",
   "status": "diverged",
-  "aheadBy": 53,
+  "aheadBy": 56,
   "behindBy": 617,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -222,6 +222,18 @@
     {
       "sha": "c4b126bb3c5dffb208d3943e052d3b44aa7de784",
       "subject": "Format the owner-clock conformance imports"
+    },
+    {
+      "sha": "cebf6ec13304a6f0d2eda5d63444ea77e25aba0b",
+      "subject": "Reproduce the stale current-day summary regression"
+    },
+    {
+      "sha": "e9cf6f19e0178bd6e928e0229bdfb71ac5504514",
+      "subject": "Reject summaries that misstate the owner-local report date"
+    },
+    {
+      "sha": "732de043757580ab10b09914344e1f7670ddc9ef",
+      "subject": "Check supported current-day declarations and model their persistence guard"
     }
   ]
 }
