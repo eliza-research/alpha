@@ -2035,7 +2035,9 @@
           <h1 class="serif" role="{{maps.pc.nativeTitleRole}}" tabIndex="{{maps.pc.nativeTitleTabIndex}}" aria-label="{{maps.pc.nativeTitleLabel}}" onClick="{{maps.pc.nativeEdit}}" onKeyDown="{{maps.pc.nativeEditKey}}" style="margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.01em">{{maps.pc.name}}</h1>
           <div style="font-size: 14px; color: var(--mut); margin-top: 6px">{{maps.pc.meta}}</div>
           <sc-if value="{{maps.pc.hasHours}}">
-            <div style="font-size: 14px; margin-top: 4px"><span style="font-weight: 600; {{maps.pc.openCss}}">{{maps.pc.openTxt}}</span><span style="color: var(--mut)"> · {{maps.pc.hoursTxt}}</span></div>
+            <dl aria-label="Opening hours" style="font-size:14px;margin:10px 0 0;line-height:1.45">
+              <sc-for list="{{maps.pc.hoursRows}}" key="{{h.id}}" as="h"><div style="display:grid;grid-template-columns:minmax(7em,.8fr) minmax(0,1.2fr);gap:12px;padding:3px 0"><dt>{{h.day}}</dt><dd style="margin:0;color:var(--mut)">{{h.hours}}</dd></div></sc-for>
+            </dl>
           </sc-if>
         </div>
         <button class="ib" aria-label="Close place" onClick="{{maps.pc.close}}" style="background: var(--s2); margin: -2px -6px 0 0"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.x}}"></path></svg></button>

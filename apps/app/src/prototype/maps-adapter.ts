@@ -238,7 +238,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       // source has them. Phone is shown as text; calling stays deferred with Phone.
       data.pc = {
         name: place.name, meta: place.meta, addr: place.address,
-        hasHours: !!place.hours, openTxt: 'Hours', openCss: '', hoursTxt: place.hours || '',
+        hasHours: !!place.hours, hoursRows: (place.hours || '').split(';').map((text,index)=>{const separator=text.indexOf(':');return {id:String(index),day:separator>0?text.slice(0,separator).trim():'',hours:separator>0?text.slice(separator+1).trim():text.trim()};}).filter(row=>row.hours),
         hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
         canDir: place.canDirections, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
