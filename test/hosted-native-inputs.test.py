@@ -353,7 +353,7 @@ class HostedNativeInputsTest(unittest.TestCase):
 
     def acquire(self, root, **options):
         _, archives = fixture(root, **options)
-        env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
+        env = {'GH_TOKEN': 'inert-fixture-token',
                'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
                'GITHUB_SHA': SOURCE, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2'}
         def committed(args, **kwargs):
@@ -381,7 +381,7 @@ class HostedNativeInputsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root)
-            env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
+            env = {'GH_TOKEN': 'inert-fixture-token',
                    'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
                    'GITHUB_SHA': SOURCE, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2'}
             changed = native.subprocess.CompletedProcess([], 0, b'other committed input pins')
