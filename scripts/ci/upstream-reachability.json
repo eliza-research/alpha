@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "repository": "elizaOS/eliza",
-  "base": "develop",
+  "base": "a4dcc41164e32e3defadb2fe173dde07a0c27d8c",
   "baseCommit": "a4dcc41164e32e3defadb2fe173dde07a0c27d8c",
-  "head": "c0ce429f5b8a49c27e42b1a58467b7d744180982",
+  "head": "03fc4ef124e1858f6ab5e809cc23adb7d3589082",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...c0ce429f5b8a49c27e42b1a58467b7d744180982",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...03fc4ef124e1858f6ab5e809cc23adb7d3589082",
   "status": "diverged",
-  "aheadBy": 40,
+  "aheadBy": 42,
   "behindBy": 615,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -170,6 +170,14 @@
     {
       "sha": "c0ce429f5b8a49c27e42b1a58467b7d744180982",
       "subject": "Keep Calendar cache refreshes out of recent provider changes"
+    },
+    {
+      "sha": "228e3518c74384068fcfdf0f7e22ecd39fcb7064",
+      "subject": "Prune admitted generated directories during workspace verification"
+    },
+    {
+      "sha": "03fc4ef124e1858f6ab5e809cc23adb7d3589082",
+      "subject": "Use one provider edit clock for managed Calendar readback"
     }
   ],
   "pullRequests": []
