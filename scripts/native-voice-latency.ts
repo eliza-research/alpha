@@ -14,8 +14,6 @@
 //   asr-final/request/first-token are stamped natively when the renderer reports them over the
 //   bridge. Streamed speech times audible playback from AudioTrack.getTimestamp
 //   ('audiotrack-timestamp'); 'audiotrack-head-position' is a diagnostic fallback.
-// Earlier alpha-native-voice-timing-v2 exports (no turnId, request or first-token) still parse, as
-// diagnostics only: they cannot show the linked stage chain.
 //
 // The result is audible-playback - last-user-audio, which includes end-of-turn detection,
 // recognition, the reply, synthesis and playback buffering; nothing is subtracted. Stage spans are
@@ -32,10 +30,7 @@
 // whole document rather than becoming diagnostic. Turns that waited for a response that never came
 // (abandoned, no-response) fail the reliability check.
 export const nativeTimingFormat = 'alpha-native-voice-timing-v3';
-export const legacyNativeTimingFormat = 'alpha-native-voice-timing-v2';
-export const nativeTimingFormats = Object.freeze([legacyNativeTimingFormat, nativeTimingFormat]);
 export const marks = Object.freeze(['last-user-audio', 'endpoint', 'asr-final', 'request', 'first-token', 'tts-start', 'tts-ready', 'first-pcm', 'audible-playback']);
-const legacyMarks = Object.freeze(['last-user-audio', 'endpoint', 'asr-final', 'tts-start', 'tts-ready', 'first-pcm', 'audible-playback']);
 /** Stages a passed trial needs before it can be acceptance evidence: one linked turn end to end. */
 export const linkedStages = Object.freeze(['asr-final', 'request', 'first-token']);
 export const audibleClocks = Object.freeze(['audiotrack-timestamp', 'mediaplayer-timestamp']);
@@ -73,14 +68,12 @@ const finite = (value: unknown): value is number => typeof value === 'number' &&
 const label = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0 && value.length <= 120 && !/[\u0000-\u001f]/.test(value);
 
-/** Why a row is unusable, or null. `format` is its document's format (v3 unless given). */
-export function rejection(value: unknown, format: string = nativeTimingFormat) {
-  const allowed = format === legacyNativeTimingFormat ? legacyMarks : format === nativeTimingFormat ? marks : null;
-  if (!allowed) return 'format';
+/** Why a row is unusable, or null. */
+export function rejection(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return 'not an object';
   const row = value as Partial<TimingRow>;
   if (!label(row.id)) return 'id';
-  if (format === nativeTimingFormat ? !turnId.test(row.turnId ?? '') : row.turnId !== undefined) return 'turn id';
+  if (!turnId.test(row.turnId ?? '')) return 'turn id';
   if (!Object.hasOwn(pipelines, row.pipeline ?? '')) return 'pipeline';
   if (row.clock !== 'native-monotonic-ms' || !captureClocks.includes(row.captureClock ?? '')) return 'clock';
   if (typeof row.cold !== 'boolean' || !outcomes.includes(row.outcome ?? '')) return 'cold/outcome';
@@ -90,7 +83,7 @@ export function rejection(value: unknown, format: string = nativeTimingFormat) {
   if (!['arm64-v8a', 'x86_64'].includes(id.abi) || !['device', 'emulator'].includes(id.environment)) return 'identity abi/environment';
   if (row.thermal !== undefined && !thermalStates.includes(row.thermal)) return 'thermal';
   if (!row.marks || typeof row.marks !== 'object' || Array.isArray(row.marks)) return 'marks';
-  if (Object.entries(row.marks).some(([key, value]) => !allowed.includes(key) || !finite(value))) return 'marks';
+  if (Object.entries(row.marks).some(([key, value]) => !marks.includes(key) || !finite(value))) return 'marks';
   if (!finite(row.marks['last-user-audio']) || !finite(row.marks.endpoint)) return 'turn marks';
   const rowMarks = row.marks;
   if (row.outcome === 'passed' && (requiredForPass.some(key => rowMarks[key] === undefined) || !label(row.audibleClock))) return 'incomplete pass';
@@ -147,11 +140,11 @@ export function aggregateNativeVoice(documents: NativeDocument[], required: { wa
   const rejected: Record<string, number> = {};
   let invalid = 0;
   for (const document of documents) {
-    if (!nativeTimingFormats.some(format => format === document?.format) || !Array.isArray(document.records)) throw new Error(`Not an ${nativeTimingFormats.join(' or ')} export`);
+    if (document?.format !== nativeTimingFormat || !Array.isArray(document.records)) throw new Error(`Not an ${nativeTimingFormat} export`);
     const harness = document.harness !== undefined;
     for (const original of document.records) {
       const base = harness && original && typeof original === 'object' ? { ...original, pipeline: 'harness-no-inference' } : original;
-      const reason = rejection(base, document.format);
+      const reason = rejection(base);
       if (reason) { invalid++; rejected[reason] = (rejected[reason] ?? 0) + 1; continue; }
       const row: ValidatedRow = { ...(base as TimingRow), format: document.format };
       // IDs identify trials globally. Conflicting exports cannot quietly keep an earlier success.

@@ -15,7 +15,7 @@
 //   speechToAudioIncludingReview  first-audio - recording-end
 // These renderer measures are legacy stage sums, one per boundary in `boundaries`, not end-to-end
 // voice-assistant latency, and are reported as diagnostics only. Only native audio-clock exports
-// (alpha-native-voice-timing-v3, or diagnostic-only v2, from the Android collector, scripts/native-voice-latency.ts) can
+// (alpha-native-voice-timing-v3, from the Android collector, scripts/native-voice-latency.ts) can
 // satisfy the approved issue #395 boundary: last captured speech sample to first audible response
 // sample, at least 50 successful simple-query trials (20 warm and 5 cold at least) per
 // source/engine/model/device/ABI/network cohort, p50/p95 per cold and warm, six-second upper budget.
@@ -24,16 +24,15 @@
 // Records written by an app entrypoint name it: `entry` is 'conversation' (the voice
 // conversation) or 'notes' (the Notes recorder, whose send is the user's Save and which has no
 // reply), and conversation records name the send `policy` ('auto-send' or 'review'). The
-// summary counts each entry; --entry keeps only that entry's records. Records without an entry
-// (older exports) stay valid and are counted as 'unspecified'.
+// summary counts each entry; --entry keeps only that entry's records.
 // Exit 0: native device samples are sufficient and within the latency budget (not device signoff).
 // Exit 2: native acceptance evidence insufficient (including emulator-only or harness-only input).
 // Exit 3: sufficient samples fail the budget/reliability check.
-// Exit 1: bad input. Legacy exports remain readable.
+// Exit 1: bad input.
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { VoiceTimingMark, VoiceTimingRecord } from '../.eliza/client-features/packages/voice/src/voice-turn-timing.ts';
-import { aggregateNativeVoice, nativeTimingFormats } from './native-voice-latency.ts';
+import { aggregateNativeVoice, nativeTimingFormat } from './native-voice-latency.ts';
 
 const order: readonly VoiceTimingMark[] = ['recording-end', 'transcript-ready', 'send', 'first-token', 'final-reply', 'first-audio'];
 const routes = new Set(['on-device', 'browser', 'local-agent', 'eliza-cloud', 'paired-agent', 'development-agent', 'manual']);
@@ -43,7 +42,7 @@ export const boundaries = Object.freeze({ excludingReview: 'recording-end to tra
 /** The sample counts the measurement plan requires. Options can raise them, never lower them. */
 export const minimumSamples = Object.freeze({ warm: 20, cold: 5 });
 type Entry = (typeof voiceEntries)[number];
-type TimingRecord = Omit<VoiceTimingRecord, 'entry'> & {entry?: Entry};
+type TimingRecord = Omit<VoiceTimingRecord, 'entry'> & {entry: Entry};
 type TimingDocument = Parameters<typeof aggregateNativeVoice>[0][number];
 interface RequestedSamples { warm?: number; cold?: number; entry?: Entry | null }
 interface AggregateOptions extends Required<RequestedSamples> { files: string[]; out: string | null }
@@ -69,7 +68,7 @@ function validRecord(value: unknown): value is TimingRecord {
   const row = value as TimingRecord;
   if ( row.version !== 1 || typeof row.id !== 'string' || !/^[0-9a-f-]{36}$/.test(row.id)) return false;
   if (typeof row.cold !== 'boolean' || !routes.has(row.route) || !Number.isFinite(row.recordedAt) || !row.marks || typeof row.marks !== 'object') return false;
-  if ((row.entry !== undefined && !isEntry(row.entry)) || (row.policy !== undefined && row.policy !== 'auto-send' && row.policy !== 'review')) return false;
+  if (!isEntry(row.entry) || (row.policy !== undefined && row.policy !== 'auto-send' && row.policy !== 'review')) return false;
   const entries = Object.entries(row.marks);
   if (entries.some(([key, at]) => !order.some(mark => mark === key) || typeof at !== 'number' || !Number.isFinite(at) || at < 0)) return false;
   // Marks must be monotonic in their defined order.
@@ -113,8 +112,8 @@ export const complete = (row: TimingRecord) => !row.outcome && order.slice(0, 5)
 
 export function aggregate(exports: TimingDocument[], requested: RequestedSamples = minimumSamples) {
   const required = { warm: Math.max(minimumSamples.warm, requested.warm ?? 0), cold: Math.max(minimumSamples.cold, requested.cold ?? 0) };
-  const native = aggregateNativeVoice(exports.filter(document => nativeTimingFormats.some(format => format === document?.format)), required);
-  const collected = collectRecords(exports.filter(document => !nativeTimingFormats.some(format => format === document?.format))), invalid = collected.invalid;
+  const native = aggregateNativeVoice(exports.filter(document => document?.format === nativeTimingFormat), required);
+  const collected = collectRecords(exports.filter(document => document?.format !== nativeTimingFormat)), invalid = collected.invalid;
   if (requested.entry != null && !isEntry(requested.entry)) throw new Error('Unknown entry ' + requested.entry);
   const records = requested.entry ? collected.records.filter(row => row.entry === requested.entry) : collected.records;
   interface EntryRecords {
@@ -126,7 +125,7 @@ export function aggregate(exports: TimingDocument[], requested: RequestedSamples
   }
   const bySource: Record<string, EntryRecords> = {};
   for (const row of collected.records) {
-    const name = row.entry ?? 'unspecified', item = bySource[name] ??= { records: 0, complete: 0, abandoned: 0, policies: {}, recognition: [] };
+    const name = row.entry, item = bySource[name] ??= { records: 0, complete: 0, abandoned: 0, policies: {}, recognition: [] };
     item.records++; if (complete(row)) item.complete++; if (row.outcome === 'abandoned') item.abandoned++;
     if (row.policy) item.policies[row.policy] = (item.policies[row.policy] ?? 0) + 1;
     item.recognition.push(phases(row).recognition);

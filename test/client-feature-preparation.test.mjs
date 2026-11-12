@@ -341,27 +341,18 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
 
 });
 
-test('retired client patch files and receipt slots cannot replace an admitted raw-source cache',()=>fixture(({root,vendor,commit})=>{
+test('a receipt with an unknown slot cannot replace an admitted raw-source cache',()=>fixture(({root,vendor})=>{
  const file='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
  const before='export const value = 1;\n';
  const projected=prepareClientFeatures({root,projectVoice:false});
  const stampFile=path.join(projected,'.source.json'),stamp=fs.readFileSync(stampFile);
  const unchanged=()=>{
-  assert.deepEqual(fs.readFileSync(stampFile),stamp,'retired slots preserve the admitted cache');
+  assert.deepEqual(fs.readFileSync(stampFile),stamp,'a rebuilt receipt is the admitted one');
   assert.equal(fs.readFileSync(path.join(projected,file),'utf8'),before);
  };
  assert.equal(fs.readFileSync(path.join(vendor,file),'utf8'),before);
- const patchRoot=path.join(root,'patches/eliza');fs.mkdirSync(patchRoot,{recursive:true});
- for(const prefix of ['managed-google-body-limit-client','app-update-resume-client']){
-  for(const suffix of ['.patch','-manifest.json']){
-   const retired=path.join(patchRoot,prefix+suffix);
-   fs.writeFileSync(retired,suffix==='.patch'?'unreviewed behavior':JSON.stringify({schema:1,baseCommit:commit,path:file}));
-   for(const check of [false,true]) assert.throws(()=>prepareClientFeatures({root,projectVoice:false,check}),/Retired client patch slot/);
-   unchanged();fs.unlinkSync(retired);
-  }
- }
- for(const key of ['managedGoogleBodyLimitPatch','appUpdateResumePatch','unknownPatch']){
-  const obsolete={...JSON.parse(stamp),[key]:{manifestSha256:'0'.repeat(64)}};
+ {
+  const obsolete={...JSON.parse(stamp),unknownPatch:{manifestSha256:'0'.repeat(64)}};
   fs.writeFileSync(stampFile,JSON.stringify(obsolete));
   assert.throws(()=>prepareClientFeatures({root,projectVoice:false,check:true}),/missing or stale/);
   assert.deepEqual(JSON.parse(fs.readFileSync(stampFile)),obsolete,'check mode never rewrites a stale receipt');
