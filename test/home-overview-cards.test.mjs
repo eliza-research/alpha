@@ -15,16 +15,47 @@ const run=script=>JSON.parse(execFileSync(process.execPath,['--import=tsx','--in
 const bundled=await build({stdin:{contents:`export {renderToStaticMarkup} from 'react-dom/server';
 export * as c from ${JSON.stringify(resolve(root,'apps/app/src/prototype/home-overview-cards.ts'))};
 export * as h from ${JSON.stringify(resolve(root,'apps/app/src/prototype/home-cards.ts'))};
+export {HomeStartupCache} from ${JSON.stringify(resolve(root,'apps/app/src/runtime/home-startup-cache.ts'))};
 export * as l from ${JSON.stringify(resolve(root,'apps/app/src/prototype/locale-time.ts'))};`,resolveDir:root,loader:'js'},
   bundle:true,format:'esm',platform:'node',jsx:'automatic',write:false,logLevel:'silent',
   banner:{js:"import {createRequire as __createRequire} from 'node:module';const require=__createRequire(import.meta.url);"}});
 const directory=mkdtempSync(resolve(tmpdir(),'home-overview-cards-'));
 writeFileSync(resolve(directory,'cards.mjs'),bundled.outputFiles[0].text);
-const {renderToStaticMarkup,c,h,l}=await import(resolve(directory,'cards.mjs'));
+const {renderToStaticMarkup,c,h,l,HomeStartupCache}=await import(resolve(directory,'cards.mjs'));
 // Times and dates in these expectations are en-US, as in test/home-cards.test.mjs.
 l.setLocalePreferences({locale:'en-US'});
 rmSync(directory,{recursive:true,force:true});
 const html=element=>element?renderToStaticMarkup(element):null;
+test('saved Home cards appear on the first render before connection or provider reads finish', async () => {
+  const data=new Map([['alpha.connection.cloud-service.v1','production']]);
+  const storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value),removeItem:key=>data.delete(key)};
+  const owner={environment:'production',userId:'owner-a',organizationId:'organization-a',credentialId:'credential-a'};
+  const scope=JSON.stringify(['http://localhost','owner-a','agent-a']);
+  let context={owner,scope,restoring:false,allowed:true};
+  const now=()=>new Date(2026,10,12,10);
+  const cache=new HomeStartupCache(storage,()=>context,now);
+  cache.remember({homeCalendarHasEvent:true,homeCalendarTitle:'Saved meeting',homeInboxHasRows:true,
+    homeInboxRows:[{subject:'Saved mail',from:'Sender'}],homeWorkflowHasRows:true,
+    homeWorkflowRows:[{name:'Morning summary',status:''}],providerKey:'must never be cached'});
+  await Promise.resolve();
+  context={owner:null,scope:null,restoring:true,allowed:true};
+  const restored=new HomeStartupCache(storage,()=>context,now);
+  class Home {renderVals(){return {homeCalendarResolved:false,homeInboxResolved:false,homeWorkflowResolved:false};}}
+  c.installHomeOverviewCards(Home,restored);
+  const first=new Home().renderVals();
+  assert.match(html(first.homeAgendaCard),/Saved meeting/);
+  assert.match(html(first.homeAttentionCard),/Saved mail/);
+  assert.equal(first.homeShowWorkflow,true);
+  assert.ok(!data.get('alpha.home.overview.v1').includes('providerKey'));
+  context={owner:{...owner,userId:'owner-b'},scope,restoring:false,allowed:true};
+  assert.equal(restored.read(),null,'a different account cannot display the prior cards');
+  context={owner,scope:'different-agent',restoring:false,allowed:true};
+  assert.equal(restored.read(),null,'a different agent cannot display the prior cards');
+  context={owner,scope,restoring:false,allowed:false};
+  assert.equal(restored.read(),null,'sign-out immediately hides the preview');
+  context={owner,scope,restoring:false,allowed:true};
+  assert.equal(new HomeStartupCache(storage,()=>context,()=>new Date(2026,10,13,10)).read(),null,'a new day does not reuse old agenda labels');
+});
 test('Home reveals its saved widget row together and keeps it visible during refresh', () => {
   let values={homeCalendarResolved:false,homeInboxResolved:false,homeWorkflowResolved:false,
     homeCalendarHasEvent:true,homeCalendarTitle:'Meeting',homeInboxHasRows:true,

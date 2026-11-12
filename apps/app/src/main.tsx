@@ -73,6 +73,7 @@ import { installNotesTrashAdapter } from './prototype/notes-trash-adapter';
 import { installNotesFoldersAdapter } from './prototype/notes-folders-adapter';
 import { installInboxCloudAdapter, inboxAttention, subscribeInboxAttention } from './prototype/inbox-cloud-adapter';
 import { installHomeOverviewCards } from './prototype/home-overview-cards';
+import { HomeStartupCache } from './runtime/home-startup-cache';
 import { installUseInEmailReview } from './prototype/use-in-email-review';
 import { latestRetainedDigest, subscribeRetainedDigest } from './runtime/hosted-digests';
 import { installHomeShell } from './prototype/home-shell';
@@ -178,7 +179,19 @@ installReplyAnnouncer(Component);
 installSystemShade(Component,{native:isAndroid});
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeCardVisibility(Component, () => googleConnectionController.open());
-installHomeOverviewCards(Component);
+const homeStartupCache = !isAndroid ? new HomeStartupCache({
+  getItem: key => localStorage.getItem(key),
+  setItem: (key, value) => localStorage.setItem(key, value),
+  removeItem: key => localStorage.removeItem(key),
+}, () => {
+  const snapshot = connectionController.getSnapshot(), account = snapshot.cloudAccount, session = snapshot.session;
+  const owner = account?.organizationId && account.credentialId
+    ? {environment: account.environment, userId: account.userId, organizationId: account.organizationId, credentialId: account.credentialId} : null;
+  return {owner, scope: session ? JSON.stringify([session.origin, session.ownerId, session.agentId]) : null,
+    restoring: snapshot.startupResolved === false || snapshot.cloudServiceRestoring === true,
+    allowed: snapshot.residentSavedCredential !== false && snapshot.errorKind !== 'sign-in-rejected' && !snapshot.signOutNotice};
+}) : undefined;
+installHomeOverviewCards(Component, homeStartupCache);
 installContentLinks(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
 // Home and its app grid from the shared mobile shell, and Alpha's Apps drawer. Apps reads

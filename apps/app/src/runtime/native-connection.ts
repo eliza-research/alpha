@@ -1,4 +1,5 @@
 import {nativeGoogleWorkspaceReturnAvailable,type GoogleWorkspaceBinding,type GoogleWorkspaceReturnPort} from './google-workspace-return';
+import {clearHomeStartupCache} from './home-startup-cache';
 import {cloudStorageSlot} from './cloud-deployment.generated.ts';
 import {browserCloudResidentEnabled,browserCloudManagedServiceAllowed} from './browser-cloud-resident';
 import {managedServiceRequest,mapsRequestIdentity} from './managed-service-routes';
@@ -220,14 +221,14 @@ export const cloudCredentialStore:CloudCredentialStore={
     if(value&&!value.credentialId){value.credentialId=crypto.randomUUID();await secureConnectionStore.write(`cloud:${environment}`,value);}
     return value;
   }),
-  write:(environment,value,signal)=>serial(async()=>{
+  write:(environment,value,signal)=>{clearHomeStartupCache();return serial(async()=>{
     signal.throwIfAborted();
     await secureConnectionStore.write(`cloud:${environment}`,{...value,credentialId:crypto.randomUUID()});
     if(signal.aborted){await secureConnectionStore.remove(`cloud:${environment}`);signal.throwIfAborted();}
-  }),
+  });},
   // Native credential CAS remains prohibited; only the private browser host admits this capability.
-  ...(browserCloudHost?{clearIfCurrent:(environment:CloudEnvironment,expected:CloudCredential|null)=>serial(()=>clearBrowserCloudCredentialIfCurrent(environment,expected))}:{}),
-  clear:environment=>serial(()=>secureConnectionStore.remove(`cloud:${environment}`)),
+  ...(browserCloudHost?{clearIfCurrent:(environment:CloudEnvironment,expected:CloudCredential|null)=>{clearHomeStartupCache();return serial(()=>clearBrowserCloudCredentialIfCurrent(environment,expected));}}:{}),
+  clear:environment=>{clearHomeStartupCache();return serial(()=>secureConnectionStore.remove(`cloud:${environment}`));},
 };
 /**
  * Forced sign-out of a build that cannot use Eliza Cloud: removes the Cloud key an earlier build

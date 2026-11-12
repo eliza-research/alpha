@@ -3854,5 +3854,31 @@
       "Two selected archived notes and one unselected note. Each recorded application receipt represents one complete note action. The recording claim and audio store are checked separately by the SDK CanonicalTrashErase model.",
       "A failed or lost response stops the selection without replay. The model does not resolve an unknown committed effect. Progress assumes stable owner, no intervening writes, and success for each admitted action."
     ]
+  },
+  {
+    "path": "specs/quint/application/HomeStartupCache.qnt",
+    "module": "HomeStartupCache",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "immediateRestore",
+      "providerPendingKeepsSavedRow",
+      "accountChangeHides",
+      "agentChangeHides",
+      "signOutHides",
+      "tomorrowHidesOldLabels",
+      "pendingWriteCannotUndoClear"
+    ],
+    "sources": [
+      "apps/app/src/runtime/home-startup-cache.ts",
+      "apps/app/src/prototype/home-overview-cards.ts",
+      "apps/app/src/runtime/native-connection.ts",
+      "apps/app/src/main.tsx"
+    ],
+    "abstractions": [
+      "Browser-only read-only Home projection, two accounts and agents, one day boundary and one pending write. Credential changes invalidate pending writes.",
+      "Existing authenticated source owners and native secure caches still authorize all data and actions. Browser first-paint timing needs separate live inspection."
+    ]
   }
 ]

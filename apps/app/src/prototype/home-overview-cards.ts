@@ -1,5 +1,6 @@
 import {createElement, type ReactElement} from 'react';
 import {OverviewAgendaCard, OverviewAttentionCard, OverviewBriefCard} from '../../../../.eliza/client-features/packages/ui/src/overview/OverviewCards.tsx';
+import type {HomeStartupCache} from '../runtime/home-startup-cache';
 type Bag = Record<string, any>;
 
 const flag = (value: unknown) => (value === true ? 'true' : 'false');
@@ -89,11 +90,23 @@ export function homeBriefCard(out: Bag): ReactElement | null {
  * the Home adapters computed. Install outermost among Home adapters (after the calendar, agent
  * calendar, Inbox and digest bindings) so the cards show their final values. It reads and runs nothing.
  */
-export function installHomeOverviewCards(Component: any) {
+export function installHomeOverviewCards(Component: any, cache?: HomeStartupCache) {
   const p = Component.prototype, render = p.renderVals;
   p.renderVals = function () {
-    const out = render.call(this);
-    const ready = out.homeCalendarResolved !== false && out.homeInboxResolved !== false && out.homeWorkflowResolved !== false;
+    let out = render.call(this);
+    let ready = out.homeCalendarResolved !== false && out.homeInboxResolved !== false && out.homeWorkflowResolved !== false;
+    if (ready) cache?.remember(out);
+    else {
+      const saved = cache?.read();
+      if (saved) {
+        out = {...out, ...saved, homeCalendarStale: true,
+          goCalendar: () => this.openView('calendar', {calendarAuthority:'canonical'}),
+          goTriage: () => this.openView('inbox', {acct:'all',open:null,q:null}),
+          goFlows: () => this.openView('workflows'),
+          goBrief: () => this.openView('workflows')};
+        ready = true;
+      }
+    }
     const agenda = ready ? homeAgendaCard(out) : null, attention = ready ? homeAttentionCard(out) : null, brief = ready ? homeBriefCard(out) : null;
     const showWorkflow = ready && out.homeShowWorkflows !== false && out.homeWorkflowHasRows === true && Array.isArray(out.homeWorkflowRows) && out.homeWorkflowRows.length > 0;
     return {...out, homeAgendaCard: agenda, homeAttentionCard: attention, homeBriefCard: brief, homeShowWorkflow: showWorkflow,
