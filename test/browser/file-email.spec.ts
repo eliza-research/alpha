@@ -93,3 +93,30 @@ test('Files before Inbox asks to open Inbox once when a Gmail account was chosen
  await expect(dialog(page).getByRole('checkbox')).toBeDisabled();
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
 });
+
+test('finishing the selected-file text read preserves its open attachment review',async({page})=>{
+ await setup(page,false);
+ await expect.poll(()=>page.evaluate(async()=>{const {VIEWS}=await import('/src/prototype/model.js');return VIEWS.inbox.fileEmailTarget().ready;})).toBe(true);
+ await page.evaluate(async()=>{
+  const {BrowserDaily}=await import('/src/browser/daily.ts');
+  const read=BrowserDaily.prototype.readSelected,fixture=(window as any).fileEmail;
+  BrowserDaily.prototype.readSelected=async function(input){
+   const result=await read.call(this,input);
+   await new Promise<void>(resolve=>fixture.releaseRead=resolve);
+   fixture.readFinished=true;
+   return result;
+  };
+  fixture.shell.openView('files',{});
+ });
+ await page.getByRole('button',{name:'All files',exact:true}).click();
+ await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>typeof(window as any).fileEmail.releaseRead)).toBe('function');
+ await retainedEmailSource(page,'files');
+ await expect(dialog(page)).toContainText('selected.txt · text/plain · 17 bytes');
+ await page.evaluate(()=>(window as any).fileEmail.releaseRead());
+ await expect.poll(()=>page.evaluate(()=>(window as any).fileEmail.readFinished)).toBe(true);
+ await dialog(page).getByRole('checkbox',{name:'Attach this file'}).check();
+ await dialog(page).getByRole('button',{name:'Insert attachment into draft'}).click();
+ await expect(page.getByRole('button',{name:'Remove selected.txt',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
+});

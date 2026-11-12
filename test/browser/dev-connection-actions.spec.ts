@@ -38,7 +38,7 @@ for(const scenario of ['changed move','changed Trash','unchanged move'])test(`Fi
  await page.getByRole('button',{name:'Files',exact:true}).click();
  await page.getByRole('button',{name:'Type',exact:true}).click();
  const input=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
- await input.fill('Review my Files action');await input.press('Enter');
+ await sendReviewMessage(page,input,'Review my Files action');
  const review=page.getByText(trash?'Move 1 item to Trash':'Move 1 item',{exact:true});await expect(review).toBeVisible();
  if(scenario!=='unchanged move')await page.evaluate(async()=>{
   const {registerPlugin}=await import('/src/platform-plugins.ts');const files=registerPlugin<any>('AlphaFiles');

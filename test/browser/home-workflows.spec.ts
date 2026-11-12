@@ -41,7 +41,7 @@ test('Home retains the unified snapshot and a new list visit refreshes changed n
  await back(page);await expect(tile(page)).toHaveCount(0);await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(workflowCard(page,'Morning update')).toContainText('Paused');
 });
 test('unified metadata loading and failure offer explicit refresh without running anything',async({page})=>{
- await setup(page);await connect(page);await expect.poll(()=>page.evaluate(()=>(window as any).homeWorkflowFixture.listCalls)).toBe(1);
+ await setup(page);await connect(page);await expect.poll(()=>metadataReads(page)).toBe(1);
  await page.evaluate(()=>{const f=(window as any).homeWorkflowFixture;f.hold=true;f.error=true;});await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Refreshing automations…'})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeWorkflowFixture.release)).toBe('function');await page.evaluate(()=>(window as any).homeWorkflowFixture.release());await expect(page.getByRole('alert').filter({hasText:'Automations could not refresh.'})).toContainText('Automations could not refresh. Retry to check the current records.');
  await page.evaluate(()=>{const f=(window as any).homeWorkflowFixture;f.hold=false;f.error=false;f.rows=[{id:'ready',name:'Recovered routine',active:true,description:'',versionId:'v1',steps:[]}];});

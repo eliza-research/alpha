@@ -117,6 +117,9 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       }
       if (st.open !== marker || !current) return data;
       const selected = current;
+      // Loading text updates preview fields without replacing the selected file.
+      const sameSelection=()=>current?.result===selected.result
+        &&current?.epoch===selected.epoch&&current?.pdf===selected.pdf;
       const name = selected.result.name || 'Selected document';
       const mime = selected.result.mimeType || 'application/octet-stream';
       const uri = selected.result.uri;
@@ -125,13 +128,13 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       const forget = () => { clear(true); api.set({ open: null }); };
       const ask=()=>{
         closeQuestion?.();
-        closeQuestion=reviewContentQuestion({name:selected.pdf?name+' · page '+(selected.pdf.page+1):name,text:selected.text??'',current:()=>current===selected&&api.get(module).open===marker&&!document.hidden,validate:text=>!sensitiveReadingText(text),compose:(draft,source)=>api.composeContentQuestion(draft,source),...(selected.result.selectionId&&['text/plain','application/pdf','image/png','image/jpeg','image/webp'].includes(mime)?{source:async():Promise<Source>=>{const file=await sourceFiles.readSelected({selectionId:selected.result.selectionId!}).catch(error=>{throw error?.code==='too-large'?new SourceUnavailableError('This file is too large to link as a source. Turn off the source link to ask without one.'):error;}),checked=await reviewMailAttachment(file);if(current!==selected||checked.sha256!==file.sha256||checked.size!==file.size||file.name!==selected.result.name||file.mimeType!==mime||mime==='text/plain'&&selected.text!==undefined&&checked.text?.replace(/^\uFEFF/,'')!==selected.text)throw Error('Source changed');const reference=file.sourceReferenceVersion===1?(await sourceFiles.retainSourceReference({selectionId:selected.result.selectionId!,sha256:checked.sha256})).reference:undefined;if(current!==selected)throw Error('Selection changed');return {version:1,name:file.name,mimeType:file.mimeType,sha256:checked.sha256,size:checked.size,...(reference?{reference}:{})};}}:{}),...(image||selected.pdf?{image:async(signal:AbortSignal)=>(await fetch(image||selected.pdf!.image,{signal})).blob()}: {})});
+        closeQuestion=reviewContentQuestion({name:selected.pdf?name+' · page '+(selected.pdf.page+1):name,text:selected.text??'',current:()=>sameSelection()&&api.get(module).open===marker&&!document.hidden,validate:text=>!sensitiveReadingText(text),compose:(draft,source)=>api.composeContentQuestion(draft,source),...(selected.result.selectionId&&['text/plain','application/pdf','image/png','image/jpeg','image/webp'].includes(mime)?{source:async():Promise<Source>=>{const file=await sourceFiles.readSelected({selectionId:selected.result.selectionId!}).catch(error=>{throw error?.code==='too-large'?new SourceUnavailableError('This file is too large to link as a source. Turn off the source link to ask without one.'):error;}),checked=await reviewMailAttachment(file);if(!sameSelection()||checked.sha256!==file.sha256||checked.size!==file.size||file.name!==selected.result.name||file.mimeType!==mime||mime==='text/plain'&&selected.text!==undefined&&checked.text?.replace(/^\uFEFF/,'')!==selected.text)throw Error('Source changed');const reference=file.sourceReferenceVersion===1?(await sourceFiles.retainSourceReference({selectionId:selected.result.selectionId!,sha256:checked.sha256})).reference:undefined;if(!sameSelection())throw Error('Selection changed');return {version:1,name:file.name,mimeType:file.mimeType,sha256:checked.sha256,size:checked.size,...(reference?{reference}:{})};}}:{}),...(image||selected.pdf?{image:async(signal:AbortSignal)=>(await fetch(image||selected.pdf!.image,{signal})).blob()}: {})});
       };
       const email=()=>{
         closeQuestion?.();
         closeQuestion=reviewFileEmail({
           read:async()=>{const file=await sourceFiles.readSelected({selectionId:selected.result.selectionId!});if(file.name!==name||file.mimeType!==mime)throw Error('Selected file changed. Select it again.');return file;},
-          current:()=>current===selected&&api.isActive()&&api.get(module).open===marker&&!renameBusy,
+          current:()=>sameSelection()&&api.isActive()&&api.get(module).open===marker&&!renameBusy,
           target:()=>views.inbox.fileEmailTarget(),insert:(file,token)=>views.inbox.attachReviewedFile(file,token),
           inserted:()=>api.open('inbox'),
         });
@@ -146,7 +149,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
         for (let i = 0; i < rows.length; i += 8) pages.push({ first: true, rest: false, heading: i ? name + ' (continued)' : name, rows: rows.slice(i, i + 8), lines: [], num: '' });
         data.isPreview = true;
         data.pv = {
-          needsReselect:selected.result.status === 'renamed-reselect', reselect:async()=>{try{const result=await DailyApps.perform({action:'files'});if(current===selected&&result.status==='selected')await accept('files',result,api);}catch{api.toast('File picker unavailable. Try again.');}},
+          needsReselect:selected.result.status === 'renamed-reselect', reselect:async()=>{try{const result=await DailyApps.perform({action:'files'});if(sameSelection()&&result.status==='selected')await accept('files',result,api);}catch{api.toast('File picker unavailable. Try again.');}},
           canEmail:typeof views.inbox.fileEmailTarget==='function'&&selected.result.status==='selected'&&['text/plain','application/pdf','image/png','image/jpeg','image/webp'].includes(mime),email,
           name, nativeSelectionId:selected.result.selectionId, base: name, ext: '', canForget:true, forget, meta: mime + ' · selected on this device', d: '',
           isPages: !image, pages: selected.pdf ? [] : pages, isPdf: !!selected.pdf, pdfImage: selected.pdf?.image || '', pdfLabel: selected.pdf ? 'Page ' + (selected.pdf.page+1) + ' of ' + selected.pdf.count : '', pdfPrevious: () => selected.pdf && selected.pdf.page > 0 ? pdfPage(selected.pdf.page-1,api) : undefined, pdfNext: () => selected.pdf && selected.pdf.page+1 < selected.pdf.count ? pdfPage(selected.pdf.page+1,api) : undefined, pdfHasPrevious: !!selected.pdf && selected.pdf.page > 0, pdfHasNext: !!selected.pdf && selected.pdf.page+1 < selected.pdf.count, paper: '#FFFFFF', isPhoto: !!image,

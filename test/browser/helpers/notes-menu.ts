@@ -9,7 +9,7 @@ export async function openRecentlyDeletedNotes(page:Page){
 
 /** Exercise the retained text-file export after the custom share chooser was removed. */
 export async function exportRetainedNote(page: Page) {
- await page.evaluate(() => {
+ await page.evaluate(async () => {
   const root = document.getElementById('root') as any;
   const key = Object.keys(root).find(name => name.startsWith('__reactContainer$'));
   if (!key) throw Error('Phone shell is unavailable');
@@ -17,6 +17,10 @@ export async function exportRetainedNote(page: Page) {
   while (pending.length) {
    const fiber = pending.pop(), shell = fiber?.stateNode;
    if (typeof shell?.renderVals === 'function' && shell.S?.().view === 'notes') {
+    while (shell.renderVals().notes?.documentBusy) {
+     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+     if (shell.S?.().view !== 'notes') throw Error('The selected note was closed');
+    }
     const action = shell.renderVals().notes?.exportText;
     if (typeof action !== 'function') throw Error('Retained note export is unavailable');
     action();
