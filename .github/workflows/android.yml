@@ -138,8 +138,6 @@ jobs:
             artifacts/*.json
             # Written offline by the build beside the APKs it verified (scripts/generate-sbom.ts).
             artifacts/sbom/*.json
-            artifacts/aosp/
-            !artifacts/aosp/**/*.apk
             test-results/
             android/app/build/reports/
             android/voice-host/qualified-voice-host.json

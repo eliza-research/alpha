@@ -45,7 +45,16 @@ test("AOSP staging refuses test-mocks and non-distributable inputs before any st
     const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), "--target", "cuttlefish", "--aosp-source", "absent-source", ...args], { cwd: dir, encoding: "utf8" });
     const flagOn = path.join(dir, "artifacts/test-mocks/launcher-debug.apk");
     zip(flagOn, { "assets/public/build-flags.json": JSON.stringify({ testMocks: true }) });
-    let out = stage(["--apk", flagOn, "--development"]);
+    const raw = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), ...args], { cwd: dir, encoding: "utf8" });
+    let out = raw(["--aosp-source", "absent-source", "--apk", flagOn, "--development"]);
+    assert.notEqual(out.status, 0);
+    assert.match(out.stderr, /Staging requires --target pixel10a or --target cuttlefish/);
+    for (const removed of [["--production"], ["--boot-animation", "x.zip"]]) {
+      out = stage(["--apk", flagOn, ...removed]);
+      assert.notEqual(out.status, 0);
+      assert.match(out.stderr, /Use --target cuttlefish \| --target pixel10a/);
+    }
+    out = stage(["--apk", flagOn, "--development"]);
     assert.notEqual(out.status, 0);
     assert.match(out.stderr, /artifacts\/test-mocks\/ builds are never staged/);
     const copied = path.join(dir, "copied.apk");

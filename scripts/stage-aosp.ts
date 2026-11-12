@@ -160,7 +160,8 @@ export function stagingSystemuiPatches(names: string[]): ReviewedSourcePatch[] {
 /** Every image is built from a tree carrying soong-app-native: Soong installs the APK and its JNI only with it. */
 export function stagingBuildPatches(names: string[]) {
   const applied = ['soong-app-native', ...names];
-  if (new Set(applied).size !== applied.length) throw Error('Duplicate applied build patch');
+  const duplicate = applied.find((name, index) => applied.indexOf(name) !== index);
+  if (duplicate) throw Error(`Duplicate applied build patch: ${duplicate}; soong-app-native is always applied and is not passed`);
   return applied.map(aospBuildPatch);
 }
 
