@@ -68,7 +68,7 @@ test("AOSP staging refuses test-mocks and non-distributable inputs before any st
     const record = row => fs.writeFileSync(path.join(dir, "artifacts/apk-manifest.json"), JSON.stringify({ testMocks: false, results: [{ ...full, ...row }] }));
     const font = "unresolved-font-licence: Denton typeface (assets/denton.woff2) has no recorded embedding licence";
     record({ distributable: false, licenceBlockers: [font], voiceHost: { packaged: true, asr: true, differences: ["changed bytes"], qualified: false } });
-    for (const mode of [["--development"], ["--descriptor", "reviewed.json", "--production"]]) {
+    for (const mode of [["--development"], ["--descriptor", "reviewed.json"]]) {
       out = stage(["--apk", release, ...mode]);
       assert.notEqual(out.status, 0);
       assert.match(out.stderr, /not distributable[\s\S]*bytes differ from the voice-host record/);
@@ -77,14 +77,14 @@ test("AOSP staging refuses test-mocks and non-distributable inputs before any st
     }
     // A release flagged distributable whose recorded facts still hold a blocker is not staged either.
     record({ distributable: true, licenceBlockers: [font], runtimeNotices: false });
-    assert.match(stage(["--apk", release, "--descriptor", "reviewed.json", "--production"]).stderr, /not distributable[\s\S]*notices lack the packaged runtime/);
+    assert.match(stage(["--apk", release, "--descriptor", "reviewed.json"]).stderr, /not distributable[\s\S]*notices lack the packaged runtime/);
     assert.match(stage(["--apk", release, "--development"]).stderr, /notices lack the packaged runtime/);
     // The recorded font item alone does not make staging cite a licence blocker.
     record({ distributable: true, licenceBlockers: [font] });
-    assert.doesNotMatch(stage(["--apk", release, "--descriptor", "reviewed.json", "--production"]).stderr, /unresolved-font-licence|not distributable/);
+    assert.doesNotMatch(stage(["--apk", release, "--descriptor", "reviewed.json"]).stderr, /unresolved-font-licence|not distributable/);
     // A recorded admission does not outlive the committed signer: another certificate is refused in production staging.
     record({ distributable: true, signerSha256: "e".repeat(64) });
-    assert.match(stage(["--apk", release, "--descriptor", "reviewed.json", "--production"]).stderr, /not distributable[\s\S]*does not match android\/release-signer\.json/);
+    assert.match(stage(["--apk", release, "--descriptor", "reviewed.json"]).stderr, /not distributable[\s\S]*does not match android\/release-signer\.json/);
     // A release cannot be staged as a development input by hiding its row: relabelled "debug", recorded for
     // other bytes, or with the manifest pointed elsewhere. Only a debuggable build passes without a release row.
     const onlyDebugBuilds = /--development stages debug builds only/;
@@ -100,13 +100,13 @@ test("AOSP staging refuses test-mocks and non-distributable inputs before any st
     // Production staging still needs a manifest row: an APK verify-apks never recorded is refused.
     fs.rmSync(path.join(dir, "artifacts/apk-manifest.json"));
     assert.match(stage(["--apk", release, "--development"]).stderr, onlyDebugBuilds);
-    assert.match(stage(["--apk", release, "--descriptor", "reviewed.json", "--production"]).stderr, /Production staging requires a release APK that verify-apks recorded as distributable/);
+    assert.match(stage(["--apk", release, "--descriptor", "reviewed.json"]).stderr, /Production staging requires a release APK that verify-apks recorded as distributable/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("AOSP staging refuses --production without a descriptor, with --development, or with a foreign descriptor", () => {
+test("AOSP production staging refuses a missing or foreign descriptor", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-stage-refusals-"));
   try {
     fs.copyFileSync(path.join(root, "app.config.json"), path.join(dir, "app.config.json"));
@@ -114,14 +114,10 @@ test("AOSP staging refuses --production without a descriptor, with --development
     const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), "--target", "cuttlefish", "--aosp-source", "absent-source", ...args], { cwd: dir, encoding: "utf8" });
     // The missing-APK message says which staging was asked for.
     assert.match(stage(["--development"]).stderr, /Development staging: supply --apk PATH to a flag-off debug launcher APK\./);
-    assert.match(stage(["--descriptor", "reviewed.json", "--production"]).stderr, /Production staging: supply --apk PATH to the signed launcher release APK that verify-apks recorded as distributable\./);
-    assert.match(stage([]).stderr, /Production staging: supply --apk PATH/);
-    let out = stage(["--apk", "absent.apk", "--production"]);
+    assert.match(stage(["--descriptor", "reviewed.json"]).stderr, /Production staging: supply --apk PATH to the signed launcher release APK that verify-apks recorded as distributable\./);
+    let out = stage(["--apk", "absent.apk"]);
     assert.notEqual(out.status, 0);
-    assert.match(out.stderr, /--production requires --descriptor FILE/);
-    out = stage(["--apk", "absent.apk", "--descriptor", "reviewed.json", "--production", "--development"]);
-    assert.notEqual(out.status, 0);
-    assert.match(out.stderr, /--production and --development are exclusive/);
+    assert.match(out.stderr, /Production staging requires --descriptor FILE/);
     // A distributable release passes admission; a descriptor for another package or module is then refused.
     fs.mkdirSync(path.join(dir, "artifacts"));
     const release = path.join(dir, "artifacts/launcher-release.apk");
@@ -135,14 +131,14 @@ test("AOSP staging refuses --production without a descriptor, with --development
     const otherChannel = JSON.parse(original);
     otherChannel.results[0].updateChannel = {kind: "other", manifestUrlSha256: "a".repeat(64)};
     fs.writeFileSync(manifestFile, JSON.stringify(otherChannel));
-    out = stage(["--apk", release, "--descriptor", "reviewed.json", "--production"]);
+    out = stage(["--apk", release, "--descriptor", "reviewed.json"]);
     assert.notEqual(out.status, 0);
     assert.match(out.stderr, /Update channel input refused/);
     fs.writeFileSync(manifestFile, original);
     const identity = JSON.parse(fs.readFileSync(path.join(root, "app.config.json"), "utf8"));
     for (const [name, foreign] of [["package", { packageName: "ai.elizaos.app", moduleName: identity.moduleName }], ["module", { packageName: identity.appId, moduleName: "Eliza" }]]) {
       fs.writeFileSync(path.join(dir, "foreign.json"), JSON.stringify({ schemaVersion: 1, apkSha256: sha256, certificateSha256: "d".repeat(64), ...foreign }));
-      out = stage(["--apk", release, "--descriptor", "foreign.json", "--production"]);
+      out = stage(["--apk", release, "--descriptor", "foreign.json"]);
       assert.notEqual(out.status, 0, name);
       assert.match(out.stderr, /Descriptor does not belong to this product: packageName .* must be ai\.alphacompute\.alphaphone and AlphaPhone \(app\.config\.json\)/, name);
     }

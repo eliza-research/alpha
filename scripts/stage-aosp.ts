@@ -172,30 +172,28 @@ const get = (key: string) => {
   return i < 0 ? null : args[i + 1];
 };
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === "--development" || args[i] === "--production") continue;
+  if (args[i] === "--development") continue;
   if (
-    !["--apk", "--output", "--descriptor", "--apk-manifest", "--aosp-source", "--listener-apk", "--listener-descriptor", "--listener-qualification", "--target", "--factory-image", "--applied-systemui-patch", "--applied-build-patch", "--boot-animation"].includes(args[i]) ||
+    !["--apk", "--output", "--descriptor", "--apk-manifest", "--aosp-source", "--listener-apk", "--listener-descriptor", "--listener-qualification", "--target", "--factory-image", "--applied-systemui-patch", "--applied-build-patch"].includes(args[i]) ||
     !args[i + 1] ||
     args[i + 1].startsWith("--")
   )
     throw new Error(
-      "Use --target cuttlefish | --target pixel10a --factory-image FILE (--development | --production), with --aosp-source PATH --apk FILE --output NEW_DIR [--descriptor FILE (required by --production)] [--apk-manifest FILE] [--listener-apk FILE [--listener-descriptor FILE] [--listener-qualification FILE]] [--applied-systemui-patch chip|ops|assist|alpha-protected-power ...] [--applied-build-patch soong-memory|alpha-sense-policy ...] [--boot-animation ZIP (pixel10a, when the composition pins one)]",
+      "Use --target cuttlefish | --target pixel10a --factory-image FILE, with --aosp-source PATH --apk FILE --output NEW_DIR [--development] [--descriptor FILE (required without --development)] [--apk-manifest FILE] [--listener-apk FILE [--listener-descriptor FILE] [--listener-qualification FILE]] [--applied-systemui-patch chip|ops|assist|alpha-protected-power ...] [--applied-build-patch soong-memory|alpha-sense-policy ...]",
     );
   if (args[i] === '--applied-systemui-patch') appliedPatchNames.push(args[i + 1]);
   if (args[i] === '--applied-build-patch') appliedBuildNames.push(args[i + 1]);
   i++;
 }
+// Staging is production staging unless --development is given. Production adds the provisioning
+// overlay (default HOME and Autofill offer). It needs a reviewed descriptor and a distributable
+// release, so it is refused until a signed, PACKAGED, qualified release APK exists.
 const development = args.includes("--development");
-// --production adds the provisioning overlay (default HOME and Autofill offer).
-// It needs a reviewed descriptor and a distributable release, so it is
-// refused until a signed, PACKAGED, qualified release APK exists.
-const production = args.includes("--production");
+const production = !development;
 const source = get('--aosp-source');
 const factory = get('--factory-image');
 const cuttlefish = cuttlefishOptions({target:get('--target'), source, factory});
-const physical = !cuttlefish && pixel10aOptions({target:get('--target'), development, production, source, factory});
-if (get('--boot-animation') && !physical) throw new Error('--boot-animation belongs to --target pixel10a');
-if (production && development) throw new Error("--production and --development are exclusive");
+const physical = !cuttlefish && pixel10aOptions({target:get('--target'), source, factory});
 const listenerApk = get('--listener-apk');
 const listenerDescriptor = get('--listener-descriptor');
 const qualificationFile = get('--listener-qualification');
@@ -228,7 +226,7 @@ if (physicalSource && (production || senseImage) && physicalSource.sourceLockSha
   throw new Error(`Refusing production staging: the verified source lock is not the one pinned in ${PIXEL10A_PRODUCT}.`);
 let descriptor = get("--descriptor");
 if ((production || senseImage) && !descriptor)
-  throw new Error("--production requires --descriptor FILE: an independently reviewed descriptor with pinned hash and signer.");
+  throw new Error("Production staging requires --descriptor FILE: an independently reviewed descriptor with pinned hash and signer.");
 const apk = get("--apk");
 if (!apk)
   throw new Error(development
@@ -252,10 +250,6 @@ if (descriptor) {
 const cameraSource = verifySecureCameraSource(source, undefined, reviewedSourceOverrides({physicalSource, source, appliedPatches}));
 const env = androidEnv();
 if (!descriptor) {
-  if (!development)
-    throw new Error(
-      "Production staging requires an independently reviewed --descriptor with pinned hash and signer.",
-    );
   const signer = signerDigest(apk);
   fs.mkdirSync("artifacts", { recursive: true });
   descriptor = `artifacts/launcher-${hash.slice(0, 12)}.json`;
@@ -390,7 +384,7 @@ if (production || senseActivation) {
 }
 if (cuttlefish) writeCuttlefishNatives({root:process.cwd(), output, apk:stagedLauncher, module:identity.moduleName});
 if (physical) {
-  writePixel10aProduct({root:process.cwd(), output, apk:stagedLauncher, identity, launcher:reviewed, sourceEvidence:physicalSource, production, bootAnimation:get('--boot-animation'), vendorApi, senseActivation});
+  writePixel10aProduct({root:process.cwd(), output, apk:stagedLauncher, identity, launcher:reviewed, sourceEvidence:physicalSource, production, vendorApi, senseActivation});
 }
 if (fs.existsSync(destination)) throw Error('Output appeared during staging: ' + destination);
 fs.renameSync(output, destination);

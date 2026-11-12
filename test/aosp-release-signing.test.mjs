@@ -138,24 +138,21 @@ test("a complete copy of Alpha's descriptors admits Pixel 10a production staging
   assert.match(pixel10aProductProblems(temporary(t, "alpha-empty-")).join("\n"), /pixel10a-product\.json is missing/);
 });
 
-test("Pixel 10a staging options: development or production, never both, always with exact source inputs", () => {
+test("Pixel 10a staging options: always with exact source inputs", () => {
   const base = { target: "pixel10a", source: "/source", factory: "/factory" };
-  assert.equal(pixel10aOptions({ ...base, development: true }), true);
-  assert.equal(pixel10aOptions({ ...base, production: true }), true);
-  assert.throws(() => pixel10aOptions({ ...base, development: true, production: true }), /exclusive/);
-  assert.throws(() => pixel10aOptions(base), /--development or --production/);
-  assert.throws(() => pixel10aOptions({ ...base, production: true, factory: null }), /--aosp-source and --factory-image/);
-  assert.throws(() => pixel10aOptions({ ...base, development: true, source: null }), /--aosp-source and --factory-image/);
+  assert.equal(pixel10aOptions(base), true);
+  assert.throws(() => pixel10aOptions({ ...base, factory: null }), /--aosp-source and --factory-image/);
+  assert.throws(() => pixel10aOptions({ ...base, source: null }), /--aosp-source and --factory-image/);
   for (const target of [null, "stallion"])
-    assert.throws(() => pixel10aOptions({ ...base, target, development: true }), /requires --target pixel10a or --target cuttlefish/);
+    assert.throws(() => pixel10aOptions({ ...base, target }), /requires --target pixel10a or --target cuttlefish/);
 });
 
-test("stage-aosp --target pixel10a --production refuses a missing trust identity before reading source or APK", t => {
+test("production stage-aosp --target pixel10a refuses a missing trust identity before reading source or APK", t => {
   const repo = completeRoot(t, keyDirectory(t));
   const product = JSON.parse(fs.readFileSync(path.join(repo.dir, PIXEL10A_PRODUCT), "utf8"));
   product.signer.platformCertificateSha256 = "UNSET";
   repo.write(PIXEL10A_PRODUCT, product);
-  const out = spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), "--target", "pixel10a", "--production", "--descriptor", "reviewed.json",
+  const out = spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), "--target", "pixel10a", "--descriptor", "reviewed.json",
     "--apk", "absent.apk", "--aosp-source", "/absent/source", "--factory-image", "/absent/factory.zip"], { cwd: repo.dir, encoding: "utf8" });
   assert.notEqual(out.status, 0);
   assert.match(out.stderr, /Refusing production staging: the Pixel 10a production product \(android\/aosp\/pixel10a-product\.json\) is incomplete\.[\s\S]*platformCertificateSha256/);
