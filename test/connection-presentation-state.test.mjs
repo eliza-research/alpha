@@ -916,6 +916,34 @@ function providerSwitchFixture(){
  vm.runInContext(providerSwitchSource,context);
  return {context,events,controller:context.providerController};
 }
+test('the provider sheet stays open until the replacement agent is ready',async()=>{
+ const f=providerSwitchFixture();let finish;
+ f.context.connectResident=()=>new Promise(resolve=>{finish=resolve;});
+ const pending=f.controller.selectCloudProvider();
+ while(!finish)await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(f.context.state.providerStatus.mode,'cloud');
+ assert.equal(f.context.state.open,true,'a committed provider choice must not present the app as ready');
+ finish();await pending;
+ assert.equal(f.context.state.open,false);
+});
+test('a replacement agent failure keeps the confirmed provider choice open for recovery',async()=>{
+ const f=providerSwitchFixture();
+ f.context.localProviderStatus=async()=>f.context.state.providerStatus;
+ f.context.connectResident=async()=>{throw Error('Agent is not ready');};
+ await assert.rejects(f.controller.selectCloudProvider(),/Agent is not ready/);
+ assert.equal(f.context.state.providerStatus.mode,'cloud');
+ assert.equal(f.context.state.open,true);
+ assert.equal(f.context.state.purpose,'provider');
+ assert.equal(f.context.state.providerStatus.keys.text.configured,true);
+});
+test('a provider reconnect does not dismiss an account or binding error',async()=>{
+ const f=providerSwitchFixture();
+ f.context.connectResident=async()=>{f.context.state.error='Cloud binding could not be confirmed';};
+ await f.controller.selectCloudProvider();
+ assert.equal(f.context.state.open,true);
+ assert.equal(f.context.state.purpose,'provider');
+ assert.equal(f.context.state.error,'Cloud binding could not be confirmed');
+});
 test('a provider switch during a streaming reply leaves the reply running; once it settles the switch works as before',async()=>{
  const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking key…','check key','restart agent']],
   selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud…','select Cloud with saved keys retained','restart agent']]};

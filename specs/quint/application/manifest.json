@@ -3390,7 +3390,8 @@
       "settingsAndStartupShareAccount",
       "switchedOwnerCannotConfirm",
       "dismissPreservesData",
-      "modeAndSignOutPreserveKeys"
+      "modeAndSignOutPreserveKeys",
+      "selectionKeepsProviderSheetOpen"
     ],
     "sources": [
       "apps/app/src/runtime/connection-ui.tsx",

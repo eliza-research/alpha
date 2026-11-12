@@ -28,4 +28,7 @@ module AccountSheet {
     .expect(s.removed == Set() and safety)
   run modeAndSignOutPreserveKeys = init.then(show).then(switchMode).then(askSignOut)
     .then(confirm).expect(s.removed == Set(0) and safety)
+  run selectionKeepsProviderSheetOpen = init.then(show).then(provider).then(switchMode)
+    .expect(s.open and s.section == "provider" and safety)
+    .then(close).expect(not(s.open) and safety)
 }
