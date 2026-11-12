@@ -1,3 +1,4 @@
+import type {ConversationMessageSearchResult} from "../../../../.eliza/client-features/packages/ui/src/utils/chat-search-types";
 import { isPreparedViewNavigationRequest } from './prepared-view-navigation.ts';
 import { parseViewInteractionClientId } from "../../../../.eliza/client-features/packages/core/src/views/view-interact-protocol.ts";
 import type {ChatChannel} from './alpha-client';
@@ -240,6 +241,14 @@ export class RemoteProtocol {
     if (!Array.isArray(value.messages)) throw new RemoteProtocolError("invalid_response");
     return { messages: value.messages.map(object), ...(typeof value.hasMore === "boolean" ? { hasMore: value.hasMore } : {}) };
   }
+  async searchMessages(query: string, signal?: AbortSignal, offset=0): Promise<ConversationMessageSearchResult[]> {
+    return parseConversationSearch(await this.authorized(`/api/conversations/messages/search?${new URLSearchParams({q:query,limit:'50',offset:String(offset)})}`, "GET", undefined, signal));
+  }
+  async messagesAround(id:string, messageId:string, signal?:AbortSignal):Promise<{messages:Record<string,unknown>[]}> {
+    const value=object(await this.authorized(`/api/conversations/${encodeURIComponent(string(id))}/messages?${new URLSearchParams({around:messageId})}`,"GET",undefined,signal));
+    if(!Array.isArray(value.messages))throw new RemoteProtocolError("invalid_response");
+    return {messages:value.messages.map(object)};
+  }
   /** Revoke this phone's device enrollment and owner session on the agent, then forget them here.
    * Revocation failures are reported after the local credential is removed; the caller tells the
    * user to remove the device on the agent. Device headers are supplied by the enrollment owner. */
@@ -335,4 +344,14 @@ export function conversationViewHeaders(metadata?:Record<string,unknown>):Record
   const clientId=parseViewInteractionClientId(metadata.viewClientId);
   if(!clientId)throw new RemoteProtocolError("invalid_view_client_id");
   return {"X-ElizaOS-Client-Id":clientId};
+}
+
+export function parseConversationSearch(value: unknown): ConversationMessageSearchResult[] {
+  const body = object(value);
+  if (!Array.isArray(body.results)) throw new RemoteProtocolError("invalid_response");
+  return body.results.map(value => {
+    const row = object(value);
+    if ((row.role !== "user" && row.role !== "assistant") || typeof row.createdAt !== "number" || !Number.isFinite(row.createdAt)) throw new RemoteProtocolError("invalid_response");
+    return {messageId:string(row.messageId),conversationId:string(row.conversationId),roomId:string(row.roomId),role:row.role,text:string(row.text),snippet:typeof row.snippet==='string'?row.snippet:string(row.text),createdAt:row.createdAt,score:typeof row.score==='number'?row.score:0};
+  });
 }

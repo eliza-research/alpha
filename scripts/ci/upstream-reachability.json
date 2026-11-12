@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
   "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "head": "abe823894434173128d6bd1b030a8c3f6fa31cab",
+  "head": "25383411f565c2f5d7f107847e8b3443741fea01",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...abe823894434173128d6bd1b030a8c3f6fa31cab",
+  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...25383411f565c2f5d7f107847e8b3443741fea01",
   "status": "diverged",
-  "aheadBy": 74,
+  "aheadBy": 77,
   "behindBy": 617,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -306,6 +306,18 @@
     {
       "sha": "abe823894434173128d6bd1b030a8c3f6fa31cab",
       "subject": "Keep a manually edited route origin over a late location fix"
+    },
+    {
+      "sha": "f929408a8ed2a1f7757bbe54af4805711362b4de",
+      "subject": "Expose chat attachment types without unrelated client DTO dependencies"
+    },
+    {
+      "sha": "a877d820233e5909094c75f3a2287775c2bcfda7",
+      "subject": "Expose the existing conversation search result contract as a leaf"
+    },
+    {
+      "sha": "25383411f565c2f5d7f107847e8b3443741fea01",
+      "subject": "Keep attachment type re-exports free of unused bindings"
     }
   ]
 }
