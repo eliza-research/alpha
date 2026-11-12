@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "1d5a89838cedaff328445c050cef6d2a6292bef1",
-  "head": "da306758f4bf1671914aae36abf871f3f5395c71",
+  "baseCommit": "a4dcc41164e32e3defadb2fe173dde07a0c27d8c",
+  "head": "c0ce429f5b8a49c27e42b1a58467b7d744180982",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...da306758f4bf1671914aae36abf871f3f5395c71",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...c0ce429f5b8a49c27e42b1a58467b7d744180982",
   "status": "diverged",
-  "aheadBy": 38,
-  "behindBy": 614,
+  "aheadBy": 40,
+  "behindBy": 615,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -162,6 +162,14 @@
     {
       "sha": "da306758f4bf1671914aae36abf871f3f5395c71",
       "subject": "fix: read managed Gmail in summaries and retain Calendar revision times"
+    },
+    {
+      "sha": "0d640b44832ad651f9ee3c0cb1fbf8c3229558c3",
+      "subject": "Declare the Google Calendar provider update timestamp"
+    },
+    {
+      "sha": "c0ce429f5b8a49c27e42b1a58467b7d744180982",
+      "subject": "Keep Calendar cache refreshes out of recent provider changes"
     }
   ],
   "pullRequests": []
