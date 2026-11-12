@@ -19,7 +19,7 @@ async function expectSelectionClearance(page:any,viewport:{width:number;height:n
   const p=(await pin.boundingBox())!,sheet=(await page.locator('[data-alpha-maps-sheet="place"]').boundingBox())!,c=(await credits.boundingBox())!,header=(await page.locator('[data-alpha-app-header=main]').boundingBox())!;
   return p.y>header.y+header.height&&p.y+p.height<c.y-8&&(viewport.width>viewport.height?p.x+p.width<sheet.x-8:p.y+p.height<sheet.y-8);
  }).toBe(true);
- 
+
 }
 for(const viewport of [{width:412,height:915},{width:360,height:600},{width:915,height:412}])test(`global basemap renders without configuring search/routes or automatically reading location: ${viewport.width}x${viewport.height}`,async({page},info)=>{
  await page.setViewportSize(viewport);await setup(page);const map=page.locator('[data-alpha-map-plane]');await expect(map).toHaveAttribute('aria-label','World map');await expect(map).toHaveAttribute('data-map-ready','true');await expect(page.getByRole('link',{name:'OpenFreeMap',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'© OpenMapTiles',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'Data from OpenStreetMap',exact:true})).toBeVisible();await expect(page.getByLabel('Map information',{exact:true})).toHaveCount(0);expect(await page.evaluate(()=>(window as any).locationRequests)).toBe(0);
