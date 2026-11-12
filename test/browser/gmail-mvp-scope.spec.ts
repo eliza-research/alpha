@@ -101,7 +101,8 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Waiting shared note');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Waiting shared note\n\nExact retained shared body');
  expect((await gm(page)).prepares).toEqual([]);expect((await gm(page)).dispatches).toEqual([]);
- if(scenario==='restored')expect((await gm(page)).accountReads).toBe(0);
+ // Saved grants are rechecked once in this session before the restored mailbox is trusted.
+ if(scenario==='restored')expect((await gm(page)).accountReads).toBe(1);
 });
 
 test('Inbox loads on open, pages with Load more, shows Sent and drives the unread badge',async({page})=>{
@@ -251,7 +252,7 @@ test('compose From picker moves a new email directly to a chosen connected accou
  await expect(from).toHaveValue('grant-2');
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Moving subject');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Moving body');
- await expect(page.getByRole('status').filter({hasText:'From changed to third@example.test'})).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:'Draft in third@example.test'})).toBeVisible();
  expect((await gm(page)).prepares).toEqual([]);
 });
 

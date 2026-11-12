@@ -10,6 +10,7 @@ import {observeCloudNotices} from '../../../../test/browser/helpers/cloud-connec
 import {entitlements, installNativeCloudPlanPorts} from '../../../../test/browser/helpers/native-cloud-plan-fixture.ts';
 import {captureInputs, checkTraces, qset} from '../check-traces.mjs';
 import {call, checkpoint, trace} from './support.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const model = 'CloudConnectionNotices';
 const modelPath = 'specs/quint/application/'+model+'.qnt';
@@ -206,7 +207,7 @@ export async function checkCloudConnectionNotices(extraSources = []) {
           if (testMocksEnabled || !isAndroid) throw Error('Expected the real flag-off native renderer');
           window.quintNoticeController = connectionController;
         });
-        await expect(region(page, 'plan')).toBeVisible({timeout:120000});
+        await expect(region(page, 'plan')).toBeVisible({timeout:scaledTimeout(120000)});
         await expect(region(page, 'sign-in')).toBeVisible();
         traces.push(await exercise(page, short));
         const effects = await page.evaluate(() => window.planFixture.calls.filter(call =>

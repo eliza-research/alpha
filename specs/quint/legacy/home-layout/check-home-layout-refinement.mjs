@@ -236,7 +236,7 @@ async function collect(page) {
   assert.equal(inset.insets, 'native');
 
   await tile(page, 'Workflows').click();
-  await expect(page.getByText('No automations', {exact: true}).filter({visible: true})).toBeVisible();
+  await expect(page.getByText('No workflows yet', {exact: true}).filter({visible: true})).toBeVisible();
   await back(page);
   await expect(card(page, 'workflows')).toHaveCount(0);
   await installHomeCalendar(page);

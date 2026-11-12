@@ -21,16 +21,16 @@ if (mode === 'asr' && (!asrProfile || !path.isAbsolute(asrProfile)))
 const campaign = mode === 'asr'
   ? {
       port: 47846, gate: 'pairedAsrLive', testClass: 'PairedAsrLiveInstrumentedTest',
-      profile: asrProfile!, out: process.env.ALPHA_ASR_RESULTS,
+      profile: asrProfile!,
       scope: 'Actual paired agent ASR (/api/asr/libelizainference, libelizainference provider) + Notes explicit synthetic AAC upload, native PCM conversion, real transcript review/edit + TTS Listen decoded completion/cancel. Recording ingress is instrumented synthetic AAC; no microphone, Cloud, or enclave acceptance. Original selection and encrypted credential restored by test finally.',
     }
   : {
       port: 47844, gate: 'pairedVoiceLive', testClass: 'PairedVoiceLiveInstrumentedTest',
-      profile: path.join(os.homedir(), '.local/share/alphaphone/local-voice'), out: process.env.ALPHA_VOICE_RESULTS,
+      profile: path.join(os.homedir(), '.local/share/alphaphone/local-voice'),
       scope: 'Actual paired Eliza47844 capability + Notes explicit synthetic manual transcript Listen + native decoded completion/cancel. Recording ingress is instrumented synthetic PCM; no microphone, ASR, Cloud, or enclave acceptance. Original selection and encrypted credential restored by test finally.',
     };
 const fixture = `paired-${mode}-live`;
-const out = campaign.out || path.join(archive, fixture);
+const out = path.join(archive, fixture);
 const env = androidEnv();
 const adb = path.join(env.ANDROID_HOME, 'platform-tools/adb');
 const { appId }: { appId: string } = JSON.parse(fs.readFileSync('app.config.json', 'utf8'));

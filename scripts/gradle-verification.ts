@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 import {HOST_DESCRIPTOR, readHostDescriptor, type HostReference} from './android-host.ts';
-import {refuseRemovedProfileFlags} from './removed-profile-flags.ts';
 /**
  * Gradle dependency verification metadata (android/gradle/verification-metadata.xml).
  *
@@ -264,7 +263,6 @@ async function recordOtherHostAapt2(root: string) {
 }
 
 export function parseVerificationArgs(args: readonly string[]) {
-  refuseRemovedProfileFlags(args);
   const mode = args.filter(arg => ['--check', '--write'].includes(arg));
   if (mode.length !== 1 || args.some(arg => !['--check', '--write', '--allow-unpackaged-runtime'].includes(arg)))
     throw new Error('Usage: bun scripts/gradle-verification.ts --check | --write [--allow-unpackaged-runtime]');
@@ -275,7 +273,6 @@ async function write(root: string, {allowUnpackagedRuntime}: ReturnType<typeof p
   const {androidEnv} = await import('./toolchain.ts');
   const env: NodeJS.ProcessEnv = {...androidEnv()};
   for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS']) delete env[name];
-  for (const name of ['VITE_ELIZA_RUNTIME_PROFILE', 'ORG_GRADLE_PROJECT_ELIZA_RUNTIME_PROFILE', 'ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS']) delete env[name];
   const preflight = [path.join(root, 'scripts/android-build-preflight.ts'), ...(allowUnpackagedRuntime ? ['--allow-unpackaged-runtime'] : [])];
   execFileSync(process.execPath, preflight, {cwd: root, stdio: 'inherit', env});
   execFileSync(process.execPath, [path.join(root, 'scripts/android-host.ts')], {cwd: root, stdio: 'inherit', env});

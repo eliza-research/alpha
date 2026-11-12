@@ -36,10 +36,7 @@ class EmbeddingInputsTest(unittest.TestCase):
             with self.subTest(key=key),self.assertRaises(ValueError):module.settings(env)
         with self.assertRaises(ValueError):module.settings({'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11'})
 
-    def test_no_runtime_profile_is_required_and_duplicate_artifacts_rejected(self):
-        # One runtime profile: the inputs no longer depend on ALPHA_RUNTIME_PROFILE.
-        env=self.environment();env['ALPHA_RUNTIME_PROFILE']='native'
-        self.assertEqual(module.settings(env), [('11','a'*64),('12','b'*64)])
+    def test_duplicate_artifacts_rejected(self):
         env=self.environment();env['ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID']='11'
         with self.assertRaises(ValueError):module.settings(env)
 

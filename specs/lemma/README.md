@@ -13,8 +13,8 @@ The existing wrapper still handles a missing native snapshot. Native status
 delivery, lifecycle timing and recovery effects are outside this function proof.
 
 The source list is `LemmaScript-files.txt`. Missing or differently versioned Dafny
-records `skipped-no-qualified-backend`, never a passing proof. CI sets
-`LEMMA_REQUIRE_BACKEND=1`, so missing qualification fails verification. Receipts
+records `skipped-no-qualified-backend`, never a passing proof. The promotion
+workflow sets `LEMMA_REQUIRE_BACKEND=1`, so missing qualification fails it. Receipts
 under `test-results/lemma/check.json` bind the source, lockfile, configuration,
 generated companions and checker output. A changed generated artifact fails the
 check even when the compiler would otherwise refresh it in place.

@@ -24,6 +24,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
+      # The pinned upstream SDK retains Node-based build tooling.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.0"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
@@ -60,7 +64,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          export ALPHA_BUN="$(command -v bun)"
+          ALPHA_BUN="$(command -v bun)"
+          export ALPHA_BUN
           test "$("$ALPHA_BUN" --version)" = '1.4.2'
           bun scripts/prepare-local-agent.ts
           prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
@@ -155,6 +160,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: scripts/ci
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
       - env:
           SELECTED: ${{ needs.changes.outputs.android }}
           CHANGES: ${{ needs.changes.result }}

@@ -34,7 +34,7 @@ export async function residentLifecycleTraces(additionalSources = []) {
   globalThis.__quintNativeTime = {now: () => elapsed};
   globalThis.__quintNativeSleep = (callback, delay) => { elapsed += delay; queueMicrotask(callback); return 0; };
   try {
-    const actual = await import('data:text/javascript;base64,' + Buffer.from(compiled.outputFiles[0].text + '\n// ' + crypto.randomUUID()).toString('base64'));
+    const actual = await import('data:text/javascript;base64,' + Buffer.from(compiled.outputFiles[0].text + '\n// instance ' + crypto.randomUUID()).toString('base64'));
     const traces = [];
     for (const mode of ['confirmed', 'incomplete-timeout', 'stop-rejected']) {
       elapsed = 0;

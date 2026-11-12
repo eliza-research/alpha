@@ -50,18 +50,21 @@ test.describe('on the assistant surface', () => {
   });
 });
 
-test('Back closes Home\'s drawer, then stops voice and lowers the conversation', async ({ page }) => {
+test('Back closes shade, then voice and conversation before Home\'s drawer', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' })));
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Apps', exact: true })).toBeVisible();
-  const state = () => onShell<{ drawer: boolean; chat: string; stopped: number }>(page, 'const s = shell.S(); return { drawer: !!s.drawer, chat: s.chat, stopped: window.__stopped || 0 };');
-  await onShell(page, 'window.__stopped = 0; shell.stopVoice = () => { window.__stopped++; shell.setState({ voice: "off" }); }; shell.setState({ drawer: true, chat: "full", voice: "listening" });');
+  const state = () => onShell<{ shade: boolean; drawer: boolean; chat: string; stopped: number }>(page, 'const s = shell.S(); return { shade: !!s.shade, drawer: !!s.drawer, chat: s.chat, stopped: window.__stopped || 0 };');
+  await onShell(page, 'window.__stopped = 0; shell.stopVoice = () => { window.__stopped++; shell.setState({ voice: "off" }); }; shell.setState({ shade: true, drawer: true, chat: "full", voice: "listening" });');
+  // Shade alone closes first. Voice and the conversation stay above the drawer.
   await onShell(page, 'shell.back();');
-  expect(await state()).toEqual({ drawer: false, chat: 'full', stopped: 0 });
+  expect(await state()).toEqual({ shade: false, drawer: true, chat: 'full', stopped: 0 });
   await onShell(page, 'shell.back();');
-  expect(await state()).toEqual({ drawer: false, chat: 'full', stopped: 1 });
+  expect(await state()).toEqual({ shade: false, drawer: true, chat: 'full', stopped: 1 });
   await onShell(page, 'shell.back();');
-  expect(await state()).toEqual({ drawer: false, chat: 'sheet', stopped: 1 });
+  expect(await state()).toEqual({ shade: false, drawer: true, chat: 'sheet', stopped: 1 });
   await onShell(page, 'shell.back();');
-  expect(await state()).toEqual({ drawer: false, chat: 'input', stopped: 1 });
+  expect(await state()).toEqual({ shade: false, drawer: true, chat: 'input', stopped: 1 });
+  await onShell(page, 'shell.back();');
+  expect(await state()).toEqual({ shade: false, drawer: false, chat: 'input', stopped: 1 });
 });

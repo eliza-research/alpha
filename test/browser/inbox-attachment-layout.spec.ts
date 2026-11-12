@@ -1,5 +1,7 @@
 import {test,expect} from '@playwright/test';
 for(const theme of ['light','dark'])for(const size of [{width:360,height:640},{width:740,height:360}])test(`Gmail attachment review retains exit and keyboard reading ${theme} ${size.height}`,async({page},info)=>{
+ // This mail fixture starts after the browser access walkthrough was reviewed; this grants no platform permission.
+ await page.addInitScript(()=>localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4,choices:['skipped','skipped','skipped','skipped']})));
  await page.setViewportSize(size);await page.goto('/?theme='+theme);
  await page.evaluate(async()=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');

@@ -1,16 +1,14 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {onBun} from './support/node-only.mjs';
 import {collectApplicationCampaigns, runApplicationRefinement} from '../specs/quint/refinement/application/index.mjs';
 
 // The complete aggregate exceeded 20 minutes on the measured two-worker run.
 // Keep all component checks and their own bounds; allow the aggregate to finish.
-test('application source observations match bounded Quint component traces', {timeout: 2400000}, async () => {
+test('application source observations match bounded Quint component traces', {timeout: scaledTimeout(2400000)}, async () => {
   const result = await runApplicationRefinement();
   assert.deepEqual(result.failures, [], result.failures.map(({campaign, error}) => `${campaign}: ${error}`).join('\n'));
-  // Web Locks is the one accepted Bun gap here; Node.js (bun run test:node) runs every component.
-  assert.deepEqual(result.skipped.map(({campaign}) => campaign), onBun ? ['checkBrowserFilesTrash'] : []);
   const manifest = JSON.parse(readFileSync(new URL('../specs/quint/application/manifest.json', import.meta.url)));
   const declared = new Set(manifest.map(model => model.module));
   assert.ok(result.receipts.every(receipt => declared.has(receipt.coverageModel)));

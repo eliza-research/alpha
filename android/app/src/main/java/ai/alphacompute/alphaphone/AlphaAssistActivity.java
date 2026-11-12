@@ -12,6 +12,7 @@ public class AlphaAssistActivity extends MainActivity {
  protected boolean isProtectedPowerEntry() { return false; }
  @Override protected boolean isAssistantSurface() { return true; }
  private String newIntentCaller;
+ private int newIntentCallerUid = -1;
  private Intent sanitizedIntent;
  private Intent bridgeLoadIntent;
  /** This launch's origin until the renderer takes it; see {@link #takeInvocation}. */
@@ -20,7 +21,8 @@ public class AlphaAssistActivity extends MainActivity {
  @Override public void onCreate(Bundle state) {
   // A recreated activity (configuration change, process restore) is not a new invocation: the
   // launching package Android reports is still the original one, so it is ignored.
-  sanitizedIntent = cleanIntent(state == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ? getLaunchedFromPackage() : null, false);
+  boolean freshCaller = state == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE;
+  sanitizedIntent = cleanIntent(freshCaller ? getLaunchedFromPackage() : null, freshCaller ? getLaunchedFromUid() : -1, false);
   setIntent(sanitizedIntent);
   super.onCreate(state);
  }
@@ -36,15 +38,21 @@ public class AlphaAssistActivity extends MainActivity {
  @Override public void onNewIntent(Intent intent, ComponentCaller caller) {
   bridgeLoadIntent = null;
   newIntentCaller = caller == null ? null : caller.getPackage();
-  super.onNewIntent(intent, caller);
+  newIntentCallerUid = caller == null ? -1 : caller.getUid();
+  try { super.onNewIntent(intent, caller); }
+  finally {
+   newIntentCaller = null;
+   newIntentCallerUid = -1;
+  }
  }
  @Override public void onNewIntent(Intent ignored) {
   Intent clean = ignored;
   if (ignored != null && ignored == bridgeLoadIntent && ignored == getIntent()) {
    bridgeLoadIntent = null;
   } else {
-   clean = cleanIntent(newIntentCaller, true);
+   clean = cleanIntent(newIntentCaller, newIntentCallerUid, true);
    newIntentCaller = null;
+   newIntentCallerUid = -1;
    sanitizedIntent = clean;
    setIntent(clean);
   }
@@ -67,7 +75,7 @@ public class AlphaAssistActivity extends MainActivity {
   * The caller package is known only when the caller shared its identity (the listener does). The
   * origin comes from Android-reported caller identity only, never from caller extras.
   */
- private Intent cleanIntent(String caller, boolean warmIntent) {
+ private Intent cleanIntent(String caller, int callerUid, boolean warmIntent) {
   ai.eliza.plugins.system.SenseListenerClient sense = new ai.eliza.plugins.system.SenseListenerClient(this);
   // A new/recreated Power activity creates a new renderer bridge. It cannot borrow another
   // activity's owner/session or queue an invocation for a later bind. Only the same already
@@ -75,9 +83,10 @@ public class AlphaAssistActivity extends MainActivity {
   if (isProtectedPowerEntry() && warmIntent && getBridge() != null) {
    // A stale Activity may no longer own the current package lease. A rejected
    // offer must leave another Activity's listener/Power receipt untouched.
-   sense.recordProtectedPower();
+   if (AlphaSenseAdmission.protectedPowerCaller(this, caller, callerUid)) sense.recordProtectedPower();
   } else {
-   sense.recordInvocation(isProtectedPowerEntry() ? null : caller);
+   boolean listener = !isProtectedPowerEntry() && AlphaSenseAdmission.listenerCaller(this, caller, callerUid);
+   sense.recordInvocation(listener ? caller : null);
   }
   return new Intent(this, getClass()).setAction(Intent.ACTION_ASSIST).putExtra(EXTRA_ASSISTANT, true);
  }

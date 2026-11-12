@@ -1,7 +1,7 @@
 /**
  * Verify the four APKs of one build and record the result in apk-manifest.json.
  *
- *   bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--signer-api-level=N]
+ *   bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime]
  *
  * Default: the distribution APKs in artifacts/. They must be flag-off
  * (testMocks:false), pass the shared production bundle audit, carry no
@@ -55,8 +55,7 @@ import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, li
 
 import {cloudVoiceAdmission, cloudVoiceBlockers} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
 import { preparePatchedNative, nativePatchReceipt, verifyNativePatchReceipt } from './prepare-patched-native.ts';
-import {refuseRemovedProfileFlags} from './removed-profile-flags.ts';
-const USAGE = "Usage: bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--signer-api-level=N] [--cloud-voice-evidence=FILE]";
+const USAGE = "Usage: bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--cloud-voice-evidence=FILE]";
 interface RuntimePackaging {
   apk: string;
   runtime: "PACKAGED" | "NOT_PACKAGED";
@@ -88,7 +87,7 @@ type VerificationRow = Omit<ApkInspection, "badging" | "xml" | "names" | "dexCla
   licenceFlags: ReturnType<typeof licenceFlagRecords>;
   fontLicenceCheck: Omit<ReturnType<typeof fontLicenceCheck>, "blockers">;
   licenceBlockers: string[];
-  runtimeProfile?: "native" | "cloud";
+  runtimeProfile?: "native";
   releaseAdmission?: ReturnType<typeof releaseAdmission>;
   runtime?: RuntimePackaging["runtime"];
   voiceHost?: RuntimeVoiceHost;
@@ -99,16 +98,8 @@ const variants = ["standalone", "launcher"] as const;
 const modes = ["debug", "release"] as const;
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 const args = process.argv.slice(2);
-// One profile: every build packages local speech and embeddings.
-refuseRemovedProfileFlags(args);
 for (const arg of args)
-  if (!["--test-mocks", "--allow-unpackaged-runtime"].includes(arg) && !/^--signer-api-level=[1-9][0-9]*$/.test(arg) && !/^--cloud-voice-evidence=.+$/.test(arg)) throw new Error(`Unknown option ${arg}. ${USAGE}`);
-// Artifact signing admission is explicitly scoped to this Android API. Device
-// install/update independently verify the certificate applicable to the actual device.
-const signerApiArgs = args.filter(arg => arg.startsWith("--signer-api-level="));
-if (signerApiArgs.length > 1) throw new Error("Specify --signer-api-level only once");
-const signerApiLevel = signerApiArgs.length ? Number(signerApiArgs[0].split("=")[1]) : undefined;
-if (signerApiLevel !== undefined && !Number.isSafeInteger(signerApiLevel)) throw new Error("Invalid signer API level");
+  if (!["--test-mocks", "--allow-unpackaged-runtime"].includes(arg) && !/^--cloud-voice-evidence=.+$/.test(arg)) throw new Error(`Unknown option ${arg}. ${USAGE}`);
 const testMocks = args.includes("--test-mocks");
 // The one profile's name in records; a build record naming another profile is refused below.
 const runtimeProfile="native";
@@ -149,7 +140,7 @@ const buildRecord: BuildRecord = JSON.parse(fs.readFileSync(buildRecordFile, "ut
 const updateChannel=validateUpdateChannel(buildRecord?.updateChannel);
 if(updateChannel.kind==='public'&&updateChannel.manifestUrlSha256!==createHash('sha256').update(identity.updateManifestUrl).digest('hex'))throw Error('Public update channel differs from source configuration');
 if(updateChannel.kind==='private-qa'&&(testMocks||allowUnpackaged))throw Error('Private update QA requires a complete packaged build with test mocks off');
-if((buildRecord?.runtimeProfile||"native")!==runtimeProfile||buildRecord?.localEmbeddings!==undefined)throw Error("Build record names a removed runtime profile; rebuild (there is one profile now)");
+if((buildRecord?.runtimeProfile||"native")!==runtimeProfile||buildRecord?.localEmbeddings!==undefined)throw Error("Build record is not a native-profile build record; rebuild");
 if (buildRecord && buildRecord.testMocks !== testMocks)
   throw new Error(`${buildRecordFile} records testMocks=${buildRecord.testMocks}; refusing to verify it as testMocks=${testMocks}`);
 
@@ -214,7 +205,6 @@ for (const variant of variants)
     } catch { runtimeNotices = false; }
     try {
       flags = readBuildFlags(payload.public);
-      if(flags.runtimeProfile!==undefined)problems.push("Packaged web bundle names a removed runtime profile");
       if (flags.testMocks !== testMocks)
         problems.push(`Packaged web bundle has testMocks=${flags.testMocks}; expected ${testMocks}`);
       auditBundle(payload.public, { testMocks });
@@ -231,7 +221,7 @@ for (const variant of variants)
     catch (error) { problems.push(`Owner route table: ${message(error)}`); }
     let signerSha256: string | null = null;
     if (signed) {
-      try { signerSha256 = signerDigest(file, {apiLevel: signerApiLevel}); }
+      try { signerSha256 = signerDigest(file); }
       catch (error) { problems.push(`apksigner verify failed for ${file}: ${message(error)}`); }
     }
     if (problems.length) failures.push(`${file}:\n  - ${problems.join("\n  - ")}`);
@@ -246,7 +236,7 @@ for (const variant of variants)
       versionName: facts.versionName,
       signed,
       signerSha256,
-      signerApiLevel: signerApiLevel ?? null,
+      signerApiLevel: null,
       exportedComponents: facts.exported.map(component => component.name).sort(),
       appLinks: appLinkFilters(xml),
       testMocks: flags?.testMocks ?? null,
@@ -353,7 +343,7 @@ function listenerFacts(file: string, mode: ApkMode, signed: boolean) {
     voiceBundle?: {packaged: boolean; abis?: ReturnType<typeof checkListenerSpeechBundle>; problem?: string};
   } = { file, mode, signed, sha256: createHash("sha256").update(fs.readFileSync(file)).digest("hex") };
   if (signed) {
-    try { facts.signerSha256 = signerDigest(file, {apiLevel: signerApiLevel}); }
+    try { facts.signerSha256 = signerDigest(file); }
     catch (error) { facts.permissionProblem = `apksigner verify failed: ${message(error)}`; }
   }
   const dump = execFileSync(tool("aapt"), ["dump", "permissions", file], { encoding: "utf8", env: androidEnv(), maxBuffer: 16 << 20 });
@@ -427,8 +417,6 @@ fs.writeFileSync(
         release: release.every(row => row.signed) ? { signed: true, signerSha256: release[0].signerSha256 } : { signed: false },
         debugSignerSha256: results.find(row => row.mode === "debug")?.signerSha256 ?? null,
         apksigner: apksignerVersion,
-        apiLevel: signerApiLevel ?? null,
-        scope: signerApiLevel === undefined ? "unscoped legacy signer" : "specified Android API; device admission is checked separately",
         descriptor: { file: RELEASE_SIGNER_FILE, signerSha256: releaseSigner.signerSha256, lastReleaseVersionCode: releaseSigner.lastRelease.versionCode },
       },
       mappings,

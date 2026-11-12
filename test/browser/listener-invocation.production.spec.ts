@@ -1,10 +1,8 @@
 import {test,expect,type Page} from '@playwright/test';
 import {flagOffAndroid,residentHome,fenceNetwork,button} from './flag-off-android';
-// P-78 in the flag-off renderer: only the in-chat Talk control may start voice.
-// Deferred listener and hardware entry cannot claim an invocation or start capture,
-// and startup asks the native companion to stop. Synthetic native ports only;
-// this is not image, listener, microphone or physical-device evidence.
-type Options={assistant?:boolean;invocation?:'listener'|'system'|'assist';locked?:boolean;listener?:Record<string,unknown>|null;localSpeech?:boolean};
+// The production renderer binds Sense only on a qualified Android image. Android caller identity,
+// native microphone and storage are controlled fixtures; no device or external provider is used.
+type Options={assistant?:boolean;invocation?:'listener'|'power'|'assist';locked?:boolean;listener?:Record<string,unknown>|null;stopReceipt?:Record<string,unknown>;localSpeech?:boolean;image?:boolean;sense?:unknown};
 async function setup(page:Page,options:Options={}){
  const foreign=await fenceNetwork(page);await flagOffAndroid(page);
  await page.addInitScript((options:Options)=>{
@@ -13,14 +11,20 @@ async function setup(page:Page,options:Options={}){
   // as in voice-assistant-fixture.ts: the Cloud slot is absent at the native storage boundary.
   const provider={mode:'own',revision:'synthetic-local-voice-provider-r1',persistence:'native-secure-store',keys:{text:{configured:true},voice:{configured:false}},provider:'cerebras',configured:true,selected:true,model:'qwen-3.8-27b',voiceConfigured:false};
   if(options.localSpeech){delete w.flagOff.slots['cloud:production'];w.flagOff.persist();}
-  const f=w.live={captures:[] as any[],stops:[] as string[],active:null as string|null,routes:[] as any[],invocations:0,binding:null as any,bindings:[] as any[],claims:[] as any[],listenerCalls:[] as string[],power:[] as string[],listener:options.listener??null,forbidden:[] as string[]};
+  const f=w.live={captures:[] as any[],stops:[] as string[],active:null as string|null,routes:[] as any[],invocations:0,binding:null as any,bindings:[] as any[],claims:[] as any[],listenerCalls:[] as string[],power:[] as string[],listener:options.listener??null,deviceSettings:[] as string[],forbidden:[] as string[]};
   const events:Array<{event:string;callback:(value:any)=>void}>=[];
   const header=(name:string)=>c.PluginHeaders.find((p:any)=>p.name===name);
   header('AlphaVoiceCloud').methods=[...['checkPermissions','localSpeechStatus','liveCaptureStatus','startLiveCapture','stopLiveCapture','synthesizeLocal','play','stopPlayback','cancel','releaseLocalSpeech','cancelRecording'].map(name=>({name,rtype:'promise'})),{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}];
+  c.PluginHeaders.push({name:'DeviceApps',methods:[{name:'platformCapabilities',rtype:'promise'}]});
+  if(!header('AlphaDevice'))c.PluginHeaders.push({name:'AlphaDevice',methods:[]});
+  header('AlphaDevice').methods.push({name:'openSettings',rtype:'promise'});
   // turnOn, resume and start are declared so that a call to any of them reaches the stub and is recorded.
-  c.PluginHeaders.push({name:'ElizaSense',methods:['status','pause','turnOff','openSettings','turnOn','resume','start','bindInvocationSession','takeInvocation','claimProtectedPowerLaunch','discardProtectedPowerLaunch','discardProtectedPowerInvocation'].map(name=>({name,rtype:'promise'}))});
+  header('ElizaSense').methods=['status','pause','turnOff','openSettings','turnOn','resume','start','bindInvocationSession','takeInvocation','claimProtectedPowerLaunch','discardProtectedPowerLaunch','discardProtectedPowerInvocation'].map(name=>({name,rtype:'promise'}));
+  if(navigator.mediaDevices)Object.defineProperty(navigator.mediaDevices,'getUserMedia',{value:async()=>{f.forbidden.push('getUserMedia');throw Error('Unexpected browser capture');}});
   const callback=c.nativeCallback;c.nativeCallback=(plugin:string,method:string,input:any,fn:any)=>{if(plugin==='AlphaVoiceCloud'&&method==='addListener'){events.push({event:input.eventName,callback:fn});return String(events.length);}return callback(plugin,method,input,fn);};
   c.nativePromise=async(plugin:string,method:string,input:any)=>{
+   if(plugin==='DeviceApps'&&method==='platformCapabilities')return {aospImage:options.image===true,phone:false,contacts:false,sms:false,...(options.sense===undefined?{}:{sense:options.sense})};
+   if(plugin==='AlphaDevice'&&method==='openSettings'){f.deviceSettings.push(input.page);return {status:'opened',page:input.page,specific:true};}
    if(options.localSpeech&&plugin==='Agent'&&method==='providerStatus')return provider;
    if(plugin==='DailyApps'&&method==='surfaceInfo')return {developmentBuild:false,assistant:options.assistant===true};
    if(plugin==='ElizaSense'){
@@ -35,7 +39,7 @@ async function setup(page:Page,options:Options={}){
      const first=f.invocations++===0;
      return options.assistant?{assistant:true,invocation:first?options.invocation??'assist':'assist',locked:options.locked===true}:{assistant:false,invocation:null,locked:false};
     }
-    // The pinned ElizaSense also offers protected power launches; this stub never grants one.
+    // This fixture exercises warm one-shot Power receipts through takeInvocation, not cold launch grants.
     if(method==='claimProtectedPowerLaunch'||method==='discardProtectedPowerLaunch'||method==='discardProtectedPowerInvocation'){
      if(!f.binding||input.generation!==f.binding.generation||input.bindingId!==f.binding.bindingId)throw Error('Power launch was not bound to the current owner');
      f.power.push(method);return method==='claimProtectedPowerLaunch'?{assistant:false,invocation:null,locked:true}:{};
@@ -43,7 +47,7 @@ async function setup(page:Page,options:Options={}){
     f.listenerCalls.push(method);
     if(method==='status')return f.listener??{available:false};
     if(method==='pause'){f.listener={...f.listener,state:'PAUSED_USER',label:'Paused',listening:false,microphoneOpen:false};return f.listener;}
-    if(method==='turnOff'){f.listener={...f.listener,state:'OFF',label:'Listening off',listening:false,microphoneOpen:false};return f.listener;}
+    if(method==='turnOff'){if(options.stopReceipt)return options.stopReceipt;f.listener={...f.listener,state:'OFF',label:'Listening off',listening:false,microphoneOpen:false};return f.listener;}
     if(method==='openSettings')return {opened:true};
     throw Error('Unexpected Sense method '+method);
    }
@@ -73,10 +77,13 @@ async function openSurface(page:Page){
 
 for(const [name,options] of [
  ['listener wake',{assistant:true,invocation:'listener'}],
- ['press-and-hold power',{assistant:true,invocation:'system'}],
+ ['press-and-hold power',{assistant:true,invocation:'power'}],
  ['locked listener wake',{assistant:true,invocation:'listener',locked:true}],
- ['locked press-and-hold power',{assistant:true,invocation:'system',locked:true}],
+ ['locked press-and-hold power',{assistant:true,invocation:'power',locked:true}],
  ['plain assist entry',{assistant:true,invocation:'assist'}],
+ ['old image without capability',{image:true,assistant:true,invocation:'listener'}],
+ ['unqualified image',{image:true,sense:false,assistant:true,invocation:'listener'}],
+ ['stock Android with a contradictory capability',{image:false,sense:true,assistant:true,invocation:'listener'}],
 ] as const) test(`${name} cannot start voice or consume a deferred invocation`,async({page})=>{
  const foreign=await setup(page,options);await openSurface(page);
  await expect.poll(()=>live(page,f=>f.listenerCalls)).toContain('turnOff');
@@ -89,7 +96,7 @@ for(const [name,options] of [
 });
 
 test('in-chat Talk still starts local voice after a deferred hardware entry',async({page})=>{
- const foreign=await setup(page,{assistant:true,invocation:'system',localSpeech:true});await openSurface(page);
+ const foreign=await setup(page,{assistant:true,invocation:'power',localSpeech:true});await openSurface(page);
  await expect(voice(page)).toHaveCount(0);expect(await live(page,f=>f.captures)).toEqual([]);
  await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await live(page,f=>f.captures)).toEqual([{echoCancel:true}]);
@@ -115,7 +122,86 @@ test('an unavailable companion keeps the unconfirmed stop notice visible',async(
  const foreign=await setup(page);await residentHome(page);
  await expect.poll(()=>live(page,f=>f.listenerCalls)).toContain('turnOff');
  await button(page,'Settings').click();
- await expect(page.getByRole('button',{name:'Microphone may be on, open listener settings',exact:true})).toContainText('Mic may be on');
+ await expect(page.getByRole('button',{name:'Microphone may be on, open Android settings',exact:true})).toContainText('Mic may be on');
  await expect(page.getByText('Always-on listening',{exact:true})).toHaveCount(0);
  expect(await live(page,f=>f.captures)).toEqual([]);expect(foreign).toEqual([]);
+});
+
+for(const origin of ['listener','power'] as const)test(`qualified image ${origin} invokes one owner-bound voice turn`,async({page})=>{
+ const foreign=await setup(page,{image:true,sense:true,assistant:true,invocation:origin,localSpeech:true});
+ await openSurface(page);
+ await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ const claim=await live(page,f=>f.claims[0]);
+ expect(claim.request).toEqual(claim.binding);
+ expect(claim.request.sessionKey).toMatch(/^[a-f0-9]{64}$/);
+ expect(await live(page,f=>f.captures)).toEqual([{echoCancel:true}]);
+ expect(await live(page,f=>f.listenerCalls)).toEqual([]);
+ await button(page,'Stop voice conversation').click();
+ await expect(voice(page)).toHaveCount(0);
+ const consumed=await live(page,f=>f.claims.length);
+ await page.evaluate(()=>window.dispatchEvent(new Event('alpha:assist-invocation')));
+ await expect.poll(()=>live(page,f=>f.claims.length)).toBeGreaterThan(consumed);
+ expect(await live(page,f=>f.captures)).toEqual([{echoCancel:true}]);
+ expect(await live(page,f=>f.forbidden)).toEqual([]);
+ expect(foreign).toEqual([]);
+});
+
+for(const [name,invocation,locked] of [['generic assist','assist',false],['locked listener','listener',true],['locked protected Power','power',true]] as const)test(`qualified image ${name} opens no voice capture`,async({page})=>{
+ const foreign=await setup(page,{image:true,sense:true,assistant:true,invocation,locked,localSpeech:true});
+ await openSurface(page);
+ await expect.poll(()=>live(page,f=>f.claims.length)).toBeGreaterThan(0);
+ await expect(voice(page)).toHaveCount(0);
+ expect(await live(page,f=>f.captures)).toEqual([]);
+ expect(await live(page,f=>f.listenerCalls)).toEqual([]);
+ expect(foreign).toEqual([]);
+});
+
+test('qualified image Privacy uses only the native status, pause, stop and settings ports',async({page})=>{
+ const foreign=await setup(page,{image:true,sense:true,listener:{available:true,state:'LISTENING',label:'Listening',consented:true,listening:true,microphoneOpen:true}});
+ await residentHome(page);
+ await page.evaluate(()=>window.dispatchEvent(new Event('alpha:assist-invocation')));
+ await button(page,'Settings').click();
+ await button(page,'Privacy').click();
+ const listening=page.getByRole('switch',{name:'Listening',exact:true});
+ await expect(listening).toHaveAttribute('aria-checked','true');
+ expect(await live(page,f=>f.listenerCalls)).not.toContain('turnOff');
+ await button(page,'Pause listening').click();
+ await expect.poll(()=>live(page,f=>f.listener.state)).toBe('PAUSED_USER');
+ await expect(button(page,'Pause listening')).toHaveCount(0);
+ await listening.click();
+ await expect(listening).toHaveAttribute('aria-checked','false');
+ expect(await live(page,f=>f.listener)).toMatchObject({state:'OFF',listening:false,microphoneOpen:false});
+ await button(page,'Listening settings').click();
+ await expect.poll(()=>live(page,f=>f.listenerCalls)).toContain('openSettings');
+ expect(await live(page,f=>f.listenerCalls.filter((method:string)=>method!=='status'))).toEqual(['pause','turnOff','openSettings']);
+ expect(await live(page,f=>({claims:f.claims,captures:f.captures}))).toEqual({claims:[],captures:[]});
+ expect(foreign).toEqual([]);
+});
+
+test('an inconsistent stop receipt keeps Android recovery available without opening Sense controls',async({page})=>{
+ const foreign=await setup(page,{image:true,sense:false,stopReceipt:{available:true,state:'OFF',listening:true,microphoneOpen:false}});
+ await residentHome(page);
+ await button(page,'Settings').click();
+ await button(page,'Microphone may be on, open Android settings').click();
+ await expect.poll(()=>live(page,f=>f.deviceSettings)).toEqual(['system']);
+ expect(await live(page,f=>f.listenerCalls)).toEqual(['turnOff']);
+ await button(page,'Privacy').click();
+ await expect(page.getByRole('switch',{name:'Listening',exact:true})).toHaveCount(0);
+ await expect(button(page,'Listening settings')).toHaveCount(0);
+ expect(foreign).toEqual([]);
+});
+
+test('qualified Privacy still reports a microphone held after turning listening off',async({page})=>{
+ const listener={available:true,state:'LISTENING',label:'Listening',consented:true,listening:true,microphoneOpen:true};
+ const foreign=await setup(page,{image:true,sense:true,listener,stopReceipt:{...listener,state:'OFF',listening:false}});
+ await residentHome(page);
+ await button(page,'Settings').click();
+ await button(page,'Privacy').click();
+ const listening=page.getByRole('switch',{name:'Listening',exact:true});
+ await listening.click();
+ await expect(page.getByText('Microphone still open',{exact:true})).toBeVisible();
+ await expect(listening).toHaveAttribute('aria-checked','true');
+ await expect(button(page,'Pause listening')).toBeVisible();
+ expect(await live(page,f=>f.captures)).toEqual([]);
+ expect(foreign).toEqual([]);
 });

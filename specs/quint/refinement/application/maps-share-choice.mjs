@@ -28,7 +28,9 @@ async function load() {
   const {mapsChatText} = await import('data:text/javascript;base64,' + Buffer.from(parser.outputFiles[0].text).toString('base64'));
   const source = readFileSync(join(repositoryRoot, adapterPath), 'utf8'), start = source.indexOf('export function installMapsChatAdapter(');
   assert.ok(start > 0 && source.indexOf('export function', start + 1) < 0, 'the chat adapter is the last export of the Maps adapter');
-  const script = new vm.Script(stripTypeScriptTypes('type Bag=Record<string,any>;\n' + source.slice(start).replace('export function', 'function') + '\nglobalThis.install=installMapsChatAdapter;', {mode: 'transform'}));
+  // The adapter's own failure-notice helper, as imported by the product module.
+  const notice = readFileSync(join(repositoryRoot, 'apps/app/src/runtime/error-notice.ts'), 'utf8').replace(/^export /gm, '');
+  const script = new vm.Script(stripTypeScriptTypes('type Bag=Record<string,any>;\n' + notice + '\n' + source.slice(start).replace('export function', 'function') + '\nglobalThis.install=installMapsChatAdapter;', {mode: 'transform'}));
   return {mapsChatText, script};
 }
 

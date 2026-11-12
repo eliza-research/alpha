@@ -143,7 +143,7 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   f.write('upstream.lock.json', JSON.stringify({commit: 'f'.repeat(40)}));
   assert.match(checkoutProblems(f.root)[0], /vendor\/eliza is at .*pins f{40}\. Run: git submodule update --init vendor\/eliza/);
   // The real entry point exits with status 2 and the guidance, without starting the build.
-  for (const file of ['android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'voice-host.ts', 'build-android.ts', 'update-channel.ts', 'android-build-preflight.ts', 'mobile-uuid-adapter.ts', 'build-policy-source.ts', 'core-state-patch.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'toolchain.ts', 'copy-file-clone.ts', 'removed-profile-flags.ts'])
+  for (const file of ['android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'voice-host.ts', 'build-android.ts', 'update-channel.ts', 'android-build-preflight.ts', 'mobile-uuid-adapter.ts', 'build-policy-source.ts', 'core-state-patch.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'toolchain.ts', 'copy-file-clone.ts'])
     f.write('scripts/' + file, read('scripts/' + file));
   // build-android.ts reads the release-signing environment names from the host descriptor.
   f.write('android/consumer-host.json', read('android/consumer-host.json'));
@@ -153,13 +153,6 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   assert.match(result.stderr, /git submodule update --init vendor\/eliza/);
   assert.equal(fs.existsSync(path.join(f.root, 'artifacts')), false);
   assert.equal(fs.existsSync(path.join(f.root, 'web-dist')), false);
-  // One runtime profile: the removed options fail with one line, in the build and in the preflight, before any work.
-  for (const [script, flag] of [['build-android.ts', '--runtime-profile=cloud'], ['build-android.ts', '--local-embeddings'], ['build-android.ts', '--runtime-profile=native'], ['android-build-preflight.ts', '--runtime-profile=cloud'], ['android-build-preflight.ts', '--local-embeddings']]) {
-    const refused = spawnSync(process.execPath, ['scripts/' + script, flag], {cwd: f.root, encoding: 'utf8'});
-    assert.notEqual(refused.status, 0, script + ' ' + flag);
-    assert.match(refused.stderr, /There is one runtime profile now: remove --runtime-profile and --local-embeddings/, script + ' ' + flag);
-    assert.doesNotMatch(refused.stderr, /Android build prerequisites are missing/);
-  }
   assert.equal(fs.existsSync(path.join(f.root, 'artifacts')), false);
 });
 
@@ -211,7 +204,7 @@ test('android:build:local builds the workflow worker before staging and stages b
   // The chain ends in the strict build: no developer override may be baked into it.
   assert.doesNotMatch(scripts['android:build:local'], /--allow-unpackaged-runtime|--allow-unqualified-runtime|--test-mocks|--skip-instrumentation/);
   assert.equal(scripts['android:build'], 'bun scripts/build-android.ts');
-  assert.equal(scripts['agent:build-embedding-host'], 'bun scripts/build-embedding-host.ts', 'no --candidate or other option in the chain');
+  assert.equal(scripts['agent:build-embedding-host'], 'bun scripts/build-embedding-host.ts', 'no option in the chain');
   // Staging itself refuses a missing or foreign worker artifact before the long mobile bundle build.
   const stage = read('scripts/stage-local-agent-runtime.ts');
   assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') > 0);

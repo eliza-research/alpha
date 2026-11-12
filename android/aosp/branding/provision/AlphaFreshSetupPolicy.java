@@ -6,7 +6,7 @@ final class AlphaFreshSetupPolicy {
     static boolean eligible(boolean setupComplete, boolean managed, boolean primaryUser) {
         return !setupComplete && !managed && primaryUser;
     }
-    static boolean homeVerified(boolean accepted, boolean alphaHoldsRole) {
+    static boolean roleVerified(boolean accepted, boolean alphaHoldsRole) {
         return accepted && alphaHoldsRole;
     }
     enum ImeResult { SKIPPED, EXISTING_CHOICE, READY, FAILED }

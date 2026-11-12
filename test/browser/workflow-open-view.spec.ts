@@ -96,7 +96,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
     expect(await counts()).toEqual({ posts: 1, decisions: 0, claims: 0, receipts: 0, automationLists: 0, journal: [] });
     if (mode === 'pending') {
       await page.getByText('open view', { exact: true }).click();
-      await expect(page.getByRole('region',{name:'Workflows',exact:true}).getByText('No automations',{exact:true})).toBeVisible();
+      await expect(page.getByRole('region',{name:'Workflows',exact:true}).getByText('No workflows yet',{exact:true})).toBeVisible();
       await expect.poll(async()=> (await counts()).journal).toEqual(['reserve', 'markApplying', 'finish']);
       // Receipt upload can finish before navigation retires the request epoch.
       // Otherwise the explicit recovery control uploads the durable result.

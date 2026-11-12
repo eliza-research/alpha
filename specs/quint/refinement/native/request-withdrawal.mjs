@@ -11,6 +11,7 @@ import {modelTraces, plain} from './itf-replay.mjs';
 import {directory, javaTraceCampaign, root} from './java.mjs';
 import {withdrawalIds, withdrawalPlatform, withdrawalSource, withdrawalWorkerSource} from './request-withdrawal-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const model='NativeRequestWithdrawal', renderer='apps/app/src/runtime/local-agent.ts';
 const harness='RequestWithdrawalReplay.java';
@@ -43,7 +44,7 @@ function namedTraces(temporary){
  const source=readFileSync(join(root,`specs/quint/native/${model}.qnt`),'utf8');
  const names=[...source.matchAll(/\brun (\w+Test) =/g)].map(match=>match[1]);assert.equal(names.length,5);
  const pattern=join(temporary,'scenario-{test}-{seq}.itf.json');
- const result=spawnSync(process.execPath,[join(root,'node_modules/@informalsystems/quint/dist/src/cli.js'),'test',`specs/quint/native/${model}.qnt`,'--backend=typescript','--seed=20261112',`--out-itf=${pattern}`],{cwd:root,encoding:'utf8',timeout:120000});
+ const result=spawnSync(process.execPath,[join(root,'node_modules/@informalsystems/quint/dist/src/cli.js'),'test',`specs/quint/native/${model}.qnt`,'--backend=typescript','--seed=20261112',`--out-itf=${pattern}`],{cwd:root,encoding:'utf8',timeout:scaledTimeout(120000)});
  assert.equal(result.status,0,result.stdout+result.stderr);assert.match(result.stdout,/5 passing/);
  return names.map(name=>{
   const matches=readdirSync(temporary).filter(path=>path.startsWith(`scenario-${name}-`)&&path.endsWith('.itf.json'));assert.equal(matches.length,1);
@@ -170,9 +171,8 @@ export async function checkNativeRequestWithdrawal(extraSources=[]){
   assert.throws(()=>validateWithdrawalObservation(duplicateAnswer),/At most one native answer/);
   const alteredState=structuredClone(actualStates[0]);alteredState.phase[1]='sent';
   assert.throws(()=>assert.deepEqual(alteredState,actualStates[0]),assert.AssertionError);
-  // Each generated run is about 15 kB and takes the checker about two CPU-seconds to parse and type, so all 42
-  // in one module left little of the fixed 120 s child deadline. Six modules of seven keep every run and bound.
-  const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,batchSize:7,scope:'bounded-orchestration',assumptions:[
+  // Keep every trace and checkpoint; smaller programs avoid one large checker compilation.
+  const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,batchSize:14,scope:'bounded-orchestration',assumptions:[
    'Three fresh request ids and two real host-JVM threads execute the exact native request worker, ownership guards, withdrawal and lifecycle invalidation methods; a controlled executor selects queued work only when a slot is free.',
    'Enrollment and transport are bounded closed latches. The fixed monotonic clock excludes deadline expiry. Only admitted plain GET /api/status requests, a successful synthetic enrollment and HTTP 200 response are in this abstraction; route authorization and real server effects are not claimed.',
    'The complete bundled LocalAgentProtocol, native request helper, real AbortController and abort listener run with flags off. Each exact bridge input is matched against the Java input; only real native callback deltas settle bridge promises. Delivered cancellation means the closed bridge delivered the actual abort-generated packet, not a UI acknowledgement.',

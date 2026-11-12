@@ -1,0 +1,31 @@
+diff --git a/core/board_config.mk b/core/board_config.mk
+--- a/core/board_config.mk
++++ b/core/board_config.mk
+@@ -276,6 +276,27 @@
+ endif
+ $(call dump-phase-end, build/make/core/board_config.mk)
+
++# Alpha's admitted listener is a system_ext app on this product only.
++ifeq ($(TARGET_PRODUCT):$(TARGET_DEVICE),alpha_stallion_phone:stallion)
++  alpha_sense_policy_dir := vendor/alphaphone/listener/sepolicy
++  alpha_sense_apk := $(wildcard vendor/alphaphone/listener/AlphaSense.apk)
++  ifneq ($(strip $(alpha_sense_apk) $(wildcard $(alpha_sense_policy_dir))),)
++    alpha_sense_policy_files := $(sort $(filter-out $(alpha_sense_policy_dir)/. $(alpha_sense_policy_dir)/..,$(wildcard $(alpha_sense_policy_dir)/* $(alpha_sense_policy_dir)/.*)))
++    alpha_sense_policy_expected := $(addprefix $(alpha_sense_policy_dir)/,alpha_sense_app.te mac_permissions.xml seapp_contexts)
++    ifeq ($(alpha_sense_apk),)
++      $(error Alpha Sense SELinux policy requires the admitted AlphaSense APK)
++    endif
++    ifneq ($(alpha_sense_policy_files),$(alpha_sense_policy_expected))
++      $(error Alpha Sense requires the complete staged SELinux policy)
++    endif
++    SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(alpha_sense_policy_dir)
++  endif
++  alpha_sense_policy_dir :=
++  alpha_sense_apk :=
++  alpha_sense_policy_files :=
++  alpha_sense_policy_expected :=
++endif
++
+ ifneq (,$(and $(TARGET_ARCH),$(TARGET_ARCH_SUITE)))
+   $(error $(board_config_mk) erroneously sets both TARGET_ARCH and TARGET_ARCH_SUITE)
+ endif

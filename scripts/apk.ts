@@ -80,6 +80,8 @@ export const DEVELOPMENT_CLASSES = Object.freeze([
   "DevelopmentVoiceCapture",
   "DevelopmentChatContract",
 ]);
+const TELEPHONY_SETUP_RECEIVER = "ai.alphacompute.alphaphone.AlphaTelephonySetupReceiver";
+const MANAGE_ROLE_HOLDERS = "android.permission.MANAGE_ROLE_HOLDERS";
 // Components a distribution APK may export. Each one must be guarded by the
 // listed permission (null: a deliberate public entry point).
 export const EXPORTED_COMPONENTS = Object.freeze({
@@ -109,6 +111,8 @@ export const EXPORTED_COMPONENTS = Object.freeze({
   "ai.alphacompute.alphaphone.AlphaMmsWapPushReceiver": "android.permission.BROADCAST_WAP_PUSH",
   "ai.alphacompute.alphaphone.AlphaRespondViaMessageService": "android.permission.SEND_RESPOND_VIA_MESSAGE",
   "ai.alphacompute.alphaphone.AlphaSmsComposeActivity": null,
+  // The privileged image Provision app can prepare, but cannot assign roles through this receiver.
+  [TELEPHONY_SETUP_RECEIVER]: MANAGE_ROLE_HOLDERS,
 });
 // On-device speech is the fused libelizainference engine only. Entries and classes of the removed
 // speech runtimes (Open Neural Network Exchange models and runtimes, sherpa, ORT-Web, the former
@@ -121,7 +125,7 @@ export const DISTRIBUTION_POLICY = Object.freeze({
   developmentEntries: [/^res\/xml\/development_network_security_config\.xml$/],
   exportedComponents: EXPORTED_COMPONENTS,
   // WRITE_EXTERNAL_STORAGE is admitted only up to API 29 (Files' legacy storage); distributionProblems checks it.
-  forbiddenPermissions: [],
+  forbiddenPermissions: [MANAGE_ROLE_HOLDERS],
   forbiddenEntries: REMOVED_SPEECH_ENTRY,
   forbiddenEntriesLabel: "Removed speech runtime entries are packaged",
   forbiddenDexPrefixes: REMOVED_SPEECH_CLASSES,
@@ -217,7 +221,7 @@ export function extractWebPayload(file: string): {root: string; public: string} 
 }
 
 /** Read the build-time flag record that vite writes beside the web bundle. */
-export function readBuildFlags(publicDir: string): {testMocks: boolean; runtimeProfile?: unknown} {
+export function readBuildFlags(publicDir: string): {testMocks: boolean} {
   const file = path.join(publicDir, "build-flags.json");
   if (!fs.existsSync(file))
     throw new Error(`build-flags.json is missing from the packaged web bundle (${file}); the web build did not record its test-mocks flag`);
@@ -259,6 +263,30 @@ export function signerDigest(file: string, { apiLevel }: SignerOptions = {}): st
 }
 export const parseSignerDigest = parseApkSignerDigest as (output: string, options?: SignerOptions) => string;
 
+/** The image provisioner must be able to prepare the launcher before its first activity starts. */
+export function telephonySetupReceiverProblems(tree: ManifestNode, wantsHome = true): string[] {
+  const manifest = tree.children.find(node => node.name === "manifest");
+  const application = manifest?.children.find(node => node.name === "application");
+  const receivers = application?.children.filter(node =>
+    node.attrs.name === TELEPHONY_SETUP_RECEIVER ||
+    node.attrs.name === ".AlphaTelephonySetupReceiver" ||
+    node.attrs.name === "AlphaTelephonySetupReceiver") ?? [];
+  const problems = [];
+  if (wantsHome) {
+    const [receiver] = receivers;
+    if (!receiver || receivers.length !== 1 || receiver.name !== "receiver" || receiver.attrs.exported !== "0xffffffff" ||
+        (receiver.attrs.enabled !== undefined && receiver.attrs.enabled !== "0xffffffff") ||
+        receiver.attrs.permission !== MANAGE_ROLE_HOLDERS || receiver.children.some(node => node.name === "intent-filter"))
+      problems.push("Invalid AlphaTelephonySetupReceiver: expected one enabled, exported, explicit receiver protected by MANAGE_ROLE_HOLDERS");
+  } else if (receivers.length) {
+    problems.push("Invalid AlphaTelephonySetupReceiver: the receiver is launcher-only");
+  }
+  if (manifest?.children.some(node =>
+    (node.name === "uses-permission" || node.name.startsWith("uses-permission-sdk-")) && node.attrs.name === MANAGE_ROLE_HOLDERS))
+    problems.push("Alpha must not request MANAGE_ROLE_HOLDERS");
+  return problems;
+}
+
 export function validateApk(file: string, identity: {appId: string}, wantsHome: boolean, inspect: (file: string) => ApkInspection = inspectApk) {
   const data = inspect(file);
   if (data.packageName !== identity.appId)
@@ -297,6 +325,8 @@ export function validateApk(file: string, identity: {appId: string}, wantsHome: 
   for (const component of ['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'])
     if (data.xml.includes(`ai.alphacompute.alphaphone.${component}`) !== wantsHome)
       throw new Error(`Invalid telephony-role component ${component} for distribution in ${file}`);
+  const setupProblems = telephonySetupReceiverProblems(parseXmlTree(data.xml), wantsHome);
+  if (setupProblems.length) throw new Error(`${setupProblems.join("; ")} in ${file}`);
   // The SMS role grants these to its holder; only the launcher declares the role components.
   for (const permission of ['RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH'])
     if (data.xml.includes(`android.permission.${permission}`) !== wantsHome)

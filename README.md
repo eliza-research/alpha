@@ -45,10 +45,10 @@ cloud account supplies services such as model inference, speech and Gmail.
 ## Quickstart
 
 Try Alpha in your browser. You need [Git](https://git-scm.com) and
-[Bun 1.4.2](https://bun.sh). No Node.js, no Android tools and no account are required.
+[Bun 1.4.2](https://bun.sh). No Android tools and no account are required.
 
 ```bash
-git clone --recurse-submodules https://github.com/eliza-research/alpha.git
+git clone --recurse-submodules https://github.com/alphacompute/alpha.git
 ```
 
 ```bash
@@ -71,8 +71,8 @@ Alpha's Home screen. Narrow the window to phone width for the best view.
 | I want to…                              | Run                 | You also need                              |
 | --------------------------------------- | ------------------- | ------------------------------------------ |
 | Look around the interface               | `bun run dev:ui`    | Nothing else                               |
-| Run the agent on my computer            | `bun run dev`       | Nothing else                               |
-| Sign in and use real Cloud services     | `bun run dev:cloud` | An Eliza Cloud account                     |
+| Run the agent on my computer            | `bun run dev`       | [Bun 1.4.2](https://bun.sh)                |
+| Sign in and use real Cloud services     | `bun run dev:cloud` | Bun, and an Eliza Cloud account            |
 | Check my changes before a pull request  | `bun run verify`    | JDK 21 and the `sqlite3` command-line tool |
 | Build the Android app                   | [See below](#put-it-on-a-phone) | JDK 21 and the Android SDK     |
 
@@ -176,7 +176,7 @@ Alpha is in **early pilot**.
 | `apps/app`     | The Alpha interface: Home, the built-in apps and Ask Alpha.         |
 | `android`      | Android packaging, native code and the Alpha OS image pieces.       |
 | `scripts`      | Build, test and release tooling.                                    |
-| `specs`        | Formal models of the trickiest behaviour, checked on every verify.  |
+| `specs`        | Formal models of the trickiest behaviour, checked before merging.  |
 | `vendor/eliza` | The pinned [elizaOS](https://github.com/elizaOS/eliza) runtime. Read-only here. |
 
 ## Contributing

@@ -8,10 +8,11 @@ import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
 import {deliver} from '../../../../scripts/deliver-app-update.ts';
 import {
-  APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY, APP_UPDATE_REPOSITORY_ID, APP_UPDATE_REPOSITORY_OWNER_ID,
+  APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY, APP_UPDATE_REPOSITORY_ID,
   APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl,
 } from '../../../../scripts/update-channel.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const workflow = name => '.github/workflows/' + name + '.yml';
 const signer = workflow('release-cloud-app-signing');
@@ -126,9 +127,9 @@ function publicFixture(directory, launcherBytes, version) {
           wait: async () => {},
           run(args) {
             if (args[0] === 'api') {
-              assert.deepEqual(args, ['api', 'repos/eliza-research/alpha']);
-              return JSON.stringify({id: 1396333361, owner: {id: 314117943},
-                full_name: 'eliza-research/alpha', private: false});
+              assert.deepEqual(args, ['api', 'repos/alphacompute/alpha']);
+              return JSON.stringify({id: 1396333361,
+                full_name: 'alphacompute/alpha', private: false});
             }
             if (args[0] !== 'release') assert.fail('Unexpected command: ' + args.join(' '));
             if (args[1] === 'view' && args[2] === LEGACY_APP_UPDATE_TAG) {
@@ -217,7 +218,7 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
   const driverHashes = captureInputs(sources);
   checkWorkflows();
   const {traces, launcherBytes, mainCandidate, versionCode} = JSON.parse(execFileSync('python3', ['-B', python], {
-    encoding: 'utf8', timeout: 120_000,
+    encoding: 'utf8', timeout: scaledTimeout(120000),
   }));
   for (const trace of traces) {
     trace.expect.s.public = initial;

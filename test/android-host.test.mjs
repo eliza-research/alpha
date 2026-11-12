@@ -107,7 +107,7 @@ test('test mocks reach debug variants only and product admission runs before eve
   ['.eliza/generated-android/owner-routes.json', 'android/consumer-host.json', 'android/upstream-native-sources.json', 'app.config.json', 'apps/app/src/product/owner-route-table.ts', 'scripts/android-host.ts', 'scripts/prepare-patched-native.ts', 'upstream.lock.json']);
  // Product admission that depends on Gradle properties stays in Alpha's product script.
  const product = fs.readFileSync(path.join(ROOT, 'android/app/product.gradle'), 'utf8');
- for (const task of ['verifyEmbeddingHost', 'verifyParadeeAppLinkage', 'verifyVoiceHost', 'verifyRuntimeWebProfile'])
+ for (const task of ['verifyEmbeddingHost', 'verifyParadeeAppLinkage', 'verifyVoiceHost'])
   assert.match(product, new RegExp(`tasks\\.register\\('${task}'`));
  assert.doesNotMatch(product, /\b(signingConfigs|productFlavors|applicationId|minSdk|targetSdk|compileSdk|keystore)\b/i, 'the product script holds no generator-owned policy');
 });

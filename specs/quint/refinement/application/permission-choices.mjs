@@ -330,8 +330,13 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
     await f.click('Continue');record('first permission continued',advance);
   });
   await scenario('all-seven-ready-normal-completion-and-remount',{},async(f,record)=>{
-    for(const key of permissionKeys){assert.equal(f.snapshot().ui.heading,key[0].toUpperCase()+key.slice(1));
-      await f.click('Continue');record(`continued ${key}`,advance);}
+    for(const [index,key] of permissionKeys.entries()){
+      const {ui}=f.snapshot();
+      assert.equal(ui.heading,key[0].toUpperCase()+key.slice(1));
+      assert(ui.status.includes(`Step ${index + 1} of ${permissionKeys.length}`));
+      await f.click('Continue');record(`continued ${key}`,advance);
+    }
+    assert(!f.snapshot().ui.status.some(text=>text.startsWith('Step ')));
     assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
     await f.click('Done');record('completed session',action('finish'));
     await f.remount();record('completed installation remount',restart);
@@ -342,6 +347,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
     await f.remount();record('partial remount',restart);
     f.state.notifications=false;await f.remount();record('earlier permission revoked',restart);
     assert.equal(f.snapshot().component.progress.step,2);
+    assert(f.snapshot().ui.status.includes('Step 3 of 7'));
   });
   await scenario('held-request-duplicate-resume-and-completion',{permissions:{notifications:false}},async(f,record)=>{
     f.hold('notifications');await f.click('Allow');record('request held',[action('begin'),action('request')]);
@@ -450,6 +456,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   });
   await scenario('completed-review-skip-preserves-marker',{progress:{version:4,status:'completed',step:7}},async(f,record)=>{
     await f.reopen();record('review opened',action('reopen'));
+    assert(!f.snapshot().ui.status.some(text=>text.startsWith('Step ')));
     await f.expireSkip();record('skip available',action('skipAvailable'));
     await f.click('Skip');record('review step skipped',action('skip'));
     await f.click('Close');record('review closed',action('closeReview'));
@@ -489,6 +496,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   await scenario('native-location-and-photo-disclosures',{},async(f,record)=>{
     await f.target('location');record('location review',observation=>[action('openTarget',3),...statuses(observation)]);
     assert(f.snapshot().ui.status.includes('Approximate'));
+    assert(!f.snapshot().ui.status.some(text=>text.startsWith('Step ')));
     f.state.locationAccuracy='precise';await f.resume();record('precise readback',statuses);
     assert(f.snapshot().ui.status.includes('Precise'));
     await f.target('photos');record('photo review',observation=>[action('openTarget',5),...statuses(observation)]);

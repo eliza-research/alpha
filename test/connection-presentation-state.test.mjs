@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {readNativeNetwork} from '../apps/app/src/runtime/native-network.ts';
-const source=await readFile(process.env.ALPHA_PRESENTATION_SOURCE||new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
+const source=await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 function section(start,end){const a=source.indexOf(start),b=source.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return source.slice(a,b).replace(/^export /gm,'');}
 const functions=[
  section('function ownProviderSelected(', '\n'),
@@ -509,8 +509,8 @@ test('a fresh start, restart, rebind, redeem or sign-in retires a waiting networ
 // failed one under Cloud included), a busy or render update and an optional Cloud detach keep it. A
 // bound Cloud key reads as selected. A failed read retains the confirmed provider and marks it unavailable.
 function statusReads(box) {
-  Object.assign(box, {isAndroid: false, testMocksEnabled: false, developmentPageSuspended: false, listeners: new Set(), flushConversationEvents() {}, providerStatusGeneration: 0});
-  vm.runInContext(stripTypeScriptTypes(section('function update(', '// P-43: where') + `Object.assign(connectionController,{${section('  async refreshProviderStatus(', '  /** Stops the running agent')}});`, {mode: 'strip'}), box);
+  Object.assign(box, {isAndroid: false, testMocksEnabled: false, developmentPageSuspended: false, listeners: new Set(), flushConversationEvents() {}});
+  vm.runInContext(stripTypeScriptTypes(section('let providerStatusGeneration', 'function ownProviderSelected') + section('function update(', '// P-43: where') + `Object.assign(connectionController,{${section('  async refreshProviderStatus(', '  /** Stops the running agent')}});`, {mode: 'strip'}), box);
   return status => { box.localProviderStatus = async () => { if (!status) throw Error('unavailable'); return status; }; return box.connectionController.refreshProviderStatus(); };
 }
 test('a provider class changed and changed back by status reads alone while a network return waits does not spend it', async () => {

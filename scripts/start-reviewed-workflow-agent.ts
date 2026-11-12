@@ -2,10 +2,7 @@
 import {coreRuntimeArguments} from './core-state-patch.ts';
 import {superviseLauncherChild} from './launcher-child.ts';
 // Runs the pinned Eliza app host (the prepared tree of the vendor/eliza pin by default) with an
-// isolated private profile for the workflow host scripts. Their profiles and ports: test-reviewed-workflow-host and
-// test-workflow-cancel-recovery use the defaults; test-workflow-approvals-host, test-workflow-approval-crash
-// and test-workflow-metadata-host use --profile ~/.local/share/alphaphone/local-workflow-approvals --port 47854;
-// test-workflow-lifecycle-host uses --profile ~/.local/share/alphaphone/local-workflow-lifecycle --port 47856.
+// isolated private profile (--profile, --port).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

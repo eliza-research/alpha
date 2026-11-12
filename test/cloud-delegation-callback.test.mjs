@@ -11,7 +11,7 @@ await build({entryPoints:[path.join(root,'apps/app/src/runtime/cloud-delegation-
 }}]});
 const state='s'.repeat(43),other='o'.repeat(43);
 function fixture({record,callback,status}){
- const calls=[],listeners=[],slots=new Map();if(record)slots.set('cloud-delegation:v1:email',record);
+ const calls=[],reviews=[],listeners=[],slots=new Map();if(record)slots.set('cloud-delegation:v1:email',record);
  let native=callback,statusGate=null,readGate=null,active=true;
  globalThis.__delegationNative={
   addListener:async(_e,fn)=>{listeners.push(fn);return{remove(){}};},
@@ -23,7 +23,7 @@ function fixture({record,callback,status}){
   compareExchange:async(slot,expected,next)=>{if(JSON.stringify(slots.get(slot)??null)!==JSON.stringify(expected))return{status:'conflict'};if(next)slots.set(slot,next);else slots.delete(slot);return{status:'saved'};},
  };
  const client={delegation:async(kind,input)=>{calls.push([kind,input.state??null]);if(kind==='revocations')return{grants:[]};if(kind==='status'){if(statusGate)await statusGate;return status(input,calls);}return{};}};
- return{calls,slots,client,deliver(value){native=value;for(const fn of listeners)fn();},hold(){let release;statusGate=new Promise(r=>release=r);return()=>{statusGate=null;release();};},
+ return{calls,reviews,slots,client,deliver(value){native=value;for(const fn of listeners)fn();},hold(){let release;statusGate=new Promise(r=>release=r);return()=>{statusGate=null;release();};},
   holdRead(){let entered,release;const waiting=new Promise(resolve=>entered=resolve),promise=new Promise(resolve=>release=resolve);readGate={entered,promise};return {waiting,release};},
   current:()=>active,retire(){active=false;},get native(){return native;}};
 }
@@ -32,7 +32,11 @@ async function mount(f,run){
  for(const k of keys){saved[k]=Object.getOwnPropertyDescriptor(globalThis,k);Object.defineProperty(globalThis,k,{configurable:true,writable:true,value:k==='IS_REACT_ACT_ENVIRONMENT'?true:dom.window[k]});}
  const {CloudDelegationPanel}=await import(pathToFileURL(file).href),{createRoot}=await import('react-dom/client');
  const container=document.getElementById('root'),r=createRoot(container),signal=new AbortController().signal;
- try{await act(async()=>r.render(React.createElement(CloudDelegationPanel,{client:f.client,scope:'email',signal,current:f.current,onConnected(){}})));await settle();await run(()=>container.textContent,(scope,client=f.client)=>act(async()=>r.render(React.createElement(CloudDelegationPanel,{client,scope,signal,current:f.current,onConnected(){}}))));}
+ let scope='email',client=f.client,revocation=null;
+ const render=()=>r.render(React.createElement(CloudDelegationPanel,{client,scope,signal,current:f.current,onConnected(){},onReviewRemoval:grantId=>f.reviews.push(grantId),removalBusy:false,revocation}));
+ try{await act(async()=>render());await settle();await run(()=>container.textContent,
+  (nextScope,nextClient=f.client)=>act(async()=>{scope=nextScope;client=nextClient;render();}),
+  result=>act(async()=>{revocation=result;render();}));}
  finally{await act(async()=>r.unmount());dom.window.close();for(const [k,v] of Object.entries(saved)){if(v)Object.defineProperty(globalThis,k,v);else delete globalThis[k];}}
 }
 const settle=()=>act(async()=>{for(let i=0;i<20;i++)await new Promise(r=>setTimeout(r,0));});
@@ -142,21 +146,29 @@ test('cancelling while Cloud is still finishing leaves the authorization pending
   assert.equal(f.slots.size,1);
  });
 });
-test('a revoke outcome survives a failed list read, and a grant is not shown for another account',async()=>{
+test('a reviewed removal outcome survives a failed list read, and a grant is not shown for another account',async()=>{
  const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'waiting'};
  const f=fixture({record,status:()=>({status:'complete',grantId:'g1'})});
  await mount(f,async(text,rescope)=>{
   await act(async()=>button('Refresh').click());await settle();
-  assert.ok(button('Revoke'));
+  assert.ok(button('Review removal'));
+  await act(async()=>button('Review removal').click());
+  assert.deepEqual(f.reviews,['g1'],'the parent receives the exact grant for review');
+  assert.ok(!f.calls.some(([kind])=>kind==='revoke'),'the child cannot revoke before the parent review');
   await rescope('calendar');await settle();
-  assert.equal(button('Revoke'),undefined);
+  assert.equal(button('Review removal'),undefined);
  });
  const g=fixture({record,status:()=>({status:'complete',grantId:'g1'})});
- await mount(g,async text=>{
+ await mount(g,async(text,_rescope,reportRevocation)=>{
   await act(async()=>button('Refresh').click());await settle();
   const base=g.client.delegation;
-  g.client.delegation=async(kind,input)=>{if(kind==='revocations')throw Error('offline');if(kind==='revoke')return{remoteRevocation:'confirmed'};return base(kind,input);};
-  await act(async()=>button('Revoke').click());await settle();
+  let failedRefreshes=0;
+  g.client.delegation=async(kind,input)=>{if(kind==='revocations'){failedRefreshes++;throw Error('offline');}return base(kind,input);};
+  await act(async()=>button('Review removal').click());
+  assert.deepEqual(g.reviews,['g1']);
+  await reportRevocation({grantId:'g1',removed:true});await settle();
+  assert.equal(failedRefreshes,1,'the parent outcome remains visible when the follow-up list read fails');
+  assert.equal(button('Review removal'),undefined);
   assert.match(text(),/Revoked/);
   assert.doesNotMatch(text(),/Unconfirmed/);
  });
@@ -170,7 +182,7 @@ test('a status answer retained across a scope change cannot adopt the previous s
   await act(async()=>button('Refresh').click());
   await rescope('calendar');await settle();
   release();await settle();
-  assert.equal(button('Revoke'),undefined);
+  assert.equal(button('Review removal'),undefined);
   assert.deepEqual(f.slots.get('cloud-delegation:v1:email'),record);
  });
 });
@@ -183,7 +195,7 @@ test('a status answer retained across a client replacement cannot adopt the reti
   await act(async()=>button('Refresh').click());
   await rescope('email',{...f.client});await settle();
   release();await settle();
-  assert.equal(button('Revoke'),undefined);
+  assert.equal(button('Review removal'),undefined);
   assert.deepEqual(f.slots.get('cloud-delegation:v1:email'),record);
  });
 });

@@ -61,7 +61,7 @@ test('Drafts, Archive and Trash load their lists; a Gmail draft opens for editin
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Quarterly plan');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Draft text');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Edited draft text');
- await page.getByRole('button',{name:'Review saving to Gmail Drafts',exact:true}).click();
+ await page.getByRole('button',{name:'Save to Gmail drafts',exact:true}).click();
  const review=page.getByRole('dialog',{name:'Review mail operation'});
  await expect(review.getByRole('heading',{name:'Replace Gmail draft'})).toBeVisible();
  await expect(review.getByText('Edited draft text',{exact:true})).toBeVisible();

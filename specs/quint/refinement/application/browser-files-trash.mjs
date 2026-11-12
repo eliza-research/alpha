@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
 import {AsyncLocalStorage} from 'node:async_hooks';
-import {resolve} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
-import {captureInputs, checkTraces, qmap, qset} from '../check-traces.mjs';
+import {captureInputs, checkTraces, qmap, qset, verifyRefinementReceiptInputs} from '../check-traces.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
+import {realNode} from '../../../../scripts/run-node-only-tests.ts';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const source = 'plugins/plugin-files/src/browser/storage-volume.ts';
@@ -338,11 +343,50 @@ async function failedPlacements(f, t) {
   t.point('Ordinary Downloads still exposes both original names', null);
 }
 
+// Bun has no Web Locks. Keep this one source campaign on a real Node runtime,
+// including its fallback branch, when the aggregate itself is running on Bun.
+function checkBrowserFilesTrashWithNode(extraSources) {
+  const delegationInputs = captureInputs([fileURLToPath(import.meta.url),
+    'scripts/run-node-only-tests.ts', 'specs/quint/refinement/timeouts.mjs']);
+  const node = realNode();
+  assert.ok(node, 'Files Trash refinement requires a real Node.js 24+ runtime with Web Locks');
+  const directory = mkdtempSync(join(tmpdir(), 'alpha-files-trash-node-'));
+  const request = join(directory, 'request.json'), output = join(directory, 'receipt.json');
+  try {
+    writeFileSync(request, JSON.stringify({extraSources, output}), {mode: 0o600, flag: 'wx'});
+    const code = `
+      import {readFileSync, writeFileSync} from 'node:fs';
+      const {checkBrowserFilesTrash} = await import(${JSON.stringify(import.meta.url)});
+      const request = JSON.parse(readFileSync(process.argv[1], 'utf8'));
+      const receipt = await checkBrowserFilesTrash(request.extraSources);
+      writeFileSync(request.output, JSON.stringify(receipt, (_key, value) =>
+        typeof value === 'bigint' ? {'#bigint': String(value)} : value), {mode: 0o600, flag: 'wx'});
+    `;
+    const result = spawnSync(node, ['--input-type=module', '-e', code, request], {
+      cwd: root, encoding: 'utf8', timeout: scaledTimeout(240000), maxBuffer: 16 * 1024 * 1024,
+    });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, `Node Files Trash refinement failed (${result.signal ?? result.status})\n${result.stdout}\n${result.stderr}`);
+    const receipt = JSON.parse(readFileSync(output, 'utf8'));
+    assert.equal(receipt.model, 'BrowserFilesTrash');
+    assert.ok(receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound);
+    for (const [file, hash] of Object.entries(delegationInputs)) {
+      assert.equal(receipt.sourceHashesBefore[file], hash, 'Delegation input changed before Node execution: ' + file);
+    }
+    assert.equal(verifyRefinementReceiptInputs(receipt), true, 'Node receipt inputs remain current');
+    return receipt;
+  } finally {
+    rmSync(directory, {recursive: true, force: true});
+  }
+}
+
 export async function checkBrowserFilesTrash(extraSources = []) {
+  if (typeof process.versions.bun === 'string') return checkBrowserFilesTrashWithNode(extraSources);
   checkClientFeatures();
   const sources = [generated+source, generated+model, generated+librarySource, generated+'.source.json',
     'vendor/eliza/'+source, 'vendor/eliza/'+model, 'vendor/eliza/'+librarySource,
     'apps/app/src/browser/files.ts', 'upstream.lock.json', 'scripts/prepare-client-features.ts',
+    'scripts/run-node-only-tests.ts', 'specs/quint/refinement/timeouts.mjs',
     fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
   const {BrowserStorageVolume} = await import(pathToFileURL(resolve(root, generated+source)).href);

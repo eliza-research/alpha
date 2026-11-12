@@ -6,6 +6,7 @@ import {join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {materialize,root} from './os-host-support.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const driver=fileURLToPath(import.meta.url),stage='scripts/stage-alpha-os-branding.py';
 const runner=`import json,sys,tempfile,types
@@ -108,7 +109,7 @@ export async function checkOSSourceStaging(extraSources=[]){
   assert.equal(source.split(anchor).length,2,'Unique preimage admission observer');
   const generated=materialize(temporary,{'stage-observed.py':source.replace(anchor,"    observe('all-preimages-admitted')\n"+anchor),'probe.py':runner});
   const driverHashes={...before,...captureInputs(generated)};
-  const traces=JSON.parse(execFileSync('python3',[generated[1],resolve(root,stage),generated[0]],{encoding:'utf8',timeout:120000}));assert.equal(traces.length,7);
+  const traces=JSON.parse(execFileSync('python3',[generated[1],resolve(root,stage),generated[0]],{encoding:'utf8',timeout:scaledTimeout(120000)}));assert.equal(traces.length,7);
   return await checkTraces({model:'OSSourceStaging',sources:[...sources,...generated],driverHashes,generatedSources:generated,traces,scope:'bounded-orchestration',assumptions:[
    'The actual Python build_plan asset-report/payload/geometry/package admission prefix and apply_plan filesystem implementation execute. One read-only observer marks completion of its all-preimage loop; real temporary files, backup writes, atomic replacements and final hash readback are used.',
    'Source admission identity (s.source) is deliberately unobserved: Git revision responses are a declared trusted port and build_plan stops at core_policy_plan. Source fetching, generated PNG/ZIP validity, core-patch materialization, whole-plan construction and AOSP source identity are separate existing staging-test obligations; these traces establish no image build or device qualification.',

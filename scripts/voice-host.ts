@@ -28,7 +28,6 @@ interface VoiceComponent {name: string; license: string; source: string}
 interface VoiceModel extends VoiceComponent {path: string; role: string; sha256: string; bytes: number; sourceFile?: string}
 interface VoiceAbi {
   abi: AndroidAbi;
-  engineAdmission?: string;
   abiVersion: number;
   alignment16KiB: boolean;
   libraries: {name: string; sha256: string; bytes: number}[];

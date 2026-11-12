@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {createHash} from 'node:crypto';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');});
 test('file mutations serialize races and invalidate old selections without partial folder imports',async({page})=>{
  const result=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const files=registerPlugin<any>('AlphaFiles');const selected=await files.importFile(new File(['original'],'race.txt',{type:'text/plain'}));const row=(await files.list({})).entries[0];const attempts=await Promise.allSettled([files.rename({id:row.id,expectedRevision:row.revision,name:'winner-a.txt'}),files.rename({id:row.id,expectedRevision:row.revision,name:'winner-b.txt'})]);let stale=false;try{await files.readSelected(selected);}catch{stale=true;}let duplicate=false;try{await files.importDirectory([{path:'same.txt',file:new File(['a'],'a')},{path:'same.txt',file:new File(['b'],'b')}],'No partial folder');}catch{duplicate=true;}const folder=await files.importDirectory([{path:'nested/one.txt',file:new File(['one'],'one.txt',{type:'text/plain'})}],'Imported');const nested=await files.list({id:folder.entries[0].id});const entry=nested.entries[0];const text=await files.readSelected(await files.select({id:entry.id}));const binary=await files.readSelected(await files.importFile(new File([new Uint8Array([0,255,1])],'binary.bin',{type:'application/octet-stream'})));return {successes:attempts.filter(r=>r.status==='fulfilled').length,stale,duplicate,names:(await files.list({})).entries.map((e:any)=>e.name),text:text.text,binary:binary.status};});
@@ -16,6 +17,38 @@ test('Files renderer confirms folder creation and closes its mutation dialog',as
  await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'New folder',exact:true}).click();
  await page.getByRole('textbox',{name:'Name'}).fill('UI folder');await page.getByRole('button',{name:'Create',exact:true}).click();await expect(page.getByRole('button',{name:'Open UI folder',exact:true})).toBeVisible();
 });
+test('Files explains empty folders, categories and Trash in the mounted list',async({page})=>{
+ await page.evaluate(async()=>{
+  const {registerPlugin}=await import('/src/platform-plugins.ts');
+  await registerPlugin<any>('AlphaFiles').storageCreateFolder({parent:'',name:'Empty folder'});
+ });
+ await page.getByRole('button',{name:'Files',exact:true}).click();
+ const detail=page.locator('[data-alpha-subview="files-folder"]');
+ const empty=detail.getByRole('status').filter({hasText:'No files to show'});
+ const back=detail.getByRole('button',{name:'Back',exact:true});
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+ await page.getByRole('button',{name:'Open Empty folder',exact:true}).click();
+ await expect(empty).toBeVisible();
+ await back.click();
+ await back.click();
+ for(const name of ['Documents','Trash']){
+  await page.getByRole('button',{name,exact:true}).click();
+  await expect(detail.getByRole('heading',{name,exact:true})).toBeVisible();
+  await expect(empty).toBeVisible();
+  await back.click();
+ }
+});
+test('Files does not report an empty folder after a failed read',async({page})=>{
+ await page.evaluate(async()=>{
+  const {BrowserFiles}=await import('/src/browser/files.ts');
+  BrowserFiles.prototype.storageList=async()=>({status:'unavailable'});
+ });
+ await page.getByRole('button',{name:'Files',exact:true}).click();
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+ const detail=page.locator('[data-alpha-subview="files-folder"]');
+ await expect(detail.getByRole('status').filter({hasText:'Files could not be read.'})).toBeVisible();
+ await expect(detail.getByRole('status').filter({hasText:'No files to show'})).toHaveCount(0);
+});
 test('mail attachment bridge preserves exact bytes and validates reviewed hashes',async({page})=>{
  const attachment=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const files=registerPlugin<any>('AlphaFiles'),mail=registerPlugin<any>('AlphaMailAttachments');const selection=await files.importFile(new File(['Café\r\nExact bytes'],'letter.txt',{type:'text/plain'}));const result=await mail.readSelected(selection);let rejected=false;try{await mail.openReviewed({...result,reviewed:true,sha256:'0'.repeat(64)});}catch{rejected=true;}await mail.openReviewed({...result,reviewed:true});return {...result,rejected};});
  expect(attachment.rejected).toBe(true);expect(Buffer.from(attachment.dataBase64,'base64').toString('utf8')).toBe('Café\r\nExact bytes');const dialog=page.getByRole('dialog',{name:'Reviewed attachment'});await expect(dialog.getByText('Café Exact bytes')).toBeVisible();await dialog.getByRole('button',{name:'Done',exact:true}).click();await expect(dialog).toHaveCount(0);
@@ -29,18 +62,67 @@ const importAndOpen=async(page:import('@playwright/test').Page,name:string,conte
  await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();await page.getByRole('button',{name:'Open '+name,exact:true}).click();
 };
 const recentNames=(page:import('@playwright/test').Page)=>page.evaluate(()=>(JSON.parse(localStorage.getItem('alpha.files.recent.v1')||'[]') as {name:string}[]).map(row=>row.name));
-for(const [label,name,content,excerpt] of [['a UTF-8 BOM text file','bom.txt','\uFEFFByte order mark',undefined],['a text file without preview text','long.txt','x'.repeat(2_500_000),'The long log']] as const)
+for(const [label,name,content,excerpt] of [['a UTF-8 BOM text file','bom.txt','\uFEFFByte order mark',undefined],['a long text file within the preview bound','long-preview.txt','x'.repeat(1_500_000),'The long log']] as const)
  test(`Ask Alpha links the source of ${label}`,async({page})=>{
-  await importAndOpen(page,name,content);await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
+  await observeFileQuestionEffects(page);await importAndOpen(page,name,content);await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
   const question=page.getByRole('dialog',{name:'Ask about selected content'});if(excerpt)await question.getByRole('textbox',{name:'Content excerpt'}).fill(excerpt);
   await expect(question.getByRole('checkbox')).toBeChecked();await question.getByRole('button',{name:'Use in conversation'}).click();
   await expect(question).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue(new RegExp('Source: '+name));
+  const retained=await page.evaluate(()=>{
+   const screen=document.querySelector('[data-screen]') as any,key=Object.keys(screen).find(key=>key.startsWith('__reactFiber$'))!;let fiber=screen[key];
+   while(fiber&&!(fiber.stateNode&&typeof fiber.stateNode.api==='function'&&typeof fiber.stateNode.S==='function'))fiber=fiber.return;
+   if(!fiber)throw Error('Mounted shell unavailable');return structuredClone(fiber.stateNode.reviewedSourceDraft);
+  });
+  expect(retained.source).toEqual({version:1,name,mimeType:'text/plain',size:Buffer.byteLength(content),sha256:createHash('sha256').update(content).digest('hex'),reference:expect.stringMatching(/^b1:[a-f0-9-]{36}$/)});
+  expect(JSON.stringify(retained.source).length).toBeLessThan(512);expect(retained.source).not.toHaveProperty('dataBase64');expect(retained.source).not.toHaveProperty('text');
+  expect(retained.draft.length).toBeLessThan(512);if(excerpt)expect(retained.draft).toContain(excerpt);
+  expect(await fileQuestionEffects(page)).toEqual({reads:2,retains:1,sends:0});
+ });
+// Observe the actual source boundary, without replacing its result or the send behavior.
+async function observeFileQuestionEffects(page:import('@playwright/test').Page){
+ await page.evaluate(async()=>{
+  const effects={reads:0,retains:0,sends:0};(window as any).fileQuestionEffects=effects;
+  const {BrowserMailAttachments}=await import('/src/browser/mail-attachments.ts');
+  const read=BrowserMailAttachments.prototype.readSelected,retain=BrowserMailAttachments.prototype.retainSourceReference;
+  BrowserMailAttachments.prototype.readSelected=function(input){effects.reads++;return read.call(this,input);};
+  BrowserMailAttachments.prototype.retainSourceReference=function(input){effects.retains++;return retain.call(this,input);};
+  const {alphaClient}=await import('/src/runtime/alpha-client.ts');const send=alphaClient.send;
+  (alphaClient as any).send=function(...args:any[]){effects.sends++;return (send as any).apply(this,args);};
+ });
+}
+const fileQuestionEffects=(page:import('@playwright/test').Page)=>page.evaluate(()=>(window as any).fileQuestionEffects);
+for(const [name,bytes] of [['long.txt',2_500_000],['huge.txt',6*1024*1024]] as const)
+ test(`selected text without a content preview offers no question or source effects: ${name}`,async({page})=>{
+  await observeFileQuestionEffects(page);await importAndOpen(page,name,'x'.repeat(bytes));
+  await expect(page.getByRole('status').filter({hasText:'Open or download this file to read it.'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Ask Alpha',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
+  await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveCount(0);
+  expect(await fileQuestionEffects(page)).toEqual({reads:0,retains:0,sends:0});
+  expect(await recentNames(page)).toEqual([]);
+  expect(await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return (await registerPlugin<any>('AlphaFiles').list({})).entries.map((row:any)=>({name:row.name,size:row.size}));})).toEqual([{name,size:bytes}]);
  });
 test('Ask Alpha says a file over 5 MiB is too large to link',async({page})=>{
- await importAndOpen(page,'huge.txt','x'.repeat(6*1024*1024));await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
- const question=page.getByRole('dialog',{name:'Ask about selected content'});await question.getByRole('textbox',{name:'Content excerpt'}).fill('The huge log');await question.getByRole('button',{name:'Use in conversation'}).click();
+ // A real image remains reviewable under #927. Its actual bytes exceed the separate source-link
+ // limit, so the original refusal/unlink UI path is exercised without inventing a text preview.
+ await observeFileQuestionEffects(page);
+ const bytes=await page.evaluate(async()=>{
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=1536;const context=canvas.getContext('2d')!,image=context.createImageData(1536,1536);let random=0x12345678;
+  for(let i=0;i<image.data.length;i+=4){random^=random<<13;random^=random>>>17;random^=random<<5;image.data[i]=random&255;image.data[i+1]=(random>>>8)&255;image.data[i+2]=(random>>>16)&255;image.data[i+3]=255;}
+  context.putImageData(image,0,0);const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(Error('PNG encoding failed')),'image/png'));
+  const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File([blob],'oversized.png',{type:'image/png'}));return blob.size;
+ });
+ expect(bytes).toBeGreaterThan(5*1024*1024);
+ await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();await page.getByRole('button',{name:'Open oversized.png',exact:true}).click();
+ await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
+ const question=page.getByRole('dialog',{name:'Ask about selected content'}),image=question.getByRole('img',{name:'Image for question review'});
+ await expect.poll(()=>image.evaluate((element:HTMLImageElement)=>element.complete&&element.naturalWidth===1536&&element.naturalHeight===1536)).toBe(true);
+ await question.getByRole('textbox',{name:'Content excerpt'}).fill('The large image');await question.getByRole('button',{name:'Use in conversation'}).click();
  await expect(question.getByRole('status')).toHaveText('This file is too large to link as a source. Turn off the source link to ask without one.');
+ expect(await fileQuestionEffects(page)).toEqual({reads:1,retains:0,sends:0});
  await question.getByRole('checkbox').uncheck();await question.getByRole('button',{name:'Use in conversation'}).click();await expect(question).toHaveCount(0);
+ await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('What does this mean?\n\nSource: oversized.png\n\nThe large image');
+ expect(await fileQuestionEffects(page)).toEqual({reads:1,retains:0,sends:0});
 });
 test('renaming a browsed file preserves bytes and does not create an obsolete Recent grant',async({page})=>{
  await importAndOpen(page,'report.txt','Quarterly');expect(await recentNames(page)).toEqual([]);

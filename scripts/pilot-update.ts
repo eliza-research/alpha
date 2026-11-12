@@ -43,7 +43,7 @@ import { readReleaseSigner } from "./build-android.ts";
 import { pilotRotationRecord, verifyPilotRotation } from "./owner/pilot-rotation.ts";
 import { androidEnv, tool } from "./toolchain.ts";
 import { beginPilotRotation, claimPilotInstall, completePilotRotation, inspectPilotRotation, observePilotRotation } from "./owner/pilot-rotation-journal.ts";
-import { adbFor, admitUnitApk, deviceFacts, installedApkSha256, PACKAGE, packageFacts, parseUnitArgs, requireConsistentApk } from "./provision-unit.ts";
+import { adbFor, admitUnitApk, deviceFacts, installedApkSha256, PACKAGE, packageFacts, parseUnitArgs, requireConsistentApk, snapshotUnitApk } from "./provision-unit.ts";
 import { apkUpdateAdmission, compareDomains, DOMAIN_SCRIPT, inPlaceUpdateFailures, integrityQuery as sharedIntegrityQuery, parseDomainInventory, parseIntegrityExport, readbackInventory } from "../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs";
 
 type Adb = ReturnType<typeof adbFor>;
@@ -320,7 +320,6 @@ async function main() {
   const device = deviceFacts(adb, options.serial);
   const apiLevel = device.sdk;
   if (apiLevel === null || !Number.isSafeInteger(apiLevel) || apiLevel < 1) throw new Error("Device Android API level is unavailable");
-  requireConsistentApk(apk, {apiLevel});
   if (device.serialSha256 !== unit.device?.serialSha256) throw new Error(`Serial does not belong to unit ${options.alias}`);
   if (apk.rehearsal && !device.emulator) throw new Error("--build debug is an emulator rehearsal only");
 
@@ -332,18 +331,18 @@ async function main() {
       throw new Error("A pilot rotation outcome is unknown. Use --reconcile-rotation before any further install.");
     if (rotation && pendingRotation.state !== "none")
       throw new Error("The pilot rotation attempt is already consumed");
-    const before = packageFacts(adb(["shell", "dumpsys", "package", PACKAGE]));
     pulled = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-installed-"));
+    const candidate = snapshotUnitApk(apk, pulled);
+    requireConsistentApk(candidate, {descriptor, apiLevel});
+    const replacementFile = candidate.file;
+    const before = packageFacts(adb(["shell", "dumpsys", "package", PACKAGE]));
     const installedFile = path.join(pulled, "installed.apk");
     const apkPath = /^package:(\/\S+\.apk)$/m.exec(adb(["shell", "pm", "path", PACKAGE]))?.[1];
     if (!apkPath) throw new Error("Alpha Phone is not installed on this unit");
     adb(["pull", apkPath, installedFile], { timeout: 600_000 });
     const installedSigner = signerDigest(installedFile, {apiLevel});
-    const replacementFile = lineageFile ? path.join(pulled, "migration.apk") : apk.file;
     let rotationLineageSha256: string | undefined;
     if (lineageFile) {
-      fs.copyFileSync(apk.file, replacementFile, fs.constants.COPYFILE_EXCL);
-      fs.chmodSync(replacementFile, 0o400);
       rotationLineageSha256 = verifyPilotRotation({
         descriptor, apk, device, before, installedFile, replacementFile, lineageFile,
         packageName: PACKAGE, javaHome: androidEnv().JAVA_HOME, apksigner: tool("apksigner"),

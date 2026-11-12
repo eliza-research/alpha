@@ -31,7 +31,7 @@ export const runtimeScriptPaths = ['scripts/stage-alpha-os-branding.py', 'script
   'scripts/android-host.ts', 'scripts/android-gzip-assets.ts', 'scripts/stage-aosp.ts',
   'scripts/audit-production-bundle.ts', 'scripts/generate-licenses.ts',
   'scripts/cloud-deployment.ts', 'scripts/cloud-deployment-policy.ts', 'scripts/native-view-policy.ts',
-  'scripts/with-test-mocks.ts', 'scripts/removed-profile-flags.ts', 'scripts/child-command.ts', 'scripts/regular-files.ts', 'capacitor.config.ts', 'vite.config.ts',
+  'scripts/with-test-mocks.ts', 'scripts/child-command.ts', 'scripts/regular-files.ts', 'capacitor.config.ts', 'vite.config.ts',
   'scripts/apk.ts', 'scripts/source-snapshot.ts', 'scripts/verify-apks.ts', 'scripts/verify-packaged-runtime.py',
   'scripts/provision-unit.ts', 'scripts/publish-update-manifest.ts', 'scripts/deliver-app-update.ts',
   'scripts/update-apk-admission.ts', 'scripts/update-artifact.ts', 'scripts/owner/InspectUpdateApk.java',

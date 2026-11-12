@@ -79,7 +79,7 @@ test('a listener status read never discards or replaces a Pause or Turn off resu
  assert.match(action,/if \(!listenerReads\.beginAction\(\)\) return;/);
  assert.match(action,/if \(owner !== instance\) return;\s+listener = next;/,'the action result is applied whatever was refreshed meanwhile');
  assert.match(action,/finally \{ listenerReads\.endAction\(\);/);
- assert.match(source,/if \(!externalVoiceInvocationEnabled\) return;\s+const read = listenerReads\.beginRead\(\);\s+if \(read === null\) return;\s+const status = await listenerStatus\(\);\s+if \(owner === instance && capabilityAbort === abort && listenerReads\.readApplies\(read\)\) listener = status;/);
+ assert.match(source,/if \(!imageSenseAvailable\(\)\) return;\s+const read = listenerReads\.beginRead\(\);\s+if \(read === null\) return;\s+const status = await listenerStatus\(\);\s+if \(owner === instance && capabilityAbort === abort && listenerReads\.readApplies\(read\)\) listener = status;/);
 });
 
 test('a resume behind another view defers the Settings device read until Settings is shown',async()=>{

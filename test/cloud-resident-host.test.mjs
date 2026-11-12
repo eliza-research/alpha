@@ -24,6 +24,18 @@ test('Cloud host retires old processes, strips direct-provider keys and never pe
  }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
 
+test('Cloud host launches the lean chat plugin set with the assistant disabled',async()=>{
+ const profile=await fs.mkdtemp(join(tmpdir(),'alpha-cloud-lean-')),launches=[];
+ const launch=async options=>{launches.push(options);let finish;return {completion:new Promise(resolve=>{finish=resolve;}),async stop(){finish({code:0});}};};
+ const host=await createCloudResidentHost({source:resolve('vendor/eliza'),profile,port:47869,launch,inherited:{PATH:process.env.PATH}});
+ try{
+  await host.clear();
+  const config=JSON.parse(await fs.readFile(join(profile,'eliza.json'),'utf8'));
+  assert.equal(config.plugins.entries['personal-assistant'].enabled,false);
+  assert.equal(launches[0].env.ELIZA_PLUGIN_SET,'lean-chat');
+  assert.equal(launches[0].env.ELIZA_LEAN_CHAT_WORKFLOWS,'1');
+ }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
+});
 test('Cloud readiness waits for the single running agent after the auth listener is available',async()=>{
  const profile=await fs.mkdtemp(join(tmpdir(),'alpha-cloud-ready-'));let calls=0,done;
  const host=await createCloudResidentHost({source:resolve('vendor/eliza'),profile,port:47869,

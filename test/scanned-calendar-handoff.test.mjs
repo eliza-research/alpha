@@ -319,6 +319,31 @@ test('a managed Google event keeps Delete unavailable in the event menu',()=>{
  const other={...managedEvent,grantId:'google-grant'},f=fixture({calendars:[localSource,{...managedSource,grantId:'google-grant'}],events:[other],row:detailRow}),out=f.views.calendar.render({open:'canonical-calendar:standup'},calendarApi(f));
  assert.equal(typeof out.ev.del,'function');assert.equal(out.ev.providerNotice,undefined);assert.deepEqual(out.ev.recurrenceScopes.map(scope=>scope.label),['This occurrence','This and following','Entire series']);
 });
+test('a repeating event chooses its occurrences in the delete action itself',()=>{
+ const template=readFileSync('apps/app/src/prototype/template.html','utf8');
+ // The single Delete is replaced by one action per scope; no separate scope row remains in the detail.
+ assert.match(template,/<sc-if value="\{\{calendar\.ev\.singleDelete\}\}"><sc-if value="\{\{calendar\.ev\.del\}\}">/);
+ assert.match(template,/<sc-if value="\{\{calendar\.ev\.scopedDelete\}\}"><sc-for list="\{\{calendar\.ev\.recurrenceScopes\}\}" as="scope"><button aria-label="\{\{scope\.deleteLabel\}\}" disabled="\{\{calendar\.ev\.busy\}\}" onClick="\{\{scope\.del\}\}">/);
+ assert.doesNotMatch(template,/Repeating event action scope/);
+ // An empty list is truthy to sc-if, so the form's scope group has its own flag.
+ assert.match(template,/<sc-if value="\{\{calendar\.f\.hasRecurrenceScopes\}\}"><div role="group" aria-label="Save changes to"/);
+ assert.match(readFileSync('apps/app/src/prototype/model.js','utf8'),/deleteText:'Delete',singleDelete:true/);
+ const series={...managedEvent,grantId:'google-grant'},sources=[localSource,{...managedSource,grantId:'google-grant'}];
+ const recurring=fixture({calendars:sources,events:[series],row:detailRow}).views.calendar.render({open:'canonical-calendar:standup'},{}).ev;
+ assert.equal(recurring.scopedDelete,true);assert.equal(recurring.singleDelete,false);
+ assert.deepEqual(recurring.recurrenceScopes.map(scope=>scope.deleteText),['Delete this occurrence','Delete this and following','Delete entire series']);
+ assert.ok(recurring.recurrenceScopes.every(scope=>typeof scope.del==='function'&&scope.deleteLabel===scope.deleteText));
+ const single=fixture({calendars:sources,events:[{...series,recurringEventId:undefined}],row:detailRow}).views.calendar.render({open:'canonical-calendar:standup'},{}).ev;
+ assert.equal(single.scopedDelete,false);assert.equal(single.singleDelete,true);assert.equal(typeof single.del,'function');
+ // A managed Google series offers no delete action of either kind.
+ const managed=fixture({calendars:[localSource,managedSource],events:[managedEvent],row:detailRow}).views.calendar.render({open:'canonical-calendar:standup'},{}).ev;
+ assert.equal(managed.del,null);assert.equal(managed.scopedDelete,false);
+});
+test('Save without a title says why and writes nothing',async()=>{
+ const f=fixture({recordPort:availablePort,remembered:[]}),toasts=[];f.calendar.form={...noteDraft,canonicalOwnerKey:'owner-A',cal:'handle:primary',title:'  '};
+ const out=f.views.calendar.render(f.calendar,calendarApi(f,toasts));assert.equal(out.f.saveOff,true);
+ await out.f.save();assert.deepEqual(toasts,['Add a title']);assert.equal(f.creates.length,0);
+});
 test('a managed recurring Google event edits only this occurrence and hides the repeat editor',async()=>{
  const f=fixture({calendars:[localSource,managedSource],events:[managedEvent],row:detailRow}),api=calendarApi(f);
  f.views.calendar.render({open:'canonical-calendar:standup'},api).ev.edit();

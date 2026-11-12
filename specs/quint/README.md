@@ -18,11 +18,13 @@ actions, invariants, scenarios, source files and abstractions.
 ## Running checks
 
 Install the root lockfile with `bun install --frozen-lockfile`. The development tool is pinned to
-`@informalsystems/quint` 0.33.1. Repository verification includes the default
-Quint gate and implementation conformance tests.
+`@informalsystems/quint` 0.33.1. `bun run verify` and `bun run test` leave out the default
+Quint gate and the `test/quint-*` tests; run them before merging. CI runs them only for
+pull requests into `main` and on manual dispatch (`.github/workflows/quint-model-check.yml`).
 
 ```sh
 bun run quint:check
+bun run quint:tests
 bun run quint:typecheck
 bun run quint:test
 bun run quint:simulate -- --samples=1000 --steps=60 --seed=123

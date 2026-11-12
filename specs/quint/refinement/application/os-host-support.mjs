@@ -3,6 +3,7 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {javaBinary,jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 export const root=fileURLToPath(new URL('../../../../',import.meta.url));
 export function materialize(directory,sources){
@@ -12,10 +13,10 @@ export function materialize(directory,sources){
 }
 export function compileJava(sources,directory){
  if(!jsonJar)throw Error('Prepare the reviewed host org.json dependency');
- execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',directory,...sources],{timeout:120000,stdio:'pipe'});
+ execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',directory,...sources],{timeout:scaledTimeout(120000),stdio:'pipe'});
 }
 export function javaJson(directory,main){
- return JSON.parse(execFileSync(javaBinary('java'),['-cp',directory+':'+jsonJar,main],{encoding:'utf8',timeout:120000}));
+ return JSON.parse(execFileSync(javaBinary('java'),['-cp',directory+':'+jsonJar,main],{encoding:'utf8',timeout:scaledTimeout(120000)}));
 }
 /** Android boundary ports only. Production controller/policy methods compile unchanged. */
 export function androidPorts(identity){

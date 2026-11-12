@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkCloudQaLauncher} from '../specs/quint/refinement/services/cloud-qa-launcher.mjs';
 
-test('Cloud QA launcher source stages private profile and retains exact child and receipt custody', {timeout: 120000}, async () => {
+test('Cloud QA launcher source stages private profile and retains exact child and receipt custody', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkCloudQaLauncher([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 22);
   assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);

@@ -51,7 +51,7 @@ export const VARIANTS = Object.freeze(["standalone", "launcher"]);
 export const PKCS11_JVM_OPTION = "-J-add-exports=jdk.crypto.cryptoki/sun.security.pkcs11=ALL-UNNAMED";
 const HEX = /^[a-f0-9]{64}$/;
 const PLAIN = /^[A-Za-z0-9._/@:+=-]+$/;
-const PRESERVING_PILOT_PACKAGE = ["ai", "elizaresearch", "alphaphone"].join(".");
+const PRESERVING_PILOT_PACKAGE = ["ai", "alphacompute", "alphaphone"].join(".");
 type SigningKey =
   | {mode: "key-files"; keysDir: string; keyName?: string}
   | {mode: "pkcs11"; pkcs11Config: string; keyLabel: string}
@@ -290,7 +290,7 @@ export async function main(argv: readonly string[], { root = process.cwd(), env 
   let targets: SigningTarget[] = [];
   const artifacts = path.join(root, "artifacts");
   const build: {runtimeProfile?: string; localEmbeddings?: boolean; testMocks?: boolean} = !options.apk && fs.existsSync(path.join(artifacts, "build-config.json")) ? JSON.parse(fs.readFileSync(path.join(artifacts, "build-config.json"), "utf8")) : {};
-  if ((build.runtimeProfile ?? "native") !== "native" || build.localEmbeddings !== undefined) problems.push("artifacts/build-config.json names a removed runtime profile; rebuild (there is one profile now)");
+  if ((build.runtimeProfile ?? "native") !== "native" || build.localEmbeddings !== undefined) problems.push("artifacts/build-config.json is not a native-profile build record; rebuild");
   if (build.testMocks === true) problems.push("artifacts/build-config.json records a test-mocks build, which is never distributable");
   try { targets = signingTargets({ artifacts, apk: options.apk && path.resolve(root, options.apk), out: options.out && path.resolve(root, options.out) }); }
   catch (problem) { problems.push(message(problem)); }

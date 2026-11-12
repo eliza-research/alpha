@@ -7,20 +7,16 @@ import { serializeOwnerRouteTable } from "../apps/app/src/product/owner-route-ta
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { archiveWebPayload, parseXmlTree, readBuildFlags, validateApk, verifyOwnerRouteTable } from "../scripts/apk.ts";
+import { archiveWebPayload, parseXmlTree, readBuildFlags, telephonySetupReceiverProblems, validateApk, verifyOwnerRouteTable } from "../scripts/apk.ts";
 import { webViewFilterProblems, webViewFilters } from "../scripts/render-assetlinks.ts";
 import { voiceBundleAdmission, VOICE_BUNDLE_FORMAT } from "../scripts/voice-host.ts";
 const root = path.resolve(import.meta.dirname, "..");
-test("Cloud voice evidence is one readable file for a genuine build, and the removed profile options are refused, before any APK work", () => {
+test("Cloud voice evidence is one readable file for a genuine build, before any APK work", () => {
   for (const [args, message] of [
     [["--cloud-voice-evidence=a.json", "--cloud-voice-evidence=b.json"], /Specify --cloud-voice-evidence only once/],
     [["--cloud-voice-evidence=missing.json"], /Cloud voice evidence could not be read as JSON/],
     [["--test-mocks", "--cloud-voice-evidence=a.json"], /Cloud voice evidence requires a genuine resident without mocks/],
     [["--allow-unpackaged-runtime", "--cloud-voice-evidence=a.json"], /Cloud voice evidence requires a genuine resident without mocks/],
-    // One runtime profile: every build packages local speech and embeddings.
-    [["--runtime-profile=cloud", "--cloud-voice-evidence=a.json"], /There is one runtime profile now: remove --runtime-profile and --local-embeddings/],
-    [["--runtime-profile=native"], /There is one runtime profile now/],
-    [["--local-embeddings"], /There is one runtime profile now/],
   ]) {
     const result=spawnSync(process.execPath,["scripts/verify-apks.ts",...args],{cwd:root,encoding:"utf8"});
     assert.notEqual(result.status,0,args.join(" "));
@@ -163,6 +159,15 @@ test("AOSP staging refuses --production without a descriptor, with --development
     fs.writeFileSync(path.join(dir, "artifacts/apk-manifest.json"), JSON.stringify({ testMocks: false, results: [{ file: "artifacts/launcher-release.apk", mode: "release", sha256,
       testMocks: false, bundleAudit: "passed", signed: true, signerSha256: "d".repeat(64), runtime: "PACKAGED", runtimeNotices: true, distributable: true, licenceBlockers: [],
       releaseAdmission: { failures: [], blockers: [], signerMatches: true }, voiceHost: { packaged: true, asr: true, differences: [], qualified: true } }] }));
+    const manifestFile = path.join(dir, "artifacts/apk-manifest.json");
+    const original = fs.readFileSync(manifestFile, "utf8");
+    const privateRecord = JSON.parse(original);
+    privateRecord.results[0].updateChannel = {kind: "private-qa", manifestUrlSha256: "a".repeat(64)};
+    fs.writeFileSync(manifestFile, JSON.stringify(privateRecord));
+    out = stage(["--apk", release, "--descriptor", "reviewed.json", "--production"]);
+    assert.notEqual(out.status, 0);
+    assert.match(out.stderr, /Private QA update channels are refused for production provisioning/);
+    fs.writeFileSync(manifestFile, original);
     const identity = JSON.parse(fs.readFileSync(path.join(root, "app.config.json"), "utf8"));
     for (const [name, foreign] of [["package", { packageName: "ai.elizaos.app", moduleName: identity.moduleName }], ["module", { packageName: identity.appId, moduleName: "Eliza" }]]) {
       fs.writeFileSync(path.join(dir, "foreign.json"), JSON.stringify({ schemaVersion: 1, apkSha256: sha256, certificateSha256: "d".repeat(64), ...foreign }));
@@ -210,8 +215,8 @@ for (const testMocks of [false, true]) test(`archive retains actual APK web byte
 
 // Exercise the archive CLI, its child environments and real ZIP retention without
 // running Gradle. Only the Android builder and source snapshot are fixture commands.
-// There is one runtime profile. `inherited` starts from an environment that still carries the
-// removed profile switch and the mock flags: a distribution archive strips them all.
+// `inherited` starts from an environment that still carries the mock flags: a distribution
+// archive strips them.
 for (const mode of ['native', 'test-mocks', 'inherited', 'wrong-profile', 'private', 'wrong-channel']) test(`build archive keeps the one runtime profile and its update channel: ${mode}`, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
@@ -228,9 +233,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-const args=process.argv.slice(2), profile=process.env.VITE_ELIZA_RUNTIME_PROFILE??null;
+const args=process.argv.slice(2);
 const mocks=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS==='1';
-fs.appendFileSync('calls.jsonl',JSON.stringify({args,profile,mocks,privateInputPresent:!!process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_FILE})+'\\n');
+fs.appendFileSync('calls.jsonl',JSON.stringify({args,mocks,privateInputPresent:!!process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_FILE})+'\\n');
 if(args[1]==='android:build'){
  const output=mocks?'artifacts/test-mocks':'artifacts';
  fs.mkdirSync(output,{recursive:true});
@@ -256,8 +261,7 @@ if(args[1]==='android:build'){
   const args = testMocks ? ['--test-mocks'] : [];
   const env = {...process.env, PATH:path.join(dir, 'bin')+path.delimiter+process.env.PATH};
   for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL','ALPHA_UPDATE_CHANNEL','ALPHA_PRIVATE_UPDATE_MANIFEST_FILE','ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256']) delete env[name];
-  delete env.VITE_ELIZA_RUNTIME_PROFILE;
-  if (inherited) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_RUNTIME_PROFILE:'cloud'});
+  if (inherited) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});
   if (mode === 'wrong-profile') env.FIXTURE_WRONG_PROFILE='1';
   if(mode==='wrong-channel')env.FIXTURE_WRONG_CHANNEL='1';
   if(mode==='private'){
@@ -276,7 +280,6 @@ if(args[1]==='android:build'){
   assert.equal(run.status, 0, run.stderr);
   const calls = fs.readFileSync(path.join(dir, 'calls.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
   assert.deepEqual(calls.map(row => row.args[1]), ['android:sync', 'verify', 'android:build']);
-  assert.ok(calls.every(row => row.profile === null), 'no profile switch reaches the renderer build, verification or the Android build');
   assert.equal(calls[1].mocks, false, 'verification stays flag-off even for a fixture archive');
   assert.equal(calls[1].privateInputPresent,false,'source verification never inherits the real private capability');
   assert.equal(calls[2].privateInputPresent,mode==='private');
@@ -284,20 +287,19 @@ if(args[1]==='android:build'){
   assert.equal(calls[2].mocks, testMocks);
   assert.deepEqual(calls[2].args, ['run', 'android:build', ...(args.length ? ['--', ...args] : [])]);
   const configuration = JSON.parse(fs.readFileSync(path.join(archive, 'configuration.json')));
-  assert.equal(configuration.runtimeProfile, 'native');assert.equal('localEmbeddings' in configuration, false);
+  assert.equal(configuration.runtimeProfile, 'native');
   assert.equal(configuration.testMocks, testMocks);
   const manifest = JSON.parse(fs.readFileSync(path.join(archive, 'apk-manifest.json')));
   assert.equal(Object.keys(manifest).length, 6);
   for (const [name, expected] of Object.entries(manifest)) assert.equal(createHash('sha256').update(fs.readFileSync(path.join(archive, name))).digest('hex'), expected);
   const flags = JSON.parse(fs.readFileSync(path.join(archive, 'web-dist/build-flags.json')));
-  assert.equal(flags.runtimeProfile, undefined);
   assert.equal(flags.testMocks, testMocks);
 });
 
-test('archive rejects the removed profile switches and unsupported options before creating output', t => {
+test('archive rejects unsupported options before creating output', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-invalid-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
-  for (const args of [['--runtime-profile=cloud', '--test-mocks'], ['--runtime-profile=other'], ['--allow-unpackaged-runtime']]) {
+  for (const args of [['--allow-unpackaged-runtime']]) {
     const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, encoding:'utf8'});
     assert.notEqual(run.status, 0);
     assert.ok(!fs.existsSync(path.join(dir, 'test-results')));
@@ -355,11 +357,18 @@ test('merged-manifest check keeps launcher-only permissions and components out o
   const identity = {appId: 'ai.alphacompute.alphaphone'};
   const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG', 'WRITE_CONTACTS', 'READ_PHONE_NUMBERS', 'READ_PRIVILEGED_PHONE_STATE']
     .map(name => `android.permission.${name}`)
-    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'].map(name => `ai.alphacompute.alphaphone.${name}`));
-  const apk = (home, entries) => () => ({packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml: ['android.permission.CAMERA', ...entries].map(name => `A: android:name="${name}"`).join('\n')});
+    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity', 'AlphaTelephonySetupReceiver'].map(name => `ai.alphacompute.alphaphone.${name}`));
+  const apk = (home, entries) => () => {
+    const setup = `${identity.appId}.AlphaTelephonySetupReceiver`;
+    const xml = ['E: manifest', '  E: application', ...['android.permission.CAMERA', ...entries].map(name =>
+      name === setup
+        ? `    E: receiver\n      A: android:name="${name}"\n      A: android:exported=(type 0x12)0xffffffff\n      A: android:permission="android.permission.MANAGE_ROLE_HOLDERS"`
+        : `    A: android:name="${name}"`)].join('\n');
+    return {packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml};
+  };
   assert.doesNotThrow(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly)));
   assert.doesNotThrow(() => validateApk('standalone.apk', identity, false, apk(false, [])));
-  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.alphacompute.alphaphone.AlphaSmsSendReceiver', 'android.permission.WRITE_CONTACTS', 'android.permission.READ_PRIVILEGED_PHONE_STATE']) {
+  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.alphacompute.alphaphone.AlphaSmsSendReceiver', 'ai.alphacompute.alphaphone.AlphaTelephonySetupReceiver', 'android.permission.WRITE_CONTACTS', 'android.permission.READ_PRIVILEGED_PHONE_STATE']) {
     const name = entry.split('.').at(-1);
     assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly.filter(other => other !== entry))), new RegExp(`Invalid.*${name}.*launcher\\.apk`));
     assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), new RegExp(`Invalid.*${name}.*standalone\\.apk`));
@@ -368,6 +377,34 @@ test('merged-manifest check keeps launcher-only permissions and components out o
     assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, [...launcherOnly, entry])), /Unexpected carrier voicemail manifest entry/);
     assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), /Unexpected carrier voicemail manifest entry/);
   }
+});
+
+test("release accepts only a sender-protected telephony setup receiver without granting role authority to Alpha", () => {
+  const rolePermission = "android.permission.MANAGE_ROLE_HOLDERS";
+  function assess({ permission = rolePermission, tag = "receiver", requested = false,
+      exported = true, enabled = true, present = true, implicit = false } = {}) {
+    const xml = [
+      "E: manifest",
+      '  A: package="ai.alphacompute.alphaphone"',
+      ...(requested ? ["  E: uses-permission", `    A: android:name="${rolePermission}"`] : []),
+      "  E: application",
+      ...(present ? [
+        `    E: ${tag}`,
+        '      A: android:name=".AlphaTelephonySetupReceiver"',
+        `      A: android:exported=(type 0x12)${exported ? "0xffffffff" : "0x0"}`,
+        ...(enabled ? [] : ["      A: android:enabled=(type 0x12)0x0"]),
+        ...(permission ? [`      A: android:permission="${permission}"`] : []),
+        ...(implicit ? ["      E: intent-filter"] : []),
+      ] : []),
+    ].join("\n");
+    return telephonySetupReceiverProblems(parseXmlTree(xml));
+  }
+  assert.deepEqual(assess(), []);
+  for (const invalid of [{ present: false }, { permission: "" }, { permission: "android.permission.INTERNET" },
+    { tag: "service" }, { exported: false }, { enabled: false }, { implicit: true }]) {
+    assert.match(assess(invalid).join("\n"), /AlphaTelephonySetupReceiver/);
+  }
+  assert.match(assess({ requested: true }).join("\n"), /must not request MANAGE_ROLE_HOLDERS/);
 });
 
 // A merged-manifest xmltree with the main manifest's two web returns on MainActivity.

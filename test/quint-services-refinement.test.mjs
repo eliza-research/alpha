@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
@@ -8,16 +9,14 @@ import {loadModels} from '../scripts/quint-lib.ts';
 
 // The complete serial campaign was still producing passing receipts at its former
 // 880-second cutoff. Keep all campaigns and a finite budget matching the app aggregate.
-test('service components and coordinators check real-source traces and preserve explicit platform obligations', {timeout: 2400000}, () => {
+test('service components and coordinators check real-source traces and preserve explicit platform obligations', {timeout: scaledTimeout(2400000)}, () => {
   const expected = new Set(loadModels().filter(model => model.family === 'services').map(model => model.module));
   const directory = mkdtempSync(join(tmpdir(), 'alpha-quint-services-'));
   const log = openSync(join(directory, 'run.log'), 'w+');
-  // The summary goes to a file on descriptor 3: Bun's spawnSync does not capture extra 'pipe' descriptors.
   const summaryPath = join(directory, 'summary.json');
-  const summary = openSync(summaryPath, 'w+');
   try {
     const result = spawnSync(process.execPath, ['-e', `
-      import {writeSync} from 'node:fs';
+      import {writeFileSync} from 'node:fs';
       import {runServicesRefinement} from './specs/quint/refinement/services/index.mjs';
       const result = await runServicesRefinement(({receipts, failures}) => {
         console.log('Service refinement progress: '+receipts.length+' receipts, '+failures.length+' failures');
@@ -27,12 +26,12 @@ test('service components and coordinators check real-source traces and preserve 
         const errors = result.failures.map(({campaign, error}) => new Error(campaign, {cause: error}));
         throw new AggregateError(errors, 'Service refinement campaigns failed: ' + names.join(', '));
       }
-      writeSync(3, JSON.stringify({
+      writeFileSync(${JSON.stringify(summaryPath)}, JSON.stringify({
         models: result.receipts.map(receipt => receipt.model),
         traces: result.receipts.reduce((sum, receipt) => sum + receipt.traces, 0),
         obligations: result.obligations.length,
       }));
-    `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 2380000, stdio: ['ignore', log, log, summary]});
+    `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: scaledTimeout(2380000), stdio: ['ignore', log, log]});
     if (result.error || result.status !== 0) {
       const size = fstatSync(log).size;
       const tail = Buffer.alloc(Math.min(size, 64 * 1024));
@@ -47,7 +46,6 @@ test('service components and coordinators check real-source traces and preserve 
     assert.ok(obligations >= 37, 'remaining obligations accompany the bounded evidence');
   } finally {
     closeSync(log);
-    closeSync(summary);
     rmSync(directory, {recursive: true, force: true});
   }
 });

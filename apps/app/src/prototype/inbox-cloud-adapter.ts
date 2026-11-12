@@ -29,6 +29,7 @@ import {GOOGLE_ACCOUNTS_CHANGED} from '../runtime/google-accounts';
 import { DailyApps } from '../daily';
 import { formatMonthDay, formatTime, formatFullDateTime, weekdayName } from './locale-time';
 import { formatBytes } from '../browser/storage-usage';
+import { BrowserReviews } from '../browser/review';
 
 type Bag = Record<string, any>;
 const MAIL_MENU_TOKENS=['--bg','--fg','--s2','--mut','--line','--acct'],MAIL_MENU_SELECTED={width:112,background:'var(--fg)',color:'var(--bg)'};
@@ -137,6 +138,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   let attachmentView:{name:string;text:string;hash:string;external:boolean;open:()=>void;save:()=>void;saveDisabled:boolean;saveStatus:string}|null=null;
   type MailBody={ message: GmailMessage; bodyText: string;bodyHtml?:string; loading?:boolean;failed?:boolean; links?: GmailLink[]; historyId?:string|null;attachments?:{partId:string;name:string;mimeType:string;size:number;supported:boolean}[] };
   let selected='',body:MailBody|null=null;
+  let linkReviews: BrowserReviews | undefined;
   let remoteImagesShown=false;
   const htmlBodies=new WeakMap<MailBody,Partial<Record<'hidden'|'shown',ReturnType<typeof prepareMailHtml>>>>();
   // Bounded bodies (16 entries, 4 MiB) and folder lists (8, 30 days) from @elizaos/plugin-inbox/mailbox.
@@ -301,12 +303,25 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     if(!api?.isActive())return;
     const pending=homeLoad;if(pending){if(!restored){status='Checking…';publish();}await pending.task;restored=restored&&cachedListShown&&!!selected&&readable().some(account=>account.connectionId===selected);}
     if(!api?.isActive())return;
-    const binding=connectionController.getCloudClient(),preview=homePreview;
-    if(binding&&preview&&preview.owner===homeSummaryOwner()&&preview.sessionId===binding.sessionId&&preview.key===gmailReadCacheKey(binding.sessionId,accounts.find(a=>a.connectionId===preview.accountId))&&!accountsFromDisk&&currentQuery()==='in:inbox'&&Date.now()-(preview.readAt??0)<60000){
-      selected=preview.accountId;
-      if(restoreList()){phase='ready';saveGmailAccountChoice(connectionController.getSnapshot().cloudAccount,selected);watchSelectedMail();publish();void provider.bind(selected);void drafts.bind(selected,preview.label);return;}
+    const consumeHomePage=()=>{
+      const binding=connectionController.getCloudClient(),preview=homePreview,allowed=readable(),hint=readGmailAccountChoice(connectionController.getSnapshot().cloudAccount);
+      const chosen=hint?allowed.find(account=>account.connectionId===hint):allowed.length===1?allowed[0]:undefined;
+      if(binding&&preview&&chosen?.connectionId===preview.accountId&&(!selected||selected===preview.accountId)&&preview.owner===homeSummaryOwner()&&preview.sessionId===binding.sessionId&&preview.key===gmailReadCacheKey(binding.sessionId,accounts.find(a=>a.connectionId===preview.accountId))&&!accountsFromDisk&&currentQuery()==='in:inbox'&&Date.now()-(preview.readAt??0)<60000){
+        const previous=selected;selected=preview.accountId;
+        if(restoreList()){phase='ready';saveGmailAccountChoice(connectionController.getSnapshot().cloudAccount,selected);watchSelectedMail();publish();void provider.bind(selected);void drafts.bind(selected,preview.label);return true;}
+        selected=previous;
+      }
+      return false;
+    };
+    if(consumeHomePage())return;
+    if(!api?.isActive())return;if(!restored)phase='ready';
+    if(!restored||accountsFromDisk||Date.now()-listReadAt>=60000){
+      const checking=refreshAccounts(restored),checkedGeneration=generation;
+      await checking;
+      // Disk restoration still needs a current grant check. Its accepted Home page becomes
+      // visible only after that check, while this same mailbox operation still owns the view.
+      if(api?.isActive()&&generation===checkedGeneration)consumeHomePage();
     }
-    if(!api?.isActive())return;if(!restored)phase='ready';if(!restored||accountsFromDisk||Date.now()-listReadAt>=60000)await refreshAccounts(restored);
   }
 
   function rememberList(){if(operation||failure)return;if(folderLists.remember({key:listKey(),at:listReadAt,firstPageRevision,messages,query:loadedQuery,cursor:nextPageToken,revision,cursors:[...seenCursors],newerMail,status}))persistMailbox();}
@@ -445,7 +460,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
         finally{signal.removeEventListener('abort',abort);}
       });
       const result = await client.gmailAccounts(signal);
-      if (!valid()) return;
+      if (!valid()||hint!==readGmailAccountChoice(connectionController.getSnapshot().cloudAccount)) return;
       const previous=selected,before={sessionId:accountsSession||null,account:accounts.find(a=>a.connectionId===previous)};accounts = result; accountsChecked = true; accountsFromDisk = false; accountsSession = binding.sessionId;
       // P-37: a withdrawn change grant discards the unsent review prepared under it (nothing is
       // dispatched); a changed read-cache identity (session, connection or read grant) drops the mail read under it.
@@ -556,7 +571,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   }
   let loadingMore = false;
   /** Abort only the in-flight read, preserving the list cursor and open message. */
-  function cancelOperation() { generation++; operation?.abort(); operation = null; if (phase === 'busy') phase = 'ready'; loadingMore = false; }
+  function cancelOperation() { linkReviews?.cancelAll(); generation++; operation?.abort(); operation = null; if (phase === 'busy') phase = 'ready'; loadingMore = false; }
   async function load(more = false) {
     if (!selected) { await refreshAccounts(); return; }
     if (draftsView()) { await loadDrafts(more); return; }
@@ -753,10 +768,19 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     let url: URL; try { url = new URL(link.href); } catch { api?.toast('Invalid link'); return; }
     if (url.protocol !== 'https:' || url.username || url.password) { api?.toast('Not HTTPS'); return; }
     const warning = linkTextMismatch(link) ? `\n\nWarning: the email shows “${link.text}”, but the link goes to ${url.hostname}.` : '';
-    if (!window.confirm(`Open ${url.hostname}?\n${url.href}${warning}`)) return;
-    const navigate = (shell as Bag | undefined)?.browserNavigateApproved;
-    if (typeof navigate !== 'function') { api?.toast('Browser is unavailable.'); return; }
-    void Promise.resolve(navigate.call(shell, url.href, new AbortController().signal)).catch(() => api?.toast('Couldn’t open'));
+    const owner = shell, source = body?.message.id, visit = generation, accountId = selected;
+    const binding = connectionController.getCloudClient();
+    // A matching message ID in a later visit or another account cannot revive this review.
+    const current = () => !!owner && owner === shell && visit === generation && accountId === selected &&
+      binding?.sessionId === connectionController.getCloudClient()?.sessionId &&
+      binding?.credentialId === connectionController.getCloudClient()?.credentialId &&
+      body?.message.id === source && !!api?.isActive();
+    void (linkReviews ??= new BrowserReviews()).confirm('open-mail-link', 'Open this link in Browser?', `${url.hostname}\n${url.href}${warning}`, 'Open link', {current}).then(approved => {
+      if (!approved || !current()) return;
+      const navigate = (owner as Bag | undefined)?.browserNavigateApproved;
+      if (typeof navigate !== 'function') { api?.toast('Browser is unavailable.'); return; }
+      return Promise.resolve(navigate.call(owner, url.href, new AbortController().signal));
+    }).catch(() => api?.toast('Couldn’t open'));
   }
   view.back = (st: Bag, current: Bag) => {
     if(attachmentView){void attachmentNative.cancel().catch(()=>{});attachmentView=null;publish();return true;}

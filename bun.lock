@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "@eliza-research/alphaphone",
+      "name": "@alphacompute/alphaphone",
       "dependencies": {
         "@capacitor/android": "8.5.2",
         "@capacitor/core": "8.5.2",
