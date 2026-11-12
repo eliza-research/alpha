@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "a13a21d66e1bdbfeb6527657e1a387e5725c3dcf",
-  "head": "b520b1f0bc622a8fd9e8cbc8843dd0da692dbf8c",
+  "baseCommit": "11040b3555c9a7db51ac2104ee68dd66cdd51046",
+  "head": "940a53fe3ef1762f861e961e1794dfc0e47f4722",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...b520b1f0bc622a8fd9e8cbc8843dd0da692dbf8c",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...940a53fe3ef1762f861e961e1794dfc0e47f4722",
   "status": "diverged",
-  "aheadBy": 27,
-  "behindBy": 411,
+  "aheadBy": 29,
+  "behindBy": 489,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -114,6 +114,14 @@
     {
       "sha": "d8e6354d74ec287f29a649a840e4187bc6021277",
       "subject": "Merge commit '765725575c6c1062cf75b01c69e7949da968314d' into codex/review-calendar-39435"
+    },
+    {
+      "sha": "bace08c870a2d3170a263e1ac3348d4eedcab0e1",
+      "subject": "Draft owner-confirmed canonical Notes erasure"
+    },
+    {
+      "sha": "940a53fe3ef1762f861e961e1794dfc0e47f4722",
+      "subject": "Exercise Notes erasure over authenticated HTTP"
     }
   ],
   "pullRequests": [
