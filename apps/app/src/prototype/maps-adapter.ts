@@ -202,7 +202,8 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const isPlace = view.mode === 'place', isNav = view.mode === 'navigation';
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
     const savedMatches=view.mode!=='origin'&&view.query.trim()?view.saved.filter(item=>item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())):[];
-    const isResults=(view.mode==='results'||view.mode==='origin')&&!view.emptyQuery&&(view.hasResults||view.noResults||savedMatches.length>0);
+    const isResults=(view.mode==='results'||view.mode==='origin')&&!view.emptyQuery&&(view.hasResults||savedMatches.length>0);
+    const emptySearch=view.noResults&&!view.emptyQuery&&!savedMatches.length&&status.map!=='error';
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
@@ -223,7 +224,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         }
         plane?.update(view.map.selected,view.map.route,view.map.overlay);
       },
-      native: true, nativeStatusVisible:status.visible, nativeStatus: statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
+      native: true, nativeStatusVisible:status.visible||emptySearch, nativeStatus: emptySearch?'No places':statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
       nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy, nativeLocation: () => screen.locate(),
       nativeLocationState:status.location,nativeMapState:status.map,nativeMapStatus:status.mapText,
       nativeLocationLabel:status.locationLabel,nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,

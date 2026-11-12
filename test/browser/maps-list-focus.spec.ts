@@ -75,3 +75,11 @@ test('automatic Maps search cancels empty and abandoned input',async({page})=>{
  await page.waitForTimeout(500);
  expect(await page.evaluate(()=>(window as any).mapFocus.searches)).toEqual([]);
 });
+
+
+test('an empty automatic search gives compact feedback without an empty sheet',async({page})=>{
+ await setup(page);await page.evaluate(()=>(window as any).mapFocus.items=[]);
+ await page.getByRole('textbox',{name:'Search places',exact:true}).fill('missing place');
+ await expect(page.getByText('No places',{exact:true})).toBeVisible();
+ await expect(page.locator('[data-alpha-maps-sheet="results"]')).toHaveCount(0);
+});
