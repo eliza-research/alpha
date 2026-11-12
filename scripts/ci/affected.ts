@@ -27,12 +27,12 @@ export function affected(paths: readonly string[]) {
       // Formal models change no APK or browser bytes; the promotion workflow checks them.
     } else if (/^test\/browser\//.test(path) || path === 'playwright.config.ts' || path === 'scripts/storage-specs.ts') {
       result.browser = true;
+    } else if (path === 'test/update-channel-gradle.test.py' || path === '.github/workflows/android.yml') {
+      result.android = true;
     } else if (/^test\//.test(path)) {
       // Host contract tests run in verify, not in an emulator.
     } else if (path === '.github/workflows/browser.yml') {
       result.browser = true;
-    } else if (path === '.github/workflows/android.yml') {
-      result.android = true;
     } else if (path === '.github/workflows/resident-prepare.yml') {
       result.prepare = true;
     } else if (/^\.github\/workflows\/(resident-android|android-emulator)\.yml$/.test(path)) {
