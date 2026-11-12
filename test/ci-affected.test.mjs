@@ -63,6 +63,7 @@ test('retained documentation selects verify and policy inputs select normal buil
   }
   assert.deepEqual(lanes(['design/reference.html', 'AGENTS.md', 'LICENSE']), [false,false,false,false]);
   assert.deepEqual(lanes(['specs/quint/application/Application.qnt','specs/quint/manifest.json','scripts/check-quint.ts']), [true,false,false,false], 'formal specifications run repository verification');
+  assert.deepEqual(lanes(['test/update-channel-gradle.test.py']), [true,false,true,false], 'the OTA Gradle fixture requires the wrapper-backed Android lane');
   assert.deepEqual(lanes(['scripts/cloud-deployment-policy.ts']), [true,true,true,true], 'policy inputs cannot be hidden as reference-only docs');
 });
 
