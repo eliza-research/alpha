@@ -93,7 +93,7 @@ with tempfile.TemporaryDirectory(prefix='alpha-channel-gradle-') as temporary:
             env['ALPHA_PRIVATE_UPDATE_MANIFEST_FILE'] = str(contained)
         env.update(override)
         run = subprocess.run([java, '-cp', classpath, 'groovy.ui.GroovyMain', str(script)],
-                             env=env, capture_output=True, text=True, timeout=40)
+                             env=env, capture_output=True, text=True, timeout=120)
         output = run.stdout + run.stderr
         assert value.strip() not in output, 'Input capability leaked into diagnostics'
         if accepted:

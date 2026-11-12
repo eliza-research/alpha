@@ -163,7 +163,10 @@ export async function checkNativeUpdateStaging(extraSources = []) {
   const traces = [], skipped = [];
   try {
     const members = join(temporary,'AlphaDevicePlugin.java');
-    writeFileSync(members,exactUpdateMembers(readFileSync(join(root,plugin),'utf8')));
+    const source=exactUpdateMembers(readFileSync(join(root,plugin),'utf8'));
+    const deadlineCheck='System.nanoTime()>=deadline)throw new java.io.IOException("Update took too long")';
+    assert.equal(source.split(deadlineCheck).length,2,'The extracted download deadline check occurs once');
+    writeFileSync(members,source.replace(deadlineCheck,deadlineCheck.replace('System.nanoTime()', 'UpdateStagingHarness.downloadNanoTime()')));
     const native = Object.entries(nativeInputs);
     const program = settingsProgram();
     const bootstrap = renderer(program,'bootstrap',{offer1:{resolved:true,manifest:offerJson,manifestSha256:sha(offerJson)}});
@@ -223,10 +226,10 @@ export async function checkNativeUpdateStaging(extraSources = []) {
     rmSync(temporary,{recursive:true,force:true});
   }
 
-  const receipt = await checkTraces({model,traces,sources,driverHashes,scope:'bounded-orchestration',assumptions:[
+  const receipt = await checkTraces({model,traces,sources,driverHashes,batchSize:8,scope:'bounded-orchestration',assumptions:[
     'Actual native manifest transport and exact Settings review/cache functions execute through synthetic responses. The checked Settings tuple is passed to the JVM installer before the first activation event.',
     'Controlled HTTPS, fake archive metadata and an installer sink expose actual cache bytes, digest admission, file custody, precommit copy and cleanup. The fixture refuses each staged update before resident stop or commit.',
-    'Direct copyVerified probes test the real deadline behavior: late body bytes are rejected and a late EOF can verify bytes already read. The full install traces use the production deadline.',
+    'Direct copyVerified probes substitute only the download clock so the fixture can place a body chunk or EOF at the deadline. Late body bytes are rejected and late EOF can verify bytes already read. Full install traces use the real clock and production deadline.',
     'Cold-boot traces execute the actual capability and installer functions with controlled SDK, consent and Android SystemClock. Uptime samples 0,26681,29999,30000,30001,35000 preserve the inclusive boundary. A shut-down executor proves refused calls resolve before worker admission; real cache/network/session/barrier/stop/commit effects remain absent.',
     'Same-boot process replacement preserves controlled uptime; a new boot resets it. These are explicit fixture observations between attempts, not installed-device reboot validation. A failed actual digest and later warm-process admission retain the existing cleanup contract.',
     'A known automatic lifecycle deferral may retain one process-local exact tuple. Actual cached bytes, marker, network-call counts and staged copies are observed through retry, corruption/refetch and process-loss cleanup. Cache reuse reruns digest and archive admission; the source fixture stops at renderer refusal and proves no commit or resident stop. Transport/archive metadata are controlled ports, not real TLS or Android installation.',
