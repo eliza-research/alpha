@@ -90,6 +90,7 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
   check(good.via.equals(List.of("tab:example.browser")),"a Custom Tabs browser is still preferred and opened as a Custom Tab");
   CloudSignInFlow.Pending pending=CloudSignInFlow.Pending.parse(good.slots.get(good.config().pendingSlot),good.config());
   check(pending!=null&&pending.state.equals(owner.browserState),"browser and pending record share exact state");
+  check(pending.generation.equals(good.credentialGeneration()),"pending return retains the exact reserved credential generation");
   check(!good.launched.get(0).contains(pending.verifier)&&good.launched.get(0).contains(CloudSignInFlow.s256(pending.verifier)),"only the challenge reaches browser");
   for(int missing=0;missing<3;missing++){
    CloudSignInBrowserTest bad=new CloudSignInBrowserTest();bad.browserAvailable=missing!=0;bad.verified=missing!=1;bad.associated=missing!=2;if(missing==0)bad.httpsHandlers.clear();

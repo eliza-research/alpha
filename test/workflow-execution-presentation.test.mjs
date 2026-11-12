@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {setTimeout as delay} from 'node:timers/promises';
 const {executionFixture}=await import('./fixtures/workflow-execution-fixture.mjs');
 // Phone review hashes its real workflow spec asynchronously. A fixed number of idle turns
 // can finish before WebCrypto's worker returns, even when the request is making progress.
@@ -7,7 +8,7 @@ const settle=async predicate=>{
  const deadline=performance.now()+5_000;
  while(!predicate()){
   if(performance.now()>=deadline)throw Error('Bounded fixture did not settle: '+predicate);
-  await new Promise(resolve=>setTimeout(resolve,5));
+  await delay(5);
  }
 };
 test('finished manual text result has no device controls and Done closes without a new run',async()=>{const f=await executionFixture();try{const r=await f.openRun();assert.equal(r.phoneAvailable,false);assert.equal(r.phoneSyncAvailable,false);assert.equal(r.showRefresh,false);assert.equal(r.notice,'');assert.equal(r.out,f.run.output);assert.ok(r.log.some(x=>x.t===f.run.id));assert.equal(r.againLabel,'Done');r.again();assert.equal(f.render().runOpen,false);assert.equal(f.requests.filter(x=>x.body!==undefined).length,0);}finally{f.close();}});

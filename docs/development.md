@@ -572,9 +572,12 @@ and [reproducible native browser resource generation](https://github.com/elizaOS
 It also includes the [selected-tab permission](https://github.com/elizaOS/eliza/pull/39423),
 [prepared speech](https://github.com/elizaOS/eliza/pull/39424), [download publication](https://github.com/elizaOS/eliza/pull/39425),
 [held update offer](https://github.com/elizaOS/eliza/pull/39440) and [updater scratch storage](https://github.com/elizaOS/eliza/pull/39446) changes
-at `9e87d1ce947018c9ee201527b74798387c7bf694` on upstream develop. The native engine
-gitlink and recorded embedding producer inputs match the previous pin. Rebuild
-and qualify the exact product inputs before OS enrollment.
+and [bounded secure-store allocations](https://github.com/elizaOS/eliza/pull/39461)
+at `c9247e6966b572612b51e6b5e6a1f15af2843af8` on upstream develop. The native engine
+gitlink and native compiler inputs match the previous pin. Two producer admission
+digests were reviewed and updated for retired package scripts and Linux workspaces.
+No native build or qualification was run for that metadata update. Rebuild and
+qualify the exact product inputs before OS enrollment.
 
 The protected [preserving OS OTA signing workflow](../.github/workflows/release-os-ota-signing.yml)
 signs only an admitted OTA package with the existing release key. Its committed

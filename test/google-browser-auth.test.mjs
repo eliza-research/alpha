@@ -5,13 +5,16 @@ import {join, resolve, relative} from 'node:path';
 import {createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {spawnSync} from 'node:child_process';
-import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
+import {realNode} from '../scripts/run-node-only-tests.ts';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 // Run the shared browser, callback and credential-ownership regressions against
 // exactly the authenticated source that Gradle packages, without editing vendor.
 test('packaged shared Google browser sign-in preserves lifecycle and credential ownership', {timeout: scaledTimeout(360000)}, () => {
   const root=resolve(import.meta.dirname, '..');
+  const node=realNode();
+  assert.ok(node, 'The shared native sign-in suite requires genuine Node.js 24+');
   const staged=preparePatchedNative({root});
   const temporary=mkdtempSync(join(tmpdir(), 'alpha-browser-auth-'));
   const module=join(temporary, 'packages/auth/android');
@@ -39,22 +42,18 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
     for(const source of ['plugins/plugin-native-secure-store/android-nativeonly','plugins/plugin-native-agent/android'])
       cpSync(join(root,'vendor/eliza',source),join(temporary,source),{recursive:true});
     const env={...process.env};
-    // The pinned SDK's resident sign-in tests use this name for the same org.json jar.
-    if (env.ALPHA_JSON_JAR) env.ELIZA_JSON_JAR=env.ALPHA_JSON_JAR;
+    if (!env.ELIZA_JSON_JAR && env.ALPHA_JSON_JAR) env.ELIZA_JSON_JAR=env.ALPHA_JSON_JAR;
     delete env.NODE_TEST_CONTEXT;
-    // A nested Bun test run, read through its JUnit report (Bun has no TAP reporter).
+    // These upstream node:test/JVM fixtures execute with their genuine Node runtime.
     const runSuite=(label,minimumTests)=>{
-      const report=join(temporary, 'junit.xml');
-      rmSync(report, {force:true});
-      const run=spawnSync(process.execPath, ['test', '--timeout=120000', '--reporter=junit', `--reporter-outfile=${report}`, join(module, 'test/native-sign-in.test.mjs')], {timeout:scaledTimeout(170000), env, encoding:'utf8'});
+      const run=spawnSync(node, ['--test', '--test-reporter=tap', join(module, 'test/native-sign-in.test.mjs')], {timeout:scaledTimeout(170000), env, encoding:'utf8'});
       const detail=`${label}:\n${run.stdout}\n${run.stderr}`;
-      assert.equal(run.error, undefined, run.error?.message);
+      assert.equal(run.error, undefined, `${run.error?.message ?? ''}\n${detail}`);
       assert.equal(run.status, 0, detail);
-      const suites=/<testsuites\b[^>]*>/.exec(readFileSync(report, 'utf8'))?.[0] ?? '';
-      const count=(name)=>Number(new RegExp(` ${name}="(\\d+)"`).exec(suites)?.[1] ?? NaN);
-      assert.ok(count('tests') >= minimumTests, `${label} suite actually ran: ${suites}`);
-      assert.equal(count('failures'), 0, detail);
-      assert.equal(count('skipped'), 0, detail);
+      const count=(name)=>Number(new RegExp(`^# ${name} (\\d+)$`, 'm').exec(run.stdout)?.[1] ?? NaN);
+      assert.ok(count('tests') >= minimumTests, `${label} suite actually ran:\n${detail}`);
+      assert.equal(count('pass'), count('tests'), detail);
+      for(const outcome of ['fail','cancelled','skipped','todo']) assert.equal(count(outcome), 0, detail);
     };
     // Keep the pin's own recovery coverage, including retry/receipt failures,
     // before exercising Alpha's additional browser and credential-owner cases.

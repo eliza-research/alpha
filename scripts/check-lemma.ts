@@ -3,6 +3,7 @@ import {mkdirSync, readFileSync, readdirSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {repositoryRoot, sha256} from './quint-lib.ts';
 import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
+import {realNode} from './run-node-only-tests.ts';
 
 if (process.argv.length > 2) {console.error('check-lemma takes no options; the root inventory defines the complete proof gate'); process.exit(2);}
 const root = repositoryRoot;
@@ -51,6 +52,7 @@ try {
   if (config['proof-dir'] !== 'specs/lemma') throw Error('The reviewed proof directory must be specs/lemma');
   const expectedProofs = files.flatMap(file => [file.replace(/\.ts$/, '.dfy'), file.replace(/\.ts$/, '.dfy.gen')].map(path => `specs/lemma/${path}`));
   inputs = [...new Set(['bun.lock', 'lemmascript.json', 'LemmaScript-files.txt', 'scripts/check-lemma.ts',
+    'scripts/run-node-only-tests.ts',
     'specs/quint/refinement/timeouts.mjs',
     ...files, ...expectedProofs, ...proofsWithin(join(root, 'specs/lemma')).map(path => path.slice(root.length + 1))])];
   receipt.inputs = hashes();
@@ -58,6 +60,10 @@ try {
   receipt.lemmascriptVersion = JSON.parse(readFileSync(join(root, 'node_modules/lemmascript/package.json'), 'utf8')).version;
   if (receipt.lemmascriptVersion !== '0.6.6') throw Error('LemmaScript must be exactly 0.6.6');
   const cli = join(root, 'node_modules/lemmascript/tools/dist/lsc.js');
+  // LemmaScript's TypeScript project can finish printing but fail to exit on Bun.
+  // Keep the gate on Bun and run the Node CLI with a qualified Node executable.
+  const node = realNode();
+  if (!node) throw Error('LemmaScript requires genuine Node.js 24+ on PATH (or ALPHA_NODE)');
   const annotation = /^\s*\/\/@ \S/m;
   const unlisted = readdirSync(join(root, 'apps/app/src'), {recursive: true, encoding: 'utf8'})
     .filter(file => /\.tsx?$/.test(file))
@@ -77,7 +83,7 @@ try {
       proofAssumes: (proof.match(/\bassume\b/g) || []).length,
       proofAxioms: (proof.match(/\{:\s*(axiom|verify\s+false)\b/g) || []).length};
     if (trust.sourceAssumes || trust.proofAssumes || trust.proofAxioms) throw Error(`Unadmitted proof assumption in ${file}`);
-    if (!run(process.execPath, [cli, 'extract', file])) throw Error(`LemmaScript extraction failed: ${file}`);
+    if (!run(node, [cli, 'extract', file])) throw Error(`LemmaScript extraction failed: ${file}`);
     const model = JSON.parse(lastOutput) as {functions?: Array<{name?: string}>; classes?: unknown[]};
     const known = strings(model), contracts = lines.map(line => /^\s*\/\/@ (requires|ensures|invariant|decreases|done_with|assert)\s+(.+?)\s*$/.exec(line)).filter(match => match !== null);
     const unread = contracts.filter(match => !known.some(text => text.includes(match[2])));
@@ -85,7 +91,7 @@ try {
     if ((!functions.length && !model.classes?.length) || unread.length) throw Error(`Unread or empty verified contract in ${file}`);
     receipt.files.push({file, functions, trust});
   }
-  const generatedOK = files.every(file => run(process.execPath, [cli, 'gen-check', '--backend=dafny', file]));
+  const generatedOK = files.every(file => run(node, [cli, 'gen-check', '--backend=dafny', file]));
   const generated = hashes();
   const changed = inputs.filter(file => generated[file] !== receipt.inputs[file]);
   if (changed.length) {
@@ -110,7 +116,7 @@ try {
       const args = [cli, 'check', '--backend=dafny'];
       if (timeLimit) args.push(`--time-limit=${timeLimit}`);
       if (flags) args.push(`--extra-flags=${flags}`);
-      if (!run(process.execPath, [...args, file])) throw Error(`Dafny verification failed: ${file}`);
+      if (!run(node, [...args, file])) throw Error(`Dafny verification failed: ${file}`);
       const proofs = [...lastOutput.matchAll(/Dafny program verifier finished with ([1-9][0-9]*) verified, 0 errors/g)];
       if (proofs.length !== 1) throw Error(`Dafny did not report a nonempty successful proof for every source: ${file}`);
       verifiedConditions += Number(proofs[0][1]);
