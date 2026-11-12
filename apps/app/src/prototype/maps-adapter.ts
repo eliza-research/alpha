@@ -84,7 +84,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     },
     active,
     invalidate: () => { if (active()) api?.set({ nativeMapsRevision: ++renders }); },
-    toast: text => api?.toast(text),
+    toast: text => api?.toast(text==='Copied'?'Link copied':text),
     discardHandoff: () => { pendingHandoff=undefined; if(api?.get('maps').query!=null)api.set({query:null}); },
     handoffReturn: () => !!mapsEventReturnOffered(api?.get('maps').fromEvent,api?.S.stack,screen.isNavigating()),
     released: dropPlane,
@@ -94,7 +94,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       available: () => DailyApps.capabilities().then(result => result.actions.some(row => row.action === 'maps' && row.available)),
       open: (text: string) => DailyApps.perform({ action: 'maps', query: text }).then(result => ({ opened: result.status === 'opened', message: result.message })),
     } } : {}),
-    deniedLocationHelp: isAndroid ? 'Allow location in app settings, or enter coordinates.' : 'Allow location in browser site settings, or enter coordinates.',
+    deniedLocationHelp: isAndroid ? 'Allow location in app settings, or search for a place.' : 'Allow location in browser site settings, or search for a place.',
     publishContext: publishMapsSelection,
     clearContext: clearMapsSelection,
   });
@@ -183,12 +183,12 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       (status.text.startsWith('Connect a Maps provider') || status.text === cloudFailure.message)
       ? 'Maps is unavailable right now. Try again later.' : status.text;
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
-    const isPlace = view.mode === 'place', isResults = view.mode === 'results' || view.mode === 'origin', isNav = view.mode === 'navigation';
+    const isPlace = view.mode === 'place', isResults = (view.mode === 'results' || view.mode === 'origin') && !view.emptyQuery, isNav = view.mode === 'navigation';
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
-      nativeShareLabel:mapShareLabel(),
+      nativeShareLabel:mapShareLabel(),nativeSystemShare:mapShareLabel()==='Share',nativeCopyLink:mapShareLabel()==='Copy link',
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
       notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
@@ -210,7 +210,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       nativeLocationState:status.location,nativeMapState:status.map,nativeMapStatus:status.mapText,
       nativeLocationLabel:status.locationLabel,nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,
       nativeLocationHelp:status.locationHelp,
-      nativeLocationSettings:()=>{if(!active())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive())screen.notify('Location settings could not be opened. Check device or browser permissions, or enter coordinates.');});},
+      nativeLocationSettings:()=>{if(!active())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive())screen.notify('Location settings could not be opened. Check device or browser permissions, or search for a place.');});},
       nativeManualLocation:()=>{if(!active())return;screen.manualLocation();queueMicrotask(()=>{if(active())document.querySelector<HTMLInputElement>('input[aria-label="Search places"]')?.focus();});},
       nativeMapRetry:status.mapRetry,
       retryNativeMap:()=>{if(!active())return;dropPlane();screen.retryMap();},
@@ -224,7 +224,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       clearQ: () => screen.clearQuery(),
       chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => screen.chooseSaved(item.id) })),
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => screen.searchFor(category.label) })),
-      savedRows: view.saved.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: coordLabel(item.coordinate), d: PIN, go: () => screen.chooseSaved(item.id) })),
+      savedRows: view.saved.filter(item=>view.mode!=='origin'&&view.query.trim()&&item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())).map(item => ({ id: 'saved:' + item.id, name: item.label, sub: '', d: PIN, go: () => screen.chooseSaved(item.id) })),
       results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
       hasResults: view.hasResults, noResults: view.noResults, emptyQ: view.emptyQuery,
       recenter: () => screen.recenter(), recBottom: isPlace ? 414 : view.mode === 'results' ? 534 : 124, recCss: '',

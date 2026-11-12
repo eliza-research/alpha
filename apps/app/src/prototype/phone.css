@@ -953,3 +953,9 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 
 /* Browser options are a compact menu above the still-visible page. */
 [data-alpha-popup] [data-alpha-browser-menu][role="dialog"]{bottom:auto!important;height:auto;min-height:0;max-height:max(0px,calc(100% - 98px - var(--alpha-dock-reserve,108px) - 12px))!important;overscroll-behavior:contain}
+
+/* Maps keeps space above search, and no card behind provider attribution. */
+.standalone-app [data-alpha-maps-root] [data-alpha-app-header-overlay] { top:12px!important; }
+.alpha-map-credit-links { background:transparent; text-shadow:0 1px 2px var(--bg),0 -1px 2px var(--bg),1px 0 2px var(--bg),-1px 0 2px var(--bg); }
+.alpha-map-share:has(.alpha-map-copy-label) { width:auto!important; padding-inline:14px; gap:7px; }
+.alpha-map-copy-label { font-size:13px; font-weight:600; white-space:nowrap; }
