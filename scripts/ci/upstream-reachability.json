@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "1d5a89838cedaff328445c050cef6d2a6292bef1",
-  "head": "4f93d71ad113f6977423d410f3f45bfe3a38539c",
+  "head": "da306758f4bf1671914aae36abf871f3f5395c71",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...4f93d71ad113f6977423d410f3f45bfe3a38539c",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...da306758f4bf1671914aae36abf871f3f5395c71",
   "status": "diverged",
-  "aheadBy": 37,
+  "aheadBy": 38,
   "behindBy": 614,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -116,6 +116,10 @@
       "subject": "Merge commit '765725575c6c1062cf75b01c69e7949da968314d' into codex/review-calendar-39435"
     },
     {
+      "sha": "b520b1f0bc622a8fd9e8cbc8843dd0da692dbf8c",
+      "subject": "Merge commit 'd8e6354d74ec287f29a649a840e4187bc6021277' into codex/alpha-sense-absence-20261112"
+    },
+    {
       "sha": "bace08c870a2d3170a263e1ac3348d4eedcab0e1",
       "subject": "Draft owner-confirmed canonical Notes erasure"
     },
@@ -154,6 +158,10 @@
     {
       "sha": "4f93d71ad113f6977423d410f3f45bfe3a38539c",
       "subject": "fix(scheduling): compose the default morning reminder from canonical sources"
+    },
+    {
+      "sha": "da306758f4bf1671914aae36abf871f3f5395c71",
+      "subject": "fix: read managed Gmail in summaries and retain Calendar revision times"
     }
   ],
   "pullRequests": []
