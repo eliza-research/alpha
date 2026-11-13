@@ -14,13 +14,6 @@ import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 
 type Bag = Record<string, any>;
 type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number; mediaFailed?:boolean };
-type FilesReadStatus = 'pending' | 'ready' | 'incomplete' | 'failed';
-const filesFilterNotices:Record<FilesReadStatus,string> = {
-  pending:'Searching…',
-  ready:'',
-  incomplete:'Search results are incomplete.',
-  failed:'Files could not read this filter.',
-};
 
 async function readFilesListing<T extends {status:string;message?:string}>(reply:Promise<T>) {
   const result=await reply;
@@ -256,21 +249,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     }
   }
   const storage=registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles');
-  let filterRead:{status:FilesReadStatus}|undefined;
   const observedReads:Partial<FilesStoragePort<NativeResult>>={
-    async storageQuery(input){
-      const read:{status:FilesReadStatus}={status:'pending'};
-      filterRead=read;
-      try {
-        const result=await storage.storageQuery(input);
-        const incomplete='truncated' in result&&result.truncated===true;
-        read.status=result.status!=='ready'?'failed':incomplete?'incomplete':'ready';
-        return result;
-      } catch(error) {
-        read.status='failed';
-        throw error;
-      }
-    },
     storageList(input){return readFilesListing(storage.storageList(input));},
     storageCategory(input){return input.countOnly?storage.storageCategory(input):readFilesListing(storage.storageCategory(input));},
   };
@@ -284,9 +263,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   views.files.render=(state:Bag,api:Bag)=>{
     const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;
     const storageAccessible=!out.browse?.denied&&!out.browse?.unavailable;
-    const filterStatus=out.chip&&storageAccessible?filterRead?.status:undefined;
-    out.filterEmpty=out.filterEmpty&&filterStatus==='ready';
-    out.filterReadNotice=filterStatus?filesFilterNotices[filterStatus]:'';
+    out.filterVisible=!!out.chip&&storageAccessible;
     if(out.fd?.empty&&!storageAccessible){
       out.fd.empty=false;
       out.nativeTreeStatus||='Files could not be read.';
