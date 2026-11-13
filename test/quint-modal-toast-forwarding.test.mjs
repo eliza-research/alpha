@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {checkModalToastForwarding} from '../specs/quint/refinement/application/modal-toast-forwarding.mjs';
 
-test('actual dialog toast forwarding follows modal order and exact installation ownership', {timeout: 60000}, async () => {
+test('actual dialog toast forwarding follows modal order and exact installation ownership', {timeout: scaledTimeout(60000)}, async () => {
   const receipt = await checkModalToastForwarding();
   assert.equal(receipt.traceInputs.length, 8);
   assert.equal(receipt.observedFields.length, 10);

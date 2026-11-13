@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {modelNames} from '../specs/quint/refinement/services/maps-model-traces.mjs';
 import {replayMapsScreenModes} from '../specs/quint/refinement/services/maps-screen-modes.mjs';
 
-test('the mounted Maps screen follows every MapsScreenModes model trace step by step', {timeout: 600000}, async () => {
+test('the mounted Maps screen follows every MapsScreenModes model trace step by step', {timeout: scaledTimeout(600000)}, async () => {
   const {scenarios, witnesses} = modelNames('specs/quint/services/MapsScreenModes.qnt');
   assert.equal(scenarios.length, 17);
   assert.equal(witnesses.length, 9);

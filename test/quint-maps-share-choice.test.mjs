@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {modelNames} from '../specs/quint/refinement/services/maps-model-traces.mjs';
 import {replayMapsShareChoice} from '../specs/quint/refinement/application/maps-share-choice.mjs';
 
-test('the chat share-choice buttons follow every MapsShareChoice model trace step by step', {timeout: 300000}, async () => {
+test('the chat share-choice buttons follow every MapsShareChoice model trace step by step', {timeout: scaledTimeout(300000)}, async () => {
   const {scenarios, witnesses} = modelNames('specs/quint/application/MapsShareChoice.qnt');
   assert.equal(scenarios.length, 7);
   assert.equal(witnesses.length, 5);
