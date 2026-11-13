@@ -10,7 +10,7 @@ import {decodeMailPreview} from '../runtime/mail-preview';
 import {alphaClient} from '../runtime/alpha-client';
 import {reviewOwnNoticeQuestion} from './own-notice-question';
 import {configureGmailBackground,withdrawGmailBackground,releaseGmailQuestion,pendingGmailNotice,consumeGmailNotice,onGmailNotice} from '../runtime/gmail-background';
-import {prepareMailHtml} from '../runtime/mail-html';
+import {prepareMailHtml,fitMailFrame} from '../runtime/mail-html';
 import {readGmailAccountChoice,saveGmailAccountChoice} from '../runtime/gmail-account-selection';
 import {GmailReadAhead} from '../runtime/gmail-read-ahead';
 import { registerPlugin } from '../platform-plugins';
@@ -251,6 +251,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   type MailBody={ message: GmailMessage; bodyText: string;bodyHtml?:string; loading?:boolean;failed?:boolean; links?: GmailLink[]; historyId?:string|null;attachments?:{partId:string;name:string;mimeType:string;size:number;supported:boolean}[] };
   let selected='',body:MailBody|null=null;
   const htmlBodies=new WeakMap<MailBody,ReturnType<typeof prepareMailHtml>>();
+  let closeMailLayout:(()=>void)|undefined;
   // Bounded bodies (16 entries, 4 MiB) and folder lists (8, 30 days) from @elizaos/plugin-inbox/mailbox.
   const messageBodies=new MailBodyCache<MailBody>();
   const pendingBodies=new Map<string,{controller:AbortController;result:Promise<{ok:true;body:MailBody}|{ok:false;error:unknown}>}>();
@@ -1030,7 +1031,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     }
     const activeLinks=activeBody?(formatted?linkRows(activeBody).filter(link=>!formatted!.inlineLinks.has(link.href)):linkRows(activeBody)):[];
     const htmlLoaded=(event:Bag)=>{const frame=event.currentTarget as HTMLIFrameElement,doc=frame.contentDocument;if(!doc)return;
-      const resize=()=>{if(frame.isConnected)frame.style.height=Math.min(32000,Math.max(120,doc.documentElement.scrollHeight,doc.body.scrollHeight))+'px';};resize();doc.addEventListener('load',resize,true);
+      closeMailLayout?.();closeMailLayout=fitMailFrame(frame);
       const follow=(event:Event)=>{const target=(event.target as Element)?.closest('a[data-alpha-link]');if(!target)return;event.preventDefault();if(body!==activeBody)return;openLink({href:target.getAttribute('data-alpha-link')!,text:target.textContent||''});};
       doc.addEventListener('click',follow);doc.addEventListener('keydown',event=>{if(event.key==='Enter')follow(event);});
     };
@@ -1125,6 +1126,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     restoreAndWarmHome();
   };
   p.componentWillUnmount = function () {
+    closeMailLayout?.();closeMailLayout=undefined;
     closeMailQuestion?.();closeMailQuestion=undefined;noticeAttempt++;void this.gmailNoticeListener?.then((handle:Bag)=>handle.remove()).catch(()=>{});
     document.removeEventListener('click',this.inboxMenuOutside);
     document.removeEventListener('visibilitychange',this.inboxVisibility);

@@ -78,3 +78,22 @@ test('HTML only removes fallback URLs already represented by inline anchors',asy
  await expect(fallback.getByRole('button',{name:'extra.invalid',exact:true})).toBeVisible();
  await expect(fallback.getByRole('button',{name:'provider.invalid',exact:true})).toBeVisible();
 });
+
+test('fixed-width email tables keep images visible and fit the mobile viewport',async({page})=>{
+ await page.route('https://images.invalid/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP4/x8AAwAB/2+Bq7YAAAAASUVORK5CYII=','base64')}));
+ await setup(page,'<table width="600" cellpadding="0" cellspacing="0"><tr><td><table width="394"><tr><td><img src="https://images.invalid/avatar.png" alt="Profile image" style="width:90px;height:90px"></td><td width="100%"><strong>Suggested account</strong><p>A long account description that stays next to the profile image.</p></td></tr></table></td></tr></table>');
+ await openMail(page);
+ const frame=page.locator('iframe[title="Formatted email"]');
+ const picture=page.frameLocator('iframe[title="Formatted email"]').getByRole('img',{name:'Profile image'});
+ await expect(picture).toBeVisible();
+ const check=async()=>{
+  const bounds=await picture.boundingBox();expect(bounds!.width).toBeGreaterThan(30);
+  const geometry=await frame.evaluate((element:HTMLIFrameElement)=>({viewport:element.clientWidth,content:element.contentDocument!.documentElement.scrollWidth,outer:element.closest('.inbox-message-content')!.scrollWidth,available:element.closest('.inbox-message-content')!.clientWidth}));
+  expect(geometry.content).toBeLessThanOrEqual(geometry.viewport+1);
+  expect(geometry.outer).toBeLessThanOrEqual(geometry.available+1);
+ };
+ await check();
+ await page.setViewportSize({width:360,height:800});
+ await expect.poll(async()=>frame.evaluate((element:HTMLIFrameElement)=>element.contentDocument!.documentElement.scrollWidth-element.clientWidth)).toBeLessThanOrEqual(1);
+ await check();
+});

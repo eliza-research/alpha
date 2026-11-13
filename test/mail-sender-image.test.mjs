@@ -20,3 +20,10 @@ test('disabled remote images and personal senders keep initials',()=>{
 test('untrusted addresses cannot inject a URL or target literal local addresses',()=>{
  for(const email of [null,'a@localhost','a@127.0.0.1','a@[::1]','a@internal.local','a@foo.invalid','a@foo.com:123','a@foo.com/x','a@foo.com?x','a@user@foo.com','a@-foo.com','a@foo..com','a@foo.com\n'])assert.equal(mailSenderImage(email,true),null,email);
 });
+
+test('mail delivery subdomains use the website icon',()=>{
+ for(const [email,website] of [['notice@mail.instagram.com','instagram.com'],['notice@email.nianticlabs.com','nianticlabs.com']]){
+  assert.equal(new URL(mailSenderImage(email,true)).searchParams.get('domain'),website);
+ }
+ assert.equal(mailSenderImage('notice@mail.gmail.com',true),null);
+});
