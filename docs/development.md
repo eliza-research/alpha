@@ -15,7 +15,8 @@ changes upstream and consume a reviewed commit; never edit the vendor checkout.
 
 Use Bun 1.4.2 (`packageManager` in `package.json`), Node 26.13.0 for the pinned
 upstream tools and Node-only host tests, and JDK 21.
-Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
+Native builds need Python 3 for toolchain bootstrapping, Android SDK platform 36
+and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 
 ```sh
@@ -133,10 +134,25 @@ then verify updates and data retention between builds with the new package ID.
 Qualify the native libraries and APKs for the exact product and SDK revisions.
 
 There is one runtime profile. Every build packages libelizainference with the
-on-device speech models and local embeddings. Stage on-device voice inputs with
-`bun scripts/android-stage-voice-models.ts --from <directory>`.
-The resident source and workflow worker are prepared from the locked upstream
-revision. Build inputs must agree with the staged runtime and native libraries.
+on-device speech models and local embeddings. `bun run android:build:local`
+automatically prepares the pinned native inputs before preparing the resident
+source and workflow worker. Run `bun run agent:build-embedding-host` to prepare
+just the voice and embedding inputs; `bun run android:build:inputs` reports their
+current state without building them. Build inputs must agree with the staged
+runtime and native libraries.
+
+The native producer runs on Linux or macOS; Windows developers can use a Linux
+WSL environment. The first build needs network access for the pinned source,
+models and isolated Python/compiler dependencies. Native outputs are cached under
+`$XDG_CACHE_HOME/alpha/native-inputs`, or `$HOME/.cache/alpha/native-inputs` when
+XDG_CACHE_HOME is unset. The recipe binds the product identity, native source,
+engine revision, toolchain and model hashes. Reuse checks the complete file
+inventory and every output digest. A changed recipe rebuilds its outputs.
+
+`.eliza/native-inputs/receipt.json` records the current build inputs and actual
+output hashes using relative paths. The receipt does not claim device or user
+acceptance. Signing and signed-byte voice qualification remain separate.
+A previous workstation or its exported artifact IDs are not prerequisites.
 
 Speech is routed at run time, not at build time: the owner's Cartesia key when
 their own provider is selected, Eliza Cloud speech when signed in to Cloud with
@@ -230,92 +246,16 @@ in the qualification archive. Each main-push run and its reruns share a group
 keyed by run ID. Builds can complete out of order, so select the successful
 candidate for the reviewed source commit.
 
-Before enabling a successful automatic build, a maintainer supplies
-`android/hosted-native-inputs.json` in the reviewed checkout. Use these exact
-fields and replace every placeholder with the reviewed value.
+The hosted native build uses the same automatic producer as the local build.
+Its cache is an optimization: source recipe and output hashes must still match
+before reuse. A missing cache rebuilds from the pinned public inputs instead of
+requiring expiring artifact IDs from a previous machine.
 
-```json
-{
-  "schema": "alpha-hosted-native-inputs/v1",
-  "packageName": "ai.alphacompute.alphaphone",
-  "sdkCommit": "<upstream.lock.json commit>",
-  "voiceRecordSha256": "<SHA-256 of android/voice-host/qualified-voice-host.json>",
-  "embeddingRecordSha256": "<SHA-256 of android/embedding-host/qualified-host.json>",
-  "artifacts": {
-    "voice": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
-    "embeddingComponent": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
-    "embeddingQualification": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"}
-  }
-}
-```
-
-Use three distinct, unexpired GitHub Actions artifact IDs from successful runs
-in this repository. Use the artifact metadata's digest without its `sha256:`
-prefix. The voice artifact contains the reviewed model, data and notice files at
-`assets/paradee-voice/v1/<path>` and the two recorded libraries per ABI at
-`jniLibs/<abi>/<name>`. Upload those files with their relative paths and omit
-generated manifests, APKs and logs. The embedding component contains
-`component-output/INTENT.json`, `component-output/export/PREPARATION.json` and
-the three reviewed ARM64 libraries alongside the preparation receipt. The
-qualification artifact contains `QUALIFICATION.json` and
-`embedding-qualification.json` at its root. These receipts must describe those
-same reviewed component bytes. The two hosts share the exact ARM64 engine and
-C++ runtime. Obtain the recorded bytes from the provisioned host or review and
-admit a reproducible replacement before updating the records and artifact IDs.
-
-On the provisioned host, prepare an operator handoff from the reviewed Alpha
-checkout. Use physical paths and an existing output directory owned and
-writable only by your account.
-
-```sh
-python3 -B scripts/ci/export-native-inputs.py \
-  --voice /absolute/staged-voice-root \
-  --embedding-component /absolute/directory-containing-component-output \
-  --embedding-qualification /absolute/directory-containing-qualification-files \
-  --out /absolute/output-directory
-```
-
-The exporter creates `alpha-native-inputs.zip` after verifying the copied
-files against the committed records and existing embedding qualification.
-The component receipts preserve their original build provenance and paths.
-Record the packet SHA-256 on the producer host and supply it with the handoff.
-On the receiving host, set `packet_sha256` to that digest. Choose a fresh
-destination inside a directory owned and writable only by your account.
-
-```sh
-python3 -B scripts/ci/stage-native-input-packet.py \
-  --packet /absolute/alpha-native-inputs.zip --sha256 "$packet_sha256" \
-  --out /absolute/private/new-staging-directory
-```
-
-The receiver checks the complete ZIP, member hashes and qualification evidence
-against the package, SDK, voice and embedding records in the reviewed checkout
-before publishing the staged directory. Keep its original `packet.json`.
-After approval for transfer and redistribution, upload the contents of
-`voice/`, `embedding-component/` and `embedding-qualification/` as three
-separate artifacts. Record their GitHub artifact IDs and archive digests in
-the hosted manifest. Signed-in users with read access can download Actions
-artifacts from the repository. [GitHub artifact access](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
-
-Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
-manifest against the checkout without downloading. Automatic runs check the
-three pins against GitHub metadata before setting up the Android toolchain.
-The check names each unavailable input and reports the expiry of admitted pins
-so the maintainer can renew them before a build fails. Acquisition checks the
-metadata again and verifies the exact archive bytes through the workflow's
-read-only token. The build stages with the existing voice and embedding tools
-and retains the input IDs, hashes and sizes in `native-input-admission.json`.
-The candidate receipt binds its digest to the exact source, SDK and run attempt.
-The build evidence records the uploaded candidate's ID and compressed size
-from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
-The expiry workflow on the default branch checks `main` on schedule and on
-manual dispatch from `develop`. A manual dispatch from `main` checks the
-selected commit. Its summary records the inspected revision and identifies
-pins expiring within four days. Renew the artifact IDs and digests while the
-old inputs remain available. Retain qualification receipts for identical
-files and review changed native bytes or source records before admission.
-The candidate archive retains the distribution producer evidence before
-the test-mocks build can replace it.
+The unsigned candidate retains the generated native-input receipt and binds its
+digest into the frozen build inputs and candidate manifest. Protected signing
+checks that receipt against the candidate's source, SDK, product identity and
+file inventory. This establishes build custody; it does not establish hardware
+or signed-byte speech qualification.
 
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
@@ -583,12 +523,11 @@ also consumes the reviewed [Bun and ABI cleanup](https://github.com/elizaOS/eliz
 [model-generated morning summaries](https://github.com/elizaOS/eliza/pull/39471).
 The [portable fixture and evidence paths](https://github.com/elizaOS/eliza/pull/39478)
 remove personal home directories from the pinned source. The native engine
-gitlink is unchanged, but the producer scripts and package
-manifests differ from the retained `c9247e6966` native records. Those records
-remain attributed to their original inputs; no new native build or qualification
-is claimed. Strict embedding admission refuses this producer drift, and the
-reviewed voice outputs remain unavailable. Rebuild and qualify both distribution
-variants from the exact current inputs before distribution or OS enrollment.
+gitlink is unchanged. Historical native measurements retain their original
+source attribution. New builds use the current source recipe and generated
+output receipts; neither a source update nor a successful APK build qualifies
+hardware. Qualify both distribution variants from the exact current inputs
+before distribution or OS enrollment.
 
 The protected [preserving OS OTA signing workflow](../.github/workflows/release-os-ota-signing.yml)
 signs only an admitted OTA package with the existing release key. Its committed

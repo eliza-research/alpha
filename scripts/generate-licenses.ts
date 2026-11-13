@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import {VOICE_HOST_MANIFEST, voiceHostProblems, type readVoiceHost} from './voice-host.ts';
+import {readNativeBuildReceipt, verifyNativeBuildFiles} from './native-build-inputs.ts';
 import {HOST_DESCRIPTOR, generateAlphaAndroidHost, readHostDescriptor} from './android-host.ts';
 import {HOST_TEMPLATES, referencePath} from './gradle-verification.ts';
 import {readAgentBundleDependencies} from './agent-bundle-dependencies.ts';
@@ -709,7 +710,9 @@ export function voiceHostLibraryLines(record: Pick<BaseVoiceRecord, 'abis'>) {
 
 function voiceHostEntries(root: string, templates: Templates, errors: string[]): NoticeDraft[] {
   if (!exists(root, VOICE_HOST)) return [];
-  const record: VoiceNoticeRecord = readJson(root, VOICE_HOST);
+  const generated = readNativeBuildReceipt(root);
+  if (generated) verifyNativeBuildFiles(root, generated);
+  const record: VoiceNoticeRecord = generated ? generated.voice as VoiceNoticeRecord : readJson(root, VOICE_HOST);
   const problems = voiceHostProblems(record);
   if (problems.length) { errors.push(...problems); return []; }
   const abis = record.abis.map(item => item.abi).join(', ');

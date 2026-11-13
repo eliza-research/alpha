@@ -115,8 +115,8 @@ and Alpha tells you what context a request sends.
 
 ## Put it on a phone
 
-You need JDK 21 and the Android SDK (platform 36, build-tools 36.0.0), with
-`JAVA_HOME` and `ANDROID_HOME` set.
+You need JDK 21, Python 3 for toolchain bootstrapping, and the Android SDK
+(platform 36, build-tools 36.0.0), with `JAVA_HOME` and `ANDROID_HOME` set.
 
 ```bash
 bun run android:build:inputs
@@ -134,11 +134,11 @@ The first command lists anything that is missing. The second prepares the agent
 and builds the APKs into `artifacts/`. The third checks their contents and
 signatures.
 
-On-device voice needs recorded model files and native outputs that the build
-does not download for you. Stage the reviewed inputs first with
-`bun scripts/android-stage-voice-models.ts --from <directory>`. Developer APKs
-can explicitly omit the runtime; those builds are not distributable. Setup,
-signing and emulator testing are covered in the
+The first build downloads the pinned models and toolchain inputs, builds the
+native voice and embedding libraries, and caches the verified outputs. Later
+builds reuse that cache after checking its source recipe and file hashes.
+Developer APKs can explicitly omit the runtime; those builds are not
+distributable. Setup, signing and emulator testing are covered in the
 [developer guide](docs/development.md#android-builds).
 
 | Variant        | What it is                                                        |

@@ -239,7 +239,9 @@ test('native starts the agent without a provider and never offers it a Cloud key
   assert.match(configure, /if\(!NativeProviderSlot\.applyLaunchEnvironment\(BuildConfig\.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,[^\n]*\)\)\{provider=null;saved=null;cloudSaved=null;googleBinding=null;\}/);
   assert.match(configure, /launchedGeneration=LocalAgentProviderAdmission\.launchGeneration\(saved,cloudSaved\);/);
   const sharedSlot = read('vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java');
-  assert.match(between(sharedSlot, 'public static boolean applyLaunchEnvironment(', '\n  }\n'), /if \(!bound\) applyUnboundEnvironment\(env\);/);
+  const launch = sharedSlot.slice(sharedSlot.lastIndexOf('public static boolean applyLaunchEnvironment('));
+  assert.match(launch, /String cloudProviderBase\) \{/);
+  assert.match(launch, /if \(!bound\) applyUnboundEnvironment\(env\);/);
   const unbound = between(sharedSlot, 'public static final String[] PROVIDER_ENVIRONMENT', '\n  }\n\n');
   for (const key of ['ELIZAOS_CLOUD_API_KEY', 'CEREBRAS_API_KEY', 'OPENAI_API_KEY', 'ELIZA_PROVIDER', 'ELIZAOS_CLOUD_BASE_URL'])
     assert.ok(unbound.includes(`"${key}"`), `unbound launch removes ${key}`);
