@@ -15,6 +15,21 @@ import { workflowSha, workflowBytes } from '../apps/app/src/runtime/workflow-dev
 import { alphaClient } from '../apps/app/src/runtime/alpha-client.ts';
 import { formatDateTime } from '../apps/app/src/prototype/locale-time.ts';
 import { WorkflowIntentStore as SharedWorkflowIntentStore, emptyWorkflowIntentArchive, storageWorkflowIntentBackend, workflowIntentKey as sharedWorkflowIntentKey, workflowIntentOwnerPrefix } from '../.eliza/client-features/packages/contracts/src/workflow-intents.ts';
+// A controlled same-origin Web Locks port shared by these VM document contexts. Browser lock scheduling is
+// qualified by browser tests; this fixture proves the adapter's serialization and awaited effect ordering.
+const workflowLocks = new Map<string, Promise<void>>();
+const workflowLockManager = {
+  async request<T>(name: string, _options: {mode: string}, callback: () => T | Promise<T>): Promise<T> {
+    const before = workflowLocks.get(name) ?? Promise.resolve();
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const tail = before.then(() => held);
+    workflowLocks.set(name, tail);
+    await before;
+    try { return await callback(); }
+    finally { release(); if (workflowLocks.get(name) === tail) workflowLocks.delete(name); }
+  },
+};
 const source = readFileSync(new URL('../apps/app/src/prototype/workflow-authoring.ts', import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function');
 export function workflowRendererFixture(overrides: Record<string, unknown>) {
   // connection-ui's no-session wording (P-43) for a production build without the resident (the web
@@ -27,6 +42,7 @@ export function workflowRendererFixture(overrides: Record<string, unknown>) {
     agentAvailabilityNotice: (snapshot: {kind?: string} | null | undefined, remote = phoneOnly) =>
       snapshot?.kind === 'starting' ? '' : remote,
     residentAlwaysPresent: false,
+    navigator: {locks: workflowLockManager},
     ...overrides,
   };
   const scope = { setTimeout,clearTimeout,setInterval,clearInterval, formatDateTime, createWorkflowApprovalPoster,definiteNoticeFailure,projectNoteForModel, NoticeOwnerCoordinator, revalidateWorkflowApprovalNotice, document:{hidden:false,addEventListener(){},removeEventListener(){}}, window:{addEventListener(){},removeEventListener(){},dispatchEvent(){}}, Event, ...context, normalizePhoneSpec, assertPhoneCapabilities, describePhoneTrigger, phoneTriggerClockChangeNote, workflowDeviceTimeZone,workflowLocalInstant,workflowClockContext,automationLocalDateInput,localDate,phoneScheduleTiming, WorkflowActivationRejected, workflowSha, workflowBytes, alphaClient, crypto:globalThis.crypto, TextEncoder, registerPlugin:()=>new Proxy({}, {get:()=>()=>Promise.reject(Error('Unexpected native authoring operation in existing-workflow fixture'))}) };

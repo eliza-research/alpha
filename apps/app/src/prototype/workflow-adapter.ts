@@ -74,20 +74,81 @@ function runHasDeviceSteps(run:WorkflowRun,workflow:RemoteWorkflow|null,review:W
  * acted on only while that account is signed in. When a different account signs in on the same agent connection, each
  * recorded run is claimed for one cancellation request; the claim is saved before anything is sent, so the request is
  * sent at most once, and nothing is sent when the claim cannot be saved. Only identities are stored. */
-const RUN_ACCOUNTS='alpha.workflow.run-accounts.v1',RUN_ACCOUNTS_LIMIT=200;
-type RunAccount={owner:string;account:string;runId:string;workflowId:string;cancel?:true};
+const RUN_ACCOUNTS='alpha.workflow.run-accounts.v1';
+// Empty account is shared device-owned or settled history, never an account-switch cancellation target.
+type RunAccount={owner:string;account:string;workflowId:string;runId?:string;requestId?:string;cancel?:boolean};
+class WorkflowRunAccountsUnavailable extends Error {constructor(){super('Run history unavailable');}}
+const runAccountRequest=(raw:string)=>{const intent=JSON.parse(raw),id=intent.submissionId??intent.intentRevision;if(typeof id!=='string'||!id)throw new WorkflowRunAccountsUnavailable();return id;};
 function workflowRunAccounts(){
- const load=():RunAccount[]=>{try{const value=JSON.parse(localStorage.getItem(RUN_ACCOUNTS)||'[]');return Array.isArray(value)?value.filter(e=>e&&typeof e==='object'&&typeof e.owner==='string'&&typeof e.account==='string'&&!!e.account&&typeof e.runId==='string'&&typeof e.workflowId==='string'):[];}catch{return [];}};
- const save=(next:RunAccount[])=>{try{if(next.length)localStorage.setItem(RUN_ACCOUNTS,JSON.stringify(next.slice(-RUN_ACCOUNTS_LIMIT)));else localStorage.removeItem(RUN_ACCOUNTS);return true;}catch{return false;}};
+ const load=():RunAccount[]=>{
+  try{
+   const raw=localStorage.getItem(RUN_ACCOUNTS),value=raw===null?[]:JSON.parse(raw);
+   if(!Array.isArray(value)||value.some(e=>!e||typeof e!=='object'||typeof e.owner!=='string'||!e.owner||typeof e.account!=='string'||typeof e.workflowId!=='string'||!e.workflowId||
+    (e.runId===undefined&&e.requestId===undefined)||(e.runId!==undefined&&(typeof e.runId!=='string'||!e.runId))||
+    (e.requestId!==undefined&&(typeof e.requestId!=='string'||!e.requestId))||(e.cancel!==undefined&&typeof e.cancel!=='boolean')))throw Error('Invalid run ownership');
+   return value;
+  }catch{throw new WorkflowRunAccountsUnavailable();}
+ };
+ const save=(next:RunAccount[])=>{try{const raw=next.length?JSON.stringify(next):null;if(raw!==null)localStorage.setItem(RUN_ACCOUNTS,raw);else localStorage.removeItem(RUN_ACCOUNTS);return localStorage.getItem(RUN_ACCOUNTS)===raw;}catch{return false;}};
+ const commit=(next:RunAccount[])=>{if(!save(next))throw new WorkflowRunAccountsUnavailable();};
+ const pending=(all:RunAccount[],owner:string,workflowId:string)=>all.some(e=>e.owner===owner&&e.workflowId===workflowId&&!!e.account&&!e.runId);
+ // Every document uses this lock before a read-modify-write. Hidden reads only observe one atomic storage value.
+ const edit=async<T,>(change:(all:RunAccount[])=>T):Promise<T>=>{
+  try{const locks=globalThis.navigator?.locks;if(typeof locks?.request!=='function')throw new WorkflowRunAccountsUnavailable();return await locks.request(RUN_ACCOUNTS,{mode:'exclusive'},()=>change(load()));}
+  catch(error){if(error instanceof WorkflowRunAccountsUnavailable)throw error;throw new WorkflowRunAccountsUnavailable();}
+ };
  return {
-  /** A run accepted for `account`. A run started with no account signed in is not recorded. */
-  record(owner:string,account:string,run:{id:string;workflowId:string;finished?:boolean}){if(!owner||!account||run.finished)return;const all=load();if(!all.some(e=>e.owner===owner&&e.runId===run.id))save([...all,{owner,account,runId:run.id,workflowId:run.workflowId}]);},
-  /** A run its own account has seen finished needs no record: nothing is left to cancel or to act on. */
-  settle(owner:string,account:string,run:{id:string;finished?:boolean}){if(!run.finished||!account)return;const all=load();if(all.some(e=>e.owner===owner&&e.runId===run.id&&e.account===account))save(all.filter(e=>!(e.owner===owner&&e.runId===run.id)));},
-  /** True for a run recorded under another account than the one signed in now (or while nobody is signed in). */
-  hidden(owner:string,account:string,runId:string){return load().some(e=>e.owner===owner&&e.runId===runId&&e.account!==account);},
-  /** The other accounts' runs on this agent connection that have not been claimed yet, claimed now. */
-  claim(owner:string,account:string):RunAccount[]{if(!owner||!account)return [];const all=load(),due=all.filter(e=>e.owner===owner&&e.account!==account&&!e.cancel);if(!due.length||!save(all.map(e=>due.includes(e)?{...e,cancel:true as const}:e)))return [];return due;},
+  /** Account ownership is durable before a request can leave. An uncertain request keeps this fence even if its
+   * retained submission is explicitly cleared: a late run must never become another account's unattributed run.
+   * A device-owned request only needs a marker when an older account's pending fence could otherwise hide it. */
+  async reserve(owner:string,account:string,workflowId:string,requestId:string){
+   if(!owner||!workflowId||!requestId)throw new WorkflowRunAccountsUnavailable();
+   await edit(all=>{const prior=all.find(e=>e.owner===owner&&e.workflowId===workflowId&&e.requestId===requestId);
+    if(prior){if(prior.account!==account&&!(prior.runId&&!prior.account))throw new WorkflowRunAccountsUnavailable();return;}
+    if(account||pending(all,owner,workflowId))commit([...all,{owner,account,workflowId,requestId}]);
+   });
+  },
+  /** Only a request confirmed undispatched or refused can retire its pending ownership reservation. */
+  async release(owner:string,workflowId:string,requestId:string){try{await edit(all=>{if(all.some(e=>e.owner===owner&&e.workflowId===workflowId&&e.requestId===requestId&&!e.runId))save(all.filter(e=>!(e.owner===owner&&e.workflowId===workflowId&&e.requestId===requestId&&!e.runId)));});}catch{/* A retained fence is safe when storage is unavailable. */}},
+  /** Promotion must be saved before the submission is acknowledged. A failed promotion leaves its pending fence
+   * on disk. Exact shared markers preserve device-owned and completed history behind older pending fences. */
+  async record(owner:string,account:string,run:{id:string;workflowId:string;finished?:boolean},requestId?:string){
+   if(!owner)throw new WorkflowRunAccountsUnavailable();
+   await edit(all=>{
+    const prior=all.find(e=>e.owner===owner&&(e.runId===run.id||!!requestId&&e.workflowId===run.workflowId&&e.requestId===requestId));
+    if(prior?.workflowId!==undefined&&prior.workflowId!==run.workflowId)throw new WorkflowRunAccountsUnavailable();
+    if(prior?.runId===run.id&&(prior.account===account||!prior.account&&(run.finished||!account)))return;
+    if(prior&&prior.account!==account)throw new WorkflowRunAccountsUnavailable();
+    const otherPending=pending(all.filter(e=>e!==prior),owner,run.workflowId);
+    if(run.finished||!account){
+     if(!otherPending){if(prior)commit(all.filter(e=>e!==prior));return;}
+     account='';
+    }
+    const next={owner,account,runId:run.id,workflowId:run.workflowId,...(requestId?{requestId}:{})};
+    commit(prior?all.map(e=>e===prior?next:e):[...all,next]);
+   });
+  },
+  /** Its own account reading a finished run releases the account fence. Keep a shared marker only while an older
+   * pending reservation would otherwise misclassify that completed history. */
+  async settle(owner:string,account:string,run:{id:string;finished?:boolean}){
+   if(!run.finished)return;await edit(all=>{
+    const prior=all.find(e=>e.owner===owner&&e.runId===run.id&&(e.account===account||!e.account));
+    if(!prior)return;
+    if(pending(all,owner,prior.workflowId)){if(prior.account)save(all.map(e=>e===prior?{...e,account:''}:e));}
+    else save(all.filter(e=>e!==prior));
+   });
+  },
+  /** An exact run record wins over a pending workflow fence, so a later account- or device-owned run is usable. */
+  hidden(owner:string,account:string,runId:string,workflowId:string){const all=load(),exact=all.find(e=>e.owner===owner&&e.runId===runId);return exact?!!exact.account&&exact.account!==account:all.some(e=>e.owner===owner&&!!e.account&&e.account!==account&&!e.runId&&e.workflowId===workflowId);},
+  /** The other accounts' exact runs on this agent connection, durably claimed before any cancellation is sent. */
+  async claim(owner:string,account:string):Promise<Array<RunAccount&{runId:string}>>{
+   if(!owner||!account)return [];return edit(all=>{
+    const due=all.filter((e):e is RunAccount&{runId:string}=>e.owner===owner&&!!e.account&&e.account!==account&&typeof e.runId==='string'&&!e.cancel);
+    const claimed=new Set<RunAccount>(due);
+    if(!due.length||!save(all.map(e=>claimed.has(e)?{...e,cancel:true}:e)))return [];
+    return due;
+   });
+  },
  };
 }
 /** Existing remote workflows only; prototype trigger objects are never executed. */
@@ -125,15 +186,16 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  const runAccounts=workflowRunAccounts();
  const runOwnerKey=()=>{const s=connectionController.getSnapshot().session;return s?JSON.stringify([s.origin,s.ownerId,s.agentId]):'';};
  const runAccountKey=()=>{const a=connectionController.getSnapshot().cloudAccount;return a?JSON.stringify([a.environment,a.userId]):'';};
- const runHidden=(runId:string)=>runAccounts.hidden(runOwnerKey(),runAccountKey(),runId);
+ const runHidden=(runId:string,workflowId:string)=>runAccounts.hidden(runOwnerKey(),runAccountKey(),runId,workflowId);
  /** The runs the signed-in account may see. A finished run of its own is dropped from the record. */
- const visibleRuns=(list:WorkflowRun[])=>{const owner=runOwnerKey(),account=runAccountKey();return list.filter(run=>{if(runAccounts.hidden(owner,account,run.id))return false;runAccounts.settle(owner,account,run);return true;});};
+ const visibleRuns=async(list:WorkflowRun[])=>{const owner=runOwnerKey(),account=runAccountKey(),shown=list.filter(run=>!runAccounts.hidden(owner,account,run.id,run.workflowId));for(const run of shown)await runAccounts.settle(owner,account,run);return shown;};
  /** One best-effort cancellation for each run another account started on this agent connection. It uses the same
   * request as the owner's own Cancel execution. A failure is not reported and not repeated; the run stays hidden. */
- const cancelOtherAccountRuns=()=>{
-  const account=runAccountKey(),session=connectionController.getSnapshot().session;if(!account||!session)return;
+ const cancelOtherAccountRuns=async()=>{
+  const account=runAccountKey(),session=connectionController.getSnapshot().session,runOwner=runOwnerKey();if(!account||!session)return;
   const binding=connectionController.getWorkflowClient();if(!binding||binding.sessionId!==session.sessionId)return;
-  for(const run of runAccounts.claim(runOwnerKey(),account))void (async()=>{try{await binding.client.cancel(run.runId,run.workflowId,new AbortController().signal);}catch{/* Best effort: the run is hidden from this account either way. */}})();
+  const current=()=>{const active=connectionController.getWorkflowClient();return runAccountKey()===account&&runOwnerKey()===runOwner&&connectionController.getSnapshot().session?.sessionId===session.sessionId&&active?.sessionId===binding.sessionId&&active?.scope===binding.scope;};
+  try{const claimed=await runAccounts.claim(runOwner,account);for(const run of claimed){if(!current())return;void (async()=>{try{await binding.client.cancel(run.runId,run.workflowId,new AbortController().signal);}catch{/* Best effort: the run is hidden from this account either way. */}})();}}catch{if(current())runAccountsUnavailable();}
  };
  let suspended=false,listPhase:'idle'|'loading'|'ready'|'failed'='idle',listSession:string|null=null,listReadAt:number|null=null,homeVisit:string|null=null;
  // Retirement still cancels work, but must not render after document storage is revoked.
@@ -146,6 +208,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  };
  let noticeQuestion:(()=>void)|undefined;
  const clear=(keepList=false)=>{noticeQuestion?.();noticeQuestion=undefined;unadmitted=null;reviewResend=false;unverifiable=null;reviewClear=false;unsentLifecycle=null;reviewLifecycleResend=false;intentStore=null;authoring.close();phoneReview=null;phoneSteps=[];phoneConfirm=null;phoneStatus='';phoneDiscovery=null;generation++;operation?.abort();operation=null;editor=null;removedList=false;lifecycleAvailable=false;lifecycleReview=false;unknownReview=false;reviewRerun=false;noSchedule=false;if(!keepList){flows=[];listPhase='idle';listSession=null;}homeVisit=null;detail=null;detailSession=null;runs=[];receipt=null;approvalReceipt=null;approvalReview=null;reviewRun=false;reviewActivation=false;reviewCancel=false;phase='idle';publish();};
+ const runAccountsUnavailable=()=>{if(status==='Run history unavailable'&&phase==='failed')return;clear();status='Run history unavailable';phase='failed';api?.toast(status);publish();};
  // The unified list owns its reads, but retained workflow history still needs this capability.
  // Share that list's cancellation/current authority without fetching the legacy workflow list again.
  view.refreshManagement=async(signal:AbortSignal,current:()=>boolean)=>{
@@ -161,7 +224,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   // A result read for one signed-in account is never applied after another account signed in.
   const valid=()=>token===generation&&!controller.signal.aborted&&binding.sessionId===connectionController.getWorkflowClient()?.sessionId&&(!account||runAccountKey()===account);
   const session=connectionController.getSnapshot().session;if(!session){operation=null;return;}const intents=new WorkflowIntentStore(session);intentStore=intents;
-  try{await intents.load(controller.signal);if(!valid())return;await task(binding.client,controller.signal,valid,binding.sessionId,intents);}catch(error){if(valid()){status=(error instanceof WorkflowAdmissionRejected||error instanceof WorkflowMetadataRejected||error instanceof WorkflowLifecycleRejected||error instanceof WorkflowActivationRejected)?error.message:'Unavailable';api?.toast(status);}}finally{if(valid()){try{await intents.load(controller.signal);}catch{intents.invalidate();}}if(token===generation){operation=null;phase='ready';publish();
+  try{await intents.load(controller.signal);if(!valid())return;await task(binding.client,controller.signal,valid,binding.sessionId,intents);}catch(error){if(valid()){if(error instanceof WorkflowRunAccountsUnavailable)runAccountsUnavailable();else{status=(error instanceof WorkflowAdmissionRejected||error instanceof WorkflowMetadataRejected||error instanceof WorkflowLifecycleRejected||error instanceof WorkflowActivationRejected)?error.message:'Unavailable';api?.toast(status);}}}finally{if(valid()){try{await intents.load(controller.signal);}catch{intents.invalidate();}}if(token===generation){operation=null;phase='ready';publish();
    // A change notice that arrived during this operation only invalidated the snapshot. Reload it now, or every
    // request on this workflow would keep reading as an unknown outcome until the workflow is reopened.
    if(intentStore===intents&&intents.stale)refreshIntents();
@@ -221,7 +284,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
     return;
    }
    // A run another account started is not opened; the tap is held for an explicit Dismiss.
-   if(runHidden(result.run.id)){const token=peeked.token??null;heldTap=token?{token,question:!!peeked.question}:null;tapUnopened=false;publish();if(request==='user'||token!==toastedTap){toastedTap=token;shell.toast('Other account');}return;}
+   if(runHidden(result.run.id,result.run.workflowId)){const token=peeked.token??null;heldTap=token?{token,question:!!peeked.question}:null;tapUnopened=false;publish();if(request==='user'||token!==toastedTap){toastedTap=token;shell.toast('Other account');}return;}
    heldTap=null;tapUnopened=false;
    if(result.question){
     noticeQuestion=reviewWorkflowNoticeQuestion({result,current,recheck:()=>resolveWorkflowTap(native,bound,signal),consume:()=>native.consumeWorkflowTap({token:result.token,noticeRevision:result.notice?.revision}),discard:()=>native.consumeWorkflowTap({token:result.token,discard:true}),compose:draft=>shell.api(shell.S().view).composeContentQuestion(draft),report:message=>shell.toast(message),closed:()=>{noticeQuestion=undefined;}});
@@ -290,7 +353,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   // The agent refuses every Run now request for a hosted digest (it runs only from Scheduled digests), so a retained
   // request for one never started anything.
   if(retained&&current.hostedDigest){await intents.acknowledge(key,retained,signal);}
-  else if(retained){try{let intent:any=null;try{intent=JSON.parse(retained);}catch{/* An unreadable request can never be matched. */}const otherAccount=typeof intent?.account==='string'&&intent.account!==runAccountKey();if(runIntentReconcilable(intent,id,await client.supportsSubmissionReconciliation(signal))){const resolved=await client.reconcile(id,intent.versionId,intent.submissionId,signal);if(resolved&&valid()){if(typeof intent.account==='string')runAccounts.record(runOwnerKey(),intent.account,resolved);await intents.acknowledge(key,retained,signal);if(!history.some(r=>r.id===resolved.id))history.unshift(resolved);}
+  else if(retained){try{let intent:any=null;try{intent=JSON.parse(retained);}catch{/* An unreadable request can never be matched. */}const otherAccount=typeof intent?.account==='string'&&!!intent.account&&intent.account!==runAccountKey();if(runIntentReconcilable(intent,id,await client.supportsSubmissionReconciliation(signal))){const requestId=runAccountRequest(retained),account=typeof intent.account==='string'?intent.account:'';await runAccounts.reserve(runOwnerKey(),account,id,requestId);const resolved=await client.reconcile(id,intent.versionId,intent.submissionId,signal);if(resolved&&valid()){await runAccounts.record(runOwnerKey(),account,resolved,requestId);await intents.acknowledge(key,retained,signal);if(!history.some(r=>r.id===resolved.id))history.unshift(resolved);}
     // The agent has no run for this request. It admits a request only for the version it was reviewed against, so a
     // changed workflow can never start it: that is a known non-run. For an unchanged workflow the request stays
     // retained and the owner may explicitly send the same request again.
@@ -299,8 +362,9 @@ export function installWorkflowAdapter(Component:any,views:Bag){
     // workflow after the receipt and compare that; a run admitted in between would then be labelled not run.
     // The resend needs no such argument: the agent admits one submission ID at most once, atomically.
     // Another account's request is never offered for a resend: it can only be cleared, which sends nothing.
-    else if(!resolved&&valid()){if(current.versionId!==intent.versionId){await intents.acknowledge(key,retained,signal);if(valid()&&!otherAccount)api?.toast('Not run · Workflow changed');}else if(otherAccount)stuck={workflowId:id,raw:retained};else notAdmitted={workflowId:id,versionId:intent.versionId,submissionId:intent.submissionId,raw:retained};}}else if(valid())stuck={workflowId:id,raw:retained};}catch{if(valid())api?.toast('Couldn’t check run');}}
-  if(valid()){unadmitted=notAdmitted;reviewResend=false;unverifiable=stuck;reviewClear=false;unsentLifecycle=notApplied;reviewLifecycleResend=false;noSchedule=false;editor=null;lifecycleAvailable=available;lifecycleReview=false;unknownReview=false;reviewRerun=false;detail=current;detailSession=sessionId;runs=visibleRuns(history);receipt=null;reviewCancel=false;reviewRun=false;reviewActivation=false;cancelOtherAccountRuns();}
+    else if(!resolved&&valid()){if(current.versionId!==intent.versionId){await intents.acknowledge(key,retained,signal);if(valid()&&!otherAccount)api?.toast('Not run · Workflow changed');}else if(otherAccount)stuck={workflowId:id,raw:retained};else notAdmitted={workflowId:id,versionId:intent.versionId,submissionId:intent.submissionId,raw:retained};}}else if(valid())stuck={workflowId:id,raw:retained};}catch(error){if(error instanceof WorkflowRunAccountsUnavailable)throw error;if(valid())api?.toast('Couldn’t check run');}}
+  const shown=valid()?await visibleRuns(history):[];
+  if(valid()){unadmitted=notAdmitted;reviewResend=false;unverifiable=stuck;reviewClear=false;unsentLifecycle=notApplied;reviewLifecycleResend=false;noSchedule=false;editor=null;lifecycleAvailable=available;lifecycleReview=false;unknownReview=false;reviewRerun=false;detail=current;detailSession=sessionId;runs=shown;receipt=null;reviewCancel=false;reviewRun=false;reviewActivation=false;void cancelOtherAccountRuns();}
  });
  // A committed intent can outlive cancellation while awaiting storage. Remove only
  // that exact undispatched request; an uncertain provider response stays retained.
@@ -364,7 +428,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
     // One unreadable notice must not strand the rest. A missing run or a changed identity withdraws it; a
     // transient failure keeps it suspended and the coordinator retries the restore.
     try{
-     if(runHidden(route.runId)){await native.withdrawWorkflowApprovalNotice({id:suspended.id});continue;}
+     if(runHidden(route.runId,route.workflowId)){await native.withdrawWorkflowApprovalNotice({id:suspended.id});continue;}
      const reads=client.client,decision=await revalidateWorkflowApprovalNotice(suspended,{detail:(id,signal)=>reads.detail(id,signal),receipt:(runId,workflowId,signal)=>reads.receipt(runId,workflowId,signal),phoneReview:(run,signal)=>reads.phoneReview(run,signal),pending:(review,signal)=>connectionController.workflowNoticeActions(review,signal)},valid,signal);
      if(decision==='stale')return;
      if(decision==='resume'){await native.resumeWorkflowApprovalNotice(suspended);poster.remember(suspended.id,session.sessionId,route.workflowId);}
@@ -407,22 +471,28 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   const key=lockKey(selected.id),by={owner:runOwnerKey(),account:runAccountKey()};
   void work(async(client,signal,valid,_session,intents)=>{
    let started,intent:string|undefined;
-   try{started=await client.run(selected.id,selected.versionId,signal,async submissionId=>{intent=await intents.admit(key,{workflowId:selected.id,versionId:selected.versionId,submittedAt:Date.now(),...(submissionId?{submissionId}:{}),...(by.account?{account:by.account}:{})},signal);await beforeDispatch(intents,key,intent,signal,valid);});}
-   catch(error){if(error instanceof WorkflowAdmissionRejected&&intent){await intents.acknowledge(key,intent);if(valid()){const refreshed=await client.detail(selected.id,signal);if(valid()){detail=refreshed;reviewRun=false;}}}throw error;}
-   runAccounts.record(by.owner,by.account,started);cancelOtherAccountRuns();
+   try{started=await client.run(selected.id,selected.versionId,signal,async submissionId=>{
+    intent=await intents.admit(key,{workflowId:selected.id,versionId:selected.versionId,submittedAt:Date.now(),...(submissionId?{submissionId}:{}),account:by.account},signal);
+    const requestId=runAccountRequest(intent);
+    try{await runAccounts.reserve(by.owner,by.account,selected.id,requestId);}catch(error){await runAccounts.release(by.owner,selected.id,requestId);await intents.acknowledge(key,intent);throw error;}
+    try{await beforeDispatch(intents,key,intent,signal,valid);}catch(error){await runAccounts.release(by.owner,selected.id,requestId);throw error;}
+   });}
+   catch(error){if(error instanceof WorkflowAdmissionRejected&&intent){await runAccounts.release(by.owner,selected.id,runAccountRequest(intent));await intents.acknowledge(key,intent);if(valid()){const refreshed=await client.detail(selected.id,signal);if(valid()){detail=refreshed;reviewRun=false;}}}throw error;}
+   await runAccounts.record(by.owner,by.account,started,intent?runAccountRequest(intent):undefined);void cancelOtherAccountRuns();
    if(intent)await intents.acknowledge(key,intent);
    if(valid()){receipt=started;approvalReceipt=null;approvalReview=null;reviewCancel=false;reviewRerun=false;runs=[started,...runs.filter(r=>r.id!==started.id)];api?.toast('Accepted');}
   });
  };
  /** Explicit, confirmed repeat of the one retained request under its original submission ID. It first asks for the receipt again, so a request that did arrive is shown rather than re-sent. */
  const resubmitRun=(selected:RemoteWorkflow,request:NonNullable<typeof unadmitted>)=>{
-  const key=lockKey(selected.id),by={owner:runOwnerKey(),account:runAccountKey()};
+  const key=lockKey(selected.id),original=JSON.parse(request.raw),by={owner:runOwnerKey(),account:typeof original.account==='string'?original.account:''};
   void work(async(client,signal,valid,_session,intents)=>{
    unadmitted=null;
    if(await intents.read(key,signal)!==request.raw)throw new Error('Retained run request changed');
+   const requestId=runAccountRequest(request.raw);await runAccounts.reserve(by.owner,by.account,selected.id,requestId);
    let started=await client.reconcile(selected.id,request.versionId,request.submissionId,signal);
-   if(!started){try{started=await client.resubmit(selected.id,request.versionId,request.submissionId,signal);}catch(error){if(error instanceof WorkflowAdmissionRejected){await intents.acknowledge(key,request.raw);if(valid()){const refreshed=await client.detail(selected.id,signal);if(valid()){detail=refreshed;reviewRun=false;}}}throw error;}}
-   runAccounts.record(by.owner,by.account,started);cancelOtherAccountRuns();
+   if(!started){if(!valid())return;signal.throwIfAborted();try{started=await client.resubmit(selected.id,request.versionId,request.submissionId,signal);}catch(error){if(error instanceof WorkflowAdmissionRejected){await runAccounts.release(by.owner,selected.id,requestId);await intents.acknowledge(key,request.raw);if(valid()){const refreshed=await client.detail(selected.id,signal);if(valid()){detail=refreshed;reviewRun=false;}}}throw error;}}
+   await runAccounts.record(by.owner,by.account,started,requestId);void cancelOtherAccountRuns();
    await intents.acknowledge(key,request.raw);
    if(valid()){receipt=started;approvalReceipt=null;approvalReview=null;reviewCancel=false;reviewRerun=false;runs=[started,...runs.filter(r=>r.id!==started!.id)];api?.toast('Accepted');}
   });
@@ -532,7 +602,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   }
  }
  const read=(run:WorkflowRun)=>{
-  if(runHidden(run.id))return Promise.resolve();
+  try{if(runHidden(run.id,run.workflowId))return Promise.resolve();}catch{runAccountsUnavailable();return Promise.resolve();}
   phoneSteps=[];phoneReview=null;phoneConfirm=null;phoneStatus='';const key=approvalKey(run);
   return work(async(client,signal,valid,_session,intents)=>{
    const retained=await intents.read(key,signal),result=await client.receipt(run.id,run.workflowId,signal);let approvals:WorkflowApprovalReceipt|null=null;
@@ -542,7 +612,8 @@ export function installWorkflowAdapter(Component:any,views:Bag){
     // The engine accepts no decision once a run is finished or being cancelled, or for an approval it no longer
     // lists, so a decision it never recorded can no longer take effect: a known non-decision.
     else if(intent.versionId===result.versionId&&(approvals.finished||approvals.cancellationRequested)){await intents.acknowledge(key,retained,signal);if(valid())api?.toast('Decision not recorded');}}
-   if(valid()){runAccounts.settle(runOwnerKey(),runAccountKey(),result);receipt=result;approvalReceipt=approvals;approvalReview=null;reviewCancel=false;reviewRerun=false;runs=runs.map(r=>r.id===result.id?result:r);}
+   if(valid())await runAccounts.settle(runOwnerKey(),runAccountKey(),result);
+   if(valid()){receipt=result;approvalReceipt=approvals;approvalReview=null;reviewCancel=false;reviewRerun=false;runs=runs.map(r=>r.id===result.id?result:r);}
   });
  };
  const decide=(a:WorkflowApproval,approved:boolean)=>{
@@ -582,7 +653,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
     if(!held){
      if(current.versionId!==request.versionId)await intents.acknowledge(key,request.raw);
      else if(valid())unsentLifecycle=request;
-     if(valid()){const history=await client.executions(selected.id,signal);if(valid()){detail=current;runs=visibleRuns(history);}}
+     if(valid()){const history=await client.executions(selected.id,signal);if(valid()){const shown=await visibleRuns(history);if(valid()){detail=current;runs=shown;}}}
      throw refusal;
     }
    }
@@ -599,7 +670,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   // Upstream plugin-workflow refuses removal while any execution is unfinished and has no
   // acknowledgement-only API. The supported path is an explicit, confirmed cancellation of each
   // interrupted run; removing past an unknown outcome without cancelling requires a tested change to the upstream workflow runtime.
-  if(interrupted.length){if(!unknownReview){unknownReview=true;lifecycleReview=true;publish();return;}const selected=detail;unknownReview=false;lifecycleReview=false;void work(async(client,signal,valid)=>{let failed=0;for(const r of interrupted){try{await client.cancel(r.id,r.workflowId,signal);}catch(error){if(signal.aborted)throw error;failed++;}}const history=await client.executions(selected.id,signal),current=await client.detail(selected.id,signal);if(valid()){runs=visibleRuns(history);detail=current;api?.toast(failed?'Some interrupted runs could not be cancelled. Removal stays blocked; refresh and review them.':history.some(r=>!r.finished)?'Cancellation requested. Removal stays blocked until the agent confirms every run has stopped.':'Interrupted runs cancelled; their earlier outcome remains unknown. Tap Remove again to review removal.');}});return;}if(detail.removed&&detail.triggerCleanup==='pending'){api?.toast('Scheduled trigger cleanup is pending on the agent. Restore is blocked until cleanup is confirmed.');return;}if(!lifecycleReview){lifecycleReview=true;publish();return;}const selected=detail,operationName=selected.removed?'restore':'remove',key=lifecycleKey(selected.id);lifecycleReview=false;void work(async(client,signal,valid,_session,intents)=>{let intent:string|undefined;try{await client.lifecycle(selected.id,selected.versionId,operationName,signal,async mutationId=>{intent=await intents.admit(key,{mutationId,versionId:selected.versionId,operation:operationName},signal);await beforeDispatch(intents,key,intent,signal,valid);});if(intent)await intents.acknowledge(key,intent);if(valid()){const current=await client.detail(selected.id,signal);if(valid()){detail=current;flows=flows.filter(f=>f.id!==selected.id);api?.toast(current.removed?'Workflow removed; execution history retained.':manualPhoneWorkflow(current)?'Workflow restored paused. It has no schedule and runs only when you tap Run now.':'Workflow restored paused. Review its schedule before enabling.');}}}catch(error){if(error instanceof WorkflowLifecycleRejected){if(intent)await intents.acknowledge(key,intent);if(valid()){const current=await client.detail(selected.id,signal),history=await client.executions(selected.id,signal);if(valid()){detail=current;runs=visibleRuns(history);}}}throw error;}});};
+  if(interrupted.length){if(!unknownReview){unknownReview=true;lifecycleReview=true;publish();return;}const selected=detail;unknownReview=false;lifecycleReview=false;void work(async(client,signal,valid)=>{let failed=0;for(const r of interrupted){try{await client.cancel(r.id,r.workflowId,signal);}catch(error){if(signal.aborted)throw error;failed++;}}const history=await client.executions(selected.id,signal),current=await client.detail(selected.id,signal);if(valid()){const shown=await visibleRuns(history);if(!valid())return;runs=shown;detail=current;api?.toast(failed?'Some interrupted runs could not be cancelled. Removal stays blocked; refresh and review them.':history.some(r=>!r.finished)?'Cancellation requested. Removal stays blocked until the agent confirms every run has stopped.':'Interrupted runs cancelled; their earlier outcome remains unknown. Tap Remove again to review removal.');}});return;}if(detail.removed&&detail.triggerCleanup==='pending'){api?.toast('Scheduled trigger cleanup is pending on the agent. Restore is blocked until cleanup is confirmed.');return;}if(!lifecycleReview){lifecycleReview=true;publish();return;}const selected=detail,operationName=selected.removed?'restore':'remove',key=lifecycleKey(selected.id);lifecycleReview=false;void work(async(client,signal,valid,_session,intents)=>{let intent:string|undefined;try{await client.lifecycle(selected.id,selected.versionId,operationName,signal,async mutationId=>{intent=await intents.admit(key,{mutationId,versionId:selected.versionId,operation:operationName},signal);await beforeDispatch(intents,key,intent,signal,valid);});if(intent)await intents.acknowledge(key,intent);if(valid()){const current=await client.detail(selected.id,signal);if(valid()){detail=current;flows=flows.filter(f=>f.id!==selected.id);api?.toast(current.removed?'Workflow removed; execution history retained.':manualPhoneWorkflow(current)?'Workflow restored paused. It has no schedule and runs only when you tap Run now.':'Workflow restored paused. Review its schedule before enabling.');}}}catch(error){if(error instanceof WorkflowLifecycleRejected){if(intent)await intents.acknowledge(key,intent);if(valid()){const current=await client.detail(selected.id,signal),history=await client.executions(selected.id,signal);if(valid()){const shown=await visibleRuns(history);if(valid()){detail=current;runs=shown;}}}}throw error;}});};
  view.back=()=>{if(authoring.active){authoring.close();return true;}if(lifecycleReview){lifecycleReview=false;unknownReview=false;publish();return true;}if(reviewLifecycleResend){reviewLifecycleResend=false;publish();return true;}if(editor){cancelEdit();return true;}if(receipt){receipt=null;approvalReceipt=null;approvalReview=null;reviewCancel=false;reviewRerun=false;publish();return true;}if(detail){detail=null;reviewRun=false;reviewResend=false;reviewClear=false;reviewLifecycleResend=false;publish();return true;}return false;};view.onLeave=()=>clear(true);
  view.render=(_state:Bag,current:Bag)=>{api=current;const binding=connectionController.getWorkflowClient();if(!view.automationsManaged&&phase==='idle'&&binding&&current.isActive()){phase='scheduled';queueMicrotask(()=>{if(api?.isActive())void refresh();});}
  const track=(on:boolean)=>current.track(on),kx=(on:boolean)=>current.kx(on);
@@ -627,8 +698,8 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  const update=p.componentDidUpdate;p.componentDidUpdate=function(...args:unknown[]){update?.apply(this,args);syncHome();syncReceiptPoll();};
  const mount=p.componentDidMount,unmount=p.componentWillUnmount;p.componentDidMount=function(){mount.call(this);owner=this;this.workflowIntentChanged=()=>refreshIntents();window.addEventListener('alpha:workflow-intents',this.workflowIntentChanged);window.addEventListener('storage',this.workflowIntentChanged);if(typeof BroadcastChannel!=='undefined'){this.workflowIntentChannel=new BroadcastChannel('alpha.workflow-intents');this.workflowIntentChannel.onmessage=(event:MessageEvent)=>{if(event.data===intentStore?.documentKey)refreshIntents();};}if(Capacitor.isNativePlatform()){this.workflowNoticeListener=notificationNative().addListener('pendingWorkflowTap',()=>{void checkNotice('event');}).catch(()=>null);queueMicrotask(()=>void checkNotice());this.workflowPoster=setInterval(()=>void poster.poll(true),60_000);queueMicrotask(()=>void poster.poll());}
   // A notification tap can land while the window regains focus without a visibility change.
-  this.workflowFocus=()=>{void checkNotice('event');void poster.poll();syncReceiptPoll();};window.addEventListener('focus',this.workflowFocus);retireOtherOwnerNotices();let session=connectionController.getSnapshot().session?.sessionId,signedIn=runAccountKey();cancelOtherAccountRuns();this.workflowUnsubscribe=connectionController.subscribe(()=>{retireOtherOwnerNotices();const next=connectionController.getSnapshot().session?.sessionId,account=runAccountKey();
+  this.workflowFocus=()=>{void checkNotice('event');void poster.poll();syncReceiptPoll();};window.addEventListener('focus',this.workflowFocus);retireOtherOwnerNotices();let session=connectionController.getSnapshot().session?.sessionId,signedIn=runAccountKey();void cancelOtherAccountRuns();this.workflowUnsubscribe=connectionController.subscribe(()=>{retireOtherOwnerNotices();const next=connectionController.getSnapshot().session?.sessionId,account=runAccountKey();
    // Signing out, or another account signing in, drops everything on screen, as a new connection does.
    const switched=!!signedIn&&account!==signedIn;signedIn=account;
-   if(next!==session||switched||connectionController.getSnapshot().open){session=next;clear();}cancelOtherAccountRuns();if(!connectionController.getSnapshot().open)queueMicrotask(()=>{void checkNotice();void poster.poll();});syncHome();syncReceiptPoll();});suspended=document.hidden;this.workflowSuspend=()=>{suspended=true;clear();};this.workflowResume=()=>{suspended=false;retireOtherOwnerNotices();publish();void checkNotice('event');void poster.poll(true);syncHome();};this.workflowVisibility=()=>{if(document.hidden)this.workflowSuspend();else this.workflowResume();};document.addEventListener('visibilitychange',this.workflowVisibility);window.addEventListener('pagehide',this.workflowSuspend);window.addEventListener('pageshow',this.workflowResume);syncHome();};p.componentWillUnmount=function(){window.removeEventListener('alpha:workflow-intents',this.workflowIntentChanged);window.removeEventListener('focus',this.workflowFocus);clearInterval(this.workflowPoster);window.removeEventListener('storage',this.workflowIntentChanged);this.workflowIntentChannel?.close();document.removeEventListener('visibilitychange',this.workflowVisibility);window.removeEventListener('pagehide',this.workflowSuspend);window.removeEventListener('pageshow',this.workflowResume);this.workflowUnsubscribe?.();void this.workflowNoticeListener?.then((listener:any)=>listener?.remove());owner=null;clear();unmount.call(this);};
+   if(next!==session||switched||connectionController.getSnapshot().open){session=next;clear();}void cancelOtherAccountRuns();if(!connectionController.getSnapshot().open)queueMicrotask(()=>{void checkNotice();void poster.poll();});syncHome();syncReceiptPoll();});suspended=document.hidden;this.workflowSuspend=()=>{suspended=true;clear();};this.workflowResume=()=>{suspended=false;retireOtherOwnerNotices();publish();void checkNotice('event');void poster.poll(true);syncHome();};this.workflowVisibility=()=>{if(document.hidden)this.workflowSuspend();else this.workflowResume();};document.addEventListener('visibilitychange',this.workflowVisibility);window.addEventListener('pagehide',this.workflowSuspend);window.addEventListener('pageshow',this.workflowResume);syncHome();};p.componentWillUnmount=function(){window.removeEventListener('alpha:workflow-intents',this.workflowIntentChanged);window.removeEventListener('focus',this.workflowFocus);clearInterval(this.workflowPoster);window.removeEventListener('storage',this.workflowIntentChanged);this.workflowIntentChannel?.close();document.removeEventListener('visibilitychange',this.workflowVisibility);window.removeEventListener('pagehide',this.workflowSuspend);window.removeEventListener('pageshow',this.workflowResume);this.workflowUnsubscribe?.();void this.workflowNoticeListener?.then((listener:any)=>listener?.remove());owner=null;clear();unmount.call(this);};
 }
