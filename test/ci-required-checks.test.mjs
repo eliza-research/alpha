@@ -121,6 +121,13 @@ test('the actual promotion selector preserves manual filters and refuses an empt
       refused(select('application', '', scratch), reason);
     }
   } finally {fs.rmSync(scratch, {recursive: true, force: true});}
+  // Loading every model takes tens of seconds on a loaded runner, so the deadline is generous.
+  const unknown = spawnSync('bun', ['scripts/check-quint.ts', 'verify', '--models=UnknownPromotionPartitionProbe'], {
+    encoding: 'utf8', timeout: 180000,
+  });
+  assert.ifError(unknown.error);
+  assert.notEqual(unknown.status, 0);
+  assert.match(unknown.stderr, /Unknown model UnknownPromotionPartitionProbe/, 'The real CLI rejects unknown names before starting a solver');
 });
 
 test('committed ruleset requires exactly the verify job', () => {

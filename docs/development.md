@@ -50,7 +50,7 @@ changes do not run it. The browser tests are not run by PR CI: run `bun run test
 `bun run test:browser:production` before finalising a PR and say so in its description. CI runs
 them with the formal models when `develop` is promoted to `main` (`promotion.yml`).
 
-The remaining lanes do not run on pull requests. `android-emulator.yml` runs nightly on `main` and
+The remaining lanes do not run on pull requests. `android-emulator.yml` runs nightly on the default branch (`develop`) and
 on dispatch: one job builds the launcher APKs and runs the default instrumentation and the browser
 reading suites on hosted emulators. `resident-android.yml` builds the unsigned native candidate on
 each `main` push, and a dispatched build or embedding-qualification publication on request. The

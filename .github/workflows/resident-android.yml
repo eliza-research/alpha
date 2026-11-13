@@ -287,7 +287,9 @@ jobs:
           bun run agent:test-workflow-compiler
           bun run agent:test-workflow-worker
       - name: Stage and archive qualified resident runtime
-        timeout-minutes: 100
+        # The one candidate that reached this step finished it in 18 minutes; runs that sat
+        # here for 50 minutes printed nothing after the first line, so they were hung.
+        timeout-minutes: 40
         env:
           RUN_TURBO_CONCURRENCY: "1"
           ALPHA_NODE: ${{ env.ALPHA_ARCHIVE_HOST_NODE }}
