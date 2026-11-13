@@ -11,6 +11,7 @@ const folder='android/aosp/branding/provision/';
 const driver=fileURLToPath(import.meta.url);
 const probe=`package com.android.provision;
 import android.app.*;import android.app.admin.*;import android.app.role.*;import android.os.*;import android.provider.*;import android.view.*;import android.view.inputmethod.*;import android.widget.*;
+import android.content.pm.PackageManager;
 import org.json.*;import java.lang.reflect.*;import java.util.*;
 public class Probe {
  static final JSONArray traces=new JSONArray();static JSONObject trace;static Activity activity;static RoleManager roles;static Object controller;
@@ -20,7 +21,7 @@ public class Probe {
  static int generation(){try{Field f=controller.getClass().getDeclaredField("generation");f.setAccessible(true);return f.getInt(controller);}catch(Exception e){throw new RuntimeException(e);}}
  static String keyboard(){String v=activity.resolver.get(Settings.Secure.DEFAULT_INPUT_METHOD);return v==null||v.isEmpty()?"none":v.contains("LatinIME")?"latin":"owner";}
  static JSONObject state(){return new JSONObject().put("s.eligible",AlphaFreshPresets.eligible(activity)).put("s.alive",!activity.isDestroyed()&&!activity.isFinishing())
- .put("s.phase",activity.isDestroyed()?"idle":complete?"done":bool("waiting")?"waiting":presets?"presets":"idle").put("s.generation",generation())
+ .put("s.phase",activity.isDestroyed()?"idle":complete?"done":presets?"presets":bool("waiting")?"waiting":"idle").put("s.generation",generation())
  .put("s.keyboard",keyboard()).put("s.complete",complete).put("s.completionAuthorized",complete&&AlphaFreshPresets.eligible(activity)&&roles.held&&!keyboard().equals("none"));}
  static void mark(String label,Object action,JSONObject observation){trace.getJSONArray("steps").put(new JSONObject().put("label",label).put("action",action==null?JSONObject.NULL:action).put("expect",observation));}
  static void mark(String label,Object action){mark(label,action,state());}
@@ -30,6 +31,7 @@ public class Probe {
  static void fail(){presets=false;}
  static Activity fresh(){Activity a=new Activity();a.services.put(DevicePolicyManager.class,new DevicePolicyManager());a.services.put(UserManager.class,new UserManager());a.services.put(InputMethodManager.class,new InputMethodManager());roles=new RoleManager();a.services.put(RoleManager.class,roles);return a;}
  static void setup(String name)throws Exception {android.os.Process.user=new UserHandle();Handler.delayed.clear();activity=fresh();complete=false;presets=false;completions=0;pending=null;
+  activity.packages.features.add(PackageManager.FEATURE_TELEPHONY);
   AlphaWelcome.show(activity,()->{complete=true;completions++;mark("Actual provision completion callback",action("finish"));});
   LinearLayout column=(LinearLayout)((ScrollView)activity.content).child;Button next=null;
   for(View v:column.children)if(v instanceof Button&&((Button)v).text.equals(R.string.alpha_continue))next=(Button)v;
@@ -47,7 +49,9 @@ public class Probe {
  public static void main(String[] args)throws Exception {
   setup("accepted-home-installs-latin");begin();callback(0,true,true);check(complete&&completions==1&&keyboard().equals("latin"),"Fresh setup did not complete");
   int writes=activity.resolver.writes;roles.callbacks.get(0).accept(true);check(completions==1&&activity.resolver.writes==writes,"Repeated callback repeated effects");mark("Duplicate callback has no effects",action("callback",1,true,true));
-  setup("owner-keyboard-preserved");ownerKeyboard();begin();callback(0,true,true);check(complete&&keyboard().equals("owner"),"Owner keyboard replaced");
+  setup("owner-keyboard-preserved-without-telephony-hardware");activity.packages.features.clear();
+  activity.packages.features.add("ai.alphacompute.alphaphone.fresh_telephony_setup");
+  ownerKeyboard();begin();callback(0,true,true);check(complete&&keyboard().equals("owner"),"Owner keyboard replaced");
   setup("expired-callback");begin();timeout(0);callback(0,true,true);check(!complete&&activity.resolver.writes==0,"Expired callback wrote settings");
   setup("previous-generation");begin();timeout(0);begin();callback(0,true,true);check(bool("waiting")&&!complete,"Old generation won");callback(1,true,true);check(complete,"Current generation failed");
   setup("destroyed-activity");begin();activity.destroyed=true;mark("Activity destruction",action("destroy"));callback(0,true,true);check(!complete&&activity.resolver.writes==0,"Destroyed activity wrote settings");
@@ -90,6 +94,7 @@ export async function checkOSProvisioning(extraSources=[]){
   const traces=javaJson(temporary,'com.android.provision.Probe');assert.equal(traces.length,12);
   return await checkTraces({model:'OSProvisioning',sources:[...sources,...generated],driverHashes,generatedSources:generated,traces,scope:'bounded-orchestration',assumptions:[
    'The unchanged provisioning policy, Android IME adapter and appearance Activity execute on the host JVM. Welcome has three bound read-only observer calls; the real private controller, generation checks, timeout runnable, role callback and completion callback execute.',
+   'The model covers HOME-only setup when the factory telephony marker or telephony hardware is absent. The synthetic ports reject every telephony role request or preparation broadcast in these traces. The production telephony branch has separate JVM coverage in test/aosp-fresh-presets.test.py.',
    'Android UI, RoleManager, settings, policy, IME and wallpaper services are explicit synthetic ports. These serialized callbacks prove source decisions under controlled port responses, not Android permission enforcement, cross-process settings atomicity, device lifecycle delivery, wallpaper rendering or AOSP image boot.',
    'The finite model treats failed keyboard presets as an unfinished presets phase; only keyboard and completion are projected after that source recovery path. Retry from failed presets and partial wallpaper success followed by palette failure require separate models/platform checks. Automatic fresh-setup palette is distinct from the explicit post-update appearance action.',
   ]});

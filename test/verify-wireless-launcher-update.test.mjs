@@ -12,6 +12,7 @@ import {
   verifyWirelessLauncherMatrix,
 } from '../scripts/verify-wireless-launcher-update.ts';
 import {appUpdateManifestUrl} from '../scripts/update-channel.ts';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 const packageName = 'ai.alphacompute.alphaphone';
 const dataApkPath = '/data/app/~~AA==/ai.alphacompute.alphaphone-X=/base.apk';
@@ -356,7 +357,7 @@ test('the CLI binds installed releases, the production image and unattended hist
       const versionCode = (followup ? 9 : 8) - (phase === 'before' ? 1 : 0);
       return execFileSync(process.execPath, [realpathSync(output), phase, '--serial', 'fixture-phone',
         '--apk-manifest', manifests.get(versionCode), '--out', receipt, ...extra], {
-        encoding: 'utf8', timeout: 30_000, stdio: 'pipe', env: {...process.env, FIXTURE_DISTRIBUTION: distribution,
+        encoding: 'utf8', timeout: scaledTimeout(30_000), stdio: 'pipe', env: {...process.env, FIXTURE_DISTRIBUTION: distribution,
           FIXTURE_FOLLOWUP: followup ? '1' : '0', FIXTURE_MANUAL_APPROVAL: manualApproval ? '1' : '0',
           FIXTURE_REPLACE_APK: '0'},
       });
@@ -418,7 +419,7 @@ test('the CLI binds installed releases, the production image and unattended hist
   const replacedReceipt = path.join(directory, 'changed-apk.json');
   assert.throws(() => execFileSync(process.execPath, [realpathSync(output), 'before',
     '--serial', 'fixture-phone', '--apk-manifest', manifests.get(7), '--out', replacedReceipt, '--distribution', 'sideload'], {
-    encoding: 'utf8', timeout: 30_000, stdio: 'pipe', env: {...process.env, FIXTURE_DISTRIBUTION: 'sideload',
+    encoding: 'utf8', timeout: scaledTimeout(30_000), stdio: 'pipe', env: {...process.env, FIXTURE_DISTRIBUTION: 'sideload',
       FIXTURE_FOLLOWUP: '0', FIXTURE_REPLACE_APK: '1'},
   }), error => /changed after APK admission/.test(error.stderr));
   assert.equal(existsSync(replacedReceipt), false);
@@ -437,7 +438,7 @@ test('the CLI binds installed releases, the production image and unattended hist
   const runMatrix = (stock, signed, report) => execFileSync(process.execPath,
     [realpathSync(output), 'matrix', '--out', report,
       ...stock.flatMap(file => ['--sideload', file]), ...signed.flatMap(file => ['--image-preinstalled', file])],
-    {encoding: 'utf8', timeout: 30_000, stdio: 'pipe'});
+    {encoding: 'utf8', timeout: scaledTimeout(30_000), stdio: 'pipe'});
   const report = path.join(directory, 'matrix.json');
   assert.deepEqual(verifyWirelessLauncherMatrix(sideload, image), expected);
   runMatrix(sideload, image, report);

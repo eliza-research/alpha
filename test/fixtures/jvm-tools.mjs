@@ -5,6 +5,7 @@ import {homedir,tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {preparePatchedNative} from '../../scripts/prepare-patched-native.ts';
+import {scaledTimeout} from '../../specs/quint/refinement/timeouts.mjs';
 
 export const root=resolve(import.meta.dirname,'../..');
 export const nativeSource=name=>join(root,'android/app/src/main/java/ai/alphacompute/alphaphone',name);
@@ -26,9 +27,9 @@ const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/202
 const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(name=>name==='json-20250517.jar').map(name=>join(cache,hash,name)))[0]:undefined;
 export const jsonJar=process.env.ALPHA_JSON_JAR||cached;
 /** One timeout for every host javac and java run. */
-export const jvmTimeout=120000;
+export const jvmTimeout=scaledTimeout(120000);
 
-const runs=command=>{const result=spawnSync(command,['-version'],{stdio:'ignore',timeout:30000});return !result.error&&result.status===0;};
+const runs=command=>{const result=spawnSync(command,['-version'],{stdio:'ignore',timeout:scaledTimeout(30000)});return !result.error&&result.status===0;};
 const tools={
  json:()=>jsonJar?false:'Set ALPHA_JSON_JAR or install the pinned Gradle JSON test dependency',
  javac:()=>runs(javaBinary('javac'))?false:'No javac: set JAVA_HOME or put a JDK on PATH',

@@ -366,4 +366,7 @@ def main(signing_timeout):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--signing-timeout-ms", type=int, default=30_000)
-    main(parser.parse_args().signing_timeout_ms / 1000)
+    args = parser.parse_args()
+    if not 30_000 <= args.signing_timeout_ms <= 300_000:
+        parser.error("signing timeout must be between 30000 and 300000 milliseconds")
+    main(args.signing_timeout_ms / 1000)

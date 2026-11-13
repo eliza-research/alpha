@@ -154,6 +154,7 @@ jobs:
           PRODUCT_PACKAGE_MANAGER: ${{ steps.product_toolchain.outputs.manager }}
         shell: bash
         run: |
+          set -euo pipefail
           profile=$(jq -er '.runtimeProfile' "$RUNNER_TEMP/qualified-stage/qualification-summary.json")
           case "$profile" in
             native) args=() ;;

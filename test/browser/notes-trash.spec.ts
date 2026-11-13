@@ -119,6 +119,11 @@ test('canonical startup preserves unselected legacy Trash; Older notes purges ex
  const deletedAt=(await trashEntries(page))[0].deletedAt;
  await page.clock.setSystemTime(deletedAt+DAY);
  await deleteNote(page,'Later');
+ // The first deletion's toast may still be visible. Verify both durable writes before reload.
+ await expect.poll(async()=>({
+  trash:(await trashEntries(page)).map(entry=>entry.note.title).sort(),
+  saved:(await savedRecords(page)).map((note:{title:string})=>note.title),
+ })).toEqual({trash:['Expiring','Later'],saved:[]});
 
  // One minute before the boundary: still restorable after a restart.
  await page.clock.setSystemTime(deletedAt+30*DAY-60_000);

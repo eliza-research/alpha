@@ -5,9 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
 import YAML from 'yaml';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 test('qualified publication binds source, private output and exact reviewed voice without signing keys',()=>{
-  execFileSync('python3',['-B','test/qualified-app-update.test.py'],{cwd:new URL('..',import.meta.url),stdio:'pipe',timeout:30_000});
+  execFileSync('python3',['-B','test/qualified-app-update.test.py'],{cwd:new URL('..',import.meta.url),stdio:'pipe',timeout:scaledTimeout(30_000)});
 });
 
 test('publication workflow preserves protected review, exact source and verification before writes',()=>{
@@ -90,6 +91,10 @@ test('publication supplies the Cloud profile flag only to the retained Cloud ver
   const cloud = run('cloud', 'package-lock.json');
   assert.equal(cloud.status, 0, cloud.stderr);
   assert.deepEqual(cloud.stdout.trim().split('\n'), ['npm', 'run', 'android:verify', '--',
+    '--runtime-profile=cloud', `--cloud-voice-evidence=${evidence}`]);
+  const cloudBun = run('cloud', 'bun.lock');
+  assert.equal(cloudBun.status, 0, cloudBun.stderr);
+  assert.deepEqual(cloudBun.stdout.trim().split('\n'), ['bun', 'run', 'android:verify', '--',
     '--runtime-profile=cloud', `--cloud-voice-evidence=${evidence}`]);
   const invalid = run('other', 'bun.lock');
   assert.equal(invalid.status, 1);
