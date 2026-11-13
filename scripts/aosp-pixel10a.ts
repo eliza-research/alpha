@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {execFileSync} from 'node:child_process';
 import {assertPixel10aSourceLayout, composePixel10aProduct} from '../vendor/eliza/packages/os/scripts/android/pixel10a-product.ts';
 import {placeholderFields, releaseDescriptorProblems} from '../vendor/eliza/packages/os/scripts/android/pixel10a-release.mjs';
 import {assertStockVendorApi} from '../vendor/eliza/packages/os/scripts/android/vendor-api.mjs';
 import type {SenseImageActivation} from './aosp-sense-image.ts';
+import {stageAndroidNative, finalizeAndroidNative} from '../vendor/eliza/packages/os/scripts/android/android-native-admission.mjs';
+import {alphaNativeOptions} from './aosp-native-admission.ts';
 
 export {placeholderFields};
 /** The production descriptor for Pixel 10a (stallion) on Android 17. */
@@ -90,12 +91,13 @@ type Pixel10aProductOptions = Omit<Pixel10aCompositionOptions, 'product' | 'nati
   senseActivation?: SenseImageActivation | null;
 };
 export function writePixel10aProduct({root, output, apk, identity, launcher, sourceEvidence, production = false, bootAnimation = null, vendorApi = null, senseActivation = null}: Pixel10aProductOptions) {
-  const nativeStagingEvidence = JSON.parse(execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--target', 'stallion', '--defer-soong'], {encoding:'utf8'}));
+  const nativeOptions = alphaNativeOptions({root, output, apk, moduleName:identity.moduleName, launcher, target:'stallion'});
+  const nativeStagingEvidence = stageAndroidNative(nativeOptions);
   const product = readPixel10aComposition(root);
   // A brand boot animation is staged only when the shared composition pins its bytes.
   const compose = composePixel10aProduct as unknown as (options: Pixel10aCompositionOptions) => ReturnType<typeof composePixel10aProduct>;
   const report = compose({output, product, launcher, sourceEvidence, nativeStagingEvidence, production, bootAnimation, vendorApi});
-  execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--finalize-soong'], {stdio:'pipe'});
+  finalizeAndroidNative(nativeOptions);
   if (production) {
     const bytes = fs.readFileSync(path.join(root, PIXEL10A_PRODUCT));
     const descriptor = JSON.parse(bytes.toString('utf8'));

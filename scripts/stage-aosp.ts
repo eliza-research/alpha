@@ -384,7 +384,7 @@ if (production || senseActivation) {
   if (!physical || !production) writeAospCapabilityOverlay(output, identity.appId);
   console.log(`Provisioning overlay: HOME ${components.home}, Autofill ${components.autofill}${components.assistant ? `, assistant ${components.assistant}` : ''}.`);
 }
-if (cuttlefish) writeCuttlefishNatives({root:process.cwd(), output, apk:stagedLauncher, module:identity.moduleName});
+if (cuttlefish) writeCuttlefishNatives({root:process.cwd(), output, apk:stagedLauncher, module:identity.moduleName, launcher:reviewed});
 if (physical) {
   writePixel10aProduct({root:process.cwd(), output, apk:stagedLauncher, identity, launcher:reviewed, sourceEvidence:physicalSource, production, bootAnimation:get('--boot-animation'), vendorApi, senseActivation});
 }
