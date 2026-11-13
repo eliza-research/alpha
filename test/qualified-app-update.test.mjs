@@ -16,16 +16,15 @@ test('artifact identity is confined to protected signing and publication jobs',(
  assert.deepEqual(identity.roles.map(role=>role.includedPermissions),[['storage.objects.get'],['storage.objects.create']]);
  for(const claim of ["assertion.repository_id == '1396333361'","assertion.ref == 'refs/heads/main'","assertion.environment == 'release'","assertion.event_name == 'workflow_dispatch'"])assert(identity.attributeCondition.includes(claim));
  assert.deepEqual([...identity.attributeCondition.matchAll(/"([^"]+\.yml@refs\/heads\/main)"/g)].map(match=>match[1]),[
-  'eliza-research/alpha/.github/workflows/release-cloud-app-signing.yml@refs/heads/main',
-  'eliza-research/alpha/.github/workflows/publish-qualified-app-update.yml@refs/heads/main',
+  'eliza-research/alpha/.github/workflows/release.yml@refs/heads/main',
   'eliza-research/alpha/.github/workflows/release-os-ota-signing.yml@refs/heads/main',
  ]);
  assert(identity.roles[1].condition.expression.endsWith("/objects/signed/')"));
- const cases=[['release-cloud-app-signing.yml','sign'],['publish-qualified-app-update.yml','publish']];
- for(const [file,name] of cases){
+ const cases=[['release.yml','sign','admit-signing'],['release.yml','publish','admit-publication']];
+ for(const [file,name,admission] of cases){
   const workflow=YAML.parse(fs.readFileSync(new URL('../.github/workflows/'+file,import.meta.url),'utf8')),job=workflow.jobs[name];
   assert.equal(job.environment,'release');assert.equal(job.permissions['id-token'],'write');
-  assert(!workflow.jobs.admit.permissions['id-token']);assert(!workflow.jobs.admit.steps?.some(step=>step.uses?.startsWith('google-github-actions/auth@')));
+  assert(!workflow.jobs[admission].permissions['id-token']);assert(!workflow.jobs[admission].steps?.some(step=>step.uses?.startsWith('google-github-actions/auth@')));
   const index=job.steps.findIndex(step=>step.id==='private_storage_auth'),auth=job.steps[index];
   assert(index>=0);assert.equal(auth.uses,'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093');
   assert.equal(auth.with.workload_identity_provider,identity.providerResource);
@@ -36,7 +35,7 @@ test('artifact identity is confined to protected signing and publication jobs',(
   const consumers=job.steps.filter(step=>step.env?.ALPHA_PRIVATE_STORAGE_TOKEN);assert(consumers.length);
   if(name==='sign'){
    const source=job.steps.find(step=>step.with?.path==='qualified-producer');assert(source);
-   assert.equal(source.with.ref,'${{ fromJSON(inputs.signing_plan).alphaCommit }}');
+   assert.equal(source.with.ref,'${{ fromJSON(inputs.plan).alphaCommit }}');
   }
   for(const step of consumers){assert.equal(step.env.ALPHA_PRIVATE_STORAGE_TOKEN,'${{ steps.private_storage_auth.outputs.access_token }}');assert(job.steps.indexOf(step)>index);}
  }
