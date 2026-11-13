@@ -187,7 +187,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   let listReadAt=0,cachedListShown=false;
   const folderLists=new MailboxListCache<GmailMessage>();
   let offline:ServiceReadCache|null=null,offlineIdentity='',mailCacheEpoch=0,homeRestoreAttempt='',homeSummaryEpoch=0;
-  type CachedMailbox = SavedMailbox<MailBody,GmailMessage>;
+  type CachedMailbox = SavedMailbox<MailBody,GmailMessage> & {grantReadGeneration?:string};
   const offlineOwner=()=>{const account=connectionController.getSnapshot().cloudAccount,binding=connectionController.getCloudClient();return account?.organizationId&&binding?{environment:account.environment,userId:account.userId,organizationId:account.organizationId,credentialId:binding.credentialId}:null;};
   async function offlineStore(){const owner=offlineOwner();if(!owner)return null;const identity=JSON.stringify(owner),cache=await serviceReadCache(owner,'gmail');if(JSON.stringify(offlineOwner())!==identity)return null;offline=cache;offlineIdentity=identity;return cache;}
   /** Owner-bound startup snapshots; no mailbox refresh, body read or draft binding. */
@@ -204,8 +204,8 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       // A saved summary that lands after Home's own network summary decision is older than it.
       if(!shell||selected||api?.isActive()||generation!==token||mailCacheEpoch!==epoch||summaryEpoch!==homeSummaryEpoch||identity!==JSON.stringify(offlineOwner())||binding.client!==active?.client||binding.sessionId!==active?.sessionId)return;
       const hint=readGmailAccountChoice(connectionController.getSnapshot().cloudAccount);
-      const summary=saved.map(row=>row&&readSavedInboxSummary(row.value,hint)).filter((row):row is NonNullable<typeof row>=>!!row).sort((a,b)=>b.readAt-a.readAt)[0];
-      if(!summary||savedGrantRejected(summary.account.connectionId!,summary.readAt))return;
+      const summary=saved.flatMap(row=>{const value=row&&readSavedInboxSummary(row.value,hint);return value&&!savedGrantRejected(value.account.connectionId!,row!.value)?[value]:[];}).sort((a,b)=>b.readAt-a.readAt)[0];
+      if(!summary)return;
       const key=gmailReadCacheKey(binding.sessionId,summary.account);if(!key)return;
       homePreview={key,owner:homeSummaryOwner(),label:summary.account.label,sessionId:binding.sessionId,accountId:summary.account.connectionId!,messages:summary.messages,more:summary.more,readAt:summary.readAt};
       hasUnread=summary.messages.some(m=>m.unread);
@@ -216,16 +216,19 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   // Cost: one bounded local snapshot write after a successful page/body read. No credentials or timers.
   // The saved bodies are the newest that fit half the cache document, so the lists fit beside them
   // and the snapshot is not refused for its size.
-  function persistMailbox(){const epoch=mailCacheEpoch;if(!accountsChecked||accountsFromDisk||!selected||failure)return;const accountId=selected,snapshot={accounts,selected,spamTrashSearch,lists:folderLists.values().filter(row=>JSON.parse(row.key)[2]===selected),bodies:newestMailBodies(messageBodies.values(),2*1024*1024)};void offlineStore().then(cache=>{if(cache&&epoch===mailCacheEpoch&&selected===accountId)return cache.put('gmail:mailbox',snapshot);}).catch(()=>{});}
+  function persistMailbox(){const epoch=mailCacheEpoch;if(!accountsChecked||accountsFromDisk||!selected||failure)return;const accountId=selected,snapshot={accounts,selected,spamTrashSearch,...savedGrantStamp(selected),lists:folderLists.values().filter(row=>JSON.parse(row.key)[2]===selected),bodies:newestMailBodies(messageBodies.values(),2*1024*1024)};void offlineStore().then(cache=>{if(cache&&epoch===mailCacheEpoch&&selected===accountId)return cache.put('gmail:mailbox',snapshot);}).catch(()=>{});}
   function purgeOffline(){++mailCacheEpoch;if(offline)void offline.clear().catch(()=>{});offline=null;offlineIdentity='';homePreview=null;homeRestoreAttempt='';}
   // Home owns one bounded header read per Cloud binding, not an interactive mailbox session.
   let homeLoad:{key:string;client:object;abort:AbortController;task:Promise<void>}|null=null,homeLoadAttempt='',homeLoadAt=0;
   const homeSummaryOwner=()=>{const account=connectionController.getSnapshot().cloudAccount,binding=connectionController.getCloudClient();return account?.environment&&account.userId&&binding?.credentialId?JSON.stringify([account.environment,account.userId,account.organizationId??'',binding.credentialId]):'';};
-  // A failed cache deletion must not make a grant already seen withdrawn readable again.
-  const rejectedSavedGrants=new Map<string,number>();
+  // A rejected grant needs a fresh provider read, not a later wall-clock timestamp.
+  // Stamp its replacement snapshots so failed writes cannot admit the old disk bytes.
+  const rejectedSavedGrants=new Map<string,string|null>();
   const savedGrantKey=(grant:string)=>JSON.stringify([homeSummaryOwner(),grant]);
-  const savedGrantRejected=(grant:string,readAt=0)=>{const rejectedAt=rejectedSavedGrants.get(savedGrantKey(grant));return rejectedAt!==undefined&&readAt<=rejectedAt;};
-  const rejectSavedGrant=(grant:string)=>{if(grant)rejectedSavedGrants.set(savedGrantKey(grant),Date.now());};
+  const savedGrantRejected=(grant:string,cached?:CachedMailbox)=>{const generation=rejectedSavedGrants.get(savedGrantKey(grant));return generation!==undefined&&(generation===null||cached!==undefined&&cached.grantReadGeneration!==generation);};
+  const rejectSavedGrant=(grant:string)=>{if(grant)rejectedSavedGrants.set(savedGrantKey(grant),null);};
+  const acceptSavedGrantRead=(grant:string)=>{const key=savedGrantKey(grant);if(rejectedSavedGrants.get(key)===null)rejectedSavedGrants.set(key,crypto.randomUUID());};
+  const savedGrantStamp=(grant:string)=>{const generation=rejectedSavedGrants.get(savedGrantKey(grant));return generation?{grantReadGeneration:generation}:{};};
   const homeOwnerKey=()=>{const binding=connectionController.getCloudClient(),owner=homeSummaryOwner();return binding&&owner?JSON.stringify([owner,binding.sessionId]):'';};
   function retireHomeLoad(){homeLoad?.abort.abort();homeLoad=null;homeLoadAttempt='';homeLoadAt=0;}
   function warmHomeMailbox(resumed=false):Promise<void>{
@@ -262,12 +265,13 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
         const result=await binding.client.gmailSearch(requestedGrant,'in:inbox',abort.signal,25);
         if(!current()||hint!==readGmailAccountChoice(connectionController.getSnapshot().cloudAccount)||readIdentity!==gmailReadCacheKey(binding.sessionId,accounts.find(a=>a.connectionId===chosen.connectionId)))return;
         const merged=mergeMailboxPage({messages:[],firstPageRevision:null,seenCursors:new Set<string>()},result,null),at=Date.now();spamTrashSearch=result.supportsSpamTrash===true;
+        acceptSavedGrantRead(requestedGrant);
         // Reuse the existing bounded list cache; opening Inbox consumes this same accepted page.
         const list={key:JSON.stringify([binding.sessionId,binding.credentialId,chosen.connectionId,'in:inbox']),at,firstPageRevision:merged.firstPageRevision,messages:merged.messages,query:'in:inbox',cursor:merged.nextPageToken,revision:result.syncedAt,cursors:[...merged.seenCursors],newerMail:false,status:mailboxListStatus(merged.messages.length,'in:inbox')};
         folderLists.remember(list);
         homeSummaryEpoch++;homePreview={key:readIdentity,owner:homeSummaryOwner(),label:chosen.label,sessionId:binding.sessionId,accountId:chosen.connectionId!,messages:merged.messages.map(({id,subject,from,unread})=>({id,subject,from,unread})),more:result.nextPageToken!=null,readAt:at};
         // Save only this accepted header page separately; the full mailbox keeps its bodies and other folders.
-        const snapshot:CachedMailbox={accounts:[chosen],selected:chosen.connectionId!,spamTrashSearch,lists:[list],bodies:[]},summaryEpoch=homeSummaryEpoch;
+        const snapshot:CachedMailbox={accounts:[chosen],selected:chosen.connectionId!,spamTrashSearch,...savedGrantStamp(chosen.connectionId!),lists:[list],bodies:[]},summaryEpoch=homeSummaryEpoch;
         void offlineStore().then(cache=>{if(cache&&current()&&summaryEpoch===homeSummaryEpoch&&hint===readGmailAccountChoice(connectionController.getSnapshot().cloudAccount))return cache.put('gmail:home',snapshot);}).catch(()=>{});
         homeFailure=null;hasUnread=homePreview.messages.some(m=>m.unread);
         setAttention(inboxAttentionFor(homePreview.messages,homePreview.more,chosen.label,new Date(at).toISOString()));publish();
@@ -293,10 +297,8 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       const active=connectionController.getCloudClient();if(generation!==token||cacheEpoch!==mailCacheEpoch||summaryEpoch!==homeSummaryEpoch||binding?.client!==active?.client||binding?.sessionId!==active?.sessionId||!api?.isActive())return false;
       const hint=readGmailAccountChoice(connectionController.getSnapshot().cloudAccount);
       const values=saved.flatMap(row=>{
-        const value=row&&readSavedMailbox<MailBody>(row.value,hint);if(!value)return [];
-        const lists=value.lists.filter(list=>!savedGrantRejected(value.selected,list.at));
-        if(!lists.length)return [];
-        return [{...value,lists,bodies:value.bodies.filter(entry=>!savedGrantRejected(value.selected,entry.at))}];
+        const value=row&&readSavedMailbox<MailBody>(row.value,hint);
+        return value&&value.lists.length&&!savedGrantRejected(value.selected,row!.value)?[value]:[];
       });
       const readAt=(value:typeof values[number])=>Math.max(0,...value.lists.filter(row=>row.query===currentQuery()).map(row=>row.at));
       const value=values.sort((a,b)=>readAt(b)-readAt(a))[0];if(!value)return false;
@@ -610,6 +612,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       // ends the results, and a later page that repeats a loaded message or reports another mailbox
       // revision than the first page was cut from a changed mailbox (the list says so).
       const merged = mergeMailboxPage({ messages, firstPageRevision, seenCursors }, result, pageToken), shifted = merged.shifted;
+      if(!pageToken)acceptSavedGrantRead(accountId);
       messages = merged.messages; firstPageRevision = merged.firstPageRevision; seenCursors = merged.seenCursors; nextPageToken = merged.nextPageToken;
       spamTrashSearch=result.supportsSpamTrash===true;
       loadedQuery = query; revision = result.syncedAt;listReadAt=Date.now();cachedListShown=false;
