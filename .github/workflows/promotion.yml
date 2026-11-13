@@ -148,7 +148,11 @@ jobs:
             process.stdout.write(selected.join(","));
           ')"
           test -n "$MODELS"
-          bun scripts/check-quint.ts temporal --models="$MODELS"
+          if [ "$TEMPORAL_GROUP" = remaining ]; then
+            bun scripts/check-quint.ts temporal --models="$MODELS"
+          else
+            bun scripts/check-quint.ts temporal --models="$MODELS" --tlc-liveness=final
+          fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
