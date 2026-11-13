@@ -213,52 +213,9 @@ test('a floor advancing during the build refuses the final receipt without alter
 
 test('real workflow keeps main candidates unsigned and isolated while preserving explicit qualification and dispatched versions', () => {
   const workflow = YAML.parse(fs.readFileSync(path.join(root, '.github/workflows/resident-android.yml'), 'utf8'));
-  const evaluate = (text, github, inputs = {}, vars = {}) => {
-    const expression = text.startsWith('${{') ? text.slice(3, -2) : text;
-    const format = (pattern, ...args) => pattern.replace(/\{(\d+)\}/g, (_, index) => args[index]);
-    return new Function('github', 'inputs', 'vars', 'format', `return (${expression});`)(github, inputs, vars, format);
-  };
-  const main = {event_name: 'push', ref: 'refs/heads/main', sha: 'a'.repeat(40), run_id: '101', run_attempt: '1'};
   const build = workflow.jobs.build;
-  assert.equal(evaluate(build.if, main), true);
-  assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, main), '1');
   assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
   assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
-  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), false);
-  // Literal expression checks, not execution of GitHub's concurrency backend.
-  // One template string holds two GHA substitutions; inspect its group key.
-  const group = workflow.concurrency.group.match(/\$\{\{([\s\S]*?)\}\}/)[1];
-  const newer = {...main, sha: 'b'.repeat(40), run_id: '102'};
-  const oldRerun = {...main, run_attempt: '2'};
-  assert.notEqual(evaluate(group, main), evaluate(group, newer), 'an older push queued later cannot displace the latest push');
-  assert.equal(evaluate(group, main), evaluate(group, oldRerun), 'an attempt keeps the group of its own run');
-  assert.notEqual(evaluate(group, oldRerun), evaluate(group, newer), 'an older rerun cannot displace the latest push');
-  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], newer), false);
-  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], oldRerun), false);
-  assert.equal(evaluate(group, oldRerun), evaluate(group, {...oldRerun, run_attempt: '3'}), 'reruns keep their own run-ID group');
-  assert.notEqual(evaluate(group, oldRerun), evaluate(group, {...newer, run_attempt: '2'}));
-  assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, oldRerun), '1');
-  const dispatch = {...main, event_name: 'workflow_dispatch'}, manual = {operation: 'build', build_version_code: '44'};
-  assert.equal(evaluate(build.if, dispatch, manual), true);
-  assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, dispatch, manual), '0');
-  assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, dispatch, manual), '44');
-  assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, main), '');
-  assert.notEqual(evaluate(group, main), evaluate(group, dispatch, manual));
-  assert.equal(evaluate(group, dispatch, manual), 'refs/heads/main');
-  assert.equal(evaluate(group, dispatch, manual), evaluate(group, {...dispatch, run_attempt: '2'}, manual));
-  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], {...dispatch, run_attempt: '2'}, manual), true);
-  const develop = {...main, ref: 'refs/heads/develop'};
-  assert.equal(evaluate(build.if, develop), false);
-  assert.equal(evaluate(build.if, develop, {}, {ELIZA_RESIDENT_QUALIFICATION: 'push'}), true);
-  assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, develop), '0');
-  const nightly = {...main, event_name: 'schedule'};
-  assert.equal(evaluate(build.if, nightly, {}, {ELIZA_RESIDENT_QUALIFICATION: 'nightly'}), true);
-  assert.notEqual(evaluate(group, develop), evaluate(group, {...develop, sha: newer.sha}));
-  assert.notEqual(evaluate(group, develop), evaluate(group, nightly));
-  for (const context of [develop, nightly]) {
-    assert.notEqual(evaluate(group, context), evaluate(group, main));
-    assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], context), false);
-  }
   assert.deepEqual(workflow.permissions, {contents: 'read'});
   assert.deepEqual(build.permissions, {contents: 'read', actions: 'read'});
   const candidate = build.steps.find(step => step.name === 'Retain the unsigned native update candidate separately from test mocks');

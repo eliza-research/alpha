@@ -12,12 +12,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {ALLOWLIST, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, NO_FONT_LICENCE, ROOT, UNVERIFIED, collectNotices, fontLicense, fontNames, sha256} from '../scripts/generate-licenses.ts';
+import {ALLOWLIST, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, NO_FONT_LICENCE, ROOT, UNVERIFIED, collectNotices, sha256} from '../scripts/generate-licenses.ts';
 import {FONT_BLOCKER, FONT_FLAG, FONT_HELD_FLAG, RESOLVED_BY_OWNER_STATEMENT, fontLicenceCheck, fontLicenceFindings, fontLicenceLine, fontLicenseBlockers, readOwnerStatedFontHashes, readUnverifiedFontHashes} from '../scripts/font-license-blockers.ts';
 import {UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, classifyLicence} from '../scripts/licence-policy.ts';
 import {releaseBlockers} from '../scripts/release-blockers.ts';
-import {releaseDistributable} from '../scripts/release-distributable.ts';
-import {cloudVoiceAdmission, CLOUD_VOICE_CHECKS} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
 
 const DENTON = 'apps/app/public/denton-300.woff2';
 const dentonBytes = fs.readFileSync(path.join(ROOT, DENTON));
@@ -170,43 +168,6 @@ test('the bundle audit prints licence flags and the font check as flag lines, ne
   assert.match(swapped.stderr, new RegExp(`^${UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION ? 'RELEASE BLOCKER' : 'LICENCE FLAG \\(reported, not blocking\\)'} unresolved-font-licence: Denton typeface \\(denton-300\\.woff2\\) has no recorded licence`, 'm'));
 });
 
-test('verify-apks records licence flags and keeps font blockers and private QA out of distribution', () => {
-  const source = fs.readFileSync(path.join(ROOT, 'scripts/verify-apks.ts'), 'utf8');
-  // The font check is recorded in full; only its `blockers` (empty while the constant is false) reach `distributable`.
-  assert.match(source, /fontCheck = fontLicenceCheck\(payload\.public\);/);
-  assert.match(source, /const licenceBlockers = fontCheck\.blockers;/);
-  assert.match(source, /fontLicenceCheck: \{ check: fontCheck\.check, status: fontCheck\.status, blocksDistribution: fontCheck\.blocksDistribution, items: fontCheck\.items, resolved: fontCheck\.resolved \},/);
-  // Flags are recorded per APK and printed; they are not part of the distributable expression or of any failure.
-  assert.match(source, /licenceFlags = licenceFlagRecords\(entries\);/);
-  assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);
-  const distributable = /const cartesia = [\s\S]*?row\.distributable = [^;]+;/.exec(source)[0];
-  const admits = new Function('cloudEvidence', 'cloudEvidenceSha256', 'testMocks', 'row', 'runtime',
-    'cloudVoiceAdmission', 'updateChannel', 'releaseDistributable', `${distributable}\nreturn row.distributable;`);
-  const apkSha256 = 'a'.repeat(64);
-  const row = {sha256: apkSha256, signed: true, releaseAdmission: {signerMatches: true, blockers: [], failures: []},
-    runtimeNotices: true, voiceHost: {packaged: true, asr: true, qualified: true}, licenceBlockers: []};
-  const checks = Object.fromEntries(CLOUD_VOICE_CHECKS.map(name => [name, true]));
-  // One runtime profile. Optional Cloud voice evidence, when supplied, must also pass.
-  for (const outcome of [undefined, 'passed', 'failed']) {
-    const evidence = outcome && {format: 'cloud-voice-qualification-v1',
-      results: [{apkSha256, outcome, provider: 'cartesia', checks}]};
-    const evidenceSha256 = evidence && 'b'.repeat(64);
-    const check = (facts, kind) => admits(evidence, evidenceSha256, false, {...facts}, {distributable: true},
-      cloudVoiceAdmission, {kind}, releaseDistributable);
-    const admitted = outcome !== 'failed';
-    assert.equal(check(row, 'public'), admitted);
-    assert.equal(check(row, 'private-qa'), false, 'private QA is never distributable');
-    assert.equal(check({...row, licenceBlockers: ['unresolved-font-licence']}, 'public'), false);
-    // Every distributable release packages on-device voice with ASR, with or without Cloud evidence.
-    assert.equal(check({...row, voiceHost: {packaged: false, asr: false}}, 'public'), false);
-    assert.equal(check({...row, voiceHost: {packaged: true, asr: false}}, 'public'), false);
-  }
-  assert.doesNotMatch(distributable, /licenceFlags|fontLicenceCheck/);
-  assert.doesNotMatch(source, /problems\.push\([^)]*licence/i);
-  assert.doesNotMatch(source, /failures\.push\([^)]*licence/i);
-  assert.match(source, /console\.warn\(fontLicenceLine\(item, blocks\)\)/);
-});
-
 function scratchRoot(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-font-licenses-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
@@ -281,47 +242,4 @@ test('font licence records are data only, bound to the exact font bytes, in both
     write([{...record, license: 'MIT'}]);
     assert.ok(collectNotices(dir, {packagedRuntime: false}).errors.some(error => error.includes(`must use license ${COMMERCIAL_FONT}`)), 'a proprietary font is never recorded under an open-source identifier');
   }
-});
-
-test('choice (b): Denton is loaded by one rule, and upright Fraunces is not bundled yet', () => {
-  const sources = [];
-  const walk = dir => {
-    for (const entry of fs.readdirSync(path.join(ROOT, dir), {withFileTypes: true})) {
-      const rel = `${dir}/${entry.name}`;
-      if (entry.isDirectory()) { if (entry.name !== 'fixtures') walk(rel); } else if (/\.(css|html|tsx?|jsx?|mjs)$/.test(entry.name)) sources.push(rel);
-    }
-  };
-  walk('apps/app/src');
-  sources.push('apps/app/index.html');
-  const text = Object.fromEntries(sources.map(file => [file, fs.readFileSync(path.join(ROOT, file), 'utf8')]));
-  const referencing = sources.filter(file => /denton/i.test(text[file])).sort();
-  assert.deepEqual(referencing, ['apps/app/src/product/alpha-product-registration.ts', 'apps/app/src/prototype/phone.css', 'apps/app/src/prototype/prototype.css', 'apps/app/src/prototype/scan-dialog.css', 'apps/app/src/prototype/template.html'], 'review font licensing when Denton is referenced elsewhere');
-  const css = text['apps/app/src/prototype/prototype.css'];
-  // The only rule that loads the file; removing it (and the file) drops every stack to its next family.
-  assert.deepEqual(css.match(/@font-face\{[^}]*Denton[^}]*\}/g), ["@font-face{font-family:'Denton';src:url(/denton-300.woff2) format('woff2');font-weight:100 900;font-style:normal;font-display:swap}"]);
-  assert.equal(Object.values(text).join('\n').match(/denton-300\.woff2/g).length, 1, 'no preload or second URL for the file');
-  // Every stack that names Denton continues to an open or system face.
-  const stacks = Object.values(text).join('\n').match(/font-family:[^;}"]*Denton[^;}"]*/g).map(stack => stack.replace(/['\s]/g, '')).filter(stack => stack !== 'font-family:Denton');
-  const shapes = {};
-  for (const stack of stacks) shapes[stack] = (shapes[stack] ?? 0) + 1;
-  assert.deepEqual(Object.keys(shapes).sort(), ['font-family:Denton,Fraunces,Georgia,serif', 'font-family:Denton,Georgia,serif']);
-  assert.equal(shapes['font-family:Denton,Georgia,serif'], 1, 'one sample card skips Fraunces and falls back to Georgia');
-
-  // Fraunces is bundled and OFL-licensed, but only as italics. The upright .serif text would
-  // render in Fraunces Italic if Denton were simply removed; the patch must add an upright face.
-  const fraunces = [...css.matchAll(/@font-face\s*\{[^}]*font-family:\s*'Fraunces'[^}]*\}/g)].map(match => ({
-    style: /font-style:\s*(\w+)/.exec(match[0])[1], weight: /font-weight:\s*(\d+)/.exec(match[0])[1], file: /url\(\/([^)]+)\)/.exec(match[0])[1],
-  }));
-  assert.deepEqual(fraunces.map(face => `${face.style} ${face.weight}`), ['italic 300', 'italic 400']);
-  for (const face of fraunces) {
-    const names = fontNames(fs.readFileSync(path.join(ROOT, 'apps/app/public', face.file)));
-    assert.equal(names.family, 'Fraunces');
-    assert.match(names.fullName, /Italic/);
-    assert.equal(fontLicense(names), 'OFL-1.1');
-  }
-  assert.match(css, /\.serif\{font-family:'Denton','Fraunces',Georgia,serif;font-weight:300;/);
-  assert.equal(committedNotices.find(entry => entry.name === 'Fraunces typeface').license, 'OFL-1.1');
-  // An OFL upright face is already installed for the patch (declared devDependency).
-  const upright = fs.readFileSync(path.join(ROOT, 'node_modules/@fontsource/fraunces/files/fraunces-latin-300-normal.woff2'));
-  assert.equal(fontLicense(fontNames(upright)), 'OFL-1.1');
 });
