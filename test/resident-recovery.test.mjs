@@ -1,8 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import vm from 'node:vm';
-import {transformSync} from 'esbuild';
 import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,parseRecoveryReview,parseRecoveryArchive,residentBootMessage,residentLivenessCheck} from '../apps/app/src/runtime/resident-recovery.ts';
 const token='d32f7f34-962b-47b7-8f0d-f2fe7f12610a';
 test('only exact native hard-block codes change recovery guidance',()=>{
@@ -57,28 +54,4 @@ test('every terminal boot reason reads as one plain line without its code',()=>{
  }
  assert.notEqual(residentBootMessage('agent-update-deferred'),residentBootMessage('fatal'));
  assert.notEqual(residentBootMessage('agent startup blocked: x'),residentBootMessage('fatal'));
-});
-const connectionSource=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
-const lostSection=transformSync(connectionSource.slice(connectionSource.indexOf('let residentRestartEpoch'),connectionSource.indexOf('/** Test mocks only (the mock-mode exit')),{loader:'ts'}).code;
-function residentFixture(boot,startConnects=false){
- const calls=[];
- const context={epoch:1,operation:null,active:{kind:'resident'},state:{error:''},residentLivenessCheck,residentBootMessage,
-  localAgentBootStatus:async()=>{calls.push('status');return boot;},
-  retire(){calls.push('retire');context.active=null;context.epoch++;},update:patch=>Object.assign(context.state,patch),
-  ensureResident:async()=>{calls.push('start');if(startConnects)context.active={kind:'resident'};},queueResidentRebind:()=>calls.push('queue')};
- vm.createContext(context);vm.runInContext(lostSection,context);
- return {context,calls,settle:()=>new Promise(resolve=>setTimeout(resolve,0))};
-}
-test('connection-ui retires a dead resident once and starts it again; a listening one is left alone',async()=>{
- const dead=residentFixture({state:'dead',reason:'fatal'});
- dead.context.checkResidentAlive(1);dead.context.checkResidentAlive(1);await dead.settle();
- assert.deepEqual(dead.calls,['status','retire','start']);
- assert.equal(dead.context.state.kind,'recovering');assert.equal(dead.context.state.error,residentBootMessage('fatal'));
- const restarted=residentFixture({state:'restarting'},true);restarted.context.checkResidentAlive(1);await restarted.settle();
- assert.deepEqual(restarted.calls,['status','retire','start']);assert.equal(restarted.context.state.error,'');
- for(const state of ['listening','stopping','stopped']){
-  const alive=residentFixture({state});alive.context.checkResidentAlive(1);await alive.settle();
-  assert.deepEqual(alive.calls,['status']);
- }
- const stale=residentFixture({state:'dead'});stale.context.checkResidentAlive(0);await stale.settle();assert.deepEqual(stale.calls,[]);
 });

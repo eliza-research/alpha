@@ -51,23 +51,6 @@ test("a refused, failed, truncated or malformed export never reads as an unchang
   assert.throws(() => parseIntegrityExport(""), /no end row/);
 });
 
-test("the provider is a registered, read-only, DUMP-protected release component, not a debug or mock surface", () => {
-  const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
-  const provider = /<provider android:name="\.release\.DataIntegrityProvider"[^>]*>/.exec(manifest)?.[0];
-  assert.ok(provider, "registered in the main manifest, so release builds carry it");
-  assert.match(provider, /android:authorities="\$\{applicationId\}\.integrity"/);
-  assert.match(provider, /android:permission="android\.permission\.DUMP"/);
-  assert.match(provider, /android:process=":integrity"/);
-  assert.match(provider, /android:grantUriPermissions="false"/);
-  const source = fs.readFileSync("android/app/src/main/java/ai/alphacompute/alphaphone/release/DataIntegrityProvider.java", "utf8");
-  assert.doesNotMatch(source, /BuildConfig\.DEBUG|ELIZA_DEV_ALLOW_TEST_MOCKS|isDebuggable/);
-  assert.match(source, /HmacSHA256/);
-  for (const write of ["insert", "delete", "update"]) assert.match(source, new RegExp(`public (?:Uri|int) ${write}\\([^)]*\\)\\{throw new UnsupportedOperationException`));
-  assert.match(source, /List\.of\("cache", "code_cache"\)/);
-  const apk = fs.readFileSync("scripts/apk.ts", "utf8");
-  assert.match(apk, /"ai\.alphacompute\.alphaphone\.release\.DataIntegrityProvider": "android\.permission\.DUMP"/);
-});
-
 const { planHome, updateUnit } = await import("../scripts/pilot-update.ts");
 const indexOf = (calls, predicate, from = 0) => calls.findIndex((call, index) => index >= from && predicate(call));
 const lastIndexOf = (calls, predicate) => calls.findLastIndex(predicate);

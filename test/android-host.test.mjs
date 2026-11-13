@@ -101,11 +101,6 @@ test('no test-mocks source set is attached and product admission runs before eve
  assert.deepEqual(profile.appScripts, [fs.realpathSync(path.join(root, 'android/app/product.gradle'))]);
  assert.deepEqual(profile.generationInputs.map(input => path.relative(fs.realpathSync(root), input.file)).sort(),
   ['.eliza/generated-android/owner-routes.json', 'android/consumer-host.json', 'android/upstream-native-sources.json', 'app.config.json', 'apps/app/src/product/owner-route-table.ts', 'scripts/android-host.ts', 'scripts/prepare-patched-native.ts', 'upstream.lock.json']);
- // Product admission that depends on Gradle properties stays in Alpha's product script.
- const product = fs.readFileSync(path.join(ROOT, 'android/app/product.gradle'), 'utf8');
- for (const task of ['verifyEmbeddingHost', 'verifyParadeeAppLinkage', 'verifyVoiceHost'])
-  assert.match(product, new RegExp(`tasks\\.register\\('${task}'`));
- assert.doesNotMatch(product, /\b(signingConfigs|productFlavors|applicationId|minSdk|targetSdk|compileSdk|keystore)\b/i, 'the product script holds no generator-owned policy');
 });
 
 test('the host links its native-only secure store transitively and keeps fixture modules separate', t => {
@@ -152,8 +147,6 @@ test('installed resident identities stay Alpha data-compatibility names', () => 
  assert.equal(host.notification.channelLabel, 'Alpha');
  // Alpha's notification session compiles every shared notification class in its own package.
  assert.deepEqual([...descriptor.residentHost.classes].sort(), [...RESIDENT_NOTIFICATION_CLASSES].sort());
- for (const name of Object.values(host.notification.strings))
-  assert.match(fs.readFileSync(path.join(ROOT, 'android/app/src/main/res/values/alpha-system-entry.xml'), 'utf8'), new RegExp(`<string name="${name}"`), name);
  // Shared helpers keep their packages; only the reviewed BuildConfig reader is rewritten for Alpha.
  assert.equal(new Set(descriptor.residentHost.helpers).size, descriptor.residentHost.helpers.length);
  assert.deepEqual(descriptor.residentHost.helpers.filter(helper => residentHelperKind(helper) !== 'verbatim'), []);

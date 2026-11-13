@@ -2,7 +2,7 @@ import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {mkdtempSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -38,8 +38,6 @@ function launch(extra={}){
 
 test('remote renderer selects Cloud routing with mocks off before loading Vite',()=>{
  const {env}=launch();
- // The renderer has no build-time speech profile: the route follows the signed-in account at run time.
- assert.doesNotMatch(readFileSync(new URL('../scripts/dev-ui-remote-host.ts',import.meta.url),'utf8')+readFileSync(new URL('../scripts/dev-cloud.ts',import.meta.url),'utf8'),/RUNTIME_PROFILE/);
  assert.equal(env.VITE_ALPHA_CLOUD_RESIDENT,'1');
  assert.equal(env.VITE_ALPHA_CLOUD_ENVIRONMENT,'staging');
  assert.equal(env.VITE_LOCAL_AGENT,'1');

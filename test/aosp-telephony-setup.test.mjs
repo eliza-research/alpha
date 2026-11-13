@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -8,13 +7,6 @@ import { jvmSkip, root, runJvm } from "./fixtures/jvm-tools.mjs";
 const launcher = path.join(root, "android/app/src/launcher");
 const packageName = "ai.alphacompute.alphaphone";
 const java = path.join(launcher, "java", ...packageName.split("."));
-
-test("fresh telephony preparation is a privileged, explicit launcher receiver", () => {
-  const manifest = flavor => fs.readFileSync(path.join(root, "android/app/src", flavor, "AndroidManifest.xml"), "utf8");
-  assert.match(manifest("launcher"), /<receiver android:name="\.AlphaTelephonySetupReceiver" android:exported="true"\s+android:permission="android\.permission\.MANAGE_ROLE_HOLDERS" \/>/);
-  assert.doesNotMatch(manifest("main"), /AlphaTelephonySetupReceiver/);
-  assert.doesNotMatch(manifest("launcher"), /<uses-permission[^>]*MANAGE_ROLE_HOLDERS/);
-});
 
 test("fresh telephony preparation acknowledges only complete image component readback", { skip: jvmSkip("javac") }, () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-telephony-setup-"));

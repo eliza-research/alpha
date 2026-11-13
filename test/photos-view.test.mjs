@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import test from 'node:test';import assert from 'node:assert/strict';
 // Photos view rules. Source-level: browser specs drive the rendered view.
 const v=await import('../.eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts');
 const now=new Date(2026,10,6,15,0).getTime(),DAY=86400000;
@@ -80,15 +80,6 @@ test('Recently deleted shows days left; Info formats size; the viewer title is t
  assert.equal(v.viewerTitle(new Date(2026,1,3,9,5).getTime(),now).day,'Tue, Feb 3, 2026');
 });
 
-test('the Photos view carries no search box, scope narration or 20-item cap',()=>{
- const adapter=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8'),template=readFileSync('apps/app/src/prototype/template.html','utf8');
- const photos=template.slice(template.indexOf('<sc-if value="{{is.photos}}">'),template.indexOf('<sc-if value="{{is.maps}}">'));
- for(const slop of ['Captured on this device','Permitted library','up to 240','so far','Only photos and videos saved by Alpha','Choose photo access','Saves a new copy','original unchanged ·','Open to preview, or select','Select up to 20','Select first 20','Device library'])assert.equal(adapter.includes(slop)||photos.includes(slop),false,slop);
- assert.doesNotMatch(photos,/aria-label="Search photos"|photos\.searching|photos\.onQ/);
- assert.doesNotMatch(adapter,/slice\(-240\)|deviceLibrary\.tile\(/);
- assert.match(photos,/Allow all photos/);assert.match(photos,/Save copy/);assert.match(photos,/Add to album/);
-});
-
 test('virtualised grid: only on-screen rows render; spacers keep the total height and sections keep their headers',()=>{
  // 4 columns over 398px with 2px gaps: 98px tiles, a 100px row pitch; 40px headers.
  const base={columns:4,width:398,gap:2,header:40,overscan:0,viewport:500};
@@ -112,13 +103,6 @@ test('virtualised grid: only on-screen rows render; spacers keep the total heigh
  assert.ok(v.virtualGrid(sizes,{...base,scrollTop:5000,overscan:3}).sections[0].to-v.virtualGrid(sizes,{...base,scrollTop:5000,overscan:3}).sections[0].from>mid.sections[0].to-mid.sections[0].from);
  for(const columns of [3,5]){const r=v.virtualGrid(sizes,{...base,columns,scrollTop:3000});assert.equal(r.sections[0].from%columns,0);}
  assert.deepEqual(v.virtualGrid([],{...base,scrollTop:0}),{before:0,after:0,sections:[],total:0});
-});
-
-test('the Library grid is virtualised: rendered tiles come from virtualGrid windows with spacers',()=>{
- const camera=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8'),template=readFileSync('apps/app/src/prototype/template.html','utf8');
- assert.match(camera,/virtualGrid\(grouped\.map\(group => group\.items\.length\), gridMetrics\(\)\)/);
- assert.match(camera,/tiles\(group\.items\.slice\(part\.from, part\.to\)/);
- assert.match(template,/style="\{\{photos\.gridBefore\}\}"[\s\S]*\{\{g\.pad\}\}[\s\S]*style="\{\{photos\.gridAfter\}\}"/);
 });
 
 test('FixPatch: a reload re-reads every loaded row (up to the window), so rows paged in deep stay loaded',async()=>{

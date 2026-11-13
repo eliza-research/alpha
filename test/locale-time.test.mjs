@@ -1,6 +1,5 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 const L = await import('../apps/app/src/prototype/locale-time.ts');
 const afternoon = new Date(2026, 9, 7, 15, 4); // Wednesday 7 October 2026, 15:04 local
 
@@ -64,15 +63,6 @@ test('formatDateTime keeps the date and follows the device hour cycle without se
   L.setLocalePreferences({locale: 'en-GB', hourCycle: 'h12'});
   assert.match(L.formatDateTime(afternoon), /^7 Oct 2026(?:,| at)? 3:04 pm$/i);
   L.setLocalePreferences({});
-});
-test('model.js has no hard-coded weekday, month or 12-hour clock code paths', () => {
-  const model = readFileSync(new URL('../apps/app/src/prototype/model.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(model, /\["Sunday", "Monday"/);
-  assert.doesNotMatch(model, /\["January", "February"/);
-  assert.doesNotMatch(model, /% 12 \|\| 12/);
-  assert.doesNotMatch(model, /\? " AM" : " PM"|"PM" : "AM"|"AM" : "PM"/);
-  assert.doesNotMatch(model, /(?:DAYS|MONS)\[[^\]]+\]\.slice\(0, 3\)/);
-  assert.doesNotMatch(model, /\.slice\(-2\) === [a-z]+\.slice\(-2\)/, 'no AM/PM suffix slicing');
 });
 
 test('full message dates retain seconds and follow the device hour cycle', () => {

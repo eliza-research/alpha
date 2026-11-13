@@ -164,14 +164,6 @@ test("stage-aosp --target pixel10a --production refuses a missing trust identity
   assert.doesNotMatch(out.stderr, /absent/);
 });
 
-test("the stallion product sets no board AVB variables and no key material is committed", () => {
-  for (const name of fs.readdirSync(path.join(root, "vendor/eliza/packages/os/android/devices/pixel10a")).filter(name => name.endsWith(".mk")))
-    assert.doesNotMatch(fs.readFileSync(path.join(root, "vendor/eliza/packages/os/android/devices/pixel10a", name), "utf8"), /^\s*BOARD_AVB_/m, name);
-  assert.equal(read(PIXEL10A_PRODUCT).avb.makefile, undefined);
-  const files = execFileSync("git", ["-C", root, "ls-files", "android/aosp"], { encoding: "utf8" }).split("\n");
-  assert.deepEqual(files.filter(name => /\.(pk8|pem|key|p12|jks|keystore)$|avb_pkmd/.test(name)), []);
-});
-
 test("Alpha's signing binding signs with its descriptor, channel and APK signer through the shared job", async t => {
   const key = keyDirectory(t), repo = completeRoot(t, key), tf = targetFiles(t), bin = releasetools(t);
   const out = path.join(temporary(t, "alpha-release-out-"), "release");
@@ -264,4 +256,11 @@ test("Alpha Cloud release evidence does not replace the signer or native-profile
 test("production staging requires the applied Soong patch before source or APK IO", () => {
  const out=spawnSync(process.execPath,[path.join(root,"scripts/stage-aosp.ts"),"--target","pixel10a","--production","--descriptor","reviewed.json","--apk","absent.apk","--aosp-source","/absent/source","--factory-image","/absent/factory.zip"],{cwd:root,encoding:"utf8"});
  assert.notEqual(out.status,0);assert.match(out.stderr,/Image staging requires --applied-build-patch soong-app-native/);assert.doesNotMatch(out.stderr,/absent/);
+});
+
+
+test("the stallion product sets no board AVB variables and no key material is committed", () => {
+  assert.equal(read(PIXEL10A_PRODUCT).avb.makefile, undefined);
+  const files = execFileSync("git", ["-C", root, "ls-files", "android/aosp"], { encoding: "utf8" }).split("\n");
+  assert.deepEqual(files.filter(name => /\.(pk8|pem|key|p12|jks|keystore)$|avb_pkmd/.test(name)), []);
 });

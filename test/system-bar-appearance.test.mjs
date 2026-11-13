@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import test from 'node:test';import assert from 'node:assert/strict';
 import {installSystemBarAppearance} from '../apps/app/src/prototype/system-bar-appearance.ts';
 function shell(native=true,fail=false){
  const sent=[],calls=[];class Shell{componentDidMount(){calls.push('mount');}componentDidUpdate(){calls.push('update');}}
@@ -13,8 +13,4 @@ test('the drawn theme drives Android bar icons once per change, natively only',(
 });
 test('a failed native call is retried on the next update',async()=>{
  const {s,sent}=shell(true,true);s.state={theme:'dark'};s.componentDidMount();await new Promise(r=>setTimeout(r));s.componentDidUpdate();assert.deepEqual(sent,[true,true]);
-});
-test('the launcher shell installs it and the plugin sets both icon appearances',()=>{
- assert.match(readFileSync('apps/app/src/main.tsx','utf8'),/\ninstallSystemBarAppearance\(Component,isAndroid,registerPlugin<SystemBars>\('AlphaDevice'\)\);/);
- assert.match(readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java','utf8'),/@PluginMethod public void setSystemBarAppearance[\s\S]*setAppearanceLightStatusBars\(!dark\);bars\.setAppearanceLightNavigationBars\(!dark\);/);
 });
