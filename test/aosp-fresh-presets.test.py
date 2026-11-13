@@ -68,6 +68,7 @@ public class FreshTest {
    source=INPUT/project/name;target=root/project/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(source.read_bytes())
   for row in json.loads((CORE/'SOURCE-INPUTS.json').read_text())['files']:
    target=root/'frameworks/base'/row['path'];target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(core_baseline(row['path']))
+  dispatcher=root/'packages/apps/Launcher3/quickstep/src/com/android/quickstep/InputConsumerUtils.kt';dispatcher.parent.mkdir(parents=True,exist_ok=True);dispatcher.write_text('AlphaHomeOnlyInputConsumer(')
   product=root/'vendor/alphaphone/product.mk';product.parent.mkdir(parents=True);product.write_text('# Existing accepted app product, retained\n')
   return stage.digest(product.read_bytes())
 
