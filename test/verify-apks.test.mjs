@@ -161,12 +161,12 @@ test("AOSP staging refuses --production without a descriptor, with --development
       releaseAdmission: { failures: [], blockers: [], signerMatches: true }, voiceHost: { packaged: true, asr: true, differences: [], qualified: true } }] }));
     const manifestFile = path.join(dir, "artifacts/apk-manifest.json");
     const original = fs.readFileSync(manifestFile, "utf8");
-    const privateRecord = JSON.parse(original);
-    privateRecord.results[0].updateChannel = {kind: "private-qa", manifestUrlSha256: "a".repeat(64)};
-    fs.writeFileSync(manifestFile, JSON.stringify(privateRecord));
+    const otherChannel = JSON.parse(original);
+    otherChannel.results[0].updateChannel = {kind: "other", manifestUrlSha256: "a".repeat(64)};
+    fs.writeFileSync(manifestFile, JSON.stringify(otherChannel));
     out = stage(["--apk", release, "--descriptor", "reviewed.json", "--production"]);
     assert.notEqual(out.status, 0);
-    assert.match(out.stderr, /Private QA update channels are refused for production provisioning/);
+    assert.match(out.stderr, /Update channel input refused/);
     fs.writeFileSync(manifestFile, original);
     const identity = JSON.parse(fs.readFileSync(path.join(root, "app.config.json"), "utf8"));
     for (const [name, foreign] of [["package", { packageName: "ai.elizaos.app", moduleName: identity.moduleName }], ["module", { packageName: identity.appId, moduleName: "Eliza" }]]) {
@@ -217,7 +217,7 @@ for (const testMocks of [false, true]) test(`archive retains actual APK web byte
 // running Gradle. Only the Android builder and source snapshot are fixture commands.
 // `inherited` starts from an environment that still carries the mock flags: a distribution
 // archive strips them.
-for (const mode of ['native', 'test-mocks', 'inherited', 'wrong-profile', 'private', 'wrong-channel']) test(`build archive keeps the one runtime profile and its update channel: ${mode}`, t => {
+for (const mode of ['native', 'test-mocks', 'inherited', 'wrong-profile', 'wrong-channel']) test(`build archive keeps the one runtime profile and its update channel: ${mode}`, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
   for (const name of ['scripts', 'bin']) fs.mkdirSync(path.join(dir, name));
@@ -235,7 +235,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 const args=process.argv.slice(2);
 const mocks=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS==='1';
-fs.appendFileSync('calls.jsonl',JSON.stringify({args,mocks,privateInputPresent:!!process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_FILE})+'\\n');
+fs.appendFileSync('calls.jsonl',JSON.stringify({args,mocks})+'\\n');
 if(args[1]==='android:build'){
  const output=mocks?'artifacts/test-mocks':'artifacts';
  fs.mkdirSync(output,{recursive:true});
@@ -252,7 +252,7 @@ if(args[1]==='android:build'){
   const file=mocks?path.join(output,variant+'-androidTest.apk'):'android/app/build/outputs/apk/androidTest/'+variant+'/debug/app-'+variant+'-debug-androidTest.apk';
   fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'synthetic instrumentation');
  }
- const updateChannel={kind:process.env.ALPHA_UPDATE_CHANNEL||'public',manifestUrlSha256:process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256||createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
+ const updateChannel={kind:'public',manifestUrlSha256:createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
  if(process.env.FIXTURE_WRONG_CHANNEL)updateChannel.manifestUrlSha256='e'.repeat(64);
  fs.writeFileSync(path.join(output,'apk-manifest.json'),JSON.stringify({testMocks:mocks,runtimeProfile:process.env.FIXTURE_WRONG_PROFILE?'cloud':'native',updateChannel,results}));
 }
@@ -260,15 +260,10 @@ if(args[1]==='android:build'){
   const inherited = mode !== 'native' && mode !== 'test-mocks', testMocks = mode === 'test-mocks';
   const args = testMocks ? ['--test-mocks'] : [];
   const env = {...process.env, PATH:path.join(dir, 'bin')+path.delimiter+process.env.PATH};
-  for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL','ALPHA_UPDATE_CHANNEL','ALPHA_PRIVATE_UPDATE_MANIFEST_FILE','ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256']) delete env[name];
+  for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL']) delete env[name];
   if (inherited) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});
   if (mode === 'wrong-profile') env.FIXTURE_WRONG_PROFILE='1';
   if(mode==='wrong-channel')env.FIXTURE_WRONG_CHANNEL='1';
-  if(mode==='private'){
-    const url='https://storage.googleapis.com/alpha-aosp-lab-20261024-private-apks/update-qa/'+ 'a'.repeat(32)+'/alpha-update.json?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=21600&X-Goog-Signature=synthetic';
-    const file=dir+'-private-url';fs.writeFileSync(file,url,{mode:0o600});t.after(()=>fs.unlinkSync(file));
-    Object.assign(env,{ALPHA_UPDATE_CHANNEL:'private-qa',ALPHA_PRIVATE_UPDATE_MANIFEST_FILE:file,ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256:createHash('sha256').update(url).digest('hex')});
-  }
   const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
   const archive = path.join(dir, 'test-results/archive');
   if (mode === 'wrong-profile'||mode==='wrong-channel') {
@@ -281,8 +276,6 @@ if(args[1]==='android:build'){
   const calls = fs.readFileSync(path.join(dir, 'calls.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
   assert.deepEqual(calls.map(row => row.args[1]), ['android:sync', 'verify', 'android:build']);
   assert.equal(calls[1].mocks, false, 'verification stays flag-off even for a fixture archive');
-  assert.equal(calls[1].privateInputPresent,false,'source verification never inherits the real private capability');
-  assert.equal(calls[2].privateInputPresent,mode==='private');
   assert.equal(calls[0].mocks, testMocks);
   assert.equal(calls[2].mocks, testMocks);
   assert.deepEqual(calls[2].args, ['run', 'android:build', ...(args.length ? ['--', ...args] : [])]);

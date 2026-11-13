@@ -82,7 +82,6 @@ test('real native multipart method uploads decoded WAV and clears it on credenti
  const file=path.join(out,'CloudWavUploadTest.java');
  fs.writeFileSync(file,`package ai.alphacompute.alphaphone;import ai.eliza.voice.CloudSpeechTimings;import java.io.*;import java.net.*;import java.util.*;import java.nio.charset.StandardCharsets;import java.util.function.BooleanSupplier;
 public class CloudWavUploadTest {
- static class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}
  CloudSpeechTimings cloudTimings=new CloudSpeechTimings();boolean destroyed,protectedSurface;Object getContext(){return this;}boolean sensitiveSurfaceActive(){return protectedSurface;}String failure="";Exception error;Pending pending;Connection connection;Capture capture=new Capture();Capture recording(){return capture;}boolean destroyed(){return destroyed;}
  static class PluginCall{String getString(String key){return "credentialId".equals(key)?"fixture-cloud":"selected-recording";}String getString(String key,String fallback){return getString(key);}}
  static class AlphaLocalAgentPlugin{

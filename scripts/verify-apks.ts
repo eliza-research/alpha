@@ -144,8 +144,7 @@ const buildRecordFile = path.join(directory, "build-config.json");
 if (!fs.existsSync(buildRecordFile)) throw new Error(`Missing ${buildRecordFile}. Run bun run android:build first.`);
 const buildRecord: BuildRecord = JSON.parse(fs.readFileSync(buildRecordFile, "utf8"));
 const updateChannel=validateUpdateChannel(buildRecord?.updateChannel);
-if(updateChannel.kind==='public'&&updateChannel.manifestUrlSha256!==createHash('sha256').update(identity.updateManifestUrl).digest('hex'))throw Error('Public update channel differs from source configuration');
-if(updateChannel.kind==='private-qa'&&(testMocks||allowUnpackaged))throw Error('Private update QA requires a complete packaged build with test mocks off');
+if(updateChannel.manifestUrlSha256!==createHash('sha256').update(identity.updateManifestUrl).digest('hex'))throw Error('Public update channel differs from source configuration');
 if((buildRecord?.runtimeProfile||"native")!==runtimeProfile||buildRecord?.localEmbeddings!==undefined)throw Error("Build record names a removed runtime profile; rebuild (there is one profile now)");
 if (buildRecord && buildRecord.testMocks !== testMocks)
   throw new Error(`${buildRecordFile} records testMocks=${buildRecord.testMocks}; refusing to verify it as testMocks=${testMocks}`);
@@ -335,9 +334,8 @@ for (const row of release) {
   };
   if (cartesia) row.cloudVoice = cartesia.admission;
   // releaseDistributable requires packaged on-device voice with ASR (voiceHost.packaged and .asr).
-  const releaseReady = releaseDistributable({testMocks, signed: row.signed, releaseAdmission: row.releaseAdmission,
+  row.distributable = releaseDistributable({testMocks, signed: row.signed, releaseAdmission: row.releaseAdmission,
       runtime, runtimeNotices: row.runtimeNotices, voiceHost: row.voiceHost, licenceBlockers: row.licenceBlockers, cartesia});
-  row.distributable = releaseReady && updateChannel.kind === 'public';
 }
 for (const row of results.filter(row => row.mode === "debug")) {
   row.runtime = checkedRuntime(row.file).runtime;
@@ -451,7 +449,6 @@ if (undistributable.length)
     const blockers = [
       row.runtime !== "PACKAGED" && "no packaged runtime",
       testMocks && "test-mocks build",
-      updateChannel.kind === "private-qa" && "private QA update channel",
       !row.runtimeNotices && "notices lack the packaged runtime (run bun scripts/generate-licenses.ts --packaged-runtime after staging)",
       !row.voiceHost?.packaged && "no on-device voice packaged",
       row.voiceHost?.packaged && !row.voiceHost.asr && "on-device voice has no ASR",

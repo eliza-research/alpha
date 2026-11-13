@@ -131,27 +131,10 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
  assert.equal(pins.get('google-github-actions/auth'),'7c6bc770dae815cd3e89ee6cdf493a5fab2cc093');
  assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','google-github-actions/auth','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner'],'a new third-party action needs its own review');
  // Only the manually admitted, release-environment publisher can write release assets.
- // It and protected Cloud/OS signing can request OIDC identity. All other jobs stay read-only.
+ // It and protected app and OS signing can request OIDC identity. All other jobs stay read-only.
  // Image references remain prohibited.
  for(const file of files){
   const text=read(path.join('.github/workflows',file));assert.doesNotMatch(text,/\bdocker:\/\//,file);
-  if(file==='release-cloud-app-signing.yml'){
-   const signing=parseYaml(text);
-   assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['id-token'],
-     'Cloud signing may request identity, never write repository contents');
-   assert.deepEqual(signing.permissions,{});
-   assert.deepEqual(Object.keys(signing.on),['workflow_dispatch']);
-   assert.deepEqual(Object.keys(signing.jobs).sort(),['admit','sign']);
-   assert.deepEqual(signing.jobs.admit.permissions,{actions:'read',contents:'read'});
-   assert.equal(signing.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
-   const sign=signing.jobs.sign;
-   assert.deepEqual(sign.permissions,{actions:'read',contents:'read','id-token':'write'});
-   assert.equal(sign.environment,'release');
-   assert.equal(sign.needs,'admit');
-   assert.equal(sign.if,"needs.admit.result == 'success' && needs.admit.outputs.plan_sha256 != '' && inputs.workflow_commit == github.sha");
-   assert.deepEqual(signing.concurrency,{group:'release-signing','cancel-in-progress':false});
-   continue;
-  }
   if(file==='release-os-ota-signing.yml'){
    const signing=parseYaml(text);
    assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['id-token'],
@@ -166,21 +149,35 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
    assert.deepEqual(signing.concurrency,{group:'preserving-os-ota-signing','cancel-in-progress':false});
    continue;
   }
-  if(file!=='publish-qualified-app-update.yml'){assert.doesNotMatch(text,/^\s+[a-z-]+: write\s*$/m,`${file} grants a write permission`);continue;}
-  const publication=parseYaml(text);
-  assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['contents','id-token'],
-    'only publication contents and private artifact identity may be writable');
-  assert.deepEqual(publication.permissions,{});
-  assert.deepEqual(Object.keys(publication.on),['workflow_dispatch']);
-  assert.deepEqual(Object.keys(publication.jobs).sort(),['admit','publish']);
-  assert.deepEqual(publication.jobs.admit.permissions,{contents:'read',actions:'read'});
-  assert.equal(publication.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
-  const publish=publication.jobs.publish;
+  if(file!=='release.yml'){assert.doesNotMatch(text,/^\s+[a-z-]+: write\s*$/m,`${file} grants a write permission`);continue;}
+  const release=parseYaml(text);
+  assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['id-token','contents','id-token'],
+    'only signing identity, publication contents and private artifact identity may be writable');
+  assert.deepEqual(release.permissions,{});
+  assert.deepEqual(Object.keys(release.on),['workflow_dispatch']);
+  assert.deepEqual(release.on.workflow_dispatch.inputs.operation.options,['signing-proof','sign','publish']);
+  assert.deepEqual(Object.keys(release.jobs),['signing-proof','admit-signing','sign','admit-publication','publish']);
+  assert.deepEqual(release.concurrency,{group:'release','cancel-in-progress':false});
+  const guard=operation=>`github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.operation == '${operation}' && inputs.workflow_commit == github.sha`;
+  assert.deepEqual(release.jobs['signing-proof'].permissions,{contents:'read'});
+  assert.equal(release.jobs['signing-proof'].environment,'release');
+  assert.equal(release.jobs['signing-proof'].if,guard('signing-proof'));
+  assert.deepEqual(release.jobs['admit-signing'].permissions,{actions:'read',contents:'read'});
+  assert.equal(release.jobs['admit-signing'].if,guard('sign'));
+  assert.equal(release.jobs['admit-signing'].environment,undefined);
+  const sign=release.jobs.sign;
+  assert.deepEqual(sign.permissions,{actions:'read',contents:'read','id-token':'write'});
+  assert.equal(sign.environment,'release');
+  assert.equal(sign.needs,'admit-signing');
+  assert.equal(sign.if,"needs.admit-signing.result == 'success' && needs.admit-signing.outputs.plan_sha256 != '' && inputs.operation == 'sign' && inputs.workflow_commit == github.sha");
+  assert.deepEqual(release.jobs['admit-publication'].permissions,{contents:'read',actions:'read'});
+  assert.equal(release.jobs['admit-publication'].if,guard('publish'));
+  assert.equal(release.jobs['admit-publication'].environment,undefined);
+  const publish=release.jobs.publish;
   assert.deepEqual(publish.permissions,{actions:'read',contents:'write','id-token':'write'});
   assert.equal(publish.environment,'release');
-  assert.equal(publish.needs,'admit');
-  assert.equal(publish.if,"needs.admit.result == 'success' && needs.admit.outputs.qualification_sha256 != '' && inputs.workflow_commit == github.sha");
-  assert.deepEqual(publication.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
+  assert.equal(publish.needs,'admit-publication');
+  assert.equal(publish.if,"needs.admit-publication.result == 'success' && needs.admit-publication.outputs.qualification_sha256 != '' && inputs.operation == 'publish' && inputs.workflow_commit == github.sha");
  }
 });
 

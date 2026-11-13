@@ -2933,9 +2933,7 @@
       ],
       "sources": [
         ".github/workflows/resident-android.yml",
-        ".github/workflows/release-cloud-app-signing.yml",
-        ".github/workflows/verify-cloud-signing-input.yml",
-        ".github/workflows/publish-qualified-app-update.yml",
+        ".github/workflows/release.yml",
         "scripts/app-update-candidate.ts",
         "scripts/ci/verify-cloud-signing-input.sh",
         "scripts/ci/app_update_producer.py",

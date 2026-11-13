@@ -339,7 +339,7 @@ jobs:
           build_config = (root / 'artifacts/build-config.json').read_bytes()
           build = json.loads(build_config)
           channel = build['updateChannel']
-          assert channel['kind'] == 'public', 'Private QA artifacts require private delivery, not this hosted archive'
+          assert channel['kind'] == 'public', 'The hosted archive must record the public update channel'
           assert (
               build['testMocks'] is False
               and build['runtimeProfile'] == 'native'

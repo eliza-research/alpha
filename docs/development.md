@@ -362,11 +362,13 @@ python3 -B scripts/ci/admit-cloud-signing-input.py prepare-candidate \
 ```
 
 Review the plan and retain its exact bytes. The release operator dispatches
-protected signing on `main` with the exact reviewed `workflow_commit` and
-`signing-plan.json` as the `signing_plan` input. Preflight checks the official
-Actions ZIP. The protected job checks the same run attempt and artifact again,
-then stages the pinned private generation before accessing the signing key.
-[Protected signing workflow](../.github/workflows/release-cloud-app-signing.yml)
+the [release workflow](../.github/workflows/release.yml) on `main` with
+operation `sign`, the exact reviewed `workflow_commit` and `signing-plan.json`
+as the `plan` input. Preflight checks the official Actions ZIP. The protected
+job checks the same run attempt and artifact again, then stages the pinned
+private generation before accessing the signing key. Signing and publication
+admit only producers that record the native runtime profile and the public
+update channel.
 
 For publication, set `delivery_artifact_id` to the numeric ID of the original
 `private-cloud-apk-delivery-*` artifact from the successful signing attempt.
@@ -406,14 +408,11 @@ python3 -B scripts/ci/qualified-app-update.py prepare-qualification \
   > qualification.json
 ```
 
-Review `qualification.json` and supply it as the protected workflow's
-`qualification` input with the reviewed `workflow_commit`. Complete both
-admissions before the one-day signing delivery receipt expires. The protected
-job restores the same private mirror and exact signed output before publication.
-[Qualified publication workflow](../.github/workflows/publish-qualified-app-update.yml)
-
-The existing reviewed Cloud producer routes remain available for their
-approved package and profile.
+Review `qualification.json` and dispatch the release workflow with operation
+`publish`, the reviewed `workflow_commit` and `qualification.json` as the
+`plan` input. Complete both admissions before the one-day signing delivery
+receipt expires. The protected job restores the same private mirror and exact
+signed output before publication.
 
 The native route keeps the 1.5 GB limit on the producer ZIP and signed TAR.
 The two unsigned APKs and the two debug APKs each have a separate 1.5 GB

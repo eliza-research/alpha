@@ -25,7 +25,7 @@ test('only the exact compiled public channel can be published', () => {
   const xml = (kind='public',digest=sha(publicUrl)) => 'E: manifest\n  E: application\n'+
     meta(UPDATE_CHANNEL_META,kind)+meta(UPDATE_DIGEST_META,'sha256:'+digest);
   assert.deepEqual(admitPublicUpdateChannel(xml(),publicUrl), {kind:'public',manifestUrlSha256:sha(publicUrl)});
-  assert.throws(()=>admitPublicUpdateChannel(xml('private-qa'),publicUrl), /compiled channel/);
+  assert.throws(()=>admitPublicUpdateChannel(xml('other'),publicUrl), /input refused/);
   assert.throws(()=>admitPublicUpdateChannel(xml('public','0'.repeat(64)),publicUrl), /compiled channel/);
   assert.throws(()=>admitPublicUpdateChannel('E: manifest\n  E: application\n',publicUrl), /metadata missing/);
   assert.throws(()=>admitPublicUpdateChannel(xml()+meta(UPDATE_CHANNEL_META,'public'),publicUrl), /metadata missing or duplicated/);

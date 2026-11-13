@@ -134,16 +134,15 @@ test("native OTA releases require both on-device ASR and exact supplied Cartesia
   assert.match(nativeCartesiaBlockers(hashes[1], admission).join("\n"), /does not match this APK/);
 });
 
-test("verify-apks gates every release on public distribution and releaseDistributable; there is one runtime profile", () => {
+test("verify-apks gates every release on releaseDistributable; there is one runtime profile", () => {
   const source = fs.readFileSync("scripts/verify-apks.ts", "utf8");
   // One assignment, so a later overwrite of the row is caught here.
   assert.deepEqual(source.match(/\.distributable\s*=[^=]/g), [".distributable = "]);
   assert.match(source, /const cartesia = cloudEvidenceSha256 === undefined \? undefined : \{\s+apkSha256: row\.sha256,\s+admission: cloudVoiceAdmission\(row\.sha256, cloudEvidence, cloudEvidenceSha256\),/);
-  assert.match(source, /const releaseReady = releaseDistributable\(\{testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission,\s+runtime, runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers, cartesia\}\);/);
+  assert.match(source, /row\.distributable = releaseDistributable\(\{testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission,\s+runtime, runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers, cartesia\}\);/);
   // No profile branch can admit a release without packaged on-device voice.
   assert.doesNotMatch(source, /runtimeProfile\s*===\s*['"]cloud['"]|--runtime-profile=cloud|speechQualified/);
   assert.match(source, /const runtimeProfile="native";/);
-  assert.match(source, /row\.distributable = releaseReady && updateChannel\.kind === 'public';/);
   assert.match(source, /Release signing admission failed/);
   assert.match(source, /entry\?\.name === BUN_ENTRY/);
 });
