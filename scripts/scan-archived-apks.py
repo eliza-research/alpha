@@ -71,4 +71,4 @@ with output.open("x") as stream:
     json.dump(report, stream, indent=2)
 if len(results) != 2 or not all(item["passed"] for item in results):
     raise SystemExit("Static packaging scan failed; inspect boolean evidence")
-print("PASS: four archived APKs, static secret and distribution boundaries")
+print("PASS: two archived APKs, static secret and distribution boundaries")

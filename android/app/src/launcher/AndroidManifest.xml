@@ -6,8 +6,7 @@
  <uses-permission android:name="android.permission.READ_CONTACTS" />
  <!-- In-app contact saves and deletes on the verified image (AP-08): the owner's own edit, or an
       agent-proposed change the owner confirmed on the phone. Each write names the version of the
-      contact that was shown. Requested with READ_CONTACTS only under the image provisioning admission;
-      the standalone manifest removes it. -->
+      contact that was shown. Requested with READ_CONTACTS only under the image provisioning admission. -->
  <uses-permission android:name="android.permission.WRITE_CONTACTS" />
  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
  <!-- The line's own number for Settings → Phone. Same runtime group as phone state; launcher only. -->
@@ -34,7 +33,7 @@
  <uses-permission android:name="android.permission.CALL_PHONE" />
  <!-- Recent calls in the image Phone view (AP-08): a bounded, unlocked, foreground-only read through
       the shared TelephonyPlugin, requested only from the owner's "Allow call history" control and
-      only after AlphaImageCapability verifies the image. The standalone manifest removes it. -->
+      only after AlphaImageCapability verifies the image. -->
  <uses-permission android:name="android.permission.READ_CALL_LOG" />
  <uses-permission android:name="android.permission.WRITE_CALL_LOG" tools:node="remove" />
  <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" tools:node="remove" />
@@ -51,7 +50,7 @@
  </queries>
  <!-- Launcher flavor only (#417): a downward pull on empty Home
       asks Android to expand its own notification shade, as stock launchers do. Install-time
-      permission; see SystemShade.java. The standalone app does not request it. -->
+      permission; see SystemShade.java. -->
  <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
  <application>
   <service android:name=".AlphaKeyboardDictationService" android:label="@string/alpha_keyboard_dictation_name"
@@ -63,7 +62,7 @@
        checks the installed image and Android-reported caller before recording a voice invocation. -->
   <activity android:name=".AlphaAssistActivity" android:enabled="false" android:exported="true" android:screenOrientation="portrait" tools:replace="android:exported,android:screenOrientation" />
   <activity android:name=".AlphaPowerVoiceActivity" android:enabled="false" android:exported="true" android:screenOrientation="portrait" tools:replace="android:exported,android:screenOrientation" />
-  <!-- The launcher is portrait only. The standalone app keeps app.config.json's orientation and rotates. -->
+  <!-- The launcher is portrait only. -->
   <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait" tools:replace="android:screenOrientation">
   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>
  </activity>
