@@ -170,11 +170,21 @@ public class AlphaFilesPlugin extends Plugin {
   JSObject out=new JSObject();out.put("count",b.emptyTrash(strings(call,"ids",StorageBrowser.BATCH_MAX)));return out;
  });}
  private Uri contentUri(java.io.File file){return androidx.core.content.FileProvider.getUriForFile(getContext(),getContext().getPackageName()+".storage",file);}
- /** One share sheet for the listed files. Nothing is sent until the owner picks an app. */
+ private static final int MAX_SHARE_FILES=100;
+ /** One share sheet for the complete admitted selection. Nothing is sent until the owner picks an app. */
  @PluginMethod public void storageShare(PluginCall call){storage(call,b->{
+  JSArray selected=call.getArray("paths");
+  if(selected!=null&&selected.length()>MAX_SHARE_FILES)
+   return result("unsupported","Select up to "+MAX_SHARE_FILES+" files to share.");
+  List<java.io.File> files=new ArrayList<>();
+  for(String path:strings(call,"paths",MAX_SHARE_FILES)){
+   java.io.File file=b.resolve(path,false);
+   if(file.isDirectory())return result("unsupported","Select files without folders to share.");
+   if(!file.isFile())throw new java.io.FileNotFoundException();
+   files.add(file);
+  }
   ArrayList<Uri> uris=new ArrayList<>();Set<String> types=new HashSet<>();
-  for(String path:strings(call,"paths",100)){java.io.File f=b.resolve(path,false);if(!f.isFile())continue;uris.add(contentUri(f));types.add(StorageBrowser.mime(f.getName()));}
-  if(uris.isEmpty())return result("unsupported","Select files to share.");
+  for(java.io.File file:files){uris.add(contentUri(file));types.add(StorageBrowser.mime(file.getName()));}
   Intent send=new Intent(uris.size()==1?Intent.ACTION_SEND:Intent.ACTION_SEND_MULTIPLE).setType(types.size()==1?types.iterator().next():"*/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
   if(uris.size()==1)send.putExtra(Intent.EXTRA_STREAM,uris.get(0));else send.putParcelableArrayListExtra(Intent.EXTRA_STREAM,uris);
   ClipData clip=ClipData.newRawUri("Files",uris.get(0));for(int i=1;i<uris.size();i++)clip.addItem(new ClipData.Item(uris.get(i)));send.setClipData(clip);
