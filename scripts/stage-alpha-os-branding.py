@@ -100,7 +100,7 @@ def build_plan(root, assets, report_hash, source_inputs, prior=None, product_mk_
         put(name, data, (before,) if before is not None else ())
     # Stage only the source-owned visual/resource directories, including independent hardware
     # invocation defaults. No app APK, assistant implementation or listener source is modified.
-    for name in ['Android.bp','branding.mk','secure-camera-inputs.json']:
+    for name in ['Android.bp','branding.mk','secure-camera-inputs.json','default-permissions-alpha-phone.xml']:
         put('vendor/alphaphone/branding/'+name,(BRAND/name).read_bytes())
     for folder in ['overlay','keyboard-overlay','manifests']:
         for path in sorted((BRAND/folder).rglob('*')):
