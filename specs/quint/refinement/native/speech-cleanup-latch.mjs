@@ -33,9 +33,10 @@ export function compile() {
   const playback = read('apps/app/src/local-speech-playback.ts');
   const retirementGate = strip(playback.slice(playback.indexOf('export async function confirmSpeechRetirement')));
   const cloud = read('apps/app/src/runtime/cloud-voice.ts');
+  const voiceStates = strip(read('apps/app/src/runtime/voice-states.ts'));
   const slice = (start, end) => { const a = cloud.indexOf(start), b = end ? cloud.indexOf(end, a) : cloud.length; if (a < 0 || b <= a) throw Error(`missing source anchor ${start}`); return cloud.slice(a, b); };
   return {
-    app: `${retirementGate};${strip(read('apps/app/src/runtime/app-speech.ts'))};globalThis.speak=speakAppText;`,
+    app: `${voiceStates};${retirementGate};${strip(read('apps/app/src/runtime/app-speech.ts'))};globalThis.speak=speakAppText;`,
     cloud: `${retirementGate};${strip(slice('export function cloudVoiceServiceLimit(', '/** Product registration only'))};${strip(slice('let appSpeechRetirement:Promise<void>=Promise.resolve();'))};globalThis.speak=speakCloudText;`,
   };
 }
@@ -80,7 +81,11 @@ function chain(code) {
       const pending = pendingStop(); pending.pending = false;
       if (confirmed) pending.resolve(); else pending.reject(Error('native stop refused'));
       await flush();
-      if (!confirmed) assert.equal(calls.findLast(call => call.outcome === 'cleanup')?.message, 'Speech could not be stopped. Restart Alpha.');
+      if (!confirmed) {
+        const refused = calls.findLast(call => call.outcome === 'cleanup');
+        assert.equal(refused?.message, 'Speech could not be stopped. Restart Alpha.');
+        refused.recoveryRefused = true;
+      }
     },
     observe() {
       const unsettled = calls.filter(call => call.outcome === 'pending'), last = calls.findLast(call => call.outcome !== 'pending');
@@ -88,7 +93,7 @@ function chain(code) {
       // A call that is neither speaking nor behind a native stop waits for the cleanup before it.
       const waiting = unsettled.length - (pendingSpeak() ? 1 : 0) - (pendingStop() ? 1 : 0) > 0;
       // The chain is closed and its most recent answer was the request for a restart.
-      const refused = ['latched', 'recovering'].includes(stage) && last?.message === 'Speech could not be stopped. Restart Alpha.';
+      const refused = ['latched', 'recovering'].includes(stage) && last?.recoveryRefused === true;
       return {stage, waiting, refused};
     },
     async close() { for (const pending of [...speaks, ...stops]) if (pending.pending) { pending.pending = false; pending.reject(Error('closed')); } await flush(); },

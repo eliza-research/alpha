@@ -3338,6 +3338,7 @@
         "apps/app/src/prototype/voice-adapter.ts",
         "apps/app/src/prototype/local-speech-playback.ts",
         "apps/app/src/runtime/app-speech.ts",
+        "apps/app/src/runtime/voice-states.ts",
         "apps/app/src/runtime/cloud-voice.ts",
         "apps/app/src/local-speech-playback.ts"
       ],

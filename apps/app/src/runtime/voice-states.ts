@@ -3,6 +3,11 @@ export type VoiceFailure = 'denied' | 'no-microphone' | 'no-speech' | 'local-age
 export type TranscriptProvenance = { route: string; engine?: string; model?: string; modelRevision?: string; runtime?: string; language?: string };
 type Reason = { name?: unknown; code?: unknown } | null | undefined;
 
+export const MEDIA_UNCONFIRMED_NOTICE = 'Speech could not be stopped. Restart Alpha.';
+export function speechCleanupNotice(reason: unknown): string | undefined {
+  return (reason as Reason)?.code === 'speech-cleanup-unconfirmed' ? MEDIA_UNCONFIRMED_NOTICE : undefined;
+}
+
 /**
  * Failures with their own state and guidance. Anything else keeps the caller's generic,
  * route-specific message. Cancellation is never reported as a failure here.

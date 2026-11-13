@@ -7,6 +7,7 @@ import {mapsEventReturnOffered,mapsEventStillThere,type MapsEventOrigin} from '.
 import {Capacitor} from '@capacitor/core';
 import {isAndroid} from '../native';
 import {NavigationVoice} from '../maps/navigation-voice';
+import {speechCleanupNotice} from '../runtime/voice-states';
 import {shareMap} from '../maps/share';
 import { MapPlane } from '../maps/map-plane';
 import type {MapBasemap} from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/map-plane.ts';
@@ -75,7 +76,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     );
   };
   const navigationVoice = new NavigationVoice(
-    error => screen.notify((error instanceof Error ? error.message + ' ' : '') + 'Voice paused'),
+    error => screen.notify(speechCleanupNotice(error) || ((error instanceof Error ? error.message + ' ' : '') + 'Voice paused')),
     () => !googleContent(),
   );
   const navigationTransport=registerPlugin<NavigationBridge & {consumeNavigationOpen():Promise<{open:boolean}>;clearNavigationOpen():Promise<unknown>}>('AlphaMapsTransport');

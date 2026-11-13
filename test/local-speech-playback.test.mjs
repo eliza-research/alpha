@@ -54,6 +54,19 @@ test('a Cloud failure before audio is read on this phone; without on-device spee
   } finally { f.close(); await f.tick(); }
 });
 
+test('a Notes read with unconfirmed Cloud cleanup gives restart guidance', async () => {
+  const f = cloudVoiceViewFixture({cloudProfile: true});
+  try {
+    f.playbackCleanupError = Error('private native cleanup detail');
+    const result = await f.box.readNoteAloud('Read the saved note.', {noteId: 'note'});
+    assert.deepEqual({...result}, {outcome: 'failed', message: 'Speech could not be stopped. Restart Alpha.'});
+    assert.equal(f.localFactories, 0, 'an unconfirmed stop does not prepare fallback speech');
+    const again = await f.box.readNoteAloud('Read another saved note.', {noteId: 'other-note'});
+    assert.deepEqual({...again}, {...result});
+    assert.equal(f.cloudSpeech, 1, 'a second note cannot start speech while cleanup is unconfirmed');
+  } finally { f.close(); await f.tick(); }
+});
+
 // Message Listen: real playback, route, refusal and chunker sources; the voices are fixtures.
 function listenFixture({cloud}) {
   const f = {spoken: [], prepared: 0};
@@ -69,7 +82,7 @@ function listenFixture({cloud}) {
     createOnDeviceVoice: () => ({playbackReady: async () => { f.prepared++; return true; }}),
     cloudVoiceFailure: () => null,
     planLocalSpeech: text => [text],
-    speakLocalText: async text => { f.spoken.push(text); },
+    speakLocalText: async (text, _signal, started) => { f.spoken.push(text); started?.(); if (f.cleanupError) throw f.cleanupError; },
     markVoiceTiming() {}, abandonVoiceTurn() {}, finishVoiceTurn() {},
   };
   // One realm for every source: Bun's runInNewContext gives an already contextified object a new
@@ -79,6 +92,7 @@ function listenFixture({cloud}) {
     const source = fs.readFileSync(file, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
     vm.runInContext('{' + stripTypeScriptTypes(source, {mode:'strip'}) + '\n' + names.map(name => `globalThis.${name}=${name};`).join('') + '}', box);
   };
+  load('apps/app/src/runtime/voice-states.ts', ['speechCleanupNotice']);
   load('apps/app/src/runtime/voice-selection.ts', ['selectVoiceRoute', 'speechRoute', 'noteNetworkSpeechFailure']);
   load('apps/app/src/runtime/local-speech-text.ts', ['screenSpeechText']);
   load('.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts', ['speakCloudSpeechChunks']);
@@ -115,4 +129,17 @@ test('Listen on Cloud reads a long reply through the chunker', async () => {
   assert.ok(f.spoken.length > 2 && f.spoken.every(text => text.length <= 5000));
   assert.equal(f.spoken.join(' '), note.replace(/\s+/g, ' '));
   assert.equal(f.shell.renderVals().msgs[0].localSpeechMessage, '', 'finished reading shows no error');
+});
+
+
+test('Listen reports unconfirmed cleanup after audio and fences the next read', async () => {
+  const f = listenFixture({cloud: false});
+  f.cleanupError = Object.assign(Error('private native cleanup detail'), {code: 'speech-cleanup-unconfirmed'});
+  f.shell.setState({msgs: [{id: 'a1', from: 'agent', text: 'Read this response.'}]});
+  for (let attempt = 0; attempt < 2; attempt++) {
+    f.shell.renderVals().msgs[0].localSpeech();
+    for (let turn = 0; turn < 5; turn++) await tick();
+    assert.equal(f.shell.renderVals().msgs[0].localSpeechMessage, 'Speech could not be stopped. Restart Alpha.');
+  }
+  assert.deepEqual(f.spoken, ['Read this response.']);
 });
