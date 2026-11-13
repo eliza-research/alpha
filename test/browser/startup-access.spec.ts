@@ -34,8 +34,12 @@ async function accessFixture(page:import('@playwright/test').Page){
  await page.evaluate(()=>(window as any).access.signin());
  return page.locator('dialog.alpha-startup-permissions');
 }
-test('required native access keeps focused, reachable controls at narrow widths and large text, with honest limited grants',async({page})=>{
- const panel=await accessFixture(page);const heading=panel.getByRole('heading',{name:'Notifications',exact:true}),action=panel.getByRole('button',{name:'Continue',exact:true});
+test('native setup skips existing grants and explicit review keeps focused, reachable controls with honest limited grants',async({page})=>{
+ const panel=await accessFixture(page);
+ await expect(panel.getByRole('heading',{name:'Setup finished',exact:true})).toBeFocused();
+ await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
+ await page.evaluate(()=>(window as any).access.reopen());
+ const heading=panel.getByRole('heading',{name:'Notifications',exact:true}),action=panel.getByRole('button',{name:'Continue',exact:true});
  await expect(heading).toBeFocused();
  for(const viewport of [{width:274,height:538,scale:1},{width:280,height:538,scale:1},{width:360,height:740,scale:2},{width:360,height:800,scale:2}]){
   await page.setViewportSize({width:viewport.width,height:viewport.height});await setTextScale(page,viewport.scale);await action.scrollIntoViewIfNeeded();
@@ -56,7 +60,8 @@ test('required native access keeps focused, reachable controls at narrow widths 
 });
 test('explicit Settings review starts at the original heading and targeted Done preserves completion',async({page})=>{
  const panel=await accessFixture(page);
- for(let i=0;i<7;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
+ await expect(panel.getByRole('heading',{name:'Setup finished',exact:true})).toBeFocused();
+ await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
  await page.evaluate(()=>(window as any).access.reopen());await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeFocused();expect(await panel.evaluate(el=>el.scrollTop)).toBe(0);
  for(let i=0;i<7;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
  const before=await page.evaluate(()=>localStorage.getItem('alpha:startup-permission-walkthrough:v1'));
