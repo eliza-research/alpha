@@ -48,6 +48,7 @@ for (const viewport of [{width: 412, height: 915}, {width: 800, height: 1280}]) 
         expect(rendered).toBeGreaterThan(columns);
         expect(rendered).toBeLessThan(120);
         await expect.poll(() => scroller.locator('[data-owned-media-id]').evaluateAll(items => {
+          if (!items.length) return 0;
           const viewport = items[0].closest('[data-alpha-app-scroll]')!.getBoundingClientRect();
           return items.filter(item => { const box = item.getBoundingClientRect(); return box.bottom > viewport.top && box.top < viewport.bottom; }).length;
         })).toBeGreaterThanOrEqual(columns * 2);

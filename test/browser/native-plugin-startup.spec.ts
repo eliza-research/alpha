@@ -14,6 +14,7 @@ test('Android legacy plugin injection is wrapped before renderer startup and lis
   cap.Plugins.Agent={setGoogleAgentAccess:async()=>{}};
  });
  await page.goto('/');await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>(window as any).nativeCalls.some((call:any)=>call.plugin==='Agent'&&call.method==='setGoogleAgentAccess'))).toBe(true);
  const result=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const {DailyApps}=await import('/src/daily.ts');const port=registerPlugin<any>('DailyApps');const handlePromise=port.addListener('fixture-event',()=>{});const promise=typeof handlePromise.then==='function';await(await handlePromise).remove();return {same:port===DailyApps,promise,calls:(window as any).nativeCalls};});
  expect(result.same).toBe(true);expect(result.promise).toBe(true);expect(result.calls).toEqual(expect.arrayContaining([expect.objectContaining({plugin:'DailyApps',method:'addListener',options:{eventName:'appResumed'}}),expect.objectContaining({plugin:'DailyApps',method:'removeListener',options:{eventName:'fixture-event',callbackId:'fixture-callback'}}),expect.objectContaining({plugin:'Agent',method:'setGoogleAgentAccess',options:{gmailChanges:true,calendarEdits:true}})]));expect(errors).toEqual([]);
 });

@@ -67,8 +67,9 @@ test('removing another saved place keeps focus and selection on the retained sav
 
 test('automatic Maps search cancels empty and abandoned input',async({page})=>{
  await setup(page);const query=page.getByRole('textbox',{name:'Search places',exact:true});
+ await page.clock.install();
  await query.fill('abandoned');await query.fill('');
- await page.waitForTimeout(500);
+ await page.clock.runFor(500);
  expect(await page.evaluate(()=>(window as any).mapFocus.searches)).toEqual([]);
  await expect(page.locator('[data-alpha-maps-sheet="results"]')).toHaveCount(0);
  await query.fill('leaving');await page.getByRole('button',{name:'Back to apps',exact:true}).click();
