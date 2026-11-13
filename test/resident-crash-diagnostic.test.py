@@ -57,7 +57,7 @@ class Flow(unittest.TestCase):
   with tempfile.TemporaryDirectory(prefix='alpha-crash-cancel-') as td:
    root=pathlib.Path(td);ready=root/'ready';cleaned=root/'cleaned';fake=root/'adb'
    answers={'emu avd name':'test\nOK\n','shell getprop ro.kernel.qemu':'1','shell am get-current-user':'0','shell pm list users':'Users:\nUserInfo{0:Owner:13}\nUserInfo{10:alpha-ci-'+('a'*32)+':10}','shell run-as ai.alphacompute.alphaphone --user 10 id -u':str(UID),'shell date +%s':'1700000002'}
-   fake.write_text('#!'+sys.executable+'\nimport os,sys,time\nfrom pathlib import Path\na=" ".join(sys.argv[3:])\nif a.startswith("logcat "):\n Path('+repr(str(ready))+').write_text(str(os.getpid()))\n time.sleep(30)\nelse: print('+repr(answers)+'[a])\n');fake.chmod(0o700)
+   fake.write_text('#!'+sys.executable+'\nimport os,sys,time\nfrom pathlib import Path\na=" ".join(sys.argv[3:])\nif a.startswith("logcat "):\n pending=Path('+repr(str(ready))+').with_suffix(".pending")\n pending.write_text(str(os.getpid()))\n pending.replace('+repr(str(ready))+')\n time.sleep(30)\nelse: print('+repr(answers)+'[a])\n');fake.chmod(0o700)
    # Execute the actual optional finally branch, not a copied cancellation implementation.
    supervisor=source.parent/'resident-native.py'
    harness="""import ast,json,pathlib,signal,sys
