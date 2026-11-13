@@ -41,6 +41,9 @@ default symbolic depth for that model; explicit `--steps` overrides it.
 `verifyBackend: "tlc-bounded"` selects exhaustive safety checking through that
 transition bound. BrowserSession, PhotosWindow and LauncherFavorites use it with
 their unchanged six-transition default after symbolic checks exceeded their deadline.
+HomeGesture uses the same six-transition backend after a separately completed exhaustive bounded
+check. Its selection is a qualified performance choice; the earlier aggregate's unreported
+operation and cause remain unresolved, without attributing a symbolic timeout to HomeGesture.
 The checker appends a depth counter to the translated model, checks every state
 at depths zero through the bound, and records the scope, depth and translation
 hashes. It does not establish safety beyond that bound.
