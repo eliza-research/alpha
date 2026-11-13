@@ -1,0 +1,6 @@
+{
+  "debug": true,
+  "checker": {
+    "smt-solver": "cvc5"
+  }
+}
