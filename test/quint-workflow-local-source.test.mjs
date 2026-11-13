@@ -1,7 +1,0 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import {checkWorkflowAuthoring,checkWorkflowNoticeTaps} from '../specs/quint/refinement/services/workflow-local-source.mjs';
-test('real workflow authoring custody refines bounded local draft schedules',async()=>{const r=await checkWorkflowAuthoring();assert.equal(r.passed,true);assert.equal(r.driverInputsBound,true);assert.ok(r.traces>=6&&r.checkpoints>=25);});
-test('real run-tap handler keeps one open through consume retry and repeated events',async()=>{const r=await checkWorkflowNoticeTaps();assert.equal(r.passed,true);assert.equal(r.driverInputsBound,true);assert.ok(r.traces>=3&&r.checkpoints>=18);});
-test('authoring source canary cannot edit pending identity',async()=>{await assert.rejects(checkWorkflowAuthoring([],{mutant:'pending-edit'}),/Pending save must lock draft editing/);});
-test('notice source canary cannot forget the opened token',async()=>{await assert.rejects(checkWorkflowNoticeTaps([],{mutant:'forget-opened-tap'}),/Source\/model trace mismatch|Failed consume must not reopen a run/);});

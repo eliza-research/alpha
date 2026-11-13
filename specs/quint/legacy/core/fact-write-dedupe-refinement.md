@@ -87,7 +87,7 @@ same room before either inserts. Distinct rooms may run concurrently within
 one runtime. The model permits both cases and places no uniqueness requirement
 on the normalized fact text.
 
-The [source replay](../../refinement/services/fact-write-scope.mjs) checks SQL
+The [source replay](../../../../test/quint-fact-write-scope.test.mjs) checks SQL
 candidate counts and ranks at 119 and 120 newer rows, including the old row
 that remains durable after it falls out of the candidate window. It also
 checks instance and room boundaries, refusal before an insert or metadata

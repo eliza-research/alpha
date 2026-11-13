@@ -17,7 +17,7 @@ invariants, temporal properties and deadlock setting. A qualified profile can
 be selected without changing the source model.
 
 ```sh
-bun run quint:prepare-history
+bun scripts/prepare-quint-history.ts
 bun specs/quint/legacy/core/check-configurations.mjs --phase=check
 bun specs/quint/legacy/core/check-configurations.mjs --phase=symbolic --models=InteractionSession --steps=4
 bun specs/quint/legacy/core/check-configurations.mjs --phase=temporal --profiles=ActionSettlement.late --tlc-max-heap-mb=1024

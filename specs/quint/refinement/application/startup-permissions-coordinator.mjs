@@ -48,7 +48,7 @@ export const {useLayoutEffect,useSyncExternalStore}=React;`;
   const sources = [...new Set([...Object.keys(built.metafile.inputs)
     .filter(path => !path.startsWith('coordinator:') && path !== '<stdin>' && !path.startsWith('node_modules/')), driver,
     'test/quint-permission-coordinator-refinement.test.mjs', 'specs/quint/refinement/application/contracts.mjs',
-    'specs/quint/refinement/application/support.mjs', 'specs/quint/refinement/application/index.mjs',
+    'specs/quint/refinement/application/support.mjs',
     'upstream.lock.json', 'scripts/prepare-client-features.ts',
     '.eliza/client-features/.source.json'])];
   const driverHashes = captureInputs(sources);

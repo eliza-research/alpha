@@ -34,8 +34,7 @@ SIGTERM to its returned child and waits for its close event before rejecting.
 A synthetic child that ignores SIGTERM receives the bounded SIGKILL fallback.
 Both cases close the private log and remove signal handlers before returning
 the original write error. `ChildCustodyAfterLaunch` is now a checked safety
-invariant. The prior source observation is preserved in the
-[baseline record](combined-agent-launcher-baseline.md).
+invariant.
 
 `DevelopmentHost` covers Cloud resident binding and retirement through
 `scripts/cloud-resident-host.ts`. The combined launcher has a distinct

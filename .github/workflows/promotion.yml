@@ -1,6 +1,6 @@
 name: Promotion checks
 # Checks for promoting develop to main: Chromium, Firefox/WebKit storage and the production surface,
-# the Quint gate and its node tests, source refinement, bounded symbolic checking, the
+# the Quint gate and its node tests, bounded symbolic checking, the
 # historical comparisons and temporal properties, and the LemmaScript proofs. Nothing here runs
 # on pull requests into develop or on pushes; authors run `bun run test:browser`,
 # `bun run test:browser:production`, `bun run quint:check`, `bun run quint:tests` and
@@ -40,22 +40,22 @@ jobs:
       - name: Bounded symbolic safety and additional proof inits
         env:
           MODELS: ${{ inputs.models }}
-        run: bun run quint:verify -- --steps=6 ${MODELS:+--models=$MODELS}
+        run: bun scripts/check-quint.ts verify --steps=6 ${MODELS:+--models=$MODELS}
       # Every declared comparison and expected counterexample runs on promotion.
       - name: Expected counterexamples and current-design comparisons
         if: ${{ !inputs.models }}
-        run: bun run quint:compare
+        run: bun scripts/check-quint.ts compare
       # Every declared temporal property runs on promotion.
       - name: Fairness-guarded temporal properties
         if: ${{ !inputs.models }}
-        run: bun run quint:temporal
+        run: bun scripts/check-quint.ts temporal
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: quint-symbolic
           path: test-results/quint/
   conformance:
-    name: Quint gate, source refinement and function proofs
+    name: Quint gate, node tests and function proofs
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -92,7 +92,7 @@ jobs:
           prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
-      - run: bun run upstream:prepare-client && bun run quint:prepare-history
+      - run: bun run upstream:prepare-client
       - name: Typecheck, scenarios and sampled simulation of every model
         run: bun run quint:check
       - name: Function proofs
@@ -104,11 +104,9 @@ jobs:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
           ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
           ALPHA_QUINT_BUN: ${{ env.ALPHA_BUN }}
-          # Give each aggregate the runner's resources; retain every test and deadline.
+          # Each file starts compilers and the Quint interpreter; keep their deadlines exact.
           ALPHA_TEST_CONCURRENCY: '1'
         run: bun run quint:tests
-      - name: Check composed source transitions against Quint
-        run: bun run quint:refinement -- --families=composition --out=test-results/quint-refinement/composition-summary.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

@@ -17,7 +17,7 @@ descriptor belongs to a regular file and parses bytes through that same
 descriptor. Missing, unreadable, malformed or wrong-version records leave both
 switches off.
 
-The [replay](native-google-access-file.mjs) compiles the actual Java writer and
+The [replay](../../../../test/quint-native-google-access-file.test.mjs) compiles the actual Java writer and
 runs the actual native host. A controlled descriptor hook places a real atomic
 replacement between the reader's open and read. The old descriptor yields the
 complete old record and the next read yields the complete new one. A separate

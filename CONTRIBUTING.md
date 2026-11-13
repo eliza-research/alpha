@@ -28,6 +28,12 @@ Run the Quint models and LemmaScript proofs locally before merging a PR:
 at which running them is required. They are not part of `bun run verify` or of PR and push CI; CI runs them only
 when `develop` is promoted to `main`. Proofs need Dafny 4.11.0 on `PATH`.
 
+`quint:check` typechecks, runs the scenarios of and simulates every model registered in
+`specs/quint/*/manifest.json`. `quint:tests` runs `test/quint-*`: each file drives product code
+against one model's transitions. Keep one such file per model, import or compile the whole source
+file, and do not add a check that slices source text or restates the model
+(see [specs/quint/README.md](specs/quint/README.md)).
+
 ## Browser tests
 
 Run `bun run test:browser` and `bun run test:browser:production` locally before finalising a PR,
