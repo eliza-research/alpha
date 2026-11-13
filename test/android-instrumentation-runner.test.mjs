@@ -150,7 +150,8 @@ test("every registered class exists in the app's instrumentation sources and dec
     for (const [gate, value] of Object.entries(spec.args ?? {}))
       assert.ok(gateRead(source, gate, value), `${name} does not read gate ${gate}=${value}`);
     for (const method of spec.phases ?? []) assert.match(source, new RegExp(`void ${method}\\(`), `${name} has no phase ${method}`);
-    if (spec.requiresTestMocksBuild) assert.ok(source.includes("BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS"), `${name} does not assume a test-mocks app build`);
+    if (spec.requiresTestMocksBuild) assert.match(source, /BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS|AppNavigation\.assumeNoRequiredSignIn\(/,
+      `${name} does not declare the fixture prerequisites`);
     if (spec.homeRole) {
       assert.ok(["requests", "held"].includes(spec.homeRole) && source.includes("BuildConfig.IS_LAUNCHER"), `${name} is not a launcher-variant HOME class`);
       // "held" classes must not change the role themselves; "requests" classes must put back what they found.

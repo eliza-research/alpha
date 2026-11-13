@@ -8,10 +8,10 @@
  * instrumentation   `bun run test:android:instrumentation` with its default classes on both
  *                   distributions of the flag-off developer APKs.
  * browser-reading   the same runner after the pinned Chromium 157 WebView is installed
- *                   (scripts/prepare-ci-webview.ts): BrowserReadingNavigation and
- *                   BrowserPageQuestion on the flag-off pair, then BrowserReading,
- *                   BrowserSensitiveReading and BrowserIsolatedReading on the test-mocks pair,
- *                   which is the only build that admits their loopback speech route.
+ *                   (scripts/prepare-ci-webview.ts): BrowserReadingNavigation on the flag-off pair.
+ *                   BrowserPageQuestion needs views on a signed-out emulator, and BrowserReading,
+ *                   BrowserSensitiveReading and BrowserIsolatedReading need loopback speech.
+ *                   Those four classes run on the separate test-mocks pair.
  * browser-controls  BrowserDownload, BrowserAutofill and PasswordBrowserFill on both distributions
  *                   of the test-mocks pair with pinned WebView 157 and network access.
  *
@@ -30,8 +30,8 @@ import { fileURLToPath } from "node:url";
 export const SERIAL = "emulator-5554";
 export const AVD = "test";
 /** Flag-off classes that need isolated-world injection, and the ones that also need the test-mocks build. */
-export const READING_CLASSES = ["BrowserReadingNavigation", "BrowserPageQuestion"];
-export const READING_TEST_MOCKS_CLASSES = ["BrowserReading", "BrowserSensitiveReading", "BrowserIsolatedReading"];
+export const READING_CLASSES = ["BrowserReadingNavigation"];
+export const READING_TEST_MOCKS_CLASSES = ["BrowserPageQuestion", "BrowserReading", "BrowserSensitiveReading", "BrowserIsolatedReading"];
 export const BROWSER_CONTROLS_CLASSES = ["BrowserDownload", "BrowserAutofill", "PasswordBrowserFill"];
 
 type Command = string[];

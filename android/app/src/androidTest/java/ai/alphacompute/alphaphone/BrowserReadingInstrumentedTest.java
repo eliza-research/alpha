@@ -1,6 +1,5 @@
 package ai.alphacompute.alphaphone;
 
-import android.app.AlertDialog;
 import android.os.SystemClock;
 import androidx.test.platform.app.InstrumentationRegistry;
 import org.json.*;
@@ -14,8 +13,6 @@ public final class BrowserReadingInstrumentedTest {
  private final BrowserReadingFixture reading=new BrowserReadingFixture();
  private String js(String code)throws Exception{return reading.js(code);}
  private void waitFor(String condition)throws Exception{reading.waitFor(condition);}
- private void invoke(String code)throws Exception{reading.invoke(code);}
- private JSONObject result()throws Exception{return reading.result();}
  private JSONObject call(String code)throws Exception{return reading.call(code);}
  @Test public void explicitImmutableReviewExcludesSensitiveSubtreesAndRejectsReplay()throws Exception{
   org.junit.Assume.assumeTrue("Explicit browser reading synthetic HTTP fixture", "1".equals(InstrumentationRegistry.getArguments().getString("browserReading")));
@@ -35,16 +32,16 @@ public final class BrowserReadingInstrumentedTest {
  }
  /** {ok, message} of a plugin call, so refusals can be told apart from a later speech failure. */
  private JSONObject settle(String code)throws Exception{
-  js("window.__readingSettled=null;Promise.resolve("+code+").then(v=>window.__readingSettled={ok:true,value:v??{}},e=>window.__readingSettled={ok:false,message:String(e?.message??'')})");
+  js("window.__readingSettled=null;Promise.resolve().then(()=>"+code+").then(v=>window.__readingSettled={ok:true,value:v??{}},e=>window.__readingSettled={ok:false,message:String(e?.message??'')})");
   waitFor("window.__readingSettled!==null");return new JSONObject(js("window.__readingSettled"));
  }
  private static final String EXPIRED="Reading approval expired";
- /** Review and approve one device reading; returns its token. */
+ /** The explicit on-device request issues a token without a transfer review. */
  private String approveDevice(String binding)throws Exception{
-  invoke("Capacitor.Plugins.AlphaBrowser.reviewReading({...window.__readingArgs,execution:'device',"+binding+"})");
-  AlertDialog approved=reading.dialog();
-  BoundedActivityScenario.main(()->approved.getButton(AlertDialog.BUTTON_POSITIVE).performClick());
-  JSONObject review=result();assertFalse("Device reading approved: "+review,review.has("error"));return review.getString("readingToken");
+  JSONObject review=call("Capacitor.Plugins.AlphaBrowser.reviewReading({...window.__readingArgs,execution:'device',"+binding+"})");
+  assertFalse("Device reading approved: "+review,review.has("error"));
+  assertNull("On-device reading does not ask for a speech transfer",reading.currentDialog());
+  return review.getString("readingToken");
  }
  /**
   * The resident path production uses (createNativeReadingVoice prefers the resident binding and
