@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { aggregateNativeVoice, nativeTimingFormat, legacyNativeTimingFormat, rejection } from '../scripts/native-voice-latency.ts';
+import { aggregateNativeVoice, nativeTimingFormat, rejection } from '../scripts/native-voice-latency.ts';
 import { aggregate, nativeTable } from '../scripts/aggregate-voice-latency.ts';
 
 const identity = { sourceCommit: 'a'.repeat(40), sourceDirty: false, engineSha256: 'b'.repeat(64), modelSha256: 'c'.repeat(64), device: 'Google Pixel 10a', environment: 'device', abi: 'arm64-v8a', build: 'standalone-release' };
@@ -171,14 +171,7 @@ test('v3 trials link one turn end to end; unlinked, legacy and fallback-clock tr
     assert.ok(rejection(rows[0]));
     assert.equal(aggregateNativeVoice([document(rows)]).sufficient, false);
   }
-  // Legacy v2 exports parse (without the new marks or turnId) but cannot be acceptance evidence.
-  const legacy = samples().map(row => { const { turnId, ...rest } = row; const marks = { ...rest.marks }; delete marks.request; delete marks['first-token']; return { ...rest, audibleClock: 'mediaplayer-timestamp', marks }; });
-  const old = aggregateNativeVoice([{ format: legacyNativeTimingFormat, records: legacy }]);
-  assert.equal(old.invalid, 0);
-  assert.equal(old.cohorts[0].ineligibleRows, 50);
-  assert.equal(old.sufficient, false);
-  assert.ok(rejection({ ...legacy[0], marks: { ...legacy[0].marks, request: 1720 } }, legacyNativeTimingFormat), 'v2 has no request mark');
-  assert.throws(() => aggregateNativeVoice([{ format: 'alpha-native-voice-timing-v1', records: [] }]), /export/);
+  assert.throws(() => aggregateNativeVoice([{ format: 'alpha-native-voice-timing-v2', records: [] }]), /export/);
 });
 
 test('an ineligible row on a release device fails the document instead of hiding its cohort failures', () => {

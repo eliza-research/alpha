@@ -31,8 +31,3 @@ export function localEmbeddingEnvironment(env=process.env){
  }
  return explicit;
 }
-// Existing profiles retain their reviewed routing; the launchers never rewrite them, so an omitted
-// route is reported for explicit migration instead of being added silently.
-export function reportMissingEmbeddingRoute(config: {serviceRouting?: {embeddings?: unknown}} | null | undefined, configPath: string){
- if(config?.serviceRouting&&!config.serviceRouting.embeddings)console.error(`${configPath}: serviceRouting omits embeddings, so TEXT_EMBEDDING stays disabled and the host repeats "needs attention" notices in chat. Add "embeddings": ${JSON.stringify(LOCAL_EMBEDDING_ROUTE)} to serviceRouting or start a fresh profile.`);
-}

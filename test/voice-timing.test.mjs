@@ -14,7 +14,7 @@ timing.setVoiceTimingClock(() => now);
 
 function turn({cold = false, route = 'on-device', recognition = 800, review = 3000, token = 600, reply = 1500, audio = 2100, speak = true} = {}) {
   now = 10_000;
-  const id = timing.beginVoiceTurn({route, cold});
+  const id = timing.beginVoiceTurn({route, cold, entry: 'conversation'});
   now += recognition; assert.equal(timing.markVoiceTiming('transcript-ready'), true);
   now += review; assert.equal(timing.markVoiceTiming('send'), true);
   now += token; assert.equal(timing.markVoiceTiming('first-token'), true);
@@ -29,7 +29,7 @@ test('a turn records ordered offsets once and never stores text or account ident
   const [row] = timing.voiceTimingRecords();
   assert.equal(row.id, id);
   assert.deepEqual(row.marks, {'recording-end': 0, 'transcript-ready': 800, send: 3800, 'first-token': 4400, 'final-reply': 5300, 'first-audio': 5900});
-  assert.deepEqual(Object.keys(row).sort(), ['cold', 'id', 'marks', 'recordedAt', 'route', 'version']);
+  assert.deepEqual(Object.keys(row).sort(), ['cold', 'entry', 'id', 'marks', 'recordedAt', 'route', 'version']);
   // The turn ended at first audio: later marks are ignored.
   assert.equal(timing.markVoiceTiming('first-token'), false);
   const exported = JSON.parse(timing.exportVoiceTiming());
@@ -39,13 +39,13 @@ test('a turn records ordered offsets once and never stores text or account ident
 
 test('out-of-order and premature marks cannot shorten a phase', () => {
   timing.clearVoiceTiming();
-  now = 0; timing.beginVoiceTurn({route: 'browser', cold: true});
+  now = 0; timing.beginVoiceTurn({route: 'browser', cold: true, entry: 'conversation'});
   assert.equal(timing.markVoiceTiming('send'), false, 'send needs a ready transcript');
   assert.equal(timing.markVoiceTiming('first-token'), false, 'reply marks need send');
   now = 500; assert.equal(timing.markVoiceTiming('transcript-ready'), true);
   assert.equal(timing.markVoiceTiming('transcript-ready'), false, 'first mark wins');
   assert.equal(timing.markVoiceTiming('send', 'another-turn'), false);
-  assert.equal(timing.beginVoiceTurn({route: 'unknown-route', cold: false}), undefined);
+  assert.equal(timing.beginVoiceTurn({route: 'unknown-route', cold: false, entry: 'conversation'}), undefined);
   // The unknown route abandoned the earlier turn without recording a new one.
   const rows = timing.voiceTimingRecords();
   assert.equal(rows.length, 1);
@@ -57,7 +57,7 @@ test('legacy renderer samples remain diagnostic and cannot qualify native audio 
   for (let i = 0; i < 19; i++) turn({recognition: 700 + i, audio: 2000 + i});
   for (let i = 0; i < 5; i++) turn({cold: true, recognition: 4000 + i});
   turn({speak: false});
-  now = 0; timing.beginVoiceTurn({route: 'on-device', cold: false}); timing.abandonVoiceTurn();
+  now = 0; timing.beginVoiceTurn({route: 'on-device', cold: false, entry: 'conversation'}); timing.abandonVoiceTurn();
   const exported = JSON.parse(timing.exportVoiceTiming());
   const summary = aggregate([exported, exported]);
   assert.equal(summary.records, 26, 'duplicates across exports are counted once');
