@@ -19,24 +19,29 @@ export const QUALIFIED_HOST = 'android/embedding-host/qualified-host.json';
 export const BUILD_TOOLCHAIN = 'android/embedding-host/build-toolchain.json';
 export const WORKSPACE = '.eliza/embedding-host';
 
-type LibraryManifest = Pick<EmbeddingManifest, 'abi' | 'libraries'>;
+type LibraryManifest = Pick<EmbeddingManifest, 'abi' | 'libraries' | 'additionalAbis'>;
 type Toolchain = {ndk:string;cmake:string;engineRepository:string;remapBuildPath:boolean};
 const readJson = <T>(file:string):T => JSON.parse(fs.readFileSync(file,'utf8'));
 
 /** Report staged library integrity; the generated producer receipt supplies current output hashes. */
 export function stagedLibraries(root:string,manifest:LibraryManifest=readJson(path.join(root,QUALIFIED_HOST))) {
-  return manifest.libraries.map(row=>{
-    const file=path.join(root,'android/app/src/main/jniLibs',manifest.abi,row.name);
+  return embeddingAbiLibraries(manifest).flatMap(abi=>abi.libraries.map(row=>{
+    const file=path.join(root,'android/app/src/main/jniLibs',abi.abi,row.name);
     const state=!fs.existsSync(file)?'missing':!fs.lstatSync(file).isSymbolicLink()&&fs.statSync(file).size===row.bytes&&fileDigest(file)===row.sha256?'staged':'different';
-    return {name:row.name,state,file};
-  });
+    return {abi:abi.abi,name:row.name,state,file};
+  }));
 }
 export function embeddingHostState(_manifest:LibraryManifest,_toolchain:Toolchain,staged:ReturnType<typeof stagedLibraries>) {
   return {ready:staged.every(row=>row.state==='staged'),suppliedBy:'script' as const,reason:null};
 }
-export class Stop extends Error {constructor(readonly code:number,message:string){super(message);}}
+export class Stop extends Error {readonly code:number;constructor(code:number,message:string){super(message);this.code=code;}}
 function resolveSdk() {
   return nativeAndroidSdk();
+}
+export function nativeModelEnvironment(platform:NodeJS.Platform=process.platform,arch:string=process.arch) {
+  // NumPy's x86-v4 vector log1p changes the fp32 Delibes warp constants by 1.53e-5.
+  // The verified x86-v2 path reproduces the pinned GGUF without weakening any check.
+  return platform==='linux'&&arch==='x64'?{NPY_DISABLE_CPU_FEATURES:'X86_V4 AVX512_ICL AVX512_SPR'}:{};
 }
 function ndkTools(ndk:string) {
   const prebuilt=path.join(ndk,'toolchains/llvm/prebuilt'),host=fs.readdirSync(prebuilt).find(name=>fs.existsSync(path.join(prebuilt,name,'bin/llvm-strip')));
@@ -110,7 +115,7 @@ export async function preparePortableNativeInputs(root:string) {
   const remap=['#',`+-ffile-prefix-map=${source}=/alpha-native-source`,`+-ffile-prefix-map=${cache}=/alpha-native-build`,`+-ffile-prefix-map=${cacheRoot}=/alpha-native-cache`,`+-ffile-prefix-map=${sdk}=/android-sdk`].join(' ');
   const {preparedSourceEnv}=await import('./local-agent-source.ts');
   const nativeEnv=preparedSourceEnv(process.env);
-  const env:NodeJS.ProcessEnv={...nativeEnv,PATH:`${path.join(venv,'bin')}${path.delimiter}${nativeEnv.PATH}`,ANDROID_HOME:sdk,ANDROID_SDK_ROOT:sdk,ELIZA_NDK_VERSION:toolchain.ndk,CMAKE_BUILD_PARALLEL_LEVEL:'2',PYTHONPATH:path.join(fork,'gguf-py'),CCC_OVERRIDE_OPTIONS:remap};
+  const env:NodeJS.ProcessEnv={...nativeEnv,...nativeModelEnvironment(),PATH:`${path.join(venv,'bin')}${path.delimiter}${nativeEnv.PATH}`,ANDROID_HOME:sdk,ANDROID_SDK_ROOT:sdk,ELIZA_NDK_VERSION:toolchain.ndk,CMAKE_BUILD_PARALLEL_LEVEL:'2',PYTHONPATH:path.join(fork,'gguf-py'),CCC_OVERRIDE_OPTIONS:remap};
     const {assertAndroidVoiceLibrary}=createRequire(import.meta.url)('../vendor/eliza/packages/app/scripts/build-helpers/verify-fused-symbols.ts');
     // The upstream builder verifies each download, converted GGUF and native ABI/symbol contract.
     // It runs in an isolated source checkout; it never writes into vendor/eliza.
