@@ -248,8 +248,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const savedMatches=view.mode!=='origin'&&view.query.trim()?view.saved.filter(item=>item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())):[];
     let isResults=(view.mode==='results'||view.mode==='origin')&&!view.emptyQuery&&(view.hasResults||savedMatches.length>0);
     const routineStatus=['Finding location…','New route ready.','Place saved on this device.','Place removed from saved.','Saved place renamed.','Name updated. Tap Save to keep this place.'].includes(statusText);
-    const emptySearch=view.noResults&&!view.emptyQuery&&!savedMatches.length&&status.map!=='error';
     const snapshot=mapsController?.snapshot();
+    const rateLimited=cloudFailure.error==='rate-limited'||[snapshot?.search.error,snapshot?.originSearch.error,snapshot?.selection.error,snapshot?.route.error].some(error=>error?.code==='rate-limited');
+    const emptySearch=!rateLimited&&view.noResults&&!view.emptyQuery&&!savedMatches.length&&status.map!=='error';
     const position=snapshot?.position.phase==='ready'?snapshot.position.value?.coordinate:undefined;
     const locationReady=!!plane||(startupLocationSettled&&snapshot?.position.phase!=='loading');
     const places=new Map((view.mode==='origin'?snapshot?.originSearch.value:snapshot?.search.value)?.map(place=>[`place:${place.providerId}:${place.id}`,place.coordinate]));
@@ -298,11 +299,10 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         }
         plane?.update(view.map.selected??(view.mode==='base'?position:undefined),view.map.route,{...view.map.overlay,pins:visiblePins});
       },
-      native: true, nativeStatusVisible:(status.visible&&!routineStatus)||emptySearch, nativeStatus: emptySearch?'No places':statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
-      nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy, nativeLocation: () => screen.locate(),
-      nativeLocationState:status.location,nativeMapState:status.map,nativeMapStatus:status.mapText,
-      nativeLocationLabel:status.locationLabel,nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,
-      nativeLocationHelp:status.locationHelp,
+      native: true, nativeStatusVisible:!rateLimited&&((status.visible&&!routineStatus)||emptySearch), nativeStatus: emptySearch?'No places':statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
+      nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy,
+      nativeLocationState:status.location,nativeMapState:status.map,
+      nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,
       nativeLocationSettings:()=>{if(!active())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive())screen.notify('Location settings could not be opened. Check device or browser permissions, or search for a place.');});},
       nativeManualLocation:()=>{if(!active())return;screen.manualLocation();queueMicrotask(()=>{if(active())document.querySelector<HTMLInputElement>('input[aria-label="Search places"]')?.focus();});},
       nativeMapRetry:status.mapRetry,

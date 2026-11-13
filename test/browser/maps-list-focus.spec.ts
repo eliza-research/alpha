@@ -26,7 +26,7 @@ async function setup(page:Page){
   MapsController.prototype.search=function(...args:any[]){(window as any).mapFocus.controller=this;return original.apply(this,args as any);};
   const place=(id:string,name:string)=>({providerId:'focus-fixture',id,name,coordinate:{latitude:43.7+Number(id)*.001,longitude:7.425},attribution:'Fixture',fetchedAt:Date.now()});
   const f=(window as any).mapFocus={items:[place('1','One'),place('2','Two')],place,searches:[]};
-  configureMapsProvider({status:'configured',providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',revision:'fixture1',capabilities:{map:false,search:true,placeDetails:true,modes:['drive','walk'],traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}}},{providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',search:async(query:string)=>{f.searches.push(query);return f.pending?await f.pending:f.items;},detail:async(id:string)=>f.items.find((item:any)=>item.id===id),route:async(...args:any[])=>{if(f.route)return f.route(...args);throw Error('No route requested');}} as any);
+  configureMapsProvider({status:'configured',providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',revision:'fixture1',capabilities:{map:false,search:true,placeDetails:true,modes:['drive','walk'],traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}}},{providerId:'focus-fixture',connectionId:'conn_focus_fixture_123456',search:async(query:string)=>{f.searches.push(query);if(f.error)throw f.error;return f.pending?await f.pending:f.items;},detail:async(id:string)=>f.items.find((item:any)=>item.id===id),route:async(...args:any[])=>{if(f.route)return f.route(...args);throw Error('No route requested');}} as any);
  });
  await page.getByRole('button',{name:'Maps',exact:true}).click();
 }
@@ -167,4 +167,20 @@ test('directions start from the allowed current location and can swap endpoints'
 
  await expect(page.getByRole('button',{name:/voice guidance/i})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Ask Alpha',exact:true})).toHaveCount(0);
+});
+
+
+test('a Maps rate limit keeps the search surface clear and retains the failure for diagnostics',async({page})=>{
+ await setup(page);
+ await page.evaluate(async()=>{
+  const {MapsFailure}=await import('/src/maps/contracts.ts');
+  (window as any).mapFocus.error=new MapsFailure('rate-limited','Maps request limit reached. Try again in about 44 seconds.');
+ });
+ const query=page.getByRole('textbox',{name:'Search places',exact:true});
+ await query.fill('Cafe');
+ await expect.poll(()=>page.evaluate(()=>(window as any).mapFocus.controller?.snapshot().search.error?.code)).toBe('rate-limited');
+ await expect(page.locator('[data-alpha-maps-status]')).toHaveCount(0);
+ await expect(query).toBeVisible();
+ await expect(query).toHaveValue('Cafe');
+ await expect(page.getByText('Location added',{exact:true})).toHaveCount(0);
 });
