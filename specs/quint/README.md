@@ -42,7 +42,8 @@ Manifest invariant names must resolve to top-level values or imported instances.
 when its corresponding command is selected. `bounds.maxVerifyDepth` sets the
 default symbolic depth for that model; explicit `--steps` overrides it.
 `verifyBackend: "tlc-bounded"` selects exhaustive safety checking through that
-transition bound. BrowserSession uses it with its unchanged six-transition default.
+transition bound. BrowserSession and PhotosWindow use it with their unchanged
+six-transition default.
 The checker appends a depth counter to the translated model, checks every state
 at depths zero through the bound, and records the scope, depth and translation
 hashes. It does not establish safety beyond that bound.

@@ -1801,6 +1801,7 @@
     "init": "init",
     "step": "step",
     "invariant": "safety",
+    "verifyBackend": "tlc-bounded",
     "tests": [
       "hiddenFirstAccessCannotReadTest",
       "hiddenPageCannotPublishTest",
