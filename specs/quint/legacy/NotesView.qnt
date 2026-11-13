@@ -202,7 +202,7 @@ module NotesView {
   temporal CheckedReviewSettles = Fairness implies ReviewSettles
   temporal CheckedHiddenTemporal = Fairness implies (CrashKeepsAudio and RenameKeepsMembership and AgentMoveOnlyReviewed
     and TranscriptKeepsUpHidden and AsrSettles and ReviewSettles)
-  temporal CheckedTemporal = Fairness implies (CrashKeepsAudio and RenameKeepsMembership and AgentMoveOnlyReviewed
+  temporal CheckedTemporal = Fairness implies (always(history.CrashKeepsAudio and history.RenameKeepsMembership and history.AgentMoveOnlyReviewed)
     and TranscriptKeepsUp and AsrSettles and ReviewSettles)
   pure val testNames = Map("f1" -> "a", "f2" -> "b")
   pure val testFolders = Map("n1" -> "f1", "n2" -> None)

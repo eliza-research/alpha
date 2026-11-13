@@ -1,24 +1,26 @@
-name: Temporal candidate qualification
-run-name: Full temporal candidate qualification
+name: Temporal grouped scheduling qualification
+run-name: Full grouped temporal scheduling qualification
 # Scratch-branch qualification only. The default branch's full Promotion is unchanged.
 on:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: temporal-candidate-${{ github.ref }}
+  group: temporal-grouped-candidate-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   temporal:
-    name: Full temporal candidate (${{ matrix.model }})
+    name: Full grouped temporal (${{ matrix.model }}, ${{ matrix.liveness }})
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     strategy:
       fail-fast: false
       matrix:
         model: [PhotosLibrary, NotesView]
+        liveness: [default, final]
     env:
       ALPHA_TEMPORAL_MODEL: ${{ matrix.model }}
+      ALPHA_TLC_LIVENESS: ${{ matrix.liveness }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -35,21 +37,25 @@ jobs:
       - name: Admit the reviewed candidate bytes
         run: |
           sha256sum --check <<'PINS'
-          8b6db50b1d1c69a8e0ce0e89c9ea595b635141516ae2f240e9a669400c7643d2  specs/quint/legacy/PhotosLibrary.qnt
-          777065d4bd070352db17ae76625a094da0db6f18f2695cf703ef4a9e6d75ba59  specs/quint/legacy/NotesView.qnt
+          89ee953c452f001f426835d31a8a83747caa171766121d10c4e4bb5d28aace0b  specs/quint/legacy/PhotosLibrary.qnt
+          d0a19bf734af350197e9044526f28c83b16bb9b950338e0dde465b0d2041b7b9  specs/quint/legacy/NotesView.qnt
+          c9e873fe542ff0e690d66c6bd3029b7c973d8ae1c6dec50c3af31d39c29add6c  scripts/check-quint.ts
+          8f03df66168e105c14be03e8d507629a2e79c53d598237b8b2d006a0d00ebc2e  scripts/quint-lib.ts
+          047cd34e863aebbe37ef577f90261d71b5dd7a10b601c6af61a1150173f7f6cc  test/quint-checker.test.mjs
           PINS
       - name: Original scenarios and sampled checks at registered defaults
-        run: bun scripts/check-quint.ts check --models="$ALPHA_TEMPORAL_MODEL" --out="test-results/quint/canonical-$ALPHA_TEMPORAL_MODEL.json"
+        run: bun scripts/check-quint.ts check --models="$ALPHA_TEMPORAL_MODEL" --out="test-results/quint/canonical-$ALPHA_TEMPORAL_MODEL-$ALPHA_TLC_LIVENESS.json"
       - name: Full fairness-guarded temporal qualification
         run: |
           alpha_temporal_watch_dir=$(mktemp -d "$RUNNER_TEMP/alpha-temporal-watch.XXXXXX")
-          python3 - "$ALPHA_TEMPORAL_MODEL" "$alpha_temporal_watch_dir" <<'PYWATCH' &
+          python3 - "$ALPHA_TEMPORAL_MODEL" "$ALPHA_TLC_LIVENESS" "$alpha_temporal_watch_dir" <<'PYWATCH' &
           from pathlib import Path
           import hashlib,json,sys,tempfile,time
-          model,control=sys.argv[1],Path(sys.argv[2])
+          model,mode,control=sys.argv[1],sys.argv[2],Path(sys.argv[3])
           assert model in ['PhotosLibrary','NotesView']
+          assert mode in ['default','final']
           started=time.time()
-          destination=Path('test-results/quint')/f'translation-{model}'
+          destination=Path('test-results/quint')/f'translation-{model}-{mode}'
           while not (control/'stop').exists():
             for source in Path(tempfile.gettempdir()).glob(f'quint-tlc-*/{model}.tla'):
               config=source.with_suffix('.cfg')
@@ -60,7 +66,7 @@ jobs:
               destination.mkdir(parents=True,exist_ok=True)
               (destination/f'{model}.tla').write_bytes(tla)
               (destination/f'{model}.cfg').write_bytes(cfg)
-              (destination/'capture.json').write_text(json.dumps({'actualSource':str(source),
+              (destination/'capture.json').write_text(json.dumps({'actualSource':str(source),'mode':mode,
                 'translatedSha256':hashlib.sha256(tla).hexdigest(),
                 'configurationSha256':hashlib.sha256(cfg).hexdigest(),
                 'capturedAfterOwnedLaunch':True},indent=2)+'\n')
@@ -75,7 +81,7 @@ jobs:
             return "$alpha_temporal_cli_status"
           }
           trap alpha_temporal_finish EXIT
-          bun scripts/check-quint.ts temporal --models="$ALPHA_TEMPORAL_MODEL" --out="test-results/quint/temporal-$ALPHA_TEMPORAL_MODEL.json"
+          bun scripts/check-quint.ts temporal --models="$ALPHA_TEMPORAL_MODEL" --tlc-liveness="$ALPHA_TLC_LIVENESS" --out="test-results/quint/temporal-$ALPHA_TEMPORAL_MODEL-$ALPHA_TLC_LIVENESS.json"
       - name: Record proof and tool custody
         if: always()
         run: |
@@ -83,9 +89,11 @@ jobs:
           from pathlib import Path
           import hashlib,json,os,re,subprocess
           model=os.environ['ALPHA_TEMPORAL_MODEL']
+          mode=os.environ['ALPHA_TLC_LIVENESS']
+          assert mode in ['default','final']
           assert model in ['PhotosLibrary','NotesView']
           out=Path('test-results/quint');out.mkdir(parents=True,exist_ok=True)
-          proof=out/f'temporal-{model}.json'
+          proof=out/f'temporal-{model}-{mode}.json'
           receipt=json.loads(proof.read_text()) if proof.exists() else {}
           jar=Path(os.environ.get('QUINT_HOME',str(Path.home()/'.quint')))/'apalache-dist-0.62.4/apalache/lib/apalache.jar'
           jar_hash=hashlib.sha256(jar.read_bytes()).hexdigest() if jar.exists() else None
@@ -96,34 +104,51 @@ jobs:
           final_stats=[int(value.replace(',','')) for value in stats[-1]] if stats else None
           branches=re.findall(r'Implied-temporal checking--satisfiability problem has ([0-9]+) branches',output)
           config=json.loads(Path('specs/quint/tlc.json').read_text())
-          translation=out/f'translation-{model}'
+          translation=out/f'translation-{model}-{mode}'
           captured=json.loads((translation/'capture.json').read_text()) if (translation/'capture.json').exists() else None
           tla=(translation/f'{model}.tla').read_bytes() if (translation/f'{model}.tla').exists() else b''
           cfg=(translation/f'{model}.cfg').read_bytes() if (translation/f'{model}.cfg').exists() else b''
           custody={'head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
-            'model':model,'modelSha256':hashlib.sha256(Path(f'specs/quint/legacy/{model}.qnt').read_bytes()).hexdigest(),
+            'model':model,'mode':mode,'modelSha256':hashlib.sha256(Path(f'specs/quint/legacy/{model}.qnt').read_bytes()).hexdigest(),
             'checkerSha256':hashlib.sha256(Path('scripts/check-quint.ts').read_bytes()).hexdigest(),
+            'quintLibrarySha256':hashlib.sha256(Path('scripts/quint-lib.ts').read_bytes()).hexdigest(),
+            'fullTemporalProof':result.get('fullTemporalProof'),
             'jarSha256':jar_hash,'jarPinMatches':jar_hash=='e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262',
             'tlcConfig':config,'temporalBranches':branches,'finalGeneratedDistinctQueue':final_stats,
             'actualTranslationCapture':captured,
-            'proofPassed':receipt.get('passed',False),'finalInputErrors':receipt.get('finalInputErrors'),
+            'proofPassed':receipt.get('passed',False),'tlcLiveness':receipt.get('tlcLiveness'),'finalInputErrors':receipt.get('finalInputErrors'),
             'scope':'Full registered temporal relation and fairness; no bounded fallback, state filter, domain reduction or property omission.'}
-          (out/f'custody-{model}.json').write_text(json.dumps(custody,indent=2)+'\n')
+          (out/f'custody-{model}-{mode}.json').write_text(json.dumps(custody,indent=2)+'\n')
           if receipt.get('passed'):
             assert result.get('model')==model and result.get('phase')=='tlc-temporal' and result.get('backend')=='tlc'
             assert '--temporal=CheckedTemporal' in result['argv'] and '--backend=tlc' in result['argv']
             assert config=={'workers':'2','maxHeap':'-Xmx2G','stackSize':'-Xss16m'}
             assert receipt['timeoutSeconds']==1800 and not receipt['finalInputErrors']
+            assert receipt.get('tlcLiveness')==mode
             assert custody['jarPinMatches'] and final_stats and final_stats[2]==0
             assert captured and cfg==b'INIT q_init\nNEXT q_step\nPROPERTY q_temporalProps\n'
             assert hashlib.sha256(tla).hexdigest()==captured['translatedSha256']
             assert hashlib.sha256(cfg).hexdigest()==captured['configurationSha256']
             assert b'q_bounded_depth' not in tla and b'CONSTRAINT' not in cfg
-            assert branches and int(branches[-1])=={'PhotosLibrary':4,'NotesView':6}[model]
+            assert branches and int(branches[-1])=={'PhotosLibrary':2,'NotesView':4}[model]
+            assert captured['mode']==mode
+            if mode=='final':
+              full=result.get('fullTemporalProof')
+              assert full and full['scope']=='full-temporal-state-graph' and full['livenessScheduling']=='final'
+              assert full['translatedSourceSha256']==captured['translatedSha256']
+              assert full['configurationSha256']==captured['configurationSha256']
+              assert full['jarSha256']==jar_hash and full['javaExecutable']
+              java_argv=full['javaArgv']
+              assert '-lncheck' in java_argv and java_argv[java_argv.index('-lncheck')+1]=='final'
+              assert '-Xmx2G' in java_argv and '-Xss16m' in java_argv
+              assert '-workers' in java_argv and java_argv[java_argv.index('-workers')+1]=='2'
+              assert 'tlc2.TLC' in java_argv
+            else:
+              assert not result.get('fullTemporalProof')
             assert 'Model checking completed. No error has been found.' in output
           PY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: temporal-candidate-${{ matrix.model }}
+          name: temporal-grouped-candidate-${{ matrix.model }}-${{ matrix.liveness }}
           path: test-results/quint/

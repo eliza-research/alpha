@@ -8,7 +8,7 @@ import { createServer } from 'node:net';
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
+import { boundedTlcSpec, detectedCounterexample, fullTemporalTlcSpec, fullTemporalTlcViolation, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
 import { scaledTimeout } from '../specs/quint/refinement/timeouts.mjs';
 
 test('all registered scenarios need an actual successful execution record', () => {
@@ -99,6 +99,111 @@ test('bounded TLC preserves original declarations and refuses invalid bounds or 
   for (const invalid of [source.replace('====\n', ''), source + 'untranslated content', source + source]) {
     assert.throws(() => boundedTlcSpec(invalid, 6), /complete translated TLA module/);
   }
+});
+
+test('full temporal TLC preserves the complete translation and admits only real liveness counterexamples', () => {
+  const source = "---- MODULE Fixture ----\nVARIABLE n\nq_init == n = 7\nq_step == n' = n\nq_temporalProps == <> (n = 8)\n====\n";
+  const spec = fullTemporalTlcSpec(source);
+  assert.equal(spec.source, source);
+  assert.equal(spec.configuration, 'INIT q_init\nNEXT q_step\nPROPERTY q_temporalProps\n');
+  assert.deepEqual(spec.evidence, {scope: 'full-temporal-state-graph', livenessScheduling: 'final',
+    translatedSourceSha256: sha256(source), configurationSha256: sha256(spec.configuration)});
+  for (const name of ['q_init', 'q_step', 'q_temporalProps']) {
+    assert.throws(() => fullTemporalTlcSpec(source.replace(name, 'missing')), /Missing translated/);
+  }
+  for (const invalid of [source.replace('====\n', ''), source + 'trailing text', source + source]) {
+    assert.throws(() => fullTemporalTlcSpec(invalid), /complete translated TLA module/);
+  }
+  const output = 'Error: Temporal property q_temporalProps was violated.\nError: The following behavior constitutes a counter-example:\n';
+  const genuine = {status: 13, signal: null};
+  assert.equal(fullTemporalTlcViolation(genuine, output), true);
+  for (const result of [{...genuine, status: 12}, {...genuine, status: 77}, {...genuine, status: 0},
+    {...genuine, signal: 'SIGTERM'}, {...genuine, error: Error('deadline')}]) {
+    assert.equal(fullTemporalTlcViolation(result, output), false);
+  }
+  assert.equal(fullTemporalTlcViolation(genuine, 'Error: Invariant q_inv is violated.\n'), false);
+  assert.equal(fullTemporalTlcViolation(genuine, 'Error: Temporal property q_temporalProps was violated.\n'), false);
+});
+
+test('TLC liveness scheduling is restricted to temporal full-TLC checking', () => {
+  for (const args of [['temporal', '--tlc-liveness=unknown'], ['verify', '--tlc-liveness=final'],
+    ['compare', '--tlc-liveness=final'], ['typecheck', '--tlc-liveness=default'],
+    ['temporal', '--tlc-liveness=final', '--backend=apalache'], ['temporal', '--tlc-liveness=final', '--backend=tlc-bounded']]) {
+    const result = spawnSync(process.execPath, ['scripts/check-quint.ts', ...args], {cwd: repositoryRoot, encoding: 'utf8', timeout: 30000});
+    assert.ifError(result.error);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /TLC liveness scheduling must be|requires temporal checking with the full TLC backend/);
+  }
+});
+
+test('full temporal final scheduling CLI checks beyond nominal depth and refuses tool failures', {timeout: scaledTimeout(600000)}, () => {
+  const root = mkdtempSync(join(tmpdir(), 'alpha-quint-temporal-owner-'));
+  const write = (path, contents) => {const target = join(root, path);mkdirSync(dirname(target), {recursive: true});writeFileSync(target, contents);};
+  const source = `module TemporalFixture {
+    var n: int
+    action init = n' = 0
+    action selectedInit = n' = 7
+    action progress = all { n < 7, n' = n + 1 }
+    action step = any { progress, n' = n }
+    val safety = true
+    temporal Fairness = progress.weakFair(n)
+    temporal CheckedSettles = Fairness implies eventually(n == 7)
+    temporal CheckedImpossible = Fairness implies eventually(n == 8)
+    run exampleTest = init.expect(n == 0)
+  }\n`;
+  const model = {module: 'TemporalFixture', path: 'specs/quint/application/TemporalFixture.qnt',
+    init: 'init', step: 'step', invariant: 'safety', tests: ['exampleTest'], temporal: ['CheckedSettles']};
+  const config = readJson(join(repositoryRoot, 'specs/quint/tlc.json'));
+  try {
+    mkdirSync(join(root, 'scripts'));
+    for (const name of ['check-quint.ts', 'quint-lib.ts']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    symlinkSync(join(repositoryRoot, 'node_modules'), join(root, 'node_modules'), 'dir');
+    write('upstream.lock.json', JSON.stringify({commit: 'fixture'}));write('bun.lock', '{}');write(model.path, source);
+    const manifests = selected => {for (const family of ['application', 'services', 'native', 'legacy'])
+      write(`specs/quint/${family}/manifest.json`, JSON.stringify(family === 'application' ? [selected] : []));};
+    let endpointPort = 8941;
+    const run = (mode, expected) => {
+      const child = spawnSync(process.execPath, ['scripts/check-quint.ts', 'temporal', '--models=TemporalFixture',
+        `--tlc-liveness=${mode}`, `--server-endpoint=127.0.0.1:${endpointPort++}`, '--out=proof.json'], {cwd: root, encoding: 'utf8', timeout: scaledTimeout(150000)});
+      assert.ifError(child.error);
+      assert.equal(child.status, expected === 'pass' ? 0 : 1, child.stdout + child.stderr);
+      const proof = readJson(join(root, 'proof.json')), phase = proof.results[0];
+      const selectedInit = phase.argv.find(arg => arg.startsWith('--init=')).slice('--init='.length);
+      const evidenceDirectory = join(repositoryRoot, 'test-results/quint/full-temporal-owner');
+      mkdirSync(evidenceDirectory, {recursive: true});
+      writeFileSync(join(evidenceDirectory, `${mode}-${expected}-${selectedInit}.json`), JSON.stringify(proof, null, 2) + '\n');
+      assert.equal(proof.tlcLiveness, mode);assert.equal(proof.timeoutSeconds, 1800);
+      assert.deepEqual(proof.finalInputErrors, []);assert.equal(phase.backend, 'tlc');
+      assert.equal(phase.boundedProof, undefined);assert.ok(phase.argv.includes('--max-steps=6'));
+      assert.equal(phase.passed, expected === 'pass');
+      if (mode === 'final') {
+        const evidence = phase.fullTemporalProof;
+        assert.equal(evidence.scope, 'full-temporal-state-graph');assert.equal(evidence.livenessScheduling, 'final');
+        assert.equal(evidence.configurationSha256, sha256('INIT q_init\nNEXT q_step\nPROPERTY q_temporalProps\n'));
+        assert.equal(evidence.jarSha256, 'e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262');
+        assert.deepEqual(evidence.javaArgv.slice(0, 2), [expected === 'tool-error' ? '-XmxNOTAHEAP' : config.maxHeap, config.stackSize]);
+        assert.deepEqual(evidence.javaArgv.slice(evidence.javaArgv.indexOf('-lncheck'), evidence.javaArgv.indexOf('-lncheck') + 2), ['-lncheck', 'final']);
+        assert.equal(evidence.javaArgv[evidence.javaArgv.indexOf('-workers') + 1], String(config.workers));
+      } else assert.equal(phase.fullTemporalProof, undefined, 'Default scheduling uses the original Quint routine');
+      if (expected === 'pass' && mode === 'final') assert.match(phase.output, /0 states left on queue/);
+      if (expected === 'violation') {
+        assert.equal(phase.exitCode, 13);assert.equal(detectedCounterexample(phase.output), true);
+        assert.match(phase.output, /n = 7/);assert.match(phase.output, /Stuttering|Back to state/);
+      }
+      if (expected === 'tool-error') {assert.equal(detectedCounterexample(phase.output), false);assert.match(phase.output, /Invalid maximum heap size/);}
+      return phase;
+    };
+    manifests(model);write('specs/quint/tlc.json', JSON.stringify(config));
+    run('default', 'pass');
+    const positive = run('final', 'pass');
+    assert.match(positive.output, /8 distinct states found, 0 states left on queue/);
+    assert.match(positive.output, /complete state graph search is 8/);
+    manifests({...model, temporal: ['CheckedImpossible']});run('final', 'violation');
+    manifests({...model, init: 'selectedInit'});
+    assert.ok(run('final', 'pass').argv.includes('--init=selectedInit'));
+    manifests(model);write('specs/quint/tlc.json', JSON.stringify({...config, maxHeap: '-XmxNOTAHEAP'}));
+    run('final', 'tool-error');
+  } finally {rmSync(root, {recursive: true, force: true});}
 });
 
 test('bounded TLC CLI includes the boundary, retains selected init and rejects tool errors', {timeout: scaledTimeout(780000)}, async () => {

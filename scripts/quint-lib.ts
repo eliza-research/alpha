@@ -241,18 +241,48 @@ export interface BoundedTlcEvidence {
   configurationSha256: string;
 }
 
-/** Retain every original declaration and check all states at depths 0 through depth. */
-export function boundedTlcSpec(source: string, depth: number) {
-  if (!Number.isSafeInteger(depth) || depth < 1) throw Error('Bounded TLC depth must be a positive integer');
-  if (/\bq_bounded_(?:depth|init|next)\b/.test(source)) throw Error('Bounded TLC namespace collision');
+export interface FullTemporalTlcEvidence {
+  scope: 'full-temporal-state-graph';
+  livenessScheduling: 'final';
+  translatedSourceSha256: string;
+  configurationSha256: string;
+  jarSha256: string;
+  javaExecutable: string;
+  javaArgv: string[];
+}
+
+function completeTlaModule(source: string, aliases: readonly string[]) {
   const endings = [...source.matchAll(/^={4,}[ \t]*\r?$/gm)];
   if (endings.length !== 1 || source.slice(endings[0].index! + endings[0][0].length).trim()) {
     throw Error('Expected one complete translated TLA module');
   }
-  for (const name of ['q_init', 'q_step', 'q_inv']) {
+  for (const name of aliases) {
     if (!new RegExp(`^${name}[ \\t]*==`, 'm').test(source)) throw Error(`Missing translated ${name}`);
   }
-  const index = endings[0].index!;
+  return endings[0].index!;
+}
+
+/** Full temporal checking keeps the translated relation and properties byte for byte. */
+export function fullTemporalTlcSpec(source: string) {
+  completeTlaModule(source, ['q_init', 'q_step', 'q_temporalProps']);
+  const configuration = 'INIT q_init\nNEXT q_step\nPROPERTY q_temporalProps\n';
+  return {source, configuration, evidence: {scope: 'full-temporal-state-graph' as const,
+    livenessScheduling: 'final' as const, translatedSourceSha256: sha256(source),
+    configurationSha256: sha256(configuration)}};
+}
+
+/** A tool error, deadlock or invariant failure is not a temporal counterexample. */
+export function fullTemporalTlcViolation(result: CheckerResult, output: string) {
+  return result.status === 13 && !result.error && !result.signal
+    && /^Error: Temporal (?:property q_temporalProps was|properties were) violated\.$/m.test(output)
+    && /^Error: The following behavior constitutes a counter-example:$/m.test(output);
+}
+
+/** Retain every original declaration and check all states at depths 0 through depth. */
+export function boundedTlcSpec(source: string, depth: number) {
+  if (!Number.isSafeInteger(depth) || depth < 1) throw Error('Bounded TLC depth must be a positive integer');
+  if (/\bq_bounded_(?:depth|init|next)\b/.test(source)) throw Error('Bounded TLC namespace collision');
+  const index = completeTlaModule(source, ['q_init', 'q_step', 'q_inv']);
   const declarations = `\nVARIABLE q_bounded_depth\n\nq_bounded_init == q_init /\\ q_bounded_depth = 0\n\nq_bounded_next == /\\ q_bounded_depth < ${depth}\n                  /\\ q_step\n                  /\\ q_bounded_depth' = q_bounded_depth + 1\n\n`;
   const instrumented = source.slice(0, index) + declarations + source.slice(index);
   const configuration = 'INIT q_bounded_init\nNEXT q_bounded_next\nINVARIANT q_inv\n';

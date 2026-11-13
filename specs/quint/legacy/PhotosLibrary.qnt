@@ -202,7 +202,7 @@ module PhotosLibrary {
   temporal CheckedFilterIsReadOnly = Fairness implies FilterIsReadOnly
   temporal CheckedShareChangesNothing = Fairness implies ShareChangesNothing
   temporal CheckedReviewSettles = Fairness implies ReviewSettles
-  temporal CheckedTemporal = Fairness implies (NoActionOnStaleRev and FilterIsReadOnly and ShareChangesNothing and ReviewSettles)
+  temporal CheckedTemporal = Fairness implies (always(history.NoActionOnStaleRev and history.FilterIsReadOnly and history.ShareChangesNothing) and ReviewSettles)
   temporal CheckedConfiguredTemporal = CheckedTemporal
   action TestInit(name) = StartState(name, Set(1, 2, 3).mapBy(i => true))
   action Remove(i) = all { s.budget > 0, s.exists.get(i),
