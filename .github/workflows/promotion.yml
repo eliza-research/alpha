@@ -1,119 +1,21 @@
-name: Promotion checks
-# Checks for promoting develop to main: Chromium, Firefox/WebKit storage and the production surface,
-# the Quint gate and its node tests, bounded symbolic checking, the
-# historical comparisons and temporal properties, and the LemmaScript proofs. Nothing here runs
-# on pull requests into develop or on pushes; authors run `bun run test:browser`,
-# `bun run test:browser:production`, `bun run quint:check`, `bun run quint:tests` and
-# `bun run lemma:check` locally.
+name: Notes consequent-first temporal qualification
+run-name: Full NotesView consequent-first temporal qualification
+# Scratch-branch qualification only. The default branch's full Promotion is unchanged.
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
-    inputs:
-      models:
-        description: Comma-separated module names for symbolic checking (empty checks every model)
-        type: string
-        default: ''
 permissions:
   contents: read
 concurrency:
-  group: promotion-${{ github.ref }}
-  cancel-in-progress: true
+  group: notes-short-circuit-candidate-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  symbolic:
-    name: Bounded symbolic safety (${{ matrix.family }}, partition ${{ matrix.partition }})
-    runs-on: ubuntu-24.04
-    timeout-minutes: 240
-    strategy:
-      fail-fast: false
-      matrix:
-        family: ${{ fromJSON(inputs.models && '["selected"]' || '["application","services","native","legacy"]') }}
-        partition: [0, 1]
-        exclude:
-          - family: selected
-            partition: 1
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '21'
-      - run: bun run upstream:prepare-client
-      - name: Bounded symbolic safety and additional proof inits
-        env:
-          MODELS: ${{ inputs.models }}
-          MODEL_FAMILY: ${{ matrix.family }}
-          MODEL_PARTITION: ${{ matrix.partition }}
-        run: |
-          if [ -z "$MODELS" ]; then
-            MODELS="$(bun -e '
-              import fs from "node:fs";
-              const family = process.env.MODEL_FAMILY;
-              const partition = process.env.MODEL_PARTITION;
-              if (!["application", "services", "native", "legacy"].includes(family))
-                throw Error("Unknown safety model family");
-              if (!["0", "1"].includes(partition))
-                throw Error("Invalid safety model partition");
-              const models = JSON.parse(fs.readFileSync("specs/quint/" + family + "/manifest.json", "utf8"));
-              if (!Array.isArray(models) || models.length === 0)
-                throw Error("Safety model family must not be empty");
-              const names = models.map(model => model.module);
-              if (names.some(name => typeof name !== "string" || !/^[A-Za-z][A-Za-z0-9_]*$/.test(name)))
-                throw Error("Safety model family contains an invalid module");
-              const width = Math.ceil(names.length / 2);
-              const selected = names.slice(Number(partition) * width, (Number(partition) + 1) * width);
-              if (!selected.length) throw Error("Safety model partition must not be empty");
-              process.stdout.write(selected.join(","));
-            ')"
-            test -n "$MODELS"
-          fi
-          bun scripts/check-quint.ts verify --steps=6 ${MODELS:+--models=$MODELS}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: quint-symbolic-${{ matrix.family }}-${{ matrix.partition }}
-          path: test-results/quint/
-  comparison:
-    name: Historical comparisons and counterexamples
-    if: ${{ !inputs.models }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 240
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '21'
-      - run: bun run upstream:prepare-client
-      # Every declared comparison and expected counterexample runs on promotion.
-      - name: Expected counterexamples and current-design comparisons
-        run: bun scripts/check-quint.ts compare
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: quint-comparison
-          path: test-results/quint/
   temporal:
-    name: Fairness-guarded temporal properties (${{ matrix.group }})
-    if: ${{ !inputs.models }}
+    name: Full NotesView temporal (default)
     runs-on: ubuntu-24.04
     timeout-minutes: 240
-    strategy:
-      fail-fast: false
-      matrix:
-        group: [PhotosLibrary, NotesView, remaining]
+    env:
+      ALPHA_TEMPORAL_MODEL: NotesView
+      ALPHA_TLC_LIVENESS: default
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -127,234 +29,108 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: bun run upstream:prepare-client
-      # Every declared temporal property runs on promotion.
-      - name: Fairness-guarded temporal properties
-        env:
-          TEMPORAL_GROUP: ${{ matrix.group }}
+      - name: Admit the reviewed candidate bytes
         run: |
-          MODELS="$(bun -e '
-            import fs from "node:fs";
-            const group = process.env.TEMPORAL_GROUP;
-            if (!["PhotosLibrary", "NotesView", "remaining"].includes(group))
-              throw Error("Unknown temporal model group");
-            const models = ["application", "services", "native", "legacy"].flatMap(family =>
-              JSON.parse(fs.readFileSync("specs/quint/" + family + "/manifest.json", "utf8")));
-            const names = models.filter(model => model.temporal?.length).map(model => model.module);
-            if (names.some(name => typeof name !== "string" || !/^[A-Za-z][A-Za-z0-9_]*$/.test(name))
-              || new Set(names).size !== names.length) throw Error("Invalid temporal model registry");
-            const separate = ["PhotosLibrary", "NotesView"];
-            const selected = names.filter(name => group === "remaining" ? !separate.includes(name) : name === group);
-            if (!selected.length) throw Error("Temporal model group must not be empty");
-            process.stdout.write(selected.join(","));
-          ')"
-          test -n "$MODELS"
-          bun scripts/check-quint.ts temporal --models="$MODELS"
+          sha256sum --check <<'PINS'
+          f122ea7a7371edde2104779fea99a0d733081a34069de58c10c0deec8daf7dd6  specs/quint/legacy/NotesView.qnt
+          4ebe727a4759dd2dce2c6ebb3c3d6029ed540729d9e352a4f48c03305af9421d  scripts/check-quint.ts
+          PINS
+      - name: Original scenarios and sampled checks at registered defaults
+        run: bun scripts/check-quint.ts check --models="$ALPHA_TEMPORAL_MODEL" --out="test-results/quint/canonical-$ALPHA_TEMPORAL_MODEL-$ALPHA_TLC_LIVENESS.json"
+      - name: Full fairness-guarded temporal qualification
+        run: |
+          alpha_temporal_watch_dir=$(mktemp -d "$RUNNER_TEMP/alpha-temporal-watch.XXXXXX")
+          python3 - "$ALPHA_TEMPORAL_MODEL" "$ALPHA_TLC_LIVENESS" "$alpha_temporal_watch_dir" <<'PYWATCH' &
+          from pathlib import Path
+          import hashlib,json,sys,tempfile,time
+          model,mode,control=sys.argv[1],sys.argv[2],Path(sys.argv[3])
+          assert model=='NotesView'
+          assert mode=='default'
+          started=time.time()
+          destination=Path('test-results/quint')/f'translation-{model}-{mode}'
+          while not (control/'stop').exists():
+            for source in Path(tempfile.gettempdir()).glob(f'quint-tlc-*/{model}.tla'):
+              config=source.with_suffix('.cfg')
+              try:
+                if source.stat().st_mtime<started: continue
+                tla,cfg=source.read_bytes(),config.read_bytes()
+              except FileNotFoundError:
+                continue
+              if cfg!=b'INIT q_init\nNEXT q_step\nPROPERTY q_temporalProps\n': continue
+              if not tla.rstrip().endswith(b'===================='): continue
+              destination.mkdir(parents=True,exist_ok=True)
+              (destination/f'{model}.tla').write_bytes(tla)
+              (destination/f'{model}.cfg').write_bytes(cfg)
+              (destination/'capture.json').write_text(json.dumps({'actualSource':str(source),'mode':mode,
+                'translatedSha256':hashlib.sha256(tla).hexdigest(),
+                'configurationSha256':hashlib.sha256(cfg).hexdigest(),
+                'capturedAfterOwnedLaunch':True},indent=2)+'\n')
+              raise SystemExit(0)
+            time.sleep(0.25)
+          PYWATCH
+          alpha_temporal_watcher_pid=$!
+          alpha_temporal_finish() {
+            alpha_temporal_cli_status=$?
+            touch "$alpha_temporal_watch_dir/stop"
+            wait "$alpha_temporal_watcher_pid" || true
+            return "$alpha_temporal_cli_status"
+          }
+          trap alpha_temporal_finish EXIT
+          bun scripts/check-quint.ts temporal --models="$ALPHA_TEMPORAL_MODEL" --out="test-results/quint/temporal-$ALPHA_TEMPORAL_MODEL-$ALPHA_TLC_LIVENESS.json"
+      - name: Record proof and tool custody
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json,os,re,subprocess
+          model=os.environ['ALPHA_TEMPORAL_MODEL']
+          mode=os.environ['ALPHA_TLC_LIVENESS']
+          assert mode=='default'
+          assert model=='NotesView'
+          out=Path('test-results/quint');out.mkdir(parents=True,exist_ok=True)
+          proof=out/f'temporal-{model}-{mode}.json'
+          receipt=json.loads(proof.read_text()) if proof.exists() else {}
+          jar=Path(os.environ.get('QUINT_HOME',str(Path.home()/'.quint')))/'apalache-dist-0.62.4/apalache/lib/apalache.jar'
+          jar_hash=hashlib.sha256(jar.read_bytes()).hexdigest() if jar.exists() else None
+          phases=receipt.get('results',[])
+          result=phases[0] if len(phases)==1 else {}
+          output=result.get('output','')
+          stats=re.findall(r'([0-9,]+) states generated, ([0-9,]+) distinct states found, ([0-9,]+) states left on queue\.',output)
+          final_stats=[int(value.replace(',','')) for value in stats[-1]] if stats else None
+          branches=re.findall(r'Implied-temporal checking--satisfiability problem has ([0-9]+) branches',output)
+          config=json.loads(Path('specs/quint/tlc.json').read_text())
+          translation=out/f'translation-{model}-{mode}'
+          captured=json.loads((translation/'capture.json').read_text()) if (translation/'capture.json').exists() else None
+          tla=(translation/f'{model}.tla').read_bytes() if (translation/f'{model}.tla').exists() else b''
+          cfg=(translation/f'{model}.cfg').read_bytes() if (translation/f'{model}.cfg').exists() else b''
+          custody={'head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'model':model,'mode':mode,'modelSha256':hashlib.sha256(Path(f'specs/quint/legacy/{model}.qnt').read_bytes()).hexdigest(),
+            'checkerSha256':hashlib.sha256(Path('scripts/check-quint.ts').read_bytes()).hexdigest(),
+            'quintLibrarySha256':hashlib.sha256(Path('scripts/quint-lib.ts').read_bytes()).hexdigest(),
+            'fullTemporalProof':result.get('fullTemporalProof'),
+            'jarSha256':jar_hash,'jarPinMatches':jar_hash=='e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262',
+            'tlcConfig':config,'temporalBranches':branches,'finalGeneratedDistinctQueue':final_stats,
+            'actualTranslationCapture':captured,
+            'proofPassed':receipt.get('passed',False),'livenessScheduling':'default original Quint routine','finalInputErrors':receipt.get('finalInputErrors'),
+            'scope':'Full registered temporal relation and fairness; no bounded fallback, state filter, domain reduction or property omission.'}
+          (out/f'custody-{model}-{mode}.json').write_text(json.dumps(custody,indent=2)+'\n')
+          if receipt.get('passed'):
+            assert result.get('model')==model and result.get('phase')=='tlc-temporal' and result.get('backend')=='tlc'
+            assert '--temporal=CheckedTemporal' in result['argv'] and '--backend=tlc' in result['argv']
+            assert config=={'workers':'2','maxHeap':'-Xmx2G','stackSize':'-Xss16m'}
+            assert receipt['timeoutSeconds']==1800 and not receipt['finalInputErrors']
+            assert custody['jarPinMatches'] and final_stats and final_stats[2]==0
+            assert captured and cfg==b'INIT q_init\nNEXT q_step\nPROPERTY q_temporalProps\n'
+            assert hashlib.sha256(tla).hexdigest()==captured['translatedSha256']
+            assert hashlib.sha256(cfg).hexdigest()==captured['configurationSha256']
+            assert b'q_bounded_depth' not in tla and b'CONSTRAINT' not in cfg
+            assert branches and int(branches[-1])==4
+            assert captured['mode']==mode
+            assert not result.get('fullTemporalProof')
+            assert 'Model checking completed. No error has been found.' in output
+          PY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: quint-temporal-${{ matrix.group }}
+          name: notes-short-circuit-candidate-NotesView-default
           path: test-results/quint/
-  conformance:
-    name: ${{ matrix.name }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 180
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - lane: proofs
-            name: Quint models and function proofs
-            artifact: quint-models-and-functions
-          - lane: source
-            name: Quint source contracts and Node tests
-            artifact: quint-source-tests
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "26.13.0"
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - name: Install browser for source-refinement checks
-        run: bash scripts/ci/install-playwright-browser.sh chromium
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Prepare pinned JSON dependency for native refinement
-        shell: bash
-        run: bash scripts/ci/prepare-host-test-json.sh
-      - name: Prepare reviewed Kotlin compiler for native refinement
-        run: bun test/fixtures/kotlin-tools.mjs --prepare
-      - name: Prepare hash-pinned Dafny function verifier
-        run: bash scripts/ci/prepare-dafny.sh
-      - name: Prepare pinned SDK for refinement against the real runtime
-        shell: bash
-        run: |
-          ALPHA_BUN="$(command -v bun)"
-          export ALPHA_BUN
-          test "$("$ALPHA_BUN" --version)" = '1.4.2'
-          bun scripts/prepare-local-agent.ts
-          prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
-          echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
-          echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
-      - run: bun run upstream:prepare-client
-      - name: Typecheck, scenarios and sampled simulation of every model
-        if: matrix.lane == 'proofs'
-        run: bun run quint:check
-      - name: Function proofs
-        if: matrix.lane == 'proofs'
-        env:
-          LEMMA_REQUIRE_BACKEND: '1'
-        run: bun run lemma:check
-      - name: Quint node tests
-        if: matrix.lane == 'source'
-        env:
-          ALPHA_REQUIRE_PREPARED_SDK: '1'
-          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
-          ALPHA_QUINT_BUN: ${{ env.ALPHA_BUN }}
-          # Each file starts compilers and the Quint interpreter; keep their deadlines exact.
-          ALPHA_TEST_CONCURRENCY: '1'
-        run: bun run quint:tests
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: ${{ matrix.artifact }}
-          path: |
-            test-results/quint/
-            test-results/quint-refinement/
-            test-results/lemma/
-          retention-days: 7
-  browser:
-    name: Browser development surface (shard ${{ matrix.shard }}/6)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6]
-    steps:
-      - name: Free disk on the disposable browser runner
-        if: runner.environment == 'github-hosted'
-        run: |
-          for unused in /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/powershell; do
-            if [ -d "$unused" ]; then sudo rm -rf -- "$unused"; fi
-          done
-          df -h "$GITHUB_WORKSPACE"
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - run: bash scripts/ci/install-playwright-browser.sh chromium
-      - name: Chromium suite on the flag-on development server
-        env:
-          # Development shards opt into test mocks, fixtures and device controls explicitly.
-          ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
-        run: bun run test:browser -- --shard=${{ matrix.shard }}/6
-      # Every case in these files needs the local-agent bridge profile. The bridge answers the
-      # reminder spec's storage route itself, so the unreachable synthetic agent origin is enough.
-      - name: Exercise synthetic local-agent speech profile and host reminder recovery
-        if: matrix.shard == 1
-        run: |
-          bun -e "import fs from 'node:fs'; fs.writeFileSync(process.env.RUNNER_TEMP + '/alpha-synthetic-owner-token', 'a'.repeat(64), {mode: 0o600});"
-          PLAYWRIGHT_HTML_OUTPUT_DIR=test-results/browser-agent-profile-report ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE="$RUNNER_TEMP/alpha-synthetic-owner-token" ALPHA_LOCAL_AGENT_ORIGIN=http://127.0.0.1:1 bun run test:browser -- test/browser/browser-agent-tts.spec.ts test/browser/browser-host-disclosure.spec.ts test/browser/host-reminder-recovery.spec.ts --output=test-results/browser-agent-profile
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: browser-development-shard-${{ matrix.shard }}-of-6
-          path: |
-            test-results/browser/
-            test-results/browser-report/
-            test-results/browser-agent-profile/
-            test-results/browser-agent-profile-report/
-          retention-days: 3
-  storage:
-    name: Browser storage (${{ matrix.browser }})
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [firefox, webkit]
-    steps:
-      - name: Free disk on the disposable browser runner
-        if: runner.environment == 'github-hosted'
-        run: |
-          for unused in /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/powershell; do
-            if [ -d "$unused" ]; then sudo rm -rf -- "$unused"; fi
-          done
-          df -h "$GITHUB_WORKSPACE"
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - name: Install storage browser and system dependencies
-        run: bash scripts/ci/install-playwright-browser.sh ${{ matrix.browser }}
-      - name: Start the headless Firefox audio device
-        if: matrix.browser == 'firefox'
-        # Firefox needs an audio server for real Web Audio capture, even when the
-        # oscillator only feeds MediaRecorder and playback is muted.
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install --yes --no-install-recommends pulseaudio
-          pulseaudio --start --exit-idle-time=-1
-          pactl load-module module-null-sink sink_name=alpha_browser_audio
-          pactl set-default-sink alpha_browser_audio
-          pactl info
-      - run: bun run upstream:prepare-client
-      - name: Storage contracts on the flag-on development server
-        env:
-          ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
-        # The selected project uses the existing storageSpecPattern in playwright.config.ts.
-        # test:browser selects Chromium, so invoke Playwright directly for this matrix.
-        run: bunx --bun --no-install playwright test --project=${{ matrix.browser }}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: browser-storage-${{ matrix.browser }}
-          path: |
-            test-results/browser/
-            test-results/browser-report/
-          retention-days: 3
-  production:
-    name: Browser production surface (flag off)
-    # Runs production-surface.spec.ts and every *.production.spec.ts (playwright.config.ts).
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "26.13.0"
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - run: bash scripts/ci/install-playwright-browser.sh chromium
-      - run: bun run upstream:prepare-client
-      - name: Test-mocks bundle records its flag
-        run: |
-          bun run build:test-mocks -- --outDir ../../test-results/test-mocks-web
-          bun scripts/audit-production-bundle.ts test-results/test-mocks-web --expect-test-mocks
-      # Builds and previews a flag-off bundle; the flag is deliberately unset here.
-      - run: bun run test:browser:production
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: browser-production-surface
-          path: |
-            test-results/browser/
-            test-results/browser-report/
-          retention-days: 3
