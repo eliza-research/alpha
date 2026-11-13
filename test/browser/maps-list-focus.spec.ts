@@ -159,6 +159,11 @@ test('directions start from the allowed current location and can swap endpoints'
  expect(await page.evaluate(()=>(window as any).mapFocus.routes.at(-1))).toMatchObject({from:{latitude:43.701,longitude:7.425},to:{latitude:43.7,longitude:7.425}});
  await page.getByRole('button',{name:'Start',exact:true}).click();
  await expect(page.getByRole('button',{name:'End navigation',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Reroute from here',exact:true})).toHaveCount(0);
+ const footer=page.locator('[data-alpha-maps-guidance-controls]');
+ const bounds=await footer.evaluate(element=>{const container=element.getBoundingClientRect(),summary=element.querySelector('div')!.getBoundingClientRect();return {center:container.x+container.width/2,summary:summary.x+summary.width/2};});
+ expect(Math.abs(bounds.center-bounds.summary)).toBeLessThan(1);
+
  await expect(page.getByRole('button',{name:/voice guidance/i})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Ask Alpha',exact:true})).toHaveCount(0);
 });

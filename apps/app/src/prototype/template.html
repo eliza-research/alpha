@@ -2077,13 +2077,12 @@
 
   
   <sc-if value="{{maps.isNav}}">
-    <div class="enter" data-alpha-maps-guidance-controls style="position: absolute; left: 12px; right: 12px; bottom: var(--alpha-maps-guidance-bottom,26px); border-radius: 32px; background: var(--alpha-gray-15); color: var(--alpha-white); padding: 10px; display: flex; align-items: center; gap: 12px; z-index: 5">
+    <div class="enter" data-alpha-maps-guidance-controls style="position: absolute; left: 12px; right: 12px; bottom: var(--alpha-maps-guidance-bottom,26px); border-radius: 32px; background: var(--alpha-gray-15); color: var(--alpha-white); padding: 10px; display: grid; grid-template-columns: var(--alpha-navigation-control,56px) minmax(0,1fr) var(--alpha-navigation-control,56px); align-items: center; gap: 12px; z-index: 5">
       <button aria-label="End navigation" onClick="{{maps.dr.nav.end}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--alpha-gray-26); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button>
       <div style="flex-grow: 1; min-width: 0; text-align: center">
         <div class="serif" style="font-size: 30px; line-height: 1.05">{{maps.dr.nav.left}}</div>
         <sc-if value="{{maps.dr.nav.meta}}"><div style="font-size: 13px; color: var(--alpha-gray-8f); margin-top: 3px">{{maps.dr.nav.meta}}</div></sc-if>
         <sc-if value="{{maps.dr.nav.remaining}}"><div role="status" aria-label="Remaining distance and time" style="font-size: 13px; color: var(--alpha-gray-bd); margin-top: 2px">{{maps.dr.nav.remaining}}</div></sc-if>
-        <sc-if value="{{maps.dr.nav.reroute}}"><button onClick="{{maps.dr.nav.reroute}}" style="min-height: 36px; margin-top: 4px; padding: 0 12px; border-radius: 18px; background: var(--alpha-gray-26); color: var(--alpha-white); font-size: 13px; font-weight: 600">Reroute from here</button></sc-if>
       </div>
     </div>
   </sc-if>
