@@ -524,7 +524,10 @@ also consumes the reviewed [Bun and ABI cleanup](https://github.com/elizaOS/eliz
 [owner-clock scheduling](https://github.com/elizaOS/eliza/pull/39470) and
 [model-generated morning summaries](https://github.com/elizaOS/eliza/pull/39471).
 The [portable fixture and evidence paths](https://github.com/elizaOS/eliza/pull/39478)
-remove personal home directories from the pinned source. The native engine
+remove personal home directories from the pinned source. The pin also includes
+reviewed [browser URL parser](https://github.com/elizaOS/eliza/pull/39351) and
+[browser automation dependency](https://github.com/elizaOS/eliza/pull/39354) updates.
+The native engine
 gitlink is unchanged. Historical native measurements retain their original
 source attribution. New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
