@@ -1,9 +1,11 @@
 #!/usr/bin/env bun
 // Host tests and formal conformance have separate suites; preserve one process per file.
-import { readdirSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { exitFromChild, runChild } from './child-command.ts';
+import { ensureHostTestRuntime, hostTestBuilder } from './host-test-runtime.ts';
 
 const concurrency = process.env.ALPHA_TEST_CONCURRENCY || '4';
 if (!/^[1-9]\d*$/.test(concurrency)) {
@@ -31,8 +33,18 @@ try {
     : readdirSync(resolve(root, 'test')).filter(name => /\.test\.(?:mjs|ts)$/.test(name) && !name.startsWith('quint-'))
       .sort().map(name => resolve(root, 'test', name));
   if (!paths.length) throw new Error('No test files matched the selected suite');
-  exitFromChild(await runChild(process.execPath, ['test', `--parallel=${concurrency}`,
-    '--timeout=600000', ...forwarded.filter(argument => !isSuite(argument)), ...paths], options));
+  const builder = await hostTestBuilder(), runtime = await ensureHostTestRuntime();
+  const args = ['test', `--parallel=${concurrency}`, '--timeout=600000',
+    ...forwarded.filter(argument => !isSuite(argument)), ...paths];
+  const inventorySha256 = createHash('sha256').update(JSON.stringify(paths)).digest('hex');
+  const identity = {runtime, builder, files: paths, args, inventorySha256,
+    scope: 'Host tests only; SDK, bytecode and Android build/runtime retain the builder Bun.'};
+  mkdirSync(resolve(root, 'test-results'), {recursive: true});
+  writeFileSync(resolve(root, 'test-results/host-test-runtime.json'), JSON.stringify(identity, null, 2) + '\n');
+  console.log('Host test runtime ' + JSON.stringify({runtime, builder,
+    selectedFileCount: paths.length, inventorySha256}));
+  exitFromChild(await runChild(runtime.file, args, {...options,
+    env: {...process.env, ALPHA_BUN: builder.file}}));
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

@@ -14,6 +14,9 @@ Stay on the latest upstream: whenever upstream moves, advance `upstream.lock.jso
 submodule together to the newest reviewed commit, and bring your branch up to main's pin before
 building. The Android build refuses a pin older than main's, and there is no override.
 `upstream.lock.json` records the shared source revision.
+Canonical host tests auto-provision a hash-pinned Bun 1.4.4 test process. Preserve the
+Bun 1.4.2 builder in `ALPHA_BUN`; this host-test runtime does not change SDK, bytecode,
+Android runtime or package-manager pins. Do not put it on `PATH` or shadow builder binaries.
 After changing the pin, refresh its recorded develop comparison with
 `bun scripts/verify-upstream.ts --record-reachability`.
 Review the pin-bound core source catalog, mobile build policy and current formal-source

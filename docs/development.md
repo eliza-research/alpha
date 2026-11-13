@@ -16,6 +16,11 @@ changes upstream and consume a reviewed commit; never edit the vendor checkout.
 Use Bun 1.4.2 (`packageManager` in `package.json`) and JDK 21. The pinned upstream
 source prepares and builds on Bun. Node.js 24+ is needed only for LemmaScript and the
 Node-only host tests (`bun run test:node`).
+Canonical host-test commands automatically cache a hash-pinned Bun 1.4.4 test process on
+Linux and macOS. This avoids the older test runner's synchronous-child/GC bug. It does not
+replace Bun 1.4.2 on `PATH`: `ALPHA_BUN` continues to identify the 1.4.2 SDK, bytecode and
+Android builder. `test-results/host-test-runtime.json` records both runtimes and the complete
+selected test inventory. The cache uses `XDG_CACHE_HOME`, or `~/.cache` by default.
 Native builds need Python 3 for toolchain bootstrapping, Android SDK platform 36
 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
