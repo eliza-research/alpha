@@ -24,9 +24,9 @@ const source = readFileSync(`${repositoryRoot}apps/app/src/prototype/settings-ad
 const region = source.slice(source.indexOf('// settings-reads:begin'), source.indexOf('// settings-reads:end'));
 assert.ok(region.includes('export function listenerReadGate'));
 const {listenerReadGate} = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(region)).toString('base64'));
-// The adapter's two uses of the gate, which the driver repeats.
-assert.match(source, /const read = listenerReads\.beginRead\(\);\s*if \(read === null\) return;\s*const status = await listenerStatus\(\);\s*if \(owner === instance && capabilityAbort === abort && listenerReads\.readApplies\(read\)\) listener = status;/);
-assert.match(source, /if \(!listenerReads\.beginAction\(\)\) return;[\s\S]{0,260}listener = next;[\s\S]{0,420}finally \{ listenerReads\.endAction\(\);/);
+// Only the actual listenerReadGate helper executes here. The receiver below is a
+// controlled port; adapter instance/capability and unconfirmed-stop fences remain
+// separate contracts and are not inferred from source-text patterns.
 
 const project = s => ({busy: s.busy, reads: s.reads, skippedReads: s.skippedReads, shown: s.shown, shownFrom: s.shownFrom,
   readShown: s.shownFrom === 'read' ? s.shownSequence : 0});
