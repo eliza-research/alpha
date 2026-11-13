@@ -141,8 +141,10 @@ just the voice and embedding inputs; `bun run android:build:inputs` reports thei
 current state without building them. Build inputs must agree with the staged
 runtime and native libraries.
 
-The native producer runs on Linux or macOS; Windows developers can use a Linux
-WSL environment. The first build needs network access for the pinned source,
+The native producer supports Apple Silicon macOS and x86-64 Linux with glibc
+2.28 or newer. Windows developers can use an x86-64 Linux WSL environment. The
+pinned toolchain does not support Intel macOS or ARM64 Linux hosts. The first
+build needs network access for the pinned source,
 models and isolated Python/compiler dependencies. Native outputs are cached under
 `$XDG_CACHE_HOME/alpha/native-inputs`, or `$HOME/.cache/alpha/native-inputs` when
 XDG_CACHE_HOME is unset. The recipe binds the product identity, native source,

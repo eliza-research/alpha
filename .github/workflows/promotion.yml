@@ -1,5 +1,5 @@
 name: Promotion checks
-# Checks for promoting develop to main: the Chromium browser suite and the production surface,
+# Checks for promoting develop to main: Chromium, Firefox/WebKit storage and the production surface,
 # the Quint gate and its node tests, source refinement, bounded symbolic checking, the
 # historical comparisons and temporal properties, and the LemmaScript proofs. Nothing here runs
 # on pull requests into develop or on pushes; authors run `bun run test:browser`,
@@ -163,6 +163,46 @@ jobs:
             test-results/browser-report/
             test-results/browser-agent-profile/
             test-results/browser-agent-profile-report/
+          retention-days: 3
+  storage:
+    name: Browser storage (${{ matrix.browser }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - name: Free disk on the disposable browser runner
+        if: runner.environment == 'github-hosted'
+        run: |
+          for unused in /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$unused" ]; then sudo rm -rf -- "$unused"; fi
+          done
+          df -h "$GITHUB_WORKSPACE"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - name: Install storage browser and system dependencies
+        run: bash scripts/ci/install-playwright-browser.sh ${{ matrix.browser }}
+      - run: bun run upstream:prepare-client
+      - name: Storage contracts on the flag-on development server
+        env:
+          ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
+        # The selected project uses the existing storageSpecPattern in playwright.config.ts.
+        # test:browser selects Chromium, so invoke Playwright directly for this matrix.
+        run: bunx --bun --no-install playwright test --project=${{ matrix.browser }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: browser-storage-${{ matrix.browser }}
+          path: |
+            test-results/browser/
+            test-results/browser-report/
           retention-days: 3
   production:
     name: Browser production surface (flag off)
