@@ -177,7 +177,7 @@ export async function checkWorkflowNoticeTaps(extraSources=[],options={}){
   const receipt=await checkTraces({model:'WorkflowNoticeTaps',sources:p.sources,driverHashes:p.hashes,generatedSources:p.generated,traces,scope:'bounded-orchestration',assumptions:[
    'The exact complete Alpha checkNotice function and its real authenticated resolveWorkflowTap/readyTapStep/tapRecheck dependencies execute. The owner intent store is the real shared store over closed memory storage. The extraction only supplies outer renderer variables and a read-only closure seam.',
    'Three non-question run-tap schedules observe the closed native ledger, handler concurrency flags, real run receipt presence, remembered token and independently counted shell opens/consume calls. The native notification ledger is a controlled port; Android tap delivery, account authority and physical durable consume are separate.',
-   'Question DOM review/compose/cancel, operation and view-generation races, absent/foreign/stale-version taps, process restart and arbitrary event schedules remain unobserved obligations. The source campaign does not establish the entire model or installed notification behavior.',
+   'A separate source-only probe seeds the real run-account storage with a foreign account and requires no shell open or consume while retaining the tap. It is not projected as a successful model resolve action. Question DOM review/compose/cancel, operation and view-generation races, other absent/foreign/stale-version taps, process restart and arbitrary event schedules remain unobserved obligations. The source campaign does not establish the entire model or installed notification behavior.',
   ]});
   return {...receipt,partialSourcePrivacyProbe:privacyProbe};
  }finally{p.close();}
