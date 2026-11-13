@@ -39,13 +39,13 @@ test('a turn records ordered offsets once and never stores text or account ident
 
 test('out-of-order and premature marks cannot shorten a phase', () => {
   timing.clearVoiceTiming();
-  now = 0; timing.beginVoiceTurn({route: 'browser', cold: true});
+  now = 0; timing.beginVoiceTurn({route: 'browser', cold: true, entry: 'conversation'});
   assert.equal(timing.markVoiceTiming('send'), false, 'send needs a ready transcript');
   assert.equal(timing.markVoiceTiming('first-token'), false, 'reply marks need send');
   now = 500; assert.equal(timing.markVoiceTiming('transcript-ready'), true);
   assert.equal(timing.markVoiceTiming('transcript-ready'), false, 'first mark wins');
   assert.equal(timing.markVoiceTiming('send', 'another-turn'), false);
-  assert.equal(timing.beginVoiceTurn({route: 'unknown-route', cold: false}), undefined);
+  assert.equal(timing.beginVoiceTurn({route: 'unknown-route', cold: false, entry: 'conversation'}), undefined);
   // The unknown route abandoned the earlier turn without recording a new one.
   const rows = timing.voiceTimingRecords();
   assert.equal(rows.length, 1);
