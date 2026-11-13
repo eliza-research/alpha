@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {checkPasswordEntryDraft} from '../specs/quint/refinement/application/password-entry-draft.mjs';
 
-test('the password entry form follows every PasswordEntryDraft trace', {timeout: 240000}, async () => {
+test('the password entry form follows every PasswordEntryDraft trace', {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await checkPasswordEntryDraft();
   console.log(JSON.stringify(receipt));
   assert.equal(receipt.traces, 52);

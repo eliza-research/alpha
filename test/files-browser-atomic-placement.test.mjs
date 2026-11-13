@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 import {before, test} from 'node:test';
@@ -9,9 +10,9 @@ const root = resolve(import.meta.dirname, '..');
 const fixtureOrigin = 'https://files-placement.refinement.invalid/';
 
 // Authenticate the prepared projection before starting the browser scenario's deadline.
-before(() => {checkClientFeatures({root});}, {timeout: 600000});
+before(() => {checkClientFeatures({root});}, {timeout: scaledTimeout(600000)});
 
-test('Browser Files placement preserves exact rows and Trash markers on IndexedDB refusal', {timeout: 90000}, async () => {
+test('Browser Files placement preserves exact rows and Trash markers on IndexedDB refusal', {timeout: scaledTimeout(90000)}, async () => {
   const {outputFiles: [bundle]} = await build({
     stdin: {resolveDir: root, contents: `
       import {BrowserFiles} from './.eliza/client-features/plugins/plugin-files/src/browser/files.ts';

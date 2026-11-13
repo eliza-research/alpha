@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -5,7 +6,7 @@ import {resolve} from 'node:path';
 import {modelStateInventory, unobservedStateFields} from '../specs/quint/refinement/model-state.mjs';
 import {checkCoreApprovalServiceCurrentRefinement} from '../specs/quint/refinement/services/current-approval-service.mjs';
 
-test('current approvals refuse orphan callbacks and drain admitted work before stop settles', {timeout:120000}, async () => {
+test('current approvals refuse orphan callbacks and drain admitted work before stop settles', {timeout:scaledTimeout(120000)}, async () => {
   const receipt = await checkCoreApprovalServiceCurrentRefinement(undefined, [fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

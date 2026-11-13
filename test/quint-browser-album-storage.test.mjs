@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -332,12 +333,12 @@ async function runBrowserAlbumStorage(browser, extraSources) {
     ]});
 }
 
-test('browser album commits and rendered membership match the media-revision model', {timeout: 420_000}, async () => {
+test('browser album commits and rendered membership match the media-revision model', {timeout: scaledTimeout(420_000)}, async () => {
   const receipt = await checkBrowserAlbumStorage([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.traces, 4);
 });
 
-test('browser without Web Locks refuses media-bound album writes and keeps photo-only writes', {timeout: 90_000}, async () => {
+test('browser without Web Locks refuses media-bound album writes and keeps photo-only writes', {timeout: scaledTimeout(90_000)}, async () => {
   await checkBrowserAlbumWithoutLocks();
 });

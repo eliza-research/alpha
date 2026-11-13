@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -10,7 +11,7 @@ test('native accessibility bounds exclude fully clipped descendants but retain p
  const dir=mkdtempSync(join(tmpdir(),'alpha-accessibility-bounds-'));
  const binary=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
  try{
-  execFileSync(binary('javac'),['--release','11','-d',dir,join(root,source,'AccessibilityBounds.java'),join(root,'test/fixtures/AccessibilityBoundsTest.java')],{timeout:60000,stdio:'pipe'});
-  assert.equal(execFileSync(binary('java'),['-cp',dir,'ai.alphacompute.alphaphone.AccessibilityBoundsTest'],{timeout:30000,encoding:'utf8'}).trim(),'PASS native accessibility bounds');
+  execFileSync(binary('javac'),['--release','11','-d',dir,join(root,source,'AccessibilityBounds.java'),join(root,'test/fixtures/AccessibilityBoundsTest.java')],{timeout:scaledTimeout(60000),stdio:'pipe'});
+  assert.equal(execFileSync(binary('java'),['-cp',dir,'ai.alphacompute.alphaphone.AccessibilityBoundsTest'],{timeout:scaledTimeout(30000),encoding:'utf8'}).trim(),'PASS native accessibility bounds');
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

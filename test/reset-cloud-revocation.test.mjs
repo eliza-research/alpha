@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readdirSync} from 'node:fs';
@@ -62,7 +63,7 @@ public class Fixture {
   const calendar=resolve(root,'vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java');
   const alpha=['ResetBeforeDispatch','CloudDeployment'].map(name=>resolve(root,`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`));
   // org.json comes from the real jar ahead of android.jar's stubs.
-  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',`${jsonJar}:${sdk}`,'-d',join(dir,'classes'),...files,...shared,...reset,calendar,...alpha],{timeout:120000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${jsonJar}:${sdk}`,'ai.alphacompute.alphaphone.Fixture'],{encoding:'utf8',timeout:60000}),/PASS Alpha reset revocation binding/);
+  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',`${jsonJar}:${sdk}`,'-d',join(dir,'classes'),...files,...shared,...reset,calendar,...alpha],{timeout:scaledTimeout(120000)});
+  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${jsonJar}:${sdk}`,'ai.alphacompute.alphaphone.Fixture'],{encoding:'utf8',timeout:scaledTimeout(60000)}),/PASS Alpha reset revocation binding/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -12,7 +13,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {checkAddressInput, corpus, describe} from '../specs/quint/refinement/application/address-input.mjs';
 
-test("partial source contract: the address bar decides every corpus text and model submission as AddressInput does", {timeout: 240000}, async () => {
+test("partial source contract: the address bar decides every corpus text and model submission as AddressInput does", {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await checkAddressInput();
   assert.equal(receipt.corpusChecks, corpus.length * 2);
   assert.ok(receipt.classes >= 15, `property classes ${receipt.classes}`);

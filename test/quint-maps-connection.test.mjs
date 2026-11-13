@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelNames, modelTraces, replayTraces, repositoryRoot} from '../specs/quint/refinement/services/maps-model-traces.mjs';
@@ -141,7 +142,7 @@ async function replayMapsConnection({scenarios, witnesses, random = 40, steps = 
   return replayTraces(traces, () => driver(code), {project});
 }
 
-test('Cloud Maps connection code follows every MapsConnection model trace step by step', {timeout: 300000}, async () => {
+test('Cloud Maps connection code follows every MapsConnection model trace step by step', {timeout: scaledTimeout(300000)}, async () => {
   const {scenarios, witnesses} = modelNames('specs/quint/services/MapsConnection.qnt');
   assert.equal(scenarios.length, 8);
   assert.equal(witnesses.length, 6);

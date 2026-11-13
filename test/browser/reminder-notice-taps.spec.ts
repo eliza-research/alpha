@@ -22,7 +22,7 @@ for(const mode of ['recover','stale','read-failure','draft-race','navigation-rac
    if(plugin==='AlphaNotifications')return {permissionGranted:true,appEnabled:true};
    if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
    if(plugin==='DailyApps'){
-    if(method==='surfaceInfo')return {developmentBuild:true,assistant:false,reminderTapVersion:1};
+    if(method==='surfaceInfo')return {assistant:false,reminderTapVersion:1};
     if(method==='pendingReminderTap'){f.reads++;return f.allow?f.pending:{};}
     if(method==='consumeReminderTap'){if(f.mode==='consume-failure')throw Error('Storage unavailable');if(f.pending.token!==input.token)throw Error('Newer tap');f.consumed.push(input.token);f.pending={};return {};}
     if(method==='dismissReminderTap'){if(f.pending.token!==input.token)throw Error('Changed');f.pending={token:'older-valid-token',target,retained:true};return {};}

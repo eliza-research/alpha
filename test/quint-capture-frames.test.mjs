@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {writeFileSync} from 'node:fs';
@@ -26,7 +27,7 @@ async function checkCaptureFrames(extraSources=[]){
  }finally{platform.close();}
 }
 
-test('actual capture loop preserves pre-roll, packet order and terminal buffer zeroing', {timeout:360000}, async()=>{
+test('actual capture loop preserves pre-roll, packet order and terminal buffer zeroing', {timeout:scaledTimeout(360000)}, async()=>{
   const result=await checkCaptureFrames(['test/quint-capture-frames.test.mjs']);
   assert.equal(result.passed,true);
   assert.equal(result.traces,captureFrameScenarios.length);

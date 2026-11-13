@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -42,7 +43,7 @@ function runScenario(scenario) {
     const env = {PATH: '/usr/bin:/bin', HOME: home, TMPDIR: scratch,
       GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null'};
     const result = spawnSync(process.execPath, [probe, scratch, scenario], {
-      cwd: scratch, env, encoding: 'utf8', timeout: 20000, maxBuffer: 1024 * 1024,
+      cwd: scratch, env, encoding: 'utf8', timeout: scaledTimeout(20000), maxBuffer: 1024 * 1024,
     });
     if (result.error) throw result.error;
     assert.equal(result.signal, null, scenario+' failed: '+result.stderr);
@@ -66,7 +67,7 @@ async function checkCombinedAgentLauncher(extraSources = []) {
     ]});
 }
 
-test('combined launcher matches closed preflight, child custody and signal schedules', {timeout: 120000}, async () => {
+test('combined launcher matches closed preflight, child custody and signal schedules', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkCombinedAgentLauncher([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.model, 'CombinedAgentLauncher');
   assert.equal(receipt.traces, 21);

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -27,7 +28,7 @@ async function checkSpeechOutputPreparation(extraSources=[]){
  ]});
 }
 
-test('actual speech output preparation retains the bounded lead and reports first write once', {timeout:180000},async()=>{
+test('actual speech output preparation retains the bounded lead and reports first write once', {timeout:scaledTimeout(180000)},async()=>{
  const receipt=await checkSpeechOutputPreparation(['test/quint-speech-output-preparation.test.mjs']);
  assert.equal(receipt.passed,true);
  assert.equal(receipt.traces,speechOutputPreparationScenarios.length);

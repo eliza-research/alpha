@@ -1,5 +1,6 @@
 // Partial source-contract regression: authenticated extracted production members execute
 // with controlled ports; this is not whole-file implementation refinement.
+import {scaledTimeout} from '../timeouts.mjs';
 import assert from 'node:assert/strict';
 import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -51,7 +52,7 @@ export async function checkBrowserUnderlay(extraSources = []) {
     const driverHashes = {...before, ...captureInputs([file])};
     const classpath = compileKotlin([file], temporary);
     const traces = JSON.parse(execFileSync(javaBinary('java'), ['-cp', classpath, 'BrowserUnderlayTracesKt'],
-      {encoding: 'utf8', timeout: 30000}));
+      {encoding: 'utf8', timeout: scaledTimeout(30000)}));
     return await checkTraces({model: 'BrowserUnderlay', sources, driverHashes, traces,
       generatedSources: [file], scope: 'bounded-component', assumptions: [
         'The unmodified production Kotlin touch-router fields, initialization, page selection, coordinate forwarding and dispatchTouchEvent execute on the JVM. Production takesPageInput gates the supplied page list.',

@@ -29,8 +29,10 @@ test('a cached host-test executable rejects replacement bytes and symlinks befor
  const runtime = await ensureHostTestRuntime(), file = path.join(temporary, 'bun');
  fs.copyFileSync(runtime.file, file); fs.chmodSync(file, 0o700);
  await verifyHostTestBinary(file);
- const fd = fs.openSync(file, 'r+'), original = Buffer.alloc(1);
- fs.readSync(fd, original, 0, 1, 0); fs.writeSync(fd, Buffer.from([original[0] ^ 1]), 0, 1, 0); fs.closeSync(fd);
+ // Replace the executed file by rename: Linux refuses writes to a file a process just executed (ETXTBSY).
+ const replacement = path.join(temporary, 'bun.replacement'), bytes = fs.readFileSync(file);
+ bytes[0] ^= 1; fs.writeFileSync(replacement, bytes, {mode:0o700}); fs.chmodSync(replacement, 0o700);
+ fs.renameSync(replacement, file);
  await assert.rejects(verifyHostTestBinary(file), /hash differs/);
  fs.unlinkSync(file); fs.symlinkSync(runtime.file, file);
  await assert.rejects(verifyHostTestBinary(file), /owned regular executable/);

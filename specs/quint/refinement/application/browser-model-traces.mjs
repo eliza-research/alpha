@@ -5,6 +5,7 @@
  * arguments and the model state before and after it. A driver performs the same action on the
  * product code and returns what it observes; the observation must equal the driver's projection
  * of the model state after every step. */
+import {scaledTimeout} from '../timeouts.mjs';
 import assert from 'node:assert/strict';
 import {captureReplayInputs,recordComparedObservation} from '../observed-replay.mjs';
 import {spawnSync} from 'node:child_process';
@@ -113,7 +114,7 @@ function scenarioSteps(source, name, evaluate) {
 }
 
 function quint(args) {
-  const result = spawnSync(process.execPath, [cli, ...args], {cwd: repositoryRoot, encoding: 'utf8', timeout: 180000, maxBuffer: 256 * 1024 * 1024});
+  const result = spawnSync(process.execPath, [cli, ...args], {cwd: repositoryRoot, encoding: 'utf8', timeout: scaledTimeout(180000), maxBuffer: 256 * 1024 * 1024});
   assert.ifError(result.error);
   return result;
 }

@@ -387,7 +387,7 @@ const launcherBridge = () => {
       if (method === 'getLocaleInfo') return { locale: 'en-US', hour24: false };
       return {};
     }
-    if (plugin === 'DailyApps' && method === 'surfaceInfo') return { assistant: false, developmentBuild: true, topInset: 0, bottomInset: 0 };
+    if (plugin === 'DailyApps' && method === 'surfaceInfo') return { assistant: false, topInset: 0, bottomInset: 0 };
     if (plugin === 'AlphaNotifications' && method === 'status') return { permissionGranted: true, appEnabled: true };
     if (plugin === 'AlphaNotifications' && method === 'list') return { items: [], scope: 'alpha-phone' };
     if (plugin === 'AlphaVoiceCloud' && method === 'checkPermissions') return { microphone: 'granted' };

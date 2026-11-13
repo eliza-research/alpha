@@ -37,7 +37,7 @@ export async function photosBridge(page:Page,scope='full',openPhotos=true,authen
      if(method==='albums')return {items:[]};if(method==='read')return row;
     }
     if(plugin==='ElizaSystem')return method==='getBuildInfo'?{launcher:false}:method==='getLaunchInfo'?{assistant:false}:method==='getLocaleInfo'?{locale:'en-US',hour24:false}:method==='listLauncherApps'?{apps:[]}:{available:false};
-    if(plugin==='DailyApps')return method==='listReminders'?{reminders:[]}:method==='pendingReminderTap'?{}:{assistant:false,developmentBuild:true,topInset:0,bottomInset:0};
+    if(plugin==='DailyApps')return method==='listReminders'?{reminders:[]}:method==='pendingReminderTap'?{}:{assistant:false,topInset:0,bottomInset:0};
     if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
     if(plugin==='AlphaNotifications')return method==='status'?{permissionGranted:true,appEnabled:true}:{items:[]};
     return previous?previous.nativePromise(plugin,method,input):{};

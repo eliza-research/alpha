@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -180,7 +181,7 @@ async function checkMapsRerouteOwnership(extraSources = []) {
   ]});
 }
 
-test('mounted Maps settles an agent reroute for the exact guidance and route request', {timeout:420000}, async () => {
+test('mounted Maps settles an agent reroute for the exact guidance and route request', {timeout:scaledTimeout(420000)}, async () => {
   const receipt = await checkMapsRerouteOwnership(['test/quint-maps-reroute-ownership.test.mjs']);
   assert.ok(receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound);
   const completed = Object.fromEntries(receipt.traceInputs.map(trace => [trace.name, trace.steps.at(-1).expect]));

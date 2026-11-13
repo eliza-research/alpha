@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
 
@@ -10,7 +11,7 @@ for (const [name, script] of cases) {
   test(name, () => {
     execFileSync(process.execPath, ['--experimental-vm-modules', `scripts/${script}`], {
       cwd: new URL('..', import.meta.url),
-      timeout: 10_000,
+      timeout: scaledTimeout(10_000),
       stdio: 'pipe',
     });
   });

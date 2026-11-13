@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {actionCounts, modelTraces, sameState} from '../specs/quint/refinement/application/calendar-itf.mjs';
@@ -112,7 +113,7 @@ async function checkCalendarAgentSelection(mutate) {
   return {traces: traces.length, steps, actions: actionCounts(traces), sources: compiled.sources};
 }
 
-test('the calendar adapter follows every CalendarAgentSelection model step', {timeout: 280000}, async () => {
+test('the calendar adapter follows every CalendarAgentSelection model step', {timeout: scaledTimeout(280000)}, async () => {
   const result = await checkCalendarAgentSelection();
   assert.equal(result.traces, 38);
   for (const action of ['openEvent', 'renderDetail', 'inspected', 'closeEvent', 'refresh', 'commitElsewhere', 'providerChange',
@@ -120,7 +121,7 @@ test('the calendar adapter follows every CalendarAgentSelection model step', {ti
   assert.ok(result.sources.includes('apps/app/src/prototype/calendar-adapter.ts'));
 });
 
-test('an inspection answer kept after its epoch ended is rejected by the replay', {timeout: 280000}, async () => {
+test('an inspection answer kept after its epoch ended is rejected by the replay', {timeout: scaledTimeout(280000)}, async () => {
   const guard = 'token === agentSelectionEpoch';
   await assert.rejects(checkCalendarAgentSelection(code => {
     assert.ok(code.includes(guard));

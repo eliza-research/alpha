@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -49,7 +50,7 @@ function cancelled(before) {
   return delegationCancelStep(before.record, status) === 'cancel' ? {record: 'none', cloud: 'failed', grant: before.grant} : state;
 }
 
-test("partial source contract: the Cancel decision follows DelegationReceiver on every Cancel step of its traces", {timeout: 240000}, () => {
+test("partial source contract: the Cancel decision follows DelegationReceiver on every Cancel step of its traces", {timeout: scaledTimeout(240000)}, () => {
   const traces = modelTraces({...MODEL, scenarios: SCENARIOS, witnesses: WITNESSES, random: 300, steps: 40});
   let cancels = 0;
   const seen = new Set();
@@ -176,7 +177,7 @@ async function create() {
   };
 }
 
-test("partial source contract: the mounted delegation panel follows DelegationReceiver scenarios, witnesses and random walks", {timeout: 480000}, async () => {
+test("partial source contract: the mounted delegation panel follows DelegationReceiver scenarios, witnesses and random walks", {timeout: scaledTimeout(480000)}, async () => {
   const traces = modelTraces({...MODEL, scenarios: SCENARIOS, witnesses: WITNESSES, random: 60, steps: 30});
   const receipt = await replayTraces(traces, create, {project});
   assert.equal(receipt.traces, SCENARIOS.length + WITNESSES.length + 60);

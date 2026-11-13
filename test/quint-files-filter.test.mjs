@@ -1,10 +1,11 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkFilesFilter, checkRetiredFilesFilterReload} from '../specs/quint/refinement/application/files-filter.mjs';
 
 const source = fileURLToPath(import.meta.url);
-test('actual Files filters discard late replies from replaced, cleared or cancelled requests', {timeout: 120000}, async () => {
+test('actual Files filters discard late replies from replaced, cleared or cancelled requests', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkFilesFilter([source]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.driverInputsBound, true);

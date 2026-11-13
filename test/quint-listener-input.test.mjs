@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync, rmSync} from 'node:fs';
@@ -26,7 +27,7 @@ async function checkListenerInput(extraSources=[]){
  }finally{platform.close();rmSync(state,{recursive:true,force:true});}
 }
 
-test('actual listener frames and callbacks retain their original recognition epoch', {timeout:180000},async()=>{
+test('actual listener frames and callbacks retain their original recognition epoch', {timeout:scaledTimeout(180000)},async()=>{
  const result=await checkListenerInput(['test/quint-listener-input.test.mjs']);
  assert.equal(result.passed,true);
  assert.equal(result.traces,listenerInputScenarios.length);

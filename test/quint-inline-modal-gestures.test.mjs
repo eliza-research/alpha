@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
@@ -93,7 +94,7 @@ function fixture() {
   };
 }
 
-test('simulated InlineModalGestures traces agree with createInlineModal after every step', {timeout: 170000}, async () => {
+test('simulated InlineModalGestures traces agree with createInlineModal after every step', {timeout: scaledTimeout(170000)}, async () => {
   const traces = modelTraces({module: 'InlineModalGestures', traces: 300, steps: 40});
   const result = await replay(traces, {
     start: fixture,

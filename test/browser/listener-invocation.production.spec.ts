@@ -26,7 +26,7 @@ async function setup(page:Page,options:Options={}){
    if(plugin==='DeviceApps'&&method==='platformCapabilities')return {aospImage:options.image===true,phone:false,contacts:false,sms:false,...(options.sense===undefined?{}:{sense:options.sense})};
    if(plugin==='AlphaDevice'&&method==='openSettings'){f.deviceSettings.push(input.page);return {status:'opened',page:input.page,specific:true};}
    if(options.localSpeech&&plugin==='Agent'&&method==='providerStatus')return provider;
-   if(plugin==='DailyApps'&&method==='surfaceInfo')return {developmentBuild:false,assistant:options.assistant===true};
+   if(plugin==='DailyApps'&&method==='surfaceInfo')return {assistant:options.assistant===true};
    if(plugin==='ElizaSense'){
     if(method==='bindInvocationSession'){
      if(!Number.isInteger(input.generation)||input.generation<1||typeof input.bindingId!=='string'||!input.bindingId||input.sessionKey!==null&&!/^[a-f0-9]{64}$/.test(input.sessionKey))throw Error('Invalid invocation binding');

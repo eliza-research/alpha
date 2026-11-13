@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelNames} from '../specs/quint/refinement/services/maps-model-traces.mjs';
 import {replayMapsNotificationOpen} from '../specs/quint/refinement/application/maps-notification-open.mjs';
 
-test('the notification-tap latch follows every MapsNotificationOpen model trace step by step', {timeout: 300000}, async () => {
+test('the notification-tap latch follows every MapsNotificationOpen model trace step by step', {timeout: scaledTimeout(300000)}, async () => {
   const {scenarios, witnesses} = modelNames('specs/quint/application/MapsNotificationOpen.qnt');
   assert.equal(scenarios.length, 8);
   assert.equal(witnesses.length, 6);

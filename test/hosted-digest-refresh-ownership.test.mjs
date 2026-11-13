@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
@@ -9,7 +10,7 @@ async function settleInitial(run) {
   await run('sync', 1, 1);
 }
 
-test('mounted digest refresh keeps follow-up work with its exact session', {timeout: 120000}, async t => {
+test('mounted digest refresh keeps follow-up work with its exact session', {timeout: scaledTimeout(120000)}, async t => {
   await withHostedDigestRefresh(async scenario => {
     await t.test('a queued full refresh cannot use the retired agent metadata', () => scenario(async run => {
       await settleInitial(run);

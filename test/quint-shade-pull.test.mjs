@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -68,7 +69,7 @@ function fixture(surface, timers) {
   };
 }
 
-test("partial source contract: simulated ShadePull traces agree with the shell pull and the Android request after every step", {timeout: 120000}, async t => {
+test("partial source contract: simulated ShadePull traces agree with the shell pull and the Android request after every step", {timeout: scaledTimeout(120000)}, async t => {
   t.mock.timers.enable({apis: ['setTimeout']});
   const traces = modelTraces({module: 'ShadePull', traces: 120, steps: 30});
   const result = await replay(traces, {

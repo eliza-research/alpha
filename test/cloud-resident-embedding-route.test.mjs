@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -29,7 +30,7 @@ function selectEmbeddingRoute(config,env) {
  const settings=buildRuntimeSettingsProjection(config,{env});
  const disabled=isCanonicalModelCapabilityDisabled({getSetting:key=>settings[key]},'TEXT_EMBEDDING');
  console.log('EMBEDDING_ROUTE='+JSON.stringify({cloud:resolveElizaCloudTopology(config).services.embeddings,disabled,enabled:settings.ELIZA_CANONICAL_EMBEDDINGS_ENABLED,canonicalRoute:buildElizaCloudServiceRoute()}));`;
- const run=spawnSync(process.env.ALPHA_BUN,['--no-install','--conditions=eliza-source','--eval',code],{env:{...process.env},input:JSON.stringify({config,env}),encoding:'utf8',timeout:20000});
+ const run=spawnSync(process.env.ALPHA_BUN,['--no-install','--conditions=eliza-source','--eval',code],{env:{...process.env},input:JSON.stringify({config,env}),encoding:'utf8',timeout:scaledTimeout(20000)});
  assert.equal(run.status,0,run.stderr);
  const line=run.stdout.split('\n').find(row=>row.startsWith('EMBEDDING_ROUTE='));assert.ok(line,run.stdout);
  return JSON.parse(line.slice('EMBEDDING_ROUTE='.length));

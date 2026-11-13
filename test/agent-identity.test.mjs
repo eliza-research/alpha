@@ -1,5 +1,6 @@
 // The locally launched host presents as the product: apps/app/src/product/alpha-product-registration.ts identity is the one
 // source for the shell label and for the agent character the launchers hand upstream.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {ALPHA_PRODUCT_REGISTRATION as record} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,7 +31,7 @@ function launch({route}={}){
  const env={...process.env,ELIZA_ASR_ENABLED:'0',ELIZA_PARADEE_ENABLED:'0',ALPHA_ELIZA_SOURCE:source,ALPHA_REMOTE_PROFILE:profile,ALPHA_REMOTE_PORT:'47998',ALPHA_BUN:bun,CEREBRAS_API_KEY:'synthetic-fixture-key'};
  for(const key of ['ELIZA_SECRET_SWAP_ENABLED','ELIZA_PII_SWAP_ENABLED','CEREBRAS_MODEL','ELIZA_INFERENCE_LIBRARY','ELIZA_INFERENCE_LIB_DIR'])delete env[key];
  try{
-  const result=spawnSync(process.execPath,[path.resolve('scripts/start-local-remote.ts')],{env,encoding:'utf8',timeout:15000});
+  const result=spawnSync(process.execPath,[path.resolve('scripts/start-local-remote.ts')],{env,encoding:'utf8',timeout:scaledTimeout(15000)});
   return {status:result.status,error:result.stderr,child:JSON.parse(fs.readFileSync(receipt,'utf8')),before,after:fs.readFileSync(config,'utf8')};
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 }
@@ -59,7 +60,7 @@ test('the combined launcher refuses the pinned vendor tree whatever directory it
   for(const source of ['vendor/eliza','vendor/eliza/packages','base/eliza-app']){
    const env={...process.env,ALPHA_NODE_BIN:node,ALPHA_BUN:bun,ALPHA_COMBINED_SOURCE:path.resolve(source),ALPHA_COMBINED_SOURCE_MANIFEST:path.join(dir,'manifest.json')};
    if(!fs.existsSync(source))continue;
-   const result=spawnSync(process.execPath,[path.resolve('scripts/start-combined-agent.ts'),'--validate-only'],{cwd:dir,env,encoding:'utf8',timeout:15000});
+   const result=spawnSync(process.execPath,[path.resolve('scripts/start-combined-agent.ts'),'--validate-only'],{cwd:dir,env,encoding:'utf8',timeout:scaledTimeout(15000)});
    assert.notEqual(result.status,0,source);
    assert.match(result.stderr,/Never launch mutable pinned vendor or pristine baseline/,source);
   }

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -201,7 +202,7 @@ async function checkLauncherFavorites(extraSources = []) {
   ]}));
 }
 
-test('shared launcher favorites preserve canonical identities and storage choices', {timeout: 120000}, async () => {
+test('shared launcher favorites preserve canonical identities and storage choices', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkLauncherFavorites([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

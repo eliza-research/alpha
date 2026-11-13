@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../../refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -76,7 +77,7 @@ try {
   const dot = resolve(out, 'Quint-reducer.dot');
   const javaArgs = ['-Xmx512m', '-Xss8m', '-cp', tlcJar, 'tlc2.TLC', '-workers', '1', '-lncheck', 'final',
     '-dump', 'dot', dot, '-metadir', resolve(out, 'states'), '-config', cfg, tla];
-  const checked = spawnSync('java', javaArgs, {cwd: out, encoding: 'utf8', timeout: 120000, maxBuffer: 8 * 1024 * 1024});
+  const checked = spawnSync('java', javaArgs, {cwd: out, encoding: 'utf8', timeout: scaledTimeout(120000), maxBuffer: 8 * 1024 * 1024});
   const log = `${checked.stdout ?? ''}${checked.stderr ?? ''}`;
   writeFileSync(resolve(out, 'tlc.log'), log);
   assert.equal(checked.status, 0, log);

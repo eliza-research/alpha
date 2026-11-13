@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -190,7 +191,7 @@ async function checkBrowserOwnerReminderRead(extraSources = []) {
   ]};
 }
 
-test('browser owner-reminder passive reads refine real owner retirement, caching and budget', {timeout: 120000}, async () => {
+test('browser owner-reminder passive reads refine real owner retirement, caching and budget', {timeout: scaledTimeout(120000)}, async () => {
   const {receipt} = await checkBrowserOwnerReminderRead([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 8);
   assert.equal(receipt.observedFields.length, 16);

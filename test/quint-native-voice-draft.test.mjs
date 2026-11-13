@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync, rmSync, readFileSync} from 'node:fs';
@@ -32,7 +33,7 @@ async function checkVoiceDraft(extraSources=[]) {
  } finally {platform.close();rmSync(state,{recursive:true,force:true});}
 }
 
-test('shared native voice draft refines callbacks, selection and failed start cleanup', {timeout:300000}, async()=>{
+test('shared native voice draft refines callbacks, selection and failed start cleanup', {timeout:scaledTimeout(300000)}, async()=>{
  const receipt=await checkVoiceDraft(['test/quint-native-voice-draft.test.mjs']);
  assert.equal(receipt.passed,true);
  assert.equal(receipt.traces,voiceDraftScenarios.length);

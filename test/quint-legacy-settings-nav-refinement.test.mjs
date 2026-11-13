@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkSettingsNavRefinement} from '../specs/quint/legacy/settings-nav/check-settings-nav-refinement.mjs';
 
-test('historical Settings profiles replay shared mounted routes and retain their differences', {timeout: 240000}, async () => {
+test('historical Settings profiles replay shared mounted routes and retain their differences', {timeout: scaledTimeout(240000)}, async () => {
   const {receipts, mismatches} = await checkSettingsNavRefinement([fileURLToPath(import.meta.url)]);
   assert.deepEqual(receipts.map(row => [row.model, row.traces]), [
     ['SettingsNavProposedReplay', 3], ['SettingsNavCurrentReplay', 3],

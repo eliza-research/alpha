@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -276,7 +277,7 @@ async function checkBrowserOwnerReminderAction(extraSources = []) {
   ]};
 }
 
-test('browser owner-reminder actions refine actual review, open and acknowledgement', {timeout: 120000}, async () => {
+test('browser owner-reminder actions refine actual review, open and acknowledgement', {timeout: scaledTimeout(120000)}, async () => {
   const {receipt} = await checkBrowserOwnerReminderAction([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 10);
   assert.equal(receipt.observedFields.length, 20);

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -123,7 +124,7 @@ async function listFocus(extraSources=[]){
  ]});
 }
 
-test('source list-focus captures and FIFO callbacks match the bounded Quint helper model', {timeout:180000}, async () => {
+test('source list-focus captures and FIFO callbacks match the bounded Quint helper model', {timeout:scaledTimeout(180000)}, async () => {
  const result=await listFocus();
  assert.equal(result.passed,true);
  assert.equal(result.inputsUnchanged,true);

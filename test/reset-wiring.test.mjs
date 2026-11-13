@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readdirSync} from 'node:fs';
@@ -57,7 +58,7 @@ public final class WiringCheck {
   const authDir=resolve(root,'vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud');
   const auth=readdirSync(authDir).filter(name=>name.endsWith('.java')&&!['CloudSignInPlugin.java','NativeGoogleCredential.java'].includes(name)).map(name=>join(authDir,name));
   const calendar=resolve(root,'vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java');
-  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,calendar,...['AlphaDataReset','ResetBeforeDispatch','CloudDeployment','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:120000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${sdk}`,'ai.alphacompute.alphaphone.WiringCheck'],{encoding:'utf8',timeout:30000}),/PASS Alpha reset wiring/);
+  execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,calendar,...['AlphaDataReset','ResetBeforeDispatch','CloudDeployment','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:scaledTimeout(120000)});
+  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${sdk}`,'ai.alphacompute.alphaphone.WiringCheck'],{encoding:'utf8',timeout:scaledTimeout(30000)}),/PASS Alpha reset wiring/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

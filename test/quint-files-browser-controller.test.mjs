@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -164,7 +165,7 @@ async function checkFilesBrowserController(extraSources = []) {
     'Storage state and listing completion are settled promise macrosteps. Direct open and late selection release use the shared FilesDirectAdmission model and the Alpha cold-start browser flows. Category/Trash aggregation, filters, mutations, dialogs, watch ownership and provider persistence remain explicit extensions. Native storage effects themselves are controlled ports.'] }));
 }
 
-test('Files readback and listings retain the current request across late native completions', {timeout:120000}, async () => {
+test('Files readback and listings retain the current request across late native completions', {timeout:scaledTimeout(120000)}, async () => {
   const receipt = await checkFilesBrowserController([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

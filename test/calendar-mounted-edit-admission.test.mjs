@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {startMountedCalendar} from './fixtures/calendar-mounted-editor.mjs';
 import {reviewCalendarDraftDiscard} from './fixtures/calendar-draft-handoff.mjs';
 
-test('mounted Calendar Edit keeps the retained draft until explicit Resume or Discard', {timeout: 240_000}, async t => {
+test('mounted Calendar Edit keeps the retained draft until explicit Resume or Discard', {timeout: scaledTimeout(240_000)}, async t => {
   const browser = await startMountedCalendar();
   try {
     for (const [kind, nextTitle] of [['same', 'Fixture Existing Event A'], ['different', 'Fixture Existing Event B']]) {

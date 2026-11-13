@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -181,7 +182,7 @@ async function checkVaultCoordinator(extraSources=[]) {
     ]});
 }
 
-test('actual vault coordinator clears drafts and retires reset review on leave', {timeout:60000}, async () => {
+test('actual vault coordinator clears drafts and retires reset review on leave', {timeout:scaledTimeout(60000)}, async () => {
   const receipt=await checkVaultCoordinator([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces,9);
   assert.ok(receipt.checkpoints>=50);

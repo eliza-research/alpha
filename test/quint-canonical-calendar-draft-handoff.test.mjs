@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -157,7 +158,7 @@ async function checkCanonicalCalendarDraftHandoff(extraSources = []) {
       'Native capture, OCR quality, provider saves, and the old owner’s process-wide retirement are separate. The Camera fixture enters at the captured-image review boundary.']}));
 }
 
-test('mounted Note and scan handoffs match canonical Calendar draft admission', {timeout: 420_000}, async () => {
+test('mounted Note and scan handoffs match canonical Calendar draft admission', {timeout: scaledTimeout(420_000)}, async () => {
   const receipt = await checkCanonicalCalendarDraftHandoff([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

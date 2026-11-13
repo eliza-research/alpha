@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const {actionCounter, modelScenario, modelWalks} = await import('../specs/quint/refinement/services/inbox-workflows-model-traces.mjs');
@@ -123,13 +124,13 @@ async function replay(walk, label, seen, rewrite) {
 }
 const actions = ['editTap', 'saveTap', 'dispatch', 'serverApply', 'serverReject', 'requestLost', 'successReply', 'rejectedReply', 'unknownReply', 'refresh', 'back', 'remoteEdit', 'restart'];
 
-test('the real workflow adapter follows every step of the metadata edit model scenarios', {timeout: 240000}, async () => {
+test('the real workflow adapter follows every step of the metadata edit model scenarios', {timeout: scaledTimeout(240000)}, async () => {
   const seen = actionCounter();
   for (const scenario of scenarios) await replay(modelScenario(model, scenario, {main}), scenario, seen);
   for (const action of actions) assert.ok(seen.count(action) > 0, action);
 });
 
-test('the real workflow adapter follows random metadata edit model walks step by step', {timeout: 280000}, async () => {
+test('the real workflow adapter follows random metadata edit model walks step by step', {timeout: scaledTimeout(280000)}, async () => {
   const seen = actionCounter(), walks = modelWalks(model, {main, traces: 200, steps: 40});
   assert.equal(walks.length, 200);
   for (const [index, walk] of walks.entries()) await replay(walk.map(step => ({...step, rejected: false})), `walk ${index}`, seen);
@@ -137,7 +138,7 @@ test('the real workflow adapter follows random metadata edit model walks step by
   for (const action of ['editTap', 'saveTap', 'dispatch', 'requestLost', 'unknownReply', 'refresh', 'back', 'remoteEdit', 'restart']) assert.ok(seen.count(action) > 0, `${action} ${JSON.stringify(seen.all())}`);
 });
 
-test('the metadata edit replay rejects an adapter that keeps a change the agent can no longer apply', {timeout: 120000}, async () => {
+test('the metadata edit replay rejects an adapter that keeps a change the agent can no longer apply', {timeout: scaledTimeout(120000)}, async () => {
   const kept = source => source.replace("if(before.versionId!==intent.versionId){await intents.acknowledge(metaKey,pendingMetadata,signal);", "if(before.versionId!==intent.versionId){");
   await assert.rejects(replay(modelScenario(model, 'changedVersionReleasesTest', {main}), 'changedVersionReleasesTest', actionCounter(), kept), /changedVersionReleasesTest step \d+ refresh/);
 });

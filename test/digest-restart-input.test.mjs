@@ -1,5 +1,6 @@
 // Input admission of the resident digest restart check. The check itself needs the prepared
 // upstream source with dependencies (about 6 GB) and is not part of `bun run test`.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-const run=source=>spawnSync(process.execPath,['scripts/test-local-digest-restart.ts'],{env:{PATH:process.env.PATH,HOME:process.env.HOME,ALPHA_ELIZA_SOURCE:source},encoding:'utf8',timeout:60000});
+const run=source=>spawnSync(process.execPath,['scripts/test-local-digest-restart.ts'],{env:{PATH:process.env.PATH,HOME:process.env.HOME,ALPHA_ELIZA_SOURCE:source},encoding:'utf8',timeout:scaledTimeout(60000)});
 const commit=JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit;
 
 test('digest restart check stops before any process work and names the exact preparation when its input is missing',()=>{

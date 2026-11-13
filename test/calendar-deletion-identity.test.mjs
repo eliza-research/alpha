@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -24,7 +25,7 @@ public final class IdentityTest {
   System.out.println("PASS exact scoped Calendar deletion identities");
  }
 }`);
-  execFileSync(javaBinary('javac'),['--release','11','-d',dir,join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/CalendarDeletionIdentity.java'),file],{timeout:60000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.IdentityTest'],{encoding:'utf8',timeout:10000}),/PASS exact scoped/);
+  execFileSync(javaBinary('javac'),['--release','11','-d',dir,join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/CalendarDeletionIdentity.java'),file],{timeout:scaledTimeout(60000)});
+  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.IdentityTest'],{encoding:'utf8',timeout:scaledTimeout(10000)}),/PASS exact scoped/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

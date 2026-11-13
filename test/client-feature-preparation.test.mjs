@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import {createHash} from 'node:crypto';
 import {buildSync} from 'esbuild';
@@ -204,7 +205,7 @@ test('direct local development launcher prepares a clean client tree before star
  // The generic copier fixture explicitly tests the non-voice projection path.
  const prep=path.join(root,'scripts/prepare-client-features.ts');fs.writeFileSync(prep,fs.readFileSync(prep,'utf8').replace('projectVoice = true','projectVoice = false'));
  // Source hashing and materialization can exceed 20 seconds on a loaded build host.
- const result=spawnSync(process.execPath,[path.join(root,'scripts/dev-local.ts')],{cwd:root,env:{...process.env,ALPHA_REMOTE_PORT:'0',ALPHA_REMOTE_PROFILE:path.join(root,'empty-profile')},encoding:'utf8',timeout:120000});
+ const result=spawnSync(process.execPath,[path.join(root,'scripts/dev-local.ts')],{cwd:root,env:{...process.env,ALPHA_REMOTE_PORT:'0',ALPHA_REMOTE_PROFILE:path.join(root,'empty-profile')},encoding:'utf8',timeout:scaledTimeout(120000)});
  assert.equal(result.status,1);assert.match(result.stderr,/Invalid local agent port/);
  assert.equal(JSON.parse(fs.readFileSync(path.join(root,'.eliza/client-features/.source.json'))).baseCommit,commit);
  // Development uses authenticated upstream source without a patch cache.
@@ -235,7 +236,7 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
   assert.equal(observedNativeHistorySelection(message,'open'),undefined);
   message.content.metadata.clientDevice.context.view='notes';
   assert.equal(observedNativeHistorySelection(message,'back'),undefined);
- `],{encoding:'utf8',timeout:30000});
+ `],{encoding:'utf8',timeout:scaledTimeout(30000)});
  assert.equal(browserImport.status,0,browserImport.stderr);
  // Node consumers (the Vite config bundle and backend hosts) load linked-sync through cloud-protocol.
  for(const file of ['google-sync-port.ts','sync-controller.ts','linked-store.ts']){

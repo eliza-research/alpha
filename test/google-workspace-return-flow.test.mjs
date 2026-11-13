@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -69,8 +70,8 @@ public class WorkspaceFlowTest {
   check(m.credential.equals(ORIGINAL));System.out.println("PASS Workspace flow "+checks);
  }
 }`);
-  execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',root,nativeSource('GoogleWorkspaceReturn.java'),nativeSource('GoogleWorkspaceReturnFlow.java'),upstreamAgentRuntime('NativeProviderAdmission.java'),file],{timeout:30000,stdio:'pipe'});
-  assert.match(execFileSync(javaBinary('java'),['-cp',root+':'+jsonJar,'ai.alphacompute.alphaphone.WorkspaceFlowTest'],{timeout:30000,encoding:'utf8'}),/^PASS Workspace flow /);
+  execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',root,nativeSource('GoogleWorkspaceReturn.java'),nativeSource('GoogleWorkspaceReturnFlow.java'),upstreamAgentRuntime('NativeProviderAdmission.java'),file],{timeout:scaledTimeout(30000),stdio:'pipe'});
+  assert.match(execFileSync(javaBinary('java'),['-cp',root+':'+jsonJar,'ai.alphacompute.alphaphone.WorkspaceFlowTest'],{timeout:scaledTimeout(30000),encoding:'utf8'}),/^PASS Workspace flow /);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 
@@ -80,6 +81,6 @@ test('Workspace return flow compiles against the Android org.json API',()=>{
  assert.ok(sdk,'Android 36 platform is required for the native API compatibility check');
  const output=mkdtempSync(join(tmpdir(),'alpha-workspace-android-api-'));
  try{
-  execFileSync(javaBinary('javac'),['--release','11','-cp',sdk,'-d',output,nativeSource('GoogleWorkspaceReturn.java'),nativeSource('GoogleWorkspaceReturnFlow.java'),upstreamAgentRuntime('NativeProviderAdmission.java')],{timeout:30000,stdio:'pipe'});
+  execFileSync(javaBinary('javac'),['--release','11','-cp',sdk,'-d',output,nativeSource('GoogleWorkspaceReturn.java'),nativeSource('GoogleWorkspaceReturnFlow.java'),upstreamAgentRuntime('NativeProviderAdmission.java')],{timeout:scaledTimeout(30000),stdio:'pipe'});
  }finally{rmSync(output,{recursive:true,force:true});}
 });

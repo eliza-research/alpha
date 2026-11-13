@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelTraces, replayTraces, settle, sourceModule} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
@@ -89,4 +90,4 @@ async function runContactsSessionCase1(t, {canaries=true}={}) {
 
 async function runContactsSessionReplay(){return runContactsSessionCase1(undefined,{canaries:false});}
 
-test('the Contacts adapter follows ContactsSession scenarios, witnesses and random walks', {timeout: 240000}, async () => runContactsSessionCase1(undefined));
+test('the Contacts adapter follows ContactsSession scenarios, witnesses and random walks', {timeout: scaledTimeout(240000)}, async () => runContactsSessionCase1(undefined));

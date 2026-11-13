@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -177,7 +178,7 @@ async function checkStartupUpdateAdmission() {
       'Each checkpoint follows a completed or rejected bridge reply. Native replies that never settle and installed PackageInstaller delivery remain separate.']}));
 }
 
-test('the Android startup gate holds mount through uncertain and foreign update readbacks', {timeout: 60000}, async () => {
+test('the Android startup gate holds mount through uncertain and foreign update readbacks', {timeout: scaledTimeout(60000)}, async () => {
   const receipt = await checkStartupUpdateAdmission();
   assert.equal(receipt.traceInputs.length, 4);
   assert.equal(receipt.observedFields.length, 9);

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -27,7 +28,7 @@ public class RecoveryReviewTest {
  }
 }`);
   // JAVA_HOME when set, otherwise the JDK on PATH (test/fixtures/jvm-tools.mjs).
-  execFileSync(javaBinary('javac'),['-d',temp,join(directory,'ResidentRecoveryReview.java'),join(temp,'RecoveryReviewTest.java')],{timeout:120000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',temp,'ai.alphacompute.alphaphone.RecoveryReviewTest'],{encoding:'utf8',timeout:120000}),/PASS original scope/);
+  execFileSync(javaBinary('javac'),['-d',temp,join(directory,'ResidentRecoveryReview.java'),join(temp,'RecoveryReviewTest.java')],{timeout:scaledTimeout(120000)});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temp,'ai.alphacompute.alphaphone.RecoveryReviewTest'],{encoding:'utf8',timeout:scaledTimeout(120000)}),/PASS original scope/);
  }finally{rmSync(temp,{recursive:true,force:true});}
 });

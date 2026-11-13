@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -25,7 +26,7 @@ export function prepareLocalAgentFixture(temp) {
   };
   function git(args, cwd = sdk) {
     const child = spawnSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args],
-      {cwd, env, encoding: 'utf8', timeout: 60000});
+      {cwd, env, encoding: 'utf8', timeout: scaledTimeout(60000)});
     assert.ifError(child.error);
     assert.equal(child.status, 0, child.stderr);
     return child.stdout.trim();
@@ -53,7 +54,7 @@ export function prepareLocalAgentFixture(temp) {
   const runtime = path.join(product, 'artifacts', 'runtime');
   const childEnv = {...env, ALPHA_LOCAL_AGENT_SOURCE_DIR: runtime, ALPHA_RUNTIME_GIT_CACHE: sdk};
   const prepare = () => spawnSync(process.execPath, [path.join(product, 'scripts/prepare-local-agent.ts'), '--source-only'],
-    {cwd: product, env: childEnv, encoding: 'utf8', timeout: 60000});
+    {cwd: product, env: childEnv, encoding: 'utf8', timeout: scaledTimeout(60000)});
   const initial = prepare();
   assert.ifError(initial.error);
   assert.equal(initial.status, 0, initial.stderr);

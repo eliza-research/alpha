@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {checkTraces as check} from '../specs/quint/refinement/check-traces.mjs';
@@ -89,7 +90,7 @@ async function checkCalendarApprovalReview(extraSources=[]) {
     'The DOM review reread/presentation comparison, server revision CAS, Calendar effect and provider outcome are separate contracts. A POST proves dispatch only, not a real Calendar change.']}));
 }
 
-test('typed Calendar decisions consume one exact current read and never replay uncertainty',{timeout:120000},async()=>{
+test('typed Calendar decisions consume one exact current read and never replay uncertainty',{timeout:scaledTimeout(120000)},async()=>{
  const receipt=await checkCalendarApprovalReview(['test/quint-calendar-approval-review.test.mjs']);
  assert.ok(receipt.passed&&receipt.inputsUnchanged&&receipt.driverInputsBound);
  assert.equal(receipt.traces,29);

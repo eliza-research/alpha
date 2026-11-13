@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelNames, modelTraces, replayTraces, repositoryRoot} from '../specs/quint/refinement/services/maps-model-traces.mjs';
@@ -150,7 +151,7 @@ async function replayMapPlaneOwnership({scenarios, witnesses, random = 60, steps
   return replayTraces(traces, () => driver(compiled), {project});
 }
 
-test('the Maps adapter map plane handling follows every MapPlaneOwnership model trace step by step', {timeout: 300000}, async () => {
+test('the Maps adapter map plane handling follows every MapPlaneOwnership model trace step by step', {timeout: scaledTimeout(300000)}, async () => {
   const {scenarios, witnesses} = modelNames('specs/quint/application/MapPlaneOwnership.qnt');
   assert.equal(scenarios.length, 7);
   assert.equal(witnesses.length, 5);

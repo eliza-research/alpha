@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelTraces, replayTraces, loadBundled, installDocument, settle} from '../specs/quint/refinement/application/browser-model-traces.mjs';
@@ -130,7 +131,7 @@ async function checkPasswordProviderDialog({random = 40, steps = 30} = {}) {
     choicesWithdrawn: s.busy || s.saveFailed, unlocked: s.unlocked, sample: s.sample})});
 }
 
-test('the development password provider dialog follows every PasswordProviderDialog trace', {timeout: 240000}, async () => {
+test('the development password provider dialog follows every PasswordProviderDialog trace', {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await checkPasswordProviderDialog();
   assert.equal(receipt.traces, 54);
   assert.ok(receipt.checkpoints > 1000, `checkpoints ${receipt.checkpoints}`);

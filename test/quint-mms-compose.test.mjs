@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelTraces, replayTraces, repositoryRoot, settle} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
@@ -168,6 +169,6 @@ async function runMmsComposeCase3(t, {canaries=true}={}) {
 
 async function runMmsComposeReplay(){return runMmsComposeCase1(undefined,{canaries:false});}
 
-test('the MMS composer follows MmsCompose scenarios, witnesses and random walks', {timeout: 240000}, async () => runMmsComposeCase1(undefined));
+test('the MMS composer follows MmsCompose scenarios, witnesses and random walks', {timeout: scaledTimeout(240000)}, async () => runMmsComposeCase1(undefined));
 test('accepted empty MMS and hidden uncertain MMS cannot dispatch; an owned edit starts a new identity', async () => runMmsComposeCase2(undefined));
 test('a declined MMS review is reviewed again under a new operation ID without editing the draft', async () => runMmsComposeCase3(undefined));

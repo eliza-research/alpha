@@ -1,6 +1,7 @@
 // AOSP SMS/MMS contract (issue #421): the native journal and provider mapping on the JVM, the renderer
 // contract against a recording stub, and source checks of the native and manifest boundaries. No SIM,
 // radio, provider, image or carrier is involved; nothing here establishes a real send or delivery.
+import {scaledTimeout} from "../specs/quint/refinement/timeouts.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -33,11 +34,11 @@ function stub(answers = {}) {
 test("JVM: Alpha's installed journal stays compatible with the shared reviewed-SMS core", () => {
   const dir = mkdtempSync(join(tmpdir(), "alpha-sms-"));
   try {
-    execFileSync(javaBinary("javac"), ["--release", "11", "-d", dir, ...["SmsSendJournal", "SmsRecords", "SmsPageCursor"].map(name => join(SHARED, `${name}.java`)), join(root, "test/fixtures/SmsSendJournalTest.java")], { timeout: 60000 });
+    execFileSync(javaBinary("javac"), ["--release", "11", "-d", dir, ...["SmsSendJournal", "SmsRecords", "SmsPageCursor"].map(name => join(SHARED, `${name}.java`)), join(root, "test/fixtures/SmsSendJournalTest.java")], { timeout: scaledTimeout(60000) });
     const body = "Running late \"5\" min\né😀\t\u0001";
     const expected = createHash("sha256").update(smsBindingText({ recipients: ["+15555550100", "5550101"], body, subscriptionId: 3 })).digest("hex");
     const namespace = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java").match(/"(alpha-sms-operation:v1:)"/)[1];
-    assert.match(execFileSync(javaBinary("java"), ["-Djava.io.tmpdir=" + dir, "-cp", dir, "ai.eliza.plugins.messages.SmsSendJournalTest", expected, namespace], { encoding: "utf8", timeout: 120000 }), /PASS alpha sms journal compatibility/);
+    assert.match(execFileSync(javaBinary("java"), ["-Djava.io.tmpdir=" + dir, "-cp", dir, "ai.eliza.plugins.messages.SmsSendJournalTest", expected, namespace], { encoding: "utf8", timeout: scaledTimeout(120000) }), /PASS alpha sms journal compatibility/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

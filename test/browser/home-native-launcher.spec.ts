@@ -47,7 +47,7 @@ async function nativeStub(page: Page, stub: Stub) {
         if (method === 'getLocaleInfo') return { locale: 'en-US', hour24: false };
         return {};
       }
-      if (plugin === 'DailyApps' && method === 'surfaceInfo') return { assistant: stub.assistant === true, developmentBuild: true, topInset: 0, bottomInset: 0 };
+      if (plugin === 'DailyApps' && method === 'surfaceInfo') return { assistant: stub.assistant === true, topInset: 0, bottomInset: 0 };
       if (plugin === 'AlphaNotifications' && method === 'status') return stub.notifications ?? { permissionGranted: true, appEnabled: true };
       if (plugin === 'AlphaVoiceCloud' && method === 'checkPermissions') return { microphone: stub.microphone ?? 'granted' };
       return {};

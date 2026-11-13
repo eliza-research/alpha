@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -209,7 +210,7 @@ async function checkScreenFocusOwnership() {
       'Installed TalkBack, physical rotation timing and mounted modal shapes beyond the focused browser tests remain separate.']}));
 }
 
-test('the exact screen focus observer preserves navigation over resize and retires only its own installation', {timeout: 60000}, async () => {
+test('the exact screen focus observer preserves navigation over resize and retires only its own installation', {timeout: scaledTimeout(60000)}, async () => {
   const receipt = await checkScreenFocusOwnership();
   assert.equal(receipt.traceInputs.length, 6);
   assert.equal(receipt.observedFields.length, 13);

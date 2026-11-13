@@ -101,7 +101,7 @@ export function modelScenario(model, scenario, {main, seed = 20261107, variable 
   try {
     const result = spawnSync(process.execPath, [cli, 'test', model, `--main=${main}`, '--backend=typescript', `--seed=${seed}`,
       '--max-samples=1', `--match=^${scenario}$`, `--out-itf=${join(directory, 'trace-{test}-{seq}.json')}`],
-    {cwd: root, encoding: 'utf8', timeout: 60000, maxBuffer: 16 * 1024 * 1024});
+    {cwd: root, encoding: 'utf8', timeout: scaledTimeout(60000), maxBuffer: 16 * 1024 * 1024});
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const states = JSON.parse(readFileSync(join(directory, `trace-${scenario}-0.json`), 'utf8')).states;
     assert.equal(states.length, steps.length, `${scenario}: ${states.length} states for ${steps.length} written steps`);

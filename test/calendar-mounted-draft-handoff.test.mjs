@@ -1,10 +1,11 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {discardCalendarDraft, fixtureNote, goHome, noteRefusal, noteTitle, openCameraReview, openNote,
   retainCalendarDraft, reviewNote, scanRefusal, scanTitle, startMountedCalendar, submitCameraReview, titleInput}
   from './fixtures/calendar-draft-handoff.mjs';
 
-test('incoming canonical Calendar drafts preserve an earlier retained editor', {timeout: 240_000}, async t => {
+test('incoming canonical Calendar drafts preserve an earlier retained editor', {timeout: scaledTimeout(240_000)}, async t => {
   const browser = await startMountedCalendar();
   try {
     await t.test('mounted Note review stays on the exact note until explicit discard', async () => {

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -190,7 +191,7 @@ async function checkLauncherOwnership(extraSources = []) {
   ]}));
 }
 
-test('shared launcher readbacks and native handoffs retain the current owner', {timeout: 120000}, async () => {
+test('shared launcher readbacks and native handoffs retain the current owner', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkLauncherOwnership([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

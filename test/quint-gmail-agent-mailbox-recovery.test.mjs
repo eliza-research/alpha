@@ -21,7 +21,7 @@ async function checkGmailAgentMailboxRecovery(extraSources = []) {
     ...extraSources]);
   const driverHashes = captureInputs(sources);
   const run = spawnSync(process.execPath, [probe], {
-    cwd: root, encoding: 'utf8', timeout: 10000, maxBuffer: 2*1024*1024,
+    cwd: root, encoding: 'utf8', timeout: scaledTimeout(10000), maxBuffer: 2*1024*1024,
     env: {PATH: '/usr/bin:/bin', TSX_DISABLE_CACHE: '1'},
   });
   if (run.error) throw run.error;

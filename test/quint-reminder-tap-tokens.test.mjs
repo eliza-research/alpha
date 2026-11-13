@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {actionCounts, modelTraces, sameState} from '../specs/quint/refinement/application/calendar-itf.mjs';
@@ -121,7 +122,7 @@ async function checkReminderTapTokens(mutate) {
   return {traces: traces.length, steps, actions: actionCounts(traces), sources: compiled.sources};
 }
 
-test('the reminder adapter follows every ReminderTapTokens model step', {timeout: 280000}, async () => {
+test('the reminder adapter follows every ReminderTapTokens model step', {timeout: scaledTimeout(280000)}, async () => {
   const result = await checkReminderTapTokens();
   assert.equal(result.traces, 43);
   for (const action of ['tap', 'check', 'readPending', 'listed', 'confirm', 'afterOpen', 'closeQuestion', 'interact',
@@ -129,7 +130,7 @@ test('the reminder adapter follows every ReminderTapTokens model step', {timeout
   assert.ok(result.sources.includes('apps/app/src/prototype/reminder-adapter.ts'));
 });
 
-test('a second check started while one is running is rejected by the replay', {timeout: 280000}, async () => {
+test('a second check started while one is running is rejected by the replay', {timeout: scaledTimeout(280000)}, async () => {
   const guard = 'if (tapBusy) {';
   await assert.rejects(checkReminderTapTokens(code => {
     assert.ok(code.includes(guard));

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -123,7 +124,7 @@ async function checkLauncherObserver(extraSources = []) {
   ]}));
 }
 
-test('shared launcher observers retire timers and native subscriptions once', {timeout: 120000}, async () => {
+test('shared launcher observers retire timers and native subscriptions once', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkLauncherObserver([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

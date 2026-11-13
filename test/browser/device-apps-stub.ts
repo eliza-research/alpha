@@ -8,7 +8,7 @@ export async function deviceAppsStub(page: Page, count = 40) {
     const w = window as any, apps = Array.from({ length: count }, (_, i) => ({ packageName: `org.example.app${i}`, activityName: `org.example.app${i}.Main`, label: `App ${String(i).padStart(2, '0')}` }));
     const plugins: Record<string, string[]> = { ElizaSystem: ['listLauncherApps', 'launchApp', 'resolveDefaultApp', 'openDefaultApp', 'openAppInfo', 'getBuildInfo', 'getLocaleInfo', 'getLaunchInfo'], DeviceApps: ['platformCapabilities'], DailyApps: ['surfaceInfo'], AlphaNotifications: ['status', 'list'], AlphaVoiceCloud: ['checkPermissions', 'requestPermissions'] };
     const answers: Record<string, unknown> = { 'ElizaSystem.listLauncherApps': { apps }, 'ElizaSystem.resolveDefaultApp': { role: 'dial', available: false }, 'ElizaSystem.getBuildInfo': { launcher: true, version: 'stub' }, 'ElizaSystem.getLaunchInfo': { assistant: false }, 'ElizaSystem.getLocaleInfo': { locale: 'en-US', hour24: false },
-      'DailyApps.surfaceInfo': { assistant: false, developmentBuild: true, topInset: 0, bottomInset: 0 }, 'AlphaNotifications.status': { permissionGranted: true, appEnabled: true }, 'AlphaVoiceCloud.checkPermissions': { microphone: 'granted' } };
+      'DailyApps.surfaceInfo': { assistant: false, topInset: 0, bottomInset: 0 }, 'AlphaNotifications.status': { permissionGranted: true, appEnabled: true }, 'AlphaVoiceCloud.checkPermissions': { microphone: 'granted' } };
     w.androidBridge = {};
     const cap: any = w.Capacitor = {
       Plugins: {},

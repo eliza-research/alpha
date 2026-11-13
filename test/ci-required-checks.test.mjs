@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -79,7 +80,7 @@ const selector = (step, command, env, cwd = process.cwd()) => {
   assert.equal(step.run.indexOf(command), step.run.lastIndexOf(command));
   assert.ok(step.run.endsWith(command + '\n'));
   return spawnSync('bash', ['-e', '-c', step.run.slice(0, step.run.indexOf(command)) + '\nprintf "%s" "$MODELS"'], {
-    cwd, env: {...process.env, ...env}, encoding: 'utf8', timeout: 30000,
+    cwd, env: {...process.env, ...env}, encoding: 'utf8', timeout: scaledTimeout(30000),
   });
 };
 const selectedNames = result => {
@@ -178,7 +179,7 @@ test('the actual promotion selectors preserve manual filters and refuse empty or
     fs.writeFileSync(join(scratch, 'specs/quint/application/manifest.json'), '[]');
     refused(selector(temporal, temporalCommand, {TEMPORAL_GROUP: 'PhotosLibrary'}, scratch), /Temporal model group must not be empty/);
   } finally {fs.rmSync(scratch, {recursive: true, force: true});}
-  const unknown = spawnSync('bun', ['scripts/check-quint.ts', 'verify', '--models=UnknownPromotionPartitionProbe'], {encoding: 'utf8', timeout: 30000});
+  const unknown = spawnSync('bun', ['scripts/check-quint.ts', 'verify', '--models=UnknownPromotionPartitionProbe'], {encoding: 'utf8', timeout: scaledTimeout(30000)});
   assert.ifError(unknown.error);assert.notEqual(unknown.status, 0);assert.match(unknown.stderr, /Unknown model UnknownPromotionPartitionProbe/);
 });
 

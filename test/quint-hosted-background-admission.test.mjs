@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -192,7 +193,7 @@ async function checkHostedBackgroundAdmission(extraSources = []) {
   ]}));
 }
 
-test('renderer hosted background setup and pause preserve exact attempt and session authority', {timeout: 120000}, async () => {
+test('renderer hosted background setup and pause preserve exact attempt and session authority', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkHostedBackgroundAdmission([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 9);
   assert.deepEqual(Object.keys(receipt.actions).sort(), ['abort', 'beginReply', 'configReply', 'pause', 'start']);

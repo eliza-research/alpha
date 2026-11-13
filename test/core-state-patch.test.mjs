@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -83,23 +84,23 @@ test('real Bun preload authenticates the selected clean source and refuses subse
   const manifest = f.manifest(); manifest.baseCommit = pin; f.save(manifest);
   fs.writeFileSync(path.join(f.root, 'upstream.lock.json'), JSON.stringify({commit: pin}));
   const args = coreRuntimeArguments(f.root, f.source, [path.join(f.source, 'entry.mjs')]);
-  const run = spawnSync(process.env.ALPHA_BUN || 'bun', args, {encoding: 'utf8', timeout: 30000,
+  const run = spawnSync(process.env.ALPHA_BUN || 'bun', args, {encoding: 'utf8', timeout: scaledTimeout(30000),
     env: {...env, ALPHA_CORE_STATE_SOURCE: f.source}});
   assert.equal(run.status, 0, run.stderr); assert.equal(run.stdout.trim(), 'reviewed reviewed');
   assert.match(fs.readFileSync(f.file, 'utf8'), /reviewed/);
   fs.appendFileSync(path.join(f.source, 'entry.mjs'), '// source drift\n');
-  const rejected = spawnSync(process.env.ALPHA_BUN || 'bun', args, {encoding: 'utf8', timeout: 30000,
+  const rejected = spawnSync(process.env.ALPHA_BUN || 'bun', args, {encoding: 'utf8', timeout: scaledTimeout(30000),
     env: {...env, ALPHA_CORE_STATE_SOURCE: f.source}});
   assert.notEqual(rejected.status, 0); assert.equal(rejected.stdout.trim(), '');
   // A separately frozen custom snapshot uses its own manifest guard.
   const snapshot = sourceManifest(f.source), manifestFile = path.join(f.root, 'frozen.json');
   fs.writeFileSync(manifestFile, JSON.stringify(snapshot));
   const selected = combinedCoreRuntime(f.root, f.source, manifestFile, snapshot, [path.join(f.source, 'entry.mjs')]);
-  const frozen = spawnSync(process.env.ALPHA_BUN || 'bun', selected.args, {encoding: 'utf8', timeout: 30000,
+  const frozen = spawnSync(process.env.ALPHA_BUN || 'bun', selected.args, {encoding: 'utf8', timeout: scaledTimeout(30000),
     env: {...env, ...selected.environment}});
   assert.equal(frozen.status, 0, frozen.stderr); assert.equal(frozen.stdout.trim(), 'reviewed reviewed');
   fs.appendFileSync(path.join(f.source, 'entry.mjs'), '// second change\n');
-  const changed = spawnSync(process.env.ALPHA_BUN || 'bun', selected.args, {encoding: 'utf8', timeout: 30000,
+  const changed = spawnSync(process.env.ALPHA_BUN || 'bun', selected.args, {encoding: 'utf8', timeout: scaledTimeout(30000),
     env: {...env, ...selected.environment}});
   assert.notEqual(changed.status, 0); assert.equal(changed.stdout.trim(), '');
 

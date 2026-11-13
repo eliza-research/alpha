@@ -1,6 +1,7 @@
 // ViewAdmission traces replayed against the image Contacts admission step, the enabled and deferred
 // view sets, and a shell that keeps the product shell's two rules: a deferred view is reported as no
 // view, and only an enabled view opens. No Android capability read is involved.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelTraces, replayTraces, sourceModule} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
@@ -37,7 +38,7 @@ function create() {
   };
 }
 
-test('the image Contacts admission follows ViewAdmission scenarios, witnesses and random walks', {timeout: 180000}, async () => {
+test('the image Contacts admission follows ViewAdmission scenarios, witnesses and random walks', {timeout: scaledTimeout(180000)}, async () => {
   const traces = modelTraces({...MODEL, scenarios: SCENARIOS, witnesses: WITNESSES, random: 80, steps: 30});
   const receipt = await replayTraces(traces, create, {project});
   assert.equal(receipt.traces, SCENARIOS.length + WITNESSES.length + 80);

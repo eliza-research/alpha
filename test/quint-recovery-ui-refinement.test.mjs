@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -136,7 +137,7 @@ async function checkRecoveryUI(extraSources=[]){
     ]});
 }
 
-test('actual startup and React failures share one private-content-free recovery surface',{timeout:60000},async()=>{
+test('actual startup and React failures share one private-content-free recovery surface',{timeout:scaledTimeout(60000)},async()=>{
   const receipt=await checkRecoveryUI([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed,true);
   assert.equal(receipt.traces,14);

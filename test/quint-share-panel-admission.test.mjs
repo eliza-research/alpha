@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -127,7 +128,7 @@ async function checkSharePanelAdmission(extraSources = []) {
       'Mounted browser focus/keyboard behavior, arbitrary caller reentrancy, timer expiry, and destination or platform behavior remain separate.']});
 }
 
-test('the exact Share panel dispatches each admitted destination at most once after close', {timeout: 120000}, async () => {
+test('the exact Share panel dispatches each admitted destination at most once after close', {timeout: scaledTimeout(120000)}, async () => {
   const result = await checkSharePanelAdmission([fileURLToPath(import.meta.url)]);
   assert.equal(result.passed, true);
   assert.equal(result.traces, 11);

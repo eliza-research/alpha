@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {actionCounts, modelTraces, sameState} from '../specs/quint/refinement/application/calendar-itf.mjs';
@@ -173,7 +174,7 @@ async function checkReminderIntents(mutate) {
   return {traces: traces.length, steps, actions: actionCounts(traces), sources: compiled.sources};
 }
 
-test('reminder saves and decisions follow every ReminderIntents model step', {timeout: 280000}, async () => {
+test('reminder saves and decisions follow every ReminderIntents model step', {timeout: scaledTimeout(280000)}, async () => {
   const result = await checkReminderIntents();
   assert.equal(result.traces, 41);
   for (const action of ['startCreate', 'retain', 'abandon', 'dispatch', 'saveAgain', 'closeForm', 'lateSave', 'reconcileCreations',
@@ -183,7 +184,7 @@ test('reminder saves and decisions follow every ReminderIntents model step', {ti
     assert.ok(result.sources.includes(source), source);
 });
 
-test('dropping the record of a dispatched creation is rejected by the replay', {timeout: 280000}, async () => {
+test('dropping the record of a dispatched creation is rejected by the replay', {timeout: scaledTimeout(280000)}, async () => {
   const guard = 'if (created && !dispatched)';
   await assert.rejects(checkReminderIntents(code => {
     assert.ok(code.includes(guard));

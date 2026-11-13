@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -31,7 +32,7 @@ assert.match(source, /flick: !!d\.flick,\s+home: d\.home,/);
 const SCREENS = [{floor: 90, full: 915, heights: {floor: 150, middle: 500, top: 860}}, {floor: 90, full: 390, heights: {floor: 150, middle: 240, top: 330}}];
 const rest = view => view === 'pillView' ? 'hidden' : 'input';
 
-test("partial source contract: every settled drag in simulated ChatDock traces takes the detent chatRelease decides", {timeout: 120000}, () => {
+test("partial source contract: every settled drag in simulated ChatDock traces takes the detent chatRelease decides", {timeout: scaledTimeout(120000)}, () => {
   const traces = modelTraces({module: 'ChatDock', traces: 500, steps: 60});
   const seen = new Set();
   for (const trace of traces) for (let at = 1; at < trace.length; at++) {

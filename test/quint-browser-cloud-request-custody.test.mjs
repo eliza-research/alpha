@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -29,7 +30,7 @@ async function checkBrowserCloudRequestCustody(extraSources = []) {
   ])];
   const driverHashes = captureInputs(sources);
   const result = spawnSync(process.execPath, [probe, 'current'], {
-    cwd: root, encoding: 'utf8', timeout: 10000, maxBuffer: 1024*1024,
+    cwd: root, encoding: 'utf8', timeout: scaledTimeout(10000), maxBuffer: 1024*1024,
     env: {PATH: '/usr/bin:/bin', TSX_DISABLE_CACHE: '1'},
   });
   if (result.error) throw result.error;

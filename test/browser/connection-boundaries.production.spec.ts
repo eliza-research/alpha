@@ -51,7 +51,7 @@ async function android(page: Page, options: AndroidOptions) {
       if (plugin === 'AlphaHostedResults') return {};
       if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'connection-boundaries' };
       if (plugin === 'ElizaSense' && (method === 'status' || method === 'turnOff')) return { available: true, state: 'OFF', label: 'Listening off', consented: false, listening: false, microphoneOpen: false, ...(method === 'turnOff' ? { saved: true } : {}) };
-      if (plugin === 'DailyApps') return method === 'listReminders' ? { reminders: [] } : method === 'surfaceInfo' ? { assistant: false, developmentBuild: false, topInset: 0, bottomInset: 0 } : {};
+      if (plugin === 'DailyApps') return method === 'listReminders' ? { reminders: [] } : method === 'surfaceInfo' ? { assistant: false, topInset: 0, bottomInset: 0 } : {};
       if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
       if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
       if (plugin === 'AlphaHostedResults' && method === 'disableBackground') return {};
