@@ -847,6 +847,29 @@ test('cancelled browser Google poll ignores an already in-flight OAuth exchange'
 test('wrong attempt cancellation cannot retire the current browser Google login',async()=>{
  const f=await fixture();try{const started=await googleReady(f);await f.rpc({operation:'signInCancelGoogle',attemptId:randomUUID()});assert.equal((await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId})).data.status,'authenticated');}finally{await f.close();}
 });
+test('a returned Google commit still answers its exact Cancel without retiring a newer attempt',async()=>{
+ const f=await fixture();try{
+  const first=await googleReady(f),done=await f.rpc({operation:'signInPollGoogle',attemptId:first.attemptId});
+  assert.equal(done.data.status,'authenticated');
+  assert.deepEqual((await f.rpc({operation:'signInCancelGoogle',attemptId:first.attemptId})).data,done.data);
+  assert.notEqual((await f.rpc({operation:'signInCancelGoogle',attemptId:randomUUID()})).data.status,'authenticated');
+  assert.notEqual((await f.rpc({operation:'signInCancel'})).data.status,'authenticated');
+  const second=await f.rpc({operation:'signInStartGoogle',environment:'production',attemptId:randomUUID()});
+  assert.equal(second.status,200);
+  assert.deepEqual((await f.rpc({operation:'signInCancelGoogle',attemptId:first.attemptId})).data,done.data);
+  assert.equal((await f.rpc({operation:'signInStatus'})).data.active,true);
+  assert.equal((await f.rpc({operation:'signInCancelGoogle',attemptId:second.data.attemptId})).data.status,'cancelled');
+ }finally{await f.close();}
+});
+test('signing out retires the returned Google cancellation outcome',async()=>{
+ const f=await fixture();try{
+  const started=await googleReady(f),done=await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId});
+  const stored=JSON.parse((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value);
+  assert.equal((await f.rpc({operation:'secureRemove',slot:'cloud:production',previousReference:stored.credentialReference})).status,200);
+  assert.notEqual((await f.rpc({operation:'signInCancelGoogle',attemptId:started.attemptId})).data.status,'authenticated');
+  assert.equal(done.data.status,'authenticated');
+ }finally{await f.close();}
+});
 function fakeGooglePopup(submit=()=>{}) {
  return {opener:{},closed:false,close(){this.closed=true;},document:{body:{append(){}},createElement(tag){return tag==='form'?{append(){},submit(){submit(this);}}:{};}}};
 }
@@ -900,7 +923,7 @@ async function googleCommitBoundaryFixture(){
  const disk={value:'old',temporary:null},attempt={id:'attempt',phase:'preparing',environment:'production',controller:new AbortController(),sessionId:'session'};
  const state={googleAttempt:attempt};
  const harness=new Function('state','disk','attempt','renameEntered','releaseRename','writeEntered','releaseWrite','AbortController',`
- let googleAttempt=state.googleAttempt;
+ let googleAttempt=state.googleAttempt,googleCommitted;
  const pending=new Map([['session',{}]]);const options={};const resetCalendarAccess=()=>{};
  const directory=async()=>{};const stateFile='credentials';const randomUUID=()=> 'temporary';
  const writeFile=async(_path,value)=>{disk.temporary=value;writeEntered.resolve();await releaseWrite.promise;};
