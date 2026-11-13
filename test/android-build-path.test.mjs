@@ -12,7 +12,6 @@ import {workerHash} from '../scripts/workflow-worker-artifact.ts';
 import {verifyNativeGoogleHost} from '../scripts/runtime-profile.ts';
 import {coreStateBuildRecord} from '../scripts/core-state-patch.ts';
 import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
-import {realNode} from '../scripts/run-node-only-tests.ts';
 
 const read = file => fs.readFileSync(file, 'utf8');
 
@@ -29,58 +28,13 @@ test('scrubbed children leave a turbo-style AGENTS.md updater with nothing to de
   assert.notEqual(read(path.join(dir, 'AGENTS.md')), 'upstream\n');
 });
 
-test('prepared upstream children retain genuine Node generation through a Bun package-script parent', t => {
-  const node = realNode();
-  assert.ok(node, 'upstream Node tooling needs the installed genuine Node.js');
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-prepared-node-')));
-  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  const tools = path.join(dir, 'tools'), selectedBun = path.join(dir, 'selected-bun');
-  fs.mkdirSync(tools);fs.mkdirSync(selectedBun);
-  // Keep an explicit alias-only Bun directory. A genuine Node directory may also
-  // contain a different bun command, so promoting it must not change Bun selection.
-  const bun = execFileSync('bun', ['-p', 'process.execPath'], {encoding: 'utf8'}).trim();
-  fs.symlinkSync(node, path.join(tools, 'node'));
-  fs.symlinkSync(bun, path.join(selectedBun, 'bun'));
-  fs.symlinkSync(bun, path.join(selectedBun, 'node'));
-  fs.writeFileSync(path.join(tools, 'bun'), '#!/bin/sh\necho competing-bun\n', {mode: 0o755});
-  const inputPath = [tools, process.env.PATH].join(path.delimiter);
-  const generator = path.join(dir, 'generate.mjs');
-  const controlChannel = new URL('../vendor/eliza/plugins/plugin-native-browser-surface/scripts/control-channel.mjs', import.meta.url).href;
-  fs.writeFileSync(generator, `import {installControlChannel} from ${JSON.stringify(controlChannel)};process.stdout.write(installControlChannel.toString());`);
-  const generatedByNode = execFileSync(node, [generator], {encoding: 'utf8'});
-  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({name: 'prepared-node-probe', scripts: {probe: 'bun probe.mjs'}}));
-  fs.writeFileSync(path.join(dir, 'bunfig.toml'), `[run]
-bun = true
-`);
-  const source = new URL('../scripts/local-agent-source.ts', import.meta.url).href;
-  fs.writeFileSync(path.join(dir, 'probe.mjs'), `
-import {execFileSync} from 'node:child_process';
-import {preparedSourceEnv} from ${JSON.stringify(source)};
-const original = {...process.env, PATH:${JSON.stringify(selectedBun)}+${JSON.stringify(path.delimiter)}+process.env.PATH, AI_AGENT:'fixture', ALPHA_BUN:${JSON.stringify(path.join(selectedBun,'bun'))}, KEPT:'original', OVERRIDDEN:'original'};
-const env = preparedSourceEnv({...original,PATH:'unused-base-path'}, {PATH:original.PATH,OVERRIDDEN:'extra'});
-const run = (command,args,environment=env) => execFileSync(command,args,{env:environment,encoding:'utf8'}).trim();
-console.log(JSON.stringify({
-  beforeRuntime:run('node',['-p','process.versions.bun || ""'],original),
-  beforeGenerated:run('node',[${JSON.stringify(generator)}],original),
-  afterRuntime:run('node',['-p','JSON.stringify({bun:process.versions.bun,node:process.versions.node})']),
-  afterGenerated:run('node',[${JSON.stringify(generator)}]),
-  bun:run('bun',['-p','process.execPath']),
-  pathBefore:original.PATH,pathAfter:env.PATH,kept:env.KEPT,overridden:env.OVERRIDDEN,agent:env.AI_AGENT,
-}));
-`);
-  const output = execFileSync(bun, ['run', 'probe'], {cwd: dir, env: {...process.env, PATH: inputPath}, encoding: 'utf8', timeout: 30_000});
-  const result = JSON.parse(output.trim());
-  assert.ok(result.beforeRuntime, 'the real Bun package script reproduces the inherited Node alias');
-  assert.notEqual(result.beforeGenerated, generatedByNode.trim(), 'Bun transforms the function source used by the upstream generator');
-  assert.deepEqual(JSON.parse(result.afterRuntime), {node: execFileSync(node, ['-p','process.versions.node'], {encoding: 'utf8'}).trim()});
-  assert.equal(result.afterGenerated, generatedByNode.trim());
-  assert.equal(fs.realpathSync(result.bun), fs.realpathSync(bun), 'the selected Bun remains executable');
-  const before = result.pathBefore.split(path.delimiter), after = result.pathAfter.split(path.delimiter);
-  assert.ok(after.includes(tools));assert.ok(after.includes(selectedBun));
-  assert.ok(before.length > after.length, 'the actual injected alias directory is removed');
-  const promoted = after[0];
-  assert.deepEqual(after.filter(entry => entry !== promoted), before.filter(entry => after.includes(entry) && entry !== promoted), 'unrelated PATH entries retain their order');
-  assert.equal(result.kept, 'original');assert.equal(result.overridden, 'extra');assert.equal(result.agent, undefined);
+test('prepared upstream children keep the selected toolchain PATH, including Bun\'s node alias', () => {
+  // The pinned source builds on Bun: its control-channel generator reads source text rather than
+  // Function.toString(), so a `node` that is Bun regenerates identical committed output.
+  const alias = path.join(os.tmpdir(), 'bun-node-alias'), PATH = [alias, '/usr/bin', '/bin'].join(path.delimiter);
+  const env = preparedSourceEnv({PATH: 'unused-base-path', AI_AGENT: 'fixture', KEPT: 'original', OVERRIDDEN: 'original'}, {PATH, OVERRIDDEN: 'extra'});
+  assert.equal(env.PATH, PATH);
+  assert.equal(env.KEPT, 'original');assert.equal(env.OVERRIDDEN, 'extra');assert.equal(env.AI_AGENT, undefined);
 });
 
 function fixture(t) {

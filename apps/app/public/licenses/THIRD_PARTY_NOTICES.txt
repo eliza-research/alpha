@@ -61,9 +61,9 @@ unverified (4):
   - elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference@elizaOS llama.cpp fork 6337fd4c4bd071c17235986344d552d4036e177b (eliza c9247e6966b572612b51e6b5e6a1f15af2843af8); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified (license unverified)
   - On-device elizaOS agent runtime payload@pinned upstream runtime when present in the APK payload (license unverified)
   - pdf.js QuickJS sandbox@bundled with pdfjs-dist 6.3.289 (license unverified)
-  - Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)@asr/phonon-2-fv5.gguf sha256 c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df (208932352 bytes) (CC-BY-4.0)
+  - Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)@asr/phonon-2-fv5.gguf sha256 407c02ab24382bc92b181b165dea8e4702e502ded17dafbe7e1222c0b69cc802 (208932352 bytes) (CC-BY-4.0)
 permissive-not-previously-listed (1):
-  - Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)@asr/phonon-2-fv5.gguf sha256 c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df (208932352 bytes) (CC-BY-4.0)
+  - Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)@asr/phonon-2-fv5.gguf sha256 407c02ab24382bc92b181b165dea8e4702e502ded17dafbe7e1222c0b69cc802 (208932352 bytes) (CC-BY-4.0)
 proprietary-licence-held-outside-repo (1):
   - Denton typeface@1.004;FEAKit 1.0 (LicenseRef-Commercial-Font)
 
@@ -3114,9 +3114,9 @@ THIS SOFTWARE.
 
 ==============================================================================
 elizaOS
-Version: 2.0.6 (0f4b3b0b0ee6239bc8b1113e8df6709a6b6940a8)
+Version: 2.0.6 (442586ce66abf43ff382a951b8d439efd400af84)
 License: MIT
-Source: https://github.com/elizaOS/eliza/tree/0f4b3b0b0ee6239bc8b1113e8df6709a6b6940a8
+Source: https://github.com/elizaOS/eliza/tree/442586ce66abf43ff382a951b8d439efd400af84
 
 MIT License
 
@@ -10542,9 +10542,9 @@ Source: https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-6.3.289.tgz
 
 ==============================================================================
 Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)
-Version: asr/phonon-2-fv5.gguf sha256 c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df (208932352 bytes)
+Version: asr/phonon-2-fv5.gguf sha256 407c02ab24382bc92b181b165dea8e4702e502ded17dafbe7e1222c0b69cc802 (208932352 bytes)
 License: CC-BY-4.0
-Source: Unmodified pinned 0d9fd4b convert_phonon2_to_gguf.py, b5x3t7 layout, ARM64 Python 3.12.14 / NumPy 2.5.4 under QEMU; exact upstream c0f6ad42 hash.
+Source: Source-built with elizaOS/llama.cpp@5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd convert_phonon2_to_gguf.py (blob 05fc24e750541527148f46e461a67843fe23299d), b5x3t7 layout, Python 3.12.11 / NumPy 2.5.4. Full verified macOS ARM64 and Linux x86_64 outputs are byte-identical at the mobile-voice@1.4.2 pin; no device qualification claimed.
 Flags: unverified, permissive-not-previously-listed
 Obligation (unverified): CC-BY-4.0 weights; attribution, NOTICE and licence text are in this entry. Training audio listed in the Phonon-2 NOTICE includes CHiME-6 (CC-BY-SA-4.0) and SPGISpeech (Kensho terms). Flagged for review, not a build blocker. The licence has not been verified from shipped metadata. This flag is a record of that, not a clearance.
 Obligation (permissive-not-previously-listed): CC-BY-4.0 is a permissive licence recognised from the SPDX list that was not on this project's earlier accepted list. It asks that its licence text and copyright notices stay with copies, which this entry does.
