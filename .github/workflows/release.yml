@@ -28,7 +28,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: release
+  group: ${{ inputs.operation == 'publish' && 'alpha-app-stable-publication' || 'release-signing' }}
   cancel-in-progress: false
 
 jobs:

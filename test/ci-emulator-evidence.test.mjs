@@ -157,7 +157,7 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
   assert.deepEqual(Object.keys(release.on),['workflow_dispatch']);
   assert.deepEqual(release.on.workflow_dispatch.inputs.operation.options,['signing-proof','sign','publish']);
   assert.deepEqual(Object.keys(release.jobs),['signing-proof','admit-signing','sign','admit-publication','publish']);
-  assert.deepEqual(release.concurrency,{group:'release','cancel-in-progress':false});
+  assert.deepEqual(release.concurrency,{group:"${{ inputs.operation == 'publish' && 'alpha-app-stable-publication' || 'release-signing' }}",'cancel-in-progress':false});
   const guard=operation=>`github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.operation == '${operation}' && inputs.workflow_commit == github.sha`;
   assert.deepEqual(release.jobs['signing-proof'].permissions,{contents:'read'});
   assert.equal(release.jobs['signing-proof'].environment,'release');

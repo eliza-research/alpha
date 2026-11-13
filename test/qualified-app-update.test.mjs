@@ -18,7 +18,7 @@ test('publication preserves protected review, exact source and verification befo
   const workflow=YAML.parse(source);
   assert.deepEqual(Object.keys(workflow.on),['workflow_dispatch']);
   assert.deepEqual(workflow.permissions,{});
-  assert.deepEqual(workflow.concurrency,{group:'release','cancel-in-progress':false});
+  assert.deepEqual(workflow.concurrency,{group:"${{ inputs.operation == 'publish' && 'alpha-app-stable-publication' || 'release-signing' }}",'cancel-in-progress':false});
   assert.deepEqual(workflow.jobs['admit-publication'].permissions,{contents:'read',actions:'read'});
   const publish=workflow.jobs.publish;
   assert.equal(publish.environment,'release');
