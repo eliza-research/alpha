@@ -1,9 +1,9 @@
+// Register browser implementations before any runtime module claims plugin identity.
+import './browser/register';
 import {installChatTools} from './prototype/chat-tools-adapter';
 import {installContentLinks} from './prototype/content-links';
 import {installCalendarFormPresentation} from './prototype/calendar-form-presentation';
 import { externalVoiceInvocationEnabled } from './runtime/voice-entry-policy';
-// Register browser implementations before any runtime module claims plugin identity.
-import './browser/register';
 import {installCanonicalNotesView} from './prototype/canonical-notes-ui';
 import {installCanonicalCalendarDrafts} from './prototype/canonical-calendar-drafts';
 import {installAgentCalendarAdapter,deviceCalendarScope} from './prototype/agent-calendar-adapter';
