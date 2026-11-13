@@ -64,7 +64,7 @@ const options=process.argv.slice(2);
 assert.ok(options.length<=1&&options.every(arg=>/^--phase=.+$/.test(arg)),'Unknown workflow campaign option');
 const requestedPhase=options[0]?.slice(8);
 assert.ok(!requestedPhase||PHASES.includes(requestedPhase),'Unknown phase');
-const serial=process.env.ANDROID_SERIAL,avd=process.env.ALPHA_WORKFLOW_TEST_AVD,abi=process.env.ALPHA_WORKFLOW_TEST_ABI;
+const serial=process.env.ANDROID_SERIAL,avd=process.env.ALPHA_TEST_AVD,abi=process.env.ALPHA_TEST_ABI;
 assert.ok(serial&&/^emulator-\d+$/.test(serial),'Explicit emulator serial required');
 assert.ok(avd&&/^[A-Za-z0-9_.-]+$/.test(avd),'Explicit owned AVD name required');
 assert.ok(isAndroidAbi(abi),'Explicit owned emulator ABI required');
