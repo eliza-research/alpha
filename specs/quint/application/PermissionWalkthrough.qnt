@@ -61,7 +61,8 @@ module PermissionWalkthrough {
     s.operations.get(key) != s.generation,
     s' = { ...s, operations: s.operations.set(key, -1) } }
   action retiredResult = s' = s
-  /// A reviewed choice advances this session even when its durable write fails.
+  /// Confirmed platform access advances automatically in native setup.
+  /// Settings review and manual continuation use the same transition.
   /// The last choice records completion. The Ready button only acknowledges that UI result.
   action advance = all { s.signedIn, s.enabled or s.reopened, s.phase == "permissions", s.pending == -1,
     s.target == -1, s.progress.in(Keys), s.states.get(s.progress) == "ready",
@@ -119,6 +120,12 @@ module PermissionWalkthrough {
     .then(platformStatus(3, true)).then(advance).then(platformStatus(4, true)).then(advance)
     .then(platformStatus(5, true)).then(advance).then(platformStatus(6, true)).then(advance).then(finish)
     .expect(s.phase == "home" and s.savedProgress == 7 and s.progress == -1 and safety)
+  run imageDefaultsAdvanceWithoutRequestsTest = init.then(signIn)
+    .then(platformStatus(0, true)).then(platformStatus(1, true)).then(platformStatus(2, true))
+    .then(platformStatus(3, true)).then(platformStatus(4, true)).then(platformStatus(5, true))
+    .then(platformStatus(6, true)).then(advance).then(advance).then(advance).then(advance)
+    .then(advance).then(advance).then(advance).then(finish)
+    .expect(s.phase == "home" and s.completed and Keys.forall(key => s.requests.get(key) == 0) and safety)
   run deniedPermissionCannotAdvanceTest = init.then(signIn).then(platformStatus(0, false))
     .then(begin).then(request).then(result(false)).then(restart).then(platformStatus(0, false))
     .expect(s.progress == 0 and s.states.get(0) == "settings" and s.requests.get(0) == 1 and safety)

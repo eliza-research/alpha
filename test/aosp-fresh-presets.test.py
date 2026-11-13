@@ -79,6 +79,28 @@ public class FreshTest {
    overlay=root/'vendor/alphaphone/branding/overlay/frameworks/base/packages/SystemUI/res/values/alpha-system-entry.xml'
    self.assertEqual(overlay.read_bytes(),(BRAND/'system-entry/product-overlay/values/alpha-system-entry.xml').read_bytes())
 
+ def test_staged_alpha_runtime_defaults_are_declared_and_revocable(self):
+  with tempfile.TemporaryDirectory(prefix='alpha-runtime-defaults-') as d, patch.object(stage, 'check_revision'):
+   root=Path(d)/'aosp'
+   root.mkdir()
+   plan,_=self.plan(root)
+   prefix='vendor/alphaphone/branding/'
+   filename='default-permissions-alpha-phone.xml'
+   exceptions=ET.fromstring(plan[prefix+filename])
+   exception,=exceptions.findall('exception')
+   self.assertEqual(exception.attrib, {'package':json.loads((REPO/'app.config.json').read_text())['appId']})
+   manifest=ET.parse(REPO/'android/app/src/main/AndroidManifest.xml')
+   android_name='{http://schemas.android.com/apk/res/android}name'
+   declared={entry.get(android_name) for entry in manifest.findall('uses-permission')}
+   permissions=exception.findall('permission')
+   self.assertEqual(len(permissions),9)
+   self.assertEqual(len({entry.get('name') for entry in permissions}),9)
+   for entry in permissions:
+    self.assertIn(entry.get('name'),declared)
+    self.assertEqual(entry.get('fixed'),'false')
+   self.assertIn(f'src: "{filename}"'.encode(),plan[prefix+'Android.bp'])
+   self.assertIn(b'AlphaPhoneRuntimeDefaults',plan[prefix+'branding.mk'])
+
  def test_dictation_overlay_is_staged_and_matches_the_reviewed_launcher_service(self):
   with tempfile.TemporaryDirectory(prefix='alpha-dictation-stage-')as d,patch.object(stage,'check_revision'):
    root=Path(d)/'aosp';root.mkdir();plan,_=self.plan(root)

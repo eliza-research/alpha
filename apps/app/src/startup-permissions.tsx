@@ -96,6 +96,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const key = target ?? keys[progress?.step ?? 0];
   const state = states[key];
   const visible = (active || ready) && (enabled || reopened) && !connection.open && !googleOpen;
+  const advanceGranted = native && visible && active && !ready && !reopened && !target && !busy && state === 'ready';
   const writeProgress = (value: Progress | null, choices = value?.choices ?? []) => {
     if (!reviewRef.current) try {
       writeStartupPermissionProgress(localStorage, {version: native ? 4 : 1, status: value ? 'pending' : 'completed', step: value?.step ?? keys.length, ...(choices.includes('skipped') ? {choices} : {})}, native);
@@ -196,6 +197,10 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   useEffect(() => {if (visible && !target && progress) writeProgress(progress);}, [visible, target, progress]);
 
   useEffect(() => {
+    if (advanceGranted && !actionPending.current) advance('continued');
+  }, [advanceGranted, key, progress]);
+
+  useEffect(() => {
     setCanSkip(false);setCheckNotice('');
     if (!visible || ready) return;
     const timer = setTimeout(() => setCanSkip(true), 20_000);
@@ -266,7 +271,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     <div className="alpha-permission-actions"><button type="button" className="alpha-permission-primary" disabled={busy} onClick={()=>void finish()}>{busy?'Checking…':'Go to Alpha'}</button></div>
   </div></dialog>;}
   const info = details[key];
-  const primary = busy ? 'Checking…' : target && native && (state === 'ready' || state === 'settings') ? 'Open Android settings' : target && !native && state === 'ready' ? 'Done' : state === 'ready' ? 'Continue' : state === 'settings' ? native ? 'Open Android settings' : 'Check access' : state === 'unavailable' ? 'Try again' : 'Allow';
+  const primary = busy || advanceGranted ? 'Checking…' : target && native && (state === 'ready' || state === 'settings') ? 'Open Android settings' : target && !native && state === 'ready' ? 'Done' : state === 'ready' ? 'Continue' : state === 'settings' ? native ? 'Open Android settings' : 'Check access' : state === 'unavailable' ? 'Try again' : 'Allow';
   return <dialog ref={dialog} className="alpha-startup-permissions" aria-labelledby="alpha-permission-title" onCancel={event => {event.preventDefault(); close();}}>
     <div className="alpha-permission-content" key={key}>
       <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle(info.icon)}/></span>
@@ -276,7 +281,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       {state === 'unavailable' && !checkNotice && <p className="alpha-permission-status" role="status">{native ? 'Could not check. Open Android app settings.' : 'Could not check. Open your browser’s site settings.'}</p>}
       {progressError && <p className="alpha-permission-status" role="alert">Setup progress could not be saved.</p>}
       {checkNotice && <p className="alpha-permission-status" role="status">{checkNotice}</p>}
-      <div className="alpha-permission-actions"><button className="alpha-permission-primary" type="button" disabled={busy || state === 'checking'} onClick={() => void allow()}>{state === 'checking' ? 'Checking…' : primary}</button>{canSkip && (!target || busy) && <button className="alpha-permission-skip" type="button" onClick={skip}>Skip for now</button>}{target && !( !native && state === 'ready') && <button className="alpha-permission-skip" type="button" disabled={busy} onClick={() => advance('continued')}>Done</button>}{review && !target && <button className="alpha-permission-skip" type="button" onClick={close}>Close</button>}</div>
+      <div className="alpha-permission-actions"><button className="alpha-permission-primary" type="button" disabled={busy || advanceGranted || state === 'checking'} onClick={() => void allow()}>{state === 'checking' ? 'Checking…' : primary}</button>{canSkip && (!target || busy) && <button className="alpha-permission-skip" type="button" onClick={skip}>Skip for now</button>}{target && !( !native && state === 'ready') && <button className="alpha-permission-skip" type="button" disabled={busy} onClick={() => advance('continued')}>Done</button>}{review && !target && <button className="alpha-permission-skip" type="button" onClick={close}>Close</button>}</div>
     </div>
   </dialog>;
 }

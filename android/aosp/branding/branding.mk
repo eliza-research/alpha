@@ -2,7 +2,7 @@
 alpha_branding_dir := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 # Preserve secure-camera defaults in the base packages as well as the explicit Alpha overlays.
 PRODUCT_ENFORCE_RRO_EXCLUDED_OVERLAYS += vendor/alphaphone/secure-camera/overlay
-PRODUCT_PACKAGES += AlphaFrameworkOverlay AlphaSystemUIOverlay AlphaSettingsOverlay AlphaSettingsProviderOverlay AlphaNavigationOverlay
+PRODUCT_PACKAGES += AlphaFrameworkOverlay AlphaSystemUIOverlay AlphaSettingsOverlay AlphaSettingsProviderOverlay AlphaNavigationOverlay AlphaPhoneRuntimeDefaults
 # LatinIME private style attributes are compiled inside the keyboard APK.
 PRODUCT_PACKAGE_OVERLAYS += $(alpha_branding_dir)/keyboard-overlay
 PRODUCT_ENFORCE_RRO_EXCLUDED_OVERLAYS += $(alpha_branding_dir)/keyboard-overlay
