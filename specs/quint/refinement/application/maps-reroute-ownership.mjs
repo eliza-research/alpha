@@ -114,8 +114,9 @@ async function live(page, publicId) {
   const t = await begin(page, publicId === 1 ? 'live_same_public_route_id'
     : publicId === 2 ? 'live_new_public_route_id' : 'live_provider_refusal');
   if (publicId === 1) {
-    await button(page, 'Reroute from here').tap();
-    await t.point('A second real touch during the held reroute dispatches no extra request', call('duplicateTap'));
+    await expect(button(page, 'Reroute from here')).toHaveCount(0);
+    await page.evaluate(() => {void window.closedMaps.agentPort.current.reroute().catch(() => {});});
+    await t.point('A second registered reroute during the held request dispatches no extra request', call('duplicateTap'));
   }
   await reply(page, 2, publicId);
   await waitForAgent(page);

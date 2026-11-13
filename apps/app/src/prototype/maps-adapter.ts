@@ -246,7 +246,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
     const savedMatches=view.mode!=='origin'&&view.query.trim()?view.saved.filter(item=>item.label.toLocaleLowerCase().includes(view.query.trim().toLocaleLowerCase())):[];
     let isResults=(view.mode==='results'||view.mode==='origin')&&!view.emptyQuery&&(view.hasResults||savedMatches.length>0);
-    const routineStatus=['Finding location…','Place saved on this device.','Place removed from saved.','Saved place renamed.','Name updated. Tap Save to keep this place.'].includes(statusText);
+    const routineStatus=['Finding location…','New route ready.','Place saved on this device.','Place removed from saved.','Saved place renamed.','Name updated. Tap Save to keep this place.'].includes(statusText);
     const emptySearch=view.noResults&&!view.emptyQuery&&!savedMatches.length&&status.map!=='error';
     const snapshot=mapsController?.snapshot();
     const position=snapshot?.position.phase==='ready'?snapshot.position.value?.coordinate:undefined;
@@ -360,7 +360,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
        start:()=>screen.start(),
        nav:{going:!nav?.arrived,arrived:!!nav?.arrived,dist:nav?.distance||'Locating…',street:nav?.instruction||'Waiting for location',icon:nav?.maneuverIcon||PIN,hasThen:!!nav?.following,thenD:nav?.following?.icon||'',thenText:nav?.following?.text||'',
         left:nav?.remainingTime||'Guidance',meta:nav?.remaining&&nav.remaining===nav.meta?'':nav?.meta||'Foreground guidance',remaining:nav?.remaining||'',
-        offRoute:!!nav?.offRoute,canReroute:!!nav?.canReroute,reroute:()=>screen.reroute(),rerouteLabel:'Reroute from here',background:!!nav?.background,
+        offRoute:!!nav?.offRoute,canReroute:!!nav?.canReroute,background:!!nav?.background,
         end:()=>screen.end()}};
     }
     const eventOrigin=mapsEventReturnOffered(st.fromEvent,currentApi.S.stack,isNav);

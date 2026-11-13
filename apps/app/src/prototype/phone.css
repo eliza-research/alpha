@@ -457,6 +457,7 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > 
 /* Keep the same left-to-right reading order as portrait. A second grid row
    placed the time above the first control in the accessibility tree. */
 .alpha-landscape [data-alpha-maps-guidance-controls] {
+  --alpha-navigation-control:48px;
   gap:8px!important; padding:8px 10px!important;
 }
 .alpha-landscape [data-alpha-maps-guidance-controls] > button { width:48px!important; height:48px!important; }
