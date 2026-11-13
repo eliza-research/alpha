@@ -96,7 +96,7 @@ export function candidateFixture(t) {
         debuggable: true, signed: true, sha256: hash(bytes)});
     }
     json(path.join(output, 'apk-manifest.json'), manifest);
-    json(path.join(output, 'apk-verification.json'), {runtimeProfile: 'native', testMocks: false,
+    json(path.join(output, 'apk-verification.json'), {runtimeProfile: 'native', testMocks: false, allowUnpackagedRuntime: false,
       updateChannel: channel, upstream: {commit: sdkCommit}, results: rows});
     return {relative, output};
   }

@@ -26,7 +26,7 @@ interface StableAsset {name: string}
 interface UpdateOffer {schema: string; variant: string; signerSha256: string; sha256: string; sizeBytes: number; apkUrl: string; versionCode: number}
 interface ArchiveRecord {testMocks: boolean; runtimeProfile: string; updateChannel: {kind: string; manifestUrlSha256: string}}
 interface VerifiedApk extends ArchiveRecord {mode: string; variant: string; file: string; packageName: string; versionCode: number; signed: boolean; signerSha256: string | null; distributable: boolean; debuggable: boolean; runtime: string; home: boolean; launcher: boolean; sha256: string; releaseAdmission: {failures: unknown[]; blockers: string[]}}
-interface ArchiveVerification extends ArchiveRecord {upstream: {commit: string}; results: VerifiedApk[]}
+interface ArchiveVerification extends ArchiveRecord {upstream: {commit: string}; allowUnpackagedRuntime: boolean; results: VerifiedApk[]}
 interface InputFreeze {files: Record<string, string>; digest: string}
 interface NativeInputAdmission {
   schema: string; source: string; sdkCommit: string; packageName: string; runId: string; attempt: string;
@@ -179,6 +179,7 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
     assert.deepEqual(record.updateChannel, channel, 'Archive update channel changed');
   }
   assert.equal(verified.upstream.commit, context.sdkCommit, 'Archive SDK differs');
+  assert.equal(verified.allowUnpackagedRuntime, false, 'Candidate requires the packaged resident');
   const before = readJson<InputFreeze>(path.join(archive, 'inputs-before.json'));
   const after = readJson<InputFreeze>(path.join(archive, 'inputs-after.json'));
   assert.deepEqual(after, before, 'Archive inputs changed');

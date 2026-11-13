@@ -72,6 +72,14 @@ const assessDistribution = apkDistributionProblems as (
 
 // Alpha's distribution policy as data for the upstream APK inspection
 // (vendor/eliza/packages/app/scripts/mobile/artifact-inspection/apk-distribution.mjs).
+// Development hooks no APK may package. The upstream inspection admits them only in a test-mocks
+// debug build, and Alpha never builds one, so every APK is refused if it carries them.
+export const DEVELOPMENT_CLASSES = Object.freeze([
+  "SyntheticAutofillService",
+  "DevelopmentAgentPlugin",
+  "DevelopmentVoiceCapture",
+  "DevelopmentChatContract",
+]);
 const TELEPHONY_SETUP_RECEIVER = "ai.alphacompute.alphaphone.AlphaTelephonySetupReceiver";
 const MANAGE_ROLE_HOLDERS = "android.permission.MANAGE_ROLE_HOLDERS";
 // Components a distribution APK may export. Each one must be guarded by the
@@ -112,6 +120,9 @@ export const EXPORTED_COMPONENTS = Object.freeze({
 export const REMOVED_SPEECH_ENTRY = /(?:\.on{2}x$|libon{2}xruntime|libsherpa|k2fsa|ort-wasm|^assets\/public\/browser-speech\/)/i;
 export const REMOVED_SPEECH_CLASSES = Object.freeze(["Lcom/k2fsa/", "Lai/eliza/speech/"]);
 export const DISTRIBUTION_POLICY = Object.freeze({
+  developmentClasses: DEVELOPMENT_CLASSES,
+  developmentManifestText: ["peerfixture"],
+  developmentEntries: [/^res\/xml\/development_network_security_config\.xml$/],
   exportedComponents: EXPORTED_COMPONENTS,
   // WRITE_EXTERNAL_STORAGE is admitted only up to API 29 (Files' legacy storage); distributionProblems checks it.
   forbiddenPermissions: [MANAGE_ROLE_HOLDERS],

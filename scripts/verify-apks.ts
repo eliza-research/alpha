@@ -383,6 +383,7 @@ fs.writeFileSync(
       // Constant fields that provisioning, qualification and release admission compare.
       testMocks: false,
       demoEntryPoints: false,
+      allowUnpackagedRuntime: false,
       mapsProvider: "cloud",
       runtimeProfile,
       updateChannel,
