@@ -534,7 +534,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const read = listenerReads.beginRead();
           if (read === null) return;
           const status = await listenerStatus();
-          if (owner === instance && capabilityAbort === abort && listenerReads.readApplies(read)) listener = status;
+          // Only a saved stop receipt can retire an unconfirmed stop and its retry controls.
+          if (owner === instance && capabilityAbort === abort && listenerReads.readApplies(read) && !listenerStopUnconfirmed) listener = status;
         })(),
         (async () => {
           if (!browserLocalAgentEnabled) return;
