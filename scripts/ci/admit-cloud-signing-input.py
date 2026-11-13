@@ -79,7 +79,7 @@ def verify_native_source(native, files, pin, source_root=None):
     voice = json.loads(product("android/voice-host/qualified-voice-host.json"))
     python_pin = re.search(r"export const NATIVE_PYTHON\s*=\s*['\"]([^'\"]+)['\"]", product("scripts/native-build-inputs.ts").decode())
     require(python_pin is not None and recipe["python"] == python_pin[1] and
-            native["embedding"]["model"] == json.loads(product("android/embedding-host/qualified-host.json"))["model"],
+            native["embedding"]["model"] == recipe["embeddingModel"] == json.loads(product("android/embedding-host/qualified-host.json"))["model"],
             "Native Python or embedding model differs from reviewed product source")
     require(recipe["models"] == voice["models"] and recipe["asrSlot"] == voice["asrSlot"] and
             recipe["toolchain"] == json.loads(product("android/embedding-host/build-toolchain.json")),

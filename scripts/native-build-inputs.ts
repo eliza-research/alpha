@@ -41,7 +41,7 @@ export function nativeRecipe(root:string) {
   const inputFiles=['android/embedding-host/build-toolchain.json',NATIVE_BUILD_REQUIREMENTS,'android/embedding-host/bootstrap-requirements.txt','android/paradee-voice/asr-inputs.json','scripts/build-embedding-host.ts','scripts/prepare-embedding-host.ts','scripts/embedding-native-contract.ts','scripts/embedding-build-remap.ts','scripts/native-build-inputs.ts','scripts/android-stage-voice-models.ts','scripts/local-agent-source.ts','scripts/voice-host.ts','scripts/paradee-runtime.ts','scripts/android-abis.ts','scripts/copy-file-clone.ts','scripts/stage-embedding-host.ts'];
   const productInputs=Object.fromEntries(inputFiles.map(name=>[name,fileDigest(path.join(root,name))]));
   const voice=json(root,'android/voice-host/qualified-voice-host.json');
-  return {schema:'alpha-native-recipe/v1',identity:json(root,'app.config.json').appId,engineCommit,sourceTrees,productInputs,models:voice.models,asrSlot:voice.asrSlot,toolchain:json(root,'android/embedding-host/build-toolchain.json'),python:NATIVE_PYTHON};
+  return {schema:'alpha-native-recipe/v1',identity:json(root,'app.config.json').appId,engineCommit,sourceTrees,productInputs,models:voice.models,asrSlot:voice.asrSlot,embeddingModel:json(root,'android/embedding-host/qualified-host.json').model,toolchain:json(root,'android/embedding-host/build-toolchain.json'),python:NATIVE_PYTHON};
 }
 export const nativeRecipeDigest=(recipe:ReturnType<typeof nativeRecipe>)=>bytesDigest(JSON.stringify(recipe));
 export function nativeCacheRoot() {return path.join(process.env.XDG_CACHE_HOME||path.join(os.homedir(),'.cache'),'alpha','native-inputs');}
@@ -54,6 +54,8 @@ export function nativeAndroidSdk(env:NodeJS.ProcessEnv=process.env,home=os.homed
 }
 /** Initialize before checking cleanliness; later calls never overwrite a dirty checkout. */
 export function prepareNativeSource(repository:string,source:string,pin:string) {
+  const absolute=path.resolve(source),base=path.parse(absolute).root;
+  assertNativeOutputPath(base,path.relative(base,absolute).split(path.sep).join('/'));
   const git=(...args:string[])=>execFileSync('git',['-C',source,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
   if(!fs.existsSync(path.join(source,'.git'))){
     if(fs.existsSync(source)&&fs.readdirSync(source).length)throw Error('Native source cache directory is not empty');
@@ -107,7 +109,7 @@ export function validateNativeBuildReceipt(root:string,receipt:NativeBuildReceip
   const producers=embeddingProducerInputPaths.map(name=>({path:name,sha256:bytesDigest(source(name))}));
   if(JSON.stringify(receipt.embedding.inputs)!==JSON.stringify(inputs)||JSON.stringify(receipt.embedding.producerInputs)!==JSON.stringify(producers)||JSON.stringify(receipt.embedding.jniBinding)!==JSON.stringify(binding))throw Error('Native JNI producer inputs changed');
   if(receipt.embedding.abi!=='arm64-v8a'||receipt.embedding.jniIdentityRelocated!==true)throw Error('Native JNI ABI or relocation changed');
-  if(JSON.stringify(receipt.embedding.model)!==JSON.stringify(json(root,'android/embedding-host/qualified-host.json').model))throw Error('Native embedding model admission changed');
+  if(JSON.stringify(receipt.embedding.model)!==JSON.stringify(recipe.embeddingModel))throw Error('Native embedding model admission changed');
   const abis=receipt.voice.abis,libraries=receipt.embedding.libraries;
   if(!Array.isArray(abis)||abis.map((row:any)=>row.abi).join()!=='arm64-v8a,x86_64'||!Array.isArray(libraries)||libraries.map((row:any)=>row.name).sort().join()!=='libc++_shared.so,libelizainference.so,libelizavoicejni.so')throw Error('Native library inventory changed');
   for(const abi of abis)if(abi.alignment16KiB!==true||abi.abiVersion<17||abi.libraries.map((row:any)=>row.name).join()!=='libelizainference.so,libc++_shared.so')throw Error('Native voice ABI changed');
