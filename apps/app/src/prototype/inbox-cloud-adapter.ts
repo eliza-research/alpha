@@ -843,6 +843,8 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     if(mailReview){mailReview=null;publish();return true;}
     if(mailSelecting&&!mailBatch){resetMailSelection();publish();return true;}
     if (provider.close()) return true;
+    const draftMenu=document.querySelector<HTMLDetailsElement>('.mail-draft-menu[open]');
+    if(draftMenu){draftMenu.open=false;draftMenu.querySelector<HTMLElement>('summary')?.focus();return true;}
     const composer = drafts.render();
     if (composer.composing && composer.c) {
       composer.c.discard();

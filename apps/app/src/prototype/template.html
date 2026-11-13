@@ -699,6 +699,12 @@
         <button class="ib" aria-label="Back from draft" onClick="{{back}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/chevron-left.svg');-webkit-mask-image:url('/icons/lucide/chevron-left.svg')"></span></button>
         <span style="flex-grow:1;min-width:0;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{inbox.c.heading}}</span>
         <sc-if value="{{inbox.c.local}}"><button class="ib" aria-label="Attach file" title="{{inbox.c.attachmentHint}}" disabled="{{inbox.c.busy}}" onClick="{{inbox.c.attach}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/paperclip.svg');-webkit-mask-image:url('/icons/lucide/paperclip.svg')"></span></button></sc-if>
+        <sc-if value="{{inbox.c.canSaveProvider}}">
+          <details class="mail-selection-menu mail-draft-menu">
+            <summary class="ib" aria-label="Draft options"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/ellipsis.svg');-webkit-mask-image:url('/icons/lucide/ellipsis.svg')"></span></summary>
+            <div role="menu"><button role="menuitem" disabled="{{inbox.c.busy}}" onClick="{{inbox.c.saveProvider}}">Save to Gmail drafts</button></div>
+          </details>
+        </sc-if>
         <button disabled="{{inbox.c.sendDisabled}}" aria-label="Send email" onClick="{{inbox.c.send}}" style="width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/send.svg');-webkit-mask-image:url('/icons/lucide/send.svg')"></span></button>
       </div>
       <div class="scr inbox-compose-fields" role="region" aria-label="Email draft fields" tabindex="0" style="display: flex; flex-direction: column; flex-grow: 1; min-height: 0; padding: 0 20px">
@@ -731,7 +737,6 @@
         </sc-if>
 
         <sc-if value="{{inbox.c.showSendHint}}"><p style="font-size:12px;color:var(--mut);margin:8px 0">Turn on Gmail changes in Settings → Connections → Manage Google accounts to send. Your draft stays on this device.</p></sc-if>
-        <sc-if value="{{inbox.c.canSaveProvider}}"><button onClick="{{inbox.c.saveProvider}}" style="padding:12px 0;text-align:left;color:var(--acct)">Review save to Gmail drafts</button></sc-if>
         <sc-if value="{{inbox.c.recoveryVisible}}"><div role="status" aria-label="Email edit recovery status" style="font-size:12px;color:var(--mut);padding:8px 0">{{inbox.c.retainedStatus}}</div></sc-if>
         <sc-if value="{{inbox.c.retainedConflict}}"><div><button onClick="{{inbox.c.restoreEdits}}" style="min-height:44px;padding:12px">Restore retained email edits</button><button onClick="{{inbox.c.replaceEdits}}" style="min-height:44px;padding:12px">Replace retained email edits</button></div></sc-if>
         <sc-if value="{{inbox.c.retainedError}}"><div><button onClick="{{inbox.c.retryEdits}}" style="min-height:44px;padding:12px">Retry email recovery storage</button><button onClick="{{inbox.c.recoverEdits}}" style="min-height:44px;padding:12px">Recover email edits</button></div></sc-if>
