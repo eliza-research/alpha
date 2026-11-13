@@ -1,13 +1,15 @@
 #!/usr/bin/env bun
 /**
- * Fail fast, before web sync and Gradle, when an Android build input is missing.
+ * Fail fast, before the long runtime preparation, web sync and Gradle, when an input that
+ * `bun run android:build:local` cannot produce is missing: the pinned upstream checkout (every
+ * step runs pinned code) and the on-device voice outputs, which only a person can supply.
  *
- *   bun scripts/android-build-preflight.ts [--before-prepare]
+ *   bun scripts/android-build-preflight.ts
  *   bun scripts/android-build-preflight.ts --report     (bun run android:build:inputs)
  *
- * build-android.ts runs the full check. `--before-prepare` checks only inputs that
- * android:build:local does not produce (the pinned checkout and the on-device voice outputs), so
- * that chain stops before the long runtime preparation instead of after it.
+ * android:build:local runs it first and build-android.ts runs it again for a plain
+ * `bun run android:build`. Everything the chain produces is verified where it is used: staging,
+ * the Gradle verify tasks and verify-apks.
  * `--report` lists every input of the build with its state and whether a
  * script or a person supplies it. It reads files only, builds nothing and always exits 0.
  */
@@ -15,10 +17,8 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {verifyEmbeddingHost} from './stage-embedding-host.ts';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.ts';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.ts';
-import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter.ts';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
@@ -27,16 +27,11 @@ const VOICE_GUIDE = 'README.md';
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 type VoiceHostVerifier = (root: string) => {qualified: boolean};
-type EmbeddingHostVerifier = (root: string) => unknown;
 interface PinOptions {
   notes?: string[];
 }
 interface VoiceOptions {
   voiceHost?: VoiceHostVerifier;
-}
-interface RuntimeOptions {
-  embeddingHost?: EmbeddingHostVerifier;
-  googleHost?: (root: string, preparedSource: string) => unknown;
 }
 interface InputReportOptions {
   env?: NodeJS.ProcessEnv;
@@ -112,7 +107,7 @@ export function mainPinProblem(root: string, pin: string, {notes = []}: PinOptio
   }
 }
 
-/** Inputs no preparation step produces: the pinned checkout and the on-device voice outputs. */
+/** The preflight: the pinned checkout and the on-device voice outputs. */
 export function checkoutProblems(root: string, {voiceHost = verifyVoiceHost, notes = []}: VoiceOptions & PinOptions = {}) {
   const problems: string[] = [];
   const pin = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit;
@@ -142,62 +137,6 @@ function assessVoiceHost(root: string, {voiceHost = verifyVoiceHost}: VoiceOptio
     return {status: voiceHost(root), problems: []};
   } catch (error) {
     return {status: null, problems: [`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (${message(error)}; Gradle :app:verifyVoiceHost rejects the build). ${FULL_CHAIN} does not produce them: stage them with bun scripts/android-stage-voice-models.ts --from <directory of the recorded voice outputs and models> (see ${VOICE_GUIDE}).`]};
-  }
-}
-
-/**
- * The prepared and staged runtime. `preparedSource` is the resolved prepared runtime
- * directory (sourceDirectory()).
- */
-export function preparedRuntimeProblems(root: string, preparedSource: string, {embeddingHost = verifyEmbeddingHost, googleHost = verifyStagedGoogleHost}: RuntimeOptions = {}): string[] {
-  const stamp = path.join(preparedSource, '.alpha-runtime-source.json');
-  if (!fs.existsSync(stamp))
-    return [`Prepared runtime source ${path.relative(root, preparedSource)} is missing (Gradle :app:stageLocalAgentSources reads it). Run: ${FULL_CHAIN}.`];
-  // Gradle's :app:verifyEmbeddingHost runs for every build.
-  const embedding = embeddingHostProblems(root, {embeddingHost});
-  const staged = path.join(root, 'android/app/src/main/assets/agent/alpha-source.json');
-  const worker = path.join(root, 'android/app/src/main/assets/agent/workflow-worker/manifest.json');
-  if (!fs.existsSync(staged) || !fs.existsSync(worker))
-    return [`The resident runtime is not staged. Run: bun run agent:build-workflow-worker && bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
-  if (fs.readFileSync(staged, 'utf8') !== fs.readFileSync(stamp, 'utf8'))
-    return [`The staged resident runtime was built from a different prepared source than ${path.relative(root, preparedSource)}. Run: bun run agent:build-workflow-worker && bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
-  // agent:stage-android writes the profile marker; a payload staged for the removed Cloud
-  // profile omitted the local embedding model and is refused.
-  const marker = path.join(path.dirname(staged), 'alpha-runtime-profile.json');
-  let profile: {version?: unknown; runtimeProfile?: unknown} | null = null;
-  try { profile = JSON.parse(fs.readFileSync(marker, 'utf8')); } catch {}
-  if (JSON.stringify(profile) !== JSON.stringify({version: 1, runtimeProfile: 'native'}))
-    return [`The staged resident runtime is not the native profile (${path.relative(root, marker)} ${profile ? `names ${JSON.stringify(profile.runtimeProfile)}` : 'is missing or unreadable'}). Run: bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
-  if(fs.existsSync(path.join(root,MOBILE_UUID_POLICY))){
-    try{verifyMobileBuildReceipt(root,preparedSource,path.dirname(staged));}
-    catch(error){return [`The staged resident build producer is not admitted (${message(error)}). Run: bun run agent:stage-android.`,...embedding];}
-  }
-  // The in-process Google host is built from product sources the upstream stamp does not cover.
-  try { googleHost(root, preparedSource); }
-  catch (error) { return [`The staged native Google host is not current (${message(error)}; Gradle :app:verifyNativeGoogleHost rejects the build). Run: bun run agent:build-workflow-worker && bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding]; }
-  return embedding;
-}
-
-/** Runs scripts/runtime-profile.ts --verify-native, the same check Gradle runs. */
-function verifyStagedGoogleHost(root: string, preparedSource: string) {
-  try {
-    execFileSync(process.execPath, [path.join(root, 'scripts/runtime-profile.ts'), '--verify-native'], {cwd: root, env: {...process.env, ALPHA_LOCAL_AGENT_SOURCE_DIR: preparedSource}, stdio: ['ignore', 'pipe', 'pipe']});
-  } catch (error) {
-    throw new Error(String(error instanceof Error && 'stderr' in error ? error.stderr ?? '' : '').match(/^Error: (.*)$/m)?.[1] ?? message(error));
-  }
-}
-
-/**
- * The reviewed ARM64 embedding host (android/embedding-host/qualified-host.json). Its libraries
- * are staged byte for byte: by `bun run agent:build-embedding-host` when a rebuild reproduces
- * them, or by staging a verified build receipt.
- */
-export function embeddingHostProblems(root: string, {embeddingHost = verifyEmbeddingHost}: Pick<RuntimeOptions, "embeddingHost"> = {}): string[] {
-  try {
-    embeddingHost(root);
-    return [];
-  } catch (error) {
-    return [`The qualified embedding host is not staged (${message(error)}; Gradle :app:verifyEmbeddingHost rejects the build). bun run agent:build-embedding-host (a step of ${FULL_CHAIN}) stages the libraries only when it can reproduce the reviewed bytes, and says so when it cannot.`];
   }
 }
 
@@ -283,7 +222,7 @@ export function formatReport(rows: readonly InputReportRow[]) {
 async function main() {
   const args = process.argv.slice(2);
   for (const arg of args)
-    if (!['--before-prepare', '--report'].includes(arg)) throw new Error(`Unknown option ${arg}`);
+    if (arg !== '--report') throw new Error(`Unknown option ${arg}`);
   const root = path.resolve(import.meta.dirname, '..');
   if (args.includes('--report')) {
     // The source guard imports the pinned checkout; without it the prepared path is unknown.
@@ -293,13 +232,8 @@ async function main() {
     return;
   }
   const notes: string[] = [];
-  let problems = checkoutProblems(root,{notes});
+  const problems = checkoutProblems(root,{notes});
   for (const note of notes) console.error(`Note: ${note}`);
-  if (!problems.length && !args.includes('--before-prepare')) {
-    // The source guard imports the pinned checkout, so load it only once that is verified.
-    const {sourceDirectory} = await import('./local-agent-source.ts');
-    problems = preparedRuntimeProblems(root, sourceDirectory(root));
-  }
   if (problems.length) {
     console.error(formatProblems(problems));
     process.exit(2);

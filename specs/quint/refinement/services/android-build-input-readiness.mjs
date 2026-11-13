@@ -5,13 +5,11 @@ import fs from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {checkoutProblems, formatProblems, formatReport, preparedRuntimeProblems, strictBuildInputs} from '../../../../scripts/android-build-preflight.ts';
+import {checkoutProblems, formatProblems, formatReport, strictBuildInputs} from '../../../../scripts/android-build-preflight.ts';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST} from '../../../../scripts/build-embedding-host.ts';
-import {MOBILE_UUID_POLICY} from '../../../../scripts/mobile-uuid-adapter.ts';
 import {captureInputs, checkTraces, qset} from '../check-traces.mjs';
 
-const inputs = ['scripts/android-build-preflight.ts', 'scripts/build-embedding-host.ts',
-  'scripts/mobile-uuid-adapter.ts', 'scripts/stage-embedding-host.ts', 'scripts/voice-host.ts'];
+const inputs = ['scripts/android-build-preflight.ts', 'scripts/build-embedding-host.ts', 'scripts/voice-host.ts'];
 const labels = new Map([
   ['pinned upstream checkout', 'pin'], ['on-device voice outputs', 'voice'],
   ['embedding host libraries', 'embedding'],
@@ -27,13 +25,6 @@ const notices = [
 const kinds = [
   [/^(vendor\/eliza is |upstream\.lock\.json pins |The upstream pin )/, 'pin'],
   [/^The on-device voice outputs/, 'voice'],
-  [/^Prepared runtime source/, 'prepared'],
-  [/^The qualified embedding host/, 'embedding'],
-  [/^The resident runtime is not staged/, 'payload'],
-  [/^The staged resident runtime was built from a different prepared source/, 'stamp'],
-  [/^The staged resident runtime is not the native profile/, 'profile'],
-  [/^The staged resident build producer is not admitted/, 'mobileReceipt'],
-  [/^The staged native Google host is not current/, 'googleHost'],
 ];
 const signingNames = ['ELIZAOS_KEYSTORE_PATH', 'ELIZAOS_KEYSTORE_PASSWORD', 'ELIZAOS_KEY_ALIAS', 'ELIZAOS_KEY_PASSWORD'];
 const marker = 'synthetic-signing-environment-marker';
@@ -95,7 +86,7 @@ function fixture(root) {
   const hostRecord = {abi, model: {path: 'android/app/src/main/assets/agent/models/fixture.gguf'},
     libraries: libraries.map(({name, content}) => ({name, bytes: Buffer.byteLength(content),
       sha256: createHash('sha256').update(content).digest('hex')}))};
-  let voice = 'missing', host = 'missing', google = true, env = {};
+  let voice = 'missing', host = 'missing', env = {};
   const setHost = value => {
     host = value;
     json(QUALIFIED_HOST, hostRecord);
@@ -122,39 +113,29 @@ function fixture(root) {
     if (voice === 'missing') throw Error('synthetic voice input missing');
     return {};
   };
-  const embeddingHost = () => {
-    if (host !== 'ready') throw Error('synthetic host was not admitted');
-  };
   const classify = problem => {
     const row = kinds.find(([pattern]) => pattern.test(problem));
     assert.ok(row, 'Unknown prerequisite category: ' + problem);
     return row[1];
   };
   const observe = () => {
-    let googleChecked = false;
     const rows = strictBuildInputs(root, source, {env, voiceHost, workerDirectory});
     assert.equal(rows.length, labels.size);
     for (const row of rows) assert.ok(labels.has(row.input));
-    const before = checkoutProblems(root, {voiceHost});
-    const full = before.length ? before : preparedRuntimeProblems(root, source, {embeddingHost,
-      googleHost() {
-        googleChecked = true;
-        if (!google) throw Error('synthetic Google host was not admitted');
-      }});
+    const preflight = checkoutProblems(root, {voiceHost});
     const text = formatReport(rows);
     assert.ok(!text.includes(marker) && !JSON.stringify(rows).includes(marker),
       'The report must not disclose values from the synthetic signing environment');
-    if (full.length) {
-      const problemText = formatProblems(full);
+    if (preflight.length) {
+      const problemText = formatProblems(preflight);
       assert.match(problemText, /^Android build prerequisites are missing:/);
-      for (const problem of full) assert.ok(problemText.includes(problem));
+      for (const problem of preflight) assert.ok(problemText.includes(problem));
     }
     return {
       's.ready': qset(rows.filter(row => row.state === 'ready').map(row => labels.get(row.input))),
       's.attention': qset(rows.filter(row => row.state === 'missing' && row.suppliedBy === 'person').map(row => labels.get(row.input))),
-      's.before': qset(before.map(classify)), 's.full': qset(full.map(classify)),
+      's.preflight': qset(preflight.map(classify)),
       's.notices': qset(notices.filter(([pattern]) => pattern.test(text)).map(([, label]) => label)),
-      's.googleChecked': googleChecked,
     };
   };
   return {observe, selectPin, setHost, setSigner,
@@ -165,9 +146,6 @@ function fixture(root) {
       if (value === 'artifact' || value === 'both') json(artifact, {}); else remove(artifact);
       if (value === 'staged' || value === 'both') json(worker, {}); else remove(worker);
     },
-    setProfile: runtimeProfile => json(assets + '/alpha-runtime-profile.json', {version: 1, runtimeProfile}),
-    demandMobileReceipt: () => json(MOBILE_UUID_POLICY, {}),
-    setGoogleHost: value => {google = value;},
     stageSupport() {
       write(hostRecord.model.path, 'synthetic model presence only');
       write('android/gradle/verification-metadata.xml', '<fixture/>');
@@ -194,19 +172,14 @@ export async function checkAndroidBuildInputReadiness(extraSources = []) {
   const prep = ['prepare'];
   const payload = ['setPayload', 'exact'];
   const worker = ['setWorker', 'both'];
-  const profile = ['setProfile', 'native'];
-  const ready = [voice, host, prep, payload, worker, profile];
+  const ready = [voice, host, prep, payload, worker];
   const cases = [
-    ['before-prepare can pass with no prepared source, and full admission cannot', [voice]],
+    ['the preflight passes with no prepared source, which the chain produces', [voice]],
     ['real Git ancestry admits the current and descendant locks and refuses stale or unknown locks', [voice,
       ['selectPin', 'older'], ['selectPin', 'unknown'], ['selectPin', 'mismatch'], ['selectPin', 'descendant'], ['selectPin', 'equal']]],
-    ['the separate artifact is reported while absent staged worker and stale stamp refuse full admission', [voice, host,
-      prep, ['setPayload', 'stale'], ['setWorker', 'artifact'], worker, payload, profile]],
-    ['a matching staged payload is ready in the report but its Cloud profile refuses a native build', [voice, host, prep,
-      payload, ['setWorker', 'staged'], ['setProfile', 'cloud'], profile]],
-    ['a missing mandatory build receipt refuses before the Google host port', [...ready,
-      ['setGoogleHost', false], ['demandMobileReceipt']]],
-    ['embedding report and full admission reject changed or missing native library bytes', [voice, prep, payload, worker, profile,
+    ['the separate artifact is reported while an absent staged worker or stale stamp keeps the payload unready', [voice, host,
+      prep, ['setPayload', 'stale'], ['setWorker', 'artifact'], worker, payload]],
+    ['the embedding report rejects changed or missing native library bytes', [voice, prep, payload, worker,
       host, ['setHost', 'different'], ['setHost', 'missing'], host]],
     ['signing report needs both identity and environment presence while disclosing no marker value', [
       ['setSigner', 'envOnly'], ['setSigner', 'identityOnly'], ['setSigner', 'ready']]],
@@ -216,8 +189,8 @@ export async function checkAndroidBuildInputReadiness(extraSources = []) {
   return checkTraces({model: 'AndroidBuildInputReadiness', scope: 'bounded-orchestration',
     sources, driverHashes, traces: cases.map(([name, actions]) => trace(name, actions)),
     assumptions: [
-      'The real report, formatter, Git pin comparison, checkout gate and prepared native-payload gate execute on a private fixture. The driver sequences the same early gate before the full prerequisite check.',
-      'Voice, full embedding verification and Google host verification return controlled admission outcomes. Reported embedding byte readiness uses the real staged-library digest checks on synthetic bytes. The mandatory mobile receipt fixture exercises only refusal of a missing receipt.',
-      'Report presence and build admission are separate. Android builds, real artifact and signing qualification, the Cloud profile and concurrent staging remain outside this projection.',
+      'The real report, formatter, Git pin comparison and preflight gate execute on a private fixture.',
+      'Voice verification returns a controlled admission outcome. Reported embedding byte readiness uses the real staged-library digest checks on synthetic bytes.',
+      'Report presence and build admission are separate. Staging, the Gradle verify tasks, verify-apks, Android builds, real artifact and signing qualification and concurrent staging remain outside this projection.',
     ]});
 }
