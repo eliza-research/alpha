@@ -10,7 +10,7 @@ import {execFileSync} from 'node:child_process';
 import {preparePrivateRuntimeProfile,runtimeEnvironment,startPrivateRuntimeProcess,writePrivateRuntimeJson} from './private-runtime-launch.ts';
 import {AGENT_MODEL,agentModelEnvironment} from './agent-model.ts';
 import {AGENT_CHARACTER_ENVIRONMENT,freshAgentProfile,prepareAgentIdentityConfig} from './agent-identity.ts';
-import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment,reportMissingEmbeddingRoute} from './agent-embeddings.ts';
+import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment} from './agent-embeddings.ts';
 import {speechEnvironment} from './host-speech-admission.ts';
 import {developmentCartesiaEnvironment} from './dev-cartesia.ts';
 import {nativeViewDeclarationsJson} from './native-view-policy.ts';
@@ -46,7 +46,6 @@ const privateProfile=await preparePrivateRuntimeProfile({tokenPath,configPath:co
 });
 const savedConfig=await prepareAgentIdentityConfig(config,privateProfile.config,{freshProfile});
 const modelEnvironment=agentModelEnvironment(savedConfig);
-reportMissingEmbeddingRoute(savedConfig,config);
 if(!/^[a-f0-9]{64}$/.test(privateProfile.token))throw Error('Invalid owner token');
 const asrEnvironment = speechEnvironment('asr');
 const ttsEnvironment = speechEnvironment('tts');

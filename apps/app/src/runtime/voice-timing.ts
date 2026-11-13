@@ -49,7 +49,7 @@ export function voiceTimingMarks() { return [...voiceTiming.marks]; }
 /** Every stored record that passes validation, oldest first. */
 export function voiceTimingRecords() { return voiceTiming.records(); }
 /** Start a conversation turn at the end of recording. Any unfinished turn is abandoned. */
-export function beginVoiceTurn(input: { route: string; cold: boolean; entry?: VoiceTimingEntry; policy?: VoiceTimingPolicy }): string | undefined { return voiceTiming.begin(input); }
+export function beginVoiceTurn(input: { route: string; cold: boolean; entry: VoiceTimingEntry; policy?: VoiceTimingPolicy }): string | undefined { return voiceTiming.begin(input); }
 /** Record one mark for the active turn (or the named turn while it is still active). */
 export function markVoiceTiming(mark: VoiceTimingMark, turn?: string): boolean { return voiceTiming.mark(mark, turn); }
 /** Installs (or removes) the native stage reporter. Conversation turns only. */
