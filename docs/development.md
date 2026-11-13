@@ -50,11 +50,23 @@ Function proofs require Dafny 4.11.0 on `PATH`; `LEMMA_REQUIRE_BACKEND=1` makes 
 missing backend fail. A generation-only run records a skipped proof. Promotion CI installs the
 hash-pinned backend and requires proofs.
 
-A pull request runs one CI job, `bun run verify`. The Android build also runs when a pull
-request changes Android, renderer, script, lockfile or upstream-pin paths. The browser tests
-are not run by PR CI: run `bun run test:browser` and `bun run test:browser:production` before
-finalising a PR and say so in its description. CI runs them with the formal models when
-`develop` is promoted to `main`.
+A pull request runs one CI job, `bun run verify` (`verify.yml`). The Android build
+(`android.yml`: `bun run android:build:local`, then the digest restart check) also runs when a
+pull request changes Android, renderer, script, lockfile or upstream-pin paths; documentation-only
+changes do not run it. The browser tests are not run by PR CI: run `bun run test:browser` and
+`bun run test:browser:production` before finalising a PR and say so in its description. CI runs
+them with the formal models when `develop` is promoted to `main` (`promotion.yml`).
+
+The remaining lanes do not run on pull requests. `android-emulator.yml` runs nightly on the default branch (`develop`) and
+on dispatch: one job builds the launcher APKs and runs the default instrumentation and the browser
+reading suites on hosted emulators. `resident-android.yml` builds the unsigned native candidate on
+each `main` push, and a dispatched build or embedding-qualification publication on request. The
+release workflows run only on dispatch.
+The native candidate keeps the bounded, hash-pinned Bun acquisition check with credentials
+limited to its download step. Runtime staging, mobile bundle checks, notices and distribution
+archiving retain separate deadlines. The emulator lane retains its exact debug and instrumentation
+APKs with their manifest for later byte-level audits. Required prepared-SDK tests fail when the
+Cloud recording classifier dependency is missing.
 
 On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) lengthens subprocess
 deadlines for refinement, host JVM fixtures and LemmaScript, and Playwright server

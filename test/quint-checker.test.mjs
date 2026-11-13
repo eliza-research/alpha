@@ -22,7 +22,7 @@ test('unknown model selection fails before source loading while valid selections
   const root = mkdtempSync(join(tmpdir(), 'alpha-quint-selection-'));
   t.after(() => rmSync(root, {recursive: true, force: true}));
   mkdirSync(join(root, 'scripts'));
-  for (const name of ['check-quint.ts', 'quint-lib.ts']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+  for (const name of ['check-quint.ts', 'quint-lib.ts', 'sha256.ts', 'upstream-pin.ts']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
   const models = ['Selected', 'Unselected'].map(module => ({module,
     path: `specs/quint/application/${module}.qnt`, init: 'init', step: 'step', invariant: 'safety',
     tests: ['exampleTest'], sources: module === 'Unselected' ? ['missing-unselected.ts'] : []}));

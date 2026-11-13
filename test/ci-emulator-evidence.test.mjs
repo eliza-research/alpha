@@ -9,9 +9,6 @@ import {AVD,READING_CLASSES,SERIAL,runSuite,suitePlan,summarize} from '../script
 import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.ts';
 
 const read=file=>fs.readFileSync(file,'utf8');
-const WORKFLOW='.github/workflows/android-emulator.yml';
-const workflow=read(WORKFLOW);
-const emulatorJobs=['instrumentation','browser-reading'];
 const suites=['instrumentation','browser-reading'];
 const hosted={GITHUB_ACTIONS:'true',RUNNER_ENVIRONMENT:'github-hosted',GITHUB_SHA:'a'.repeat(40),GITHUB_RUN_ID:'7'};
 

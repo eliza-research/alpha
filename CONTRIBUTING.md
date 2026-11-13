@@ -43,4 +43,6 @@ aggregate runners. The evidence classes and retained partial-source inventory ar
 
 Run `bun run test:browser` and `bun run test:browser:production` locally before finalising a PR,
 and state in the PR description that they were run and are final. PR CI runs only
-`bun run verify`; the browser tests run in CI only when `develop` is promoted to `main`.
+`bun run verify` and, when build inputs change, the Android build; the browser tests run in CI
+only when `develop` is promoted to `main`. The CI lanes are listed in
+[docs/development.md](docs/development.md).

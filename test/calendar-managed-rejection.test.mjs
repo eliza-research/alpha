@@ -15,8 +15,8 @@ import {sourceDirectory,verifySource} from '../scripts/local-agent-source.ts';
 // normal prepared and installed SDK graph: the admitted runtime source at the pinned commit
 // (bun run agent:prepare: the exact commit, then bun install --frozen-lockfile), verified before and
 // after. vendor/eliza is source only, with no dependency install, so it cannot qualify this transport.
-// bun run test runs without a prepared graph and skips, as the Cloud signature classifier does; the
-// resident-prepare job runs this file after agent:prepare with ALPHA_REQUIRE_PREPARED_SDK=1, where a
+// bun run test runs without a prepared graph and skips, as the Cloud signature classifier does;
+// verify.yml runs bun run verify after preparing the SDK with ALPHA_REQUIRE_PREPARED_SDK=1, where a
 // missing graph fails instead of skipping.
 const preparedGraph=sourceDirectory(resolve('.'));
 const skipUnprepared=!existsSync(preparedGraph)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK graph unavailable; run bun run agent:prepare':false;

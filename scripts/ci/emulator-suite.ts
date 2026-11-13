@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * One dispatch-only emulator suite of .github/workflows/android-emulator.yml, run inside the
- * hosted runner's disposable emulator:
+ * One emulator suite of .github/workflows/android-emulator.yml (nightly and on dispatch), run
+ * inside the hosted runner's disposable emulator:
  *
  *   bun scripts/ci/emulator-suite.ts instrumentation | browser-reading
  *

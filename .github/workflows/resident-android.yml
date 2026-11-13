@@ -27,18 +27,15 @@ on:
         type: string
         required: true
         default: '26'
-  # Main pushes build an unsigned native update candidate. Develop qualification
-  # and the nightly lane still require the explicit qualification variable.
+  # Main pushes build an unsigned native update candidate.
   push:
-    branches: [main, develop]
-  schedule:
-    - cron: "23 6 * * *"
+    branches: [main]
 permissions:
   contents: read
 concurrency:
   # Main-push runs are isolated by run ID because GitHub can queue commits out of order.
-  # Manual qualification keeps its cancellation group per ref and operation.
-  group: resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('app-candidate-run-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}
+  # Manual builds keep their cancellation group per ref and operation.
+  group: resident-${{ github.event_name == 'push' && format('app-candidate-run-{0}', github.run_id) || github.ref }}${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}
   cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 jobs:
   publish-qualification:
@@ -55,11 +52,7 @@ jobs:
     permissions:
       contents: read
       actions: read
-    if: >-
-      (github.event_name == 'workflow_dispatch' && (inputs.operation == 'build' || inputs.operation == '')) ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'push' && vars.ELIZA_RESIDENT_QUALIFICATION == 'push') ||
-      (github.event_name == 'schedule' && vars.ELIZA_RESIDENT_QUALIFICATION == 'nightly')
+    if: github.event_name == 'push' || inputs.operation == 'build' || inputs.operation == ''
     # All consumers select the reviewed NDK before unused image SDKs are removed.
     env:
       # One runtime profile: every build packages local speech and embeddings; speech is routed at run time.
@@ -90,8 +83,9 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
       - name: Install pinned Android native toolchain
+        timeout-minutes: 20
         run: |
-          python3 scripts/ci/resident-phase.py --name android-toolchain --seconds 1200 sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+          sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'build-tools;36.0.0' 'ndk;28.2.13676358'
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
           # The fused engine wrappers (prepare-embedding-host) require the CMake release of the qualified build.
           python3 -m pip install cmake==4.0.3
@@ -192,27 +186,14 @@ jobs:
           test "$(bun --version)" = "1.4.2"
           python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 10*1024**3'
           mkdir -p test-results/resident-ci
-          python3 - <<'PYCODE'
-          import json, os
-          from pathlib import Path
-          limits = {}
-          for file in ('/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes'):
-              path = Path(file)
-              if path.is_file():
-                  limits[file] = path.read_text().strip()
-          Path('test-results/resident-ci/host-resources.json').write_text(json.dumps({'hostMemoryBytes': os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE'), 'cpuCount': os.cpu_count(), 'kernelMemoryLimits': limits, 'phaseEntryGiB': 10, 'phaseStopGiB': 4, 'PGIDRSSCap': None, 'phaseLogByteCap': None, 'nodeHeapMiB': 4096, 'turboConcurrency': 1}, indent=2) + '\n')
-          PYCODE
           {
             echo "ALPHA_LOCAL_AGENT_SOURCE_DIR=$GITHUB_WORKSPACE/artifacts/resident-ci-92fc"
             echo "ALPHA_WORKFLOW_WORKER_OUTPUT=$GITHUB_WORKSPACE/artifacts/worker-ci-92fc"
             echo "XDG_CACHE_HOME=$RUNNER_TEMP/alpha-cache"
             echo "ALPHA_BUN=$(command -v bun)"
           } >> "$GITHUB_ENV"
-      - name: Qualify supervisor on real Linux processes
+      - run: bun install --frozen-lockfile
         timeout-minutes: 10
-        run: |
-          python3 scripts/ci/test-resident-phase.py
-      - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 bun install --frozen-lockfile
       - name: Prepare archive host-test prerequisites in the selected cache
         run: |
           bash scripts/ci/install-playwright-browser.sh chromium
@@ -238,7 +219,7 @@ jobs:
       - name: Build and stage native voice and embeddings from verified inputs
         timeout-minutes: 95
         run: |
-          python3 scripts/ci/resident-phase.py --name native-input-build --seconds 5400 bun run agent:build-embedding-host
+          bun run agent:build-embedding-host
           bun scripts/voice-host.ts --verify
       - name: Retain verified native build cache
         if: steps.native-cache.outputs.cache-hit != 'true'
@@ -259,21 +240,18 @@ jobs:
       - name: Verify source metadata and voice contracts before resident preparation
         timeout-minutes: 5
         run: |
-          python3 scripts/ci/resident-phase.py --name source-metadata --seconds 240 \
-            bash -e -c '
-              bun run upstream:prepare-client
-              exec bun test \
-                test/embedding-host-admission.test.mjs \
-                test/upstream-reachability.test.mjs \
-                test/voice-host-record.test.mjs \
-                test/cloud-voice-profile.test.mjs
-            '
+          bun run upstream:prepare-client
+          bun test \
+            test/embedding-host-admission.test.mjs \
+            test/upstream-reachability.test.mjs \
+            test/voice-host-record.test.mjs \
+            test/cloud-voice-profile.test.mjs
       - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       - name: Prepare and qualify fresh resident source with normal hooks
+        timeout-minutes: 60
         env:
           RUN_TURBO_CONCURRENCY: "1"
-        run: |
-          python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 bun run agent:prepare
+        run: bun run agent:prepare
       - name: Capture the hydrated SDK lock and graph
         if: github.event_name == 'workflow_dispatch' || env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         run: |
@@ -284,14 +262,14 @@ jobs:
           python3 -c 'from pathlib import Path; assert Path("test-results/resident-ci/sdk-graph-before.txt").stat().st_size <= 16*1024**2'
       - name: Verify the hydrated SDK graph with OS-network-denied frozen install
         if: github.event_name == 'workflow_dispatch'
+        timeout-minutes: 10
         run: |
           source="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
           bun_executable="$(command -v bun)"
           # sudo only creates the fresh network namespace. unshare drops to the
           # runner UID/GID BEFORE the pinned Bun process; no token is forwarded.
           # shellcheck disable=SC2016
-          python3 scripts/ci/resident-phase.py --name sdk-offline-install --seconds 600 \
-            sudo unshare --net --setgid "$(id -g)" --setuid "$(id -u)" -- \
+          sudo unshare --net --setgid "$(id -g)" --setuid "$(id -u)" -- \
             env -i HOME="$HOME" PATH="$PATH" TMPDIR="$RUNNER_TEMP" NO_COLOR=1 \
             BUN_INSTALL_CACHE_DIR="${BUN_INSTALL_CACHE_DIR:-$HOME/.bun/install/cache}" \
             BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 \
@@ -302,36 +280,65 @@ jobs:
           cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-after.txt
           bun scripts/prepare-local-agent.ts --source-only
       - name: Qualify the prepared resident source
+        timeout-minutes: 50
         env:
           RUN_TURBO_CONCURRENCY: "1"
         run: |
-          python3 scripts/ci/resident-phase.py --name device-timing-flow --seconds 600 bun run agent:test-device-timing
-          python3 scripts/ci/resident-phase.py --name worker-build --seconds 900 bun run agent:build-workflow-worker
-          python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 bun scripts/test-native-cloud-runtime-config.ts
-          python3 scripts/ci/resident-phase.py --name compiler-flow --seconds 600 bun run agent:test-workflow-compiler
-          python3 scripts/ci/resident-phase.py --name worker-flow --seconds 600 bun run agent:test-workflow-worker
+          bun run agent:test-device-timing
+          bun run agent:build-workflow-worker
+          bun scripts/test-native-cloud-runtime-config.ts
+          bun run agent:test-workflow-compiler
+          bun run agent:test-workflow-worker
       - name: Acquire hash-pinned Android Bun with step-only authentication
         timeout-minutes: 12
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci/resident-phase.py --name bun-downloads --seconds 600 python3 scripts/ci/acquire-resident-bun.py
-      - name: Stage and archive qualified resident runtime
+        run: python3 scripts/ci/acquire-resident-bun.py
+      - name: Stage qualified resident runtime
+        timeout-minutes: 30
         env:
           RUN_TURBO_CONCURRENCY: "1"
           ALPHA_NODE: ${{ env.ALPHA_ARCHIVE_HOST_NODE }}
           ALPHA_REQUIRE_PREPARED_SDK: '1'
           ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
           ALPHA_CLOUD_COLLECTOR_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
-          # Same qualified R8 heap as the normal Android distribution workflow.
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: |
-          python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 bun run agent:stage-android
+          bun run agent:stage-android
           bun scripts/stage-embedding-host.ts --verify
-          python3 scripts/ci/resident-phase.py --name mobile-bundle --seconds 300 bun run agent:test-mobile-workflow-bundle
-          # Fresh native artifacts and the runtime pin are inputs to shipped notices.
-          python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 bun scripts/generate-licenses.ts --packaged-runtime
-          # Flag-off distribution: release verification requires the PACKAGED runtime.
-          python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 bun scripts/build-archive.ts test-results/resident-ci-distribution
+      - name: Qualify the staged mobile workflow bundle
+        timeout-minutes: 5
+        env:
+          RUN_TURBO_CONCURRENCY: "1"
+          ALPHA_NODE: ${{ env.ALPHA_ARCHIVE_HOST_NODE }}
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
+          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
+          ALPHA_CLOUD_COLLECTOR_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
+        run: |
+          bun run agent:test-mobile-workflow-bundle
+      - name: Generate notices for the packaged runtime
+        timeout-minutes: 2
+        env:
+          RUN_TURBO_CONCURRENCY: "1"
+          ALPHA_NODE: ${{ env.ALPHA_ARCHIVE_HOST_NODE }}
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
+          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
+          ALPHA_CLOUD_COLLECTOR_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
+        run: |
+          bun scripts/generate-licenses.ts --packaged-runtime
+      - name: Archive the flag-off launcher distribution
+        timeout-minutes: 50
+        env:
+          RUN_TURBO_CONCURRENCY: "1"
+          ALPHA_NODE: ${{ env.ALPHA_ARCHIVE_HOST_NODE }}
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
+          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
+          ALPHA_CLOUD_COLLECTOR_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
+        run: |
+          bun scripts/build-archive.ts test-results/resident-ci-distribution
       - name: Retain bounded distribution producer evidence
         if: github.event_name == 'workflow_dispatch' || env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         run: |
@@ -459,7 +466,6 @@ jobs:
           retention-days: 3
           name: resident-build-evidence-${{ github.run_id }}
           path: |
-            test-results/resident-ci-supervisor/
             test-results/resident-ci/
             test-results/resident-ci-distribution/
             android/app/build/reports/
