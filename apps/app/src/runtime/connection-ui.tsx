@@ -3771,6 +3771,15 @@ export function ConnectionChooser() {
     const releaseInert = holdPhoneInert(phone);
     return () => { releaseInert(); previous?.focus(); };
   }, [visible]);
+  useEffect(() => {
+    if (!visible) return;
+    const home = () => {
+      if (signInEntryRequired) connectionController.close();
+      else update({open:false});
+    };
+    window.addEventListener('launcher-home', home);
+    return () => window.removeEventListener('launcher-home', home);
+  }, [visible, signInEntryRequired]);
   // Escape, Android Back and the own-key form's Cancel during a check share one dispatch.
   const dismiss = () => {
     if (connectionController.getSnapshot().signIn) connectionController.cancelSignIn();

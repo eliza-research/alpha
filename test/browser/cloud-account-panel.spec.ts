@@ -60,3 +60,21 @@ test('Settings Account opens focused sign-in and restores keyboard focus',async(
 });
 
 test.beforeEach(async({page})=>seedCompletedAccessSetup(page));
+
+
+test('Home closes Account and Google panels while retaining the account and conversation',async({page})=>{
+ await fixture(page);await retainedAgent(page);await openInbox(page);
+ await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');void connectionController.signInBrowser();});
+ await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().cloudAccount?.email)).toBe('verified-owner@example.invalid');
+ const read=()=>page.evaluate(async()=>{const c=(await import('/src/runtime/connection-ui.tsx')).connectionController;return {session:c.getSnapshot().session,history:c.getSnapshot().history,account:c.getSnapshot().cloudAccount,selection:localStorage.getItem('alpha.connection.selection.v1'),sends:(window as any).accountPanelFixture.agentSends};});
+ const before=await read();
+ await page.evaluate(async()=>{(await import('/src/runtime/connection-ui.tsx')).connectionController.openPlan();});
+ await expect(membershipSheet(page)).toBeVisible();
+ await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+ await expect(membershipSheet(page)).toHaveCount(0);await expect(page.locator('html')).toHaveAttribute('data-active-view','home');expect(await read()).toEqual(before);
+ await page.evaluate(async()=>{(await import('/src/runtime/connection-ui.tsx')).connectionController.openPlan();});
+ await membershipSheet(page).getByRole('button',{name:'Google & email',exact:true}).click();
+ const google=page.getByRole('dialog',{name:'Google accounts',exact:true});await expect(google).toBeVisible();
+ await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+ await expect(google).toHaveCount(0);await expect(membershipSheet(page)).toHaveCount(0);await expect(page.locator('html')).toHaveAttribute('data-active-view','home');expect(await read()).toEqual(before);
+});

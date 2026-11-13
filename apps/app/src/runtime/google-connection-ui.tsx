@@ -169,8 +169,10 @@ export function GoogleConnectionsPanel(){
   element?.focus();
   const back=(event:Event)=>{if(document.querySelector('dialog[open]'))return;event.preventDefault();event.stopImmediatePropagation();active.current?.abort();googleConnectionController.close();};
   const keydown=(event:KeyboardEvent)=>{if(event.key==='Escape'){back(event);return;}if(event.key==='Tab'&&element){const items=[...element.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href],summary')];if(event.shiftKey&&document.activeElement===items[0]){event.preventDefault();items.at(-1)?.focus();}else if(!event.shiftKey&&document.activeElement===items.at(-1)){event.preventDefault();items[0]?.focus();}}};
+  const home=()=>{returnToAccount=false;active.current?.abort();googleConnectionController.close();connectionController.close();};
+  window.addEventListener('launcher-home',home);
   window.addEventListener('alpha-back',back,true);document.addEventListener('keydown',keydown);
-  return()=>{window.removeEventListener('alpha-back',back,true);document.removeEventListener('keydown',keydown);releaseInert();if(accountReturn)queueMicrotask(()=>{if(!opened)document.querySelector<HTMLElement>('[data-alpha-account-google]')?.focus();});else if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
+  return()=>{window.removeEventListener('launcher-home',home);window.removeEventListener('alpha-back',back,true);document.removeEventListener('keydown',keydown);releaseInert();if(accountReturn)queueMicrotask(()=>{if(!opened)document.querySelector<HTMLElement>('[data-alpha-account-google]')?.focus();});else if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
  },[open]);
  /** One consent includes the supported Inbox actions and Calendar read/write scope. */
  async function connect(floor:'read'|'send'|'modify'='modify',calendarPermission:'read'|'write'='write',read=accountRead()){
