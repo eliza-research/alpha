@@ -4,7 +4,7 @@ module ListenerLeaseRecovery {
     generation: int, live: bool, acknowledged: bool, expiresAt: int,
     now: int, boot: int, leaseBoot: int, surface: bool, chip: bool, recording: bool,
     display: str, reason: str, lastLoss: str, lastRenewAccepted: bool,
-    captureSince: int, frameAccepted: bool, frameGeneration: int, interactive: bool, lastCheck: str,
+    captureActive: bool, captureSince: int, frameAccepted: bool, frameGeneration: int, interactive: bool, lastCheck: str,
     sessionOpen: bool, markerBoot: int, install: int, markerInstall: int,
     wall: int, exits: List[int], tripped: bool, processConsent: bool, historyLoaded: bool
   }
@@ -37,7 +37,7 @@ module ListenerLeaseRecovery {
     generation: 0, live: false, acknowledged: false, expiresAt: 0,
     now: 0, boot: 0, leaseBoot: 0, surface: false, chip: false, recording: false,
     display: "on", reason: "none", lastLoss: "never-acquired", lastRenewAccepted: false,
-    captureSince: -1, frameAccepted: false, frameGeneration: -1, interactive: true, lastCheck: "never-acquired",
+    captureActive: false, captureSince: -1, frameAccepted: false, frameGeneration: -1, interactive: true, lastCheck: "never-acquired",
     sessionOpen: false, markerBoot: 0, install: 0, markerInstall: 0,
     wall: 0, exits: [], tripped: false, processConsent: false, historyLoaded: false
   }
@@ -75,15 +75,15 @@ module ListenerLeaseRecovery {
   action explicitConsent = s' = {processConsent: true, tripped: false, exits: [], frameAccepted: false, ...s}
   action openCapture = all {
     s.processConsent, not(s.tripped), verdict(s, false, s.interactive) == "none",
-    s' = {sessionOpen: true, captureSince: s.now, markerBoot: s.boot,
+    s' = {sessionOpen: true, captureActive: true, captureSince: s.now, markerBoot: s.boot,
       markerInstall: s.install, frameAccepted: false, ...s}
   }
-  action closeCapture = s' = {sessionOpen: false, captureSince: -1, frameAccepted: false, ...s}
+  action closeCapture = s' = {sessionOpen: false, captureActive: false, captureSince: -1, frameAccepted: false, ...s}
   action processFrame = {
     val needsAttribution = s.captureSince >= 0 and s.now - s.captureSince >= 2500
     val answer = verdict(s, needsAttribution, s.interactive)
     s' = if (answer.in(Set("expired", "other-boot"))) endLease(s.with("lastCheck", answer), answer)
-      else {frameAccepted: s.sessionOpen and s.processConsent and not(s.tripped) and answer == "none",
+      else {frameAccepted: s.captureActive and s.sessionOpen and s.processConsent and not(s.tripped) and answer == "none",
         frameGeneration: s.generation, lastCheck: answer, ...s}
   }
   action screenChanged(interactive: bool): bool = s' = {interactive: interactive, frameAccepted: false, ...s}
@@ -98,13 +98,13 @@ module ListenerLeaseRecovery {
     val kept = recent(s.exits, s.wall)
     val appended = if (permission and unclean(s)) kept.append(s.wall) else kept
     val bounded = if (appended.length() > 8) appended.slice(appended.length() - 8, appended.length()) else appended
-    s' = endLease({sessionOpen: false, captureSince: -1, processConsent: false, historyLoaded: true,
+    s' = endLease({sessionOpen: false, captureActive: false, captureSince: -1, processConsent: false, historyLoaded: true,
       exits: bounded, tripped: s.tripped or bounded.length() >= 3, ...s}, "binder-died")
   }
   // Startup may restore records created by an earlier installed version.
   action loadSavedHistory(count: int, open: bool): bool = all {
     not(s.historyLoaded), s.generation == 0, count.in(0.to(3)),
-    s' = {historyLoaded: true, sessionOpen: open,
+    s' = {historyLoaded: true, sessionOpen: open, captureActive: false,
       exits: if (count == 0) [] else if (count == 1) [0] else if (count == 2) [0, 0] else [0, 0, 0], ...s}
   }
   action step = {
@@ -127,7 +127,11 @@ module ListenerLeaseRecovery {
   val AttributionAfterGrace = s.frameAccepted and s.now - s.captureSince >= 2500 implies s.recording and s.chip
   val CrashHistoryBounded = s.exits.length() <= 8
   val NoRenewExpiredLease = s.lastRenewAccepted implies s.live and s.boot == s.leaseBoot and (not(s.acknowledged) or s.now < s.expiresAt)
-  val safety = FrameNeedsFreshLease and FrameNeedsConsent and AttributionAfterGrace and CrashHistoryBounded and NoRenewExpiredLease
+  // A durable previous-process marker is crash evidence, never a current capture worker.
+  val FrameNeedsActiveCapture = s.frameAccepted implies s.captureActive
+  val ActiveCaptureHasTimestamp = s.captureActive == (s.captureSince >= 0) and
+    (s.captureActive implies s.sessionOpen and s.captureSince <= s.now)
+  val safety = FrameNeedsFreshLease and FrameNeedsConsent and AttributionAfterGrace and CrashHistoryBounded and NoRenewExpiredLease and FrameNeedsActiveCapture and ActiveCaptureHasTimestamp
 
   run leaseNeedsAcknowledgementTest = init.then(explicitConsent).then(acquire)
     .then(renew(1, true, true, true, "on", "none")).then(openCapture).then(processFrame)
@@ -168,4 +172,15 @@ module ListenerLeaseRecovery {
   run permissionRevocationDoesNotCountCrashTest = init.then(explicitConsent).then(acquire)
     .then(renew(1, true, true, true, "on", "none")).then(openCapture)
     .then(processStarts(false)).then(check(safety and s.exits.length() == 0))
+
+  run restoredMarkerCannotAdmitFrameTest = init.then(loadSavedHistory(3, true))
+    .then(advance(2499)).then(explicitConsent).then(acquire)
+    .then(renew(1, true, true, false, "on", "shade")).then(processFrame)
+    .then(check(safety and s.sessionOpen and not(s.captureActive) and s.captureSince == -1 and not(s.frameAccepted)))
+  run freshCaptureStartsItsOwnGraceTest = init.then(loadSavedHistory(0, true))
+    .then(explicitConsent).then(acquire).then(renew(1, true, true, false, "on", "shade"))
+    .then(openCapture).then(processFrame).then(check(safety and s.captureActive and s.frameAccepted))
+    .then(advance(2499)).then(processFrame).then(check(safety and s.frameAccepted))
+    .then(advance(2500)).then(processFrame).then(check(safety and not(s.frameAccepted) and s.lastCheck == "unattributed"))
+    .then(closeCapture).then(processFrame).then(check(safety and not(s.captureActive) and not(s.frameAccepted)))
 }

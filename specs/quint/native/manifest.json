@@ -707,13 +707,15 @@
     "stateMapping": {
       "generation/live/acknowledged/expiresAt/boot/leaseBoot": "IndicatorLease.acquire, renew, verdict, revoke, binderDied",
       "surface/chip/recording/display/reason/interactive/captureSince": "visible surface, attributed recording, explained pauses and 2500ms attribution grace",
-      "sessionOpen/markerBoot/markerInstall/wall/exits/tripped/processConsent": "ListenerStore.setSessionOpen, recordProcessStart, grantConsent and CrashLoopBreaker"
+      "sessionOpen/markerBoot/markerInstall/wall/exits/tripped/processConsent": "ListenerStore.setSessionOpen, recordProcessStart, grantConsent and CrashLoopBreaker",
+      "captureActive/captureSince": "ListeningService current private capture worker and Listener.unsilencedSince; separate from the persisted ListenerStore open-session marker"
     },
     "abstractions": [
       "Exact 3000ms expiry, 2500ms attribution grace and 600000ms crash-window boundary classes.",
       "Three lease generations, two known boots plus unknown boot, two installation identities.",
       "Startup restores zero to three historical crashes, sufficient to cross the actual three-exit threshold; the actual store cap remains eight.",
-      "Stored consent does not authorize a newly started process; explicit process consent is modeled separately."
+      "Stored consent does not authorize a newly started process; explicit process consent is modeled separately.",
+      "Restored open-session markers describe prior-process crash history. Only a newly opened current capture worker can admit frames or start the attribution grace; physical AudioRecord release failures remain covered by NativeListenerService."
     ],
     "tests": [
       "leaseNeedsAcknowledgementTest",
@@ -727,14 +729,18 @@
       "crashTripStaysLatchedAfterWindowTest",
       "rebootDoesNotCountCrashTest",
       "updateDoesNotCountCrashTest",
-      "permissionRevocationDoesNotCountCrashTest"
+      "permissionRevocationDoesNotCountCrashTest",
+      "restoredMarkerCannotAdmitFrameTest",
+      "freshCaptureStartsItsOwnGraceTest"
     ],
     "invariants": [
       "FrameNeedsFreshLease",
       "FrameNeedsConsent",
       "AttributionAfterGrace",
       "CrashHistoryBounded",
-      "NoRenewExpiredLease"
+      "NoRenewExpiredLease",
+      "FrameNeedsActiveCapture",
+      "ActiveCaptureHasTimestamp"
     ],
     "sharedSources": [
       "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
