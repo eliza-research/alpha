@@ -295,7 +295,7 @@ export function localAgentDevBridge():Plugin {
     if(process.env.VITE_LOCAL_AGENT!=='1')return;
     const tokenFile=process.env.ALPHA_LOCAL_AGENT_TOKEN_FILE;
     if(!tokenFile)throw new Error('ALPHA_LOCAL_AGENT_TOKEN_FILE is required for browser agent development.');
-    const handler=createLocalAgentDevHandler({origin:process.env.ALPHA_LOCAL_AGENT_ORIGIN||'http://127.0.0.1:47839',tokenFile,cartesiaEnabled:process.env.ALPHA_DEV_CARTESIA==='1',cloudVoiceEnabled:process.env.ALPHA_DEV_CLOUD_VOICE==='1',cloudRealtimeEnabled:process.env.ALPHA_DEV_CLOUD_REALTIME_VOICE==='1',selectableProvider:process.env.VITE_ALPHA_CLOUD_RESIDENT==='1'});
+    const handler=createLocalAgentDevHandler({origin:process.env.ALPHA_LOCAL_AGENT_ORIGIN||'http://127.0.0.1:47839',tokenFile,cartesiaEnabled:process.env.ALPHA_DEV_CARTESIA==='1',cloudVoiceEnabled:process.env.VITE_ALPHA_CLOUD_RESIDENT==='1',cloudRealtimeEnabled:process.env.ALPHA_DEV_CLOUD_REALTIME_VOICE==='1',selectableProvider:process.env.VITE_ALPHA_CLOUD_RESIDENT==='1'});
     const upgrade=(req:IncomingMessage,socket:Duplex,head:Buffer)=>{if(req.url?.startsWith(LOCAL_VOICE_WS_PATH)||req.url?.startsWith(LOCAL_RENDERER_WS_PATH))void handler.upgrade(req,socket,head);};
     server.httpServer?.on('upgrade',upgrade);server.httpServer?.once('close',()=>{server.httpServer?.off('upgrade',upgrade);handler.closeVoice();});
     server.middlewares.use((req,res,next)=>{if(req.url!==LOCAL_AGENT_BRIDGE_PATH){next();return;}void handler(req,res);});

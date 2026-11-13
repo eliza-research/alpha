@@ -15,7 +15,7 @@ import { localAgentDevBridge } from './scripts/local-agent-dev-bridge.ts';
 // test-only mocks, fixtures and developer surfaces into a build. Anything else is off.
 // Only this single key is exposed; envPrefix stays VITE_ so ELIZA_* secrets never reach the bundle.
 checkCloudDeployment(fileURLToPath(new URL('.', import.meta.url)));
-const flagOn = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS === '1' || process.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS === '1';
+const flagOn = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS === '1';
 const appConfig = JSON.parse(readFileSync(fileURLToPath(new URL('./app.config.json', import.meta.url)), 'utf8')) as { version?: unknown };
 const appVersion = process.env.ELIZAOS_VERSION_NAME?.trim() || (typeof appConfig.version === 'string' ? appConfig.version : '0.0.0');
 const prototypeDirectory = fileURLToPath(new URL('./apps/app/src/prototype/', import.meta.url));
@@ -107,6 +107,8 @@ export default defineConfig({
   plugins: [productionSurface(), localOcrAssets(), browserPdfAssets(), browserFullReload(), react(), localAgentDevBridge(), browserCloudDevBridge()],
   define: {
     'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify(flagOn ? '1' : ''),
+    // The local agent's product connection sheet (bun run dev); ALPHA_DEV_CONNECTION_TOOLS=1 keeps the development sheet.
+    'import.meta.env.VITE_ALPHA_PRIVATE_LOCAL_PREVIEW': JSON.stringify(flagOn && process.env.VITE_LOCAL_AGENT === '1' && process.env.ALPHA_DEV_CONNECTION_TOOLS !== '1' ? '1' : ''),
     __APP_VERSION__: JSON.stringify(appVersion),
     'import.meta.env.VITE_ALPHA_DEV_CARTESIA':JSON.stringify(flagOn&&process.env.ALPHA_DEV_CARTESIA==='1'?'1':''),
   },

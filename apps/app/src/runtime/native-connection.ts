@@ -5,14 +5,14 @@ import {managedServiceRequest,mapsRequestIdentity} from './managed-service-route
 import {ownerRouteAllowed} from './owner-route-policy';
 import {BrowserCloudConnection,BrowserCloudSignIn,clearBrowserCloudCredentialIfCurrent} from '../browser/cloud-connection';
 import {Capacitor} from '@capacitor/core';
-import {devSurfacesEnabled,testMocksEnabled,privateLocalPreviewEnabled} from '../build-flags';
+import {devSurfacesEnabled,testMocksEnabled} from '../build-flags';
 import { registerPlugin } from '../platform-plugins';
 import type { CloudNativeRequest, CloudCredentialStore, CloudCredential, CloudEnvironment } from './cloud-protocol';
 import type { CloudSignInPort } from './cloud-sign-in';
 import type { RemoteRequester, RemoteCredentialStore } from './remote-protocol';
 
 const nativeConnectionHeader=(Capacitor as typeof Capacitor&{PluginHeaders?:{name:string}[]}).PluginHeaders?.some(header=>header.name==='AlphaConnection')??false;
-const browserCloudHost=(devSurfacesEnabled||browserCloudResidentEnabled||privateLocalPreviewEnabled)&&!Capacitor.isNativePlatform()&&!nativeConnectionHeader;
+const browserCloudHost=(devSurfacesEnabled||browserCloudResidentEnabled)&&!Capacitor.isNativePlatform()&&!nativeConnectionHeader;
 /** Exact current-key self-revocation is supported only by the owned Android/private browser hosts. */
 export const cloudSelfRevocationSupported=Capacitor.getPlatform()==='android'||browserCloudHost;
 const nativeSignInHeader=(Capacitor as typeof Capacitor&{PluginHeaders?:{name:string}[]}).PluginHeaders?.some(header=>header.name==='AlphaCloudSignIn')??false;
