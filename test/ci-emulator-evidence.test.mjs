@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {parse as parseYaml} from 'yaml';
-import {AVD,BROWSER_CONTROLS_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.ts';
+import {AVD,BROWSER_CONTROLS_CLASSES,DEFAULT_TEST_MOCKS_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.ts';
 import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.ts';
 import {assertBefore} from './fixtures/assert-order.mjs';
 
@@ -53,6 +53,8 @@ test('every emulator job is selected by the suite input, needs the build, and it
   assert.match(text,/artifact-ids: \$\{\{ needs\.build\.outputs\.artifact_id \}\}/,name);
   assert.match(text,/test "\$\(sha256sum artifacts\/apk-manifest\.json \| cut -d' ' -f1\)" = "\$EXPECTED_MANIFEST_SHA256"/,name);
   assert.match(text,/EXPECTED_MANIFEST_SHA256: \$\{\{ needs\.build\.outputs\.manifest_sha256 \}\}/,name);
+  assert.match(text,/EXPECTED_TEST_MOCKS_MANIFEST_SHA256: \$\{\{ needs\.build\.outputs\.test_mocks_manifest_sha256 \}\}/,name);
+  assert.match(text,/test -n "\$EXPECTED_TEST_MOCKS_MANIFEST_SHA256"\n\s+test "\$\(sha256sum artifacts\/test-mocks\/apk-manifest\.json/,name);
  }
  assert.doesNotMatch(job.build,/android-emulator-runner/,'the build job boots nothing');
  assert.doesNotMatch(job.build,/\n    if: /,'every suite needs the build');
@@ -66,7 +68,7 @@ test('emulator jobs restore both APK pairs from the archive root at artifacts',(
  const archivedFiles=['apk-manifest.json',...appFiles,...testFiles.map(file=>`instrumentation/${file}`),
   'test-mocks/apk-manifest.json',...[...appFiles,...testFiles].map(file=>`test-mocks/${file}`)];
  // upload-artifact strips the common artifacts directory. The flag-off manifest anchors that root
- // whether or not the browser suites add the separate test-mocks pair.
+ // alongside the separate test-mocks pair.
  assert.deepEqual(upload.with.path.trim().split('\n'),[
   'artifacts/apk-manifest.json',...appFiles.map(file=>`artifacts/${file}`),'artifacts/instrumentation/*.apk',
   'artifacts/test-mocks/apk-manifest.json','artifacts/test-mocks/*-debug.apk','artifacts/test-mocks/*-androidTest.apk',
@@ -193,7 +195,7 @@ test('the build job hands over hash-anchored APKs',()=>{
  // The instrumentation APKs are built (no --skip-instrumentation) and the flag-off pair stays flag-off.
  assert.doesNotMatch(build,/--skip-instrumentation/);
  assert.match(build,/ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n        run: bun run android:build -- --allow-unpackaged-runtime\n/);
- assert.match(build,/if: inputs\.suite == 'browser-reading' \|\| inputs\.suite == 'browser-controls' \|\| inputs\.suite == 'all'\n        run: \|\n          before=/,'the browser suites get the test-mocks pair');
+ assert.match(build,/- name: Build the separate test-mocks APKs\n        run: \|\n          before=/,'every hosted suite gets the separate test-mocks pair');
  for(const file of ['artifacts/apk-manifest.json','artifacts/standalone-debug.apk','artifacts/launcher-debug.apk','artifacts/instrumentation/*.apk','artifacts/test-mocks/apk-manifest.json'])
   assert.ok(build.includes(`\n            ${file}\n`),`${file} is handed to the emulator jobs`);
  for(const output of ['manifest_sha256','test_mocks_manifest_sha256','artifact_id','source_sha'])assert.match(build,new RegExp(`\\n      ${output}: \\$\\{\\{ `),output);
@@ -228,11 +230,17 @@ test('browser controls are opt-in and record the three exact classes on both tes
 
 test('suite plans: default classes; reading classes with the builds and gates they need',()=>{
  const instrumentation=suitePlan('instrumentation');
- assert.deepEqual(instrumentation.map(step=>[step.name,step.kind]),[['prepare-emulator','preparation'],['ci-default','evidence']]);
+ assert.deepEqual(instrumentation.map(step=>[step.name,step.kind]),[['prepare-emulator','preparation'],['ci-default','evidence'],['ci-default-test-mocks','evidence']]);
  // `bun run test:android:instrumentation` with no --classes: the runner's own default list, both distributions.
  assert.deepEqual(instrumentation[1].command,['bun','run','test:android:instrumentation','--','--owned-emulator','--avd','test','--serial','emulator-5554','--output','test-results/android-instrumentation/ci-default']);
  const parsed=parseInstrumentationArgs(instrumentation[1].command.slice(4));
  assert.deepEqual(parsed.variants,['standalone','launcher']);assert.equal(parsed.classes.length,DEFAULT_CLASSES.length);assert.equal(parsed.testMocks,false);
+ assert.deepEqual(DEFAULT_CLASSES,['NoMockProduct','Shell','StartupReadiness','BrowserSignins']);
+ const signedOutViews=parseInstrumentationArgs(instrumentation[2].command.slice(4));
+ assert.deepEqual(DEFAULT_TEST_MOCKS_CLASSES,['TextScale','BrowserFlow']);
+ assert.deepEqual(signedOutViews.classes.map(name=>name.split('.').at(-1)),DEFAULT_TEST_MOCKS_CLASSES.map(name=>name+'InstrumentedTest'));
+ assert.deepEqual(signedOutViews.variants,['standalone','launcher']);assert.equal(signedOutViews.testMocks,true);assert.equal(signedOutViews.liveNetwork,false);
+ for(const name of DEFAULT_TEST_MOCKS_CLASSES)assert.throws(()=>parseInstrumentationArgs(['--classes',name]),/needs a test-mocks app build/);
 
  const reading=suitePlan('browser-reading');
  assert.deepEqual(reading.map(step=>step.name),['prepare-emulator','prepare-webview','ci-reading','ci-reading-test-mocks']);
@@ -300,8 +308,12 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
  // A skipped or missing class is not a pass, whatever the exit status says; neither is a run that left no record.
  for(const [status,exit] of [['skipped',0],['missing',0],['passed',1]]){
   fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
-  const report=runSuite('instrumentation',{environment:hosted,execute:command=>{const step=suitePlan('instrumentation')[1];if(command[0]==='bun'){results(root,step,{Shell:'passed',TextScale:status});return exit;}return 0;}});
-  assert.equal(report.passed,false,`${status}/${exit}`);assert.equal(report.steps[1].status,'failed',`${status}/${exit}`);
+  const report=runSuite('instrumentation',{environment:hosted,execute:command=>{
+   if(command[0]!=='bun')return 0;
+   if(command.includes('--test-mocks')){results(root,suitePlan('instrumentation')[2],{TextScale:status,BrowserFlow:'passed'});return exit;}
+   results(root,suitePlan('instrumentation')[1],Object.fromEntries(DEFAULT_CLASSES.map(name=>[name,'passed'])));return 0;
+  }});
+  assert.equal(report.passed,false,`${status}/${exit}`);assert.equal(report.steps[1].status,'passed');assert.equal(report.steps[2].status,'failed',`${status}/${exit}`);
  }
  fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
  const silent=runSuite('instrumentation',{environment:hosted,execute:()=>0});
@@ -309,7 +321,12 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
 
  fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
  const records=[];
- const passing=runSuite('instrumentation',{environment:hosted,record:value=>records.push(JSON.parse(JSON.stringify(value))),execute:command=>{if(command[0]==='bun')results(root,suitePlan('instrumentation')[1],Object.fromEntries(DEFAULT_CLASSES.map(name=>[name,'passed'])));return 0;}});
+ const passing=runSuite('instrumentation',{environment:hosted,record:value=>records.push(JSON.parse(JSON.stringify(value))),execute:command=>{
+  if(command[0]!=='bun')return 0;
+  const mocks=command.includes('--test-mocks');
+  results(root,suitePlan('instrumentation')[mocks?2:1],Object.fromEntries((mocks?DEFAULT_TEST_MOCKS_CLASSES:DEFAULT_CLASSES).map(name=>[name,'passed'])));
+  return 0;
+ }});
  assert.equal(passing.passed,true);assert.match(summarize(passing),/`instrumentation`: passed/);
  assert.equal(records.at(-1).passed,true);assert.equal(records[0].passed,false,'the record is written after every step and is not a pass until the end');
  // Outside a hosted runner emulator-5554 may be someone's emulator.
