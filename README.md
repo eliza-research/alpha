@@ -10,7 +10,7 @@
 <h1 align="center">Alpha</h1>
 
 <p align="center">
-  <b>The phone with its own AI agent.</b><br>
+  <b>A complete mobile agentic operating system.</b><br>
   Built by <a href="https://alphacompute.ai">Alpha Compute</a>.
 </p>
 
@@ -32,20 +32,11 @@
   <img src="docs/assets/alpha-screens.png" alt="Alpha's Home screen with today's cards, Calendar with a request typed to Ask Alpha, and Inbox" width="820">
 </p>
 
-Alpha is an Android home screen and app suite with a personal AI agent that lives
-on the phone itself. Tap **Ask Alpha**, type or talk, and the agent works across
-your mail, calendar, maps, notes, photos and files. It asks before it does
-anything that matters.
+Alpha is a personal AI agent that lives on the phone itself. Tap **Ask Alpha**, type or talk, and the agent works across your mail, calendar, maps, notes, photos and files. It asks before it does anything that matters.
 
-**Your agent stays with you.** The agent, its memory and its database run on your
-device, not on someone else's server. Speech uses your configured provider or
-eligible Eliza Cloud access, with local speech otherwise and as a fallback. A
-cloud account supplies services such as model inference, speech and Gmail.
+**Your agent stays with you.** The agent, its memory and its database run on your device, not on someone else's server. Speech uses your configured provider or eligible cloud access, with local speech otherwise and as a fallback. A cloud account supplies services such as model inference, speech and Gmail.
 
 ## Quickstart
-
-Try Alpha in your browser. You need [Git](https://git-scm.com) and
-[Bun 1.4.2](https://bun.sh). No Android tools and no account are required.
 
 ```bash
 git clone --recurse-submodules https://github.com/eliza-research/alpha.git
@@ -59,22 +50,9 @@ cd alpha && bun install --frozen-lockfile
 bun run dev:ui
 ```
 
-Open the address it prints (usually <http://127.0.0.1:5173>) and you are on
-Alpha's Home screen. Narrow the window to phone width for the best view.
-
 > [!TIP]
 > Forgot `--recurse-submodules`? Run `git submodule update --init --recursive`
 > inside the folder, then `bun install --frozen-lockfile` again.
-
-### Next steps
-
-| I want to…                              | Run                 | You also need                              |
-| --------------------------------------- | ------------------- | ------------------------------------------ |
-| Look around the interface               | `bun run dev:ui`    | Nothing else                               |
-| Run the agent on my computer            | `bun run dev`       | [Bun 1.4.2](https://bun.sh)                |
-| Sign in and use real Cloud services     | `bun run dev:cloud` | Bun, and an Eliza Cloud account            |
-| Check my changes before a pull request  | `bun run verify`    | JDK 21 and the `sqlite3` command-line tool |
-| Build the Android app                   | [See below](#put-it-on-a-phone) | JDK 21 and the Android SDK     |
 
 ## What you get
 
@@ -146,39 +124,6 @@ separate; only the launcher release is a distribution APK. Setup, signing and em
 | ------------ | ----------------------------------------------------- |
 | **Launcher** | Alpha as your home screen.                            |
 | **Alpha OS** | A full phone image. Adds Phone, Contacts and SMS/MMS. |
-
-## Status
-
-Alpha is in **early pilot**.
-
-- There is no app-store or APK download yet. To try it today, use the
-  [Quickstart](#quickstart) or build from source.
-- Alpha OS updates are published for enrolled Pixel pilot devices only.
-- Wallet, passkeys, Telegram and Discord are not part of the first release.
-- Some requirements in the [PRD](docs/prd.md) are still being built. A passing
-  build is not a claim about real devices: APK builds, emulator runs, full image
-  boots, live integrations and hands-on acceptance are tracked separately.
-
-## Documentation
-
-| Goal                                       | Start here                                                        |
-| ------------------------------------------ | ----------------------------------------------------------------- |
-| Set up, run and test locally               | [Developer guide](docs/development.md#setup)                      |
-| Build, sign and verify Android APKs        | [Android builds](docs/development.md#android-builds)              |
-| Test on an emulator or stage an OS image   | [Device and image tooling](docs/development.md#device-and-image-tooling) |
-| Build, publish and verify launcher updates | [Launcher OTA](docs/development.md#launcher-ota) |
-| Understand what Alpha is meant to do       | [Product requirements](docs/prd.md)                               |
-| Work on the code with an AI coding agent   | [AGENTS.md](AGENTS.md)                                            |
-
-## Project layout
-
-| Path           | What lives there                                                    |
-| -------------- | ------------------------------------------------------------------- |
-| `apps/app`     | The Alpha interface: Home, the built-in apps and Ask Alpha.         |
-| `android`      | Android packaging, native code and the Alpha OS image pieces.       |
-| `scripts`      | Build, test and release tooling.                                    |
-| `specs`        | Formal models of the trickiest behaviour, checked before merging.  |
-| `vendor/eliza` | The pinned [elizaOS](https://github.com/elizaOS/eliza) runtime. Read-only here. |
 
 ## Contributing
 
