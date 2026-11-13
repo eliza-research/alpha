@@ -1,0 +1,208 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
+
+function fixture(options={}){
+ const source=fs.readFileSync('.eliza/client-features/packages/voice/src/native-cloud-speech.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export interface','interface').replaceAll('export const','const').replaceAll('export function','function');
+ const box={crypto,AbortController,DOMException,Error,Promise,Map,Date,setTimeout,clearTimeout,registerPlugin:()=>({}),Capacitor:{isNativePlatform:()=>true,isPluginAvailable:()=>true}};
+ vm.runInNewContext(stripTypeScriptTypes(source)+'\nglobalThis.create=createCloudStreamingSpeech;',box);
+ let listener,sessionId,current=true,stops=0,mutes=[],speaks=[],cancels=[],removed=0;
+ const port={
+  async addListener(_name,fn){listener=fn;return {remove:async()=>{removed++;listener=undefined;}};},
+  async startCloudSpeech(input){sessionId=input.sessionId;if(options.start)return options.start(input);return {sessionId,sampleRate:16000,echoCancelled:true};},
+  async stopCloudSpeech(){stops++;},async setCloudSpeechMuted(input){mutes.push(input.muted);},
+  async speakCloudSpeech(input){speaks.push(input);},async cancelCloudSpeech(input){cancels.push(input);},
+ };
+ const interim=[],speech=box.create({environment:'production',credentialId:'not-a-secret-revision',assertCurrent(){if(!current)throw Error('Owner changed');},onInterim:t=>interim.push(t)},port);
+ const events=[],controller=new AbortController();
+ const handlers={signal:controller.signal,onSpeechStart:()=>events.push('start'),onSpeechEnd:()=>events.push('end'),onSegment:t=>events.push(t),onEnd:e=>events.push('failed'),onLevel:p=>events.push(p)};
+ return {speech,port,events,interim,handlers,controller,speaks,cancels,mutes,get stops(){return stops},get removed(){return removed},get id(){return sessionId},change(){current=false;},emit(event){listener?.({sessionId,...event});}};
+}
+
+test('streaming ASR sends one final segment, interims never submit, unrelated sessions are ignored',async()=>{
+ const f=fixture(),capture=await f.speech.listen(f.handlers);
+ assert.equal(capture.fullDuplex,true);assert.deepEqual(f.mutes,[false]);
+ f.emit({sessionId:'stale',type:'speech-start'});f.emit({type:'speech-start'});f.emit({type:'speech-start'});
+ f.emit({type:'transcript',text:'partial',final:false});assert.deepEqual(f.events,['start']);assert.deepEqual(f.interim,['partial']);
+ f.emit({type:'speech-end',text:'finished sentence',final:true});assert.deepEqual(f.events,['start','end','finished sentence']);
+ await capture.close();assert.deepEqual(f.mutes,[false,true]);assert.equal(f.stops,0,'mute preserves the output socket');
+ await f.speech.listen(f.handlers);assert.deepEqual(f.mutes,[false,true,false]);
+ await f.speech.stop();assert.equal(f.stops,1);assert.equal(f.removed,1);
+});
+
+test('reopen drains a pending old turn while muted before accepting a new short turn',async()=>{
+ const f=fixture(),capture=await f.speech.listen(f.handlers);
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'What is twelve plus eight?'});
+ await capture.close();
+ f.emit({type:'speech-start'}); // Buffered onset arrives during the reply hold.
+ let opened=false;const opening=f.speech.listen(f.handlers).then(value=>{opened=true;return value;});
+ for(let i=0;i<20;i++)await Promise.resolve();
+ assert.equal(opened,false);assert.equal(f.mutes.at(-1),true,'new physical audio stays off until the old final');
+ f.emit({type:'speech-start'}); // A turn.resume is still the old provider turn.
+ f.emit({type:'transcript',text:'Just'});
+ f.emit({type:'speech-end',text:'Just'});
+ await opening;assert.equal(f.mutes.at(-1),false);
+ assert.deepEqual(f.events,['start','end','What is twelve plus eight?']);
+ assert.deepEqual(f.interim,[],'stale partial text does not appear in the reopened composer');
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'Yes'});
+ assert.deepEqual(f.events.slice(-3),['start','end','Yes'],'valid short turns remain accepted');
+ await f.speech.stop();
+});
+
+// Ink guarantees each turn starts before its final and the next turn starts
+// after that final. Native maps turn.resume to speech-start within the old turn.
+// https://docs.cartesia.ai/use-the-api/stt/turns
+test('a final without a matching provider start is not invented as a new turn',async()=>{
+ const f=fixture();await f.speech.listen(f.handlers);
+ f.emit({type:'speech-end',text:'unowned final'});assert.deepEqual(f.events,[]);
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'Yes'});
+ assert.deepEqual(f.events,['start','end','Yes']);await f.speech.stop();
+});
+
+for(const ending of ['Stop','abort'])test(`${ending} during old-turn drain never reopens capture`,async()=>{
+ const f=fixture(),capture=await f.speech.listen(f.handlers);await capture.close();
+ f.emit({type:'speech-start'});const opening=f.speech.listen(f.handlers);
+ const rejected=assert.rejects(opening,{name:'AbortError'});
+ for(let i=0;i<20;i++)await Promise.resolve();
+ assert.equal(f.mutes.at(-1),true);
+ if(ending==='abort')f.controller.abort();else await f.speech.stop();
+ await rejected;f.emit({type:'speech-end',text:'late'});
+ assert.equal(f.mutes.filter(value=>!value).length,1,'only the original capture ever unmuted');
+ assert.equal(f.stops,1);assert.deepEqual(f.events,[]);
+});
+
+test('old-turn drain is bounded and cannot unmute after its deadline',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ const f=fixture(),capture=await f.speech.listen(f.handlers);await capture.close();
+ f.emit({type:'speech-start'});const opening=f.speech.listen(f.handlers);
+ const rejected=assert.rejects(opening,/did not confirm the mute in time/);
+ for(let i=0;i<20;i++)await Promise.resolve();
+ t.mock.timers.tick(2500);await rejected;
+ assert.equal(f.mutes.filter(value=>!value).length,1);assert.equal(f.stops,1);
+});
+
+test('first PCM starts playback before completion; unrelated completion cannot settle speech',async()=>{
+ const f=fixture();await f.speech.listen(f.handlers);let started=0,finished=false;
+ const pending=f.speech.speak('Finalized reply.',new AbortController().signal,()=>started++).then(()=>finished=true);
+ await Promise.resolve();const id=f.speaks[0].utteranceId;
+ f.emit({type:'audio-start',utteranceId:id});assert.equal(started,1);assert.equal(finished,false);
+ f.emit({type:'audio-start',utteranceId:id});assert.equal(started,1);
+ f.emit({type:'audio-end',utteranceId:'stale'});await Promise.resolve();assert.equal(finished,false);
+ f.emit({type:'audio-end',utteranceId:id});await pending;assert.equal(finished,true);
+ await f.speech.stop();
+});
+
+test('speech cancellation waits for native cancellation and drops late audio',async()=>{
+ const f=fixture();await f.speech.listen(f.handlers);const abort=new AbortController();let started=0;
+ const pending=f.speech.speak('Finalized reply.',abort.signal,()=>started++);await Promise.resolve();const id=f.speaks[0].utteranceId;
+ abort.abort();await assert.rejects(pending,{name:'AbortError'});assert.equal(f.cancels.length,1);
+ f.emit({type:'audio-start',utteranceId:id});assert.equal(started,0);await f.speech.stop();
+});
+
+test('account change closes capture and output without forwarding another transcript',async()=>{
+ const f=fixture();await f.speech.listen(f.handlers);f.change();f.emit({type:'speech-end',text:'must not submit',final:true});
+ await Promise.resolve();assert.deepEqual(f.events,['failed']);assert.equal(f.stops,1);
+});
+
+test('server completion with no played PCM fails instead of claiming heard text',async()=>{
+ const f=fixture();await f.speech.listen(f.handlers);
+ const pending=f.speech.speak('Finalized reply.',new AbortController().signal,()=>{});await Promise.resolve();
+ f.emit({type:'audio-end',utteranceId:f.speaks[0].utteranceId});await assert.rejects(pending,/without audio/);await f.speech.stop();
+});
+
+test('aborting during socket bootstrap reaches native stop before delayed start settles',async()=>{
+ let release;const f=fixture({start:input=>new Promise(resolve=>release=()=>resolve({sessionId:input.sessionId,sampleRate:16000,echoCancelled:true}))});
+ const opening=f.speech.listen(f.handlers);for(let i=0;i<20&&!release;i++)await Promise.resolve();assert.equal(typeof release,'function');f.controller.abort();await Promise.resolve();
+ assert.equal(f.stops,1);release();await assert.rejects(opening,{name:'AbortError'});assert.equal(f.removed,1);
+});
+
+test('ending a muted conversation still retires its retained output socket',async()=>{
+ const f=fixture(),capture=await f.speech.listen(f.handlers);await capture.close();
+ assert.equal(f.stops,0);f.controller.abort();await f.speech.stop();
+ assert.equal(f.stops,1);assert.equal(f.removed,1);
+});
+
+test('a listener arriving after Stop is removed without opening the microphone',async()=>{
+ const f=fixture();let release,removed=0;
+ f.port.addListener=()=>new Promise(resolve=>release=()=>resolve({remove:async()=>removed++}));
+ const opening=f.speech.listen(f.handlers);await Promise.resolve();assert.equal(typeof release,'function');
+ await f.speech.stop();release();await assert.rejects(opening,{name:'AbortError'});
+ assert.equal(removed,1);assert.equal(f.id,undefined,'native microphone start was never dispatched');
+});
+
+test('unconfirmed native cancellation preserves its safe cleanup failure',async()=>{
+ const f=fixture();await f.speech.listen(f.handlers);f.port.cancelCloudSpeech=async()=>{throw Error('private native error');};
+ const controller=new AbortController(),pending=f.speech.speak('Finalized reply.',controller.signal,()=>{});controller.abort();
+ await assert.rejects(pending,error=>error.code==='speech-cleanup-unconfirmed'&&!error.message.includes('private'));await f.speech.stop();
+});
+
+test('a closed capture still hears the socket end once, never its speech; a later listen takes it over',async()=>{
+ for(const fault of ['connection-lost','expired','protocol','owner']){
+  const f=fixture(),capture=await f.speech.listen(f.handlers);await capture.close();assert.deepEqual(f.mutes,[false,true]);
+  f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'not after close',final:true});f.emit({type:'level',peak:.5});
+  assert.deepEqual(f.events,[],'speech and levels stop at close');
+  if(fault==='owner'){f.change();f.emit({type:'level',peak:.2});}else f.emit({type:'error',code:fault});
+  f.emit({type:'error',code:'closed'});await Promise.resolve();
+  assert.deepEqual(f.events,['failed'],fault+' reaches the closed capture once');assert.equal(f.stops,1);
+ }
+ const f=fixture(),capture=await f.speech.listen(f.handlers);await capture.close();
+ const later=[],reopened={...f.handlers,onEnd:()=>later.push('failed')};await f.speech.listen(reopened);
+ f.emit({type:'error',code:'expired'});await Promise.resolve();
+ assert.deepEqual(f.events,[],'the earlier capture is no longer told');assert.deepEqual(later,['failed']);
+ const g=fixture(),cancelled=await g.speech.listen(g.handlers);await cancelled.cancel();
+ g.emit({type:'error',code:'expired'});await Promise.resolve();assert.deepEqual(g.events,[],'a cancelled capture hears nothing');
+});
+
+test('one 2.5 s bound covers the native mute and the final it releases: an unanswered mute rejects the close',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ const settle=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
+ const closeWith=async({answerAt,finalAt})=>{
+  const f=fixture(),capture=await f.speech.listen(f.handlers);let answer;
+  f.port.setCloudSpeechMuted=input=>{f.mutes.push(input.muted);return new Promise(resolve=>answer=resolve);};
+  f.emit({type:'speech-start'});let settled;
+  void capture.close().then(()=>settled='closed',error=>settled=error.message);
+  for(let at=1;at<=2500;at++){
+   t.mock.timers.tick(1);
+   if(at===answerAt)answer();
+   if(at===finalAt)f.emit({type:'speech-end',text:'turn off the alarm',final:true});
+   await settle();if(settled)return {f,at,settled};
+  }
+  return {f,settled};
+ };
+ const quick=await closeWith({answerAt:300,finalAt:1800});
+ assert.deepEqual([quick.at,quick.settled],[1800,'closed'],'a mute and final in time fulfil the close');
+ assert.deepEqual(quick.f.events,['start','end','turn off the alarm']);
+ const unanswered=await closeWith({});
+ assert.deepEqual([unanswered.at,unanswered.settled],[2500,'Cloud speech did not confirm the mute in time.']);
+ assert.deepEqual(unanswered.f.mutes,[false,true]);
+ unanswered.f.emit({type:'speech-end',text:'after the failed close',final:true});
+ unanswered.f.emit({type:'error',code:'expired'});await settle();
+ assert.deepEqual(unanswered.f.events,['start','failed'],'no speech after the failed close; the socket end still arrives');
+ const noFinal=await closeWith({answerAt:300});
+ assert.deepEqual([noFinal.at,noFinal.settled],[2500,'Cloud speech did not confirm the mute in time.'],'the bound runs from the close, not from the mute answer');
+});
+
+test('a speech start inside the close window does not swallow the next capture\'s speech start',async()=>{
+ const f=fixture(),capture=await f.speech.listen(f.handlers);let answer;
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'first turn',final:true});
+ f.port.setCloudSpeechMuted=input=>{f.mutes.push(input.muted);return input.muted?new Promise(resolve=>answer=resolve):Promise.resolve();};
+ const closing=capture.close();await Promise.resolve();assert.equal(typeof answer,'function','the mute is deferred');
+ f.emit({type:'speech-start'});answer();await closing;
+ assert.deepEqual(f.events,['start','end','first turn','start']);
+ const next=[],reopened={...f.handlers,onSpeechStart:()=>next.push('start'),onSpeechEnd:()=>next.push('end'),onSegment:t=>next.push(t)};
+ await f.speech.listen(reopened);
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'follow-up question',final:true});
+ assert.deepEqual(next,['start','end','follow-up question'],'the follow-up opens its own segment');
+ await f.speech.stop();
+});
+
+test('a native error keeps its code and the retry facts it carries',async()=>{
+ const f=fixture(),failures=[];await f.speech.listen({...f.handlers,onEnd:error=>failures.push(error)});
+ f.emit({type:'error',code:'voice-http-429',data:{retryAfterSeconds:42,limitCode:'rate_limited'}});await Promise.resolve();
+ assert.equal(failures.length,1);assert.equal(failures[0].code,'voice-http-429');assert.deepEqual({...failures[0].data},{retryAfterSeconds:42,limitCode:'rate_limited'});
+ const g=fixture(),plain=[];await g.speech.listen({...g.handlers,onEnd:error=>plain.push(error)});
+ g.emit({type:'error',code:'paused',data:'not an object'});await Promise.resolve();
+ assert.equal(plain[0].code,'paused');assert.equal('data' in plain[0],false);
+});
