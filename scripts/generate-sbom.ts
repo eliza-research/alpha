@@ -43,13 +43,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {AGENT_ASSETS, ANDROID_CLASSPATH, BUN_ENTRY, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, KNOWN_LICENSES, NO_FONT_LICENCE, ROOT, TESSERACT_CORE_SOURCES, UNKNOWN, UNVERIFIED, VOICE_HOST, collectNotices, exists, fontLicense, fontNames, listFonts, mavenFamily, packagedRuntimePresent, pinnedVoiceModels, productionLockPackages, readJson, sha256, voiceHostProblems, type PackageLock} from './generate-licenses.ts';
+import {AGENT_ASSETS, ANDROID_CLASSPATH, BUN_ENTRY, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, KNOWN_LICENSES, NO_FONT_LICENCE, ROOT, TESSERACT_CORE_SOURCES, UNKNOWN, UNVERIFIED, VOICE_HOST, collectNotices, exists, fontLicense, fontNames, listFonts, mavenFamily, packagedRuntimePresent, pinnedVoiceModels, productionLockPackages, readJson, voiceHostProblems, type PackageLock} from './generate-licenses.ts';
+import {sha256} from './sha256.ts';
 import {METADATA as GRADLE_METADATA, coordinateChecksum, parseVerificationMetadata} from './gradle-verification.ts';
 import {classifyLicence, orderFlags} from './licence-policy.ts';
 import {LOCKFILE, readBunLock} from './bun-lock.ts';
 import {verifyEmbeddingInputs} from './stage-embedding-host.ts';
 import {readNativeBuildReceipt,NATIVE_BUILD_RECEIPT} from './native-build-inputs.ts';
 import {embeddingAbiLibraries} from './embedding-native-contract.ts';
+import {readUpstreamPin} from './upstream-pin.ts';
 
 export const LICENCE_NOT_RECORDED = 'not recorded in this inventory';
 
@@ -296,7 +298,7 @@ function voiceHostComponents(root: string): Component[] {
 }
 
 function upstreamComponent(root: string): Component {
-  const lock = readJson(root, 'upstream.lock.json');
+  const lock = readUpstreamPin(root);
   const repository = lock.url.replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, '');
   return {type: 'framework', 'bom-ref': `pkg:github/${repository}@${lock.commit}`, name: 'elizaOS', version: lock.commit, purl: `pkg:github/${repository}@${lock.commit}`,
     hashes: [{alg: 'SHA-1', content: lock.commit}], licenses: licenses('MIT'),

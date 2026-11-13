@@ -8,6 +8,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {spawn,spawnSync,type ChildProcess} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {sourceDirectory,verifySource} from './local-agent-source.ts';
+import {readUpstreamPin} from './upstream-pin.ts';
 interface DigestReceipt {workflowId:string;versionId:string}
 interface DigestSource {id:string;revision:string;expiresAt:string}
 interface DigestRun {id:string;finished:boolean;stoppedAt:string|null;reconciliation?:{state:string}}
@@ -151,7 +152,7 @@ if(process.env.ALPHA_DIGEST_CRASH_CHILD==='1'){
  if(process.platform==='win32')throw Error('This fixture requires POSIX process groups');
  // Input: the pinned upstream source with its dependencies installed. ALPHA_ELIZA_SOURCE names one
  // explicitly; otherwise the directory `bun run agent:prepare` creates for the current pin is used.
- const {commit}=readJson<{commit:string}>(path.join(product,'upstream.lock.json'));
+ const {commit}=readUpstreamPin(product);
  const supplied=process.env.ALPHA_ELIZA_SOURCE;
  const prepare='  ALPHA_RUNTIME_GIT_CACHE="$PWD/vendor/eliza" bun run agent:prepare\n'
   +`(creates artifacts/local-agent-resident-${commit} from the pinned commit and installs its dependencies with Bun; about 6 GB).\n`

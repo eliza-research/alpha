@@ -6,7 +6,8 @@ import {dirname,join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {sourceDirectory,workerArtifactDirectory} from './local-agent-source.ts';
-import {stageWorkerArtifact,workerHash} from './workflow-worker-artifact.ts';
+import {stageWorkerArtifact} from './workflow-worker-artifact.ts';
+import {sha256 as workerHash} from './sha256.ts';
 const root=resolve(import.meta.dirname,'..');
 const bundle=join(sourceDirectory(root),'packages/agent/dist-mobile');
 type MobileBundleManifest = {

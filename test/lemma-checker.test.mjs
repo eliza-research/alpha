@@ -13,7 +13,7 @@ test('function checker distinguishes proofs, skips, failed verification and rege
   const root = mkdtempSync(join(tmpdir(), 'alpha-lemma-checker-'));
   const write = (path, text, mode) => {mkdirSync(dirname(join(root, path)), {recursive: true}); writeFileSync(join(root, path), text, {mode});};
   try {
-    for (const file of ['scripts/check-lemma.ts', 'scripts/quint-lib.ts', 'scripts/run-node-only-tests.ts', 'specs/quint/refinement/timeouts.mjs']) {
+    for (const file of ['scripts/check-lemma.ts', 'scripts/quint-lib.ts', 'scripts/sha256.ts', 'scripts/upstream-pin.ts', 'scripts/run-node-only-tests.ts', 'specs/quint/refinement/timeouts.mjs']) {
       mkdirSync(dirname(join(root, file)), {recursive: true});
       copyFileSync(join(repositoryRoot, file), join(root, file));
     }

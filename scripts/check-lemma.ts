@@ -1,7 +1,8 @@
 import {spawnSync} from 'node:child_process';
 import {mkdirSync, readFileSync, readdirSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
-import {repositoryRoot, sha256} from './quint-lib.ts';
+import {repositoryRoot} from './quint-lib.ts';
+import {sha256} from './sha256.ts';
 import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {realNode} from './run-node-only-tests.ts';
 

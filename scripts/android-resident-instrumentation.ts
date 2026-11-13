@@ -4,7 +4,8 @@
 // RESIDENT_TEST selects the class (default: the egress redaction test). Removes the fixture user afterwards.
 // Emulator evidence only; not physical-device or image acceptance.
 import {execFileSync} from 'node:child_process';
-import {createHash, randomUUID} from 'node:crypto';
+import {randomUUID} from 'node:crypto';
+import {sha256 as sha} from './sha256.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,7 +18,6 @@ const pkg = 'ai.alphacompute.alphaphone';
 // Installation replaces package code across users. A secondary user alone does
 // not protect an existing installation, and must not admit a physical phone.
 admitResidentEmulator(process.env, adb);
-const sha = (buf: Buffer) => createHash('sha256').update(buf).digest('hex');
 const entry = (name: string) => execFileSync('unzip', ['-p', apk, name], {maxBuffer: 1 << 30});
 const runId = randomUUID();
 const test = process.env.RESIDENT_TEST || `${pkg}.ResidentEgressRedactionInstrumentedTest`;

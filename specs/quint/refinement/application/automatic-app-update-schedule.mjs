@@ -14,7 +14,7 @@ export async function checkAutomaticAppUpdateSchedule() {
   const sources=[fileURLToPath(import.meta.url),'apps/app/src/prototype/settings-adapter.ts',
     'apps/app/src/main.tsx','vendor/eliza/'+shared,'.eliza/client-features/'+shared,
     '.eliza/client-features/.source.json','scripts/prepare-client-features.ts',
-    'scripts/pinned-upstream-source.ts','test/support/strip-types.mjs','upstream.lock.json'];
+    'scripts/pinned-upstream-source.ts','scripts/upstream-pin.ts','scripts/sha256.ts','test/support/strip-types.mjs','upstream.lock.json'];
   captureSources([...sources,modelPath]);
   checkClientFeatures();
   const stamp=JSON.parse(read('.eliza/client-features/.source.json'));

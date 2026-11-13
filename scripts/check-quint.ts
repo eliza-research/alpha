@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { availableParallelism, tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
-import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, sha256, type BoundedTlcEvidence, type CheckerResult, type QuintModel } from './quint-lib.ts';
+import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, type BoundedTlcEvidence, type CheckerResult, type QuintModel } from './quint-lib.ts';
+import { sha256 } from './sha256.ts';
 
 const args = process.argv.slice(2);
 const commands = ['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal', 'compare'] as const;

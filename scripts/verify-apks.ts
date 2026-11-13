@@ -27,8 +27,9 @@ import fs from "node:fs";
 import {renderSensePermissions} from "../vendor/eliza/packages/os/scripts/android/pixel10a-product.ts";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import {sha256, sha256File} from "./sha256.ts";
 import { CLOUD_DEPLOYMENT } from "./cloud-deployment-policy.ts";
+import { readUpstreamPin } from "./upstream-pin.ts";
 import {apkUpdateChannel,validateUpdateChannel} from './update-channel.ts';
 import type {UpdateChannel} from './update-channel.ts';
 import {nativeCartesiaBlockers, releaseDistributable} from './release-distributable.ts';
@@ -117,7 +118,7 @@ if(cloudEvidenceArgs.length){
   try {
     const bytes=fs.readFileSync(cloudEvidenceArgs[0].slice('--cloud-voice-evidence='.length));
     cloudEvidence=JSON.parse(bytes.toString('utf8'));
-    cloudEvidenceSha256=createHash('sha256').update(bytes).digest('hex');
+    cloudEvidenceSha256=sha256(bytes);
   } catch { throw Error('Cloud voice evidence could not be read as JSON'); }
 }
 
@@ -134,7 +135,7 @@ const buildRecordFile = path.join(directory, "build-config.json");
 if (!fs.existsSync(buildRecordFile)) throw new Error(`Missing ${buildRecordFile}. Run bun run android:build first.`);
 const buildRecord: BuildRecord = JSON.parse(fs.readFileSync(buildRecordFile, "utf8"));
 const updateChannel=validateUpdateChannel(buildRecord?.updateChannel);
-if(updateChannel.manifestUrlSha256!==createHash('sha256').update(identity.updateManifestUrl).digest('hex'))throw Error('Public update channel differs from source configuration');
+if(updateChannel.manifestUrlSha256!==sha256(identity.updateManifestUrl))throw Error('Public update channel differs from source configuration');
 if((buildRecord?.runtimeProfile||"native")!==runtimeProfile||buildRecord?.localEmbeddings!==undefined)throw Error("Build record names a removed runtime profile; rebuild (there is one profile now)");
 if (buildRecord.testMocks !== false)
   throw new Error(`${buildRecordFile} records testMocks=${buildRecord.testMocks}; an APK build is always flag-off`);
@@ -323,7 +324,7 @@ function listenerFacts(file: string, mode: ApkMode, signed: boolean) {
     signerSha256?: string | null; permissionProblem?: string;
     packageName?: string | null; requested?: string[];
     voiceBundle?: {packaged: boolean; abis?: ReturnType<typeof checkListenerSpeechBundle>; problem?: string};
-  } = { file, mode, signed, sha256: createHash("sha256").update(fs.readFileSync(file)).digest("hex") };
+  } = { file, mode, signed, sha256: sha256File(file) };
   if (signed) {
     try { facts.signerSha256 = signerDigest(file, {apiLevel: signerApiLevel}); }
     catch (error) { facts.permissionProblem = `apksigner verify failed: ${message(error)}`; }
@@ -372,7 +373,7 @@ const mappings = { [variant]: fs.existsSync(mappingFile) ? mappingFile : null };
 // The instrumentation APK built with these APKs (scripts/android-instrumentation.ts binds to it).
 const instrumentation: Partial<Record<ApkVariant, {file: string; sha256: string}>> = {};
 const instrumentationFile = path.join(directory, "instrumentation", `${variant}-androidTest.apk`);
-if (fs.existsSync(instrumentationFile)) instrumentation[variant] = { file: instrumentationFile, sha256: createHash("sha256").update(fs.readFileSync(instrumentationFile)).digest("hex") };
+if (fs.existsSync(instrumentationFile)) instrumentation[variant] = { file: instrumentationFile, sha256: sha256File(instrumentationFile) };
 let apksignerVersion: string | null = null;
 try { apksignerVersion = execFileSync(tool("apksigner"), ["--version"], { encoding: "utf8", env: androidEnv() }).trim(); }
 catch { /* recorded as unknown */ }
@@ -401,7 +402,7 @@ fs.writeFileSync(
       },
       mappings,
       instrumentation,
-      upstream: JSON.parse(fs.readFileSync("upstream.lock.json", "utf8")),
+      upstream: readUpstreamPin(process.cwd()),
       nativePatches: nativePatchReceipt(admittedNativePatches),
       results,
       runtimePackaging,

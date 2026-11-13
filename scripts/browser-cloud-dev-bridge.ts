@@ -6,6 +6,7 @@ import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeResendAt,emailCodeSendBody,
 import {parseCloudServiceInfo} from '../apps/app/src/runtime/cloud-service-info.ts';
 import {readCloudVoiceLimit,type CloudVoiceLimitFacts} from '../apps/app/src/runtime/cloud-voice-limit.ts';
 import {randomUUID,createHash,randomBytes,timingSafeEqual} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import {mkdir,readFile,writeFile,rename,lstat,unlink} from 'node:fs/promises';
 import path from 'node:path';
 import {homedir} from 'node:os';
@@ -78,7 +79,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  }
  async function save(value:Partial<Record<Environment,Credential>>){resetCalendarAccess();if(options.resident)await options.resident.clear();await directory();const tmp=stateFile+'.'+randomUUID();await writeFile(tmp,JSON.stringify(value)+'\n',{mode:0o600,flag:'wx'});await rename(tmp,stateFile);}
  function serial<T>(run:()=>Promise<T>):Promise<T>{const result=queue.then(run,run);queue=result.catch(()=>{});return result;}
- async function keyFor(c:Credential){if(c.token)return c.token;if(!c.credentialFile||!c.credentialSha256)throw Error('Cloud credential unavailable');const token=(await privateFile(c.credentialFile)).trim();if(createHash('sha256').update(token).digest('hex')!==c.credentialSha256)throw Error('Cloud credential changed');return token;}
+ async function keyFor(c:Credential){if(c.token)return c.token;if(!c.credentialFile||!c.credentialSha256)throw Error('Cloud credential unavailable');const token=(await privateFile(c.credentialFile)).trim();if(sha256(token)!==c.credentialSha256)throw Error('Cloud credential changed');return token;}
  async function admitted(env:Environment,reference:unknown,id?:unknown){const c=(await load())[env];if(!c)throw refusal(401,'credentials-missing');if(c.credentialReference!==reference||id!==undefined&&c.credentialId!==id)throw refusal(409,'account-changed');if(c.expiresAt!==undefined&&c.expiresAt<=Date.now())throw refusal(401,'expired');return c;}
  async function current(env:Environment,c:Credential,signal:AbortSignal){signal.throwIfAborted();await admitted(env,c.credentialReference,c.credentialId);await keyFor(c);signal.throwIfAborted();}
  function retire(env:Environment){if(googleCommitted?.environment===env)googleCommitted=undefined;for(const row of active.values())if(row.environment===env)row.controller.abort(new DOMException('Cloud account changed','AbortError'));for(const [id,login]of pending)if(login.environment===env)pending.delete(id);for(const [ref,claim]of claims)if(claim.environment===env)claims.delete(ref);}

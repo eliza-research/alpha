@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {materializeNativePatches,verifyNativePatchReceipt,preparePatchedNative} from '../scripts/prepare-patched-native.ts';
-import {sha} from '../scripts/upstream-native-source.ts';
+import {sha256 as sha} from '../scripts/sha256.ts';
 const module='plugins/plugin-native-test/android',target=module+'/src/main/java/Test.java';
 function fixture(run,sourceModule=module,sourceTarget=sourceModule+'/src/main/java/Test.java'){const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-test-'));try{const bytes=Buffer.from('reviewed\n'),temporary=path.join(root,'stage');fs.mkdirSync(temporary);const manifest={schema:1,baseCommit:'pin',modules:[sourceModule]};const source={pin:'pin',read:()=>new Map([[sourceTarget,{bytes,mode:'100644',sha256:sha(bytes)}]])};run({root,manifest,source,temporary});}finally{fs.rmSync(root,{recursive:true,force:true});}}
 test('admission materializes only authenticated declared source',()=>fixture(args=>{const result=materializeNativePatches(args);assert.deepEqual(result.files,{[target]:sha('reviewed\n')});assert.equal(fs.readFileSync(path.join(args.temporary,target),'utf8'),'reviewed\n');}));

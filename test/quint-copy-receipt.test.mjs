@@ -6,7 +6,8 @@ import {resolve} from 'node:path';
 import {chromium} from '@playwright/test';
 import {createServer} from 'vite';
 import {checkClientFeatures} from '../scripts/prepare-client-features.ts';
-import {filesWithin, repositoryRoot as root, sha256} from '../scripts/quint-lib.ts';
+import {filesWithin, repositoryRoot as root} from '../scripts/quint-lib.ts';
+import {sha256} from '../scripts/sha256.ts';
 import {captureInputs, checkTraces, qset} from '../specs/quint/refinement/check-traces.mjs';
 
 const driver=fileURLToPath(import.meta.url),model='CopyReceipt';

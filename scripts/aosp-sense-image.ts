@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash} from 'node:crypto';
+import {sha256, sha256File} from './sha256.ts';
 import {manifestComponents} from './aosp-provisioning-overlay.ts';
 import type {ReviewedSourcePatch} from './pixel10a-source-contract.ts';
 
@@ -54,7 +54,7 @@ export function readSenseQualification(file: string, enrolledSha256: unknown, pr
   if (typeof enrolledSha256 !== 'string' || !digest.test(enrolledSha256))
     throw Error('Pixel 10a product has no reviewed listener qualification digest');
   const bytes = fs.readFileSync(file);
-  if (createHash('sha256').update(bytes).digest('hex') !== enrolledSha256)
+  if (sha256(bytes) !== enrolledSha256)
     throw Error('Listener qualification bytes differ from the Pixel 10a product descriptor');
   const record = JSON.parse(bytes.toString('utf8')) as ListenerQualification | null;
   if (record?.schemaVersion !== 1 || record.target !== 'pixel10a' || typeof record.qualified !== 'boolean')
@@ -87,7 +87,7 @@ export function assertSenseQualification(record: ListenerQualification, input: S
 }
 
 export function senseLauncherDigest(file: string, admittedSha256: string) {
-  const stagedSha256 = createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  const stagedSha256 = sha256File(file);
   if (stagedSha256 !== admittedSha256) throw Error('Staged Sense launcher differs from the admitted release APK');
   return stagedSha256;
 }

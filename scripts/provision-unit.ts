@@ -21,7 +21,7 @@
  * device or user acceptance by itself.
  */
 import { spawnSync, execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import {sha256, sha256File} from "./sha256.ts";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -37,7 +37,6 @@ import { updateArtifactDigest } from "./update-artifact.ts";
 import { apkUpdateChannelOrLegacy, assertProvisioningUpdateChannel, recordedProvisioningUpdateChannel, type UpdateChannel } from "./update-channel.ts";
 
 export const PACKAGE = "ai.alphacompute.alphaphone";
-const sha256 = (bytes: string | NodeJS.ArrayBufferView) => createHash("sha256").update(bytes).digest("hex");
 
 export interface VerifiedApkRow extends Record<string, unknown> {
   variant: ApkVariant;
@@ -210,11 +209,7 @@ function entrySha256(apk: string, name: string) {
     let status;
     try { status = spawnSync("unzip", ["-p", apk, name], { stdio: ["ignore", fd, "ignore"] }).status; } finally { fs.closeSync(fd); }
     if (status !== 0) return null;
-    const hash = createHash("sha256");
-    const chunk = Buffer.alloc(1 << 20);
-    const input = fs.openSync(file, "r");
-    try { for (let read; (read = fs.readSync(input, chunk, 0, chunk.length, null)) > 0;) hash.update(chunk.subarray(0, read)); } finally { fs.closeSync(input); }
-    return hash.digest("hex");
+    return sha256File(file);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 

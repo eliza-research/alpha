@@ -8,7 +8,7 @@ import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import {checkoutProblems, VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST} from '../scripts/android-build-preflight.ts';
 import {TURBO_AGENT_DETECTION_ENV, preparedSourceEnv} from '../scripts/local-agent-source.ts';
 import {ensurePreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.ts';
-import {workerHash} from '../scripts/workflow-worker-artifact.ts';
+import {sha256 as workerHash} from '../scripts/sha256.ts';
 import {verifyNativeGoogleHost} from '../scripts/runtime-profile.ts';
 import {coreStateBuildRecord} from '../scripts/core-state-patch.ts';
 import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
@@ -114,7 +114,7 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   f.write('upstream.lock.json', JSON.stringify({commit: 'f'.repeat(40)}));
   assert.match(checkoutProblems(f.root)[0], /vendor\/eliza is at .*pins f{40}\. Run: git submodule update --init vendor\/eliza/);
   // The real entry point exits with status 2 and the guidance, without starting the build.
-  for (const file of ['android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'voice-host.ts', 'build-android.ts', 'update-channel.ts', 'android-build-preflight.ts', 'mobile-uuid-adapter.ts', 'build-policy-source.ts', 'core-state-patch.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'toolchain.ts', 'copy-file-clone.ts', 'native-build-inputs.ts', 'android-stage-voice-models.ts'])
+  for (const file of ['android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'voice-host.ts', 'build-android.ts', 'update-channel.ts', 'android-build-preflight.ts', 'mobile-uuid-adapter.ts', 'build-policy-source.ts', 'core-state-patch.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'toolchain.ts', 'copy-file-clone.ts', 'native-build-inputs.ts', 'android-stage-voice-models.ts', 'upstream-pin.ts', 'sha256.ts'])
     f.write('scripts/' + file, read('scripts/' + file));
   // build-android.ts reads the release-signing environment names from the host descriptor.
   f.write('android/consumer-host.json', read('android/consumer-host.json'));

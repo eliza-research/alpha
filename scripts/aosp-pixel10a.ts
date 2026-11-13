@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import {assertPixel10aSourceLayout, composePixel10aProduct} from '../vendor/eliza/packages/os/scripts/android/pixel10a-product.ts';
 import {placeholderFields, releaseDescriptorProblems} from '../vendor/eliza/packages/os/scripts/android/pixel10a-release.mjs';
 import {assertStockVendorApi} from '../vendor/eliza/packages/os/scripts/android/vendor-api.mjs';
@@ -30,7 +30,6 @@ export const PIXEL10A_RELEASE = Object.freeze({
   sourceLockPath: 'vendor/eliza/packages/os/android/sources/pixel10a-stallion.json',
   applicationSignerFile: 'android/release-signer.json',
 });
-const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
 /**
  * Whether this run stages the physical Pixel 10a product. Development staging needs the exact

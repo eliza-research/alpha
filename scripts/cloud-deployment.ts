@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {CLOUD_DEPLOYMENT,CLOUD_DEPLOYMENT_IS_CANDIDATE,CLOUD_SIGN_IN_REGISTRATION} from './cloud-deployment-policy.ts';
@@ -47,7 +47,7 @@ export function storageFingerprint(config: CloudDeploymentConfig) {
   const {api, web, services, tenant, entitlementAudience} = config[environment];
   return [api, web, services, tenant, entitlementAudience ?? 'cloud-subscription'];
  });
- return createHash('sha256').update(JSON.stringify(authorities)).digest('hex');
+ return sha256(JSON.stringify(authorities));
 }
 /** Public operator data for the protected Pages callback registry; no deployment mutation. */
 export function nativeAuthCallbackRegistration(config: CloudDeploymentConfig,identity: {appId: string; appName: string},environment: CloudEnvironment){

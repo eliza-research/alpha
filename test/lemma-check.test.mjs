@@ -48,6 +48,7 @@ function fixture(t, source = 'export function sample(x: number): number {\n  //@
   write('bun.lock', '{}');
   write('scripts/check-lemma.ts', fs.readFileSync(script));
   write('scripts/quint-lib.ts', fs.readFileSync(new URL('../scripts/quint-lib.ts', import.meta.url)));
+  for (const name of ['sha256.ts', 'upstream-pin.ts']) write('scripts/' + name, fs.readFileSync(new URL('../scripts/' + name, import.meta.url)));
   write('scripts/run-node-only-tests.ts', fs.readFileSync(new URL('../scripts/run-node-only-tests.ts', import.meta.url)));
   write('specs/quint/refinement/timeouts.mjs', fs.readFileSync(new URL('../specs/quint/refinement/timeouts.mjs', import.meta.url)));
   write('node_modules/lemmascript/package.json', '{"version":"0.6.6","type":"module"}');

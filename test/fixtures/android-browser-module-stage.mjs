@@ -5,7 +5,8 @@ import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {generateAlphaAndroidHost, HOST_DESCRIPTOR, readHostDescriptor} from '../../scripts/android-host.ts';
 import {NATIVE_SOURCE_MANIFEST, preparePatchedNative, verifyNativePatchReceipt} from '../../scripts/prepare-patched-native.ts';
-import {sha, upstreamNativeSource} from '../../scripts/upstream-native-source.ts';
+import {upstreamNativeSource} from '../../scripts/upstream-native-source.ts';
+import {sha256 as sha} from '../../scripts/sha256.ts';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const nativeManifest = NATIVE_SOURCE_MANIFEST;

@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import {execFileSync} from 'node:child_process';
-export const sha = (bytes: string | NodeJS.ArrayBufferView) => createHash('sha256').update(bytes).digest('hex');
+import {readUpstreamPin} from './upstream-pin.ts';
 export interface UpstreamBlob {
  bytes: Buffer;
  mode: '100644' | '100755';
@@ -31,7 +31,7 @@ export function parseNativeBlobBatch(output: unknown, oids: readonly string[]) {
  return result;
 }
 export function upstreamNativeSource(root: string) {
- const pin=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;
+ const pin=readUpstreamPin(root).commit;
  if(typeof pin !== 'string' || !/^[a-f0-9]{40}$/.test(pin))throw Error('Invalid upstream commit');
  const directory=path.join(root,'vendor/eliza');
  const git=(args: string[])=>execFileSync('git',['-C',directory,...args],{maxBuffer:64*1024*1024});
@@ -65,7 +65,7 @@ export function upstreamNativeSource(root: string) {
    for(let current=filename;current!==directory;current=path.dirname(current))if(fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in upstream source path');
    const stat=fs.lstatSync(filename),bytes=blobs[index];
    if(!stat.isFile()||Boolean(stat.mode&0o100)!==(mode==='100755')||!fs.readFileSync(filename).equals(bytes))throw Error(`Upstream source drift: ${name}`);
-   files.set(name,{bytes,mode,sha256:sha(bytes)});
+   files.set(name,{bytes,mode,sha256:sha256(bytes)});
   }
   return groups.map(group=>new Map(group.map(match=>[match[3],files.get(match[3])!])));
  }
