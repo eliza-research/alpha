@@ -67,6 +67,7 @@ export async function preparePortableNativeInputs(root:string) {
   if(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:source,encoding:'utf8'}).trim())throw Error('Cached native producer source has tracked modifications');
   const alternates=path.join(source,'.git/objects/info/alternates');
   if(fs.existsSync(alternates)){command('git',['repack','-a','-d'],source);fs.rmSync(alternates);}
+  if(spawnSync('git',['-C',source,'cat-file','-e',`${pin}^{commit}`],{stdio:'ignore'}).status!==0)command('git',['fetch','--no-tags',path.join(root,'vendor/eliza'),pin],source);
   command('git',['checkout','--detach',pin],source);
   command('git',['submodule','update','--init','--recursive','--reference',path.join(root,'vendor/eliza',enginePath),enginePath],source);
   if(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:source,encoding:'utf8'}).trim())throw Error('Cached native producer source has tracked modifications');
@@ -99,6 +100,10 @@ export async function preparePortableNativeInputs(root:string) {
   if(fs.existsSync(builtReceipt)) {
     const existing=readJson<NativeBuildReceipt>(builtReceipt);
     if(existing.recipeSha256===nativeRecipeDigest(recipe)&&JSON.stringify(existing.recipe)===JSON.stringify(recipe)) {
+      if(spawnSync('git',['-C',path.join(root,'vendor/eliza'),'cat-file','-e',`${existing.producer?.sdkCommit}^{commit}`],{stdio:'ignore'}).status!==0){
+        if(!/^[a-f0-9]{40}$/.test(existing.producer?.sdkCommit))throw Error('Native producer commit is invalid');
+        command('git',['fetch','--no-tags','--depth','1',readJson<{url:string}>(path.join(root,'upstream.lock.json')).url,existing.producer.sdkCommit],path.join(root,'vendor/eliza'));
+      }
       validateNativeBuildReceipt(root,existing,{currentConsumer:false});
       verifyNativeBuildFiles(cacheOutput,existing);verifyNativeBuildLibraries(cacheOutput,existing);
       receipt=existing;
