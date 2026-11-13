@@ -12,7 +12,7 @@ Direct uses its saved voice key and never falls back to Cloud billing; Cloud req
 the admitted account. Neither path changes provider selection. Start is explicit and discloses provider upload;
 Stop inserts text into the unchanged current field without sending it. Cancel,
 Back, editor changes, account changes, lock and call transitions fence late results.
-Password/no-learning fields are unavailable. Standalone APKs do not register it.
+Password/no-learning fields are unavailable.
 
 The framework overlay `alpha-keyboard-dictation.xml` sets the system voice package.
 The pinned framework's `updateDefaultVoiceImeIfNeededLocked()` discovers the
