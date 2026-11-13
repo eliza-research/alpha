@@ -28,7 +28,7 @@ test('native cache identity changes with producer code, model pins and compiler 
 });
 function receiptFor(dir){
   const recipe=nativeRecipe(dir),pin=JSON.parse(fs.readFileSync(path.join(dir,'upstream.lock.json'))).commit;
-  const voice=JSON.parse(fs.readFileSync(path.join(dir,'android/voice-host/qualified-voice-host.json')));voice.pin=pin;
+  const voice=JSON.parse(fs.readFileSync(path.join(dir,'android/voice-host/qualified-voice-host.json')));voice.pin=pin;voice.forkPin=recipe.engineCommit;
   const source=name=>execFileSync('git',['-C',path.join(dir,'vendor/eliza'),'show',pin+':'+name]);
   const binding=nativeBinding(source(nativeInputPaths.at(-1)).toString(),source(nativeInputPaths.at(-2)).toString(),recipe.identity);
   const embedding={model:JSON.parse(fs.readFileSync(path.join(dir,'android/embedding-host/qualified-host.json'))).model,identity:recipe.identity,pin,forkPin:recipe.engineCommit,abi:'arm64-v8a',jniIdentityRelocated:true,jniBinding:binding,
