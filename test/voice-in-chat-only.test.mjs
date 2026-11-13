@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
-import {stopSenseListenerForChatOnly} from '../.eliza/client-features/plugins/plugin-native-system/src/sense.ts';
+import {parseListenerStatus,parseListenerStopReceipt,stopSenseListenerForChatOnly} from '../.eliza/client-features/plugins/plugin-native-system/src/sense.ts';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
 test('holding the side key never opens the microphone while the chat mic still works',()=>{
@@ -60,6 +60,28 @@ test('image Sense requires exact native Android and qualified image capability',
  }
 });
 
+test('listener actions require saved stop receipts while status remains read-only',async()=>{
+ const source=read('apps/app/src/runtime/always-on-listener.ts');
+ const start=source.indexOf('async function ask'),end=source.indexOf('\n}\n',start)+2;
+ assert.ok(start>=0&&end>start);
+ const code=stripTypeScriptTypes(source.slice(start,end));
+ for(const method of ['pause','turnOff']){
+  const state=method==='pause'?'PAUSED_USER':'OFF';
+  for(const [reply,expected] of [
+   [{available:true,state,saved:true,listening:false,microphoneOpen:false},true],
+   [{available:true,state,listening:false,microphoneOpen:false},false],
+   [{available:true,state,saved:false,listening:false,microphoneOpen:false},false],
+   [{available:true,state,saved:true,listening:true,microphoneOpen:false},false],
+   [{available:true,state,saved:true,listening:false,microphoneOpen:true},false],
+  ]){
+   const context=vm.createContext({imageSenseAvailable:()=>true,listener:{[method]:async()=>reply,status:async()=>reply},parseListenerStatus,parseListenerStopReceipt});
+   const ask=vm.runInContext(code+'\nask;',context);
+   assert.equal((await ask(method)).available,expected,method+': '+JSON.stringify(reply));
+   assert.equal((await ask('status')).available,true,'status does not require a mutation receipt');
+  }
+ }
+});
+
 test('unqualified Android startup asks for an exact native microphone stop receipt',async()=>{
  const source=read('apps/app/src/runtime/always-on-listener.ts');
  const start=source.indexOf('export async function stopWakeListenerForChatOnly()');
@@ -67,7 +89,8 @@ test('unqualified Android startup asks for an exact native microphone stop recei
  assert.ok(start>=0&&end>start);
  const code=stripTypeScriptTypes(source.slice(start,end).replace('export ',''));
  for(const [result,expected] of [
-  [{available:true,state:'OFF',listening:false,microphoneOpen:false},true],
+  [{available:true,state:'OFF',saved:true,listening:false,microphoneOpen:false},true],
+  [{available:true,state:'OFF',listening:false,microphoneOpen:false},false],
   [{available:true,state:'OFF',listening:true,microphoneOpen:false},false],
   [{available:true,state:'OFF',listening:false,microphoneOpen:true},false],
   [{available:true,state:'OFF',listening:false},false],

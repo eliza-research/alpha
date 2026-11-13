@@ -46,8 +46,8 @@ async function setup(page:Page,options:Options={}){
     }
     f.listenerCalls.push(method);
     if(method==='status')return f.listener??{available:false};
-    if(method==='pause'){f.listener={...f.listener,state:'PAUSED_USER',label:'Paused',listening:false,microphoneOpen:false};return f.listener;}
-    if(method==='turnOff'){if(options.stopReceipt)return options.stopReceipt;f.listener={...f.listener,state:'OFF',label:'Listening off',listening:false,microphoneOpen:false};return f.listener;}
+    if(method==='pause'){f.listener={...f.listener,saved:true,state:'PAUSED_USER',label:'Paused',listening:false,microphoneOpen:false};return f.listener;}
+    if(method==='turnOff'){if(options.stopReceipt)return options.stopReceipt;f.listener={...f.listener,saved:true,state:'OFF',label:'Listening off',listening:false,microphoneOpen:false};return f.listener;}
     if(method==='openSettings')return {opened:true};
     throw Error('Unexpected Sense method '+method);
    }
@@ -191,7 +191,7 @@ test('an inconsistent stop receipt keeps Android recovery available without open
  expect(foreign).toEqual([]);
 });
 
-test('qualified Privacy still reports a microphone held after turning listening off',async({page})=>{
+test('qualified Privacy refuses an unconfirmed microphone stop',async({page})=>{
  const listener={available:true,state:'LISTENING',label:'Listening',consented:true,listening:true,microphoneOpen:true};
  const foreign=await setup(page,{image:true,sense:true,listener,stopReceipt:{...listener,state:'OFF',listening:false}});
  await residentHome(page);
@@ -199,9 +199,9 @@ test('qualified Privacy still reports a microphone held after turning listening 
  await button(page,'Privacy').click();
  const listening=page.getByRole('switch',{name:'Listening',exact:true});
  await listening.click();
- await expect(page.getByText('Microphone still open',{exact:true})).toBeVisible();
- await expect(listening).toHaveAttribute('aria-checked','true');
- await expect(button(page,'Pause listening')).toBeVisible();
+ await expect(page.getByText('Not responding · Use notification',{exact:true})).toBeVisible();
+ await expect(listening).toHaveCount(0);
+ await expect(button(page,'Pause listening')).toHaveCount(0);
  expect(await live(page,f=>f.captures)).toEqual([]);
  expect(foreign).toEqual([]);
 });
