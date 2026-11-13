@@ -223,7 +223,8 @@ jobs:
         run: |
           echo "sha256=$(bun -e 'import {nativeRecipe,nativeRecipeDigest} from "./scripts/native-build-inputs.ts"; process.stdout.write(nativeRecipeDigest(nativeRecipe(process.cwd())))')" >> "$GITHUB_OUTPUT"
       - name: Cache verified native source and model inputs
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        id: native-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ${{ env.XDG_CACHE_HOME }}/alpha/native-inputs
           key: alpha-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-recipe.outputs.sha256 }}
@@ -232,6 +233,12 @@ jobs:
         run: |
           python3 scripts/ci/resident-phase.py --name native-input-build --seconds 5400 bun run agent:build-embedding-host
           bun scripts/voice-host.ts --verify
+      - name: Retain verified native build cache
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ env.XDG_CACHE_HOME }}/alpha/native-inputs
+          key: alpha-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-recipe.outputs.sha256 }}
       - name: Admit the automatic candidate version against the public inventory
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:

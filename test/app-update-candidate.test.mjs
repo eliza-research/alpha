@@ -230,8 +230,14 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.equal(nativeBuild.if, undefined, 'both dispatched and automatic builds acquire native inputs');
   assert.equal(nativeBuild.env?.GH_TOKEN, undefined);
   const cache = build.steps.find(step => step.name === 'Cache verified native source and model inputs');
+  assert.match(cache.uses, /^actions\/cache\/restore@/);
   assert.equal(cache.with.path, '${{ env.XDG_CACHE_HOME }}/alpha/native-inputs');
   assert.match(cache.with.key, /steps.native-recipe.outputs.sha256/);
+  const cacheSave = build.steps.find(step => step.name === 'Retain verified native build cache');
+  assert.match(cacheSave.uses, /^actions\/cache\/save@/);
+  assert.equal(cacheSave.if, "steps.native-cache.outputs.cache-hit != 'true'");
+  assert.deepEqual(cacheSave.with, cache.with);
+  assert.ok(stepNames.indexOf(nativeBuild.name) < stepNames.indexOf(cacheSave.name));
   assert.ok(!build.steps.some(step => step.run?.includes('hosted-native-inputs.py')));
   assert.equal(evaluate(build.if, main), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, main), '1');
