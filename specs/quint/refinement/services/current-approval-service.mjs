@@ -19,7 +19,7 @@ async function fixture(bundle) {
   const reads = new Map(), callbacks = new Map(), deletions = new Map(), completed = new Set();
   let worker, task, timer, result, stopped = false, stable = true;
   const errors = [], workerErrors = [], unavailable = new Set(), blocked = new Set();
-  let stopDone = false, stopping;
+  let stopDone = false, stopping, missingTimeoutTask;
   const {ApprovalService} = bundle.instantiate({
     setTimeout(callback, delay) {
       assert.equal(timer, undefined);
@@ -56,6 +56,16 @@ async function fixture(bundle) {
     reportError(scope, error, details) {errors.push({scope, error, details});},
   };
   const service = await ApprovalService.start(runtime);
+  function assertMissingTimeoutTask(error) {
+    assert.equal(error.code, 'APPROVAL_TASK_UNAVAILABLE');
+    assert.equal(error.message, 'Approval task is no longer available for timeout');
+    assert.deepEqual(error.context, {taskId});
+    assert.equal(task, undefined);
+    assert.equal(timer.status, 'fired');
+    assert.equal(reads.get('timeout')?.settled, true);
+    assert.equal(callbacks.has('timeout'), false);
+    assert.equal(deletions.has('timeout'), false);
+  }
   const approval = service.requestApproval({name: 'APPROVE_FIXTURE', description: 'Approval fixture', roomId: 'fixture-room',
     options: [{name: 'approve'}, {name: 'decline', isCancel: true}], timeoutMs: 1000, timeoutDefault: 'decline',
     onSelect(option, received) {assert.equal(received.id, taskId); assert.ok(['approve', 'decline'].includes(option)); return request(callbacks, 'onSelect');},
@@ -74,7 +84,10 @@ async function fixture(bundle) {
       assert.equal(value.cancelled, value.selectedOption === 'decline');
     }
   }, error => {
-    assert.match(error.message, /Injected approval callback failure/);
+    if (error.code === 'APPROVAL_TASK_UNAVAILABLE') {
+      assertMissingTimeoutTask(error);
+      missingTimeoutTask = error;
+    } else assert.match(error.message, /Injected approval callback failure/);
     stable &&= result === undefined || result === 'rejected';
     result = 'rejected';
   });
@@ -126,6 +139,14 @@ async function fixture(bundle) {
       settle(deletions, owner);
       if (owner === 'timeout') completed.add(owner);
     },
+    noDelete(owner) {
+      assert.equal(owner, 'timeout');
+      assertMissingTimeoutTask(missingTimeoutTask);
+      assert.equal(result, 'rejected');
+      assert.equal(errors.length, 1);
+      assert.equal(errors[0].error, missingTimeoutTask);
+      assert.equal(service.operations.pending.size, 0);
+    },
     cancel() {execute('cancel', () => service.cancelApproval(taskId));},
     stop() {stopped = true; stopping = service.stop().then(() => {stopDone = true;});
       void stopping.catch(() => {});},
@@ -137,9 +158,13 @@ async function fixture(bundle) {
       for (const owner of unavailable) {assert.equal(callbacks.has(owner), false); assert.equal(deletions.has(owner), false);}
       for (const owner of blocked) {assert.equal(reads.has(owner), false); assert.equal(deletions.has(owner), false);}
       if (stopping) {await stopping; assert.equal(service.operations.pending.size, 0);}
-      for (const {scope, error} of errors) {
+      for (const {scope, error, details} of errors) {
         assert.equal(scope, 'ApprovalService.timeout');
-        assert.match(error.message, /Injected approval callback failure/);
+        assert.deepEqual(details, {taskId});
+        if (error.code === 'APPROVAL_TASK_UNAVAILABLE') {
+          assertMissingTimeoutTask(error);
+          assert.equal(error, missingTimeoutTask);
+        } else assert.match(error.message, /Injected approval callback failure/);
       }
       assert.ok(![...reads.values(), ...callbacks.values(), ...deletions.values()].some(value => !value.settled), 'Every observed port is settled');
     },
@@ -164,7 +189,7 @@ export async function checkCoreApprovalServiceCurrentRefinement(vendorPath, extr
     ['timeout-default', [['fire'], ['read', 'timeout'], ['callback', 'timeout'], ['delete', 'timeout']]],
     ['timeout-callback-rejects', [['fire'], ['read', 'timeout'], ['callback', 'timeout', true]]],
     ['timeout-beats-delivered-selector', [['deliver', 1], ['fire'], ['read', 'timeout'], ['read', 1], ['callback', 'timeout'], ['delete', 'timeout']]],
-    ['expired-task-read-skips-callback', [['fire'], ['cancel'], ['delete', 'cancel'], ['read', 'timeout'], ['delete', 'timeout']]],
+    ['expired-task-read-skips-callback', [['fire'], ['cancel'], ['delete', 'cancel'], ['read', 'timeout'], ['noDelete', 'timeout']]],
     ['cancel-owns-settlement', [['deliver', 1], ['cancel'], ['delete', 'cancel'], ['read', 1], ['delete', 1]]],
     ['stop-owns-settlement', [['deliver', 1], ['stop'], ['read', 1], ['delete', 1]]],
     ['stop-cannot-steal-selection', [['deliver', 1], ['read', 1], ['stop'], ['callback', 1], ['delete', 1]]],
@@ -187,7 +212,7 @@ export async function checkCoreApprovalServiceCurrentRefinement(vendorPath, extr
         case 'cancel': action = call('cancel'); break;
         case 'stop': action = call('stop'); break;
         case 'read':
-          action = owner === 'timeout' ? [call('timeoutTask'), ...(before['state.taskExists'] ? [] : [call('timeoutResolve')])]
+          action = owner === 'timeout' ? call('timeoutTask')
             : call('selectionTask', owner);
           break;
         case 'callback':
@@ -197,6 +222,7 @@ export async function checkCoreApprovalServiceCurrentRefinement(vendorPath, extr
         case 'delete':
           action = owner === 'timeout' ? call('timeoutDelete') : owner === 'cancel' ? call('cancelDelete') : call('selectionDelete', owner);
           break;
+        case 'noDelete': action = call('timeoutMissingTaskNoEffects'); break;
         default: assert.fail('Unmapped approval operation');
       }
       if (!before['state.stopDone'] && after['state.stopDone']) action = Array.isArray(action) ? [...action, call('finishStop')] : [action, call('finishStop')];
