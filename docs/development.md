@@ -321,9 +321,12 @@ as the `plan` input. Preflight checks the official Actions ZIP. The protected
 job checks the same run attempt and artifact again, then stages the pinned
 private generation before accessing the signing key. Current builds produce one
 native launcher APK on the public update channel. Release tooling also retains
-the previously reviewed private Cloud producer contract: its complete standalone
+the reviewed private Cloud producer input contract: its complete original standalone
 and launcher pair must match the approved hashes, Cloud profile and historical
-package identity. This compatibility path does not add a current build variant.
+package identity. Both members are authenticated archive inputs; only the launcher
+is staged for signing, exported, voice-qualified or published. The rotation approval
+also names only the launcher. Input enrollment is not independent attestation of the
+private bytes or release acceptance; protected admission must still read and verify them.
 
 For publication, set `delivery_artifact_id` to the numeric ID of the original
 `private-cloud-apk-delivery-*` artifact from the successful signing attempt.
@@ -344,13 +347,24 @@ gcloud storage cp "$signed_uri" signed.tar
 
 Complete Cartesia qualification on each exact signed APK. Record a content-free
 `alpha-cloud-voice-qualification-v1` JSON receipt with one `results` row per
-approved signed APK: one for the current launcher, or two for a retained Cloud pair. Each
+approved signed APK: exactly one launcher, including a retained Cloud input. Each
 row names the observed `apkSha256`, `provider` and `outcome`, and records the
 observed booleans in `checks` for `consent`, `session`, `acousticInput`,
 `blueBar`, `transcript`, `audibleSpeakerReply`, `mute`, `unmute` and
 `stopReleased`. Record only the check outcomes and omit transcripts, recordings
 and credentials. The workflow admits passing Cartesia checks for every exact APK
-named in the reviewed plan.
+named in the launcher-only signed output.
+
+For a retained Cloud archive, publication runs its unchanged historical verifier on
+the original unsigned pair and debug inputs. Alpha then independently verifies that
+the signed launcher preserves every ZIP member, compression fact, local header and
+payload byte, passes 16 KiB alignment and the pinned signature/lineage verifier on
+Android APIs 29–37, and has the exact reviewed voice receipt. The original unsigned
+manifest is retained separately. The derived one-row signed manifest names Alpha's
+admission commit, the original producer/SDK commits and the byte-equivalence proof;
+it is not attributed as a new output of the historical producer. Current native
+builds continue through the normal native verifier. Historical v62 receipts keep
+their original source, hashes and qualification scope.
 
 Set `publication_commit` to the exact reviewed commit currently on `main`.
 Prepare the qualification using the original plan bytes and the reviewed voice

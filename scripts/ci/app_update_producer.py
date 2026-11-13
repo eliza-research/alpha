@@ -74,8 +74,8 @@ def producer_kind(plan):
     return kind
 
 
-def release_contract(plan):
-    """Bind the existing private Cloud pair or the current native launcher."""
+def input_contract(plan):
+    """Bind every immutable archive input, including the retained Cloud pair."""
     kind = producer_kind(plan)
     pins = plan.get("unsignedApkSHA256")
     require(isinstance(pins, dict), "Missing unsigned APK pins")
@@ -85,6 +85,11 @@ def release_contract(plan):
     require(set(pins) == {"launcher"}, "Unexpected release variants")
     return {"variants": ("launcher",), "runtimeProfile": "native",
             "packageName": CANDIDATE_PACKAGE}
+
+
+def release_contract(plan):
+    """Only the launcher may be signed, exported or qualified for a new release."""
+    return {**input_contract(plan), "variants": ("launcher",)}
 
 
 def archive_pins(plan):

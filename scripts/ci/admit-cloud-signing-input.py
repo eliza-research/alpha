@@ -1,6 +1,7 @@
 """Read-only admission and signing handoff for Alpha application producer archives."""
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -17,7 +18,7 @@ from app_update_producer import (
     CANDIDATE, CANDIDATE_PACKAGE, MAX_ARCHIVE_BYTES, PRIVATE_APK_BUCKET, PRIVATE_RUNNER, REPOSITORY,
     WORKFLOW, WORKFLOW_ID, apk_member_limit, archive_pins, copy_verified, decode, download_github_archive,
     gh_json, github_candidate, github_candidate_download_pins, matches, positive_id, producer_kind,
-    validate_private_storage, release_contract,
+    validate_private_storage, input_contract, release_contract,
 )
 
 VARIANTS = ("launcher",)
@@ -44,6 +45,24 @@ def reviewed_private_producer(plan, descriptor):
     approval = {"approval": "approved", **{key: plan.get(key) for key in fields}}
     return plan.get("producerKind") == PRIVATE_RUNNER and isinstance(plan.get("privateStorage"), dict) and \
         descriptor.get("privateProducerApproval") == approval
+
+
+def approved_cloud_rotation(plan, descriptor):
+    """Refuse missing/changed launcher migration before any signing key access."""
+    require(input_contract(plan)["runtimeProfile"] == "cloud" and reviewed_private_producer(plan, descriptor),
+            "Unreviewed private Cloud producer")
+    rotation, supplied = descriptor.get("apkSigningRotation"), plan.get("rotation")
+    require(isinstance(rotation, dict) and rotation.get("schema") == 1 and rotation.get("approval") == "approved" and
+            rotation.get("versionCode") == plan["versionCode"] and
+            rotation.get("unsignedApkSHA256") == {"launcher": plan["unsignedApkSHA256"]["launcher"]} and
+            isinstance(supplied, dict) and set(supplied) == {"lineageBase64", "lineageSHA256"},
+            "Reviewed launcher-only Cloud rotation is required")
+    require(isinstance(supplied["lineageBase64"], str) and len(supplied["lineageBase64"]) <= 90000,
+            "Bounded public lineage required")
+    lineage = base64.b64decode(supplied["lineageBase64"], validate=True)
+    require(0 < len(lineage) <= 65536 and digest(lineage) == supplied["lineageSHA256"] == rotation.get("lineageSha256"),
+            "Reviewed Cloud lineage differs")
+    return lineage
 
 
 def checked_source_bytes(root, commit, name, *, object_id=False):
@@ -310,7 +329,7 @@ def producer_evidence_members(names, inventory):
 
 def admit(archive, pin, stage=None, *, source_root=None):
     kind = producer_kind(pin)
-    contract = release_contract(pin)
+    contract = input_contract(pin)
     variants = contract["variants"]
     profile = contract["runtimeProfile"]
     package = contract["packageName"]
@@ -431,7 +450,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
                     copy_verified(apk, apk_member.file_size, apks[variant], f"{variant} APK bytes differ")
             if stage is not None:
                 stage.mkdir(mode=0o700)
-                for variant in variants:
+                for variant in release_contract(pin)["variants"]:
                     apk_member = release_members[variant]
                     output = stage / apk_member.filename
                     with bundle.open(apk_member) as source, output.open("xb") as target:

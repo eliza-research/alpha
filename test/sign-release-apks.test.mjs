@@ -241,6 +241,22 @@ test("a real apksigner signs an APK with ceremony-layout key files, and the resu
   const { signerDigest } = await import("../scripts/apk.ts");
   assert.equal(signerDigest(path.join(work, "app-release.apk")), certificate);
   assert.equal(fs.existsSync(path.join(work, "app-release.apk.idsig")), false, "no v4 side file is written");
+  // The retained launcher handoff admits only v3's out-of-ZIP signing block.
+  // This uses the same freshly generated disposable key, never a release key.
+  const v3 = path.join(work, "v3-only.apk");
+  execFileSync(apksigner, ["sign", "--key", path.join(dir, "alphaphone_app.pk8"), "--cert", path.join(dir, "alphaphone_app.x509.pem"),
+    "--alignment-preserved", "true",
+    "--v1-signing-enabled", "false", "--v2-signing-enabled", "false", "--v3-signing-enabled", "true", "--v4-signing-enabled", "false",
+    "--out", v3, unsigned], {env: toolchain.androidEnv(), stdio: "pipe"});
+  const payload = execFileSync("python3", ["-B", "-c", `
+import importlib.util, pathlib, sys
+sys.path.insert(0, 'scripts/ci')
+spec=importlib.util.spec_from_file_location('handoff','scripts/ci/verify-qualified-cloud-launcher.py')
+module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+a,b=map(pathlib.Path,sys.argv[1:])
+print(module.identical_zip_payload(a,b,module.QUALIFIED.file_sha(a),module.QUALIFIED.file_sha(b)))
+`, unsigned, v3], {cwd: new URL("..", import.meta.url), encoding: "utf8"});
+  assert.match(payload, /alpha-signed-zip-payload\/v1/);
   // The same key against a different recorded signer is refused and leaves nothing behind.
   const other = product(t, "0".repeat(64));
   assert.equal(await main(["--keys-dir", dir, "--apksigner", apksigner, "--apk", unsigned, "--out", path.join(work, "other.apk")], { root: other, env: process.env, log() {}, error() {} }), 1);
@@ -296,6 +312,10 @@ test("rotation admission requires explicit approval and preserves the exact revi
   };
   const descriptor = {signerSha256: RELEASE, lastRelease: {versionCode: 44}, apkSigningRotation: rotation};
   const targets = [{input: unsigned}];
+  const argumentsWithRotation = signArguments({mode: "key-files", keysDir: "/unused", input: unsigned,
+    output: path.join(root, "launcher-release.apk"), rotationLineage: lineage});
+  assert.deepEqual(argumentsWithRotation.slice(5, -5), ["--lineage", lineage, "--rotation-min-sdk-version", "28", "--min-sdk-version", "29",
+    "--alignment-preserved", "true", "--v1-signing-enabled", "false", "--v2-signing-enabled", "false", "--v3-signing-enabled", "true"]);
   assert.equal(await approvedSigningRotation(descriptor, lineage, targets), rotation);
   await assert.rejects(approvedSigningRotation(descriptor, lineage, []), /outside the reviewed rotation scope/);
   await assert.rejects(approvedSigningRotation(descriptor, lineage, [...targets, ...targets]), /outside the reviewed rotation scope/);
