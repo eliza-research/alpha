@@ -454,7 +454,7 @@ for(const outcome of ['accepted','revoked','failed'] as const)await test(`openin
  const checked=Promise.withResolvers<void>();let checkedCalls=0;
  sandbox.serviceReadCache=async()=>({get:async key=>key==='gmail:mailbox'?{value:structuredClone(old)}:null,put:async()=>{},clear:async()=>{}});
  controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
- const {shell:h,render:inbox}=inboxFixture();
+ const {shell:h,views:v,api:a,render:inbox}=inboxFixture();
  try{
   inboxActive=false;connected=true;readGrant=true;delayAccounts=false;delay=true;failNext=null;
   pages['in:inbox']=[[fixtureMail('accepted-home-fresh',{unread:true})]];
@@ -468,13 +468,40 @@ for(const outcome of ['accepted','revoked','failed'] as const)await test(`openin
   client.gmailAccounts=async()=>{accountReads++;checkedCalls++;await checked.promise;if(outcome==='failed')throw new CloudProtocolError('http',503);return [{connectionId:'grant-a',label:'Current checked grant',connected:true,grantedCapabilities:outcome==='revoked'?[]:['google.gmail.triage']}];};
   delay=false;releaseHome();await tick();
   assert.equal(checkedCalls,1,'saved accounts receive exactly one current grant recheck');
-  assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture retained-unread'],'accepted headers do not bypass the pending grant check');
+  const checking=inbox();
+  assert.deepEqual(local(checking.rows.map(row=>row.subj)),['Fixture retained-unread'],'accepted headers do not bypass the pending grant check');
+  assert.equal(checking.cachedListNotice,'Saved mail · Checking Gmail access…');
+  const readsBeforeOpen=reads.length;
+  checking.rows[0].open();await tick();
+  assert.equal(inbox().d?.body,'Message not saved on this device.');
+  assert.equal(h.st.nativeMailSelection,null,'saved mail does not bind a live agent selection');
+  assert.equal(reads.length,readsBeforeOpen,'an uncached body waits for a current Gmail grant');
+  assert.equal(checkedCalls,1,'opening saved mail does not replace the pending access check');
+  assert.equal(inbox().d?.actionsAvailable,false);
+  assert.equal(inbox().d?.failed,false,'the pending check owns recovery while the grant is unverified');
+  if(outcome==='failed')v.inbox.back(h.st,a);
   checked.resolve();await tick();
-  if(outcome==='accepted')assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture accepted-home-fresh'],'current grant check must consume the exact accepted Home page');
-  else if(outcome==='revoked')assert.deepEqual(local(inbox().rows),[],'withdrawn read access refuses both saved and accepted headers');
+  assert.equal(inbox().cachedListNotice,outcome==='failed'?'Saved mail · Could not check Gmail access':'');
+  if(outcome==='accepted'){
+   assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture accepted-home-fresh'],'current grant check must consume the exact accepted Home page');
+   assert.equal(inbox().d?.actionsAvailable,false,'an unavailable saved body cannot expose message actions');
+   assert.equal(inbox().d?.failed,true,'the reader offers a live retry after the grant succeeds');
+  } else if(outcome==='revoked'){
+   assert.deepEqual(local(inbox().rows),[],'withdrawn read access refuses both saved and accepted headers');
+   assert.equal(inbox().d,null,'withdrawal closes the already open saved detail');
+  }
   else assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture retained-unread'],'failed recheck cannot authorize the fresh header page');
   assert.equal(accountReads,beforeAccounts+2,'one warm discovery plus one mandatory fresh grant recheck');
   assert.equal(searches.length,beforeSearch+1,'opening never fetches a second header page');
+  if(outcome==='revoked'){
+   const recheck=Promise.withResolvers<Awaited<ReturnType<typeof client.gmailAccounts>>>();
+   client.gmailAccounts=()=>recheck.promise;
+   try{
+    v.inbox.onLeave();inbox();await tick();
+    assert.deepEqual(local(inbox().rows),[],'reopening cannot restore the known revoked snapshot even when it is still on disk');
+    assert.equal(inbox().cachedListNotice,'');
+   }finally{recheck.resolve([]);}
+  }
  }finally{checked.resolve();h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;client.gmailAccounts=previousAccounts;delay=false;delayAccounts=false;failNext=null;readGrant=true;}
 });
 
