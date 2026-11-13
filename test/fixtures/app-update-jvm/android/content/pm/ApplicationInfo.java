@@ -1,1 +1,1 @@
-package android.content.pm; public class ApplicationInfo { public String sourceDir; }
+package android.content.pm; public class ApplicationInfo { public String sourceDir; public int uid=10000; }

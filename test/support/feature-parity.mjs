@@ -87,6 +87,7 @@ export const featureParityAllowlist = {
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaQuickSettingsTile.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaReminders.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaResetPlugin.java",
+    "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSenseAdmission.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSmsSendReceiver.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSystemPlugin.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java",

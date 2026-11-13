@@ -129,7 +129,7 @@ def campaign(scratch, signing_commit, name, schedule):
                 "status": "completed", "conclusion": "cancelled" if fault == "cancelled" else "success",
                 "repository": identity,
                 "head_repository": {**identity, "id": 1} if fault == "repo" else
-                    {**identity, "owner": {"id": 1}} if fault == "owner" else identity,
+                    {**identity, "full_name": "fixture/other"} if fault == "repo-name" else identity,
             },
             f"{prefix}/actions/artifacts/{artifact}": {
                 "id": int(artifact), "expired": fault == "expired",
@@ -335,7 +335,7 @@ def main():
         schedules.append(("exact main candidate and repeated protected attempt",
                           [candidate, ("restoreCandidate", [1, True], "attempt"),
                            ("restoreCandidate", [2, False], "bytes"), protected, upload, review, restore]))
-        for failure in ("attempt", "repo", "owner", "cancelled", "expired", "source", "download-bytes", "download-overflow"):
+        for failure in ("attempt", "repo", "repo-name", "cancelled", "expired", "source", "download-bytes", "download-overflow"):
             schedules.append((f"{failure} refuses a main candidate",
                               [("admitCandidate", [1, True] if failure == "attempt" else [2, False], failure)]))
         schedules.append(("qualified candidate rejects changed private mirror",

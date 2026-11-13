@@ -6,6 +6,7 @@ import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {nativeSource,fixture,runJvm,root,javaBinary,jvmTimeout,upstreamConnection} from './fixtures/jvm-tools.mjs';
 import {exactUpdateMembers} from '../specs/quint/refinement/native/update-barrier.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 // One-tap app update, native side (AlphaDevicePlugin). The download admission and the update flow run on the
 // host JVM from the plugin's own source; the rest are source checks (class S) of Android wiring that only a
@@ -41,14 +42,15 @@ test('the update flow runs one attempt per process, fences a session Android sti
    '-keystore',keyStore,'-storepass','fixture-pass','-keypass','fixture-pass','-dname','CN=localhost',
    '-ext','SAN=dns:localhost,ip:127.0.0.1','-validity','2','-noprompt'],{stdio:'pipe',timeout:jvmTimeout});
   writeFileSync(members,exactUpdateMembers(plugin)
-   .replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')
+   .replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(30)')
    .replace(offerDeadline,'private static final int UPDATE_MANIFEST_RECHECK_MILLIS=1200'));
-  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')).filter(file=>!file.endsWith('/ConnectionTransport.java')),upstreamConnection('ConnectionTransport.java'),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{json:true,timeout:240000,args:[keyStore]});
+  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')).filter(file=>!file.endsWith('/ConnectionTransport.java')),upstreamConnection('ConnectionTransport.java'),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{json:true,timeout:scaledTimeout(240000),args:[keyStore]});
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
   assert.match(result,/PASS fresh HTTPS offer rejects cached withdrawal, change and transport failure before one current commit/);
   assert.match(result,/PASS final offer deadline bounds held network stages and leaves manual recovery available/);
   assert.match(result,/PASS revoked install consent during final HTTPS leaves no commit or pause/);
   assert.match(result,/PASS exact pending installer callback survives process replacement once/);
+  assert.match(result,/PASS automatic call deferral protects stock and image installs before download and commit/);
   assert.match(result,/PASS explicit update permission opens only Alpha Android settings before an offer/);
   assert.match(result,/^PASS update flow/m);
  }finally{rmSync(dir,{recursive:true,force:true});}

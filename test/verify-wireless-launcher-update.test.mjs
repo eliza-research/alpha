@@ -11,6 +11,7 @@ import {
   captureLauncher, checkFollowup, checkReplacement, readPublicLauncherOffer, verifyPublicLauncherBytes,
 } from '../scripts/verify-wireless-launcher-update.ts';
 import {appUpdateManifestUrl} from '../scripts/update-channel.ts';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 const packageName = 'ai.alphacompute.alphaphone';
 const dataApkPath = '/data/app/~~AA==/ai.alphacompute.alphaphone-X=/base.apk';
@@ -196,7 +197,7 @@ test('a second advancing image or sideload update starts from the exact previous
   }
 });
 
-test('the before and after CLI use one reviewed signer policy through both APK admission boundaries', async t => {
+test('the before and after CLI admit installed releases at or below the recorded floor', async t => {
   const directory = mkdtempSync(path.join(tmpdir(), 'alpha-wireless-cli-'));
   t.after(() => rmSync(directory, {recursive: true, force: true}));
   const entry = fileURLToPath(new URL('../scripts/verify-wireless-launcher-update.ts', import.meta.url));
@@ -205,13 +206,30 @@ test('the before and after CLI use one reviewed signer policy through both APK a
   const output = path.join(directory, 'scripts', 'wireless.mjs');
   mkdirSync(path.dirname(output));
   writeFileSync(path.join(directory, 'app.config.json'), JSON.stringify({updateManifestUrl: publicUrl}));
+  const initialApk = Buffer.from('initial CLI fixture APK bytes');
   const secondApk = Buffer.from('second CLI fixture APK bytes');
   const secondManifest = {...manifest, versionCode: 9, sha256: hash(secondApk), sizeBytes: secondApk.length,
     apkUrl: new URL('alpha-phone-9.apk', publicUrl).href};
+  const manifests = new Map();
+  for (const [versionCode, bytes] of [[7, initialApk], [8, apk], [9, secondApk]]) {
+    const versionDir = path.join(directory, String(versionCode));
+    mkdirSync(versionDir);
+    const file = 'launcher-release.apk';
+    writeFileSync(path.join(versionDir, file), bytes);
+    const apkManifest = path.join(versionDir, 'apk-manifest.json');
+    writeFileSync(apkManifest, JSON.stringify({testMocks: false, results: [{
+      variant: 'launcher', mode: 'release', file, sha256: hash(bytes), versionCode,
+      signed: true, signerSha256: signingFamily, distributable: true, testMocks: false,
+      bundleAudit: 'passed', runtime: 'PACKAGED', runtimeNotices: true, licenceBlockers: [],
+      voiceHost: {packaged: true, asr: true, qualified: true, differences: []},
+    }]}));
+    manifests.set(versionCode, apkManifest);
+  }
   const prelude = `
-    globalThis.wirelessPolicy = {signerSha256:${JSON.stringify(signingFamily)}};
     globalThis.wirelessCalls = [];
     globalThis.wirelessOffer = process.env.FIXTURE_FOLLOWUP==='1' ? ${JSON.stringify(secondManifest)} : ${JSON.stringify(manifest)};
+    globalThis.wirelessPolicy = {schema: 1, signerSha256:${JSON.stringify(signingFamily)},
+      lastRelease: {versionCode: globalThis.wirelessOffer.versionCode}};
     globalThis.wirelessBytes = Buffer.from(process.env.FIXTURE_FOLLOWUP==='1' ? ${JSON.stringify([...secondApk])} : ${JSON.stringify([...apk])});
     globalThis.fetch = async (url, options) => {
       if (options.redirect !== 'manual' || options.headers.authorization) throw Error('Unexpected public transport');
@@ -226,6 +244,7 @@ test('the before and after CLI use one reviewed signer policy through both APK a
     }`,
     './provision-unit.ts': `
       import assert from 'node:assert/strict';
+      import {admitUnitApk as admit} from ${JSON.stringify(provision)};
       export {PACKAGE, packageFacts, deviceFacts} from ${JSON.stringify(provision)};
       const packageName=${JSON.stringify(packageName)}, dataApkPath=${JSON.stringify(dataApkPath)},
         imageApkPath=${JSON.stringify(imageApkPath)}, props=${JSON.stringify(props)};
@@ -233,20 +252,18 @@ test('the before and after CLI use one reviewed signer policy through both APK a
       const after=process.argv[2]==='after', image=process.env.FIXTURE_DISTRIBUTION==='image-preinstalled',
         followup=process.env.FIXTURE_FOLLOWUP==='1';
       const versionCode=globalThis.wirelessOffer.versionCode-(after?0:1),
-        digest=after?globalThis.wirelessOffer.sha256:followup?${JSON.stringify(hash(apk))}:${JSON.stringify('c'.repeat(64))};
+        digest=after?globalThis.wirelessOffer.sha256:followup?${JSON.stringify(hash(apk))}:${JSON.stringify(hash(initialApk))};
       export function adbFor(serial) {
         assert.equal(serial,'fixture-phone');
         return deviceReader({version:versionCode,sha256:digest,initiator:after||followup?packageName:'com.android.shell',
           apkPath:image&&!after&&!followup?imageApkPath:dataApkPath,
           flags:image?(after||followup?${JSON.stringify(updatedImageFlags)}:${JSON.stringify(imageFlags)}):'HAS_CODE'});
       }
-      export function admitUnitApk(_file, selection, options={}) {
+      export function admitUnitApk(file, selection, options={}) {
         assert.deepEqual(selection,{variant:'launcher',build:'release'});
-        // The real manifest admission has its own default reader. Inspection still
-        // needs the policy passed explicitly, which its real identity guard checks below.
-        assert.equal(options.descriptor??globalThis.wirelessPolicy,globalThis.wirelessPolicy);
+        assert.equal(options.descriptor,globalThis.wirelessPolicy);
         globalThis.wirelessCalls.push('manifest');
-        return {file:'closed-fixture.apk',sha256:digest,variant:'launcher',build:'release',versionCode};
+        return admit(file,selection,options);
       }
       export function apkRuntimeIdentity() {return {runtime:'PACKAGED',base:'d'.repeat(40)};}
     `,
@@ -276,10 +293,13 @@ test('the before and after CLI use one reviewed signer policy through both APK a
     }}]});
   for (const distribution of ['sideload', 'image-preinstalled']) {
     const before = path.join(directory, distribution + '-before.json'), after = path.join(directory, distribution + '-after.json');
-    const run = (phase, receipt, extra, followup = false) => execFileSync(process.execPath, [realpathSync(output), phase, '--serial', 'fixture-phone',
-      '--apk-manifest', 'closed-apk-manifest.json', '--out', receipt, ...extra], {
-      encoding: 'utf8', timeout: 30_000, env: {...process.env, FIXTURE_DISTRIBUTION: distribution, FIXTURE_FOLLOWUP: followup ? '1' : '0'},
-    });
+    const run = (phase, receipt, extra, followup = false) => {
+      const versionCode = (followup ? 9 : 8) - (phase === 'before' ? 1 : 0);
+      return execFileSync(process.execPath, [realpathSync(output), phase, '--serial', 'fixture-phone',
+        '--apk-manifest', manifests.get(versionCode), '--out', receipt, ...extra], {
+        encoding: 'utf8', timeout: scaledTimeout(30_000), env: {...process.env, FIXTURE_DISTRIBUTION: distribution, FIXTURE_FOLLOWUP: followup ? '1' : '0'},
+      });
+    };
     run('before', before, ['--distribution', distribution]);
     run('after', after, ['--before', before]);
     const initial = JSON.parse(readFileSync(before)), updated = JSON.parse(readFileSync(after));

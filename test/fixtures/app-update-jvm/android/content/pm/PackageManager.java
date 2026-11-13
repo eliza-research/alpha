@@ -1,5 +1,6 @@
 package android.content.pm;
 public class PackageManager {
+ public static final int PERMISSION_GRANTED=0;
  public static final int GET_SIGNING_CERTIFICATES=0x08000000;
  public static final int GET_PERMISSIONS=0x00001000;
  public static final int MATCH_SYSTEM_ONLY=0x00100000;
