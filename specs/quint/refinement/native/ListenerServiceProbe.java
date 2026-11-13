@@ -11,7 +11,7 @@ public final class ListenerServiceProbe {
   StorePorts.preferences=new StorePorts.Preferences(Path.of(args[0]));
   new ListenerStore(new android.content.Context()).grantConsent(100,ListenerStore.consentGeneration());
   long generation=Listener.lease.acquire(1);Listener.lease.renew(generation,ServicePorts.now,1,true,true,true);
-  ListeningService service=new ListeningService();service.onCreate();service.onStartCommand(new android.content.Intent(),0,1);
+  ListeningService service=new ListeningService();service.onCreate();service.deliverStart(new android.content.Intent(),0,1);
   if(!ServicePorts.record.began.await(5,TimeUnit.SECONDS))throw new AssertionError("Capture failed to start");
   ExecutorService recognizer=(ExecutorService)Trace.read(service,"recognizer");recognizer.submit(()->{}).get(5,TimeUnit.SECONDS);
   ServicePorts.releaseFails=true;ServicePorts.stopFails=args.length>1&&args[1].equals("both");

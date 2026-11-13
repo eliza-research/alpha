@@ -21,7 +21,7 @@ public final class ListenerInputTraces {
   StorePorts.preferences=new StorePorts.Preferences(state);
   new ListenerStore(new android.content.Context()).grantConsent(100,0);
   leaseGeneration=Listener.lease.acquire(1);renew();
-  service.onCreate();service.onStartCommand(new Intent(),0,1);
+  service.onCreate();service.deliverStart(new Intent(),0,1);
   ServicePorts.record.allowRead.countDown();
   await(()->ServicePorts.record!=null&&ServicePorts.record.entered.get()>0,"initial capture read");
   settleWorker();trace=new Trace("listener-input-"+mode,observe());
@@ -78,7 +78,7 @@ public final class ListenerInputTraces {
  void loseLease()throws Exception {Listener.lease.revoke(leaseGeneration);step("loseLease");}
  void apply()throws Exception {
   AudioRecord previous=ServicePorts.record;Runnable reapply=(Runnable)field("reapply");
-  if(ServicePorts.queued.remove(reapply))reapply.run();else service.onStartCommand(new Intent(),0,1);
+  if(ServicePorts.queued.remove(reapply))reapply.run();else service.deliverStart(new Intent(),0,1);
   if(previous!=ServicePorts.record){ServicePorts.record.allowRead.countDown();await(()->ServicePorts.record.entered.get()>0,"new capture read");}
   if(!recognizing())settleWorker();step("applyPolicy");
  }

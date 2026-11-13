@@ -15,7 +15,7 @@ public final class ListenerAdmissionProbe {
   Listener.lease.renew(generation,ServicePorts.now,1,true,true,true);
   StorePorts.preferences.outcome="memory-failure";
   ListeningService service=new ListeningService();
-  service.onCreate();service.onStartCommand(new android.content.Intent(),0,1);
+  service.onCreate();service.deliverStart(new android.content.Intent(),0,1);
   ExecutorService recognizer=(ExecutorService)Trace.read(service,"recognizer");
   try{
    recognizer.submit(()->{}).get(5,TimeUnit.SECONDS);
