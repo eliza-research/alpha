@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Reviewed v65 private Cloud input with the bounded consent-reset repair. The archived input pair is preserved. The launcher is approved for signing and retained-data QA under the existing package and signing lineage.",
+  "description": "Reviewed v68 Cloud input with the clean composer, bundled Google mark and automatic progression over granted setup permissions. The archived input pair is preserved and the existing launcher signing lineage is retained.",
   "signerSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
   "lastRelease": {
     "versionCode": null,
@@ -11,32 +11,32 @@
     "schema": 1,
     "approval": "approved",
     "fromVersionCode": 49,
-    "versionCode": 65,
+    "versionCode": 68,
     "previousSignerSha256": "0438dccb2d5e83fc2ad1ab11cbb882f837d97c4aee7cba72af9229c39b149b80",
     "lineageSha256": "bca212509a83e8f2e60d2b9b744b1e0a4a014b780be058dcf81ff88a5d593759",
     "apksignerSha256": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
     "verifierJarSha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
     "unsignedApkSHA256": {
-      "launcher": "71f130ab889ccdd9449f18bc92ad65bf7dbae5235495edc944f2dc5c4320c1bf"
+      "launcher": "32e95d61ee2928965a997f5105893ecc5a6bba9fde0bd7c538b9bbaf2642187e"
     },
     "preserveSignaturePermissions": true
   },
   "privateProducerApproval": {
     "approval": "approved",
-    "alphaCommit": "506e6c2d0a4410f3b130494301dc65ccd0b65cd3",
+    "alphaCommit": "6d404f312120b79ea538fd2b39f719e1c40a7f64",
     "sdkCommit": "8ef6cce96348f993d041eaa6d83cd32ab4b2ffdf",
-    "versionCode": 65,
+    "versionCode": 68,
     "updateChannel": {
       "kind": "public",
       "manifestUrlSha256": "8e54b15a945c0fe1fd18bca9b4f4389249c5260bd72c912bccb6cd98e10308db"
     },
-    "archiveBytes": 633738681,
-    "archiveSHA256": "20a250c10e92378ae8155da10703b9f1e8bb049a16b98cf6f1aeec3897e35db6",
-    "producerManifestSHA256": "b8cef70da35f24b6a9c33cc32faa3331d72a53e1d8982f2b734fecad2fbff206",
-    "privateProducerReceiptSHA256": "10293400fae07b1cd6230493819162102896fc415ccf0037ac686b77f87304ad",
+    "archiveBytes": 633871367,
+    "archiveSHA256": "e5c8ab8854abff78ad95d0bf1a59a119be459961410de1c95612e288bfd1eb5c",
+    "producerManifestSHA256": "b4d7a0cd3c6956a4e7705ccbc20bf3046f0d3e03e3bb17fdec04071057b922d0",
+    "privateProducerReceiptSHA256": "67aa86b70f1e1129747b29c90cfbe9b97a418f070baea118297da03897d8b62c",
     "unsignedApkSHA256": {
-      "standalone": "3fa1a5c62c99ecc5db29104a8c1c20f3a446e401c96041d7849dc95cc0c7b389",
-      "launcher": "71f130ab889ccdd9449f18bc92ad65bf7dbae5235495edc944f2dc5c4320c1bf"
+      "standalone": "e8d5e2caff2f9e9961c06a06ecdcf303a916742955eac0ba2ee6db38bf86e83e",
+      "launcher": "32e95d61ee2928965a997f5105893ecc5a6bba9fde0bd7c538b9bbaf2642187e"
     }
   }
 }
