@@ -5,6 +5,7 @@ import {connectionController} from './runtime/connection-ui';
 import {googleConnectionController} from './runtime/google-connection-ui';
 import {startupPhotoAccess,startupLocationAccess,startupFilesAccess,lateReadyNotice,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
 import {iconStyle} from './icon-style';
+import {detectTelephonyProfile} from '../../../.eliza/client-features/packages/contracts/src/native-telephony.ts';
 import {Busy,StatusDot} from './runtime/status-ui';
 import {browserStartupPermission} from './startup-browser-permissions';
 import {createStartupPermissionFlow, startupPermissionKeys, nativeStartupPermissionKeys, type NativeStartupPermissionKey as PermissionKey, type StartupPermissionState} from './startup-permission-flow';
@@ -62,6 +63,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const [silent,setSilent] = useState(false);
   const locationDescription=useRef(''),photoDescription=useRef('');
   const native = Capacitor.getPlatform() === 'android';
+  const image = detectTelephonyProfile(Capacitor.getPlatform(), (Capacitor as typeof Capacitor & {PluginHeaders?: unknown}).PluginHeaders, 'AlphaTelephony');
   const keys: readonly PermissionKey[] = native ? nativeStartupPermissionKeys : startupPermissionKeys;
   const [flows] = useState(() => {
     const nativeBridges = {
@@ -96,7 +98,13 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const previousEnabled = useRef(enabled);
   const key = target ?? keys[progress?.step ?? 0];
   const state = states[key];
-  const visible = (active || ready) && (enabled || reopened) && !connection.open && !googleOpen;
+  const shown = (active || ready) && (enabled || reopened) && !connection.open && !googleOpen;
+  // The Alpha image grants this access at first boot (scripts/stage-aosp.ts LAUNCHER_DEFAULT_PERMISSIONS
+  // and AlphaSharedStoragePolicy), so first setup there passes a row Android already reports as allowed
+  // without a tap, and shows nothing while it reads. A row that is off still stops and asks; a Settings
+  // review shows every row.
+  const granted = image && active && !ready && !target && !review && (state === 'ready' || state === 'checking');
+  const visible = shown && !granted;
   const writeProgress = (value: Progress | null, choices = value?.choices ?? []) => {
     if (!reviewRef.current) try {
       writeStartupPermissionProgress(localStorage, {version: native ? 4 : 1, status: value ? 'pending' : 'completed', step: value?.step ?? keys.length, ...(choices.includes('skipped') ? {choices} : {})}, native);
@@ -212,6 +220,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     if (current.step + 1 < keys.length) writeProgress({version: 3, step: current.step + 1, choices: [...current.choices, choice]});
     else {finalChoices.current=[...current.choices, choice];writeProgress(null, finalChoices.current);setActive(false);setReady(true);}
   }
+  useEffect(() => {if (shown && granted && state === 'ready' && !busy) advance('continued');}, [shown, granted, state, busy, key]);
   function skip() {
     if (!canSkip || !currentInteraction()) return;
     ++sequence.current;flows[key].cancel();actionPending.current=false;setBusy(false);
