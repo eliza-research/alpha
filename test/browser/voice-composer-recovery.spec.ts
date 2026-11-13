@@ -177,11 +177,14 @@ test('speaking shows automatic microphone pause without changing the manual mute
 
 for(const reading of [false,true])for(const deliveredFirst of [false,true])test(`accepted voice follows new history only while following: reading=${reading}, deliveredFirst=${deliveredFirst}`,async({page})=>{
  await setup(page);
- await page.evaluate(()=>new Promise<void>(resolve=>{
+ await page.evaluate(()=>{
   const f=(window as any).voicePresentationFixture;
   const msgs=Array.from({length:60},(_,i)=>({id:`history-${i}`,from:i%2?'agent':'user',text:`History ${i}. More text for a real scrollable conversation.`,messageBinding:{conversationId:'synthetic-room'}}));
-  f.shell.setState({msgs,chat:'input',typing:false},resolve);
- }));
+  // Observe the real commit without leaving an unreferenced Promise in Chromium's inspector.
+  f.historySeeded=false;
+  f.shell.setState({msgs,chat:'input',typing:false},()=>{f.historySeeded=true;});
+ });
+ await expect.poll(()=>page.evaluate(()=>(window as any).voicePresentationFixture.historySeeded)).toBe(true);
  await page.getByRole('button',{name:'Talk',exact:true}).click();
  await expect(page.locator('.alpha-voice-composer')).toHaveAttribute('data-voice-state','listening');
  const list=page.locator('[data-alpha-transcript]');
@@ -194,12 +197,15 @@ for(const reading of [false,true])for(const deliveredFirst of [false,true])test(
   await expect.poll(()=>list.evaluate(e=>e.scrollHeight-e.scrollTop-e.clientHeight)).toBeGreaterThan(200);
  }
  const before=await list.evaluate(e=>e.scrollTop);
- await page.evaluate(({deliveredFirst})=>new Promise<void>(resolve=>{
+ await page.evaluate(({deliveredFirst})=>{
   const f=(window as any).voicePresentationFixture;
   const msgs=[...f.shell.S().msgs,{id:'voice-user',from:'user',text:'Accepted voice question',messageBinding:{conversationId:'synthetic-room'}},{id:'voice-answer',from:'agent',text:'Verified voice answer',messageBinding:{conversationId:'synthetic-room'}}];
-  if(deliveredFirst)f.shell.setState({msgs,typing:false},()=>{f.accepted('Accepted voice question');f.shell.setState({},resolve);});
-  else{f.accepted('Accepted voice question');f.shell.setState({msgs,typing:false},resolve);}
- }),{deliveredFirst});
+  f.voiceHistoryCommitted=false;
+  const committed=()=>{f.voiceHistoryCommitted=true;};
+  if(deliveredFirst)f.shell.setState({msgs,typing:false},()=>{f.accepted('Accepted voice question');f.shell.setState({},committed);});
+  else{f.accepted('Accepted voice question');f.shell.setState({msgs,typing:false},committed);}
+ },{deliveredFirst});
+ await expect.poll(()=>page.evaluate(()=>(window as any).voicePresentationFixture.voiceHistoryCommitted)).toBe(true);
  if(reading)await expect.poll(()=>list.evaluate((e,before)=>Math.abs(e.scrollTop-before),before)).toBeLessThan(3);
  else await expect(list.locator('[data-alpha-message-id="voice-answer"]')).toBeInViewport();
  await noMediaOrSends(page);
