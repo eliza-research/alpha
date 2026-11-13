@@ -4,13 +4,18 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
-const inventoryPath = 'specs/quint/legacy/core/source-inventory.json';
+export const quintHistoryInventories = [
+  'specs/quint/legacy/core/source-inventory.json',
+  'specs/quint/refinement/native/mms-historical-sources.json',
+];
 
 /** Fetch only missing explicitly inventoried historical revisions; never change the checkout. */
 export function prepareQuintHistory(root = projectRoot) {
-  const {revision}: {revision?: unknown} = JSON.parse(readFileSync(resolve(root, inventoryPath), 'utf8'));
-  if (typeof revision !== 'string' || !/^[a-f0-9]{40}$/.test(revision)) throw Error('Invalid historical source revision');
-  const revisions = [revision];
+  const revisions = [...new Set(quintHistoryInventories.map(path=>{
+    const {revision}: {revision?: unknown} = JSON.parse(readFileSync(resolve(root, path), 'utf8'));
+    if (typeof revision !== 'string' || !/^[a-f0-9]{40}$/.test(revision)) throw Error('Invalid historical source revision');
+    return revision;
+  }))];
   const vendor = resolve(root, 'vendor/eliza');
   const git = (args: string[]) => execFileSync('git', ['-C', vendor, ...args], {stdio:'pipe'});
   git(['rev-parse', '--git-dir']);

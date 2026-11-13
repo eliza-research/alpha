@@ -45,8 +45,9 @@ The checker appends a depth counter to the translated model, checks every state
 at depths zero through the bound, and records the scope, depth and translation
 hashes. It does not establish safety beyond that bound.
 
-`quint:tests` runs the `test/quint-*` files. Each drives product code against one model's
-transitions and compares what the code did with the model after every step.
+`quint:tests` prepares the explicitly inventoried historical source revisions and runs the
+`test/quint-*` owners. They compare product behavior with model transitions. Whole-file refinement
+and the retained partial-source contract regressions below have distinct evidence scopes.
 
 Model checking is separate and needs JDK 21 in this repository. Quint fetches its
 pinned Apalache 0.62.4 distribution when needed. The CLI also uses that
@@ -94,9 +95,22 @@ Shared behavior stays pinned by `upstream.lock.json`; the vendor checkout is imm
 A refinement test runs product code with controlled environmental ports and maps its concrete
 state through an explicit abstraction. Every recorded implementation event must correspond to a
 named model transition or leave the abstract state unchanged; a rejected command must find the
-model transition disabled. The test imports, bundles or compiles the whole product source file.
-A check that cuts a region out of a source file, asserts on source text or restates the model in
-JavaScript is not refinement and does not belong here.
+model transition disabled. New implementation refinement imports, bundles or compiles the whole
+product source file. Source-text assertions and JavaScript restatements of the model do not
+establish implementation correspondence.
+
+Some existing tests execute exact members extracted from authenticated source files. Their
+unique effect, refusal, ownership and recovery checks are retained as **partial-source contract
+regressions**, with their source hashes, original schedules and explicit exclusions. They do not
+qualify surrounding code, a reconstructed enclosing class or the full implementation. Do not add
+new source slicing or promote this evidence to whole-file refinement. Replace a retained partial
+test only after its behavior has qualified coverage in a whole-file test; preserve historical
+counterexample receipts and distinguish historical source from current source.
+
+The [retained partial-source inventory](partial-source-contracts.md) names the existing native,
+application and service owners, including individual owners for formerly aggregate-only checks.
+It records these exceptions without claiming that every other model has source coverage. Keep
+the inventory and each owner's scope current when replacing or retiring a partial contract.
 
 An adapter lives in its test file, `test/quint-<name>.test.mjs`, unless another module also uses
 it. Shared drivers, ports, fixtures and Java harnesses are in
@@ -150,7 +164,7 @@ identity, voice, resident execution, Calendar, Inbox and reset. It exercises
 coordinated account changes and reset and has a canary for omitted coordination.
 The full Cartesian product of all application details is not enumerated.
 
-Implementation correspondence is checked by the refinement tests above. It
+Implementation correspondence is checked within the whole-file or partial-source scopes above. It
 remains a different obligation from proving all TypeScript/Java execution
 refines all models. APK build and audit results,
 installed emulator behavior, AOSP image boot, provider integrations and device

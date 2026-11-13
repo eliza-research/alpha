@@ -29,10 +29,15 @@ at which running them is required. They are not part of `bun run verify` or of P
 when `develop` is promoted to `main`. Proofs need Dafny 4.11.0 on `PATH`.
 
 `quint:check` typechecks, runs the scenarios of and simulates every model registered in
-`specs/quint/*/manifest.json`. `quint:tests` runs `test/quint-*`: each file drives product code
-against one model's transitions. Keep one such file per model, import or compile the whole source
-file, and do not add a check that slices source text or restates the model
-(see [specs/quint/README.md](specs/quint/README.md)).
+`specs/quint/*/manifest.json`. `quint:tests` runs `test/quint-*`: owning tests compare product
+behavior with model transitions. New implementation refinement must import or compile the whole
+source file. Do not add new source slices, source-text assertions or JavaScript restatements of
+the model. Existing authenticated member-level tests with unique effect, refusal, ownership or
+recovery coverage remain explicitly scoped partial-source contract regressions. Retain those
+checks until a qualified whole-file test covers their behavior; do not describe them as whole-file
+refinement. Keep owning tests together where their product component is shared and remove duplicate
+aggregate runners. The evidence classes and retained partial-source inventory are documented in
+[specs/quint/README.md](specs/quint/README.md).
 
 ## Browser tests
 
