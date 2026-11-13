@@ -1,0 +1,7 @@
+{
+  "checker": {
+    "tuning": {
+      "search.invariant.mode": "after"
+    }
+  }
+}

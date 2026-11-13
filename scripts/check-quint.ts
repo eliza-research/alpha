@@ -52,6 +52,7 @@ if (command === 'compare' && !models.some(model => model.currentChecks?.length |
 const cli = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
 const version = readJson<{version: string}>(join(repositoryRoot, 'node_modules/@informalsystems/quint/package.json')).version;
 const inputPaths = [...new Set(['bun.lock', 'scripts/check-quint.ts', 'scripts/quint-lib.ts', 'scripts/sha256.ts', 'scripts/upstream-pin.ts', 'specs/quint/tlc.json',
+  '.github/workflows/promotion.yml', 'scripts/ci/native-crash-after.json',
   ...allModels.map(model => model.path),
   ...['application', 'services', 'native', 'legacy'].map(family => `specs/quint/${family}/manifest.json`),
   ...allModels.flatMap(model => model.sources || [])])];
@@ -256,7 +257,10 @@ async function runModel(model: QuintModel) {
     }
   }
   if (command === 'verify') {
-    await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, backend.startsWith('tlc') ? '--verbosity=5' : '--verbosity=1']);
+    const afterQualification = model.module === 'NativeCrashJournal' && backend === 'apalache';
+    await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`,
+      ...(afterQualification ? [`--apalache-config=${join(repositoryRoot, 'scripts/ci/native-crash-after.json')}`] : []),
+      backend.startsWith('tlc') || afterQualification ? '--verbosity=5' : '--verbosity=1']);
     if (model.additionalProofInit) await run(model, `${backend}-additional-init`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
   }
   if (command === 'temporal' && model.temporal?.length) {
