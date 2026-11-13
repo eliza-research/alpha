@@ -57,7 +57,6 @@ export function egressPrivacy(connection: EgressConnection, native = Capacitor.i
 const externalModules = new Set(['phone', 'messages', 'inbox', 'browser', 'camera', 'photos', 'maps', 'calendar', 'contacts', 'files', 'settings', 'wallet', 'workflows']);
 const text = (value: unknown) => typeof value === 'string' ? value : '';
 
-// tile-facts:begin (Alpha's tile labels and theme over the shared truthful presentation; test/shade-tile-facts.test.mjs)
 /** Only directly observed native facts. A missing key means unknown: no on/off is shown. */
 export type TileKey = SystemTileKey;
 export type TileFacts = SystemTileFacts;
@@ -79,7 +78,6 @@ export function honestTiles(tiles: ShadeTile[], facts: TileFacts, options: { fla
     return { ...tile, on, aria: tileAccessibleName(tile.label, key, on), pressed: key === 'torch' ? on : undefined, stateText: tileStateText(key, on), css: (on ? 'background:var(--acc);color:#fff' : 'background:var(--s2);color:var(--fg)') + ';flex-direction:column;gap:3px', toggle: () => options.act(key, tile) };
   });
 }
-// tile-facts:end
 // return-gate:begin (dependency-free; test/comms-settings.test.mjs)
 /** One run per return to the app. Android reports a single return as visibilitychange, focus and
  * appResumed together, so triggers inside the window after a run are ignored until the app is left. */

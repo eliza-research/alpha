@@ -135,7 +135,7 @@ export function roleValue(row: RoleRow | undefined): string {
   return androidRoleLabel(row, { packageName: 'ai.alphacompute.alphaphone', appName: 'Alpha Phone' });
 }
 
-// settings-facts:begin (dependency-free; exercised by test/settings-truth.test.mjs)
+// settings-facts:begin (dependency-free)
 /** Version as packaged, with Android's version code when it is a real positive integer. */
 export function versionLabel(version: unknown, code: unknown): string {
   const name = typeof version === 'string' && version ? version : 'Unavailable';
