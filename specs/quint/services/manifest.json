@@ -24,7 +24,7 @@
         "Two sign-in attempts and owners, five wrong-code attempts and three ack attempts.",
         "Opaque PKCE states, proofs and credentials are represented by identities. Cryptography, endpoint shapes and encrypted persistence are checked by existing implementation tests.",
         "Storage failure before the key commit ends the attempt. After key persistence, cancellation cannot stop acknowledgement. Authentication delivery precedes best-effort Steward logout and local-session cleanup.",
-        "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may retain the unretired record but cannot acquire a new live credential intent or exchange it. A recovered key acknowledgement loses the transient previous-token revocation capability and never claims it was revoked.",
+        "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may retain the unretired record but cannot acquire a new live credential intent or exchange it. The native client attempts previous-key revocation after the current acknowledgement attempts, including when activation is pending. Restart drops the transient previous-token capability and preserves an observed revocation.",
         "Legacy top-level key/receipt/ack fields describe the current Attempt. The canonical activation record retains an older committed owner during replacement admission. CurrentActivationProjection requires matching representations when both refer to the same committed attempt. beginWork represents the queued worker reaching the replacement pending write after old cleanup. Restart preserves durable replacement pending bytes while restoring the stored activation owner.",
         "A successful server acknowledgment may leave its durable receipt if cancellation retired the interaction. Startup can retry acknowledgment before removing that receipt; the stored credential remains committed."
       ],
@@ -36,7 +36,7 @@
       "tests": [
         "failedCallbackBurnTest",
         "failedCancelBurnTest",
-        "recoveredAckLosesPreviousRevocationTest",
+        "pendingAckRevokesPreviousBeforeRestartTest",
         "googleReturnTest",
         "ackRecoveryTest",
         "exhaustedCodesTest",
@@ -172,13 +172,15 @@
         "attempt/pendingEpoch/phase/returnMatched": "Google Workspace AppReturn v2 matching state, complete Cloud binding and foreground readback request",
         "account/readGrant/modifyGrant/calendarGrant": "selected connection and granted capabilities",
         "cacheVisible/review": "gmailGrantChange withdrawal and read-cache invalidation",
-        "disconnectSent/revoked": "one disconnect request followed by readback"
+        "disconnectSent/revoked": "one disconnect request followed by verified revocation",
+        "disconnectOutcome/disconnectRowsKnown": "the exact Gmail disconnect outcome and whether the account read supplied rows"
       },
       "abstractions": [
         "Two Google connections and two connect attempts represent arbitrary opaque IDs.",
         "Partial Gmail write capabilities are grouped as modify for the reviewed-operation gate. Calendar read/write differences are further modeled by CalendarSync.",
         "A return requests fresh account readback and does not itself grant capabilities.",
-        "Native Workspace AppReturn v2 and browser foreground return have separate transports. Return success does not grant Calendar or Gmail authority; only the current account-list read supplies capabilities."
+        "Native Workspace AppReturn v2 and browser foreground return have separate transports. Return success does not grant Calendar or Gmail authority; only the current account-list read supplies capabilities.",
+        "The account value retains the last verified selection when a disconnect read fails. A lost write response can be unconfirmed even when a read still finds the selected account. The model distinguishes the outcome from whether rows were observed."
       ],
       "path": "specs/quint/services/GoogleAccounts.qnt",
       "module": "GoogleAccounts",
@@ -189,6 +191,7 @@
         "connectAndReadTest",
         "grantWithdrawalTest",
         "disconnectUncertainTest",
+        "disconnectUncertainWithRowsTest",
         "explicitDisconnectRetryTest",
         "retiredAttemptTest",
         "coldReturnReadbackTest",
@@ -204,6 +207,7 @@
         "CacheNeedsRead",
         "ModifyIncludesRead",
         "RevokedAccountEmpty",
+        "DisconnectOutcomeNeedsReadback",
         "TypeOK"
       ],
       "bounds": {
@@ -213,7 +217,8 @@
       },
       "sharedSources": [
         "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/WorkspaceAppReturn.java",
-        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/WorkspaceAppReturnFlow.java"
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/WorkspaceAppReturnFlow.java",
+        "plugins/plugin-inbox/src/mailbox/failures.ts"
       ]
     },
     {
@@ -1720,6 +1725,7 @@
         "vendor/eliza/plugins/plugin-notes/src/interact.ts",
         "vendor/eliza/plugins/plugin-notes/src/types.ts",
         "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+        "vendor/eliza/plugins/plugin-notes/src/trash-retention.ts",
         ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
       ],
       "tests": [
@@ -1730,7 +1736,8 @@
         "legacyTieUsesRawOrderTest",
         "mixedLegacyEditTest",
         "rawRestoreMembershipTest",
-        "lostAckPreservesStaleCacheTest",
+        "lostAckFencesSharedCacheTest",
+        "fencedStoreCannotAdmitTest",
         "staleWriterRejectedTest",
         "restartLoadsUnknownCommitTest",
         "staleRevisionRejectedTest",
@@ -1746,7 +1753,8 @@
         "VisibleContentUnique",
         "ReplyIdentityPresent",
         "ConfirmedRevisionBounded",
-        "NewerOrderWins"
+        "NewerOrderWins",
+        "FencedCacheIsUnavailable"
       ],
       "abstractions": [
         "Two plain physical notes and two content classes; collection revisions zero through eight; wall-clock values zero through two.",
@@ -2370,6 +2378,7 @@
         "vendor/eliza/plugins/plugin-notes/src/store.ts",
         "vendor/eliza/plugins/plugin-notes/src/types.ts",
         "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+        "vendor/eliza/plugins/plugin-notes/src/trash-retention.ts",
         "vendor/eliza/packages/core/src/plugin-lifecycle.ts",
         "vendor/eliza/packages/core/src/runtime/room-handler-queue.ts",
         "vendor/eliza/packages/core/src/services/task.ts",

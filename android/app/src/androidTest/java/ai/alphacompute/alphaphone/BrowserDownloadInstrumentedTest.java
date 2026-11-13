@@ -31,7 +31,16 @@ public final class BrowserDownloadInstrumentedTest {
   ready("document.querySelector('input[aria-label=Address]').value==="+JSONObject.quote(url));
   host("document.querySelector('input[aria-label=Address]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))");
  }
- private void page()throws Exception{for(int i=0;i<200;i++){if("true".equals(browser.child("document.title==='Download fixture' && document.readyState==='complete' && typeof Capacitor==='undefined'")))return;SystemClock.sleep(100);}fail("Actual isolated download fixture did not load; "+browser.diagnostics());}
+ private String fixtureReady(String url){
+  return "location.href==="+JSONObject.quote(url)+" && document.title==='Download fixture' && document.readyState==='complete' && typeof Capacitor==='undefined'";
+ }
+ private void childReady(String script,String failure)throws Exception{
+  for(int i=0;i<200;i++){
+   if("true".equals(browser.child(script)))return;
+   SystemClock.sleep(100);
+  }
+  fail(failure+"; "+browser.diagnostics());
+ }
  private AccessibilityNodeInfo nativeNode(String text,boolean exact){
   // Android themes can expose transformed uppercase dialog button text. Search
   // a freshly obtained bounded tree, not the provider's case-sensitive index.
@@ -85,7 +94,13 @@ public final class BrowserDownloadInstrumentedTest {
   try(Cursor cursor=manager.query(new DownloadManager.Query())){while(cursor!=null&&cursor.moveToNext())if(name.equals(cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE))))return cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID));}return -1;
  }
  private long row(DownloadManager manager,String name)throws Exception{for(int i=0;i<150;i++){long id=find(manager,name);if(id>0)return id;SystemClock.sleep(100);}throw new AssertionError("Confirmed download has no actual provider row");}
- private void link(String id)throws Exception{page();assertEquals("true",browser.child("(()=>{document.querySelector('#"+id+"').click();return true})()"));nativeVisible("Download file?");}
+ private void link(String url,String id)throws Exception{
+  address(url);
+  // Check the exact document and click in one evaluation so a navigation cannot replace it between the two.
+  String click="(()=>{if(!("+fixtureReady(url)+"))return false;const link=document.getElementById("+JSONObject.quote(id)+");if(!link)return false;link.click();return true})()";
+  childReady(click,"Actual isolated download fixture did not reach the "+id+" link");
+  nativeVisible("Download file?");
+ }
  @Test public void explicitReviewExactBytesDenialAndCancellation()throws Exception{
   org.junit.Assume.assumeTrue("Loopback HTTP fixtures require a -PELIZA_DEV_ALLOW_TEST_MOCKS=1 debug build", BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   String token=UUID.randomUUID().toString(),filename="alpha-download-"+token+".txt",slowname="alpha-slow-"+token+".bin",errorname="alpha-error-"+token+".txt";
@@ -106,11 +121,10 @@ public final class BrowserDownloadInstrumentedTest {
   android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();DownloadManager manager=context.getSystemService(DownloadManager.class);List<Long> cleanup=new ArrayList<>();
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();host(AppNavigation.request("Browser"));ready(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();
-   String origin="http://127.0.0.1:"+server.getLocalPort(),url=origin+"/";
-   address(url);page();
-   link("file");nativeVisible("127.0.0.1");nativeVisible(filename);nativeVisible("Advertised size: "+expected.length+" bytes");
+   String origin="http://127.0.0.1:"+server.getLocalPort(),url=origin+"/?review=";
+   link(url+"deny","file");nativeVisible("127.0.0.1");nativeVisible(filename);nativeVisible("Advertised size: "+expected.length+" bytes");
    assertEquals("No DownloadManager side effect before consent",-1,find(manager,filename));nativeClick("Cancel");assertEquals("Denied review queues nothing",-1,find(manager,filename));
-   address(url);link("file");
+   link(url+"approve","file");
    // The WebView already requested the attachment to display its review. Capture that
    // baseline so a later request can distinguish actual DownloadManager activity.
    int fileRequestsBeforeEnqueue=fileRequests.get();String networkBeforeEnqueue=networkState(context);
@@ -124,14 +138,16 @@ public final class BrowserDownloadInstrumentedTest {
    nativeVisible("Complete · "+expected.length+" bytes");nativeClick("Close");
    // Reopen through the product menu, with status read from the native provider.
    clickHost("Menu");clickHost("Downloads");nativeVisible(filename);nativeVisible("Complete · "+expected.length+" bytes");nativeClick("Close");
-   address(url);link("slow");nativeClick("Download");long slowId=row(manager,slowname);cleanup.add(slowId);nativeVisible(slowname);nativeClickDescription("Cancel download "+slowname);
+   link(url+"cancel","slow");nativeClick("Download");long slowId=row(manager,slowname);cleanup.add(slowId);nativeVisible(slowname);nativeClickDescription("Cancel download "+slowname);
    boolean removed=false;for(int i=0;i<100;i++){try(Cursor cursor=manager.query(new DownloadManager.Query().setFilterById(slowId))){if(!cursor.moveToFirst()){removed=true;break;}}SystemClock.sleep(100);}assertTrue("Cancellation removes native transfer",removed);nativeClick("Close");
-   address(url);link("error");nativeClick("Download");long errorId=row(manager,errorname);cleanup.add(errorId);
+   link(url+"fail","error");nativeClick("Download");long errorId=row(manager,errorname);cleanup.add(errorId);
    boolean failed=false;for(int i=0;i<300;i++){try(Cursor cursor=manager.query(new DownloadManager.Query().setFilterById(errorId))){if(cursor.moveToFirst()&&cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))==DownloadManager.STATUS_FAILED){failed=true;break;}}SystemClock.sleep(100);}
    assertTrue("Native HTTP failure is not reported complete",failed);
    nativeVisible(errorname+"\n"+origin+"\nFailed · Server refused the file");
    nativeClick("Close");
-   address(url);page();assertEquals("Child download page retains no app bridge","true",browser.child("typeof Capacitor==='undefined' && typeof androidBridge==='undefined'"));
+   String returnedUrl=url+"return";
+   address(returnedUrl);
+   childReady(fixtureReady(returnedUrl)+" && typeof androidBridge==='undefined'","Isolated download fixture did not return without the app bridge");
   }finally{
    releaseSlow.countDown();server.close();workers.shutdownNow();for(long id:cleanup)manager.remove(id);for(String name:new String[]{filename,slowname,errorname}){long id=find(manager,name);if(id>0)manager.remove(id);}
    // Clean only fixture-owned history entries, preserving all unrelated downloads.

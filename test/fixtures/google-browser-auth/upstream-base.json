@@ -1,11 +1,11 @@
 {
-  "baseCommit": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
-  "note": "sha256 of each upstream packages/auth/android/test file this overlay replaces at its reviewed rebase pin. The pinned suite runs first; the browser fork retains its extra lifecycle cases plus upstream verification-ownership, persisted cancellation, acknowledgement-recovery and resident-mutation regressions. Null means upstream has no such file.",
+  "baseCommit": "c9247e6966b572612b51e6b5e6a1f15af2843af8",
+  "note": "sha256 of each upstream packages/auth/android/test file this overlay replaces at its reviewed rebase pin. The pinned suite runs first; the browser fork retains its additional lifecycle cases and current upstream verification ownership, durable return adoption, acknowledgement activation/recovery, SMS cooldown, silent renewal and resident-mutation regressions. Null means upstream has no such file.",
   "files": {
-    "native-sign-in.test.mjs": "3a1892e56c8b75ece7848ba01f0c157780799ad0c6ac45c408978275b0f88f59",
-    "ai/eliza/auth/cloud/CloudSignInFlowTest.java": "a1a36781bfc44fbea98e613a4ced67a522fdc1c6720212caa7edc69da7d00671",
-    "ai/eliza/auth/cloud/CloudSignInChainTest.java.txt": "00221a2ff985e470dfb0838e1cac84e0ff04fe228936b50a17660161094f4657",
-    "ai/eliza/auth/cloud/CloudSignInReadinessTest.java.txt": "a5aa1bc0215f6e7aaac8599a2ac7c5e1e7413a7620cbffb43dda430d66b49d7b",
+    "native-sign-in.test.mjs": "ea4d1bbc0c105d4b7685bd0f04655706eef553d794c4065e29e372a81dffc174",
+    "ai/eliza/auth/cloud/CloudSignInFlowTest.java": "540d4e5bfd53a62e872c7504e326b5d82ae92918af6e18ee78e77227e0c0cead",
+    "ai/eliza/auth/cloud/CloudSignInChainTest.java.txt": "404f9e394ef6f0ee06c1df7d2f076ee2e34ec0fdc6517a8f9268bc7eefe05d83",
+    "ai/eliza/auth/cloud/CloudSignInReadinessTest.java.txt": "6139703f99c685fc8dd9201aa804fdab3ff899918ba73016777e9b09c335973b",
     "ai/eliza/auth/cloud/CloudSignInBrowserTest.java.txt": null,
     "chain-methods.mjs": null
   }

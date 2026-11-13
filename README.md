@@ -48,7 +48,7 @@ Try Alpha in your browser. You need [Git](https://git-scm.com) and
 [Bun 1.4.2](https://bun.sh). No Android tools and no account are required.
 
 ```bash
-git clone --recurse-submodules https://github.com/alphacompute/alpha.git
+git clone --recurse-submodules https://github.com/eliza-research/alpha.git
 ```
 
 ```bash
@@ -166,6 +166,7 @@ Alpha is in **early pilot**.
 | Set up, run and test locally               | [Developer guide](docs/development.md#setup)                      |
 | Build, sign and verify Android APKs        | [Android builds](docs/development.md#android-builds)              |
 | Test on an emulator or stage an OS image   | [Device and image tooling](docs/development.md#device-and-image-tooling) |
+| Build, publish and verify launcher updates | [Launcher OTA](docs/development.md#launcher-ota) |
 | Understand what Alpha is meant to do       | [Product requirements](docs/prd.md)                               |
 | Work on the code with an AI coding agent   | [AGENTS.md](AGENTS.md)                                            |
 

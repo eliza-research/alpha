@@ -42,8 +42,8 @@ test('retired-channel inventory sets a version floor while the receipt binds onl
   };
   f.state.legacyMissing = false;
   f.state.legacyPages = [[{name: 'alpha-phone-703.apk'}]];
-  for (const repository of ['eliza-research/alpha', 'eliza-research/alphaphone', 'alphacompute/alphaphone']) {
-    f.state.legacyPointer = pointer(legacyManifestUrl.replace('alphacompute/alpha', repository), 704);
+  for (const repository of ['eliza-research/alpha', 'eliza-research/alphaphone', 'alphacompute/alpha', 'alphacompute/alphaphone']) {
+    f.state.legacyPointer = pointer(legacyManifestUrl.replace('eliza-research/alpha', repository), 704);
     const initial = await candidateVersion(f);
     assert.equal(initial.observedFloor, 704, repository);
     assert.equal(initial.manifestSha256, null);
@@ -150,7 +150,7 @@ test('archive measurement binds the actual artifact metadata and expanded upload
       repository_id: 1396333361, head_repository_id: 1396333361}};
   const options = {...f, archive: archive.relative, env: {...f.env, ALPHA_CANDIDATE_ARTIFACT_ID: '4242',
     ALPHA_CANDIDATE_ARTIFACT_SHA256: 'a'.repeat(64)}, api: args => {
-      assert.deepEqual(args, ['repos/alphacompute/alpha/actions/artifacts/4242']); return uploaded;
+      assert.deepEqual(args, ['repos/eliza-research/alpha/actions/artifacts/4242']); return uploaded;
     }};
   const files = fs.readdirSync(archive.output);
   const expandedBytes = files.reduce((sum, file) => sum + fs.statSync(path.join(archive.output, file)).size, 0);
@@ -224,14 +224,16 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, main), '1');
   assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
   assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
-  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), true);
+  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), false);
   // Literal expression checks, not execution of GitHub's concurrency backend.
   // One template string holds two GHA substitutions; inspect its group key.
   const group = workflow.concurrency.group.match(/\$\{\{([\s\S]*?)\}\}/)[1];
   const newer = {...main, sha: 'b'.repeat(40), run_id: '102'};
   const oldRerun = {...main, run_attempt: '2'};
-  assert.equal(evaluate(group, main), evaluate(group, newer));
-  assert.notEqual(evaluate(group, oldRerun), evaluate(group, newer), 'rerunning an old push cannot enter the primary group');
+  assert.notEqual(evaluate(group, main), evaluate(group, newer), 'an older push queued later cannot displace the latest push');
+  assert.equal(evaluate(group, main), evaluate(group, oldRerun), 'an attempt keeps the group of its own run');
+  assert.notEqual(evaluate(group, oldRerun), evaluate(group, newer), 'an older rerun cannot displace the latest push');
+  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], newer), false);
   assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], oldRerun), false);
   assert.equal(evaluate(group, oldRerun), evaluate(group, {...oldRerun, run_attempt: '3'}), 'reruns keep their own run-ID group');
   assert.notEqual(evaluate(group, oldRerun), evaluate(group, {...newer, run_attempt: '2'}));

@@ -129,24 +129,13 @@ public final class BrowserAutofillInstrumentedTest {
   catch(Exception error){throw new AssertionError(error);}
   return enabled[0];
  }
- private record ProviderCounts(int requests, int accepted, int rejected, int emptyRejections) {}
-
- private static ProviderCounts providerCounts() throws Exception {
-  AtomicReference<ProviderCounts> counts = new AtomicReference<>();
-  BoundedActivityScenario.main(() -> counts.set(new ProviderCounts(
-    SyntheticAutofillService.requests.get(), SyntheticAutofillService.accepted.get(),
-    SyntheticAutofillService.rejected.get(), SyntheticAutofillService.emptyRejections.get())));
-  return counts.get();
- }
-
  @Test public void frameworkFillsOnlyVisibleCommittedHttpsChild()throws Exception{
   String user=shell("am get-current-user");
   assertTrue("Foreground Android user must be numeric",user.matches("[0-9]{1,6}"));
   String prior=shell("settings --user "+user+" get secure autofill_service");
   assertTrue("Existing provider setting must be safely restorable",prior.isEmpty()||prior.equals("null")||prior.matches("[A-Za-z0-9_.$]+/[A-Za-z0-9_.$]+"));
   String component=InstrumentationRegistry.getInstrumentation().getTargetContext().getPackageName()+"/ai.alphacompute.alphaphone.SyntheticAutofillService";
-  SyntheticAutofillService.accepted.set(0);SyntheticAutofillService.rejected.set(0);SyntheticAutofillService.requests.set(0);
-  SyntheticAutofillService.emptyRejections.set(0);SyntheticAutofillService.armed=true;
+  SyntheticAutofillService.accepted.set(0);SyntheticAutofillService.rejected.set(0);SyntheticAutofillService.requests.set(0);SyntheticAutofillService.armed=true;
   try{
    shell("settings --user "+user+" put secure autofill_service "+component);
    try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
@@ -201,15 +190,13 @@ public final class BrowserAutofillInstrumentedTest {
      address("http://127.0.0.1:"+server.getLocalPort()+"/");
      childReady("location.protocol==='http:' && document.title==='Cleartext synthetic fixture' && document.readyState==='complete'");
      eligibility(child,View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
-     // Android can call the provider for a focus ID omitted from the request structure.
-     // Every callback must be rejected and contain no autofillable nodes or web origin.
-     ProviderCounts before = providerCounts();
+     // The synthetic provider refuses non-HTTPS domains by itself, so the property is that no
+     // request reaches it at all. Wait several request latencies, not one popup frame.
+     int requests=SyntheticAutofillService.requests.get(),accepted=SyntheticAutofillService.accepted.get(),rejected=SyntheticAutofillService.rejected.get();
      form();tapUsername();SystemClock.sleep(5000);
-     ProviderCounts after = providerCounts();
-     int emptyRejections = after.emptyRejections() - before.emptyRejections();
-     assertEquals("Autofill callbacks during cleartext focus contain no form data", emptyRejections, after.requests() - before.requests());
-     assertEquals("Cleartext document never requests a credential dataset", before.accepted(), after.accepted());
-     assertEquals("Autofill only rejects empty callbacks during cleartext focus", emptyRejections, after.rejected() - before.rejected());
+     assertEquals("Cleartext document never reaches the Autofill provider",requests,SyntheticAutofillService.requests.get());
+     assertEquals("Cleartext document never requests a credential dataset",accepted,SyntheticAutofillService.accepted.get());
+     assertEquals("Cleartext document is never offered to the provider for rejection",rejected,SyntheticAutofillService.rejected.get());
      assertNull("Cleartext form has no provider suggestion",suggestion());
      assertEquals("Cleartext fields remain empty","true",browser.child("document.querySelector('#alpha-user').value==='' && document.querySelector('#alpha-password').value===''") );
     }finally{server.close();worker.shutdownNow();}

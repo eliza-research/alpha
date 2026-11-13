@@ -37,11 +37,11 @@ Several schedules cover more than one of these transitions.
 | Finally-block Steward logout finishes | `releaseSteward` |
 
 The current attempt's `key` projection distinguishes its new credential from the
-previous credential represented by `owner`. A recovered acknowledgement has no
-persisted previous-token capability. `restart` therefore clears `oldKey` while
-keeping `revoked` false. Its recovered authenticated projection derives from the
-matching stored key and retired acknowledgement receipt. Startup recovery does
-not emit a new `signInCompleted` event.
+previous credential represented by `owner`. After trying to acknowledge the new key, the source attempts to revoke the
+replaced key even if activation is still pending. The restart schedule observes
+that self-revocation before Steward logout, followed by the saved key's successful
+acknowledgement and receipt removal after restart. The source can publish an
+unscoped completion when the recovered key still matches the saved slot.
 
 A callback after process recreation has no live credential intent. The shared
 coordinator retains pending bytes, emits its incomplete-sign-in notice, and

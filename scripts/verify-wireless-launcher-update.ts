@@ -1,25 +1,76 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Record an operator-run wireless launcher replacement using read-only ADB commands. */
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {readFileSync, lstatSync, writeFileSync} from 'node:fs';
+import {lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {parseArgs} from 'node:util';
 import {readReleaseSigner} from './build-android.ts';
 import {readHome} from './android-instrumentation.ts';
 import {parseOffer, publicObject} from './deliver-app-update.ts';
-import {adbFor, admitUnitApk, apkRuntimeIdentity, deviceFacts, PACKAGE, packageFacts} from './provision-unit.ts';
+import {adbFor, admitUnitApk, apkRuntimeIdentity, deviceFacts, PACKAGE, packageFacts, snapshotUnitApk} from './provision-unit.ts';
 import {inspectUpdateApk} from './update-apk-admission.ts';
 import {APP_UPDATE_TAG, appUpdateManifestUrl, isPublishedUpdateApkUrl} from './update-channel.ts';
 import {verifiedBootProblem} from './verify-pixel10a-image.ts';
+import {readAutomaticInstallHistory} from './wireless-install-history.ts';
+import {releaseRecordProblems} from '../vendor/eliza/packages/os/scripts/android/aosp-ota-update.mjs';
 
 type Adb = ReturnType<typeof adbFor>;
 type Distribution = 'sideload' | 'image-preinstalled';
 const HEX = /^[a-f0-9]{64}$/;
+const GIT_COMMIT = /^[a-f0-9]{40}$/;
+const isSha256 = (value: unknown) => typeof value === 'string' && HEX.test(value);
 const EMPTY_SHA256 = createHash('sha256').digest('hex');
-const SCHEMA = 'alpha-wireless-launcher-readback/v1';
+const SCHEMA = 'alpha-wireless-launcher-readback/v2';
 const HOME = 'android.intent.category.HOME';
+const sha256 = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
+
+function inspectReadbackApk(apk: ReturnType<typeof admitUnitApk>, descriptor: ReturnType<typeof readReleaseSigner>) {
+  const {versionCode} = apk;
+  assert.ok(versionCode !== null, 'Release version code is missing');
+  const directory = mkdtempSync(path.join(tmpdir(), 'alpha-wireless-apk-'));
+  try {
+    const snapshot = snapshotUnitApk(apk, directory);
+    const {signerRootSha256} = inspectUpdateApk({...snapshot, versionCode}, {descriptor});
+    const runtime = apkRuntimeIdentity(snapshot.file);
+    assert.ok(runtime.runtime === 'PACKAGED' && runtime.base && GIT_COMMIT.test(runtime.base), 'Release SDK revision is missing');
+    return {signerRootSha256, sdkCommit: runtime.base, versionCode};
+  } finally {
+    rmSync(directory, {recursive: true, force: true});
+  }
+}
+
+interface ImageExpectation {
+  releaseRecordSha256: string;
+  signedTargetFilesSha256: string;
+  fingerprintSha256: string;
+  vbmetaDigest: string;
+}
+
+function readImageExpectation(file: string, vbmetaDigest: string, apk: ReturnType<typeof admitUnitApk>): ImageExpectation {
+  assert.ok(HEX.test(vbmetaDigest), 'Expected the signed image’s chained VBMeta SHA-256');
+  const stat = lstatSync(file);
+  assert.ok(stat.isFile() && stat.size <= (1 << 20), 'Expected a bounded signed image release record');
+  const bytes = readFileSync(file);
+  assert.equal(bytes.length, stat.size, 'Image release record changed during capture');
+  const record = JSON.parse(bytes.toString('utf8'));
+  const channel = JSON.parse(readFileSync(new URL('../android/aosp/pixel10a-ota-channel.json', import.meta.url), 'utf8'));
+  const problems = releaseRecordProblems(record, channel);
+  assert.ok(problems.length === 0, `Image release record rejected: ${problems.join('; ')}`);
+  assert.ok(record.build.androidRelease === '17' && record.build.fingerprint.endsWith(':user/release-keys'),
+    'Expected the production Android 17 image fingerprint');
+  assert.ok(Array.isArray(record.apks) && record.apks.some((row: {sha256?: string; versionCode?: number; signerSha256?: string; distributable?: boolean}) =>
+    row?.distributable === true && row.sha256 === apk.sha256 && row.versionCode === apk.versionCode && row.signerSha256 === apk.signerSha256),
+    'Image release record does not admit the baked launcher APK');
+  return {
+    releaseRecordSha256: sha256(bytes),
+    signedTargetFilesSha256: record.artifacts.signedTargetFiles.sha256,
+    fingerprintSha256: sha256(record.build.fingerprint),
+    vbmetaDigest,
+  };
+}
 
 function installedState(adb: Adb) {
   const dump = adb(['shell', 'dumpsys', 'package', PACKAGE]).split(/\r?\n/);
@@ -69,6 +120,7 @@ export function captureLauncher(adb: Adb, serial: string) {
   const verifiedBootState = adb(['shell', 'getprop', 'ro.boot.verifiedbootstate']);
   const flashLocked = adb(['shell', 'getprop', 'ro.boot.flash.locked']);
   const vbmetaDigest = adb(['shell', 'getprop', 'ro.boot.vbmeta.digest']);
+  const codename = adb(['shell', 'getprop', 'ro.product.device']);
   const installed = installedState(adb);
   const home = readHome(adb, '0');
   assert.ok(home.holders.length === 1 && home.holders[0] === PACKAGE && home.activity.startsWith(PACKAGE + '/'),
@@ -76,18 +128,23 @@ export function captureLauncher(adb: Adb, serial: string) {
   assert.deepEqual(installedState(adb), installed, 'Package changed during readback');
   assert.deepEqual(readHome(adb, '0'), home, 'HOME selection changed during readback');
   assert.equal(adb(['shell', 'am', 'get-current-user']), '0', 'Android user changed during readback');
-  return {device: {...device, verifiedBootState, flashLocked, vbmetaDigest}, installed, home};
+  return {device: {...device, verifiedBootState, flashLocked, vbmetaDigest, codename}, installed, home};
 }
 
-function checkDistribution(distribution: Distribution, observation: Observation, phase: 'initial' | 'updated') {
+function checkDistribution(distribution: Distribution, observation: Observation, phase: 'initial' | 'updated', image?: ImageExpectation) {
   const {system, updatedSystemApp, apkLocation} = observation.installed;
   if (distribution === 'sideload') {
+    assert.ok(image === undefined, 'Sideload receipt must omit signed image evidence');
     assert.ok(!system && !updatedSystemApp && apkLocation === 'data', 'Sideload baseline must be an Android data installation');
     return;
   }
-  const {verifiedBootState, flashLocked, vbmetaDigest} = observation.device;
+  const {verifiedBootState, flashLocked, vbmetaDigest, codename, buildFingerprintSha256} = observation.device;
   const bootProblem = verifiedBootProblem({verifiedBoot: {state: verifiedBootState}});
-  assert.ok(!bootProblem && flashLocked !== '0' && HEX.test(vbmetaDigest), 'Image baseline must report locked verified boot and a vbmeta digest');
+  assert.ok(!bootProblem && flashLocked === '1' && codename === 'stallion', 'Image baseline must be a Pixel 10a with locked verified boot');
+  assert.ok(image && isSha256(image.releaseRecordSha256) && isSha256(image.signedTargetFilesSha256) &&
+    isSha256(image.fingerprintSha256) && isSha256(image.vbmetaDigest), 'Expected reviewed signed image evidence');
+  assert.ok(vbmetaDigest === image.vbmetaDigest && buildFingerprintSha256 === image.fingerprintSha256,
+    'Booted image differs from the reviewed fingerprint or chained VBMeta digest');
   if (phase === 'initial') {
     assert.ok(system && !updatedSystemApp && apkLocation === 'image',
       'Initial image baseline must run the launcher baked into the image. Use --previous for a follow-up.');
@@ -105,9 +162,18 @@ interface Receipt {
   distribution: Distribution;
   observation: Observation;
   signerRootSha256: string;
+  sdkCommit: string;
   offer: Offer;
+  image?: ImageExpectation;
+  automaticInstall?: ReturnType<typeof readAutomaticInstallHistory>;
   previousReceiptSha256?: string;
   beforeReceiptSha256?: string;
+}
+
+function requireAutomaticEvidence(evidence: Receipt['automaticInstall']) {
+  assert.ok(evidence && Number.isSafeInteger(evidence.sessionId) && evidence.sessionId > 0 && evidence.userId === 0 &&
+    evidence.requireUserAction === 'NOT_REQUIRED' && evidence.permissionsManuallyAccepted === false && evidence.finalStatus === 1,
+    'Expected Android’s verified automatic install history');
 }
 
 function readReceipt<P extends Receipt['phase']>(file: string, phase: P) {
@@ -118,24 +184,35 @@ function readReceipt<P extends Receipt['phase']>(file: string, phase: P) {
   const record = JSON.parse(bytes.toString('utf8')) as Receipt & {phase: P};
   assert.ok(record?.schema === SCHEMA && record.phase === phase && record.packageName === PACKAGE &&
     (record.distribution === 'sideload' || record.distribution === 'image-preinstalled') &&
-    HEX.test(record.signerRootSha256) && record.observation && record.offer, 'Invalid wireless readback receipt');
+    isSha256(record.signerRootSha256) && typeof record.sdkCommit === 'string' && GIT_COMMIT.test(record.sdkCommit) &&
+    record.observation && record.offer, 'Invalid wireless readback receipt');
+  const {manifestUrl, manifestSha256, apkUrl, versionCode, sha256: apkSha256, signerSha256, sizeBytes} = record.offer;
+  assert.ok(manifestUrl === appUpdateManifestUrl() && isSha256(manifestSha256) && isSha256(apkSha256) &&
+    signerSha256 === record.signerRootSha256 && Number.isSafeInteger(versionCode) && versionCode > 0 &&
+    isPublishedUpdateApkUrl(apkUrl, APP_UPDATE_TAG, versionCode) &&
+    Number.isSafeInteger(sizeBytes) && sizeBytes > 0 && sizeBytes <= 2**31,
+    'Receipt does not describe an exact public launcher offer');
   assert.ok(phase === 'after'
-    ? HEX.test(record.beforeReceiptSha256 ?? '') && record.previousReceiptSha256 === undefined
-    : record.beforeReceiptSha256 === undefined && (record.previousReceiptSha256 === undefined || HEX.test(record.previousReceiptSha256)),
+    ? isSha256(record.beforeReceiptSha256) && record.previousReceiptSha256 === undefined
+    : record.beforeReceiptSha256 === undefined && (record.previousReceiptSha256 === undefined || isSha256(record.previousReceiptSha256)),
     'Invalid wireless readback receipt link');
-  return {record, sha256: createHash('sha256').update(bytes).digest('hex')};
+  if (phase === 'after') requireAutomaticEvidence(record.automaticInstall);
+  else assert.ok(record.automaticInstall === undefined, 'Baseline must omit automatic install history');
+  checkDistribution(record.distribution, record.observation, phase === 'after' || record.previousReceiptSha256 ? 'updated' : 'initial', record.image);
+  return {record, sha256: sha256(bytes)};
 }
 
 export function checkFollowup(previous: Receipt, distribution: Distribution, observation: Observation, signerRootSha256: string) {
   assert.ok(previous.schema === SCHEMA && previous.phase === 'after' && previous.packageName === PACKAGE &&
     previous.distribution === distribution &&
     HEX.test(previous.beforeReceiptSha256 ?? ''), 'Follow-up requires a completed readback for the same distribution');
+  requireAutomaticEvidence(previous.automaticInstall);
   assert.ok(previous.signerRootSha256 === signerRootSha256 && previous.offer.signerSha256 === signerRootSha256,
     'Follow-up signing family differs');
   assert.deepEqual(observation, previous.observation, 'Phone, OS, HOME or installed APK differs from the previous update');
   assert.ok(observation.installed.initiator === PACKAGE && observation.installed.versionCode === previous.offer.versionCode &&
     observation.installed.sha256 === previous.offer.sha256, 'Previous readback does not bind the installed update');
-  checkDistribution(distribution, observation, 'updated');
+  checkDistribution(distribution, observation, 'updated', previous.image);
 }
 
 export async function readPublicLauncherOffer(read = publicObject) {
@@ -160,8 +237,8 @@ export function checkReplacement(before: Receipt, after: Observation, signerRoot
     'Expected a launcher baseline receipt');
   const previous = before.previousReceiptSha256;
   assert.ok(previous === undefined || HEX.test(previous), 'Invalid previous wireless readback receipt digest');
-  checkDistribution(before.distribution, before.observation, previous ? 'updated' : 'initial');
-  checkDistribution(before.distribution, after, 'updated');
+  checkDistribution(before.distribution, before.observation, previous ? 'updated' : 'initial', before.image);
+  checkDistribution(before.distribution, after, 'updated', before.image);
   assert.deepEqual(after.device, before.observation.device, 'Device or OS identity changed');
   assert.deepEqual(after.home, before.observation.home, 'HOME selection changed');
   assert.deepEqual(offer, before.offer, 'Public offer changed across the drill');
@@ -175,11 +252,63 @@ export function checkReplacement(before: Receipt, after: Observation, signerRoot
     'Release signing family changed');
 }
 
+function checkReadbackChain(files: readonly string[], distribution: Distribution) {
+  assert.equal(files.length, 4, `Expected four ${distribution} receipts in before, after, follow-up before, follow-up after order`);
+  const firstBefore = readReceipt(files[0], 'before');
+  const firstAfter = readReceipt(files[1], 'after');
+  const nextBefore = readReceipt(files[2], 'before');
+  const nextAfter = readReceipt(files[3], 'after');
+  const chain = [firstBefore, firstAfter, nextBefore, nextAfter];
+  assert.ok(chain.every(({record}) => record.distribution === distribution), `Expected only ${distribution} receipts`);
+  assert.equal(firstBefore.record.previousReceiptSha256, undefined, 'First receipt must be an initial baseline');
+  assert.equal(nextBefore.record.previousReceiptSha256, firstAfter.sha256, 'Follow-up does not link to the first after receipt');
+  assert.equal(nextBefore.record.sdkCommit, firstAfter.record.sdkCommit, 'Follow-up SDK revision differs from the installed release');
+  assert.deepEqual(nextBefore.record.image, firstAfter.record.image, 'Reviewed image evidence changed between updates');
+  checkFollowup(firstAfter.record, distribution, nextBefore.record.observation, nextBefore.record.signerRootSha256);
+  for (const [before, after] of [[firstBefore, firstAfter], [nextBefore, nextAfter]]) {
+    assert.equal(after.record.beforeReceiptSha256, before.sha256, 'After receipt does not link to its before receipt');
+    assert.deepEqual(after.record.image, before.record.image, 'Reviewed image evidence changed across the update');
+    checkReplacement(before.record, after.record.observation, after.record.signerRootSha256, after.record.offer);
+  }
+  return {
+    releases: [firstAfter, nextAfter].map(({record}) => ({offer: record.offer, sdkCommit: record.sdkCommit})),
+    receipts: chain.map(({sha256: digest}) => digest),
+  };
+}
+
+/** Recheck both saved device trails after the public channel has advanced. */
+export function verifyWirelessLauncherMatrix(sideload: readonly string[], imagePreinstalled: readonly string[]) {
+  const stock = checkReadbackChain(sideload, 'sideload');
+  const image = checkReadbackChain(imagePreinstalled, 'image-preinstalled');
+  assert.deepEqual(image.releases, stock.releases, 'Both distributions must record the same two published releases');
+  return {
+    schema: 'alpha-wireless-launcher-matrix/v1',
+    packageName: PACKAGE,
+    releases: stock.releases,
+    receipts: {sideload: stock.receipts, imagePreinstalled: image.receipts},
+  };
+}
+
+function writeMatrix(args: string[]) {
+  const {values} = parseArgs({args, options: {
+    sideload: {type: 'string', multiple: true},
+    'image-preinstalled': {type: 'string', multiple: true},
+    out: {type: 'string'},
+  }});
+  assert.ok(values.sideload && values['image-preinstalled'] && values.out,
+    'Use matrix with --sideload, --image-preinstalled and --out');
+  const report = verifyWirelessLauncherMatrix(values.sideload, values['image-preinstalled']);
+  writeFileSync(values.out, JSON.stringify(report, null, 2) + '\n', {flag: 'wx', mode: 0o600});
+}
+
 async function main() {
+  const args = process.argv.slice(2);
+  if (args[0] === 'matrix') return writeMatrix(args.slice(1));
   const {positionals: [phase, ...extra], values} = parseArgs({
-    allowPositionals: true, options: {
+    args, allowPositionals: true, options: {
       serial: {type: 'string'}, 'apk-manifest': {type: 'string'}, distribution: {type: 'string'},
       before: {type: 'string'}, previous: {type: 'string'}, out: {type: 'string'},
+      'image-release-record': {type: 'string'}, 'image-vbmeta-digest': {type: 'string'},
     },
   });
   assert.ok(extra.length === 0 && (phase === 'before' || phase === 'after') &&
@@ -190,31 +319,45 @@ async function main() {
   const baseline = values.before ? readReceipt(values.before, 'before') : undefined;
   const previous = values.previous ? readReceipt(values.previous, 'after') : undefined;
   const distribution = baseline?.record.distribution ?? values.distribution as Distribution;
+  const firstImage = phase === 'before' && distribution === 'image-preinstalled' && !previous;
+  const recordFile = values['image-release-record'], vbmetaDigest = values['image-vbmeta-digest'];
+  assert.ok(firstImage ? recordFile && vbmetaDigest : recordFile === undefined && vbmetaDigest === undefined,
+    'Provide --image-release-record and --image-vbmeta-digest only for the first image-preinstalled baseline');
   const {updateManifestUrl} = JSON.parse(readFileSync(new URL('../app.config.json', import.meta.url), 'utf8'));
   assert.equal(updateManifestUrl, appUpdateManifestUrl(), 'The configured launcher channel differs from the public release');
   const descriptor = readReleaseSigner();
   const apk = admitUnitApk(values['apk-manifest'], {variant: 'launcher', build: 'release'}, {descriptor, installedReadback: true});
-  assert.ok(apk.versionCode !== null, 'Release version code is missing');
-  const {signerRootSha256} = inspectUpdateApk({...apk, versionCode: apk.versionCode}, {descriptor});
-  const runtime = apkRuntimeIdentity(apk.file);
-  assert.ok(runtime.runtime === 'PACKAGED' && runtime.base && /^[a-f0-9]{40}$/.test(runtime.base), 'Release SDK revision is missing');
+  const {signerRootSha256, sdkCommit, versionCode} = inspectReadbackApk(apk, descriptor);
+  const image = recordFile && vbmetaDigest ? readImageExpectation(recordFile, vbmetaDigest, apk)
+    : baseline?.record.image ?? previous?.record.image;
   const offer = await readPublicLauncherOffer();
   assert.equal(offer.signerSha256, signerRootSha256, 'Public offer has a different signing family');
   if (!baseline) {
-    assert.ok(offer.versionCode > apk.versionCode, 'Public launcher version must advance the baseline');
+    assert.ok(offer.versionCode > versionCode, 'Public launcher version must advance the baseline');
     await verifyPublicLauncherBytes(offer);
   }
-  const observation = captureLauncher(adbFor(values.serial), values.serial);
-  assert.ok(observation.installed.sha256 === apk.sha256 && observation.installed.versionCode === apk.versionCode,
+  const adb = adbFor(values.serial);
+  const observation = captureLauncher(adb, values.serial);
+  assert.ok(observation.installed.sha256 === apk.sha256 && observation.installed.versionCode === versionCode,
     'Installed launcher differs from the locally admitted APK');
   if (baseline) checkReplacement(baseline.record, observation, signerRootSha256, offer);
   else if (previous) checkFollowup(previous.record, distribution, observation, signerRootSha256);
-  else checkDistribution(distribution, observation, 'initial');
+  else checkDistribution(distribution, observation, 'initial', image);
+  const automaticInstall = baseline && readAutomaticInstallHistory(
+    adb(['shell', 'dumpsys', 'package', 'installs'], {allowFailure: true}),
+    {
+      packageName: PACKAGE,
+      appId: observation.installed.appId,
+      versionCode: observation.installed.versionCode,
+      apkSha256: observation.installed.sha256,
+      signerRootSha256,
+    },
+  );
   assert.deepEqual(await readPublicLauncherOffer(), offer, 'Public offer changed during device readback');
   writeFileSync(values.out, JSON.stringify({
     schema: SCHEMA, phase, packageName: PACKAGE, distribution, capturedAt: new Date().toISOString(),
-    observation, signerRootSha256, sdkCommit: runtime.base, offer,
-    ...(baseline ? {beforeReceiptSha256: baseline.sha256} : previous ? {previousReceiptSha256: previous.sha256} : {}),
+    observation, signerRootSha256, sdkCommit, offer, ...(image ? {image} : {}),
+    ...(baseline ? {beforeReceiptSha256: baseline.sha256, automaticInstall} : previous ? {previousReceiptSha256: previous.sha256} : {}),
   }, null, 2) + '\n', {flag: 'wx', mode: 0o600});
 }
 

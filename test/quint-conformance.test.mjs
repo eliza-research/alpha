@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { repositoryRoot } from '../scripts/quint-lib.ts';
+import { scaledTimeout } from '../specs/quint/refinement/timeouts.mjs';
 
 async function sourceModule(path) {
   const bundled = await build({ absWorkingDir: repositoryRoot, entryPoints: [path],
@@ -22,7 +23,8 @@ function modelTrace(module, scenario, stateName = 's', main = module) {
     const result = spawnSync(process.execPath, [join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js'),
       'test', `specs/quint/application/${module}.qnt`, `--main=${main}`, '--backend=typescript', '--seed=20261107',
       '--max-samples=1', `--match=^${scenario}$`, `--out-itf=${output}`],
-    { cwd: repositoryRoot, encoding: 'utf8', timeout: 30000 });
+    { cwd: repositoryRoot, encoding: 'utf8', timeout: scaledTimeout(30000) });
+    assert.ifError(result.error);
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const trace = JSON.parse(readFileSync(join(directory, `trace-${scenario}-0.json`), 'utf8'),
       (_key, value) => value && typeof value === 'object' && '#bigint' in value ? Number(value['#bigint']) : value);

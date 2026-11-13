@@ -12,7 +12,7 @@ function fixture(){
  const old={configured:true,provider:'cerebras',selected:true,revision:'old-key',keys:{text:{configured:true},voice:{configured:true}}};
  const cloud={configured:false,provider:'elizacloud',selected:false,revision:'cloud',keys:{text:{configured:true},voice:{configured:true}}};
  const box=new Function('methods','old','cloud','reading','release',`
-  let operation=null,sending=null,providerStatusGeneration=0,signInReadinessOwner=null;const state={providerStatus:old,message:'',cloudAccount:{}};
+  let operation=null,sending=null,providerStatusGeneration=0,providerStatusReadSequence=0,signInReadinessOwner=null;const state={providerStatus:old,message:'',cloudAccount:{}};
   const update=patch=>Object.assign(state,patch),LOCAL_PROVIDER_MODEL='model',OWN_KEYS_NOT_SET_UP='Unavailable',isAndroid=false,browserCloudResidentEnabled=false;
   const work=async(_label,run)=>{operation=new AbortController();try{await run(operation.signal);}catch(error){if(!operation.signal.aborted)throw error;}finally{operation=null;}};
   const configureLocalProvider=async(_key,_model,_voice,signal)=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
@@ -42,7 +42,7 @@ test('a committed selection with a lost response reads status without replaying 
  // The controller's real method is re-evaluated against a committed-result-loss port.
  const state={providerStatus:f.old,cloudAccount:{}},updates=[];
  const run=new Function('methods','state','cloud','updates',`
-  let operation=null,sending=null,providerStatusGeneration=0;
+  let operation=null,sending=null,providerStatusGeneration=0,providerStatusReadSequence=0;
   const update=patch=>{updates.push(patch);Object.assign(state,patch);};
   const selectLocalProvider=async()=>{state.calls=(state.calls||0)+1;throw Error('response lost');};
   const localProviderStatus=async()=>{state.reads=(state.reads||0)+1;return cloud;};
@@ -63,7 +63,7 @@ test('signed-out Cloud choice opens sign-in without selecting Cloud or deleting 
  const original=f.state.providerStatus;
  // The method resolves its native saved-sign-in read before choosing a route.
  const api=new Function('methods','state','beginSignIn',`
-  let operation=null,sending=null,providerStatusGeneration=0;
+  let operation=null,sending=null,providerStatusGeneration=0,providerStatusReadSequence=0;
   const residentEnvironment=()=> 'production',cloudCredentialStore={read:async()=>null};
   const update=patch=>Object.assign(state,patch);
   const selectLocalProvider=async()=>{throw Error('must not select before sign-in');};
@@ -77,7 +77,7 @@ test('signed-out Cloud choice opens sign-in without selecting Cloud or deleting 
 for(const change of ['dismiss','Own'])test(`late saved-credential read cannot reopen Cloud sign-in after ${change}`,async()=>{
  const release=deferred(),state={providerStatus:{provider:'cerebras',selected:true,revision:'r1',keys:{text:{configured:true},voice:{configured:true}}},open:true,purpose:'provider',signIn:null};let opened=0;
  const api=new Function('methods','state','release',`
-  let operation=null,sending=null,providerStatusGeneration=0;
+  let operation=null,sending=null,providerStatusGeneration=0,providerStatusReadSequence=0;
   const residentEnvironment=()=> 'production',cloudCredentialStore={read:()=>release.promise};
   const update=patch=>Object.assign(state,patch),selectLocalProvider=async()=>{throw Error('must not select');};
   const api=eval(methods);return api;

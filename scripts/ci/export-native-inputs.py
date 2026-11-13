@@ -1,6 +1,6 @@
 """Prepare a local handoff packet from already reviewed native inputs."""
 import argparse
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import hashlib
 import importlib.util
 import json
@@ -134,42 +134,40 @@ def pack_inputs(archive, voice, component, qualification, inventory, reviewed):
     return files
 
 
-def verify_packet(file, files, receipt_bytes, reviewed):
-    with zipfile.ZipFile(file) as archive:
-        names = archive.namelist()
-        require(len(names) == len(files) + 1 and set(names) == {*files, RECEIPT}, 'Packet inventory differs')
-        require(archive.getinfo(RECEIPT).file_size == len(receipt_bytes) and archive.read(RECEIPT) == receipt_bytes,
-                'Copied packet receipt differs')
-        for name, fact in files.items():
-            require(archive.getinfo(name).file_size == fact['bytes'], f'Copied packet member size differs: {name}')
-            with archive.open(name) as source:
-                require(stream_fact(source, fact['bytes'], name) == fact, f'Copied packet member differs: {name}')
+def verify_packet(archive, files, receipt_bytes, reviewed, stage_file=None):
+    names = archive.namelist()
+    require(len(names) == len(files) + 1 and set(names) == {*files, RECEIPT}, 'Packet inventory differs')
+    require(archive.getinfo(RECEIPT).file_size == len(receipt_bytes) and archive.read(RECEIPT) == receipt_bytes,
+            'Copied packet receipt differs')
+    for name, fact in files.items():
+        require(archive.getinfo(name).file_size == fact['bytes'], f'Copied packet member size differs: {name}')
+        with archive.open(name) as source, (stage_file(name) if stage_file else nullcontext()) as destination:
+            require(stream_fact(source, fact['bytes'], name, destination) == fact, f'Copied packet member differs: {name}')
 
-        def copied_json(name):
-            raw = archive.read(name)
-            value = json.loads(raw)
-            require(isinstance(value, dict), f'Expected an object in {name}')
-            return value, raw
+    def copied_json(name):
+        raw = archive.read(name)
+        value = json.loads(raw)
+        require(isinstance(value, dict), f'Expected an object in {name}')
+        return value, raw
 
-        component_prefix = 'embedding-component/component-output'
-        component, _ = copied_json(component_prefix + '/export/PREPARATION.json')
-        intent, _ = copied_json(component_prefix + '/INTENT.json')
-        qualification, _ = copied_json('embedding-qualification/QUALIFICATION.json')
-        semantic, semantic_bytes = copied_json('embedding-qualification/embedding-qualification.json')
-        embedding.validate_carrier_schema(qualification, semantic)
-        native.verify_component(component, reviewed)
+    component_prefix = 'embedding-component/component-output'
+    component, _ = copied_json(component_prefix + '/export/PREPARATION.json')
+    intent, _ = copied_json(component_prefix + '/INTENT.json')
+    qualification, _ = copied_json('embedding-qualification/QUALIFICATION.json')
+    semantic, semantic_bytes = copied_json('embedding-qualification/embedding-qualification.json')
+    embedding.validate_carrier_schema(qualification, semantic)
+    native.verify_component(component, reviewed)
 
-        def library_digest(name, size):
-            fact = files[f'{component_prefix}/export/{name}']
-            require(fact['bytes'] == size, 'Library size/alignment mismatch')
-            return fact['sha256']
+    def library_digest(name, size):
+        fact = files[f'{component_prefix}/export/{name}']
+        require(fact['bytes'] == size, 'Library size/alignment mismatch')
+        return fact['sha256']
 
-        embedding.validate_receipt_contents(component, intent, qualification, semantic, semantic_bytes,
-                                            reviewed, library_digest)
+    embedding.validate_receipt_contents(component, intent, qualification, semantic, semantic_bytes,
+                                        reviewed, library_digest)
 
 
-def export_packet(root, voice, component, qualification, output):
-    root = root.resolve()
+def committed_inputs(root):
     require(Path(os.fsdecode(git(root, 'rev-parse', '--show-toplevel').rstrip())) == root,
             'Expected the Alpha product checkout root')
     source = git(root, 'rev-parse', 'HEAD').decode().strip()
@@ -192,7 +190,18 @@ def export_packet(root, voice, component, qualification, output):
     gitlink = f"160000 commit {identity['sdkCommit']}\tvendor/eliza"
     require(git(root, 'ls-tree', source, '--', 'vendor/eliza').decode().rstrip('\n') == gitlink,
             'SDK lock differs from the committed vendor pin')
+    return source, identity, reviewed, inventory, records
 
+
+def require_current_inputs(root, source, records):
+    require(git(root, 'rev-parse', 'HEAD').decode().strip() == source and
+            all(hashlib.sha256(record_bytes(root, name)).hexdigest() == digest
+                for name, digest in records.items()), 'Alpha source or reviewed records changed')
+
+
+def export_packet(root, voice, component, qualification, output):
+    root = root.resolve()
+    source, identity, reviewed, inventory, records = committed_inputs(root)
     output = Path(os.path.abspath(output))
     vendor = root / 'vendor'
     require(not output.is_relative_to(vendor), 'Output must be outside vendor')
@@ -215,11 +224,9 @@ def export_packet(root, voice, component, qualification, output):
                     receipt_bytes = (json.dumps(receipt, sort_keys=True, indent=2) + '\n').encode()
                     archive.writestr(RECEIPT, receipt_bytes)
                 file.flush()
-                verify_packet(file, files, receipt_bytes, reviewed)
-                require(git(root, 'rev-parse', 'HEAD').decode().strip() == source and
-                        all(hashlib.sha256(record_bytes(root, name)).hexdigest() == digest
-                            for name, digest in records.items()),
-                        'Alpha source or reviewed records changed during export')
+                with zipfile.ZipFile(file) as archive:
+                    verify_packet(archive, files, receipt_bytes, reviewed)
+                require_current_inputs(root, source, records)
                 os.fsync(file.fileno())
                 require(file_identity(os.stat(pending, dir_fd=out_fd, follow_symlinks=False)) ==
                         file_identity(os.fstat(file.fileno())), 'Verified pending packet was replaced')

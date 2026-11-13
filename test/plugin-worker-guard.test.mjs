@@ -19,7 +19,7 @@ test('the shared guard refuses work for a stopped, shut-down or full worker with
 const plugins={
  AlphaActionJournalPlugin:['worker()'],
  AlphaConnectionPlugin:['workers'],
- AlphaDevicePlugin:['diagnosticsWorker','updateWorker'],
+ AlphaDevicePlugin:['diagnosticsWorker','updateWorker','updateOfferReader'],
  AlphaFilesPlugin:['worker','storageWorker'],
  AlphaHostedResultsPlugin:['io'],
  AlphaLocalAgentPlugin:['workers','voiceWorkers','rendererWorkers'],
@@ -63,13 +63,13 @@ test('DailyApps runs every selected-document call on its worker, never on the pl
 });
 
 // The process-wide final-offer slot has a different lifetime from plugin workers. Its
-// sole synchronous caller catches a rejected slot; native-plugin-teardown.test.mjs
+// sole submission rejects through PluginWorkers; native-plugin-teardown.test.mjs
 // verifies that call boundary and refuses aliases, shutdown owners and extra callers.
 const processWorkers={AlphaDevicePlugin:['updateOfferReader']};
 test('the final-offer process worker remains private and is used only by its reviewed submission',()=>{
  const source=readFileSync(nativeSource('AlphaDevicePlugin.java'),'utf8');
  assert.match(source,/private static final java\.util\.concurrent\.ExecutorService updateOfferReader=/);
- assert.equal([...source.matchAll(/\bupdateOfferReader\.submit\(/g)].length,1);
+ assert.equal([...source.matchAll(/\bPluginWorkers\.submit\(updateOfferReader,/g)].length,1);
  assert.equal([...source.matchAll(/\bupdateOfferReader\b/g)].length,2,'only its declaration and reviewed submission may reference the slot');
 });
 

@@ -19,27 +19,6 @@ spec.loader.exec_module(module)
 
 
 class EmbeddingInputsTest(unittest.TestCase):
-    def environment(self):
-        return {'ALPHA_LOCAL_EMBEDDINGS':'1',
-                'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11','ALPHA_EMBEDDING_COMPONENT_SHA256':'a'*64,
-                'ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID':'12','ALPHA_EMBEDDING_QUALIFICATION_SHA256':'b'*64}
-
-    def test_default_is_noop(self):
-        self.assertEqual(module.settings({}), [])
-
-    def test_explicit_complete_inputs(self):
-        self.assertEqual(module.settings(self.environment()), [('11','a'*64),('12','b'*64)])
-
-    def test_partial_or_implicit_inputs_rejected(self):
-        for key in self.environment():
-            env=self.environment();env.pop(key)
-            with self.subTest(key=key),self.assertRaises(ValueError):module.settings(env)
-        with self.assertRaises(ValueError):module.settings({'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11'})
-
-    def test_duplicate_artifacts_rejected(self):
-        env=self.environment();env['ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID']='11'
-        with self.assertRaises(ValueError):module.settings(env)
-
     def test_artifact_metadata_is_pinned_and_same_repository(self):
         value={'id':11,'expired':False,'digest':'sha256:'+'a'*64,'size_in_bytes':50,
                'workflow_run':{'id':13,'repository_id':module.REPOSITORY_ID,'head_repository_id':module.REPOSITORY_ID,'head_sha':'c'*40}}
@@ -47,6 +26,14 @@ class EmbeddingInputsTest(unittest.TestCase):
         for changed in [{'expired':True},{'digest':'sha256:'+'b'*64},{'size_in_bytes':module.MAX_ARCHIVE+1},
                         {'workflow_run':{**value['workflow_run'],'head_repository_id':0}}]:
             with self.subTest(changed=changed),self.assertRaises(ValueError):module.validate_metadata({**value,**changed},'11','a'*64)
+
+    def test_repository_admission_follows_the_same_id_across_owner_transfer(self):
+        for name in ('eliza-research/alpha', 'alphacompute/alpha'):
+            with self.subTest(name=name):
+                env = {'GITHUB_REPOSITORY': name, 'GITHUB_REPOSITORY_ID': str(module.REPOSITORY_ID)}
+                self.assertTrue(module.canonical_repository(env))
+                self.assertFalse(module.canonical_repository({**env, 'GITHUB_REPOSITORY_ID': '1'}))
+        self.assertFalse(module.canonical_repository({}))
 
     def test_redirects_never_accept_local_or_non_tls_hosts(self):
         module.safe_redirect('https://release.blob.core.windows.net/valid?signature=opaque')
@@ -67,6 +54,10 @@ class EmbeddingInputsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             target=Path(tmp)/'artifact.zip';module.download('11',digest,target,'synthetic-token',Opener())
             self.assertEqual(target.read_bytes(),data)
+        api = f'https://api.github.com/repositories/{module.REPOSITORY_ID}/'
+        self.assertEqual([request.full_url for request in requests[:3]], [
+            api + 'actions/artifacts/11', api + 'actions/runs/13', api + 'actions/artifacts/11/zip',
+        ])
         self.assertIsNotNone(requests[2].get_header('Authorization'))
         self.assertIsNone(requests[3].get_header('Authorization'))
 

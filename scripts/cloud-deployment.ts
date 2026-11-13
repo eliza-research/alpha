@@ -2,12 +2,12 @@ import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {CLOUD_DEPLOYMENT,CLOUD_SIGN_IN_REGISTRATION} from './cloud-deployment-policy.ts';
+import {CLOUD_DEPLOYMENT,CLOUD_DEPLOYMENT_IS_CANDIDATE,CLOUD_SIGN_IN_REGISTRATION} from './cloud-deployment-policy.ts';
 import {CLOUD_SDK_BASES,cloudSdkBases,cloudEnvironments,type CloudEnvironment} from './cloud-sdk-authority.ts';
 
 export interface CloudDeploymentRow { api: string; web: string; services: string; tenant: string; name?: string; entitlementAudience?: string }
 export type CloudDeploymentConfig = Record<CloudEnvironment, CloudDeploymentRow>;
-interface CloudDeploymentCheckOptions { config?: CloudDeploymentConfig; sdkBases?: Readonly<Record<CloudEnvironment, string>>; namespaces?: readonly string[] }
+interface CloudDeploymentCheckOptions { config?: CloudDeploymentConfig; sdkBases?: Readonly<Record<CloudEnvironment, string>>; namespaces?: readonly string[]; candidate?: boolean }
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const productIdentity=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8'));
@@ -87,13 +87,16 @@ export function deploymentOutputs(config: CloudDeploymentConfig){
   'android/app/cloud-deployment.generated.gradle':gradle.join('\n')+'\n',
  };
 }
-export function checkCloudDeployment(directory=root,{config=CLOUD_DEPLOYMENT,sdkBases=CLOUD_SDK_BASES,namespaces=STORAGE_NAMESPACES}: CloudDeploymentCheckOptions={}){
+export function checkCloudDeployment(directory=root,{config=CLOUD_DEPLOYMENT,sdkBases=CLOUD_SDK_BASES,namespaces=STORAGE_NAMESPACES,candidate=CLOUD_DEPLOYMENT_IS_CANDIDATE}: CloudDeploymentCheckOptions={}){
  const outputs=deploymentOutputs(config);
  for(const [name,contents] of Object.entries(outputs)){
   const file=path.join(directory,name);
   if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==contents)throw Error('Stale Cloud deployment output: '+name+'; run bun scripts/cloud-deployment.ts');
  }
- if(storageFingerprint(config)!==namespaces.at(-1))throw Error('Cloud storage namespace would change: every installed phone loses its production credential; add a tested migration (LegacyCloudRecovery) and append the new namespace to STORAGE_NAMESPACES in scripts/cloud-deployment.ts');
+ // A candidate Cloud (ALPHA_CLOUD_DEPLOYMENT_FILE) is a development build with its own namespace by design;
+ // it must never reuse a shipped one, or its sign-ins would be read by a build for another Cloud.
+ if(candidate){if(namespaces.includes(storageFingerprint(config)))throw Error('A candidate Cloud deployment must differ from every shipped deployment');}
+ else if(storageFingerprint(config)!==namespaces.at(-1))throw Error('Cloud storage namespace would change: every installed phone loses its production credential; add a tested migration (LegacyCloudRecovery) and append the new namespace to STORAGE_NAMESPACES in scripts/cloud-deployment.ts');
  // The resident agent's inference base (ELIZAOS_CLOUD_BASE_URL) must be the configured API, never a second authority.
  if(JSON.stringify(sdkBases)!==JSON.stringify(cloudSdkBases(config)))throw Error('Cloud SDK bases (scripts/cloud-sdk-authority.ts) disagree with the Cloud deployment policy');
 }

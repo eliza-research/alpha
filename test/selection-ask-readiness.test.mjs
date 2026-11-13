@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import test from 'node:test';
 import {build} from 'esbuild';
+import {createFilesIndex} from '../apps/app/src/prototype/files-index.ts';
 
 const imports=new Map([
  ['./file-email-review','export const reviewFileEmail=()=>{throw Error("Email outside fixture")};'],
@@ -23,7 +24,9 @@ const compiled=await build({
  }}],
 });
 function fixture({read=async()=>({status:'read',text:'Readable excerpt'}),pdf=async()=>({status:'rendered',page:0,pageCount:1,imageUri:'blob:pdf-page'}),native=false,
-  sourceRead=async()=>{throw Error('Source read outside fixture');},sourceRetain=async()=>({reference:'fixture-source'})}={}){
+  sourceRead=async()=>{throw Error('Source read outside fixture');},sourceRetain=async()=>({reference:'fixture-source'}),
+  index={record:()=>[],setOpen(){},list:()=>[],open:()=>null,has:()=>true},
+  describe=async()=>({status:'unavailable'}),rename=async()=>({status:'unavailable'})}={}){
  const state={open:null},document={hidden:false,querySelector:()=>null},reviews=[],forgotten=[],retained=[];
  let active=true;
  const api={active:true,isActive:()=>active,get:()=>state,set:patch=>Object.assign(state,patch),setView(){},
@@ -31,8 +34,8 @@ function fixture({read=async()=>({status:'read',text:'Readable excerpt'}),pdf=as
  const ports={
   review(input){const reviewed={input,closed:false};reviews.push(reviewed);return ()=>{reviewed.closed=true;};},
   capacitor:{isNativePlatform:()=>native,convertFileSrc:value=>value},
-  daily:{readSelected:read,pdfSelected:pdf,forgetSelected:async input=>forgotten.push(input.selectionId)},
-  index:{record:()=>[],setOpen(){},list:()=>[],open:()=>null,has:()=>true},
+  daily:{readSelected:read,pdfSelected:pdf,describeSelected:describe,renameSelected:rename,forgetSelected:async input=>forgotten.push(input.selectionId)},
+  index,
   plugin:name=>name==='AlphaMailAttachments'?{readSelected:sourceRead,retainSourceReference:input=>{retained.push(input);return sourceRetain(input);}}:{},
   reviewAttachment:async file=>file,
  };
@@ -41,8 +44,8 @@ function fixture({read=async()=>({status:'read',text:'Readable excerpt'}),pdf=as
   createRequire(import.meta.url),module,module.exports,ports,new EventTarget(),document,{});
  const views={files:{render:()=>({})},inbox:{}},Component=class {};
  const accept=module.exports.installSelectedDocumentAdapter(Component,views);
- return {accept:result=>accept('files',result,api),render:()=>views.files.render(state,api),api,state,document,reviews,forgotten,retained,
-  active(value){active=value;},close:()=>views.files.back(state,api)};
+ return {accept:(result,recent)=>accept('files',result,api,recent),render:()=>views.files.render(state,api),api,state,document,reviews,forgotten,retained,
+  active(value){active=value;},leave:()=>views.files.onLeave?.(api),close:()=>views.files.back(state,api)};
 }
 const selected=(id='one',mimeType='text/plain')=>({status:'selected',selectionId:id,name:id+'.file',mimeType,uri:'blob:'+id});
 
@@ -113,5 +116,62 @@ test('source verification rechecks the current view after file read and source r
   f.active(false);pending.resolve(boundary==='read'?file:{reference:'late-source'});
   await assert.rejects(result,/Source changed|Selection changed/);
   assert.equal(f.retained.length,boundary==='read'?0:1);
+ }
+});
+
+function rendererStorage(){
+ const rows=new Map();
+ const store={getItem:key=>rows.get(key)??null,setItem:(key,value)=>rows.set(key,value),removeItem:key=>rows.delete(key)};
+ return ()=>createFilesIndex(store);
+}
+const nativeFile=id=>({...selected(id),uri:'content://fixture/'+id,action:'files'});
+const settleRenderer=()=>new Promise(resolve=>setImmediate(resolve));
+
+test('Files browsing previews do not become picker previews after the renderer is recreated',async()=>{
+ const index=rendererStorage(),value=nativeFile('storage-preview'),first=fixture({native:true,index:index()});
+ await first.accept(value,false);
+ assert.equal(first.render().pv.nativeSelectionId,value.selectionId);
+ const describeCalls=[];
+ const describe=async input=>{describeCalls.push(input.selectionId);return value;};
+ const recreated=fixture({native:true,index:index(),describe});
+ recreated.render();
+ await settleRenderer();
+ assert.equal(recreated.render().pv,undefined);
+ assert.equal(index().open(),null);
+ assert.deepEqual(describeCalls,[]);
+ // Earlier versions stored a raw open ID even when no picker row existed.
+ index().setOpen(value.selectionId);
+ const legacy=fixture({native:true,index:index(),describe});
+ legacy.render();
+ await settleRenderer();
+ assert.equal(legacy.render().pv,undefined);
+ assert.equal(index().open(),null);
+ assert.deepEqual(describeCalls,[]);
+ assert.deepEqual(legacy.forgotten,[]);
+});
+
+test('an exact remembered picker grant survives rename and restores only while Files owns the request',async()=>{
+ const index=rendererStorage(),first=fixture({native:true,index:index(),rename:async()=>nativeFile('picker-renamed')});
+ await first.accept(nativeFile('picker-original'));
+ first.api.set({rn:'picker-renamed.file'});
+ await first.render().pv.saveRn();
+ assert.equal(index().open(),'picker-renamed');
+ assert.deepEqual(index().list().map(row=>row.selectionId),['picker-renamed']);
+ const wrong=fixture({native:true,index:index(),describe:async()=>nativeFile('different-picker')});
+ wrong.render();await settleRenderer();
+ assert.equal(wrong.render().pv,undefined);
+ const held=Promise.withResolvers(),left=fixture({native:true,index:index(),describe:()=>held.promise});
+ left.render();left.active(false);left.leave();left.active(true);held.resolve(nativeFile('picker-renamed'));await settleRenderer();
+ assert.equal(left.render().pv,undefined);
+ const moving=Promise.withResolvers(),folder=fixture({native:true,index:index(),describe:()=>moving.promise});
+ folder.render();folder.api.set({folder:'folder'});folder.render();folder.api.set({folder:null});
+ moving.resolve(nativeFile('picker-renamed'));await settleRenderer();
+ assert.equal(folder.render().pv,undefined);
+ for(let recreation=0;recreation<2;recreation++){
+  const restored=fixture({native:true,index:index(),describe:async({selectionId})=>nativeFile(selectionId)});
+  restored.render();await settleRenderer();
+  assert.equal(restored.render().pv.nativeSelectionId,'picker-renamed');
+  assert.equal(restored.render().pv.canForget,true);
+  assert.equal(index().open(),'picker-renamed');
  }
 });

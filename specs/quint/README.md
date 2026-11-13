@@ -20,7 +20,7 @@ actions, invariants, scenarios, source files and abstractions.
 Install the root lockfile with `bun install --frozen-lockfile`. The development tool is pinned to
 `@informalsystems/quint` 0.33.1. `bun run verify` and `bun run test` leave out the default
 Quint gate and the `test/quint-*` tests; run them before merging. CI runs them only for
-pull requests into `main` and on manual dispatch (`.github/workflows/quint-model-check.yml`).
+pull requests into `main` and on manual dispatch (`.github/workflows/promotion.yml`).
 
 ```sh
 bun run quint:check
@@ -64,8 +64,14 @@ bun run quint:compare -- --backend=tlc --models=ChatInput
 ```
 
 `--models` selects comma-separated module names. `--out` selects the JSON
-evidence file. `--timeout` sets the per-check timeout in seconds, with 1800 for
-model checking and 120 for the default gate. The checker saves parameters, model hashes, complete checker output, exit status and evidence class under
+evidence file. `--jobs` or `ALPHA_QUINT_JOBS` allows independent scenario,
+simulation and typecheck workers. The default is one worker. Each model keeps
+its ordered phases, and the receipt lists results in registry order. Use
+`ALPHA_QUINT_JOBS=3 npm run verify` to apply this to the standard gate. Model
+checking remains serial within one server endpoint.
+`--timeout` sets the per-check timeout in seconds, with 1800 for model checking
+and 120 for the default gate. The checker saves parameters, model hashes,
+complete checker output, exit status and evidence class under
 `test-results/quint/` by default. Temporal/compare commands reject a selection
 that has no corresponding checks. TLC exploration ignores the symbolic
 transition bound and may take substantially longer on large finite models.
@@ -110,9 +116,10 @@ advancing. The models distinguish these contracts.
 
 ## Verification record
 
-The integrated check results and any remaining limits are recorded in
-`verification.md` after validation. Historical TLC tables remain under their
-original design directories and retain their original evidence dates.
+Current checks write their source-bound receipts to `test-results/quint/` and
+`test-results/quint-refinement/`. CI retains the corresponding run artifacts.
+[`verification.md`](verification.md) records the historical migration checks
+and their original scope.
 
 ## Registry review
 

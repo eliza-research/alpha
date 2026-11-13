@@ -143,7 +143,7 @@ public final class AssistantEntryTraces {
   return Trace.fields("sdk", Build.VERSION.SDK_INT, "now", SystemClock.now, "locked", Context.keyguard.locked,
     "policy", policy(), "account", accountClass(AlphaCredentialStore.account),
     "epoch", AlphaLocalAgentPlugin.powerAuthorizationMutationEpoch,
-    "signers", Context.packages.listener && Context.packages.system, "protected", Context.packages.protectedPower,
+    "signers", Context.packages.listener, "systemSigner", Context.packages.system, "image", imageFacts(), "protected", Context.packages.protectedPower,
     "latest", latest, "bound", state != null && Trace.read(state, "session") != null ? latest : 0,
     "invocation", invocation(), "surfaces", new JSONObject().put("1", surface(1)).put("2", surface(2)),
     "tile", tileState(), "reply", result);
@@ -164,12 +164,52 @@ public final class AssistantEntryTraces {
 
  private static String callerPackage(String caller) {
   return switch (caller) {
-   case "listener" -> HOST + ".sense";
-   case "system" -> "com.android.systemui";
+   case "listener", "listener-uid-mismatch" -> HOST + ".sense";
+   case "system", "system-uid-mismatch" -> "com.android.systemui";
    case "foreign" -> "fixture.alpha.unknown";
    case "none" -> null;
    default -> throw new AssertionError(caller);
   };
+ }
+
+ private static int callerUid(String caller) {
+  return switch(caller) {
+   case "listener" -> 12001;
+   case "system" -> 1000;
+   case "listener-uid-mismatch", "system-uid-mismatch", "foreign" -> 9999;
+   case "none" -> -1;
+   default -> throw new AssertionError(caller);
+  };
+ }
+
+ private static boolean imageFacts() {
+  return BuildConfig.IS_LAUNCHER && !BuildConfig.DEBUG && !BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS
+   && Context.hostSystem && Context.provisioned && Context.packages.feature && Context.control
+   && Context.packages.companionEnabled && Context.packages.companionSystem
+   && Context.packages.companionPath && Context.packages.hotword;
+ }
+
+ private static void denyImageFact(String fact) throws Exception {
+  switch(fact) {
+   case "launcher" -> BuildConfig.IS_LAUNCHER=false;
+   case "debug" -> BuildConfig.DEBUG=true;
+   case "mocks" -> BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS=true;
+   case "host-system" -> Context.hostSystem=false;
+   case "provisioned" -> Context.provisioned=false;
+   case "feature" -> Context.packages.feature=false;
+   case "enabled" -> Context.packages.companionEnabled=false;
+   case "companion-system" -> Context.packages.companionSystem=false;
+   case "companion-path" -> Context.packages.companionPath=false;
+   case "hotword" -> Context.packages.hotword=false;
+   case "control" -> Context.control=false;
+   default -> throw new AssertionError(fact);
+  }
+  trace.step("imageAdmission", observe(), imageFacts());
+ }
+
+ private static void trust(boolean listener, boolean system) throws Exception {
+  Context.packages.listener=listener;Context.packages.system=system;
+  trace.step("trustedSigners", observe(), listener, system);
  }
 
  private static void create(int id, String kind, boolean restored, boolean bridge, String caller) throws Exception {
@@ -184,6 +224,7 @@ public final class AssistantEntryTraces {
   view.taskId = id;
   view.copyLoadIntent = !exactLoad;
   view.launchedFrom = callerPackage(caller);
+  view.launchedFromUid = callerUid(caller);
   view.setIntent(hostile());
   view.onCreate(restored ? new Bundle() : null);
   retainedLoadIntent[id] = loadIntent[id] != null && loadIntent[id] == view.getIntent();
@@ -194,7 +235,7 @@ public final class AssistantEntryTraces {
  private static void offer(int id, String caller, boolean modern) throws Exception {
   AlphaAssistActivity view = views[id];
   String name = callerPackage(caller);
-  if (modern) view.onNewIntent(hostile(), name == null ? null : new ComponentCaller(name));
+  if (modern) view.onNewIntent(hostile(), name == null ? null : new ComponentCaller(name, callerUid(caller)));
   else view.onNewIntent(hostile());
   trace.step("offer", observe(), id, caller, modern);
  }
@@ -304,7 +345,7 @@ public final class AssistantEntryTraces {
  }
 
  private static void preparePower() throws Exception {
-  create(1, "power", false, true, "none");
+  create(1, "power", false, true, "system");
   bind(1);
   focus(1, true);
  }
@@ -312,7 +353,7 @@ public final class AssistantEntryTraces {
  public static void main(String[] args) throws Exception {
   String name = args[0];
   int sdk = Integer.parseInt(args[1]);
-  BuildConfig.IS_LAUNCHER = false;
+  BuildConfig.IS_LAUNCHER = true;
   Build.VERSION.SDK_INT = sdk;
   new SenseListenerClient(Context.APP).admitOwner(() -> AlphaCredentialStore.account);
   trace = new Trace(name, observe());
@@ -327,8 +368,8 @@ public final class AssistantEntryTraces {
     tick(name.equals("cold-exact-deadline") ? 15100 : 15101);
     bind(1); take(1, true, true);
    }
-   case "cold-rebound" -> {
-    create(1, "assist", false, true, "system");
+   case "cold-rebound", "cold-listener-rebound" -> {
+    create(1, "assist", false, true, name.equals("cold-rebound") ? "system" : "listener");
     replaceAuthority(2); bind(1); take(1, true, true);
    }
    case "cold-locked" -> {
@@ -342,7 +383,7 @@ public final class AssistantEntryTraces {
     view.onNewIntent(view.getIntent());
     trace.macro("Public one-argument same-object delivery after load", observe(), Trace.action("offer", 1, "none", false));
     bind(1); take(1, true, true);
-    view.onNewIntent(view.getIntent(), new ComponentCaller(callerPackage("system")));
+    view.onNewIntent(view.getIntent(), new ComponentCaller(callerPackage("system"), callerUid("system")));
     trace.macro("Public caller delivery with same object after load", observe(), Trace.action("offer", 1, "system", true));
     take(1, true, true);
    }
@@ -408,28 +449,61 @@ public final class AssistantEntryTraces {
    }
    case "power-locked" -> {
     env(true, "current", true, true);
-    create(1, "power", false, true, "none"); bind(1); focus(1, true);
+    create(1, "power", false, true, "system"); bind(1); focus(1, true);
     env(false, "current", true, true); claim(1, 1, true, true);
    }
    case "power-unprotected" -> {
     env(false, "current", true, false);
-    create(1, "power", false, true, "none"); bind(1); focus(1, true);
+    create(1, "power", false, true, "system"); bind(1); focus(1, true);
     claim(1, 1, true, true); offer(1, "none", true); take(1, true, true);
    }
-   case "stale-power" -> {
+   case "stale-power", "stale-power-listener" -> {
     preparePower();
-    create(2, "assist", false, true, "none"); bind(2); offer(2, "system", true);
+    create(2, "assist", false, true, "none"); bind(2); offer(2, name.equals("stale-power") ? "system" : "listener", true);
     bind(1); offer(1, "none", true); retire(1, true); release(1);
     take(2, true, true);
+   }
+   case "listener-uid-mismatch" -> {
+    create(1, "assist", false, true, "listener-uid-mismatch"); bind(1);
+    offer(1, "listener-uid-mismatch", true); take(1, true, true);
+    offer(1, "listener", true); take(1, true, true);
+   }
+   case "listener-independent-platform" -> {
+    trust(true,false); create(1, "assist", false, true, "listener"); bind(1); take(1,true,true);
+    create(2, "power", false, true, "system"); bind(2); focus(2,true); claim(2,1,true,true);
+   }
+   case "system-independent-listener" -> {
+    trust(false,true); create(1, "assist", false, true, "listener"); bind(1); take(1,true,true);
+    create(2, "power", false, true, "system"); bind(2); focus(2,true); claim(2,1,true,true);
+   }
+   case "warm-power-caller" -> {
+    preparePower();
+    if(sdk>=35){
+     for(String caller:new String[]{"none","listener","foreign","system-uid-mismatch"}) {
+      offer(1,caller,true);take(1,true,true);
+     }
+    }
+    offer(1,"system",false);take(1,true,true);
+    if(sdk>=35){offer(1,"system",true);take(1,true,true);}
    }
    case "tile" -> {
     listen(false); listen(true); click(); env(true, "current", true, true);
     listen(true); click(); unlock(false); click(); unlock(true); listen(true);
    }
    default -> {
+    if(name.startsWith("cold-power-caller-")) {
+     create(1,"power",false,true,name.substring("cold-power-caller-".length()));
+     bind(1);focus(1,true);claim(1,1,true,true);break;
+    }
+    if(name.startsWith("image-denied-")) {
+     denyImageFact(name.substring("image-denied-".length()));
+     create(1,"assist",false,true,"listener");bind(1);take(1,true,true);
+     create(2,"power",false,true,"system");bind(2);focus(2,true);claim(2,1,true,true);
+     offer(2,"system",true);take(2,true,true);break;
+    }
     if (!name.startsWith("power-denied-")) throw new AssertionError(name);
     env(false, name.substring("power-denied-".length()), true, true);
-    create(1, "power", false, true, "none"); bind(1); focus(1, true);
+    create(1, "power", false, true, "system"); bind(1); focus(1, true);
     env(false, "current", true, true); claim(1, 1, true, true);
    }
   }

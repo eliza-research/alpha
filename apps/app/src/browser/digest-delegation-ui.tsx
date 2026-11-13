@@ -4,7 +4,7 @@ import {digestAuthorizationDocument,type DigestAuthorization as Pending} from '.
 import {openDomainRecovery} from './domain-recovery';
 import type {HostedDigestProtocol} from '../runtime/hosted-digests';
 type Binding={client:HostedDigestProtocol;signal:AbortSignal;valid:()=>boolean;store:ReturnType<typeof digestAuthorizationDocument>;readEpoch:number;refresh:(resume:boolean)=>Promise<void>};
-export function BrowserDigestDelegation({client,scope,signal,current,onConnected}:{client:HostedDigestProtocol;scope:string;signal:AbortSignal;current:()=>boolean;onConnected:()=>void}){
+export function BrowserDigestDelegation({client,scope,signal,current,onConnected,onReviewRemoval,removalBusy,revocation}:{client:HostedDigestProtocol;scope:string;signal:AbortSignal;current:()=>boolean;onConnected:()=>void;onReviewRemoval:(grantId:string)=>void;removalBusy:boolean;revocation:{grantId:string;removed:boolean}|null}){
  const [pending,setPending]=useState<Pending|null>(null),[email,setEmail]=useState(true),[calendar,setCalendar]=useState(false),[busy,setBusy]=useState(false),[ready,setReady]=useState(false),[active,setActive]=useState(true),[message,setMessage]=useState('Reading saved authorization…'),[grantId,setGrantId]=useState(''),[expanded,setExpanded]=useState(false);
  const binding=useRef<Binding|null>(null),locked=useRef<Binding|null>(null);
  const save=async(b:Binding,expected:Pending|null,next:Pending|null)=>{b.readEpoch++;await b.store.save(expected,next);b.readEpoch++;if(b.valid()){setPending(next);if(next)setExpanded(true);}};
@@ -43,6 +43,11 @@ export function BrowserDigestDelegation({client,scope,signal,current,onConnected
   return()=>{owner.abort();release();if(binding.current===b)binding.current=null;if(locked.current===b)locked.current=null;for(const event of events)window.removeEventListener(event,retire);document.removeEventListener('visibilitychange',hidden);};
  },[scope,client,signal]);
  const act=(work:(b:Binding)=>Promise<void>)=>{const b=binding.current;if(b)void run(b,()=>work(b));};
+ useEffect(()=>{
+  if(!revocation||!binding.current?.valid()||grantId!==revocation.grantId)return;
+  if(revocation.removed)setGrantId('');
+  setMessage(revocation.removed?'Cloud read access revoked.':'Cloud disconnect pending.');
+ },[revocation]);
  const disabled=busy||!ready||!active;
  return <details open={expanded} onToggle={e=>setExpanded(e.currentTarget.open)}><summary>Connect Cloud for scheduled reads</summary><p role="status">{message}</p>
  {!pending?<><label><input type="checkbox" checked={email} disabled={disabled} onChange={e=>setEmail(e.target.checked)}/>Inbox subjects and snippets</label><label><input type="checkbox" checked={calendar} disabled={disabled} onChange={e=>setCalendar(e.target.checked)}/>Calendar events</label><button disabled={disabled||!email&&!calendar} onClick={()=>act(async b=>{const record:Pending={mutationId:crypto.randomUUID(),phase:'start',kinds:[...(email?['email']:[]),...(calendar?['calendar']:[])]};await save(b,null,record);await resume(b,record);})}>Review Cloud read access</button></>:<>
@@ -50,7 +55,7 @@ export function BrowserDigestDelegation({client,scope,signal,current,onConnected
  {pending.phase==='review'&&<button disabled={disabled} onClick={()=>act(async b=>{const next:Pending={...pending,phase:'complete'};await save(b,pending,next);await finish(b,next);})}>Approve browser read access</button>}
  <button disabled={disabled} onClick={()=>act(b=>resume(b,pending))}>Check authorization status</button>
  <button disabled={disabled||pending.phase==='complete'} onClick={()=>act(async b=>{if(pending.state){const result=await b.client.delegation('cancel',{state:pending.state,confirmed:true},b.signal);if(!b.valid())return;if(result.status==='complete'){await finish(b,pending);return;}}else{const result=await b.client.delegation('start',{mutationId:pending.mutationId,kinds:pending.kinds,confirmed:true},b.signal);if(!b.valid())return;await b.client.delegation('cancel',{state:result.state,confirmed:true},b.signal);}await save(b,pending,null);if(b.valid())setMessage('Authorization cancelled.');})}>Cancel authorization</button></>}
- {grantId&&<button disabled={disabled} onClick={()=>act(async b=>{await b.client.delegation('revoke',{grantId,confirmed:true},b.signal);if(b.valid()){setGrantId('');setMessage('Cloud read access revoked.');onConnected();}})}>Revoke this Cloud read grant</button>}
+ {grantId&&<button disabled={disabled||removalBusy} onClick={()=>{if(binding.current?.valid())onReviewRemoval(grantId);}}>Review Cloud read grant removal</button>}
  <button disabled={busy||!active} onClick={()=>{const b=binding.current;if(b?.valid())openDomainRecovery(b.store,'digest authorization','Development digest authorization recovery','Download this connection’s pending authorization before resetting. Reset clears only the saved local request; it does not revoke a completed grant. Check connected accounts and revoke unwanted access separately before starting a replacement request.',b.signal);}}>Authorization recovery</button>
  </details>;
 }

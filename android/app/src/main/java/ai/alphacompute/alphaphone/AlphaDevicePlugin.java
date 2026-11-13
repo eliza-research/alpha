@@ -278,7 +278,7 @@ public final class AlphaDevicePlugin extends Plugin {
    if(result==null)call.resolve();else call.resolve(result);
   });
  }
- /** A downloaded automatic update may only replace idle, unlocked Home. */
+ /** A downloaded automatic update may only replace idle, unlocked Home. The image also hosts calls. */
  private boolean automaticUpdateReady(){
   android.app.Activity activity=getActivity();
   if(!(activity instanceof MainActivity)||((MainActivity)activity).isAssistantSurface()||!shareForeground(activity))return false;
@@ -289,9 +289,12 @@ public final class AlphaDevicePlugin extends Plugin {
    if(!AlphaImageCapability.verified(context))return true;
    android.telecom.TelecomManager calls=context.getSystemService(android.telecom.TelecomManager.class);
    // A grant arriving after Telecom returned false cannot authenticate that read.
-   if(calls==null||!canReadUpdateCallState(context,calls)||calls.isInCall())return false;
-   return canReadUpdateCallState(context,calls);
-  }catch(RuntimeException unknown){return false;}
+   if(calls==null||!canReadUpdateCallState(context,calls))return false;
+   // Lint cannot infer the privileged, default-dialer and AppOps checks in the helper.
+   @android.annotation.SuppressLint("MissingPermission") boolean inCall=calls.isInCall();
+   return !inCall&&canReadUpdateCallState(context,calls);
+  }catch(SecurityException denied){return false;}
+  catch(RuntimeException unknown){return false;}
  }
  /** Telecom can report false when phone-state access is denied. Only use a negative with known access. */
  private static boolean canReadUpdateCallState(Context context,android.telecom.TelecomManager calls){
@@ -739,11 +742,13 @@ public final class AlphaDevicePlugin extends Plugin {
  /** The installer stops waiting even if opening, redirecting or closing the connection is blocked. */
  private static byte[] readFinalUpdateManifest()throws Exception{
   long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(UPDATE_MANIFEST_RECHECK_MILLIS);
-  var result=updateOfferReader.submit(()->{
+  var result=new java.util.concurrent.FutureTask<>(()->{
    checkOfferDeadline(deadline);
    return readUpdateManifest(openUpdateConnection(BuildConfig.ALPHA_UPDATE_MANIFEST_URL,
     UPDATE_MANIFEST_RECHECK_MILLIS,UPDATE_MANIFEST_RECHECK_MILLIS),deadline);
   });
+  if(!PluginWorkers.submit(updateOfferReader,result,()->result.cancel(false)))
+   throw new java.io.IOException("Update offer reader unavailable");
   try{
    byte[] manifest=result.get(Math.max(0,deadline-System.nanoTime()),java.util.concurrent.TimeUnit.NANOSECONDS);
    checkOfferDeadline(deadline);

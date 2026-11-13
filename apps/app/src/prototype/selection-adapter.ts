@@ -15,6 +15,14 @@ import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 type Bag = Record<string, any>;
 type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number; mediaFailed?:boolean };
 
+async function readFilesListing<T extends {status:string;message?:string}>(reply:Promise<T>) {
+  const result=await reply;
+  // The shared view handles denied access and navigation away from a missing folder.
+  // Other read failures go through its existing persistent error state.
+  if(!['ready','denied','missing'].includes(result.status))throw Error(result.message||'Files could not be read.');
+  return result;
+}
+
 function previewMedia(result:NativeResult) {
   const native=Capacitor.isNativePlatform(),uri=result.uri,mime=result.mimeType||'';
   if(!uri||!(native?uri.startsWith('content://'):uri.startsWith('blob:')))return undefined;
@@ -31,7 +39,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   let epoch = 0;
   let current: Selection | undefined;
   let selectedApi: Bag | undefined;
-  let restoreAttempted = false;
+  let restoreAttempted = false, restoringPicker = false;
   let pdfBusySelection: string | undefined;
   let pdfRequest = 0;
   let renameBusy = false;
@@ -42,6 +50,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     if(element){element.controls=true;if(element instanceof HTMLVideoElement)element.playsInline=true;}
   };
   const marker = '__native_selected_document';
+  const rememberedPicker = (id:string) => filesIndex.list().some(row=>row.selectionId===id&&row.kind==='selected'&&row.status==='ready');
   let closeQuestion:(()=>void)|undefined;
   const release = (id: string) => { void DailyApps.forgetSelected({ selectionId: id }).catch(() => selectedApi?.toast('Reopen Files')); };
   /** Closing keeps a Recent selection's grant so Recent can reopen it; Forget
@@ -117,7 +126,8 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       // Keep Recent on the new name: same row, or the replacement capability when the provider issued one.
       const old=filesIndex.list().find(row=>row.selectionId===selected.result.selectionId);
       if(old&&response.selectionId){if(old.selectionId!==response.selectionId)filesIndex.remove(old.key);for(const evicted of filesIndex.record({kind:old.kind,...(old.treeId?{treeId:old.treeId}:{}),name:response.name||'Selected document',mimeType:response.mimeType||'application/octet-stream',selectionId:response.selectionId}))if(evicted!==response.selectionId)release(evicted);}
-      if(response.selectionId)filesIndex.setOpen(response.selectionId);
+      if(response.selectionId&&old?.kind==='selected'&&rememberedPicker(response.selectionId))filesIndex.setOpen(response.selectionId);
+      else if(filesIndex.open()===selected.result.selectionId)filesIndex.setOpen(null);
       current={...selected,result:response,pdf:undefined,renames:(selected.renames||0)+1};api.set({renaming:false});publish();refresh();
       if(response.mimeType==='application/pdf')await pdfPage(selected.pdf?.page || 0,api);
     } catch {if(current === selected)api.toast('Unconfirmed');}
@@ -129,9 +139,25 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     const render = definition.render;
     definition.render = (st: Bag, api: Bag) => {
       const data = render(st, api);
-      if(module === 'files' && api.active && !restoreAttempted && Capacitor.isNativePlatform()) {
-        restoreAttempted = true; const requestedEpoch = epoch;
-        const openId = filesIndex.open(); if (openId) void DailyApps.describeSelected({ selectionId: openId }).then(result => {if(epoch === requestedEpoch && !current && result.status === 'selected')void accept('files',result,api);}).catch(()=>{});
+      if(module === 'files') {
+        const browse = api.isActive()&&!document.hidden&&!st.open&&!st.folder;
+        if(!browse)restoringPicker=false;
+        else if(!restoreAttempted&&Capacitor.isNativePlatform()) {
+          restoreAttempted=true;
+          const requestedEpoch=epoch,openId=filesIndex.open();
+          if(openId&&!current){
+            // Earlier renderers also saved transient Files-browser selections here.
+            if(!rememberedPicker(openId))filesIndex.setOpen(null);
+            else {
+              restoringPicker=true;
+              void DailyApps.describeSelected({selectionId:openId}).then(result=>{
+                if(!restoringPicker||epoch!==requestedEpoch||current||!api.isActive()||document.hidden||api.get('files').open||api.get('files').folder||filesIndex.open()!==openId||!rememberedPicker(openId))return;
+                if(result.status==='selected'&&result.selectionId===openId&&result.action==='files')void accept('files',result,api,{kind:'selected'});
+                else if(result.status==='unavailable')filesIndex.setOpen(null);
+              }).catch(()=>{}).finally(()=>{restoringPicker=false;});
+            }
+          }
+        }
       }
       if (st.open !== marker || !current) return data;
       const selected = current;
@@ -189,6 +215,10 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       }
       return data;
     };
+    if(module==='files') {
+      const leave=definition.onLeave;
+      definition.onLeave=(...args:unknown[])=>{restoringPicker=false;return leave?.(...args);};
+    }
     const back = definition.back;
     definition.back = (st: Bag, api: Bag) => { if (st.open === marker) { clear(); api.set({ open: null }); return true; } return back?.(st, api); };
   }
@@ -197,7 +227,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     if (result.status !== 'selected' || !result.selectionId) return;
     clear();
     if (recent) for (const evicted of filesIndex.record({ ...recent, name: result.name || 'Selected document', mimeType: result.mimeType || 'application/octet-stream', selectionId: result.selectionId })) if (evicted !== result.selectionId) release(evicted);
-    filesIndex.setOpen(result.selectionId);
+    if(recent&&recent.kind==='selected'&&rememberedPicker(result.selectionId))filesIndex.setOpen(result.selectionId);
     const requestEpoch = epoch;
     current = { result, status: 'Reading selected document…', epoch: requestEpoch };
     publish();
@@ -218,8 +248,13 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       current = { ...current, text: undefined, status: 'Unreadable' }; refresh();
     }
   }
+  const storage=registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles');
+  const observedReads:Partial<FilesStoragePort<NativeResult>>={
+    storageList(input){return readFilesListing(storage.storageList(input));},
+    storageCategory(input){return input.countOnly?storage.storageCategory(input):readFilesListing(storage.storageCategory(input));},
+  };
   Component.prototype.filesAgent=installFilesBrowserAdapter(views.files as Parameters<typeof installFilesBrowserAdapter>[0],accept,clear,{
-    storage:registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles'),
+    storage:new Proxy(storage,{get:(target,key)=>Object.hasOwn(observedReads,key)?Reflect.get(observedReads,key):Reflect.get(target,key)}),
     createInlineModal,
     menuFocus:()=>document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="Files options"]'),
     forgetSelected:selectionId=>DailyApps.forgetSelected({selectionId}),
@@ -227,11 +262,18 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   const renderFiles=views.files.render;
   views.files.render=(state:Bag,api:Bag)=>{
     const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;
+    const storageAccessible=!out.browse?.denied&&!out.browse?.unavailable;
+    out.filterVisible=!!out.chip&&storageAccessible;
+    if(out.fd?.empty&&!storageAccessible){
+      out.fd.empty=false;
+      out.nativeTreeStatus||='Files could not be read.';
+    }
     if(out.toolbar?.ready&&!out.toolbar.canCreate){const create=out.toolbar.newFolder;out.toolbar.canCreate=true;out.toolbar.newFolder=()=>{out.browse.allFiles();create();};}
     if(out.fd?.menuRows){
       const modes=[{mode:'name',icon:'type',up:'Name A–Z',down:'Name Z–A'},{mode:'date',icon:'calendar',up:'Newest first',down:'Oldest first'},{mode:'size',icon:'hard-drive',up:'Largest first',down:'Smallest first'}];
       out.fd.menuRows=[...modes.flatMap(choice=>[false,true].map(reverse=>({id:'sort:'+choice.mode+':'+reverse,label:reverse?choice.down:choice.up,on:(state.sort==='name'||state.sort==='size'?state.sort:'date')===choice.mode&&!!state.sortReverse===reverse,iconStyle:`mask:url('/icons/lucide/${choice.icon}.svg') center/contain no-repeat`,directionStyle:`mask:url('/icons/lucide/${reverse?'arrow-up':'arrow-down'}.svg') center/contain no-repeat`,go:()=>api.set({menu:false,sort:choice.mode,sortReverse:reverse})}))),...out.fd.menuRows.filter((row:Bag)=>!row.id.startsWith('sort:')&&row.id!=='reverse-order')];
     }out.shareAvailable=Capacitor.isNativePlatform()||(typeof navigator.share==='function'&&typeof navigator.canShare==='function');
+    out.fileReadNotice=storageAccessible&&!out.browse?.loading?(out.nativeTreeStatus||out.fd?.note):'';
     if(!Capacitor.isNativePlatform()&&Array.isArray(items)&&items.length&&items.every((row:Bag)=>{try{return /^Photos\/(Images|Videos)\//.test(JSON.parse(row.id)[1]);}catch{return false;}})){
       out.mediaCollection=true;out.filePlacement=false;out.canRename=false;
       out.selSaveLocally=()=>registerPlugin<{storageSaveMedia(input:{paths:string[]}):Promise<unknown>}>('AlphaFiles').storageSaveMedia({paths:items.filter((row:Bag)=>row.selOn).map((row:Bag)=>JSON.parse(row.id)[1])});

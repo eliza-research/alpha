@@ -21,7 +21,7 @@ export async function runSignInCoordinatorRefinement(scenarios = defaultScenario
   const product = ['AlphaCloudSignInPlugin.java','CloudDeployment.java','PluginWorkers.java'].map(name=>base+name)
     .concat(['CloudCredentialSlots.java','CloudSignInConfig.java','CloudSignInEnvironment.java',
       'CloudSignInFlow.java','CloudSignInReadiness.java','CloudSignInRoutes.java',
-      'CloudSignInPlugin.java','CloudEmailCode.java','CloudSmsCode.java','CloudKeyRevocation.java']
+      'CloudSignInPlugin.java','CloudEmailCode.java','CloudSmsCode.java','CloudKeyRenewal.java','CloudKeyRevocation.java']
       .map(name=>join(prepared.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud',name)));
   const fixture = [
     'specs/quint/refinement/services/SignInTestPorts.java',

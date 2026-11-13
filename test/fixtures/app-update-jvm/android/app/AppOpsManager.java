@@ -6,7 +6,7 @@ public final class AppOpsManager {
  public static final int MODE_IGNORED=1;
  public static final int MODE_DEFAULT=3;
 
- public int phoneStateMode=MODE_ALLOWED;
+ public volatile int phoneStateMode=MODE_ALLOWED;
  public int noteOpNoThrow(String operation,int uid,String packageName){
   if(!OPSTR_READ_PHONE_STATE.equals(operation)||uid!=10000||!"ai.alphacompute.alphaphone".equals(packageName))
    throw new AssertionError("Expected only the caller's phone-state app-op");

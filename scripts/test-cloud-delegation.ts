@@ -29,6 +29,7 @@ const statusLog: {state: string; owner: string}[] = [];
 let starts = 0, completions = 0, lose = true, revokeLost = true, repeatWaiting = false, waitingCompletions = 0;
 let revokeOwner: string | null = null;
 let revocations = 0;
+let failRevocationList = false;
 let holdCompletion = false;
 const completionGate: {entered?: () => void; release?: () => void} = {};
 let lastKinds: string[] | null = null;
@@ -63,7 +64,10 @@ const server = http.createServer(async (req, res) => {
    res.writeHead(status, {'content-type': 'application/json'});
    res.end(JSON.stringify(value));
   };
-  if (url.endsWith('/live-accounts')) return reply({accounts: []});
+  if (url.endsWith('/live-accounts')) return reply({accounts: owner === ownerA ? [
+   ...(revocations === 0 ? [{accountId: 'cloud:fixture-grant:connection-a', accountRevision: ownerA, label: 'Fixture Google account', kinds: ['email']}] : []),
+   {accountId: 'cloud:other-grant:connection-b', accountRevision: ownerB, label: 'Unrelated Google account', kinds: ['email']},
+  ] : []});
   if (url.endsWith('/sources')) return reply({sources: []});
   if (url.endsWith('/loops')) return reply({loops: []});
   if (url.endsWith('/start')) {
@@ -75,8 +79,11 @@ const server = http.createServer(async (req, res) => {
    return reply({authUrl: startUrl?.(state) ?? 'https://cloud.invalid/app-auth/authorize?state=' + state,
     expiresAt: new Date(Date.now() + startExpires).toISOString()});
   }
-  if (url.endsWith('/revocations')) return reply({grants: revokeOwner === owner
-   ? [{grantId: 'fixture-grant', expiresAt: new Date(Date.now() + 60000).toISOString()}] : []});
+  if (url.endsWith('/revocations')) {
+   if (failRevocationList) return reply({}, 503);
+   return reply({grants: revokeOwner === owner
+    ? [{grantId: 'fixture-grant', expiresAt: new Date(Date.now() + 60000).toISOString()}] : []});
+  }
   const state = states.get(body.state);
   if (url.endsWith('/status')) statusLog.push({state: body.state, owner});
   if (url.endsWith('/revoke')) {
@@ -154,6 +161,8 @@ await page.goto(serverOrigin);await page.getByText('Cloud reads',{exact:true}).c
  return next;
 };
 const state=await latest();await page.evaluate(s=>window.alphaCloudDelegationFixture.emitCallback({state:s,code:'fixture-code'}),state);await page.getByText('Unconfirmed',{exact:true}).waitFor();assert.equal(completions,1);assert.deepEqual(lastKinds,['email']);assert.equal(await page.evaluate(()=>window.alphaCloudDelegationFixture.storedCallback()),null,'A handled callback is cleared by its own state');await page.reload();await page.getByRole('button',{name:'Refresh authorization status'}).click();await page.getByText('Connected',{exact:true}).waitFor();assert.equal(completions,1);
+const accounts = page.getByRole('combobox', {name: 'Google account'});
+await accounts.selectOption('cloud:fixture-grant:connection-a');
 const removal = page.getByRole('button', {name: 'Review Cloud read grant removal'});
 await removal.click();
 await page.getByRole('heading', {name: 'Remove Google access'}).waitFor();
@@ -162,10 +171,30 @@ assert.equal(revocations, 0);
 await page.getByRole('button', {name: 'Cancel removal'}).click();
 await removal.click();
 assert.equal(revocations, 0);
+failRevocationList = true;
+const listFailed = () => page.waitForResponse(response => response.url().endsWith('/revocations') && response.status() === 503);
+const retry = page.getByRole('button', {name:'Retry Cloud disconnect'});
+const failedReadAfterRemoval = listFailed();
 await page.getByRole('button', {name: 'Confirm removal'}).click();
+await failedReadAfterRemoval;
 await page.getByText('Off · retry', {exact:true}).waitFor();
+await retry.waitFor();
 assert.equal(revocations, 1);
-await page.reload();await page.getByRole('button',{name:'Retry Cloud disconnect'}).click();await page.getByText('Revoked',{exact:true}).waitFor();await page.getByRole('button',{name:'Continue',exact:true}).click();const second=await latest(state);await page.evaluate(o=>window.alphaCloudDelegationFixture.switchOwner(o),ownerB);await page.locator('[data-fixture-owner="'+ownerB+'"]').waitFor();await page.evaluate(s=>window.alphaCloudDelegationFixture.emitCallback({state:s,code:'fixture-code'}),second);await quiet(()=>completions!==1,'A foreign owner without a pending grant must not complete the callback');assert.equal((await page.evaluate(()=>window.alphaCloudDelegationFixture.storedCallback()))?.state,second,'The rightful owner must retain its callback');assert.equal(completions,1);await page.evaluate(o=>window.alphaCloudDelegationFixture.switchOwner(o),ownerA);await page.getByText('Connected',{exact:true}).waitFor();assert.equal(completions,2);// A stale/repeated waiting observation must not loop completion in one UI action.
+await accounts.getByRole('option', {name: 'Fixture Google account'}).waitFor({state: 'detached'});
+assert.equal(await accounts.inputValue(), '');
+assert.equal(await accounts.getByRole('option', {name: 'Unrelated Google account'}).count(), 1);
+failRevocationList = false;
+await page.reload();
+await retry.waitFor();
+failRevocationList = true;
+const failedReadAfterRetry = listFailed();
+await retry.click();
+await failedReadAfterRetry;
+await page.getByText('Revoked',{exact:true}).waitFor();
+await retry.waitFor({state:'detached'});
+assert.equal(revocations, 2);
+failRevocationList = false;
+await page.getByRole('button',{name:'Continue',exact:true}).click();const second=await latest(state);await page.evaluate(o=>window.alphaCloudDelegationFixture.switchOwner(o),ownerB);await page.locator('[data-fixture-owner="'+ownerB+'"]').waitFor();await page.evaluate(s=>window.alphaCloudDelegationFixture.emitCallback({state:s,code:'fixture-code'}),second);await quiet(()=>completions!==1,'A foreign owner without a pending grant must not complete the callback');assert.equal((await page.evaluate(()=>window.alphaCloudDelegationFixture.storedCallback()))?.state,second,'The rightful owner must retain its callback');assert.equal(completions,1);await page.evaluate(o=>window.alphaCloudDelegationFixture.switchOwner(o),ownerA);await page.getByText('Connected',{exact:true}).waitFor();assert.equal(completions,2);// A stale/repeated waiting observation must not loop completion in one UI action.
 repeatWaiting=true;await page.getByRole('button',{name:'Continue',exact:true}).click();const third=await latest(second);await page.evaluate(s=>window.alphaCloudDelegationFixture.emitCallback({state:s,code:'fixture-code'}),third);const check=page.getByRole('button',{name:'Refresh authorization status'});await check.waitFor();await page.waitForFunction(()=>!Array.from(document.querySelectorAll('button')).find(b=>b.getAttribute('aria-label')==='Refresh authorization status')?.disabled);assert.equal(waitingCompletions,1,'One recovery action must never loop completion after repeated waiting');assert.equal(reads(third),2,'Completion is followed by exactly one read-only status');
 await page.getByText('Unconfirmed',{exact:true}).waitFor();await check.click();await page.waitForFunction(()=>!Array.from(document.querySelectorAll('button')).find(b=>b.getAttribute('aria-label')==='Refresh authorization status')?.disabled);assert.equal(waitingCompletions,2,'An explicit check may complete only once after a fresh authoritative waiting status');assert.equal(reads(third),4);
 const retained=await storedAuthorization();assert.equal(retained.state,third);assert.equal(retained.code,'fixture-code');assert.equal(retained.phase,'finishing');stateFor(third).status='finishing';await page.reload();await page.getByRole('button',{name:'Refresh authorization status'}).click();await page.getByText('Finishing…',{exact:true}).waitFor();assert.equal(waitingCompletions,2);stateFor(third).status='complete';await page.getByRole('button',{name:'Refresh authorization status'}).click();await page.getByText('Connected',{exact:true}).waitFor();assert.equal(waitingCompletions,2);assert.equal(await stored(slotA),null);

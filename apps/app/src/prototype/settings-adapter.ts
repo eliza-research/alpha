@@ -195,14 +195,16 @@ export function parseUpdateManifest(value: unknown, installed: {versionCode: unk
   try { const url = new URL(apkUrl); if (url.protocol !== 'https:' || url.username || url.password) return null; } catch { return null; }
   return {versionCode: versionCode as number, versionName: typeof versionName === 'string' && /^[^\u0000-\u001f\u007f]{1,64}$/.test(versionName) ? versionName : '', apkUrl, sha256, sizeBytes: sizeBytes as number, notes: typeof notes === 'string' && notes.length <= 500 ? notes : ''};
 }
-/** A changed response evicts the saved manual offer only if it describes a complete feed. */
-function isCompleteUpdateManifest(manifest: unknown): boolean {
-  if (typeof manifest !== 'string') return false;
+/** Only a complete feed can replace or evict the saved manual offer. */
+function parseCompleteUpdateManifest(manifest: unknown): unknown {
+  if (typeof manifest !== 'string') return null;
   try {
-    const rows = updateManifestRows(JSON.parse(manifest));
-    return !!rows?.every(row => parseUpdateManifest(row, {versionCode: 0,
-      launcher: row.variant === 'launcher', signerSha256: row.signerSha256}));
-  } catch { return false; }
+    const value: unknown = JSON.parse(manifest);
+    const rows = updateManifestRows(value);
+    if (rows?.every(row => parseUpdateManifest(row, {versionCode: 0,
+      launcher: row.variant === 'launcher', signerSha256: row.signerSha256}))) return value;
+  } catch { /* Invalid JSON cannot replace a saved offer. */ }
+  return null;
 }
 /** Fifteen minutes after the last answer, or at once for an unknown/future clock. */
 export function updateCheckDue(checkedAt: number, now: number): boolean {
@@ -354,8 +356,8 @@ function checkForUpdate(force: boolean, automatic = false): Promise<boolean> | u
     }
     if (typeof manifest !== 'string' || (manifestSha256 !== undefined && !isManifestSha256(manifestSha256)))
       throw Error('Malformed update check reply');
-    const parsed: unknown = JSON.parse(manifest);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Error('Malformed update manifest');
+    const parsed = parseCompleteUpdateManifest(manifest);
+    if (!parsed) throw Error('Malformed update manifest');
     retainUpdate({checkedAt: Date.now(), manifest: parsed, manifestSha256});
     return true;
   }).catch(() => {
@@ -471,7 +473,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true,manifestSha256:saved.manifestSha256});
     if (result?.status === 'offer-unavailable' || result?.status === 'offer-withdrawn' || result?.status === 'offer-response-changed') {
       const withdrawn = result.status === 'offer-withdrawn' ||
-        (result.status === 'offer-response-changed' && isCompleteUpdateManifest(result.manifest));
+        (result.status === 'offer-response-changed' && Boolean(parseCompleteUpdateManifest(result.manifest)));
       if (retireUpdate(saved, withdrawn) && current()) changed();
       throw Error('Update offer unavailable');
     }
@@ -809,9 +811,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const pending = agentPendingText(connection, 'Not connected');
     const target = connection.session ? connection.name : pending;
     const runtimeLocation=!connection.session?pending:connection.kind==='resident'?(Capacitor.isNativePlatform()?'This phone':'This computer · dev'):testMocksEnabled?'Remote':'Unsupported';
-    // About and Models read the model the resident reports the same way, so the two pages agree.
-    const residentProvider=connection.kind==='resident'&&connection.session?connection.providerStatus:null;
-    const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported';
+    // Use the current controller readback for both provider and model. Failed or pending
+    // confirmation can retain a previous selection without verifying its model.
+    const residentProvider=connection.kind==='resident'&&connection.session&&!connection.providerStatusError?connection.providerStatus:null;
+    const providerName=residentProvider?.provider==='elizacloud'?serviceName:'Cerebras';
+    const providerModelPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
+    const inferenceModel=residentProvider?.configured===true&&typeof residentProvider.model==='string'&&providerModelPattern.test(residentProvider.model)
+      ?modelLabel(providerName,residentProvider.model):'Not reported';
     const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('Unavailable'));
     const info = (label: string, val: string, id = label): Bag => ({ id, kInfo: true, label, val, hasVal: true, noAB: true });
@@ -1128,7 +1134,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
         page.hero = { ...page.hero, big: target, sub: '' };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?providerName:'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Not reported':pending)]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {

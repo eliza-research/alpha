@@ -134,12 +134,14 @@ test('a zoomed recording stops when its camera source ends',async({page})=>{
  await expect(page.getByRole('alert',{name:'Mic off',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).videoAudioDenials)).toBe(1);
  await page.getByRole('button',{name:'Record without sound',exact:true}).click();await expect(page.getByRole('button',{name:'Stop recording',exact:true})).toBeVisible();
- const recording=page.getByRole('timer',{name:'Recording',exact:true});await expect(recording).toBeVisible();
+ const recording=page.getByRole('timer',{name:'Recording',exact:true});
+ await expect(recording).toBeVisible();
  expect(await page.evaluate(()=>(window as any).videoAudioDenials)).toBe(1);
  await expect.poll(()=>page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');return (await c.getRecordingState()).fileSize;})).toBeGreaterThan(0);
  await page.evaluate(()=>{const video=document.querySelector('[data-alpha-camera="viewfinder"] video') as HTMLVideoElement;(video.srcObject as MediaStream).getVideoTracks()[0].dispatchEvent(new Event('ended'));});
  await expect.poll(()=>page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');return (await c.getRecordingState()).isRecording;})).toBe(false);
- await expect(recording).toHaveCount(0);await expect(page.getByRole('button',{name:'Open last video',exact:true})).toBeVisible();
+ await expect(recording).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Open last video',exact:true})).toBeVisible();
  await expect.poll(()=>page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');return (await library.list({album:'videos'})).items.length;})).toBe(1);
  const saved=await page.evaluate(async()=>{
   const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');const rows=(await library.list({album:'videos'})).items;
@@ -192,12 +194,12 @@ test('switching with flash on and zoom 2x keeps both reset when the switch fails
  await expect(page.locator('[data-alpha-camera="viewfinder"] video')).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).controlStreams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended')))).toBe(true);
  expect(await calls()).toEqual(['flash off','zoom 1','switch front']);
+ await page.evaluate(()=>(window as any).failSwitch=false);
  await recovery.getByRole('button',{name:'Retry',exact:true}).click();
  await expect(recovery).toHaveCount(0);
  await expect.poll(()=>page.locator('[data-alpha-camera="viewfinder"] video').evaluate((video:HTMLVideoElement)=>video.readyState)).toBeGreaterThanOrEqual(2);
- await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 1x',exact:true})).toHaveCSS('width','40px');
- await page.evaluate(()=>(window as any).failSwitch=false);
  expect(await calls()).toEqual([]);
+ await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 1x',exact:true})).toHaveCSS('width','40px');
  await page.getByRole('button',{name:'Switch camera',exact:true}).click();
  await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 2x',exact:true})).toHaveCount(0);
  expect(await calls()).toEqual(['switch front']);

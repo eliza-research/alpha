@@ -10,7 +10,7 @@ server interact function and browser mutation decoder.
 `runCanonicalNotesRefinement(extraSources = [])` captures the source compiler,
 fixture, driver, model and authenticated patch inputs before executing source.
 It returns one receipt and explicit remaining obligations for the service
-aggregate. Its 11 schedules record 46 checkpoints and 22 observed expressions.
+aggregate. At upstream `9e87d1ce94`, its 11 schedules cover 49 checkpoints and 24 observed expressions.
 The controlled host supplies atomic string compare/exchange, clock and event
 delivery. It advertises the encrypted-port interface requirement without
 implementing cryptography.
@@ -26,9 +26,14 @@ implementing cryptography.
   order returns the exact restored record and raw membership. Normal reads
   select one visible representative. Restore preserves original timestamps
   and ordering metadata.
-- An encrypted write may persist before readback fails. Its cache remains old,
-  a later stale write conflicts, and reopening loads the committed document.
-  An explicit persistedSnapshot read does not update the cache.
+- An encrypted write may persist before readback fails. The store keeps its
+  previous private document and reports its revision. Every handle sharing that
+  store refuses snapshots and mutations with the original write failure. The
+  last handle to close releases the failed cache. A fresh handle loads both
+  committed notes and their new revision.
+- A writer on an independent port still receives an edit conflict when another
+  writer wins its compare/exchange. Its explicit persistedSnapshot read leaves
+  its local cache unchanged.
 - A delayed broadcast retains its own exact committed response even after a
   second transaction commits. A projection error persists nothing.
 - A new empty document omits Trash. Its first clear adds the field and advances
@@ -44,7 +49,7 @@ Arbitrary out-of-band byte changes at the same revision remain a host-port
 obligation. The model retains old note field values after permanent removal;
 permanent deletion and metadata pruning are exercised by source regression
 outside this collection model. Lookup-based consolidation and empty/error
-initialization, shared-instance reference counts and complete stop queues also
+initialization, arbitrary shared-instance reference counts and complete stop queues also
 remain outside these traces.
 
 The source regression files separately exercise real temporary-file storage,

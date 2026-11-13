@@ -127,7 +127,13 @@ export const LIVE_STATES: State[] = [
   live('Settings privacy', ['Settings', 'Privacy']),
   live('Settings about', ['Settings', 'About']),
   // About exposes the existing connection recovery controls in the grouped layout.
-  live('Settings licenses', ['Settings', 'About', 'Licenses']),
+  {name:'live Settings licenses',open:async(page,theme)=>{
+    await live('Settings licenses',['Settings','About','Licenses']).open(page,theme);
+    // The shipped notice JSON changes the exposed tab stops after the page opens.
+    // Audit the populated inventory, using the existing budget and every focus rule.
+    await expect(page.getByRole('searchbox',{name:'Search components',exact:true})).toBeVisible();
+    await settle(page);
+  }},
   live('Settings app permissions', ['Settings', 'Privacy', 'Permissions']),
   // The remaining Settings pages, and each app's open menu, search field and editor.
   live('Settings apps', ['Settings', 'Apps']),

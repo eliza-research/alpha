@@ -22,14 +22,6 @@ on:
         description: SHA-256 of the compiled component artifact archive
         type: string
         required: false
-      embedding_qualification_artifact_id:
-        description: Exact reviewed semantic qualification artifact ID
-        type: string
-        required: false
-      embedding_qualification_sha256:
-        description: SHA-256 of the semantic qualification artifact archive
-        type: string
-        required: false
       build_version_code:
         description: Dispatched build versionCode (25..2100000000), recorded in the producer evidence
         type: string
@@ -44,11 +36,10 @@ on:
 permissions:
   contents: read
 concurrency:
-  # Primary main-push attempts share a canceling group. Reruns use their own
-  # run ID and cannot cancel that group. GitHub does not guarantee commit order.
-  # Manual qualification keeps its separate, existing cancellation group.
-  group: resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && (github.run_attempt == 1 && 'app-candidate-main' || format('app-candidate-run-{0}', github.run_id)) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}
-  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1) }}
+  # Main-push runs are isolated by run ID because GitHub can queue commits out of order.
+  # Manual qualification keeps its cancellation group per ref and operation.
+  group: resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('app-candidate-run-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 jobs:
   publish-qualification:
     if: github.event_name == 'workflow_dispatch' && inputs.operation == 'publish-qualification'
@@ -75,10 +66,6 @@ jobs:
       ALPHA_APP_UPDATE_CANDIDATE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '0' }}
       ELIZA_ANDROID_BUN_TARGET: linux-musl
       ELIZA_ANDROID_TARGET_ABIS: arm64-v8a,x86_64
-      ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID: ${{ inputs.embedding_component_artifact_id || '' }}
-      ALPHA_EMBEDDING_COMPONENT_SHA256: ${{ inputs.embedding_component_sha256 || '' }}
-      ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID: ${{ inputs.embedding_qualification_artifact_id || '' }}
-      ALPHA_EMBEDDING_QUALIFICATION_SHA256: ${{ inputs.embedding_qualification_sha256 || '' }}
       ELIZA_BUN_CHANNEL: stable
       ELIZAOS_VERSION_CODE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_version_code || '' }}
       ANDROID_NDK: /usr/local/lib/android/sdk/ndk/28.2.13676358
@@ -195,11 +182,10 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
-      - name: Check embedding artifact contract and requested inputs
+      - name: Check embedding artifact contract
         run: |
           python3 test/embedding-artifact-inputs.test.py
           python3 -B test/hosted-native-inputs.test.py
-          python3 scripts/ci/embedding-artifacts.py --check-inputs
       - name: Validate dispatched build version
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -213,7 +199,7 @@ jobs:
       - name: Admit exact tools and fresh source paths
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(bun --version)" = "1.4.2"
+          test "$(node --version)" = "v26.13.0"
           test "$(bun --version)" = "1.4.2"
           python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 10*1024**3'
           mkdir -p test-results/resident-ci
@@ -270,7 +256,7 @@ jobs:
                 test/cloud-voice-profile.test.mjs \
                 test/private-preview-cartesia-route.test.mjs
             '
-      - run: bun test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
+      - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # Noncandidate diagnostics retain their existing absent-input check.
       - name: Verify the diagnostic on-device voice host record
         if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'

@@ -58,7 +58,9 @@ function bootReads({processes = '', uidList = `package:${listener} uid:10145`, e
   const key = args.join(' ');
   if (key.startsWith('cmd role get-role-holders --user 0 android.app.role.')) return '';
   assert.ok(outputs.has(key), `Unexpected device command ${key}`);
-  return outputs.get(key);
+  const output = outputs.get(key);
+  if (output instanceof Error) throw output;
+  return output;
  };
 }
 
@@ -79,6 +81,7 @@ test('listener boot evidence binds the dedicated SELinux label to its package an
 test('listener boot readback gives no domain evidence for a missing or mixed process label', () => {
  for (const processes of [
   '',
+  Object.assign(new Error('toybox ps exited 1'), {status:1, stdout:'LABEL   UID   PID NAME   \r\n', stderr:''}),
   `u:r:alpha_sense_app:s0 110145 501 ${listener}`,
   `u:r:priv_app:s0 10145 501 ${listener}`,
   `u:r:alpha_sense_app:s0 10145 501 ${listener}\nu:r:priv_app:s0 10145 502 ${listener}:child`,
@@ -89,6 +92,8 @@ test('listener boot readback gives no domain evidence for a missing or mixed pro
   assert.equal(result.dedicatedDomainObserved, false);
  }
  assert.throws(() => verifyListenerBoot(bootReads({uidList:`package:${listener} uid:10145,110145`}), '0', appId), /exact UID/);
+ const failedRead = Object.assign(new Error('device disconnected'), {status:1, stdout:'', stderr:'adb: device offline'});
+ assert.throws(() => verifyListenerBoot(bootReads({processes:failedRead}), '0', appId), /device disconnected/);
 });
 
 test('the Pixel product enrolls exact listener qualification and rejects candidate-only or drifting inputs', t => {
