@@ -24,6 +24,9 @@ jobs:
         run: |
           sdkmanager 'build-tools;35.0.0' 'build-tools;36.0.0' 'ndk;28.2.13676358'
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_LATEST_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
           echo "XDG_CACHE_HOME=$RUNNER_TEMP/alpha-cache" >> "$GITHUB_ENV"
       - name: Provision build capacity on the disposable hosted runner
         run: |
