@@ -17,7 +17,7 @@ const stubs = {
     + 'export const registerPlugin=name=>new Proxy({},{get:(_,method)=>(...input)=>port().call(name,method,...input)});',
 };
 const replies = {
-  off: {available: true, state: 'OFF', label: 'Listening off', consented: true, listening: false, microphoneOpen: false},
+  off: {available: true, state: 'OFF', label: 'Listening off', consented: true, saved: true, listening: false, microphoneOpen: false},
   listening: {available: true, state: 'LISTENING', consented: true, listening: true, microphoneOpen: true},
   'microphone-open': {available: true, state: 'OFF', consented: true, listening: false, microphoneOpen: true},
   unavailable: {available: false},
