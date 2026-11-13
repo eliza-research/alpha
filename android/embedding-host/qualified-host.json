@@ -1,5 +1,5 @@
 {
-  "pin": "37af7168b139b92f9e3b978546c97fb3e61870dc",
+  "pin": "c9247e6966b572612b51e6b5e6a1f15af2843af8",
   "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
   "identity": "ai.alphacompute.alphaphone",
   "abi": "arm64-v8a",
@@ -32,13 +32,13 @@
   "inputs": [
     {
       "path": "packages/app/scripts/stage-elizavoice-lib.ts",
-      "sourceSha256": "694377520462b735da9f1d529dfe76da97548d15862e77ec142110bb8582468f",
-      "generatedSha256": "694377520462b735da9f1d529dfe76da97548d15862e77ec142110bb8582468f"
+      "sourceSha256": "d2ac610e20857120b23d0393510517b203b189e53f1c6038c90328bd8ccef022",
+      "generatedSha256": "d2ac610e20857120b23d0393510517b203b189e53f1c6038c90328bd8ccef022"
     },
     {
       "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
-      "sourceSha256": "6847e1663674a13ccbec414932f9782ab6027d7621a8f2916581244a17da792f",
-      "generatedSha256": "6847e1663674a13ccbec414932f9782ab6027d7621a8f2916581244a17da792f"
+      "sourceSha256": "b5291bb3c31f2b284691ff7c465de31c7564ea1c1c22e726309661e64a47aee2",
+      "generatedSha256": "b5291bb3c31f2b284691ff7c465de31c7564ea1c1c22e726309661e64a47aee2"
     },
     {
       "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
@@ -64,15 +64,15 @@
   "producerInputs": [
     {
       "path": "package.json",
-      "sha256": "f014213074e311587cc82c58452536f7e9c663b6c2fce21aad11d82c97f31b11"
+      "sha256": "072b1e6831d843940f4587421e5f4f3d5d00a0aa0cb90d2935b4b3c33a318b21"
     },
     {
       "path": "packages/agent/package.json",
-      "sha256": "c1c05134349e97a81d704015525c8ff4af972c2b208124bbb1502c20ab0a7a7f"
+      "sha256": "a65b8890ffe64641f8e3d00a6c1ade36f27968b49a949bfcb4f5cf355ad482a3"
     },
     {
       "path": "packages/app/package.json",
-      "sha256": "e2d0fc2a4d8d17b36a9fbb1b06a72461a8248265670702f948a0e431dd7b86ff"
+      "sha256": "0c4caddc17b888c93e1e3e69c009f64fa055ba74708f78dfc48d8bb090cdedba"
     },
     {
       "path": "packages/app/scripts/aosp/compile-libllama-paths.ts",
@@ -80,11 +80,11 @@
     },
     {
       "path": "packages/app/scripts/aosp/compile-libllama.ts",
-      "sha256": "d7109263eced49d03d8758ad2fa78db6a43cef57d0f7d8e88a29407de08c02a1"
+      "sha256": "81de4affc63f07f662679d34a01cea7f4f720fc705ef1ac5c5b501021070e1fd"
     },
     {
       "path": "packages/app/scripts/aosp/compile-shim.ts",
-      "sha256": "420243742e21c64e8cbaa7d4943e35f9bebe009c821159e18da22a247cfaa889"
+      "sha256": "c7765557fafa6cc39090590c3e52a3b8bc1f03e6cedb7170492512a45bcbe15b"
     },
     {
       "path": "packages/app/scripts/aosp/vulkan-source-contract.ts",
@@ -92,11 +92,11 @@
     },
     {
       "path": "packages/app/scripts/aosp/zig-toolchain.ts",
-      "sha256": "763af63f5620357dc049e64d16132153f43a74fd24e49bdb567195d1697e74a5"
+      "sha256": "5d7ad034f9fbbce9fc241c7d7ba64b4bfece2b0aa6c7a699c761df8c8ac36959"
     },
     {
       "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
-      "sha256": "6847e1663674a13ccbec414932f9782ab6027d7621a8f2916581244a17da792f"
+      "sha256": "b5291bb3c31f2b284691ff7c465de31c7564ea1c1c22e726309661e64a47aee2"
     },
     {
       "path": "packages/app/scripts/build-helpers/elizavoice-build-flags.ts",
@@ -116,7 +116,7 @@
     },
     {
       "path": "packages/app/scripts/stage-elizavoice-lib.ts",
-      "sha256": "694377520462b735da9f1d529dfe76da97548d15862e77ec142110bb8582468f"
+      "sha256": "d2ac610e20857120b23d0393510517b203b189e53f1c6038c90328bd8ccef022"
     }
   ],
   "jniBinding": {
