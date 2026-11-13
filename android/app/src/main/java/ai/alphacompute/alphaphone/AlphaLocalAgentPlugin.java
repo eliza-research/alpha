@@ -41,8 +41,9 @@ private static final class ResidentAttachDiagnostic {
  private final ExecutorService workers=Executors.newFixedThreadPool(2);
  private final ExecutorService voiceWorkers=new java.util.concurrent.ThreadPoolExecutor(1,1,0L,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.SynchronousQueue<>());
  private final ExecutorService rendererWorkers=new java.util.concurrent.ThreadPoolExecutor(1,1,0L,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.SynchronousQueue<>());
- // Set only from in-process debug instrumentation; no route, intent or preference activation.
- static volatile java.net.ServerSocket instrumentationRecoveryEndpoint;
+ // Set only from in-process debug instrumentation (ResidentWorkflowCrashInstrumentedTest); no route,
+ // intent or preference activation. It may adjust the launch environment of a debug build in a secondary user.
+ static volatile java.util.function.BiConsumer<JSONObject,java.util.Map<String,String>> instrumentationLaunchEnvironment;
  private static String rootToken,ownerToken,ownerIdentity,notificationAgent;
  private static long expiresAt;
  private static final Object lifecycleLock=new Object(), enrollmentLock=new Object();
@@ -676,15 +677,10 @@ private static final class ResidentAttachDiagnostic {
   // Pseudonymize secrets and PII using the pinned upstream runtime.
   env.put("ELIZA_SECRET_SWAP_ENABLED","true");
   env.put("ELIZA_PII_SWAP_ENABLED","true");
-  java.net.ServerSocket fixture=instrumentationRecoveryEndpoint;
+  java.util.function.BiConsumer<JSONObject,java.util.Map<String,String>> fixture=instrumentationLaunchEnvironment;
   if(fixture!=null){
-   if(!BuildConfig.DEBUG||android.os.Process.myUid()/100000<=0||fixture.isClosed()
-      ||!fixture.isBound()||!"127.0.0.1".equals(fixture.getInetAddress().getHostAddress())
-      ||fixture.getLocalPort()<=0||provider==null||!"synthetic-resident-recovery-only".equals(provider.getString("key")))
-    throw new java.io.IOException("Invalid resident recovery fixture endpoint");
-   String endpoint="http://127.0.0.1:"+fixture.getLocalPort()+"/v1";
-   env.put("CEREBRAS_BASE_URL",endpoint);env.put("OPENAI_BASE_URL",endpoint);
-   env.put("OPENAI_API_KEY","synthetic-resident-recovery-only");env.put("ELIZA_PROVIDER","cerebras");
+   if(!BuildConfig.DEBUG||android.os.Process.myUid()/100000<=0)throw new java.io.IOException("Invalid instrumentation launch environment");
+   fixture.accept(provider,env);
   }
   // Later surfaces attach only while the stored admission is the one this process launched with.
   synchronized(lifecycleLock){if(epoch!=lifecycleEpoch||!accepting||stopping||credentialMutationEpoch>=0)throw new java.io.IOException("Local provider changed");launchedGeneration=LocalAgentProviderAdmission.launchGeneration(saved,cloudSaved);}
