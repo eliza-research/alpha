@@ -34,9 +34,9 @@ export const scenarios = ['messageReadToEndTest', 'replacementWaitsForStoppedAud
 export const witnesses = ['WaitingBehindRetirementWitness', 'NoteReplacesMessageWitness', 'ToggledOffWitness'];
 
 const flush = async () => { for (let turn = 0; turn < 4; turn++) await new Promise(resolve => setImmediate(resolve)); };
-const sources = ['apps/app/src/runtime/voice-selection.ts', 'apps/app/src/runtime/local-speech-text.ts', 'apps/app/src/prototype/local-speech-playback.ts']
+const sources = ['apps/app/src/runtime/voice-selection.ts', 'apps/app/src/runtime/local-speech-text.ts', 'apps/app/src/runtime/voice-states.ts', 'apps/app/src/prototype/local-speech-playback.ts']
   .map(file => stripTypeScriptTypes(readFileSync(`${repositoryRoot}/${file}`, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, ''), {mode: 'strip'}));
-const names = [['selectVoiceRoute'], ['screenSpeechText', 'planLocalSpeech'], ['installLocalSpeechPlayback', 'readNoteAloud', 'stopSpeaking', 'currentNoteReading']];
+const names = [['selectVoiceRoute'], ['screenSpeechText', 'planLocalSpeech'], ['speechCleanupNotice'], ['installLocalSpeechPlayback', 'readNoteAloud', 'stopSpeaking', 'currentNoteReading']];
 const NOTE = 'Weekly plan for the family.', text = id => `Reply number ${id} for reading.`;
 
 export function project(state) {
