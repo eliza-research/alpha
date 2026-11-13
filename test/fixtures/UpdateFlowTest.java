@@ -2444,10 +2444,15 @@ public final class UpdateFlowTest {
   int status=1;
   try{
    if(cacheTlsServer!=null){
-    verifiedAutomaticCacheUsesOneRealTlsResponse(cache);
-    automaticOfferRecheckedOverTls(cache);
-    finalOfferDeadlineRetiresBeforeLateTransport(cache);
-    automaticConsentRecheckedAfterTls(cache);
+    // A cold TLS handshake can exceed the in-memory fixture's three-second download deadline.
+    long normalDeadline=AlphaDevicePlugin.UPDATE_DEADLINE_NANOS;
+    deadline(TimeUnit.SECONDS.toNanos(30));
+    try{
+     verifiedAutomaticCacheUsesOneRealTlsResponse(cache);
+     automaticOfferRecheckedOverTls(cache);
+     finalOfferDeadlineRetiresBeforeLateTransport(cache);
+     automaticConsentRecheckedAfterTls(cache);
+    }finally{deadline(normalDeadline);}
    }
    automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
    explicitUpdatePermissionOpensBeforeAnyOffer(cache);

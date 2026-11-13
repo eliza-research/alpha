@@ -54,9 +54,12 @@ test('local authorization review survives reload and revocation disables its sou
  expect(await calls()).toEqual([]);
 
  await reviewRemoval.click();
- await expect(removal.getByRole('button',{name:'Confirm removal',exact:true})).toBeEnabled();
- await page.evaluate(()=>{(window as any).removalFixture.holdNext=true;});
- await removal.getByRole('button',{name:'Confirm removal',exact:true}).click();
+ await expect(removal).toContainText('Same grant, second connection');
+ const confirmRemoval=removal.getByRole('button',{name:'Confirm removal',exact:true});
+ await confirmRemoval.evaluate(button=>button.addEventListener('click',()=>{
+  (window as any).removalFixture.holdNext=true;
+ },{capture:true,once:true}));
+ await confirmRemoval.click();
  await expect.poll(()=>page.evaluate(()=>typeof (window as any).removalFixture.releaseImpact)).toBe('function');
  await liveGoogle.evaluate(element=>{(element as HTMLElement).click();(element as HTMLElement).click();});
  await expect(removal).toHaveCount(0);
@@ -65,7 +68,7 @@ test('local authorization review survives reload and revocation disables its sou
  expect(await calls()).toEqual([]);
 
  await reviewRemoval.click();
- // Change the sources only after the original impact has been presented for review.
+ await expect(removal).toContainText('Same grant, second connection');
  await expect(removal.getByRole('button',{name:'Confirm removal',exact:true})).toBeEnabled();
  await expect(removal).not.toContainText('Another source added during review');
  await page.evaluate(()=>{(window as any).removalFixture.newSource=true;});

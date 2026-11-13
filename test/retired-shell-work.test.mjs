@@ -5,14 +5,13 @@ import {applyImageContacts} from '../apps/app/src/runtime/image-contacts.ts';
 
 test('image revocation retires the raw Contacts view after the presentation gate hides it',async()=>{
  const source=readFileSync('apps/app/src/main.tsx','utf8');
- const start=source.indexOf('    const refreshImage=async(');
- const end=source.indexOf('\n    };',start);
- assert.ok(start>=0&&end>start);
+ const declaration=source.match(/^    (const refreshImage\s*=\s*async\b[\s\S]*?^    \};)/m)?.[1];
+ assert.ok(declaration,'Android image refresh declaration is present');
  let admitted=true,homes=0;
  const ORDER=['contacts','settings'];
  const shell={state:{view:'contacts'},S(){return {view:admitted?this.state.view:null};},goHome(){homes++;this.state.view=null;}};
- const refresh=new Function('DeviceApps','admitImageContacts','ORDER','shell','applyImageContacts','admitImageSense',source.slice(start,end+7)+';return refreshImage;')(
-  {platformCapabilities:async()=>({aospImage:true,contacts:false})},value=>{admitted=value;},ORDER,shell,applyImageContacts,()=>assert.fail('resume read must not re-admit Sense'));
+ const refresh=new Function('DeviceApps','admitImageSense','admitImageContacts','ORDER','shell','applyImageContacts',declaration+';return refreshImage;')(
+  {platformCapabilities:async()=>({aospImage:true,contacts:false})},()=>assert.fail('a visibility refresh does not re-admit Sense'),value=>{admitted=value;},ORDER,shell,applyImageContacts);
  await refresh();
  assert.equal(admitted,false);
  assert.equal(shell.state.view,null,'the hidden raw view must not return when image capability is later re-admitted');
