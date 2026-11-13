@@ -21,6 +21,5 @@ export function startNativeGoogleAgentHost(options: {
     userAgent: 'AlphaPhone-Native-Google/1',
     gmailReadBodyMaxCharacters: 32_000,
     access: () => readGoogleAgentAccessFile(process.env.ALPHA_GOOGLE_AGENT_ACCESS_FILE),
-    calendarReadTiming: process.env.ALPHA_CALENDAR_READ_TIMING === '1',
   });
 }

@@ -496,7 +496,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   const read=async(input:Parameters<typeof agentRead>[0])=>{await current();const result=await agentRead(input);await current();return result;};
   const calendar=async(input:Parameters<typeof agentCalendarOperation>[0])=>{if(!new URL(input.url).pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return read(input);await current();if(!calendarAllowed(binding,generation))throw refusal(403,'calendar-owner-access-disabled');const result=await agentCalendarOperation(input);await current();if(!calendarAllowed(binding,generation))throw refusal(409,'calendar-owner-access-changed');return result;};
   const port={agentCredential:current,agentRead:read,agentGmailOperation:read,agentCalendarOperation:calendar};
-  await current();const host=await startManagedGoogleAgentHost({port,apiToken,apiOrigin:authorities[agentEnvironment],calendarReadTiming:process.env.ALPHA_CALENDAR_READ_TIMING==='1',access:()=>({gmailChanges:false,calendarEdits:calendarAllowed(binding,generation)})});
+  await current();const host=await startManagedGoogleAgentHost({port,apiToken,apiOrigin:authorities[agentEnvironment],access:()=>({gmailChanges:false,calendarEdits:calendarAllowed(binding,generation)})});
   return {port:host.port,close:()=>{retired=true;if(generation===calendarGeneration)resetCalendarAccess();return host.close();}};
  }
  return Object.assign(handler,{
