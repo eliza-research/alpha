@@ -12,8 +12,13 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public class NoMockProductInstrumentedTest {
  private static final String SELECTION="alpha.connection.selection.v1";
- private static void until(String expression)throws Exception{
-  long deadline=SystemClock.elapsedRealtime()+20000;
+ // P-43: the required sign-in page opens only once the resident's start has settled
+ // (connection-ui productionCloudSignInRequired), a cold start on an emulator included.
+ // ResidentAlwaysPresentInstrumentedTest allows the same bound.
+ private static final long SIGN_IN_PAGE_MS=120000;
+ private static void until(String expression)throws Exception{until(expression,20000);}
+ private static void until(String expression,long timeoutMs)throws Exception{
+  long deadline=SystemClock.elapsedRealtime()+timeoutMs;
   while(SystemClock.elapsedRealtime()<deadline){
    if("true".equals(NotesSecureFixture.evaluate("Boolean("+expression+")")))return;
    SystemClock.sleep(80);
@@ -34,7 +39,7 @@ public class NoMockProductInstrumentedTest {
     // A signed-out production install must render the required sign-in page.
     String previousDocument=NotesSecureFixture.evaluate("performance.timeOrigin");
     WebViewTestDriver.navigateHostDocument("localStorage.removeItem('"+SELECTION+"');location.replace(location.origin+location.pathname)");
-    until("performance.timeOrigin!=="+previousDocument+"&&document.querySelector('.alpha-auth-page [role=main]')");
+    until("performance.timeOrigin!=="+previousDocument+"&&document.querySelector('.alpha-auth-page [role=main]')",SIGN_IN_PAGE_MS);
     NotesSecureFixture.evaluate("document.querySelectorAll('.alpha-connection details').forEach(d=>d.open=true)");
     assertEquals("Required sign-in cannot be dismissed","false",NotesSecureFixture.evaluate("!!document.querySelector('.alpha-auth-page button[aria-label=\"Close connection settings\"]')"));
     assertNoMockEntry();
@@ -50,7 +55,7 @@ public class NoMockProductInstrumentedTest {
    try{
     String previousDocument=NotesSecureFixture.evaluate("performance.timeOrigin");
     WebViewTestDriver.navigateHostDocument("localStorage.setItem('"+SELECTION+"',JSON.stringify({kind:'mock'}));location.replace(location.origin+location.pathname)");
-    until("performance.timeOrigin!=="+previousDocument+"&&document.querySelector('.alpha-auth-page [role=main]')");
+    until("performance.timeOrigin!=="+previousDocument+"&&document.querySelector('.alpha-auth-page [role=main]')",SIGN_IN_PAGE_MS);
     assertEquals("Underlying phone is inert while sign-in is required","true",NotesSecureFixture.evaluate("document.querySelector('.os').inert"));
     assertNotEquals("Legacy mock selection is retired","\"mock\"",NotesSecureFixture.evaluate("JSON.parse(localStorage.getItem('"+SELECTION+"')||'null')?.kind??null"));
     assertEquals("Required sign-in cannot be dismissed","false",NotesSecureFixture.evaluate("!!document.querySelector('.alpha-auth-page button[aria-label=\"Close connection settings\"]')"));
