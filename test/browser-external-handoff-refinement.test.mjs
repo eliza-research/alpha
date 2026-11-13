@@ -3,6 +3,7 @@ import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkBrowserExternalHandoff} from '../specs/quint/refinement/application/browser-external-handoff.mjs';
 import {browserExternalHandoffFixture} from './fixtures/browser-external-handoff.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 test('a private approval cannot authorize dispatch after the same page is recommitted during presentation', async () => {
   const fixture = await browserExternalHandoffFixture({privateTab: true});
@@ -51,7 +52,9 @@ test('a virtual lock cannot dispatch an external browser behind the lock screen'
   await fixture.update();
 });
 
-test('actual browser external dispatch refines the exact page handoff model', {timeout: 120000}, async () => {
+// The checker allows two 120s attempts after a silent backend signal; leave time
+// for those attempts and the source-fixture/receipt work at the same host scale.
+test('actual browser external dispatch refines the exact page handoff model', {timeout: scaledTimeout(300_000)}, async () => {
   const receipt = await checkBrowserExternalHandoff([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.traces, 16);
