@@ -79,7 +79,7 @@ async function checkNativeReminderDelivery(extraSources = []) {
   const receipt=await checkTraces({model,sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
     'The exact pinned ReminderEngine, ReminderStore, ReminderEnvelope, ReminderTaps and product AlphaReminders/ReminderReceiver execute without source edits.',
     androidRuntime ? 'Compile and execution use the Android org.json classes from the bound Robolectric artifact.' : 'Compilation uses checked Android SDK 36 org.json signatures. Execution uses the bound Maven org.json library; these source schedules have also been tested with Android JSON.',
-    'The JVM owns only controlled inexact alarm, immutable PendingIntent, notification, secure-storage and SharedPreferences ports. It observes native alert/tap route content and actual durable bytes, with distinct memory and disk on failed commits.',
+    'The JVM owns controlled alarm capability, exact and inexact scheduling, immutable PendingIntent, notification, secure-storage and SharedPreferences ports. The original schedules keep exact capability unavailable; separate boundary probes exercise exact admission and revocation fallback. It observes native alert/tap route content and actual durable bytes, with distinct memory and disk on failed commits.',
     'The source covers one tracked reminder, four occurrence classes, controlled wall seconds, UTC daily recurrence and a reviewed creation receipt. Simulated process and boot boundaries do not invoke Android.',
   ]});
   return {receipt,obligations:[

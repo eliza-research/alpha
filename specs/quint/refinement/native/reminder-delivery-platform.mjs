@@ -158,12 +158,19 @@ import java.util.Map;
 public final class AlarmManager {
  public static final int RTC_WAKEUP=0;
  public final Map<PendingIntent,Long> live=new LinkedHashMap<>();
- public boolean refuse;
+ public boolean refuse,exactAllowed,revokeExact;
  public java.util.function.Consumer<PendingIntent> beforeArm=unused->{};
- public int attempts;
+ public int attempts,exactCalls,inexactCalls;
+ public int exactType,inexactType;public long exactWhen,inexactWhen;public PendingIntent exactIntent,inexactIntent;
+ public boolean canScheduleExactAlarms(){return exactAllowed;}
+ public void setExactAndAllowWhileIdle(int type,long when,PendingIntent intent){exactCalls++;exactType=type;exactWhen=when;exactIntent=intent;arm(true,type,when,intent);}
  public void setAndAllowWhileIdle(int type,long when,PendingIntent intent){
-  if(type!=RTC_WAKEUP)throw new AssertionError("Expected inexact RTC_WAKEUP");
+  inexactCalls++;inexactType=type;inexactWhen=when;inexactIntent=intent;arm(false,type,when,intent);
+ }
+ private void arm(boolean exact,int type,long when,PendingIntent intent){
+  if(type!=RTC_WAKEUP)throw new AssertionError("Expected RTC_WAKEUP");
   attempts++;
+  if(exact&&revokeExact)throw new SecurityException("Synthetic exact-alarm capability revocation");
   beforeArm.accept(intent);
   if(refuse)throw new IllegalStateException("Synthetic AlarmManager refusal");
   live.put(intent,when);
