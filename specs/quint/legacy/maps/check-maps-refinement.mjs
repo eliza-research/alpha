@@ -81,9 +81,9 @@ async function observe(page) {
     const f = window.closedMaps;
     const screen = document.documentElement.dataset.activeView !== 'maps' ? 'Away'
       : document.querySelector('[aria-label="End navigation"]') ? window.inspectHistoricalMaps().arrived ? 'Arrived' : 'Nav'
-      : document.querySelector('[data-alpha-maps-sheet="directions"]') ? 'Route'
+      : document.querySelector('[data-alpha-maps-sheet="directions"],[data-alpha-maps-directions]') ? 'Route'
       : document.querySelector('[data-alpha-maps-sheet="place"]') ? 'Place'
-      : document.querySelector('[data-alpha-maps-sheet="results"]') ? 'Results' : 'Base';
+      : document.querySelector('[data-alpha-maps-sheet="results"]') || document.querySelector('input[aria-label="Search places"]')?.value ? 'Results' : 'Base';
     const configured = f.mapsConnection().config.status === 'configured';
     const diagnostic = f.diagnostic();
     const tried = f.requests.some(row => row.endpoint === 'capabilities');
@@ -134,7 +134,8 @@ async function open(page, t, online, submitWhileConnecting = false) {
   await t.point('Opening Maps dispatches one held capabilities read', [action('OpenMaps'), action('Connect')]);
   if (submitWhileConnecting) {
     await search(page);
-    await expect(sheet(page, 'results')).toBeVisible();
+    await expect(query(page)).toHaveValue(label);
+    await expect(sheet(page, 'results')).toHaveCount(0);
     await t.point('An explicit search waits for the held read', action('Search'));
   }
   await settleCapability(page, online);
@@ -169,7 +170,8 @@ async function offlineRecovery(page) {
   assert.deepEqual((await requests(page)).map(row => row.endpoint), ['capabilities']);
   await search(page);
   await waitForCapability(page);
-  await expect(sheet(page, 'results')).toBeVisible();
+  await expect(query(page)).toHaveValue(label);
+  await expect(sheet(page, 'results')).toHaveCount(0);
   await t.point('Explicit search admits a new read while the restored transport is held',
     [action('Heal'), action('Search'), action('Connect')], ['s.message']);
   await settleCapability(page, true);
@@ -188,9 +190,10 @@ export async function route(page, t) {
   await expect(sheet(page, 'place').getByRole('button', {name: 'Rename place', exact: true})).toHaveText(label);
   await t.point('Selecting that result opens its actual place card', action('PickPlace'));
   await button(page, 'Directions').click();
-  const input = page.getByRole('textbox', {name: 'Route origin coordinates', exact: true});
+  const input = page.getByRole('textbox', {name: 'Starting point', exact: true});
   await expect(input).toBeVisible();
-  await expect(sheet(page, 'directions')).toContainText('Choose a real origin to calculate a route.');
+  await expect(sheet(page, 'directions')).toHaveCount(0);
+  assert.notEqual((await page.evaluate(() => window.inspectHistoricalMaps().route))?.phase, 'ready');
   assert.equal((await requests(page)).some(row => row.endpoint === 'routes'), false);
   const immediate = t.trace && difference(t.trace, 'directions_wait_for_explicit_origin_before_route');
   immediate?.steps.push({label: 'Directions without an origin has no accepted route', action: action('Directions'), expect: await observe(page)});
@@ -269,7 +272,7 @@ async function guidanceTargets(page, viewports) {
         await page.waitForFunction(landscape => document.documentElement.classList.contains('alpha-landscape') === landscape,
           width > height);
         await settle();
-        const {targets, rightDock} = await page.evaluate(landscape => {
+        const {targets, rightDock, noSubstituteMap} = await page.evaluate(landscape => {
           const root = document.querySelector('[data-alpha-maps-root]');
           const end = root.querySelector('button[aria-label="End navigation"]');
           const owns = (node, x, y) => node.contains(document.elementFromPoint(x, y));
@@ -288,24 +291,24 @@ async function guidanceTargets(page, viewports) {
             label: node.getAttribute('aria-label') || node.textContent.trim(),
             owned: points(node, [0.2, 0.5, 0.8]),
           }));
-          const information = root.querySelector('summary[aria-label="Map information"]');
-          const attribution = [...root.querySelectorAll('.alpha-map-credits a')].map(node =>
-            ({label: node.textContent.trim(), owned: textLines(node)}));
+          // This provider advertises routes without tiles. Production must not insert a different basemap.
+          const assertNoMap = !root.querySelector('[data-alpha-map-plane],.alpha-map-credits');
           const notice = root.querySelector('[data-alpha-maps-status] [role="status"]');
           const pill = root.closest('[data-screen]').querySelector('[data-alpha-layer="pill"]');
           const rail = pill?.getBoundingClientRect(), app = root.getBoundingClientRect();
           const dockButtons = pill ? [...pill.querySelectorAll('button,[role="button"]')].filter(node =>
             node.getClientRects().length && !node.closest('[aria-hidden="true"],[inert]')) : [];
           return {
-            targets: [...guidance, {label: 'Map information', owned: points(information, [0.05, 0.2, 0.5, 0.8, 0.95])},
-              ...attribution, {label: notice.textContent.trim(), owned: textLines(notice)}],
+            targets: [...guidance, {label: notice.textContent.trim(), owned: textLines(notice)}],
+            noSubstituteMap: assertNoMap,
             rightDock: landscape && rail ? {
               atRight: rail.left > app.left + app.width / 2 && Math.abs(rail.right - app.right) < 1,
               controls: dockButtons.map(node => ({label: node.getAttribute('aria-label'), owned: points(node, [0.5])[1]})),
             } : null,
           };
         }, width > height);
-        assert.equal(targets.length, 9, 'Four guidance controls, Map information, three attribution links and status');
+        assert.equal(noSubstituteMap, true, 'A provider without tiles does not expose a substitute basemap');
+        assert.equal(targets.length, 3, 'End, reroute and status remain usable without tiles');
         for (const {label, owned} of targets) {
           assert.ok(owned.length && owned.every(Boolean), `${width}×${height} at ${percent}%: ${label} owns its sampled points`);
         }
@@ -313,16 +316,7 @@ async function guidanceTargets(page, viewports) {
           assert.ok(rightDock?.atRight, 'The landscape assistant pill remains right-docked');
           assert.ok(rightDock.controls.length && rightDock.controls.every(control => control.owned),
             'The assistant pill still owns the centers of its controls');
-          const information = page.locator('[data-alpha-maps-root] summary[aria-label="Map information"]');
-          await information.tap();
-          await expect(information.locator('..')).toHaveAttribute('open', '');
-          const coordinates = information.locator('..').getByRole('button', {name:'Enter coordinates', exact:true});
-          assert.ok(await coordinates.evaluate(node => {
-            const box = node.getBoundingClientRect();
-            return node.contains(document.elementFromPoint(box.left+box.width/2, box.top+box.height/2));
-          }), 'The open disclosure owns its first action');
-          await information.tap();
-          await expect(information.locator('..')).not.toHaveAttribute('open', '');
+          await expect(page.locator('[data-alpha-maps-root] summary[aria-label="Map information"]')).toHaveCount(0);
         }
         observations.push({width, height, percent, targets, ...(rightDock ? {rightDock} : {})});
       }
@@ -501,7 +495,7 @@ export async function checkMapsRefinement(extraSources = []) {
     'Actual flag-off Maps renderer, shared Maps screen/controller, Cloud provider and browser location run in Chromium. The account transport, external map style and precise fixes are closed synthetic ports. No geographic request leaves the fixture.',
     'Connection observations are scoped to the captured synthetic owner and its actual capability requests. The network, subscription and Cloud service facts are controlled inputs. Informational and unmodeled notices have no historical error category.',
     'The accepted Directions projection includes the owner entering explicit origin coordinates. The real Arrived projection checks the screen and released location separately from the accepted route retained in the arrival state.',
-    'Mounted hit tests cover guidance, Map information, attribution and status at two sizes per orientation and two text scales. Landscape checks the right-docked assistant and taps Map information. Portrait taps Reroute and observes its exact admission.',
+    'Mounted hit tests cover End, reroute and status at two sizes per orientation and two text scales. The route-only fixture has no substitute basemap. Landscape checks the right-docked assistant; portrait checks exact reroute admission.',
     'Calendar return, native background service, remote agent requests, installed permission flow and fairness are independent obligations.',
   ]};
   const receipt = await checkTraces({...shared, traces: results.map(result => result.trace)});
