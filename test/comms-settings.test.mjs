@@ -80,7 +80,7 @@ test('a listener status read never discards or replaces a Pause or Turn off resu
  assert.match(action,/if \(owner !== instance\) return;\s+listenerStopUnconfirmed = !next.available;\s+if \(next.available\) listener = next;/,'only a confirmed action replaces the prior status');
  assert.match(source,/const recovery = listenerStopUnconfirmed \? \[micMayBeOn\(\)\] : \[\];\s+if \(!imageSenseAvailable\(\)\) return recovery;/);
  assert.match(action,/finally \{ listenerReads\.endAction\(\);/);
- assert.match(source,/if \(!imageSenseAvailable\(\)\) return;\s+const read = listenerReads\.beginRead\(\);\s+if \(read === null\) return;\s+const status = await listenerStatus\(\);\s+if \(owner === instance && capabilityAbort === abort && listenerReads\.readApplies\(read\)\) listener = status;/);
+ assert.match(source,/if \(!imageSenseAvailable\(\)\) return;\s+const read = listenerReads\.beginRead\(\);\s+if \(read === null\) return;\s+const status = await listenerStatus\(\);\s+(?:\/\/[^\n]*\n\s*)?if \(owner === instance && capabilityAbort === abort && listenerReads\.readApplies\(read\) && !listenerStopUnconfirmed\) listener = status;/);
 });
 
 test('a resume behind another view defers the Settings device read until Settings is shown',async()=>{

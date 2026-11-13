@@ -19,9 +19,9 @@ function fixture(t) {
 }
 test('native cache identity changes with producer code, model pins and compiler inputs',t=>{
   const dir=fixture(t),before=nativeRecipeDigest(nativeRecipe(dir));
-  for(const name of ['scripts/prepare-embedding-host.ts','android/embedding-host/native-requirements.txt','android/embedding-host/bootstrap-requirements.txt','android/voice-host/qualified-voice-host.json','scripts/voice-host.ts','scripts/paradee-runtime.ts','scripts/android-abis.ts','scripts/copy-file-clone.ts','scripts/stage-embedding-host.ts']){
+  for(const name of ['scripts/prepare-embedding-host.ts','android/embedding-host/native-requirements.txt','android/embedding-host/bootstrap-requirements.txt','android/voice-host/qualified-voice-host.json','android/embedding-host/qualified-host.json','scripts/voice-host.ts','scripts/paradee-runtime.ts','scripts/android-abis.ts','scripts/copy-file-clone.ts','scripts/stage-embedding-host.ts']){
     const file=path.join(dir,name),original=fs.readFileSync(file);
-    if(name.endsWith('.json')){const record=JSON.parse(original);record.models[0].sha256='0'.repeat(64);fs.writeFileSync(file,JSON.stringify(record));}
+    if(name.endsWith('.json')){const record=JSON.parse(original);(record.models?.[0]??record.model).sha256='0'.repeat(64);fs.writeFileSync(file,JSON.stringify(record));}
     else fs.appendFileSync(file,'\n# new producer input\n');
     assert.notEqual(nativeRecipeDigest(nativeRecipe(dir)),before,name);fs.writeFileSync(file,original);
   }
@@ -79,6 +79,10 @@ test('a fresh native source cache checks out successfully and preserves later di
   const pin=git('rev-parse','HEAD');prepareNativeSource(repository,source,pin);
   assert.equal(fs.readFileSync(path.join(source,'input'),'utf8'),'reviewed');assert.equal(fs.existsSync(path.join(source,'.git/objects/info/alternates')),false);
   fs.writeFileSync(path.join(source,'input'),'local work');assert.throws(()=>prepareNativeSource(repository,source,pin),/tracked modifications/);assert.equal(fs.readFileSync(path.join(source,'input'),'utf8'),'local work');
+  const linked=path.join(dir,'linked-source'),before=git('symbolic-ref','HEAD');fs.symlinkSync(repository,linked,'dir');
+  assert.throws(()=>prepareNativeSource(repository,linked,pin),/symbolic link/);
+  assert.equal(git('symbolic-ref','HEAD'),before);assert.equal(fs.existsSync(path.join(repository,'.git/alpha-native-checkout')),false);
+  const child=path.join(linked,'new-cache');assert.throws(()=>prepareNativeSource(repository,child,pin),/symbolic link/);assert.equal(fs.existsSync(child),false);
 });
 test('native build and inspection share Linux and macOS SDK discovery',t=>{
   const home=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-sdk-'));t.after(()=>fs.rmSync(home,{recursive:true,force:true}));

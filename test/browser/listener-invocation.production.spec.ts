@@ -191,7 +191,7 @@ test('an inconsistent stop receipt keeps Android recovery available without open
  expect(foreign).toEqual([]);
 });
 
-for(const action of ['pause','turnOff'] as const)test(`qualified Privacy retains the open microphone status after unconfirmed ${action}`,async({page})=>{
+for(const readback of ['unavailable','off'] as const)for(const action of ['pause','turnOff'] as const)test(`qualified Privacy retains the open microphone status after unconfirmed ${action} and ${readback} status refresh`,async({page})=>{
  const listener={available:true,state:'OFF',label:'Listening off',consented:true,listening:false,microphoneOpen:true};
  const foreign=await setup(page,{image:true,sense:true,listener,stopReceipt:{available:false}});
  await residentHome(page);
@@ -208,7 +208,16 @@ for(const action of ['pause','turnOff'] as const)test(`qualified Privacy retains
  await expect(button(page,'Pause listening')).toBeVisible();
  await recovery.click();
  await expect.poll(()=>live(page,f=>f.deviceSettings)).toEqual(['system']);
- await page.evaluate(()=>{delete (window as any).live.stopReceipt;});
+ const reads=await live(page,f=>f.listenerCalls.filter((method:string)=>method==='status').length);
+ await page.evaluate(({readback,listener})=>{
+  (window as any).live.listener=readback==='unavailable'?{available:false}:{...listener,microphoneOpen:false};
+  (window as any).flagOff.emit('DailyApps','appResumed',{});
+ },{readback,listener});
+ await expect.poll(()=>live(page,f=>f.listenerCalls.filter((method:string)=>method==='status').length)).toBeGreaterThan(reads);
+ await expect(page.getByText('Microphone still open',{exact:true})).toBeVisible();
+ await expect(listening).toHaveAttribute('aria-checked','true');
+ await expect(button(page,'Pause listening')).toBeVisible();
+ await page.evaluate(listener=>{delete (window as any).live.stopReceipt;(window as any).live.listener=listener;},listener);
  await stop.click();
  await expect(recovery).toHaveCount(0);
  await expect(button(page,'Pause listening')).toHaveCount(0);

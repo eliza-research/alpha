@@ -161,6 +161,7 @@ class CloudSigningInputTest(unittest.TestCase):
         self.native_source = (source, sdk_commit)
         self.native_recipe = {
             "schema": "alpha-native-recipe/v1", "identity": PRODUCER.CANDIDATE_PACKAGE,
+            "embeddingModel": {"id": "synthetic-embedding-model"},
             "engineCommit": "e" * 40,
             "sourceTrees": dict(zip(NATIVE_SOURCE_PATHS, git(sdk, "rev-parse", *(sdk_commit + ":" + name for name in NATIVE_SOURCE_PATHS)).splitlines())),
             "productInputs": {name: ADMISSION.digest((root / name).read_bytes()) for name in NATIVE_PRODUCT_PATHS},
@@ -518,7 +519,10 @@ class CloudSigningInputTest(unittest.TestCase):
             rehash(value)
         def change_embedding_model(value):
             value["embedding"]["model"] = {"id": "forged-model"}
-        for change in (change_tree, change_input, change_models, change_python, change_embedding_model):
+        def change_embedding_recipe(value):
+            value["recipe"]["embeddingModel"] = value["embedding"]["model"] = {"id": "forged-model"}
+            rehash(value)
+        for change in (change_tree, change_input, change_models, change_python, change_embedding_model, change_embedding_recipe):
             with self.subTest(change=change.__name__):
                 self.write_candidate(change_native=change)
                 with self.assertRaisesRegex(ValueError, "reviewed"):
