@@ -32,7 +32,7 @@ async function box(locator: Locator) { const value = await locator.boundingBox()
 /** Resize, then wait until the renderer has measured the new window and rendered it. */
 async function resize(page: Page, viewport: { width: number; height: number }) {
   await page.setViewportSize(viewport);
-  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--alpha-visible-height'))).toBe(`${viewport.height}px`);
+  await expect(page.locator('html')).toHaveCSS('--alpha-visible-height', `${viewport.height}px`);
   await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => done(null)))));
 }
 /** Within the readable column and centred in the window, or the full phone width when narrow. */
