@@ -233,10 +233,11 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.match(cache.uses, /^actions\/cache\/restore@/);
   assert.equal(cache.with.path, '${{ env.XDG_CACHE_HOME }}/alpha/native-inputs');
   assert.match(cache.with.key, /steps.native-recipe.outputs.sha256/);
+  assert.equal(cache.with['restore-keys'].trim(), 'alpha-native-${{ runner.os }}-${{ runner.arch }}-');
   const cacheSave = build.steps.find(step => step.name === 'Retain verified native build cache');
   assert.match(cacheSave.uses, /^actions\/cache\/save@/);
   assert.equal(cacheSave.if, "steps.native-cache.outputs.cache-hit != 'true'");
-  assert.deepEqual(cacheSave.with, cache.with);
+  assert.deepEqual(cacheSave.with, {path: cache.with.path, key: cache.with.key});
   assert.ok(stepNames.indexOf(nativeBuild.name) < stepNames.indexOf(cacheSave.name));
   assert.ok(!build.steps.some(step => step.run?.includes('hosted-native-inputs.py')));
   assert.equal(evaluate(build.if, main), true);

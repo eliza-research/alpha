@@ -228,6 +228,10 @@ jobs:
         with:
           path: ${{ env.XDG_CACHE_HOME }}/alpha/native-inputs
           key: alpha-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-recipe.outputs.sha256 }}
+          # Other recipes may supply shared models; their output receipts still
+          # require the current source recipe and exact byte validation.
+          restore-keys: |
+            alpha-native-${{ runner.os }}-${{ runner.arch }}-
       - name: Build and stage native voice and embeddings from verified inputs
         timeout-minutes: 95
         run: |
