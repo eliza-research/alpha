@@ -1,5 +1,5 @@
 {
-  "baseCommit": "f2ff172f1aa4683ca89bebc1c86ed6d6b402f091",
+  "baseCommit": "1b39e1854abb31b0f99e91604259da29698917ee",
   "note": "sha256 of each upstream packages/auth/android/test file this overlay replaces at its reviewed rebase pin. The pinned suite runs first; the browser fork retains its additional lifecycle cases and current upstream verification ownership, durable return adoption, acknowledgement activation/recovery, SMS cooldown, silent renewal and resident-mutation regressions. Null means upstream has no such file.",
   "files": {
     "native-sign-in.test.mjs": "618598293f5f53e1ad34a5ce19ba284b5ba92cb8bab07435ef1a374bf6b1fae3",
