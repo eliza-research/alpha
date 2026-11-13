@@ -74,6 +74,19 @@ def producer_kind(plan):
     return kind
 
 
+def release_contract(plan):
+    """Bind the existing private Cloud pair or the current native launcher."""
+    kind = producer_kind(plan)
+    pins = plan.get("unsignedApkSHA256")
+    require(isinstance(pins, dict), "Missing unsigned APK pins")
+    if kind == PRIVATE_RUNNER and set(pins) == {"standalone", "launcher"}:
+        return {"variants": ("standalone", "launcher"), "runtimeProfile": "cloud",
+                "packageName": "ai.elizaresearch.alphaphone"}
+    require(set(pins) == {"launcher"}, "Unexpected release variants")
+    return {"variants": ("launcher",), "runtimeProfile": "native",
+            "packageName": CANDIDATE_PACKAGE}
+
+
 def archive_pins(plan):
     require(type(plan.get("archiveBytes")) is int and 0 < plan["archiveBytes"] <= MAX_ARCHIVE_BYTES and
             matches(SHA, plan.get("archiveSHA256")), "Invalid exact producer archive pins")

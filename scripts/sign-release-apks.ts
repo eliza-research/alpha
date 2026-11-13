@@ -214,7 +214,7 @@ async function fileDigest(file: string) {
   return hash.digest("hex");
 }
 
-export async function approvedSigningRotation(signerRecord: SignerRecord, lineage: string, targets: readonly {input: string}[]) {
+export async function approvedSigningRotation(signerRecord: SignerRecord, lineage: string, targets: readonly {input: string}[], { allowSubset = false } = {}) {
   const record = signerRecord.apkSigningRotation;
   const unsigned = record?.unsignedApkSHA256;
   const lastReleaseVersion = signerRecord.lastRelease?.versionCode ?? 0;
@@ -225,7 +225,7 @@ export async function approvedSigningRotation(signerRecord: SignerRecord, lineag
       !Number.isSafeInteger(record.versionCode) ||
       !Number.isSafeInteger(record.fromVersionCode) || record.fromVersionCode < 1 ||
       record.versionCode <= Math.max(record.fromVersionCode, lastReleaseVersion) ||
-      !unsigned || Object.keys(unsigned).sort().join() !== "launcher" ||
+      !unsigned || !["launcher", "launcher,standalone"].includes(Object.keys(unsigned).sort().join()) ||
       [record.previousSignerSha256, record.lineageSha256, record.apksignerSha256, record.verifierJarSha256, ...Object.values(unsigned)]
         .some(value => typeof value !== "string" || !HEX.test(value)) ||
       record.previousSignerSha256 === signerRecord.signerSha256) {
@@ -236,7 +236,8 @@ export async function approvedSigningRotation(signerRecord: SignerRecord, lineag
       await fileDigest(lineage) !== record.lineageSha256)
     throw new Error("Public rotation lineage differs from the reviewed digest");
   const allowed = new Set(Object.values(unsigned));
-  if (targets.length !== VARIANTS.length) throw new Error("Unsigned APK is outside the reviewed rotation scope");
+  if (!targets.length || targets.length > Object.keys(unsigned).length || (!allowSubset && targets.length !== Object.keys(unsigned).length))
+    throw new Error("Unsigned APK is outside the reviewed rotation scope");
   for (const target of targets) {
     if (!fs.lstatSync(target.input).isFile() || !allowed.delete(await fileDigest(target.input)))
       throw new Error("Unsigned APK is outside the reviewed rotation scope");
@@ -304,7 +305,7 @@ export async function main(argv: readonly string[], { root = process.cwd(), env 
     try {
       const committed = execFileSync("git", ["--no-replace-objects", "show", "HEAD:" + descriptorPath], { cwd: root });
       if (!committed.equals(descriptorBytes)) throw new Error("APK signing rotation requires the reviewed committed descriptor");
-      rotation = {lineage: rotationLineage, record: await approvedSigningRotation(signerRecord, rotationLineage, targets)};
+      rotation = {lineage: rotationLineage, record: await approvedSigningRotation(signerRecord, rotationLineage, targets, { allowSubset: Boolean(options.apk) })};
     } catch (problem) { error(message(problem)); return 1; }
   }
   const toolchain = options.apksigner === undefined ? await import("./toolchain.ts") : null;

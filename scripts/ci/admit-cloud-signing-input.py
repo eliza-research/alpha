@@ -17,7 +17,7 @@ from app_update_producer import (
     CANDIDATE, CANDIDATE_PACKAGE, MAX_ARCHIVE_BYTES, PRIVATE_APK_BUCKET, PRIVATE_RUNNER, REPOSITORY,
     WORKFLOW, WORKFLOW_ID, apk_member_limit, archive_pins, copy_verified, decode, download_github_archive,
     gh_json, github_candidate, github_candidate_download_pins, matches, positive_id, producer_kind,
-    validate_private_storage,
+    validate_private_storage, release_contract,
 )
 
 VARIANTS = ("launcher",)
@@ -34,8 +34,8 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def native_profile(record):
-    return record["runtimeProfile"] == "native" and "localEmbeddings" not in record
+def matches_profile(record, profile):
+    return record["runtimeProfile"] == profile and "localEmbeddings" not in record
 
 
 def reviewed_private_producer(plan, descriptor):
@@ -252,9 +252,9 @@ def candidate_evidence(data, pin, apk_manifest, source_root=None):
     return candidate["apks"]
 
 
-def debug_apk_members(archive, verified, kind):
+def debug_apk_members(archive, verified, kind, variants=VARIANTS):
     members = {}
-    for variant in VARIANTS:
+    for variant in variants:
         name = f"{variant}-debug.apk"
         rows = [row for row in verified["results"] if row.get("mode") == "debug" and row.get("variant") == variant]
         require(len(rows) == 1, "Producer debug APK is required for full verification")
@@ -310,6 +310,10 @@ def producer_evidence_members(names, inventory):
 
 def admit(archive, pin, stage=None, *, source_root=None):
     kind = producer_kind(pin)
+    contract = release_contract(pin)
+    variants = contract["variants"]
+    profile = contract["runtimeProfile"]
+    package = contract["packageName"]
     archive_json = decode if kind == CANDIDATE else json.loads
     for field in ("alphaCommit", "sdkCommit"):
         require(isinstance(pin.get(field), str) and COMMIT.fullmatch(pin[field]), f"Invalid {field} pin")
@@ -320,7 +324,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
             and isinstance(channel["manifestUrlSha256"], str)
             and SHA.fullmatch(channel["manifestUrlSha256"]), "Invalid reviewed update channel")
     apks = pin["unsignedApkSHA256"]
-    require(set(apks) == set(VARIANTS), "Exactly the launcher APK pin is required")
+    require(set(apks) == set(variants), "APK pins differ from the reviewed release contract")
     for value in (pin["archiveSHA256"], pin["producerManifestSHA256"], *apks.values()):
         require(isinstance(value, str) and SHA.fullmatch(value), "Invalid SHA-256 pin")
     require(archive.is_file() and not archive.is_symlink() and archive.stat().st_size <= MAX_ARCHIVE_BYTES,
@@ -352,7 +356,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
                         private["alphaCommit"] == pin["alphaCommit"] and
                         private["sdkCommit"] == pin["sdkCommit"] and
                         private["versionCode"] == pin["versionCode"] and
-                        private["unsignedApkSHA256"] == apks and native_profile(private),
+                        private["unsignedApkSHA256"] == apks and matches_profile(private, profile),
                         "Private producer identity differs from the reviewed build")
                 require(private.get("updateChannel") == channel, "Private producer update channel differs")
                 for check in ("productSourceGuard", "sdkSourceGuard", "normalPreparation",
@@ -363,7 +367,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
             require(digest(producer_bytes) == pin["producerManifestSHA256"], "Producer manifest digest differs")
             producer = archive_json(producer_bytes)
             require(producer["source"] == pin["alphaCommit"] and producer["versionCode"] == pin["versionCode"]
-                    and native_profile(producer),
+                    and matches_profile(producer, profile),
                     "Producer source, version or runtime profile differs")
             require(producer.get("updateChannel") == channel, "Producer update channel differs")
             apk_manifest = data("apk-verification.json")
@@ -377,24 +381,24 @@ def admit(archive, pin, stage=None, *, source_root=None):
             verified = archive_json(apk_manifest)
             require(verified.get("updateChannel") == channel, "Verified update channel differs")
             require(verified["upstream"]["commit"] == pin["sdkCommit"], "Verified SDK commit differs")
-            require(native_profile(verified) and verified["testMocks"] is False
+            require(matches_profile(verified, profile) and verified["testMocks"] is False
                     and verified.get("allowUnpackagedRuntime") is False,
                     "APK verification is outside the reviewed distribution profile")
             config = json.loads(build)
             require(config.get("updateChannel") == channel, "Build update channel differs")
-            require(native_profile(config) and config["testMocks"] is False and config["signingRequested"] is False
+            require(matches_profile(config, profile) and config["testMocks"] is False and config["signingRequested"] is False
                     and config["versionOverride"]["code"] == str(pin["versionCode"]),
                     "Build flags or version differ from the reviewed unsigned distribution build")
             name_map = json.loads(data("apk-manifest.json"))
             rows = [row for row in verified["results"] if row["mode"] == "release"]
-            require(len(rows) == len(VARIANTS) and {row["variant"] for row in rows} == set(VARIANTS),
+            require(len(rows) == len(variants) and {row["variant"] for row in rows} == set(variants),
                     "APK verification must contain exactly one release row per variant")
             release_members = {}
             for row in rows:
                 variant = row["variant"]
                 require(row.get("updateChannel") == channel, "APK update channel differs")
                 name = f"{variant}-release-unsigned.apk"
-                require(row["file"] == f"artifacts/{name}" and row["packageName"] == CANDIDATE_PACKAGE
+                require(row["file"] == f"artifacts/{name}" and row["packageName"] == package
                         and row["versionCode"] == pin["versionCode"] and row["signed"] is False
                         and row["signerSha256"] is None and row["testMocks"] is False
                         and row["debuggable"] is False and row["home"] is (variant == "launcher")
@@ -416,7 +420,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
                 release_members[variant] = apk_member
             if kind == CANDIDATE:
                 # Refuse archives that publication cannot restore before signing.
-                for entry, expected in debug_apk_members(bundle, verified, kind).values():
+                for entry, expected in debug_apk_members(bundle, verified, kind, variants).values():
                     with bundle.open(entry) as apk:
                         copy_verified(apk, entry.file_size, expected, "Producer debug APK bytes differ")
                 for _, entry, expected in producer_evidence_members(names, producer["files"]):
@@ -427,7 +431,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
                     copy_verified(apk, apk_member.file_size, apks[variant], f"{variant} APK bytes differ")
             if stage is not None:
                 stage.mkdir(mode=0o700)
-                for variant in VARIANTS:
+                for variant in variants:
                     apk_member = release_members[variant]
                     output = stage / apk_member.filename
                     with bundle.open(apk_member) as source, output.open("xb") as target:

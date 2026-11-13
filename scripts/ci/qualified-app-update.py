@@ -23,7 +23,7 @@ import tempfile
 from urllib.parse import quote, urlencode
 import zipfile
 
-from app_update_producer import HOSTED_DISPATCH, apk_member_limit, copy_verified, decode, producer_kind
+from app_update_producer import HOSTED_DISPATCH, apk_member_limit, copy_verified, decode, producer_kind, release_contract
 
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = "eliza-research/alpha"
@@ -132,16 +132,17 @@ def validate(record):
             "Invalid delivery artifact digest")
     plan_bytes = encoded(record, "signingPlan", PLAN_LIMIT)
     plan, storage = public_private_plan(plan_bytes)
+    variants = release_contract(plan)["variants"]
     check_signed_receipt(record["signedBundle"], storage)
     apks = record["signedApkSHA256"]
-    require(isinstance(apks, dict) and set(apks) == set(VARIANTS) and
+    require(isinstance(apks, dict) and set(apks) == set(variants) and
             all(isinstance(value, str) and HEX.fullmatch(value) for value in apks.values()) and
-            len(set(apks.values())) == len(VARIANTS), "Exactly the signed launcher APK hash is required")
+            len(set(apks.values())) == len(variants), "Signed APK hashes differ from the release contract")
     voice_bytes = encoded(record, "cloudVoiceEvidence", VOICE_LIMIT)
     voice = decode(voice_bytes)
     require(isinstance(voice, dict) and set(voice) == {"format", "results"} and
             voice["format"] == "alpha-cloud-voice-qualification-v1" and
-            isinstance(voice["results"], list) and len(voice["results"]) == len(VARIANTS), "Content-free voice receipt required")
+            isinstance(voice["results"], list) and len(voice["results"]) == len(variants), "Content-free voice receipt required")
     observed = []
     for row in voice["results"]:
         require(isinstance(row, dict) and set(row) == {"apkSha256", "provider", "outcome", "checks"} and
@@ -149,7 +150,7 @@ def validate(record):
                 isinstance(row["checks"], dict) and set(row["checks"]) == CHECKS and
                 all(value is True for value in row["checks"].values()), "Voice qualification incomplete or contains extra fields")
         observed.append(row["apkSha256"])
-    require(len(set(observed)) == len(VARIANTS) and set(observed) == set(apks.values()), "Voice receipt does not name exact signed APKs")
+    require(len(set(observed)) == len(variants) and set(observed) == set(apks.values()), "Voice receipt does not name exact signed APKs")
     return plan, plan_bytes, voice_bytes
 
 
@@ -286,10 +287,10 @@ def restore_file(root, name, source, size, digest, failure):
             temporary.unlink(missing_ok=True)
 
 
-def restore_producer_evidence(unsigned, product, kind):
+def restore_producer_evidence(unsigned, product, kind, variants=VARIANTS):
     with zipfile.ZipFile(unsigned) as archive:
         verified = decode(archive.read("apk-verification.json"))
-        debug = PRODUCER.debug_apk_members(archive, verified, kind)
+        debug = PRODUCER.debug_apk_members(archive, verified, kind, variants)
         producer = decode(archive.read("producer-evidence/manifest.json"))
         names = PRODUCER.archive_members(archive)
         for name, entry, expected in PRODUCER.producer_evidence_members(names, producer["files"]):
@@ -310,7 +311,8 @@ def restore_producer_evidence(unsigned, product, kind):
 
 @contextmanager
 def signed_bundle(signed, receipt, plan, plan_bytes):
-    signed_apks = {variant + "-release.apk" for variant in VARIANTS}
+    variants = release_contract(plan)["variants"]
+    signed_apks = {variant + "-release.apk" for variant in variants}
     expected = signed_apks | {"signed.sha256", "signing-plan.json", "production-signer.sha256"}
     if plan.get("rotation") is not None:
         expected.add("rotation.lineage")
@@ -334,14 +336,15 @@ def signed_bundle(signed, receipt, plan, plan_bytes):
                 checksum = source.read(257)
             require(len(checksum) <= 256, "Signed checksum receipt differs")
             lines = checksum.decode("ascii").strip().splitlines()
-            matches = [re.fullmatch(r"([0-9a-f]{64})  (launcher)-release\.apk", line) for line in lines]
-            require(len(matches) == len(VARIANTS) and all(matches), "Signed checksum receipt differs")
+            matches = [re.fullmatch(r"([0-9a-f]{64})  (standalone|launcher)-release\.apk", line) for line in lines]
+            require(len(matches) == len(variants) and all(matches), "Signed checksum receipt differs")
             apks = {match[2]: match[1] for match in matches}
-            require(set(apks) == set(VARIANTS), "Signed checksum receipt differs")
+            require(set(apks) == set(variants), "Signed checksum receipt differs")
             yield archive, entries, apks
 
 
 def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_signed=signed_download, *, source_root=None):
+    variants = release_contract(plan)["variants"]
     unsigned, signed = work / "producer.zip", work / "signed.tar"
     fetch_unsigned(plan, unsigned)
     PRODUCER.admit(unsigned, plan, source_root=source_root or product)
@@ -349,8 +352,8 @@ def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_si
     plan_bytes = read_bounded(work / "signing-plan.json", PLAN_LIMIT)
     with signed_bundle(signed, record["signedBundle"], plan, plan_bytes) as (archive, entries, apks):
         require(apks == record["signedApkSHA256"], "Signed checksum receipt differs")
-        restore_producer_evidence(unsigned, product, producer_kind(plan))
-        for variant in VARIANTS:
+        restore_producer_evidence(unsigned, product, producer_kind(plan), variants)
+        for variant in variants:
             name = variant + "-release.apk"
             member = entries[name]
             with archive.extractfile(member) as content:
@@ -371,7 +374,7 @@ def prepare_qualification(signing_plan, voice_evidence, signed_tar, delivery_zip
     receipt = delivery_receipt(delivery_zip, identity)
     check_signed_receipt(receipt, storage)
     with signed_bundle(signed_tar, receipt, plan, plan_bytes) as (archive, entries, apks):
-        for variant in VARIANTS:
+        for variant in release_contract(plan)["variants"]:
             member = entries[variant + "-release.apk"]
             with archive.extractfile(member) as content:
                 copy_verified(content, member.size, apks[variant], "Signed APK bytes differ from qualification")
@@ -426,9 +429,11 @@ def main():
         head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=product, text=True).strip()
         require(head == plan["alphaCommit"] and decode((product / "upstream.lock.json").read_bytes())["commit"] == plan["sdkCommit"], "Product checkout differs from admitted producer")
         stage(record, plan, args.work, product)
+    contract = release_contract(plan)
     output = {"qualificationSHA256": sha(record_bytes), "sourceCommit": plan["alphaCommit"],
               "sdkCommit": plan["sdkCommit"], "versionCode": plan["versionCode"],
-              "runtimeProfile": "native",
+              "runtimeProfile": contract["runtimeProfile"],
+              "packageName": contract["packageName"],
               "signedApkSHA256": record["signedApkSHA256"], "voiceEvidenceSHA256": record["cloudVoiceEvidenceSHA256"],
               "voiceAuthority": "reviewed-external-receipt", "published": False}
     (args.work / "qualification-summary.json").write_text(json.dumps(output, indent=2) + "\n")
