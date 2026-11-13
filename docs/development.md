@@ -13,8 +13,9 @@ changes upstream and consume a reviewed commit; never edit the vendor checkout.
 
 ## Setup
 
-Use Bun 1.4.2 (`packageManager` in `package.json`), Node 26.13.0 for the pinned
-upstream tools and Node-only host tests, and JDK 21.
+Use Bun 1.4.2 (`packageManager` in `package.json`) and JDK 21. The pinned upstream
+source prepares and builds on Bun. Node.js 24+ is needed only for LemmaScript and the
+Node-only host tests (`bun run test:node`).
 Native builds need Python 3 for toolchain bootstrapping, Android SDK platform 36
 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
