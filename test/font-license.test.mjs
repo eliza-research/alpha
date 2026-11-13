@@ -170,7 +170,7 @@ test('the bundle audit prints licence flags and the font check as flag lines, ne
   assert.match(swapped.stderr, new RegExp(`^${UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION ? 'RELEASE BLOCKER' : 'LICENCE FLAG \\(reported, not blocking\\)'} unresolved-font-licence: Denton typeface \\(denton-300\\.woff2\\) has no recorded licence`, 'm'));
 });
 
-test('verify-apks records licence flags and keeps font blockers and private QA out of distribution', () => {
+test('verify-apks records licence flags and keeps font blockers out of distribution', () => {
   const source = fs.readFileSync(path.join(ROOT, 'scripts/verify-apks.ts'), 'utf8');
   // The font check is recorded in full; only its `blockers` (empty while the constant is false) reach `distributable`.
   assert.match(source, /fontCheck = fontLicenceCheck\(payload\.public\);/);
@@ -181,7 +181,7 @@ test('verify-apks records licence flags and keeps font blockers and private QA o
   assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);
   const distributable = /const cartesia = [\s\S]*?row\.distributable = [^;]+;/.exec(source)[0];
   const admits = new Function('cloudEvidence', 'cloudEvidenceSha256', 'testMocks', 'row', 'runtime',
-    'cloudVoiceAdmission', 'updateChannel', 'releaseDistributable', `${distributable}\nreturn row.distributable;`);
+    'cloudVoiceAdmission', 'releaseDistributable', `${distributable}\nreturn row.distributable;`);
   const apkSha256 = 'a'.repeat(64);
   const row = {sha256: apkSha256, signed: true, releaseAdmission: {signerMatches: true, blockers: [], failures: []},
     runtimeNotices: true, voiceHost: {packaged: true, asr: true, qualified: true}, licenceBlockers: []};
@@ -191,15 +191,14 @@ test('verify-apks records licence flags and keeps font blockers and private QA o
     const evidence = outcome && {format: 'cloud-voice-qualification-v1',
       results: [{apkSha256, outcome, provider: 'cartesia', checks}]};
     const evidenceSha256 = evidence && 'b'.repeat(64);
-    const check = (facts, kind) => admits(evidence, evidenceSha256, false, {...facts}, {distributable: true},
-      cloudVoiceAdmission, {kind}, releaseDistributable);
+    const check = facts => admits(evidence, evidenceSha256, false, {...facts}, {distributable: true},
+      cloudVoiceAdmission, releaseDistributable);
     const admitted = outcome !== 'failed';
-    assert.equal(check(row, 'public'), admitted);
-    assert.equal(check(row, 'private-qa'), false, 'private QA is never distributable');
-    assert.equal(check({...row, licenceBlockers: ['unresolved-font-licence']}, 'public'), false);
+    assert.equal(check(row), admitted);
+    assert.equal(check({...row, licenceBlockers: ['unresolved-font-licence']}), false);
     // Every distributable release packages on-device voice with ASR, with or without Cloud evidence.
-    assert.equal(check({...row, voiceHost: {packaged: false, asr: false}}, 'public'), false);
-    assert.equal(check({...row, voiceHost: {packaged: true, asr: false}}, 'public'), false);
+    assert.equal(check({...row, voiceHost: {packaged: false, asr: false}}), false);
+    assert.equal(check({...row, voiceHost: {packaged: true, asr: false}}), false);
   }
   assert.doesNotMatch(distributable, /licenceFlags|fontLicenceCheck/);
   assert.doesNotMatch(source, /problems\.push\([^)]*licence/i);

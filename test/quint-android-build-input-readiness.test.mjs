@@ -3,9 +3,9 @@ import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkAndroidBuildInputReadiness} from '../specs/quint/refinement/services/android-build-input-readiness.mjs';
 
-test('native Android prerequisite reports and early/full refusals refine the readiness model', {timeout: 120000}, async () => {
+test('native Android prerequisite reports and the preflight refusal refine the readiness model', {timeout: 120000}, async () => {
   const receipt = await checkAndroidBuildInputReadiness([fileURLToPath(import.meta.url)]);
   assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);
-  assert.equal(receipt.traces, 8);
-  assert.equal(receipt.observedFields.length, 6);
+  assert.equal(receipt.traces, 6);
+  assert.equal(receipt.observedFields.length, 4);
 });

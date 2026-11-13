@@ -48,8 +48,6 @@ test('producer and its pre-provider smoke are bound into staging and packaging a
  const read=name=>fs.readFileSync(new URL('../'+name,import.meta.url),'utf8');
  assert.match(read('scripts/stage-local-agent-runtime.ts'),/scripts\/build-mobile-agent\.ts/);
  assert.match(read('scripts/stage-local-agent-runtime.ts'),/verifyMobileBuildReceipt\(root,source\)/);
- // The staged receipt is admitted by the build preflight (the Cloud packaging verifier that also did this is gone).
- assert.match(read('scripts/android-build-preflight.ts'),/verifyMobileBuildReceipt\(root,preparedSource,path\.dirname\(staged\)\)/);
  for(const name of MOBILE_BUILD_INPUTS)assert.ok(read('scripts/source-snapshot.ts').includes(name));
  assert.match(read('scripts/verify-packaged-runtime.py'),/mobile_policy_file\.exists\(\) or/);
  assert.match(read('scripts/build-mobile-agent.ts'),/Bun\.revision!==inputs\.policy\.bun\.revision/);

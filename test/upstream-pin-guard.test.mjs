@@ -113,10 +113,9 @@ test('the preflight entry point exits 2 for an older pin', t => {
     fs.mkdirSync(path.join(f.root, 'scripts'), {recursive: true});
     fs.copyFileSync(path.join(ROOT, 'scripts', file), path.join(f.root, 'scripts', file));
   }
-  // The unpackaged developer lane may omit the on-device voice outputs, so only the pin is in question here.
   fs.mkdirSync(path.join(f.root, 'android/voice-host'), {recursive: true});
   fs.copyFileSync(path.join(ROOT, 'android/voice-host/qualified-voice-host.json'), path.join(f.root, 'android/voice-host/qualified-voice-host.json'));
-  const run = () => spawnSync(process.execPath, ['scripts/android-build-preflight.ts', '--before-prepare', '--allow-unpackaged-runtime'], {cwd: f.root, encoding: 'utf8'});
+  const run = () => spawnSync(process.execPath, ['scripts/android-build-preflight.ts'], {cwd: f.root, encoding: 'utf8'});
   const result = run();
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stderr, /Android build prerequisites are missing:\n  - upstream\.lock\.json pins .* older than or diverged/);

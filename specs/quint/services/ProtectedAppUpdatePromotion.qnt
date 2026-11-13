@@ -99,20 +99,20 @@ module ProtectedAppUpdatePromotion {
     { nondet fault = PublicFaults.oneOf(); publish(fault) },
     s' = s
   }
-  val StagedPairRequiresReviewedPlan = s.unsigned implies
+  val StagedApkRequiresReviewedPlan = s.unsigned implies
     (s.plan and s.lane.in(Set("push", "dispatch", "private")))
   val MainCandidateRequiresSameAttempt =
     (s.lane == "push" and s.plan implies s.candidateAttempt == 2)
     and (s.lane == "push" and s.unsigned implies s.protectedAttempt == s.candidateAttempt)
-  val PrivateReceiptRequiresStagedPair = s.privateReceipt implies
+  val PrivateReceiptRequiresStagedApk = s.privateReceipt implies
     (s.lane.in(Set("push", "private")) and s.plan and s.unsigned and s.object)
   val RestoredRequiresReviewedReceipt = s.restored implies (s.review and s.privateReceipt)
   val PointerWriteRequiresExactAnonymousApk = s.public.pointerWrite implies
     (s.restored and s.public.apkVerified and s.public.apk == "exact")
   val ReceiptRequiresReadbacks = s.public.receipt implies
     (s.restored and s.public.release and s.public.apk == "exact" and s.public.apkVerified and s.public.pointer == "exact")
-  val safety = StagedPairRequiresReviewedPlan and MainCandidateRequiresSameAttempt
-    and PrivateReceiptRequiresStagedPair and RestoredRequiresReviewedReceipt
+  val safety = StagedApkRequiresReviewedPlan and MainCandidateRequiresSameAttempt
+    and PrivateReceiptRequiresStagedApk and RestoredRequiresReviewedReceipt
     and PointerWriteRequiresExactAnonymousApk and ReceiptRequiresReadbacks
   action ready = admit("private", true).then(restoreUnsigned(true)).then(uploadPrivate("ok"))
     .then(readReview(true)).then(restoreSigned(true))

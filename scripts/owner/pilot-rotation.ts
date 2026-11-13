@@ -32,7 +32,7 @@ export function pilotRotationRecord(descriptor: unknown, apk: PilotApk): Record<
   const signer = isRecord(descriptor) ? descriptor.signerSha256 : undefined;
   const deviceApi = isRecord(record) ? record.deviceApi : undefined;
   if (apk.build !== "release" || !isRecord(record) || record.schema !== 1 ||
-      (record.variant !== "launcher" && record.variant !== "standalone") || record.variant !== apk.variant ||
+      record.variant !== "launcher" || record.variant !== apk.variant ||
       !isSafeInteger(deviceApi) || deviceApi < 29 || deviceApi > 37 ||
       typeof signer !== "string" || !digest.test(signer) || !hasDigests(record, RECORD_DIGESTS) ||
       (record.preserveSignaturePermissions !== undefined && typeof record.preserveSignaturePermissions !== "boolean") ||

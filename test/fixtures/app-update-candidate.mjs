@@ -116,7 +116,7 @@ export function candidateFixture(t) {
       ...Object.fromEntries(native.files.map(row => [row.path, row.sha256]))};
     for (const name of ['inputs-before.json', 'inputs-after.json']) json(path.join(output, name), {schemaVersion: 5, digest: hash(JSON.stringify(files)), files});
     const manifest = {}, rows = [];
-    for (const variant of ['standalone', 'launcher']) {
+    for (const variant of ['launcher']) {
       const name = `${variant}-release-unsigned.apk`, bytes = Buffer.from(`Synthetic ${variant} archive bytes; no APK or device claim`);
       fs.writeFileSync(path.join(output, name), bytes); manifest[name] = hash(bytes);
       rows.push({variant, mode: 'release', file: `artifacts/${name}`, packageName: config.appId, versionCode: admission.versionCode,
@@ -124,7 +124,7 @@ export function candidateFixture(t) {
         runtime: 'PACKAGED', home: variant === 'launcher', launcher: true, updateChannel: channel,
         releaseAdmission: {failures: [], blockers: ['unsigned release']}});
     }
-    for (const variant of ['standalone', 'launcher']) {
+    for (const variant of ['launcher']) {
       const name = `${variant}-debug.apk`, bytes = Buffer.from(`Synthetic ${variant} debug bytes`);
       fs.writeFileSync(path.join(output, name), bytes); manifest[name] = hash(bytes);
       rows.push({...rows.find(row => row.variant === variant), mode: 'debug', file: 'artifacts/' + name,

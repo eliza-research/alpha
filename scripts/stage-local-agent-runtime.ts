@@ -12,26 +12,10 @@ import {stageAgentBundleDependencies} from './agent-bundle-dependencies.ts';
 import {MOBILE_BUILD_RECEIPT,verifyMobileBuildReceipt} from './mobile-uuid-adapter.ts';
 const root=path.resolve(import.meta.dirname,'..');
 
-/** Explicit producer inputs; native Android never falls back to a musl archive or another ABI. */
-export function runtimeStagingSelection(source: string,parentEnv=process.env){
- const bunTarget=parentEnv.ELIZA_ANDROID_BUN_TARGET??'linux-musl';
- if(!['linux-musl','android'].includes(bunTarget))throw Error('Unsupported Android Bun target');
- const requested=(parentEnv.ELIZA_ANDROID_TARGET_ABIS??'arm64-v8a,x86_64').split(',').map(abi=>abi.trim());
- if(!requested.length||new Set(requested).size!==requested.length||requested.some(abi=>!['arm64-v8a','x86_64'].includes(abi)))throw Error('Invalid Android runtime ABI selection');
- const targetAbis=requested.join(',');
- const extra: NodeJS.ProcessEnv = {ELIZA_ANDROID_TARGET_ABIS:targetAbis,ELIZA_ANDROID_BUN_TARGET:bunTarget};
- if(bunTarget==='android'){
-  if(targetAbis!=='arm64-v8a')throw Error('Native Android producer requires explicit ARM64-only selection');
-  if(!['stable','release'].includes((parentEnv.ELIZA_BUN_CHANNEL??'stable').trim().toLowerCase()))throw Error('Native Android producer requires the reviewed stable channel');
-  const archive=parentEnv.ELIZA_BUN_AARCH64_FILE;
-  if(!archive||!path.isAbsolute(archive)||!fs.lstatSync(archive).isFile())throw Error('Native Android producer requires an absolute verified archive file');
-  if(fs.statSync(archive).size>40*1024*1024)throw Error('Native Android archive exceeds the reviewed size bound');
-  const lock=JSON.parse(fs.readFileSync(path.join(source,'packages/app/scripts/lib/android-bun-artifacts.lock.json'),'utf8'));
-  const expected=lock.targets?.android?.stable?.artifacts?.aarch64?.archiveSha256;
-  if(!/^[a-f0-9]{64}$/.test(expected??'')||createHash('sha256').update(fs.readFileSync(archive)).digest('hex')!==expected)throw Error('Native Android archive differs from the pinned SDK artifact');
-  extra.ELIZA_BUN_AARCH64_FILE=archive;extra.ELIZA_BUN_CHANNEL='stable';
- }
- return {bunTarget,targetAbis,env:preparedSourceEnv(parentEnv,extra)};
+/** The one producer selection: the musl Bun for both packaged debug ABIs. */
+const BUN_TARGET='linux-musl',TARGET_ABIS='arm64-v8a,x86_64';
+export function runtimeStagingSelection(parentEnv=process.env){
+ return {bunTarget:BUN_TARGET,targetAbis:TARGET_ABIS,env:preparedSourceEnv(parentEnv,{ELIZA_ANDROID_TARGET_ABIS:TARGET_ABIS,ELIZA_ANDROID_BUN_TARGET:BUN_TARGET})};
 }
 
 /** Staging takes no options: one profile, with local speech and embeddings always packaged. */
@@ -45,7 +29,7 @@ stagingArguments(process.argv.slice(2));
 const source=sourceDirectory(root);
 if(!fs.existsSync(path.join(source,'.alpha-runtime-source.json')))throw Error('Run bun run agent:prepare first.');
 execFileSync(process.execPath,[path.join(root,'scripts/prepare-local-agent.ts'),'--source-only'],{cwd:root,stdio:'inherit'});
-const selection=runtimeStagingSelection(source,process.env);
+const selection=runtimeStagingSelection(process.env);
 verifyWorkerArtifact(workerArtifactDirectory(root),
  {sourceStampSha256:workerHash(fs.readFileSync(path.join(source,'.alpha-runtime-source.json'))),lockSha256:workerHash(fs.readFileSync(path.join(source,'bun.lock')))});
 verifyNativeGoogleHostArtifact(root,workerArtifactDirectory(root));

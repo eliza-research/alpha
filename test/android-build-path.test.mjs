@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
-import {checkoutProblems, embeddingHostProblems, preparedRuntimeProblems, VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST} from '../scripts/android-build-preflight.ts';
+import {checkoutProblems, VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST} from '../scripts/android-build-preflight.ts';
 import {TURBO_AGENT_DETECTION_ENV, preparedSourceEnv} from '../scripts/local-agent-source.ts';
 import {ensurePreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.ts';
 import {workerHash} from '../scripts/workflow-worker-artifact.ts';
@@ -109,51 +109,20 @@ function fixture(t) {
   return {root, source, write, commit};
 }
 
-test('preflight names the exact command for each missing build input', t => {
+test('preflight names the exact command for a missing or refused voice input', t => {
   const f = fixture(t);
-  // A distribution build needs the staged on-device voice outputs (speech is on-device only); the explicit
-  // unpackaged developer lane may omit them, and local speech then reports unavailable.
+  // Every build needs the staged on-device voice outputs.
   assert.match(checkoutProblems(f.root)[0], /On-device voice outputs are not staged in \.eliza\/paradee-voice\/native/);
-  assert.deepEqual(checkoutProblems(f.root, {allowUnpackagedRuntime: true}), []);
   let problems = checkoutProblems(f.root, {voiceHost: () => { throw Error('Voice bundle lacks the ASR slot'); }});
   assert.equal(problems.length, 1);
   assert.ok(problems[0].startsWith(`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (Voice bundle lacks the ASR slot; Gradle :app:verifyVoiceHost rejects the build).`), problems[0]);
   assert.match(problems[0], /bun run android:build:local produces them automatically from pinned public source and model inputs/);
   // Staged outputs that the record does not admit are refused by the real verifier, never repaired, in either lane.
   f.write(`${VOICE_ASSET_ROOT}/build-record.json`, '{}');
-  assert.match(checkoutProblems(f.root, {allowUnpackagedRuntime: true})[0], /are not admitted by android\/voice-host\/qualified-voice-host\.json/);
-  fs.rmSync(path.join(f.root, '.eliza'), {recursive: true});
-  assert.deepEqual(checkoutProblems(f.root, {allowUnpackagedRuntime: true}), []);
-
-  // A clean checkout: no prepared source. This is what used to fail deep in Gradle.
-  problems = preparedRuntimeProblems(f.root, f.source);
-  assert.equal(problems.length, 1);
-  assert.match(problems[0], /:app:stageLocalAgentSources/);
-  assert.match(problems[0], /Run: bun run android:build:local/);
-  assert.match(problems[0], /bun run agent:prepare before bun run android:build -- --allow-unpackaged-runtime/);
-
-  f.write(path.relative(f.root, path.join(f.source, '.alpha-runtime-source.json')), '{"stamp":1}\n');
-  // The embedding host has its own test below; here it is staged.
-  const embeddingHost = () => ({});
-  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {allowUnpackagedRuntime: true}), []);
-  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {testMocks: true, embeddingHost}), []);
-  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost})[0], /not staged.*bun run agent:build-workflow-worker && bun run agent:stage-android/);
-
-  f.write('android/app/src/main/assets/agent/workflow-worker/manifest.json', '{}');
-  f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":0}\n');
-  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost})[0], /different prepared source/);
-  f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
-  // agent:stage-android writes the profile marker; a native build refuses a missing or Cloud one.
-  const marker = 'android/app/src/main/assets/agent/alpha-runtime-profile.json';
-  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*is missing.*Run: bun run agent:stage-android \(or /);
-  f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'cloud', omittedLocalModels: []}));
-  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*names "cloud"/);
-  f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'native'}, null, 2) + '\n');
-  // The Google host check has its own test below; here it passes.
-  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}}), []);
+  assert.match(checkoutProblems(f.root)[0], /are not admitted by android\/voice-host\/qualified-voice-host\.json/);
 });
 
-test('preflight refuses a staged native Google host older than its product sources', t => {
+test('Gradle\'s Google host check refuses a staged native Google host older than its product sources', t => {
   const f = fixture(t);
   f.write(path.relative(f.root, path.join(f.source, '.alpha-runtime-source.json')), '{"stamp":1}\n');
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
@@ -176,21 +145,14 @@ test('preflight refuses a staged native Google host older than its product sourc
     f.write(`${directory}/manifest.json`, manifest);
     f.write(`${directory}/google-host.mjs`, 'host-1');
   }
-  const options = {embeddingHost: () => ({}), googleHost: root => verifyNativeGoogleHost(root)};
-  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, options), []);
+  verifyNativeGoogleHost(f.root);
   // An edited input without restaging: this used to pass every gate and ship the old host.
   f.write('.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts', 'export const policy = 2;\n');
-  let problems = preparedRuntimeProblems(f.root, f.source, options);
-  assert.equal(problems.length, 1);
-  assert.match(problems[0], /staged native Google host is not current \(Native Google host source changed; build a fresh host artifact; Gradle :app:verifyNativeGoogleHost/);
-  assert.match(problems[0], /Run: bun run agent:build-workflow-worker && bun run agent:stage-android/);
-  // The developer lanes stage no resident and skip the check.
-  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {...options, allowUnpackagedRuntime: true}), []);
-  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {...options, testMocks: true}), []);
+  assert.throws(() => verifyNativeGoogleHost(f.root), /Native Google host source changed; build a fresh host artifact/);
   // A rebuilt artifact that was never staged.
   f.write('.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts', 'export const policy = 1;\n');
   f.write(`${staged}/google-host.mjs`, 'host-0');
-  assert.match(preparedRuntimeProblems(f.root, f.source, options)[0], /Staged native Google host differs from the built host artifact/);
+  assert.throws(() => verifyNativeGoogleHost(f.root), /Staged native Google host differs from the built host artifact/);
 });
 
 test('preflight rejects an unpinned checkout and android:build stops before sync and Gradle', t => {
@@ -235,13 +197,13 @@ export async function buildWorkflowArtifact({sourceRoot,outputDir,sourceIdentity
   assert.equal(read(path.join(source, 'builds')), 'x');
 });
 
-test('android:build:local builds the workflow worker before staging and stages before the strict build', () => {
+test('android:build:local builds the workflow worker before staging and stages before the build', () => {
   // The chain once stopped in agent:stage-android because nothing had built the worker artifact
   // that staging verifies first. Each step consumes the previous step's output, so order matters.
   const scripts = JSON.parse(read('package.json')).scripts;
   const chain = scripts['android:build:local'].split('&&').map(step => step.trim());
   assert.deepEqual(chain, [
-    'bun scripts/android-build-preflight.ts --before-prepare',
+    'bun scripts/android-build-preflight.ts',
     // Before the long preparation: it either has the reviewed libraries, reproduces them, or
     // stops in under a second naming the person who must supply them.
     'bun run agent:build-embedding-host',
@@ -256,40 +218,10 @@ test('android:build:local builds the workflow worker before staging and stages b
   ]);
   assert.equal(scripts['licenses:packaged-runtime'], 'bun scripts/generate-licenses.ts --packaged-runtime');
   for (const step of chain.slice(1)) assert.ok(scripts[step.replace('bun run ', '')], step);
-  // The chain ends in the strict build: no developer override may be baked into it.
-  assert.doesNotMatch(scripts['android:build:local'], /--allow-unpackaged-runtime|--allow-unqualified-runtime|--test-mocks|--skip-instrumentation/);
   assert.equal(scripts['android:build'], 'bun scripts/build-android.ts');
   assert.equal(scripts['agent:build-embedding-host'], 'bun scripts/build-embedding-host.ts', 'no option in the chain');
   // Staging itself refuses a missing or foreign worker artifact before the long mobile bundle build.
   const stage = read('scripts/stage-local-agent-runtime.ts');
   assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') > 0);
   assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') < stage.indexOf("'scripts/build-mobile-agent.ts'"));
-});
-
-test('preflight names missing embedding build inputs', t => {
-  // Gradle's :app:verifyEmbeddingHost failed a fully prepared and staged checkout 18 seconds into
-  // the first assemble task: the reviewed libraries are ignored by Git and staged from a receipt.
-  const f = fixture(t);
-  f.write(path.relative(f.root, path.join(f.source, '.alpha-runtime-source.json')), '{"stamp":1}\n');
-  f.write('android/app/src/main/assets/agent/workflow-worker/manifest.json', '{}');
-  f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
-  f.write('android/app/src/main/assets/agent/alpha-runtime-profile.json', JSON.stringify({version: 1, runtimeProfile: 'native'}));
-  const missing = () => { throw new Error('Qualified embedding host library missing or changed: libelizainference.so'); };
-  let problems = preparedRuntimeProblems(f.root, f.source, {embeddingHost: missing, googleHost: () => {}});
-  assert.equal(problems.length, 1);
-  assert.match(problems[0], /qualified embedding host is not staged \(Qualified embedding host library missing or changed: libelizainference\.so; Gradle :app:verifyEmbeddingHost/);
-  assert.match(problems[0], /bun run agent:build-embedding-host \(a step of bun run android:build:local\) downloads pinned inputs/);
-  // Test-mocks builds run the same strict Gradle check.
-  assert.equal(preparedRuntimeProblems(f.root, f.source, {testMocks: true, embeddingHost: missing}).length, 1);
-
-  // The real verifier: a staged resident payload is never admitted as "unpackaged", so the
-  // developer override does not help until the payload is removed or the host is staged.
-  f.write('android/embedding-host/qualified-host.json', JSON.stringify({jniIdentityRelocated: false}));
-  problems = preparedRuntimeProblems(f.root, f.source, {allowUnpackagedRuntime: true});
-  assert.equal(problems.length, 1);
-  assert.match(problems[0], /must have no resident payload at all/);
-  fs.rmSync(path.join(f.root, 'android/app/src/main/assets/agent'), {recursive: true});
-  assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {allowUnpackagedRuntime: true}), []);
-  assert.deepEqual(embeddingHostProblems(f.root, {allowUnpackagedRuntime: true}), []);
-  assert.equal(embeddingHostProblems(f.root).length, 1);
 });

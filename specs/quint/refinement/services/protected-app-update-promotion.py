@@ -332,7 +332,7 @@ def main(signing_timeout):
         review = ("readReview", [True], "ok")
         restore = ("restoreSigned", [True], "ok")
         schedules = [
-            ("protected private plan, exact receipt and restored pair", [plan, stage, upload, review, restore]),
+            ("protected private plan, exact receipt and restored launcher APK", [plan, stage, upload, review, restore]),
             ("dispatch archive stages exact Cloud APKs", [("admit", ["dispatch", True], "ok"), stage]),
             ("dispatch archive admission currently has no attempt pin", [("admit", ["dispatch", True], "attempt")]),
             ("private plan never stages changed downloaded bytes", [plan, ("restoreUnsigned", [False], "bytes")]),

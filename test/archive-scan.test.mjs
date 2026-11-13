@@ -16,7 +16,7 @@ for (const mode of ['signed', 'unsigned', 'signed-test-class']) test(`archive sc
   const input = 'android/app/src/androidTest/java/ai/alphacompute/alphaphone/FixtureTest.java';
   fs.writeFileSync(path.join(dir, 'inputs-before.json'), JSON.stringify({files:{[input]:'fixture'}}));
   const manifest = {};
-  for (const flavor of ['standalone', 'launcher']) for (const build of ['debug', mode === 'unsigned' ? 'release-unsigned' : 'release']) {
+  for (const flavor of ['launcher']) for (const build of ['debug', mode === 'unsigned' ? 'release-unsigned' : 'release']) {
     const name = `${flavor}-${build}.apk`;
     fs.writeFileSync(path.join(dir, 'classes.dex'), mode === 'signed-test-class' && build === 'release' ? 'Lai/alphacompute/alphaphone/FixtureTest;' : 'fixture-dex');
     execFileSync('zip', ['-q', name, 'classes.dex'], {cwd:dir});
@@ -28,9 +28,9 @@ for (const mode of ['signed', 'unsigned', 'signed-test-class']) test(`archive sc
   const result = spawnSync('python3', ['-c', runner, fixtureHome, dir, path.join(root,'scripts/scan-archived-apks.py')], {encoding:'utf8'});
   assert.equal(result.status, mode === 'signed-test-class' ? 1 : 0, result.stderr);
   const report = JSON.parse(fs.readFileSync(path.join(dir,'static-secret-scan.json'),'utf8'));
-  assert.equal(report.results.length, 4);
+  assert.equal(report.results.length, 2);
   const releases = report.results.filter(row => row.apk.includes('-release'));
-  assert.equal(releases.length, 2);
+  assert.equal(releases.length, 1);
   assert.ok(releases.every(row => row.androidTestClassesAbsent === (mode !== 'signed-test-class')));
 });
 

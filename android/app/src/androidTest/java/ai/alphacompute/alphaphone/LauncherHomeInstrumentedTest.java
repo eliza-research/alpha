@@ -29,7 +29,7 @@ import static org.junit.Assert.*;
  * chooser (the way back to the stock launcher) stay reachable. Never changes the HOME role: it runs
  * only where Alpha already holds it. On an owned emulator the runner selects and restores it:
  *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN \
- *     --variants launcher --home-role --classes SettingsRoles,LauncherHome
+ *     --home-role --classes SettingsRoles,LauncherHome
  * (SettingsRoles covers the role being removed, declined and accepted in Android's own dialog.)
  * Emulator evidence, not device or user acceptance; boot-time HOME, the recovery partition and
  * emergency calling need a phone. */

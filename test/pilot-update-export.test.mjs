@@ -66,7 +66,6 @@ test("the provider is a registered, read-only, DUMP-protected release component,
   assert.match(source, /List\.of\("cache", "code_cache"\)/);
   const apk = fs.readFileSync("scripts/apk.ts", "utf8");
   assert.match(apk, /"ai\.alphacompute\.alphaphone\.release\.DataIntegrityProvider": "android\.permission\.DUMP"/);
-  assert.ok(!fs.existsSync("android/app/src/testMocks/java/ai/alphacompute/alphaphone/release"), "no test-mocks variant of the export");
 });
 
 const { planHome, updateUnit } = await import("../scripts/pilot-update.ts");

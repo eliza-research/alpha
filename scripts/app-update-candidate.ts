@@ -197,15 +197,15 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
   }
   const manifest = readJson<Record<string, string>>(path.join(archive, 'apk-manifest.json'));
   const releases = verified.results.filter(row => row.mode === 'release');
-  assert.equal(releases.length, 2, 'Exactly two release variants required');
+  assert.equal(releases.length, 1, 'Exactly one launcher release required');
   const apks: Record<string, ApkDigest> = {};
-  for (const variant of ['standalone', 'launcher']) {
+  for (const variant of ['launcher']) {
     const name = `${variant}-release-unsigned.apk`, file = path.join(archive, name);
     const row = releases.find(entry => entry.variant === variant);
     assert.ok(row && row.file === `artifacts/${name}` && row.packageName === config.appId &&
       row.versionCode === context.versionCode && row.signed === false && row.signerSha256 === null &&
       row.distributable === false && row.testMocks === false && row.debuggable === false &&
-      row.runtime === 'PACKAGED' && row.home === (variant === 'launcher') && row.launcher === true &&
+      row.runtime === 'PACKAGED' && row.home === true && row.launcher === true &&
       row.releaseAdmission.failures.length === 0 && row.releaseAdmission.blockers.includes('unsigned release'), 'Archive is not a genuine unsigned candidate');
     assert.deepEqual(row.updateChannel, channel);
     const stat = fs.lstatSync(file);
@@ -239,7 +239,7 @@ export function candidateArchiveSize({root = process.cwd(), env = process.env, a
   const rows = (JSON.parse(verification.toString('utf8')) as ArchiveVerification).results;
   const manifest = readJson<Record<string, string>>(path.join(archive, 'apk-manifest.json'));
   const debugApks: Record<string, ApkDigest> = {};
-  for (const variant of ['standalone', 'launcher']) {
+  for (const variant of ['launcher']) {
     for (const mode of ['debug', 'release']) {
       const name = `${variant}-${mode === 'debug' ? 'debug' : 'release-unsigned'}.apk`;
       const row = rows.find(item => item.variant === variant && item.mode === mode && item.file === 'artifacts/' + name);

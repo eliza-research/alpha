@@ -66,8 +66,8 @@ def producer_kind(plan):
     candidate_transport_pins(plan)
     require(matches(COMMIT, plan.get("sdkCommit")) and
             matches(SHA, plan.get("candidateReceiptSHA256")), "Invalid exact candidate producer pins")
-    require(isinstance(plan.get("updateChannel"), dict) and plan["updateChannel"].get("kind") == "public" and
-            plan.get("purpose") != "private-update-qa-baseline", "Candidate requires public update channel")
+    require(isinstance(plan.get("updateChannel"), dict) and plan["updateChannel"].get("kind") == "public",
+            "Candidate requires public update channel")
     require(isinstance(plan.get("privateStorage"), dict) and
             "recipientCertificateSHA256" not in plan and "encryptedArtifactApproved" not in plan,
             "Candidate requires an exact private mirror and private signed delivery")

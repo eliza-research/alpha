@@ -633,7 +633,7 @@ export function androidDependencyFingerprint(root: string) {
 }
 
 export function refreshAndroidClasspath(root: string, env: NodeJS.ProcessEnv) {
-  const configurations = ['standaloneReleaseRuntimeClasspath', 'launcherReleaseRuntimeClasspath', 'standaloneDebugRuntimeClasspath', 'launcherDebugRuntimeClasspath'];
+  const configurations = ['launcherReleaseRuntimeClasspath', 'launcherDebugRuntimeClasspath'];
   generateAlphaAndroidHost(root);
   const coords = new Set();
   for (const configuration of configurations) {

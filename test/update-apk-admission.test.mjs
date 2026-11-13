@@ -25,7 +25,7 @@ test('only the exact compiled public channel can be published', () => {
   const xml = (kind='public',digest=sha(publicUrl)) => 'E: manifest\n  E: application\n'+
     meta(UPDATE_CHANNEL_META,kind)+meta(UPDATE_DIGEST_META,'sha256:'+digest);
   assert.deepEqual(admitPublicUpdateChannel(xml(),publicUrl), {kind:'public',manifestUrlSha256:sha(publicUrl)});
-  assert.throws(()=>admitPublicUpdateChannel(xml('private-qa'),publicUrl), /compiled channel/);
+  assert.throws(()=>admitPublicUpdateChannel(xml('other'),publicUrl), /input refused/);
   assert.throws(()=>admitPublicUpdateChannel(xml('public','0'.repeat(64)),publicUrl), /compiled channel/);
   assert.throws(()=>admitPublicUpdateChannel('E: manifest\n  E: application\n',publicUrl), /metadata missing/);
   assert.throws(()=>admitPublicUpdateChannel(xml()+meta(UPDATE_CHANNEL_META,'public'),publicUrl), /metadata missing or duplicated/);
@@ -33,7 +33,7 @@ test('only the exact compiled public channel can be published', () => {
 
 test('a manifest cannot substitute package, version, flavor or signing-family assertions', () => {
   assert.deepEqual(admitUpdateApkIdentity(row,descriptor,archive,signature), {signerRootSha256:active});
-  assert.deepEqual(admitUpdateApkIdentity({...row,variant:'standalone'},descriptor,{...archive,home:false,xml:''},signature), {signerRootSha256:active});
+  assert.throws(()=>admitUpdateApkIdentity({...row,variant:'standalone'},descriptor,{...archive,home:false,xml:''},signature), /a release distribution is required/);
   for (const [name,changedRow,changedArchive,changedSignature] of [
     ['version',{...row,versionCode:46},archive,signature],
     ['flavor',{...row,variant:'standalone'},archive,signature],

@@ -15,9 +15,7 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {scaledTimeout} from '../timeouts.mjs';
 
 const workflow = name => '.github/workflows/' + name + '.yml';
-const signer = workflow('release-cloud-app-signing');
-const verifier = workflow('verify-cloud-signing-input');
-const publisher = workflow('publish-qualified-app-update');
+const release = workflow('release');
 const producer = workflow('resident-android');
 const python = 'specs/quint/refinement/services/protected-app-update-promotion.py';
 const manifestName = APP_UPDATE_MANIFEST;
@@ -43,47 +41,42 @@ function checkWorkflows() {
   assert.match(producerJob.env.ALPHA_APP_UPDATE_CANDIDATE, /github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
   ordered(producerJob.steps, runs('app-update-candidate.ts version'),
     runs('build-archive.ts test-results/resident-ci-distribution'), runs('Captured APK verification differs'),
-    runs('build-archive.ts --test-mocks'), runs('app-update-candidate.ts receipt'),
+    runs('app-update-candidate.ts receipt'),
     step => step.with?.name?.startsWith('app-native-candidate-'));
-  const signing = YAML.parse(read(signer)).jobs;
-  assert.equal(signing.admit.uses, './' + verifier);
-  assert.match(signing.admit.if, /inputs\.workflow_commit == github\.sha/);
-  assert.equal(signing.sign.needs, 'admit');
-  assert.equal(signing.sign.environment, 'release');
-  assert.match(signing.sign.if, /needs\.admit\.result == 'success'.*needs\.admit\.outputs\.plan_sha256 != ''/);
-  const verify = YAML.parse(read(verifier)).jobs.admit;
-  assert.equal(verify.outputs.plan_sha256, '$' + '{{ steps.verify.outputs.plan_sha256 }}');
-  assert.ok(verify.steps.some(runs('bash scripts/ci/verify-cloud-signing-input.sh')));
-  ordered(signing.sign.steps, runs('verify-cloud-signing-input.sh --stage'), runs('bun scripts/sign-release-apks.ts --keystore'),
+  const jobs = YAML.parse(read(release)).jobs;
+  assert.match(jobs['admit-signing'].if, /inputs\.operation == 'sign' && inputs\.workflow_commit == github\.sha/);
+  assert.equal(jobs.sign.needs, 'admit-signing');
+  assert.equal(jobs.sign.environment, 'release');
+  assert.match(jobs.sign.if, /needs\.admit-signing\.result == 'success'.*needs\.admit-signing\.outputs\.plan_sha256 != ''/);
+  assert.equal(jobs['admit-signing'].outputs.plan_sha256, '$' + '{{ steps.verify.outputs.plan_sha256 }}');
+  assert.ok(jobs['admit-signing'].steps.some(step => step.run === 'bash scripts/ci/verify-cloud-signing-input.sh'));
+  ordered(jobs.sign.steps, runs('verify-cloud-signing-input.sh --stage'), runs('bun scripts/sign-release-apks.ts --keystore'),
     runs('apksigner" verify'), step => step.with?.name?.startsWith('private-cloud-apk-delivery-'));
-  const staged = signing.sign.steps.find(runs('verify-cloud-signing-input.sh --stage'));
-  assert.equal(staged.env.EXPECTED_PLAN, '$' + '{{ needs.admit.outputs.plan_sha256 }}');
+  const staged = jobs.sign.steps.find(runs('verify-cloud-signing-input.sh --stage'));
+  assert.equal(staged.env.EXPECTED_PLAN, '$' + '{{ needs.admit-signing.outputs.plan_sha256 }}');
   assert.match(staged.run, /\$EXPECTED_PLAN/);
-  const secretSteps = signing.sign.steps.filter(step => Object.values(step.env ?? {}).some(value => String(value).includes('secrets.')));
+  const secretSteps = jobs.sign.steps.filter(step => Object.values(step.env ?? {}).some(value => String(value).includes('secrets.')));
   assert.equal(secretSteps.length, 1);
   const [signingKeyStep] = secretSteps;
   assert.match(signingKeyStep.run, /sha256sum --check --strict[\s\S]+keytool -exportcert[\s\S]+test "\$actual" = "\$expected"[\s\S]+sign-release-apks\.ts/);
-  assert.ok(signing.sign.steps.find(runs('apksigner" verify')).run.includes('private-apk-storage.py upload'));
+  assert.ok(jobs.sign.steps.find(runs('apksigner" verify')).run.includes('private-apk-storage.py upload'));
 
-  const publishing = YAML.parse(read(publisher)).jobs;
-  assert.equal(publishing.publish.needs, 'admit');
-  assert.equal(publishing.publish.environment, 'release');
-  assert.match(publishing.admit.if, /inputs\.workflow_commit == github\.sha/);
-  assert.match(publishing.publish.if, /needs\.admit\.result == 'success'.*needs\.admit\.outputs\.qualification_sha256 != ''/);
-  const restored = publishing.publish.steps.find(runs('--product "$GITHUB_WORKSPACE/qualified-product"'));
-  assert.equal(restored.env.EXPECTED_QUALIFICATION, '$' + '{{ needs.admit.outputs.qualification_sha256 }}');
+  assert.equal(jobs.publish.needs, 'admit-publication');
+  assert.equal(jobs.publish.environment, 'release');
+  assert.match(jobs['admit-publication'].if, /inputs\.operation == 'publish' && inputs\.workflow_commit == github\.sha/);
+  assert.match(jobs.publish.if, /needs\.admit-publication\.result == 'success'.*needs\.admit-publication\.outputs\.qualification_sha256 != ''/);
+  const restored = jobs.publish.steps.find(runs('--product "$GITHUB_WORKSPACE/qualified-product"'));
+  assert.equal(restored.env.EXPECTED_QUALIFICATION, '$' + '{{ needs.admit-publication.outputs.qualification_sha256 }}');
   assert.match(restored.run, /\$EXPECTED_QUALIFICATION/);
-  assert.equal(publishing.publish.steps.find(step => step.with?.path === 'qualified-product').with.ref,
-    '$' + '{{ needs.admit.outputs.source_commit }}');
-  const reverify = publishing.publish.steps.find(runs('run android:verify --'));
+  assert.equal(jobs.publish.steps.find(step => step.with?.path === 'qualified-product').with.ref,
+    '$' + '{{ needs.admit-publication.outputs.source_commit }}');
+  const reverify = jobs.publish.steps.find(runs('run android:verify --'));
   assert.equal(reverify?.['working-directory'], 'qualified-product');
-  assert.equal(reverify.env.PRODUCT_PACKAGE_MANAGER, '$' + '{{ steps.product_toolchain.outputs.manager }}');
-  assert.match(reverify.run, /profile=\$\(jq -er '\.runtimeProfile' "\$RUNNER_TEMP\/qualified-stage\/qualification-summary\.json"\)/);
-  assert.match(reverify.run, /native\) args=\(\) ;;\s+cloud\) args=\(--runtime-profile=cloud\) ;;/);
-  assert.equal(reverify.run.trim().split('\n').at(-1), '"$PRODUCT_PACKAGE_MANAGER" run android:verify -- "${args[@]}" --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
+  assert.match(reverify.run, /test "\$\(jq -er '\.runtimeProfile' "\$RUNNER_TEMP\/qualified-stage\/qualification-summary\.json"\)" = native/);
+  assert.equal(reverify.run.trim().split('\n').at(-1), 'bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
   assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'bun scripts/verify-apks.ts');
-  ordered(publishing.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
-    step => step === reverify, runs("manifest['runtimeProfile'] == summary['runtimeProfile']"),
+  ordered(jobs.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
+    step => step === reverify, runs("manifest['runtimeProfile'] == summary['runtimeProfile'] == 'native'"),
     runs('scripts/deliver-app-update.ts --variant launcher'));
 }
 
@@ -217,7 +210,7 @@ const faults = ['create-before', 'create-after', 'apk-before', 'apk-partial', 'a
 
 export async function checkProtectedAppUpdatePromotion(extraSources = []) {
   const sources = [
-    fileURLToPath(import.meta.url), python, signer, verifier, publisher, producer, 'package.json',
+    fileURLToPath(import.meta.url), python, release, producer, 'package.json',
     'scripts/app-update-candidate.ts', 'scripts/ci/verify-cloud-signing-input.sh',
     'scripts/ci/admit-cloud-signing-input.py', 'scripts/ci/app_update_producer.py', 'scripts/ci/private-apk-storage.py',
     'scripts/ci/qualified-app-update.py', 'scripts/verify-apks.ts', 'scripts/sign-release-apks.ts',

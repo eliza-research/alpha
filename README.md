@@ -137,15 +137,15 @@ signatures.
 The first build downloads the pinned models and toolchain inputs, builds the
 native voice and embedding libraries, and caches the verified outputs. Later
 builds reuse that cache after checking its source recipe and file hashes.
-Developer APKs can explicitly omit the runtime; those builds are not
-distributable. Setup, signing and emulator testing are covered in the
+There is one launcher product/flavor with the resident runtime and on-device
+voice in every APK. The build keeps debug, release and instrumentation artifacts
+separate; only the launcher release is a distribution APK. Setup, signing and emulator testing are covered in the
 [developer guide](docs/development.md#android-builds).
 
-| Variant        | What it is                                                        |
-| -------------- | ----------------------------------------------------------------- |
-| **Standalone** | Alpha as a regular Android app, next to your current home screen. |
-| **Launcher**   | Alpha as your home screen.                                        |
-| **Alpha OS**   | A full phone image. Adds Phone, Contacts and SMS/MMS.             |
+| Form         | What it is                                            |
+| ------------ | ----------------------------------------------------- |
+| **Launcher** | Alpha as your home screen.                            |
+| **Alpha OS** | A full phone image. Adds Phone, Contacts and SMS/MMS. |
 
 ## Status
 

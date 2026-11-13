@@ -49,7 +49,6 @@ test('voice IME and Cloud adapter compile against Android API and shared real re
  const work=mkdtempSync(join(tmpdir(),'keyboard-dictation-compile-'));
  try {
   const stubs={
-   'BuildConfig.java':'final class BuildConfig {static final String ELIZA_RUNTIME_PROFILE="cloud";}',
    'MainActivity.java':'final class MainActivity {static void refreshKeyboardInsets(){} static void beginKeyboardReturn(){}}',
    'AlphaLocalAgentPlugin.java':'final class AlphaLocalAgentPlugin {static long credentialAuthorityEpoch(){return 0;} static <T>T withCredentialAuthority(long epoch,java.util.concurrent.Callable<T> body)throws Exception{return body.call();}}',
    'AlphaCredentialStore.java':'final class AlphaCredentialStore {AlphaCredentialStore(android.content.Context c){} String readCredentialSlot(String slot){return null;}}',
@@ -76,7 +75,6 @@ test('real dictation transport preserves selected Direct/Cloud ownership and can
    'NativeProviderSlot.java':`package ai.eliza.plugins.agent.runtime;public final class NativeProviderSlot{public static String managementRevision(String s,long epoch){return s+":"+epoch;}}`,
    'PasswordSurfaces.java':`package ai.eliza.plugins.passwords;public final class PasswordSurfaces{public static boolean visible(){return false;}}`,
    'RecordingPcm.java':`package ai.eliza.voice;public final class RecordingPcm{public static byte[] decode(java.io.File f,java.util.function.BooleanSupplier cancelled)throws Exception{if(cancelled.getAsBoolean())throw new java.io.IOException();return new byte[44];}}`,
-   'BuildConfig.java':`package ai.alphacompute.alphaphone;final class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}`,
   };
   for(const [name,body] of Object.entries(stubs))writeFileSync(join(work,name),body);
   const harness=join(work,'KeyboardAuthorityTest.java');

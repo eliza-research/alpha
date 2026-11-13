@@ -18,7 +18,7 @@ const DISTRIBUTABLE = { mode: "release", signed: true, signerSha256: SIGNER, dis
 
 /**
  * A checkout with the committed release-signer record (signer set to SIGNER, no release recorded
- * unless `last` names one, whatever the checkout has recorded since) and a verify-apks build of both releases.
+ * unless `last` names one, whatever the checkout has recorded since) and a verify-apks build of the launcher release.
  */
 function fixture(t, { rows = {}, last = null } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-record-release-"));
@@ -27,7 +27,7 @@ function fixture(t, { rows = {}, last = null } = {}) {
   fs.mkdirSync(path.join(dir, "android"), { recursive: true });
   fs.writeFileSync(path.join(dir, "android/release-signer.json"), `${JSON.stringify({ ...committed, signerSha256: SIGNER, lastRelease: last ?? { versionCode: null, versionName: null, recordedAt: null } }, null, 2)}\n`);
   fs.mkdirSync(path.join(dir, "artifacts"));
-  const results = ["standalone", "launcher"].map(variant => {
+  const results = ["launcher"].map(variant => {
     const name = `${variant}-release.apk`;
     fs.writeFileSync(path.join(dir, "artifacts", name), `${variant} bytes`);
     return { variant, file: `artifacts/${name}`, sha256: sha(`${variant} bytes`), versionCode: 12, versionName: "1.0.0", ...DISTRIBUTABLE, ...rows[variant] };
@@ -61,13 +61,12 @@ test("a distributed release is recorded as lastRelease only with --write, and la
   assert.match(again.err.join("\n"), /not greater than the last recorded release 12/);
 });
 
-test("a release that is not distributable, differs between variants or does not match its file is refused before anything is written", t => {
+test("a release that is not distributable or does not match its file is refused before anything is written", t => {
   const cases = [
     [{ rows: { launcher: { signed: false } } }, /launcher: .*unsigned release/s],
-    [{ rows: { standalone: { signerSha256: "b".repeat(64) } } }, /standalone: .*does not match/s],
+    [{ rows: { launcher: { signerSha256: "b".repeat(64) } } }, /launcher: .*does not match/s],
     [{ rows: { launcher: { voiceHost: { packaged: true, asr: true, differences: ["changed voice bytes"], qualified: false } } } }, /bytes differ from the voice-host record/],
-    [{ rows: { launcher: { versionCode: 13 } } }, /different versions/],
-    [{ rows: { standalone: { sha256: "c".repeat(64) } } }, /does not match its verified manifest row/],
+    [{ rows: { launcher: { sha256: "c".repeat(64) } } }, /does not match its verified manifest row/],
     [{ last: { versionCode: 12, versionName: "1.0.0", recordedAt: "2026-11-01" } }, /not greater than the last recorded release 12/],
   ];
   for (const [options, message] of cases) {

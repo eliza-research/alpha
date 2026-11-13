@@ -3,7 +3,7 @@
  * Provision one pilot unit from a verified APK build and write its per-unit record.
  *
  *   bun scripts/provision-unit.ts --serial <adb serial> --alias <unit-name> \
- *     --apk-manifest artifacts/apk-manifest.json [--variant launcher|standalone] \
+ *     --apk-manifest artifacts/apk-manifest.json [--variant launcher] \
  *     [--build release|debug] [--output test-results/pilot-units] [--home-wait-ms 0]
  *
  * Steps: admit the APK from the verify-apks manifest (a release must be distributable:
@@ -92,7 +92,7 @@ export function parseUnitArgs(argv: readonly string[], { requireAlias = true } =
   if (!options.serial || !/^[A-Za-z0-9._:-]{1,64}$/.test(options.serial)) throw new Error("--serial <adb serial> is required");
   if (requireAlias && !/^[a-z0-9][a-z0-9-]{0,39}$/.test(options.alias ?? "")) throw new Error("--alias must be a short lowercase unit name (a-z, 0-9, -); never a person's name or the serial");
   if (!options.apkManifest) throw new Error("--apk-manifest <path to verify-apks apk-manifest.json> is required");
-  if (options.variant !== "launcher" && options.variant !== "standalone") throw new Error("--variant must be launcher or standalone");
+  if (options.variant !== "launcher") throw new Error("--variant must be launcher");
   if (options.build !== "release" && options.build !== "debug") throw new Error("--build must be release or debug");
   if (!Number.isSafeInteger(options.homeWaitMs) || options.homeWaitMs < 0) throw new Error("--home-wait-ms must be a non-negative integer");
   const variant: ApkVariant = options.variant;

@@ -121,7 +121,7 @@ export async function runNativeFixture({
 	);
 	const variant = path
 		.basename(apk)
-		.match(/^(standalone|launcher)-debug\.apk$/)?.[1];
+		.match(/^(launcher)-debug\.apk$/)?.[1];
 	assert.ok(
 		variant &&
 			path.basename(test) === variant + "-androidTest.apk" &&
