@@ -140,10 +140,38 @@ module PhotosLibrary {
   action EditReplace = all { s.viewer != 0, s.tab == "lib", s.exists.get(s.viewer), not(s.trashed.get(s.viewer)),
     not(s.selecting), s.budget > 0, Track({ ...s, budget: s.budget - 1, rev: bump(s.rev, s.viewer) }) }
   action AgentReject = all { s.review.ids != Set(), Track({ ...s, review: NoReview }) }
-  action Next = { nondet i = s.config.Ids.oneOf()
-    any { SwitchTab("lib"), SwitchTab("trash"), EnterSelect, SelectAll, CancelSelect, Toggle(i), OpenViewer(i), Swipe(i),
-      Undo(i), StoreEvent(i), BatchFavorite, BatchTrash, BatchRestore, DeleteForever, ViewerTrash, CloseViewer,
-      AgentFilter("none"), AgentFilter("fav"), AgentReview, AgentApply, AgentReject, AgentShareReview, EditReplace, AgentOpen(i) } }
+  action Next = any {
+    SwitchTab("lib"),
+    SwitchTab("trash"),
+    EnterSelect,
+    SelectAll,
+    CancelSelect,
+    { nondet i = s.config.Ids.oneOf()
+      Toggle(i) },
+    { nondet i = s.config.Ids.oneOf()
+      OpenViewer(i) },
+    { nondet i = s.config.Ids.oneOf()
+      Swipe(i) },
+    { nondet i = s.config.Ids.oneOf()
+      Undo(i) },
+    { nondet i = s.config.Ids.oneOf()
+      StoreEvent(i) },
+    BatchFavorite,
+    BatchTrash,
+    BatchRestore,
+    DeleteForever,
+    ViewerTrash,
+    CloseViewer,
+    AgentFilter("none"),
+    AgentFilter("fav"),
+    AgentReview,
+    AgentApply,
+    AgentReject,
+    AgentShareReview,
+    EditReplace,
+    { nondet i = s.config.Ids.oneOf()
+      AgentOpen(i) }
+  }
   action step = any { Next, Track(s) }
   val TypeOK = Configurations.contains(s.config.name) and s.config == configuration(s.config.name)
     and s.exists.keys() == s.config.Ids and s.trashed.keys() == s.config.Ids and s.fav.keys() == s.config.Ids

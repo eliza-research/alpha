@@ -141,14 +141,26 @@ module NotesView {
   val ReviewCurrent = reviewCurrent(s)
   action AgentApply = all { ReviewCurrent, Track(afterApply(s)) }
   action AgentReject = all { s.review != NoReview, Track({ ...s, review: NoReview }) }
-  action Next = {
-    nondet n = Notes.oneOf()
-    nondet f = Folders.union(Set(None)).oneOf()
-    nondet folder = Folders.oneOf()
-    nondet name = s.config.Names.oneOf()
-    any { Record, Segment, Pause, Resume, Stop, StorageFull, ProcessDeath, AsrSegment, Hide, Show,
-      TrashNote(n), Restore(n), Expire(n), MoveToFolder(n, f), AgentProposeMove(n, f),
-      DeleteFolder(folder), RenameFolder(folder, name), AgentApply, AgentReject }
+  action Next = any {
+    Record, Segment, Pause, Resume, Stop, StorageFull, ProcessDeath, AsrSegment, Hide, Show,
+    { nondet n = Notes.oneOf()
+      TrashNote(n) },
+    { nondet n = Notes.oneOf()
+      Restore(n) },
+    { nondet n = Notes.oneOf()
+      Expire(n) },
+    { nondet n = Notes.oneOf()
+      nondet f = Folders.union(Set(None)).oneOf()
+      MoveToFolder(n, f) },
+    { nondet n = Notes.oneOf()
+      nondet f = Folders.union(Set(None)).oneOf()
+      AgentProposeMove(n, f) },
+    { nondet folder = Folders.oneOf()
+      DeleteFolder(folder) },
+    { nondet folder = Folders.oneOf()
+      nondet name = s.config.Names.oneOf()
+      RenameFolder(folder, name) },
+    AgentApply, AgentReject
   }
   action step = any { Next, Track(s) }
   val TypeOK = Configurations.contains(s.config.name) and s.config == configuration(s.config.name)
