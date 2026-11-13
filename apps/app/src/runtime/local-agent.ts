@@ -68,7 +68,7 @@ const nativeBridge:LocalAgentBridge={subscribeVoiceEvents:(ownerId,listener)=>su
 // The host bridge at /__alpha-local-agent exists only on the development server
 // with test mocks or the explicit real Cloud resident mode. This
 // module is also imported by Node contract tests, where import.meta.env is absent.
-const developmentBridgeAllowed: boolean = browserCloudResidentEnabled || (import.meta.env !== undefined && import.meta.env.DEV === true && (import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS === '1' || (import.meta.env.VITE_ALPHA_PRIVATE_LOCAL_PREVIEW === '1' && import.meta.env.VITE_LOCAL_AGENT === '1')));
+const developmentBridgeAllowed: boolean = browserCloudResidentEnabled || (import.meta.env !== undefined && import.meta.env.DEV === true && import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS === '1');
 export const browserLocalAgentEnabled: boolean = developmentBridgeAllowed && import.meta.env.VITE_LOCAL_AGENT === '1';
 export const localAgentAvailable = () => Capacitor.isNativePlatform()
   ? Capacitor.isPluginAvailable('Agent') : browserLocalAgentEnabled;

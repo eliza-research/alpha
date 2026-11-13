@@ -64,7 +64,7 @@ try {
   // LemmaScript's TypeScript project can finish printing but fail to exit on Bun.
   // Keep the gate on Bun and run the Node CLI with a qualified Node executable.
   const node = realNode();
-  if (!node) throw Error('LemmaScript requires genuine Node.js 24+ on PATH (or ALPHA_NODE)');
+  if (!node) throw Error('LemmaScript requires genuine Node.js 24+ on PATH');
   const annotation = /^\s*\/\/@ \S/m;
   const unlisted = readdirSync(join(root, 'apps/app/src'), {recursive: true, encoding: 'utf8'})
     .filter(file => /\.tsx?$/.test(file))

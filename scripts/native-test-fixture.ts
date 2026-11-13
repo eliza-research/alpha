@@ -97,8 +97,8 @@ export async function runNativeFixture({
 		"../vendor/eliza/packages/app/scripts/lib/isolated-android-user-test.mjs"
 	);
 	const serial = process.env.ANDROID_SERIAL,
-		avd = process.env.ALPHA_NATIVE_TEST_AVD,
-		abi = process.env.ALPHA_NATIVE_TEST_ABI;
+		avd = process.env.ALPHA_TEST_AVD,
+		abi = process.env.ALPHA_TEST_ABI;
 	assert.ok(serial && /^emulator-\d+$/.test(serial), "Explicit emulator serial required");
 	assert.match(
 		avd ?? "",

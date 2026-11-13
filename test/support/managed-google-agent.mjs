@@ -25,7 +25,6 @@ export function createManagedGoogleAgentHost(port, access = () => ({gmailChanges
   return createSharedHost(port, {
     apiOrigin: productionCloud.api,
     access,
-    calendarReadTiming: process.env.ALPHA_CALENDAR_READ_TIMING === '1',
   });
 }
 

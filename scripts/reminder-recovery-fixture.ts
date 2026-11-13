@@ -98,7 +98,7 @@ export async function runReminderRecovery(recurring: boolean, appApk: string, te
    await phase('retry');await phase('prepare-reboot');
    const before=details.beforeReboot=await witness();
    assert.equal(before.status,'scheduled');assert.equal(before.notification,false);sameOccurrence(before,before);
-   const rebootOptions = { expectedAvdName: process.env.ALPHA_NATIVE_TEST_AVD, timeoutMs: 120000 };
+   const rebootOptions = { expectedAvdName: process.env.ALPHA_TEST_AVD, timeoutMs: 120000 };
    details.boot=await rebootAndroidFixture({...c, signal:c.signal},rebootOptions);
    await observe('reboot',before,state=>{
     assert.ok(['scheduled','posted'].includes(state.status));

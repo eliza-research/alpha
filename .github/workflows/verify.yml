@@ -71,7 +71,6 @@ jobs:
           VITE_ALPHA_CLOUD_RESIDENT: '1'
           VITE_ALPHA_CLOUD_ENVIRONMENT: staging
           VITE_LOCAL_AGENT: '1'
-          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ''
           ELIZA_DEV_ALLOW_TEST_MOCKS: ''
         run: |
           bunx --bun vite build --outDir ../../test-results/browser-proof-renderer

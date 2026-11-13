@@ -40,14 +40,20 @@ test('real staging transport reaches identity and entitlement but rejects other 
 });
 
  test('real browser resident admits owner-bound Cloud speech without enabling mocks or packaged speech',async()=>{
- const flags={DEV:true,VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ALPHA_DEV_CLOUD_VOICE:''};
+ const flags={DEV:true,VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:''};
  assert.equal((await protocol(flags)).developmentCloudVoiceEnabled,true);
- for(const env of [{...flags,DEV:false},{...flags,VITE_ALPHA_CLOUD_RESIDENT:''},{...flags,VITE_ALPHA_CLOUD_RESIDENT:'',VITE_ALPHA_DEV_CLOUD_VOICE:'1'}])assert.equal((await protocol(env)).developmentCloudVoiceEnabled,false);
- assert.equal((await protocol({DEV:true,VITE_ALPHA_CLOUD_RESIDENT:'',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ALPHA_DEV_CLOUD_VOICE:'1'})).developmentCloudVoiceEnabled,true,'existing explicit mock preview still works');
+ for(const env of [{...flags,DEV:false},{...flags,VITE_ALPHA_CLOUD_RESIDENT:''},{...flags,VITE_ALPHA_CLOUD_RESIDENT:'',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'}])assert.equal((await protocol(env)).developmentCloudVoiceEnabled,false);
  Object.defineProperty(globalThis,'androidBridge',{configurable:true,value:{}});try{const native=await protocol({...flags,VITE_ALPHA_CLOUD_ENVIRONMENT:'staging'});assert.equal(native.Capacitor.isNativePlatform(),true);assert.equal(native.developmentCloudVoiceEnabled,false);}finally{delete globalThis.androidBridge;}
  });
 
-test('explicit private local preview reuses email sign-in host without mocks or Cloud resident provider',async()=>{
- const p=await protocol({DEV:true,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1',VITE_LOCAL_AGENT:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:''});assert.equal(typeof p.cloudSignIn?.status,'function');assert.equal(p.developmentCloudVoiceEnabled,false);const original=globalThis.fetch,calls=[];globalThis.fetch=async(url,input)=>{calls.push({url,body:JSON.parse(input.body)});return Response.json({inApp:true,email:true,google:false});};try{const ready=await p.cloudSignIn.status({environment:'production'});assert.equal(ready.email,true);assert.equal(ready.google,false);assert.equal(calls.length,1);assert.equal(calls[0].url,'/__alpha-browser-cloud');assert.equal(calls[0].body.operation,'signInStatus');assert.equal(calls[0].body.email,undefined);}finally{globalThis.fetch=original;}
+test('the development server reuses the email sign-in host without a Cloud resident provider',async()=>{
+ const p=await protocol({DEV:true,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1',VITE_LOCAL_AGENT:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});assert.equal(typeof p.cloudSignIn?.status,'function');assert.equal(p.developmentCloudVoiceEnabled,false);const original=globalThis.fetch,calls=[];globalThis.fetch=async(url,input)=>{calls.push({url,body:JSON.parse(input.body)});return Response.json({inApp:true,email:true,google:false});};try{const ready=await p.cloudSignIn.status({environment:'production'});assert.equal(ready.email,true);assert.equal(ready.google,false);assert.equal(calls.length,1);assert.equal(calls[0].url,'/__alpha-browser-cloud');assert.equal(calls[0].body.operation,'signInStatus');assert.equal(calls[0].body.email,undefined);}finally{globalThis.fetch=original;}
  for(const flags of[{DEV:false,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1',VITE_LOCAL_AGENT:'1'},{DEV:true,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1'},{DEV:true,VITE_LOCAL_AGENT:'1'}])assert.equal((await protocol(flags)).cloudSignIn,undefined);
+});
+
+test('the browser Cloud bridge mounts nothing without test mocks or a Cloud resident',async()=>{
+ const {browserCloudDevBridge}=await import('../scripts/browser-cloud-dev-bridge.ts');
+ async function mount(env){const saved=process.env;process.env={...saved,...env};try{const mounted=[];await browserCloudDevBridge().configureServer({middlewares:{use:route=>mounted.push(route)},httpServer:{once(){}}});return mounted;}finally{process.env=saved;}}
+ assert.deepEqual(await mount({ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ALPHA_CLOUD_RESIDENT:''}),[]);
+ assert.deepEqual(await mount({ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ALPHA_CLOUD_RESIDENT:'',ALPHA_BROWSER_CLOUD_PROFILE:'/synthetic/cloud-profile'}),['/__alpha-browser-cloud']);
 });

@@ -1,5 +1,4 @@
 import {createCloudStreamingSpeech as createSharedCloudStreamingSpeech, type CloudStreamPort} from '../../../../.eliza/client-features/packages/voice/src/native-cloud-speech.ts';
-import {browserCloudResidentEnabled} from './browser-cloud-resident';
 import {developmentCartesiaVoiceEnabled} from './development-cartesia-flag';
 import {developmentCloudVoiceEnabled} from './development-cloud-voice';
 import {markTtsPlaybackStarted,markTtsPlaybackEnded} from '../../../../.eliza/client-features/packages/ui/src/voice/tts-playback-activity.ts';
@@ -43,7 +42,6 @@ export function cloudVoiceFailure(error: unknown, context: { recording?: boolean
   const direct=connectionController.getSnapshot().residentInference==='direct';
   const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
   if(direct&&typeof code==='string'&&/^voice-http-[45][0-9]{2}$/.test(code))return code.startsWith('voice-http-4')?'Cartesia refused voice. Check your key and Cartesia plan.':'Cartesia isn’t responding. Try again later.';
-  if(developmentCloudVoiceEnabled&&!browserCloudResidentEnabled&&(code==='voice-http-401'||code==='voice-http-403'))return 'The developer agent’s Cloud speech authorization was refused. Check its server-side Cloud configuration, then retry.';
   const name = serviceNameNow(), kept = context.recording === true ? ' Your recording is kept.' : '', after = kept || (context.conversation === true ? ' Your message was not sent. Say it again.' : '');
   if (code === 'voice-http-401') return `${name} sign-in expired. Sign in again in Settings, then retry voice.`;
   if (code === 'voice-http-403') return `${name} refused voice for this account. Check your account in Settings.`;

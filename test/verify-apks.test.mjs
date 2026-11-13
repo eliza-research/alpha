@@ -239,8 +239,8 @@ if(args[1]==='android:build'){
 `, {mode:0o755});
   const inherited = mode !== 'native';
   const env = {...process.env, PATH:path.join(dir, 'bin')+path.delimiter+process.env.PATH};
-  for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL']) delete env[name];
-  if (inherited) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});
+  for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL']) delete env[name];
+  if (inherited) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});
   if (mode === 'wrong-profile') env.FIXTURE_WRONG_PROFILE='1';
   if(mode==='wrong-channel')env.FIXTURE_WRONG_CHANNEL='1';
   const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
