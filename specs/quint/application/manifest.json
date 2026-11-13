@@ -3904,5 +3904,26 @@
     "abstractions": [
       "Three owner generations, one file and one pending search. Existing ChatAttachments covers send and saved history. Live browser and Android routing checks remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/MapPlaneFailures.qnt",
+    "module": "MapPlaneFailures",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "lateTileTest",
+      "initialTileFailureTest",
+      "engineFailureTest",
+      "cancelledTileTest",
+      "disposedCallbackTest"
+    ],
+    "sources": [
+      "vendor/eliza/plugins/plugin-maps/src/client/map-plane.ts",
+      "apps/app/src/prototype/maps-adapter.ts"
+    ],
+    "abstractions": [
+      "One map instance and two failures. Tile resource errors after load preserve the usable map. Engine and first-load failures retain failure handling. Browser and device rendering remain separate evidence."
+    ]
   }
 ]
