@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "4dd0e30237da72dc221c217735010a336d9744fa",
-  "head": "1089b3df560294daccb9527289515a91e82a88a4",
+  "head": "5527fbb6dd41a4e6f47db4c989ec60ece2048ebf",
   "recordedAt": "2026-11-13",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...1089b3df560294daccb9527289515a91e82a88a4",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...5527fbb6dd41a4e6f47db4c989ec60ece2048ebf",
   "status": "diverged",
-  "aheadBy": 86,
+  "aheadBy": 87,
   "behindBy": 669,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -350,6 +350,10 @@
     {
       "sha": "1089b3df560294daccb9527289515a91e82a88a4",
       "subject": "Stop speech providers before waiting for renewal admission"
+    },
+    {
+      "sha": "5527fbb6dd41a4e6f47db4c989ec60ece2048ebf",
+      "subject": "Retain unused speech credit cleanup until settlement is confirmed"
     }
   ],
   "pullRequests": []
