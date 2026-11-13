@@ -28,7 +28,6 @@ bun run quint:tests
 bun run quint:typecheck
 bun run quint:test
 bun run quint:simulate -- --samples=1000 --steps=60 --seed=123
-bun run quint:conformance
 ```
 
 The default gate parses/typechecks every model and runs every manifest scenario

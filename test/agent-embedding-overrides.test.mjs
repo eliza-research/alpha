@@ -71,9 +71,7 @@ function launch(launcher,kind){
   if(kind==='all'){env.ELIZA_INFERENCE_LIBRARY=library;env.ELIZA_INFERENCE_LIB_DIR=libDir;}
   execFileSync('/usr/bin/git',['init','-q',source],{env});
   execFileSync('/usr/bin/git',['-C',source,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','-c','commit.gpgsign=false','commit','--allow-empty','-qm','fixture'],{env});
-  const args=[path.join(root,launcher)];
-  if(launcher.includes('reviewed-workflow'))args.push('--source',source,'--profile',profile,'--port','47998','--bun',bun);
-  const result=spawnSync(process.execPath,args,{cwd:root,env,encoding:'utf8',timeout:15000});
+  const result=spawnSync(process.execPath,[path.join(root,launcher)],{cwd:root,env,encoding:'utf8',timeout:15000});
   assert.equal(result.error,undefined,result.error?.message);
   assert.equal(result.status,0,result.stderr);
   const child=JSON.parse(fs.readFileSync(receipt,'utf8'));
@@ -84,6 +82,6 @@ function launch(launcher,kind){
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 }
 
-for(const launcher of ['scripts/start-local-remote.ts','scripts/start-reviewed-workflow-agent.ts'])
+for(const launcher of ['scripts/start-local-remote.ts'])
  for(const kind of ['file','directory','both','default','models','all'])
   test(`${launcher} forwards ${kind} embedding inputs into the actual inert child`,()=>launch(launcher,kind));

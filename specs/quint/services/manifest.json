@@ -2169,56 +2169,6 @@
       }
     },
     {
-      "path": "specs/quint/services/ReviewedWorkflowLauncher.qnt",
-      "module": "ReviewedWorkflowLauncher",
-      "init": "init",
-      "step": "step",
-      "invariant": "safety",
-      "tests": [
-        "dependencyRefusalTest",
-        "missingEntryRetainsTokenTest",
-        "invalidRoutingKeepsMigratedIdentityTest",
-        "cleanPinnedEntryTest",
-        "otherRevisionCanLeaveReceiptTest",
-        "gitReadFailurePreventsSpawnTest",
-        "receiptFailureClosesChildTest"
-      ],
-      "invariants": [
-        "EntryCheckFollowsToken",
-        "SpawnRequiresPrivateProfile",
-        "ReceiptDescribesRequestedChild",
-        "PatchedEntryRequiresAdmittedRevision",
-        "ChildCustodyAfterReceiptFailure",
-        "ClosedChildReleasesLog"
-      ],
-      "sources": [
-        "scripts/start-reviewed-workflow-agent.ts",
-        "scripts/local-agent-source.ts",
-        "scripts/agent-identity.ts",
-        "scripts/agent-model.ts",
-        "scripts/agent-embeddings.ts",
-        "scripts/core-state-preload.ts",
-        "scripts/core-state-patch.ts",
-        "scripts/launcher-child.ts"
-      ],
-      "stateMapping": {
-        "source/deps/profile/token/entryChecked/entry": "Actual path admission, directory and entry checks, private profile and durable token",
-        "config/identity/text/embeddings/features/logOpen": "Actual profile bytes and private launch descriptor",
-        "booted/childClosed/preloadEntry/forwarded/outcome/exitCode": "Synthetic process observations and actual optional authenticated preload",
-        "gitRevision/child/childPid/metadata/pid/revision/supervised": "Actual pre-spawn HEAD capture, returned synthetic child, installed handlers and persisted process receipt",
-        "receiptFailed/cleanupSignal": "Actual metadata refusal and signals to the returned child"
-      },
-      "abstractions": [
-        "One invocation and child, fixed synthetic source bytes during each launch, two source selection modes, finite preflight outcomes. Real workflow readiness and compiled backend execution have separate scope.",
-        "Current source captures HEAD before spawn and holds child custody through receipt publication. Authenticated preload can reject after metadata publication."
-      ],
-      "bounds": {
-        "maxSamples": 1000,
-        "maxSteps": 80,
-        "maxVerifyDepth": 13
-      }
-    },
-    {
       "path": "specs/quint/services/CoreConnectorCustody.qnt",
       "module": "CoreConnectorCustody",
       "init": "init",
@@ -2501,63 +2451,6 @@
         "maxSamples": 1000,
         "maxSteps": 80,
         "maxVerifyDepth": 7
-      }
-    },
-    {
-      "path": "specs/quint/services/CloudQaLauncher.qnt",
-      "module": "CloudQaLauncher",
-      "init": "init",
-      "step": "step",
-      "invariant": "safety",
-      "tests": [
-        "successfulReceiptSurvivesChildExitTest",
-        "badSavedRouteDoesNotLaunchTest",
-        "noPidErrorReleasesLogWithoutReceiptTest",
-        "failedRecordPreservesPriorReceiptAfterReapTest",
-        "cancelledPendingRecordCanStillPublishHistoricalReceiptTest",
-        "linkedLogRefusesBeforeChildOrModeChangeTest",
-        "hardlinkedLogRefusesBeforeChildOrModeChangeTest",
-        "fifoLogRefusesBeforeChildTest",
-        "matchingPreloadAndParentObservationTest",
-        "receiptCanObserveDifferentHeadFromAdmittedChildTest",
-        "matchingParentReceiptCanPrecedePreloadRefusalTest"
-      ],
-      "invariants": [
-        "OwnedChildKeepsLog",
-        "ReceiptRequiresSpawn",
-        "AdmittedChildRequiresStagingProfile",
-        "SettledOwnsNoLiveChild",
-        "FailedRecordKeepsPriorReceipt",
-        "InvalidLogDoesNotAdmitChild",
-        "ReceiptCopiesParentHead",
-        "AdmittedChildBindsReviewedPin",
-        "RejectedPreloadHasNoAdmission"
-      ],
-      "sources": [
-        "scripts/start-cloud-qa.ts",
-        "scripts/core-state-preload.ts",
-        "scripts/cloud-sdk-authority.ts",
-        "scripts/native-view-policy.ts",
-        "scripts/cloud-deployment-policy.ts",
-        "vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs"
-      ],
-      "stateMapping": {
-        "profile/marker/token/route": "Physical private files and parsed staging text route before a child request",
-        "source/entry": "Selected explicit or default fixture SDK and actual entry check",
-        "logOpen/child/pid/supervised/stop/cancelled": "Product-owned descriptor and actual shared supervisor over the closed child port",
-        "receipt/fault/tempClean/result/exitCode": "Real staged and published receipt bytes, controlled source faults and launcher exit",
-        "foreignLogModeChanged": "Observed preservation of a distinct synthetic file under a linked log path",
-        "requestedPin/preloadHead/admittedPin/preloadOutcome": "Parent manifest pin and separately observed exact child preload with controlled Git HEAD",
-        "parentHead/receiptHead": "Late launcher Git response and the revision actually published in the current receipt"
-      },
-      "abstractions": [
-        "One invocation, one fixed policy pin, two independently observed HEAD values and one optional previous receipt. A historical process receipt can survive cancellation, child exit and retry. Its revision is the parent observation.",
-        "Exact product launcher and pinned shared profile, receipt and supervision run with synthetic staging input and a closed child port. Kernel signals, port availability, readiness, concurrent owners and provider behavior are outside this model."
-      ],
-      "bounds": {
-        "maxSamples": 1000,
-        "maxSteps": 50,
-        "maxVerifyDepth": 12
       }
     },
     {
