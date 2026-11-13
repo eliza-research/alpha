@@ -66,7 +66,7 @@ bun scripts/check-quint.ts compare --backend=tlc --models=ChatInput
 evidence file. `--jobs` or `ALPHA_QUINT_JOBS` allows independent scenario,
 simulation and typecheck workers. The default is one worker. Each model keeps
 its ordered phases, and the receipt lists results in registry order. Use
-`ALPHA_QUINT_JOBS=3 npm run verify` to apply this to the standard gate. Model
+`ALPHA_QUINT_JOBS=3 bun run quint:check` to apply this to the standard gate. Model
 checking remains serial within one server endpoint.
 `--timeout` sets the per-check timeout in seconds, with 1800 for model checking
 and 120 for the default gate. The checker saves parameters, model hashes,
