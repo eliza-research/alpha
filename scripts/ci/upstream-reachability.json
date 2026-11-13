@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "4dd0e30237da72dc221c217735010a336d9744fa",
-  "head": "bfc365428a53e3c92d9edd4e82cac39b37c51551",
+  "head": "ca55c7141a09a71c0b089066b113b1b9a3bb8716",
   "recordedAt": "2026-11-13",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...bfc365428a53e3c92d9edd4e82cac39b37c51551",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...ca55c7141a09a71c0b089066b113b1b9a3bb8716",
   "status": "diverged",
-  "aheadBy": 83,
+  "aheadBy": 84,
   "behindBy": 669,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -338,6 +338,10 @@
     {
       "sha": "bfc365428a53e3c92d9edd4e82cac39b37c51551",
       "subject": "fix(voice): renew Cloud speech without restarting the active session"
+    },
+    {
+      "sha": "ca55c7141a09a71c0b089066b113b1b9a3bb8716",
+      "subject": "style(ui): format existing chat type re-exports"
     }
   ],
   "pullRequests": []
