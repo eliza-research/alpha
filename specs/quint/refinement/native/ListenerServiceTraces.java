@@ -38,21 +38,21 @@ public final class ListenerServiceTraces {
  static void create()throws Exception {service.onCreate();record("create");}
  static void start()throws Exception {
   new ListenerStore(service).resume();new ListenerStore(service).setEnabled(true);
-  int prior=ServicePorts.records.size();service.onStartCommand(new android.content.Intent(),0,1);
+  int prior=ServicePorts.records.size();service.deliverStart(new android.content.Intent(),0,1);
   if(ServicePorts.records.size()>prior&&!ServicePorts.record.began.await(5,TimeUnit.SECONDS))throw new AssertionError("Capture did not start");
   if(ServicePorts.engine==null&&!ServicePorts.loadEntered.await(5,TimeUnit.SECONDS))throw new AssertionError("ASR load did not start");
   record("start");
  }
  static void markerWriteFailed()throws Exception {
   StorePorts.preferences.outcome="memory-failure";
-  service.onStartCommand(new android.content.Intent(),0,1);
+  service.deliverStart(new android.content.Intent(),0,1);
   executor().submit(()->{}).get(5,TimeUnit.SECONDS);record("markerWriteFailed");
  }
  static void load()throws Exception {ServicePorts.allowLoad.countDown();if(executor().isShutdown())executor().awaitTermination(5,TimeUnit.SECONDS);else executor().submit(()->{}).get(5,TimeUnit.SECONDS);record("load");}
  static void stop(boolean disable,boolean stopOk,boolean releaseOk)throws Exception {
   ServicePorts.stopFails=!stopOk;ServicePorts.releaseFails=!releaseOk;
   if(disable)new ListenerStore(service).setEnabled(false);else new ListenerStore(service).pause(Long.MAX_VALUE);
-  service.onStartCommand(new android.content.Intent(),0,1);record(disable?"disable":"pause",stopOk,releaseOk);
+  service.deliverStart(new android.content.Intent(),0,1);record(disable?"disable":"pause",stopOk,releaseOk);
  }
  static void destroy(boolean stopOk,boolean releaseOk)throws Exception {
   ServicePorts.stopFails=!stopOk;ServicePorts.releaseFails=!releaseOk;service.onDestroy();
@@ -82,7 +82,7 @@ public final class ListenerServiceTraces {
      case "retained-release-retry": stop(false,true,false);stop(false,true,true);destroy(true,true);break;
      case "repeated-start": stop(false,true,true);start();start();destroy(true,true);break;
      case "reopen": stop(false,true,true);start();destroy(true,true);break;
-     case "late-start": destroy(true,true);service.onStartCommand(new android.content.Intent(),0,2);trace.stutter("late start after destruction",observe());break;
+     case "late-start": destroy(true,true);service.deliverStart(new android.content.Intent(),0,2);trace.stutter("late start after destruction",observe());break;
      default: throw new AssertionError(mode);
     }
    }
