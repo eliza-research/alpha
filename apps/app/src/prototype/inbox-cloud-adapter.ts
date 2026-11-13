@@ -13,7 +13,7 @@ import {readGmailAccountChoice,saveGmailAccountChoice} from '../runtime/gmail-ac
 import {GmailReadAhead} from '../runtime/gmail-read-ahead';
 import { Capacitor } from '@capacitor/core';
 import { registerPlugin } from '../platform-plugins';
-const attachmentNative=registerPlugin<{openReviewed(input:Record<string,unknown>):Promise<{message:string}>;saveReviewed(input:Record<string,unknown>):Promise<{status:string;message:string}>;cancel():Promise<void>}>('AlphaMailAttachments');
+const attachmentNative=registerPlugin<{openReviewed(input:Record<string,unknown>):Promise<{status:string}>;saveReviewed(input:Record<string,unknown>):Promise<{status:string;message:string}>;cancel():Promise<void>}>('AlphaMailAttachments');
 import {reviewMailContext,validateMailContext,type MailContextSource} from '../runtime/reviewed-mail-context';
 import { inboxProviderControls } from './inbox-provider-controls';
 import { homeReadIsStale, presentHomeInboxCard } from './home-cards';
@@ -759,11 +759,34 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   async function openAttachment(source:NonNullable<typeof body>,attachment:NonNullable<NonNullable<typeof body>['attachments']>[number]){
     if(!source.historyId){api?.toast('Refresh first');return;}
     if(!attachment.supported){await saveOpaque(source,attachment);return;}const accountId=selected;
-    await work('Loading selected attachment…',async({client},signal,valid)=>{const file=await client.gmailAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{throw attachmentReadFailure(error);});if(!valid()||accountId!==selected||body!==source)return;const reviewGeneration=generation;const review={name:file.name,text:file.text??`${formatBytes(file.size)}. Opens a temporary copy in another app, which receives this file.`,hash:file.sha256,external:file.text===undefined,open:()=>{if(accountId!==selected||body!==source)return;void attachmentNative.openReviewed({...file,reviewed:true}).then(result=>api?.toast(result.message)).catch(error=>api?.toast(error.message));},saveDisabled:false,saveStatus:'',save:()=>{
-      if(review.saveDisabled||attachmentView!==review||accountId!==selected||body!==source||generation!==reviewGeneration)return;
-      review.saveDisabled=true;review.saveStatus='Saving…';publish();
-      void attachmentNative.saveReviewed({...file,reviewed:true}).then(result=>{if(attachmentView!==review||generation!==reviewGeneration)return;review.saveStatus=attachmentSaveStatus(result);review.saveDisabled=result.status!=='cancelled';publish();}).catch(()=>{if(attachmentView!==review||generation!==reviewGeneration)return;review.saveStatus=nativeAttachmentDestination?attachmentSaveUnconfirmed:'Unconfirmed';publish();});
-    }};attachmentView=review;publish();},()=>void openAttachment(source,attachment),true);
+    await work('Loading selected attachment…',async({client},signal,valid)=>{
+      const file=await client.gmailAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{throw attachmentReadFailure(error);});
+      if(!valid()||accountId!==selected||body!==source)return;
+      const reviewGeneration=generation;
+      const currentReview=()=>attachmentView===review&&accountId===selected&&body===source&&generation===reviewGeneration;
+      const review={
+        name:file.name,
+        text:file.text??`${formatBytes(file.size)}. ${nativeAttachmentDestination?'Opening gives the viewer a temporary read-only copy of this file.':'Open to preview this attachment.'}`,
+        hash:file.sha256,external:file.text===undefined,
+        open:async()=>{
+          const current=()=>currentReview()&&api?.isActive();
+          if(!review.external||!current())return;
+          const unconfirmed='Couldn’t confirm that the file opened.';
+          try{
+            const result=await attachmentNative.openReviewed({...file,reviewed:true});
+            if(!current()||result.status==='cancelled')return;
+            // Android confirms intent dispatch. The browser confirms that it mounted its viewer.
+            api?.toast(result.status==='opened'?(nativeAttachmentDestination?'Asked Android to open the file.':'Attachment opened.'):unconfirmed);
+          }catch{if(current())api?.toast(unconfirmed);}
+        },
+        saveDisabled:false,saveStatus:'',save:()=>{
+          if(review.saveDisabled||!currentReview())return;
+          review.saveDisabled=true;review.saveStatus='Saving…';publish();
+          void attachmentNative.saveReviewed({...file,reviewed:true}).then(result=>{if(attachmentView!==review||generation!==reviewGeneration)return;review.saveStatus=attachmentSaveStatus(result);review.saveDisabled=result.status!=='cancelled';publish();}).catch(()=>{if(attachmentView!==review||generation!==reviewGeneration)return;review.saveStatus=nativeAttachmentDestination?attachmentSaveUnconfirmed:'Unconfirmed';publish();});
+        },
+      };
+      attachmentView=review;publish();
+    },()=>void openAttachment(source,attachment),true);
   }
   /** Unsupported types (for example .docx or .zip) can only be saved as an exact byte copy: no preview,
    * no viewer handoff and no agent access. Requires the server's opaque download. */
