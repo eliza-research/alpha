@@ -517,7 +517,7 @@ It also includes the [selected-tab permission](https://github.com/elizaOS/eliza/
 [prepared speech](https://github.com/elizaOS/eliza/pull/39424), [download publication](https://github.com/elizaOS/eliza/pull/39425),
 [held update offer](https://github.com/elizaOS/eliza/pull/39440) and [updater scratch storage](https://github.com/elizaOS/eliza/pull/39446) changes
 and [bounded secure-store allocations](https://github.com/elizaOS/eliza/pull/39461)
-at `1b39e1854abb31b0f99e91604259da29698917ee` on upstream develop. This
+at `0f4b3b0b0ee6239bc8b1113e8df6709a6b6940a8` on upstream develop. This
 also consumes the reviewed [Bun and ABI cleanup](https://github.com/elizaOS/eliza/pull/39420),
 [Cloud, Files and Sense fixes](https://github.com/elizaOS/eliza/pull/39444),
 [Calendar provider timestamps](https://github.com/elizaOS/eliza/pull/39467),
@@ -527,8 +527,15 @@ The [portable fixture and evidence paths](https://github.com/elizaOS/eliza/pull/
 remove personal home directories from the pinned source. The pin also includes
 reviewed [browser URL parser](https://github.com/elizaOS/eliza/pull/39351) and
 [browser automation dependency](https://github.com/elizaOS/eliza/pull/39354) updates.
-The native engine
-gitlink is unchanged. Historical native measurements retain their original
+The reviewed batch through `0f4b3b0b0` adds [markdown-it 15](https://github.com/elizaOS/eliza/pull/39353),
+[Workers types](https://github.com/elizaOS/eliza/pull/39352),
+[MapLibre development dependencies](https://github.com/elizaOS/eliza/pull/39350),
+the [native dependency installer cleanup](https://github.com/elizaOS/eliza/pull/39484)
+and the [2.0.6 release cohort](https://github.com/elizaOS/eliza/pull/39483).
+Renderer, core implementation and native compiler sources are unchanged from
+`1b39e1854`; the dependency graph and producer package manifests changed, so
+SDK preparation and native receipt admission run again for this pin.
+The native engine gitlink is unchanged. Historical native measurements retain their original
 source attribution. New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
 hardware. Qualify both distribution variants from the exact current inputs
