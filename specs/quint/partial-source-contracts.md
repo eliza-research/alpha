@@ -1,7 +1,8 @@
 # Retained partial-source contracts
 
-These existing tests execute authenticated source members inside bounded fixtures. They retain
-unique behavior, effect, refusal, ownership and recovery checks.
+These existing member-level tests execute authenticated source members inside bounded fixtures. They retain
+unique behavior, effect, refusal, ownership and recovery checks. The separately listed current-worker
+projection executes complete source files with a deliberately partial observation boundary.
 Their evidence class is `partial-source-contract`: compiling selected members does not qualify the
 surrounding source file or its reconstructed enclosing class. Do not add new source slices or treat
 these receipts as whole-file implementation refinement.
@@ -53,6 +54,15 @@ pre-repair counterexample witnesses. Their historical sources at
 `scripts/prepare-quint-history.ts` makes both explicitly inventoried historical revisions available
 without changing the pinned vendor checkout. Historical witnesses and current-source regressions
 retain distinct provenance; neither is carrier, provider or device acceptance.
+
+The additional `ListenerLeaseRecovery` [owner](../../test/quint-listener-lease-recovery.test.mjs)
+and [driver](refinement/native/listener-lease-recovery.mjs) compile the whole current listening
+service, listener and store. Two fresh JVMs distinguish the durable crash marker from the actual
+private worker, input-read entry, recording identity, microphone-held flag and unsilenced timestamp,
+and check the real lease verdict at the attribution-grace boundary. This is a partial observation
+of settled unsilenced capture: the controlled input blocks before audio delivery. Arbitrary audio
+silencing, accepted-frame content effects, lifecycle scheduling, JNI audio and device acceptance
+remain outside this evidence; no source slices are introduced.
 
 ## Application and services
 

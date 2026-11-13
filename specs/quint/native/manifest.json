@@ -708,14 +708,14 @@
       "generation/live/acknowledged/expiresAt/boot/leaseBoot": "IndicatorLease.acquire, renew, verdict, revoke, binderDied",
       "surface/chip/recording/display/reason/interactive/captureSince": "visible surface, attributed recording, explained pauses and 2500ms attribution grace",
       "sessionOpen/markerBoot/markerInstall/wall/exits/tripped/processConsent": "ListenerStore.setSessionOpen, recordProcessStart, grantConsent and CrashLoopBreaker",
-      "captureActive/captureSince": "ListeningService current private capture worker and Listener.unsilencedSince; separate from the persisted ListenerStore open-session marker"
+      "captureActive/captureSince": "Settled unsilenced ListeningService worker and Listener.unsilencedSince, separate from the persisted open-session marker; arbitrary audio-silencing and lifecycle interleavings are outside this projection"
     },
     "abstractions": [
       "Exact 3000ms expiry, 2500ms attribution grace and 600000ms crash-window boundary classes.",
       "Three lease generations, two known boots plus unknown boot, two installation identities.",
       "Startup restores zero to three historical crashes, sufficient to cross the actual three-exit threshold; the actual store cap remains eight.",
       "Stored consent does not authorize a newly started process; explicit process consent is modeled separately.",
-      "Restored open-session markers describe prior-process crash history. Only a newly opened current capture worker can admit frames or start the attribution grace; physical AudioRecord release failures remain covered by NativeListenerService."
+      "Restored open-session markers describe prior-process crash history. The captureActive/timestamp relation covers settled unsilenced workers; a silenced worker may retain its pointer with unsilencedSince=-1 and is outside this projection. Only a newly opened current capture can admit frames or start the attribution grace. Physical AudioRecord release failures remain covered by NativeListenerService."
     ],
     "tests": [
       "leaseNeedsAcknowledgementTest",
