@@ -3,10 +3,19 @@
   "sha256": "31cff3950bac199924fbe729fbbe8a4a9105abbbb535b683a8223cbfb056cef3",
   "sdkCommit": "30b4844152673243f1faf2d68a4f707a7a7da543",
   "allowedProducerCommits": [
-    "c73e72f54be8fd7f0b7044d9ef9d1390562c74fb"
+    "c73e72f54be8fd7f0b7044d9ef9d1390562c74fb",
+    "6d892eaa112d3875658ca758e84789c7332e34df"
   ],
   "apkSignerMappingsSha256": "e5534e2830ad94343ee11cbc08857cf2435522fe1f3d0e560ec4f5610f80223e",
   "avbKeyConfigurationSha256": "f8ed78f8705d63a011a82a2655f7875a1d86033ee601a190f53aa9f6dacfdd5d",
   "qualified": true,
-  "reviewedTargets": []
+  "reviewedTargets": [
+    {
+      "targetFilesSha256": "57e21e78f711f15906f8be8c191b2abe0ffb6976b72cf0b5e60ca12089422c08",
+      "sourceCommit": "6d892eaa112d3875658ca758e84789c7332e34df",
+      "sdkCommit": "30b4844152673243f1faf2d68a4f707a7a7da543",
+      "targetFingerprint": "Alpha/alpha_stallion_phone/stallion:17/CP2A.260605.016/alpha_wireless_delivery_20261113_12:userdebug/test-keys",
+      "buildTimestamp": 1794604543
+    }
+  ]
 }
