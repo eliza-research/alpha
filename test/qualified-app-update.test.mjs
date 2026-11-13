@@ -26,6 +26,10 @@ test('publication preserves protected review, exact source and verification befo
   assert.match(workflow.jobs['admit-publication'].if,/inputs.operation == 'publish' && inputs.workflow_commit == github.sha/);
   const steps=publish.steps;
   assert(steps.filter(step=>step.uses?.startsWith('actions/checkout@')).every(step=>step.with['persist-credentials']===false));
+  const product=steps.find(step=>step.with?.path==='qualified-product');
+  assert.equal(product.with.ref,'${{ needs.admit-publication.outputs.source_commit }}');
+  assert.equal(product.with['fetch-depth'],0,'native receipt admission needs immutable historical product and SDK objects');
+  assert.equal(product.with.submodules,true);
   assert(!steps.some(step=>step.uses?.startsWith('actions/setup-node@')));
   const install=steps.findIndex(step=>step['working-directory']==='qualified-product'&&step.run?.includes('install --frozen-lockfile'));
   assert.match(steps[install].run,/^test -f bun\.lock\nbun install --frozen-lockfile --ignore-scripts\n$/);
@@ -146,6 +150,14 @@ test('artifact identity is confined to protected signing and publication jobs',(
   if(name==='sign'){
    const source=job.steps.find(step=>step.with?.path==='qualified-producer');assert(source);
    assert.equal(source.with.ref,'${{ fromJSON(inputs.plan).alphaCommit }}');
+   assert.equal(source.with['fetch-depth'],0);
+   assert.equal(source.with.submodules,true);
+   const preflight=workflow.jobs[admit].steps.find(step=>step.with?.path==='qualified-producer');assert(preflight);
+   assert.equal(preflight.if,"${{ fromJSON(inputs.plan).producerKind == 'github-main-candidate' }}");
+   assert.equal(preflight.with.ref,source.with.ref);
+   assert.equal(preflight.with['fetch-depth'],0);
+   assert.equal(preflight.with.submodules,true);
+   assert.equal(preflight.with['persist-credentials'],false);
    const staged=job.steps.find(step=>step.run?.includes('ALPHA_ADMITTED_APK_DIR='));assert(staged);
    assert(staged.run.indexOf('unset ALPHA_PRIVATE_STORAGE_TOKEN')<staged.run.indexOf('await import('));
   }
