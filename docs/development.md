@@ -575,12 +575,16 @@ It also includes the [selected-tab permission](https://github.com/elizaOS/eliza/
 [prepared speech](https://github.com/elizaOS/eliza/pull/39424), [download publication](https://github.com/elizaOS/eliza/pull/39425),
 [held update offer](https://github.com/elizaOS/eliza/pull/39440) and [updater scratch storage](https://github.com/elizaOS/eliza/pull/39446) changes
 and [bounded secure-store allocations](https://github.com/elizaOS/eliza/pull/39461)
-at `37af7168b139b92f9e3b978546c97fb3e61870dc` on upstream develop. This
+at `1b39e1854abb31b0f99e91604259da29698917ee` on upstream develop. This
 also consumes the reviewed [Bun and ABI cleanup](https://github.com/elizaOS/eliza/pull/39420),
 [Cloud, Files and Sense fixes](https://github.com/elizaOS/eliza/pull/39444),
 [Calendar provider timestamps](https://github.com/elizaOS/eliza/pull/39467),
 [owner-clock scheduling](https://github.com/elizaOS/eliza/pull/39470) and
 [model-generated morning summaries](https://github.com/elizaOS/eliza/pull/39471).
+The current pin also includes reviewed [browser URL parser](https://github.com/elizaOS/eliza/pull/39351)
+and [browser automation dependency](https://github.com/elizaOS/eliza/pull/39354) updates.
+The 375 prepared renderer sources, core catalog and native platform sources are
+unchanged from `37af7168`; the full agent dependency tree is not source-identical.
 The native engine gitlink is unchanged, but the producer scripts and package
 manifests differ from the retained `c9247e6966` native records. Those records
 remain attributed to their original inputs; no new native build or qualification
