@@ -42,6 +42,13 @@ async function setup({revoked=true,alreadyRetired=false,cloudRealtime=false,atte
 }
 test('canonical completion refreshes history without a second transcript/model dispatch',async()=>{const h=await setup();await h.controller.start();h.options.onServerEvent({t:'stt_partial',text:'unfinished',traceId:'owned'});assert.deepEqual(h.accepted,[]);h.options.onServerEvent({t:'stt_final',text:'synthetic',traceId:'owned'});h.options.onServerEvent({t:'stt_final',text:'synthetic',traceId:'owned'});assert.deepEqual(h.accepted,['synthetic']);h.options.onServerEvent({t:'reply_complete',traceId:'owned'});await Promise.resolve();assert.equal(h.history,1);assert.ok(h.calls.every(c=>!c.path.includes('/messages')));await h.controller.stop();assert.equal(h.calls.filter(c=>c.path.includes('/revoke')).length,1);await h.controller.stop();assert.equal(h.stops,1);});
 test('failed retirement remains failed on repeated Stop',async()=>{const h=await setup({revoked:false});await h.controller.start();await assert.rejects(h.controller.stop(),/not confirmed/);await assert.rejects(h.controller.stop(),/not confirmed/);assert.equal(h.stops,1);});
+test('Stop refreshes a minted conversation once after retirement, including an unconfirmed retirement',async()=>{
+ for(const revoked of [true,false]){
+  const h=await setup({revoked});await h.controller.start();
+  if(revoked)await h.controller.stop();else await assert.rejects(h.controller.stop(),/not confirmed/);
+  assert.equal(h.history,1);await h.controller.stop().catch(()=>{});assert.equal(h.history,1);
+ }
+});
 test('recheck retires the owned server ticket when its conversation changes',async()=>{const h=await setup();await h.controller.start();h.change();h.controller.recheck();for(let i=0;i<4;i++)await Promise.resolve();assert.equal(h.stops,1);assert.equal(h.calls.filter(c=>c.path.includes('/revoke')).length,1);});
 
 test('canonical teardown or rotated tickets already retired are accepted only by exact authenticated status',async()=>{const h=await setup({alreadyRetired:true});await h.controller.start();await h.controller.stop();await h.controller.stop();assert.equal(h.stops,1);});

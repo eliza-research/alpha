@@ -417,6 +417,11 @@ function startConversationEvents(selected:Active,session:VerifiedSession){
   closeConversationEvents=selected.remote.subscribeConversationEvents(value=>{
     if(!current()||!value||typeof value!=='object'||Array.isArray(value))return;
     const event=value as Record<string,unknown>,message=event.message;
+    if(event.type==='conversation-updated'){
+      const conversation=event.conversation,stopped=stoppedVoiceRead;
+      if(stopped&&conversation&&typeof conversation==='object'&&Reflect.get(conversation,'id')===stopped.conversationId)stopped.repeat();
+      return;
+    }
     if(event.type!=='proactive-message'||event.agentId!==session.agentId||typeof event.conversationId!=='string'||conversationMemory.get(conversationKey(session))!==event.conversationId||!message||typeof message!=='object'||Array.isArray(message))return;
     const row=message as Record<string,unknown>;
     if(row.role!=='assistant'||typeof row.id!=='string'||!row.id||row.id.length>128||typeof row.text!=='string')return;
@@ -949,7 +954,7 @@ async function work(message: string, action: (signal: AbortSignal) => Promise<vo
   if (operation) return;
   // An owner step never waits behind a background plan read: the read stops and the next return checks again.
   planRecheck?.abort();
-  const controller = new AbortController(); signInReadinessOwner = null; operation = controller; residentStartInBackground = background;
+  const controller = new AbortController(); cancelStoppedVoiceRead(); signInReadinessOwner = null; operation = controller; residentStartInBackground = background;
   update({ busy: true, backgroundWork: background, ...(background ? {} : { open: true }), message, error: preserveError ? state.error : '' });
   try { await action(controller.signal); }
   catch (error) {
@@ -1038,7 +1043,7 @@ async function manageProviderKey(action:'edit'|'remove',key:LocalProviderKey,exp
 async function manageProviderKey(action:'edit'|'remove'|'reveal',key:LocalProviderKey,expectedRevision:string,external:AbortSignal,value?:string):Promise<void|LocalProviderReveal>{
  if(operation||sending)throw Error('Busy');
  external.throwIfAborted();
- const controller=new AbortController(),signal=anyAbortSignal([external,controller.signal]);signInReadinessOwner=null;operation=controller;providerStatusGeneration++;
+ const controller=new AbortController(),signal=anyAbortSignal([external,controller.signal]);cancelStoppedVoiceRead();signInReadinessOwner=null;operation=controller;providerStatusGeneration++;
  update({busy:true,backgroundWork:false,error:'',message:''});
  let changed:LocalProviderStatus|undefined;
  try{
@@ -1853,7 +1858,12 @@ export const STOPPED_CANCELLED_NOTICE = 'Cancelled';
 /** The single check did not settle the stopped reply: where to look later. */
 export const STOPPED_UNCHECKED_NOTICE = 'Outcome unknown';
 let stoppedReply: { timer: ReturnType<typeof setTimeout>; controller: AbortController } | null = null;
-function cancelStoppedReply() { if (!stoppedReply) return; clearTimeout(stoppedReply.timer); stoppedReply.controller.abort(); stoppedReply = null; }
+// Revoke can finish before the agent saves the stopped voice turn. Read once
+// after Stop, then once more if that conversation's saved update is announced.
+// Any newer request retires both reads, even if it finishes before they do.
+let stoppedVoiceRead:{conversationId:string;controller:AbortController;repeat:()=>void}|undefined;
+function cancelStoppedVoiceRead(){stoppedVoiceRead?.controller.abort();stoppedVoiceRead=undefined;}
+function cancelStoppedReply() { cancelStoppedVoiceRead(); if (!stoppedReply) return; clearTimeout(stoppedReply.timer); stoppedReply.controller.abort(); stoppedReply = null; }
 /** A restart can land while the resident still holds the reply to the last message: the stop-check
  * timer died with the old process. A restored conversation ending in that recent user turn gets the
  * same single later read (no cancel attempt); nothing is sent. Only the restore that follows a
@@ -2554,7 +2564,16 @@ export const connectionController = {
     const remote=selected.remote,sessionId=state.session.sessionId;
     return {sessionId,subscribe:listener=>remote.subscribeVoiceEvents(listener),request:(path,body,signal)=>remote.request(path,body,signal,{},body===undefined?'GET':'POST')};
   },
-  async refreshDeveloperVoiceHistory(binding:VoiceConversationBinding,signal:AbortSignal){if(!browserLocalAgentEnabled||active?.kind!=='resident'||!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');await restoreConversationHistory(binding.conversationId,signal,true);if(!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');},
+  async refreshDeveloperVoiceHistory(binding:VoiceConversationBinding,signal:AbortSignal,afterStop=false){
+    const check=()=>{if(!browserLocalAgentEnabled||active?.kind!=='resident'||!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');};
+    check();
+    const read=async(own:AbortSignal,canCommit?:()=>boolean)=>{check();await restoreConversationHistory(binding.conversationId,own,true,false,undefined,canCommit);check();};
+    if(!afterStop)return read(signal);
+    cancelStoppedVoiceRead();
+    const owned=new AbortController(),first=new AbortController(),current=()=>stoppedVoiceRead===record&&!sending&&!operation;
+    const record=stoppedVoiceRead={conversationId:binding.conversationId,controller:owned,repeat:()=>{if(first.signal.aborted||!current())return;first.abort();void read(owned.signal,current).catch(()=>{});}};
+    await read(anyAbortSignal([signal,first.signal,owned.signal]),current);
+  },
   getPairedVoiceBinding(): { origin: string; ownerId: string; expiresAt: number; sessionId: string } | null {
     // Paired voice belongs to development and hosted agents; the resident agent has its own speech path.
     if (!testMocksEnabled) return null;
@@ -2770,8 +2789,10 @@ export const connectionController = {
     update({providerStatusError:true,residentInference:'unknown'});
     try{await work(mode==='cloud'?'Switching to Cloud':'Switching to own keys',async signal=>{
       const providerStatus=await selectLocalProvider({mode,expectedRevision},signal);signal.throwIfAborted();
-      update({providerStatus,providerStatusError:false,open:false,purpose:'agent'});
-      await restartAfterProviderChange(signal,true);update({message:''});finished=true;
+      update({providerStatus,providerStatusError:false});
+      await restartAfterProviderChange(signal,true);
+      const keepOpen=!!state.error||!!state.signIn||(mode==='cloud'&&!state.cloudAccount);
+      update({open:keepOpen,purpose:keepOpen?state.purpose:'agent',message:''});finished=true;
     });}finally{
       // A lost/cancelled response may follow a committed selection. Resolve its
       // saved result once under this generation; never resend the mutation.
@@ -3380,7 +3401,7 @@ export const connectionController = {
   canEditMessages(){return !!active&&active.kind!=='cloud';},
   async truncateMessage(target:ConversationMessageTarget):Promise<void> {
     if(!this.messageTargetCurrent(target)||target.from!=='user'||!active||active.kind==='cloud'||document.hidden)throw Error('This message cannot be edited in the current connection.');
-    const selected=active,session=state.session!,generation=epoch,controller=new AbortController(),contextKey=JSON.stringify(navigationContext?.());signInReadinessOwner=null;operation=controller;update({busy:true});let dispatched=false;
+    const selected=active,session=state.session!,generation=epoch,controller=new AbortController(),contextKey=JSON.stringify(navigationContext?.());cancelStoppedVoiceRead();signInReadinessOwner=null;operation=controller;update({busy:true});let dispatched=false;
     const current=()=>{controller.signal.throwIfAborted();if(document.hidden||state.open||generation!==epoch||selected!==active||JSON.stringify(state.session)!==JSON.stringify(session)||conversationMemory.get(conversationKey(session))!==target.conversationId)throw Error('The conversation changed.');};
     try {
       const history=await selected.remote.messages(target.conversationId,controller.signal);current();
@@ -3410,7 +3431,7 @@ export const connectionController = {
     const selected=active,session=state.session,generation=epoch;
     if(!selected||!session)throw noSessionError(NO_AGENT_VOICE);
     if((selected.kind==='remote'||selected.kind==='local')&&(!selected.remote.session||selected.remote.session.expiresAt<=Date.now()))throw Error('Your session expired. Pair again before starting voice.');
-    const controller=new AbortController(),cancel=()=>controller.abort(signal.reason);signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();signInReadinessOwner=null;operation=controller;
+    const controller=new AbortController(),cancel=()=>controller.abort(signal.reason);signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();cancelStoppedVoiceRead();signInReadinessOwner=null;operation=controller;
     const current=()=>{controller.signal.throwIfAborted();if(document.hidden||state.open||generation!==epoch||selected!==active||JSON.stringify(state.session)!==JSON.stringify(session))throw Error('The voice conversation changed.');};
     try{current();const conversationId=await ensureSelectedConversation(selected,session,controller.signal,current);current();return {conversationId,session:{...session},connectionEpoch:generation};}
     finally{signal.removeEventListener('abort',cancel);releaseOperation(controller);}

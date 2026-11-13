@@ -140,7 +140,7 @@ test('a resident start ends with its operation in one update, so setup behind it
   const work=stripTypeScriptTypes(between(ui,'async function work(','/** Only an explicitly failed native start'),{mode:'transform'});
   for(const fail of [false,true]){
     const seen=[],state={busy:false,open:false,residentStarting:false,error:'',message:''};
-    const box={state,AbortController,active:null,cloud:{},testMocksEnabled:false,scheduleResidentAutoRetry:()=>{},
+    const box={state,AbortController,cancelStoppedVoiceRead(){},active:null,cloud:{},testMocksEnabled:false,scheduleResidentAutoRetry:()=>{},
       update:patch=>{Object.assign(state,patch);seen.push({busy:state.busy,starting:state.residentStarting});},
       residentRecoveryReason:()=>null,errorMessage:error=>error.message,errorKindOf:()=>null,expired:()=>false,residentCloudFlow:()=>true,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{}};
     vm.createContext(box);vm.runInContext('var operation=null,planRecheck=null,residentStartInBackground=false,signInReadinessOwner=null;\n'+work+';globalThis.run=work;',box);

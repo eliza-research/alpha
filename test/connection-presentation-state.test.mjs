@@ -121,7 +121,7 @@ function preflightFixture(balance, options = {}) {
     NO_AGENT_SEND: 'No selected session', NO_AGENT_VOICE: 'No selected session',
     noSessionError: () => Error('No selected session'),
     phoneContextMessage: (text, context) => ({text, context}),
-    cancelStoppedReply: () => {}, conversationMemory: new Map(),
+    cancelStoppedVoiceRead: () => {}, cancelStoppedReply: () => {}, conversationMemory: new Map(),
     readNativeNetwork, System: {getNetworkStatus: async () => ({connected: true})},
     planCheckScope: () => 'current-account', retractReadiness: () => {},
     clearPersonalSetup: () => {},
@@ -990,7 +990,7 @@ const providerSwitchSource=stripTypeScriptTypes([
 function providerSwitchFixture(){
  const events=[];
  const context=vm.createContext({AbortController,DOMException,
-  operation:null,sending:null,providerStatusGeneration:0,epoch:1,active:null,state:{session:null,open:true,purpose:'provider',signIn:null,cloudAccount:{userId:'fixture-owner'},providerStatus:{mode:'own',revision:'fixture-own',keys:{text:{configured:true},voice:{configured:true}}}},appRequests:new Set(),actionReceipts:new Map(),conversationMemory:new Map(),
+  operation:null,sending:null,providerStatusGeneration:0,providerStatusReadSequence:0,epoch:1,active:null,state:{session:null,open:true,purpose:'provider',signIn:null,cloudAccount:{userId:'fixture-owner'},providerStatus:{mode:'own',revision:'fixture-own',keys:{text:{configured:true},voice:{configured:true}}}},appRequests:new Set(),actionReceipts:new Map(),conversationMemory:new Map(),
   testMocksEnabled:false,residentAlwaysPresent:true,RESIDENT_NAME:'Alpha',isAndroid:true,browserCloudResidentEnabled:false,OWN_KEYS_NOT_SET_UP:'Own API keys could not be set up.',LOCAL_PROVIDER_MODEL:'model',
   signInReadinessOwner:null,OWN_KEY_BUSY:'Busy',OWN_KEY_CHECKING:'Checking key',connectionToast(){},
   clearClientObservationSupport(){},retireConversationEvents(){},retireReadReplies(){},pauseHostedBackground:async()=>{},retireClockReviews:async()=>{},cancelStoppedReply(){},
@@ -1003,6 +1003,34 @@ function providerSwitchFixture(){
  vm.runInContext(providerSwitchSource,context);
  return {context,events,controller:context.providerController};
 }
+test('the provider sheet stays open until the replacement agent is ready',async()=>{
+ const f=providerSwitchFixture();let finish;
+ f.context.connectResident=()=>new Promise(resolve=>{finish=resolve;});
+ const pending=f.controller.selectCloudProvider();
+ while(!finish)await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(f.context.state.providerStatus.mode,'cloud');
+ assert.equal(f.context.state.open,true,'a committed provider choice must not present the app as ready');
+ finish();await pending;
+ assert.equal(f.context.state.open,false);
+});
+test('a replacement agent failure keeps the confirmed provider choice open for recovery',async()=>{
+ const f=providerSwitchFixture();
+ f.context.localProviderStatus=async()=>f.context.state.providerStatus;
+ f.context.connectResident=async()=>{throw Error('Agent is not ready');};
+ await assert.rejects(f.controller.selectCloudProvider(),/Agent is not ready/);
+ assert.equal(f.context.state.providerStatus.mode,'cloud');
+ assert.equal(f.context.state.open,true);
+ assert.equal(f.context.state.purpose,'provider');
+ assert.equal(f.context.state.providerStatus.keys.text.configured,true);
+});
+test('a provider reconnect does not dismiss an account or binding error',async()=>{
+ const f=providerSwitchFixture();
+ f.context.connectResident=async()=>{f.context.state.error='Cloud binding could not be confirmed';};
+ await f.controller.selectCloudProvider();
+ assert.equal(f.context.state.open,true);
+ assert.equal(f.context.state.purpose,'provider');
+ assert.equal(f.context.state.error,'Cloud binding could not be confirmed');
+});
 test('a provider switch during a streaming reply leaves the reply running; once it settles the switch works as before',async()=>{
  const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking key','check key','restart agent']],
   selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud','select Cloud with saved keys retained','restart agent']]};

@@ -10,10 +10,10 @@ test('accepted voice progress is ephemeral, clears with SDK state and cannot ret
   f.box.React = {createElement: () => null};
   f.box.VoiceActivity = () => null;
   const sessions = [];
-  let automaticallyMuted = false;
+  let automaticallyMuted = false, muted = false;
   f.box.developmentCartesiaConversation = async options => {
     sessions.push(options);
-    return {async start() { options.assertCurrent(); options.onState('listening', ''); }, async stop() {}, recheck() {}, microphoneMuted: false, get microphoneAutomaticallyMuted() {return automaticallyMuted;}, setMicrophoneMuted() {}};
+    return {async start() { options.assertCurrent(); options.onState('listening', ''); }, async stop() {}, recheck() {}, get microphoneMuted() {return muted;}, get microphoneAutomaticallyMuted() {return automaticallyMuted;}, setMicrophoneMuted(value) {muted = value;}};
   };
   const messagesBefore = JSON.stringify(f.shell.state.msgs);
   await f.shell.startVoice();
@@ -28,6 +28,10 @@ test('accepted voice progress is ephemeral, clears with SDK state and cannot ret
   assert.equal(f.renderChat().readinessLabel, 'Finishing…');
   automaticallyMuted = false;
   assert.equal(f.renderChat().readinessLabel, 'Listening');
+  f.renderChat().toggleMute();
+  assert.equal(f.renderChat().lines[0].t, 'Microphone off.');
+  f.renderChat().toggleMute();
+  assert.equal(f.renderChat().lines[0].t, 'Listening…');
   first.onState('thinking', 'Creating that now.');
   // The label shimmers on the transcript line above the composer; the composer keeps the phase.
   assert.equal(f.shell.renderVals().turnStatus, 'Creating that now.');

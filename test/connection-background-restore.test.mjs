@@ -12,7 +12,7 @@ assert.ok(begin>=0&&end>begin);
 const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'strip'});
 function fixture(){
  const state={open:false,busy:false,purpose:'agent',message:'',error:''},updates=[];
- const context=vm.createContext({residentRecoveryReason,scheduleResidentAutoRetry:()=>{},residentStartInBackground:false,testMocksEnabled:false,AbortController,DOMException,state,signInReadinessOwner:null,operation:null,planRecheck:null,errorKindOf:()=>null,active:null,cloud:{},expired:()=>false,errorMessage:e=>e.message,residentCloudFlow:()=>false,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{},update:next=>{Object.assign(state,next);updates.push({...state});}});
+ const context=vm.createContext({residentRecoveryReason,cancelStoppedVoiceRead(){},scheduleResidentAutoRetry:()=>{},residentStartInBackground:false,testMocksEnabled:false,AbortController,DOMException,state,signInReadinessOwner:null,operation:null,planRecheck:null,errorKindOf:()=>null,active:null,cloud:{},expired:()=>false,errorMessage:e=>e.message,residentCloudFlow:()=>false,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{},update:next=>{Object.assign(state,next);updates.push({...state});}});
  vm.runInContext(code,context);return {state,updates,context,run:(...args)=>context.work(...args)};
 }
 test('background account restore never opens the chooser and clears its loading status',async()=>{

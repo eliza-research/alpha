@@ -113,7 +113,7 @@ const releaseCode = strip([
 test('an edit that ends releases the operation and runs the rebind queued behind it', async () => {
   const resumed = [], session = {sessionId: 'session-1'};
   const remote = {messages: async () => ({messages: [{id: 'm1', role: 'user', text: 'Edit me'}]}), truncateMessages: async () => {}};
-  const box = vm.createContext({AbortController, JSON, document: {hidden: false}, navigationContext: () => ({view: 'home'}), state: {session, open: false, busy: false}, active: {kind: 'resident', remote}, epoch: 1,
+  const box = vm.createContext({AbortController, JSON, cancelStoppedVoiceRead(){}, document: {hidden: false}, navigationContext: () => ({view: 'home'}), state: {session, open: false, busy: false}, active: {kind: 'resident', remote}, epoch: 1,
     conversationMemory: new Map([['key', 'conversation-1']]), conversationKey: () => 'key', restoredText: text => text, signInReadinessOwner: null, operation: null,
     restoreConversationHistory: async () => { assert.notEqual(box.operation, null, 'the edit holds the operation'); },
     update: patch => { Object.assign(box.state, patch); }, residentCloudFlow: () => true, rebindResident: () => {}, residentRebindBlocked: () => !!box.operation,

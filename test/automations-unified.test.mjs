@@ -362,3 +362,25 @@ test('8am recurrence snoozes to8:10 and repairs an earlier from-now deferral',()
  assert.equal(protocol.scheduledSnoozeAt({record:task,status:'snoozed'},now),new Date(2026,10,10,8,10).toISOString());
  const valid=new Date(2026,10,10,8,10).toISOString();task.state.firedAt=valid;assert.equal(protocol.scheduledSnoozeAt({record:task,status:'snoozed'},new Date(2026,10,10,8,5).getTime()),new Date(2026,10,10,8,20).toISOString());
 });
+
+test('an in-flight automation stays protected without showing an unknown outcome',async()=>{
+ let release,started=false,enabled=false;
+ const held=new Promise(resolve=>release=resolve);
+ const f=await fixture(async call=>{
+  if(call.method==='PUT'){started=true;await held;enabled=true;return {trigger:{id:'prompt',enabled:true}};}
+  if(call.path==='/api/automations')return {automations:[workflow,{...prompt,enabled,status:enabled?'active':'paused'}]};
+  return read(call);
+ });
+ const app=adapterFixture(f.request);
+ try{
+  await openPrompt(app);reviewed(app,'Enable');await wait(()=>started);
+  assert.equal(app.render().automation.busy,true);
+  assert.equal(app.render().automation.locked,false);
+  assert.notEqual(app.render().cards.find(card=>card.name==='Owner prompt').statusLabel,'Outcome unknown');
+  assert.equal(app.render().automation.actions.find(action=>action.label==='Enable').disabled,true);
+  assert.equal(Object.keys(app.storage).length,1);
+  release();await wait(()=>!app.render().automation.busy&&!app.render().automation.loading);
+  assert.equal(app.render().automation.locked,false);
+  assert.equal(Object.keys(app.storage).length,0);
+ }finally{release();app.close();await f.close();}
+});

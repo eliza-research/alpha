@@ -84,3 +84,85 @@ test('a restored failure row shows Alpha copy instead of the agent\'s saved fail
  assert.equal(rows[3].text,'A normal reply.');assert.equal(rows[3].unfinished,undefined);
  assert.equal(rows[4].text,'I couldn\'t confirm that Calendar request.','a Calendar refusal keeps its answer');assert.equal(rows[4].unfinished,undefined);
 });
+
+// Exercise the real restore and event listener with a read held across a later
+// request. An old history publication disconnects the visible chat's active send.
+const stoppedVoiceCode=stripTypeScriptTypes([
+ part('let stoppedReply:', '/** A restart can land'),
+ part('let residentStartInBackground', '/** Release only this operation'),
+ part('async function restoreConversationHistory(', '/** Restored chats'),
+ part('function startConversationEvents(', '/** Insert canonical delivery IDs'),
+ 'globalThis.controller={',part('  async refreshDeveloperVoiceHistory(', '  getPairedVoiceBinding()'),
+ 'voiceConversationCurrent:binding=>binding.conversationId===\'saved\'};',
+].join('\n'),{mode:'strip'});
+function stoppedVoiceFixture(){
+ const session={sessionId:'session',agentId:'agent'},pending=[],writes=[],channel={};
+ const rows=[{id:'question',role:'user',text:'What time is it?'}];
+ const state={session,history:{revision:1,messages:[]}},selected={kind:'resident',remote:{subscribeConversationEvents(listener){channel.listener=listener;}}};
+ const box={state,active:selected,epoch:1,service:null,sending:null,operation:null,planRecheck:null,signInReadinessOwner:null,testMocksEnabled:true,
+  browserLocalAgentEnabled:true,AbortController,AbortSignal,DOMException,Error,JSON,Reflect,clearTimeout,
+  anyAbortSignal:signals=>AbortSignal.any(signals),conversationKey:()=> 'owner',conversationMemory:new Map([['owner','saved']]),
+  captureConversationChoice:async()=>({id:'saved',revision:'r1'}),conversationList:async()=>[{id:'saved'}],residentCloudFlow:()=>false,
+  readConversation:()=>{const reply=deferred(),messages=rows.slice();pending.push({reply,messages});return reply.promise;},restoredMessages:messages=>messages,
+  update:patch=>{writes.push(patch);Object.assign(state,patch);},noSessionError:message=>Error(message),NO_SESSION_FALLBACK:'missing',
+  runQueuedResidentRebind(){},runQueuedSignInReturn(){},scheduleResidentAutoRetry(){},residentRecoveryReason(){},
+  closeConversationEvents:undefined,deliverConversationMessages(){throw Error('Unexpected proactive delivery');},checkResidentAlive(){},
+ };
+ vm.runInNewContext(stoppedVoiceCode,box);box.startConversationEvents(selected,session);
+ const settle=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
+ const refresh=()=>box.controller.refreshDeveloperVoiceHistory({conversationId:'saved'},new AbortController().signal,true);
+ return {box,state,writes,rows,pending,settle,refresh,
+  updated:(id='saved')=>channel.listener({type:'conversation-updated',conversation:{id}}),
+  release:async i=>{const read=pending[i];read.reply.resolve({messages:read.messages,partial:false,deliveryRevisionAtStart:0});await settle();},
+ };
+}
+test('Direct voice Stop reads its final receipt and repeats once when the saved receipt is announced',async()=>{
+ const f=stoppedVoiceFixture(),first=f.refresh();first.catch(()=>{});await f.settle();assert.equal(f.pending.length,1);
+ f.rows.push({id:'receipt',role:'assistant',text:'This reply did not finish.'});f.updated('another');await f.settle();assert.equal(f.pending.length,1);
+ f.updated();await f.settle();assert.equal(f.pending.length,2);await f.release(1);
+ assert.deepEqual(f.state.history.messages.map(row=>row.id),['question','receipt']);
+ await f.release(0);await assert.rejects(first,{name:'AbortError'});assert.equal(f.state.history.revision,2);
+ f.updated();await f.settle();assert.equal(f.pending.length,2,'only one receipt-triggered repeat');
+});
+test('a completed newer operation retires an in-flight Direct Stop read',async()=>{
+ const f=stoppedVoiceFixture(),first=f.refresh();first.catch(()=>{});await f.settle();
+ await f.box.work('New request',async()=>{});assert.equal(f.box.operation,null);
+ await f.release(0);await assert.rejects(first,{name:'AbortError'});assert.equal(f.state.history.revision,1);
+ f.updated();await f.settle();assert.equal(f.pending.length,1,'a finished new request cannot revive the old read');
+});
+test('a newer send or retired conversation cannot be overwritten by the Direct Stop read',async()=>{
+ for(const mode of ['sending','retired']){
+  const f=stoppedVoiceFixture(),first=f.refresh();first.catch(()=>{});await f.settle();
+  const request=new AbortController();if(mode==='sending')f.box.sending=request;else f.box.cancelStoppedReply();
+  await f.release(0);await assert.rejects(first,{name:'AbortError'});assert.equal(request.signal.aborted,false);assert.equal(f.state.history.revision,1);
+ }
+});
+test('ordinary conversation updates do not start a Direct Stop history read',async()=>{
+ const f=stoppedVoiceFixture();f.updated();await f.settle();assert.equal(f.pending.length,0);assert.equal(f.writes.length,0);
+});
+test('a receipt saved after the first Direct Stop read still refreshes once',async()=>{
+ const f=stoppedVoiceFixture(),first=f.refresh();await f.settle();await f.release(0);await first;
+ f.rows.push({id:'receipt',role:'assistant',text:'Stopped'});f.updated();await f.settle();await f.release(1);
+ assert.deepEqual(f.state.history.messages.map(row=>row.id),['question','receipt']);
+ f.updated();await f.settle();assert.equal(f.pending.length,2);
+});
+test('an older voice session finishing Stop cannot retire the current stopped conversation read',async()=>{
+ const f=stoppedVoiceFixture(),first=f.refresh();first.catch(()=>{});await f.settle();
+ await assert.rejects(f.box.controller.refreshDeveloperVoiceHistory({conversationId:'older'},new AbortController().signal,true),/conversation changed/);
+ f.rows.push({id:'receipt',role:'assistant',text:'Current stopped reply'});f.updated();await f.settle();
+ assert.equal(f.pending.length,2,'the current record still receives its announced receipt');
+ await f.release(1);await f.release(0);await assert.rejects(first,{name:'AbortError'});
+ assert.deepEqual(f.state.history.messages.map(row=>row.id),['question','receipt']);
+});
+test('the browser event channel forwards saved conversation announcements alongside proactive messages',async()=>{
+ const source=readFileSync('apps/app/src/runtime/local-agent.ts','utf8'),start=source.indexOf('function subscribeBrowserConversationEvents('),end=source.indexOf('\nfunction record(',start);
+ assert.ok(start>=0&&end>start);
+ const ready=deferred(),received=[],sockets=[];
+ class Socket{static OPEN=1;readyState=1;constructor(){sockets.push(this);queueMicrotask(()=>this.onopen?.());}close(){}}
+ const box={crypto:{randomUUID:()=> 'client'},AbortController,DOMException,URL,JSON,Date,Error,Math,setTimeout,clearTimeout,location:{host:'localhost:5173'},WebSocket:Socket};
+ vm.runInNewContext(stripTypeScriptTypes(source.slice(start,end)),box);
+ const bridge={request:async()=>({status:200,body:JSON.stringify({wsUrl:'ws://localhost:5173/__alpha-local-renderer/ws?sessionId=ticket',expiresAt:Date.now()+60000})})};
+ const stop=box.subscribeBrowserConversationEvents(bridge,'owner',value=>received.push(value.type),state=>{if(state==='connected')ready.resolve();});
+ try{await ready.promise;for(const type of ['agent_event','conversation-updated','proactive-message','status'])sockets[0].onmessage({data:JSON.stringify({type})});assert.deepEqual(received,['conversation-updated','proactive-message']);}
+ finally{stop();}
+});
