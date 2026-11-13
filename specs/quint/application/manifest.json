@@ -11636,6 +11636,11 @@
       "Pointer positions are three places (the grip area, a control, below the grip area) and four moves (up, short, far, sideways). The pointer id, the primary-button check and scroll prevention are not modeled.",
       "The focus return after unmount is the immediate case only: the opener is still present. The bounded wait for a missing opener, Back and the inert holds are InlineModalFocus and InertHold.",
       "test/quint-inline-modal-gestures.test.mjs replays simulated traces and the drag scenarios on createInlineModal in a jsdom document with layout, inert, computed style and pointer capture supplied by the test. It is not a browser or device check."
-    ]
+    ],
+    "bounds": {
+      "maxSamples": 2000,
+      "maxSteps": 60,
+      "seed": "1"
+    }
   }
 ]
