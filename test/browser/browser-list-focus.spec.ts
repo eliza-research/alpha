@@ -115,7 +115,7 @@ for (const viewport of [{width:390,height:844},{width:1280,height:900}]) {
           }));
           // Hold the real document migration while the owner opens the tab chooser.
           const w = window as any;
-          w.browserRestoreGate = navigator.locks.request(
+        void navigator.locks.request(
             JSON.stringify(['browser-document','alpha.browser.documents.v1','alpha.browser.session.v1']),
             async () => {
               w.browserRestoreHeld = true;
