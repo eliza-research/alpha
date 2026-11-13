@@ -9,6 +9,7 @@ import {verifiedFile} from '../scripts/host-speech-admission.ts';
 import {sourceManifest} from '../scripts/combined-agent-source.ts';
 import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
 import {mkdirSync} from 'node:fs';
+import {readNativeBuildReceipt} from '../scripts/native-build-inputs.ts';
 test('admission verifies exact bytes and reviewed digest, rejecting links and oversized assets',t=>{
  const root=mkdtempSync(join(tmpdir(),'alpha-speech-admission-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
  const file=join(root,'fixture'),data=Buffer.from('synthetic admission fixture'),sha=createHash('sha256').update(data).digest('hex');writeFileSync(file,data);
@@ -17,27 +18,6 @@ test('admission verifies exact bytes and reviewed digest, rejecting links and ov
  assert.throws(()=>verifiedFile(file,sha,data.length-1),/size/);
  assert.throws(()=>verifiedFile(file,sha,data.length+1,true),/size/);
  symlinkSync(file,join(root,'link'));assert.throws(()=>verifiedFile(join(root,'link'),sha,data.length));
-});
-test('embedding source admission binds the current package and rejects another JNI identity',()=>{
- const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
- const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
- assert.equal(actual,reviewed);
- const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
- const {appId}=JSON.parse(readFileSync(new URL('../app.config.json',import.meta.url),'utf8'));
- assert.equal(qualification.forkPin,reviewed);
- assert.equal(qualification.identity,appId);
- assert.equal(qualification.jniBinding.className,appId.replaceAll('.','/')+'/ElizaVoiceNative');
- assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}));
- const retainedAppId='ai.example.other';
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,identity:retainedAppId}),/Embedding host source or identity admission changed/);
- const retainedBinding={...qualification.jniBinding,className:retainedAppId.replaceAll('.','/')+'/ElizaVoiceNative'};
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,jniBinding:retainedBinding}),/Native registration identity qualification missing or changed/);
- const {producerInputs,...nativeOnly}=qualification;
- assert.ok(producerInputs.length>0,'the real qualification still binds its producer inputs');
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly,{requireProducerInputs:true}),/Embedding producer input qualification missing or changed/,'native-only equality cannot replace full producer qualification');
- const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
- assert.equal(voice.identity,appId);
- assert.equal(voice.qualified,false);
 });
 
 // The reviewed source uses the qualified fused-speech engine at 6337fd4c.
@@ -52,4 +32,30 @@ test('source snapshots accept only the reviewed 6337 engine and reject old or fo
  }
  const pin='6337fd4c4bd071c17235986344d552d4036e177b';git('update-index','--cacheinfo','160000,'+pin+','+engine);
  assert.deepEqual(sourceManifest(root).entries[engine],{type:'gitlink',commit:pin,initialized:false});
+});
+
+test('embedding source admission rejects the historical producer and binds current JNI identity',()=>{
+ const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
+ const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
+ assert.equal(actual,reviewed);
+ const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
+ const {appId}=JSON.parse(readFileSync(new URL('../app.config.json',import.meta.url),'utf8'));
+ assert.equal(qualification.forkPin,reviewed);
+ assert.equal(qualification.identity,appId);
+ assert.equal(qualification.jniBinding.className,appId.replaceAll('.','/')+'/ElizaVoiceNative');
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}), /Embedding producer input changed/,
+  'the retained historical producer cannot qualify different current source inputs');
+ const generated=readNativeBuildReceipt(process.cwd());
+ if(generated) assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),generated.embedding,{requireProducerInputs:true}));
+ const admitted=generated?.embedding??qualification;
+ const retainedAppId='ai.example.other';
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...admitted,identity:retainedAppId}),/Embedding host source or identity admission changed/);
+ const retainedBinding={...admitted.jniBinding,className:retainedAppId.replaceAll('.','/')+'/ElizaVoiceNative'};
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...admitted,jniBinding:retainedBinding}),/Native registration identity qualification missing or changed/);
+ const {producerInputs,...nativeOnly}=admitted;
+ assert.ok(producerInputs.length>0,'the real qualification still binds its producer inputs');
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly,{requireProducerInputs:true}),/Embedding producer input qualification missing or changed/,'native-only equality cannot replace full producer qualification');
+ const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
+ assert.equal(voice.identity,appId);
+ assert.equal(voice.qualified,false);
 });

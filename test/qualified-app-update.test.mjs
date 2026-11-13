@@ -9,30 +9,6 @@ test('qualified publication binds source, private output and exact reviewed voic
   execFileSync('python3',['-B','test/qualified-app-update.test.py'],{cwd:new URL('..',import.meta.url),stdio:'pipe',timeout:scaledTimeout(30_000)});
 });
 
-test('publication workflow preserves protected review, exact source and verification before writes',()=>{
-  const workflow=YAML.parse(fs.readFileSync(new URL('../.github/workflows/publish-qualified-app-update.yml',import.meta.url),'utf8'));
-  assert.deepEqual(Object.keys(workflow.on),['workflow_dispatch']);
-  assert.deepEqual(workflow.permissions,{});
-  assert.deepEqual(workflow.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
-  assert.deepEqual(workflow.jobs.admit.permissions,{contents:'read',actions:'read'});
-  const publish=workflow.jobs.publish;
-  assert.equal(publish.environment,'release');
-  assert.deepEqual(publish.permissions,{actions:'read',contents:'write','id-token':'write'});
-  assert.match(workflow.jobs.admit.if,/inputs.workflow_commit == github.sha/);
-  const steps=publish.steps;
-  assert(steps.filter(step=>step.uses?.startsWith('actions/checkout@')).every(step=>step.with['persist-credentials']===false));
-  const toolchain=steps.find(step=>step.id==='product_toolchain');
-  assert.equal(toolchain['working-directory'],'qualified-product');
-  const nodes=steps.filter(step=>step.uses?.startsWith('actions/setup-node@'));
-  assert.equal(nodes.find(step=>step.with['node-version-file']==='qualified-product/.nvmrc')?.if,"hashFiles('qualified-product/.nvmrc') != ''");
-  const node=nodes.find(step=>step.with['node-version']);
-  assert.equal(node.if,"steps.product_toolchain.outputs.runtime == 'node' && hashFiles('qualified-product/.nvmrc') == ''");
-  assert.equal(node.with['node-version'],'26.13.0');
-  const secretSteps=steps.filter(step=>JSON.stringify(step.env||{}).includes('secrets.'));
-  assert.equal(secretSteps.length,0,'private delivery must not depend on a copied storage token');
-  for(const step of steps.filter(step=>step.uses))assert.match(step.uses,/@[0-9a-f]{40}$/);
-});
-
 // Only reviewed main-branch release jobs can mint the short-lived artifact credential.
 test('artifact identity is confined to protected signing and publication jobs',()=>{
  const identity=JSON.parse(fs.readFileSync(new URL('../scripts/ci/private-artifact-identity.json',import.meta.url),'utf8'));

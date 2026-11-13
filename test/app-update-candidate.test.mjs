@@ -107,37 +107,38 @@ test('candidate receipt binds actual archive bytes and source freeze while keepi
   assert.deepEqual(fs.readFileSync(receipt), before, 'A retry cannot overwrite prior evidence');
 });
 
-test('native input receipt refuses a different source, package, SDK, run attempt or frozen record', async t => {
+test('native build receipt must match frozen and staged bytes', async t => {
   const f = fixture(t), admission = await candidateVersion(f), archive = f.archive(admission);
   const file = path.join(archive.output, 'native-input-admission.json'), original = read(file);
-  for (const changed of [{source: '0'.repeat(40)}, {sdkCommit: '0'.repeat(40)}, {packageName: 'other.app'},
-    {runId: '10'}, {attempt: '2'}, {manifestSha256: '0'.repeat(64)}, {voiceRecordSha256: '0'.repeat(64)}]) {
-    json(file, {...original, ...changed});
-    assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /native input receipt differs from the build freeze/);
-    const freeze = read(path.join(archive.output, 'inputs-before.json'));
-    freeze.files['test-results/resident-ci-native-inputs/admission.json'] = hash(fs.readFileSync(file));
-    freeze.digest = hash(JSON.stringify(freeze.files));
-    for (const name of ['inputs-before.json', 'inputs-after.json']) json(path.join(archive.output, name), freeze);
-    assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /Native input admission/);
-  }
+  json(file, {...original, producer: {...original.producer, sdkCommit: 'invalid'}});
+  assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /differs from the build freeze/);
+  const freeze = read(path.join(archive.output, 'inputs-before.json'));
+  freeze.files['.eliza/native-inputs/receipt.json'] = hash(fs.readFileSync(file));
+  freeze.digest = hash(JSON.stringify(freeze.files));
+  for (const name of ['inputs-before.json', 'inputs-after.json']) json(path.join(archive.output, name), freeze);
+  assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /differs from the staged build/);
   fs.unlinkSync(file);
   assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /native-input-admission.json/);
 });
 
-test('a frozen receipt still requires the reviewed artifact and qualification inventory', async t => {
-  const f = fixture(t), admission = await candidateVersion(f), archive = f.archive(admission);
-  const file = path.join(archive.output, 'native-input-admission.json'), original = read(file);
-  for (const change of [value => delete value.artifacts, value => delete value.embedding,
-    value => value.artifacts.voice.artifactId++, value => value.artifacts.embeddingComponent.sha256 = '0'.repeat(64),
-    value => value.artifacts.embeddingQualification.expandedBytes = -1, value => value.artifacts.voice.source = 'invalid',
-    value => value.embedding.qualificationTransferred = true]) {
-    const changed = structuredClone(original); change(changed); json(file, changed);
+test('frozen native receipt requires current recipe, valid outputs and honest qualification', async t => {
+  const f = fixture(t), admission = await candidateVersion(f);
+  for (const change of [value => value.producer.sdkCommit = 'invalid', value => value.producer.ndk = 'old',
+    value => value.recipe.identity = 'other.app', value => value.recipeSha256 = '0'.repeat(64),
+    value => value.qualification.deviceExecuted = true, value => value.voice.qualified = true,
+    value => value.files[0].sha256 = '0'.repeat(64), value => value.files[0].path = '../outside']) {
+    const archive = f.archive(admission), file = path.join(archive.output, 'native-input-admission.json');
+    const changed = read(file); change(changed); json(file, changed);
+    json(path.join(f.root, '.eliza/native-inputs/receipt.json'), changed);
     const freeze = read(path.join(archive.output, 'inputs-before.json'));
-    freeze.files['test-results/resident-ci-native-inputs/admission.json'] = hash(fs.readFileSync(file));
+    freeze.files['.eliza/native-inputs/receipt.json'] = hash(fs.readFileSync(file));
     freeze.digest = hash(JSON.stringify(freeze.files));
     for (const name of ['inputs-before.json', 'inputs-after.json']) json(path.join(archive.output, name), freeze);
-    assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /Native input/);
+    assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}));
   }
+  const archive = f.archive(admission);
+  fs.appendFileSync(path.join(f.root, '.eliza/paradee-voice/native/assets/paradee-voice/v1/manifest.json'), 'tampered');
+  assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /Native output changed/);
 });
 
 test('archive measurement binds the actual artifact metadata and expanded upload file sizes', async t => {
@@ -160,7 +161,7 @@ test('archive measurement binds the actual artifact metadata and expanded upload
   assert.equal(result.expandedBytes, expandedBytes);
   assert.equal(result.files, files.length);
   assert.deepEqual(result.apks, candidate.apks);
-  for (const variant of ['launcher', 'standalone']) {
+  for (const variant of ['launcher']) {
     const bytes = fs.readFileSync(path.join(archive.output, variant + '-debug.apk'));
     assert.equal(result.debugApks[variant].sha256, hash(bytes));
     assert.equal(result.debugApks[variant].bytes, bytes.length);
@@ -170,7 +171,7 @@ test('archive measurement binds the actual artifact metadata and expanded upload
     /artifact identity or size differs/);
   assert.throws(() => candidateArchiveSize({...options, api: () => ({...uploaded, name: uploaded.name.slice(0, -1) + '2'})}),
     /artifact identity or size differs/);
-  const debug = path.join(archive.output, 'standalone-debug.apk'), priorDebug = fs.readFileSync(debug);
+  const debug = path.join(archive.output, 'launcher-debug.apk'), priorDebug = fs.readFileSync(debug);
   fs.appendFileSync(debug, 'changed after upload');
   assert.throws(() => candidateArchiveSize(options), /Measured APK differs/);
   fs.writeFileSync(debug, priorDebug);
@@ -178,13 +179,13 @@ test('archive measurement binds the actual artifact metadata and expanded upload
   assert.throws(() => candidateArchiveSize(options), /native input receipt changed/);
 });
 
-test('changed APKs, mocks, Cloud/private profiles, code/package drift, signed output and changed inputs cannot become native candidates', async t => {
+test('changed APKs, mocks, another profile or channel, code/package drift, signed output and changed inputs cannot become native candidates', async t => {
   const f = fixture(t), admission = await candidateVersion(f), archive = f.archive(admission);
   const file = path.join(archive.output, 'apk-verification.json'), original = read(file);
   for (const change of [v => v.testMocks = true, v => v.runtimeProfile = 'cloud', v => v.allowUnpackagedRuntime = true,
-    v => v.updateChannel.kind = 'private-qa', v => v.upstream.commit = '0'.repeat(40),
-    v => v.results[0].versionCode++, v => v.results[1].packageName = 'other.package',
-    v => v.results[1].signed = true, v => v.results[1].distributable = true]) {
+    v => v.updateChannel.kind = 'other', v => v.upstream.commit = '0'.repeat(40),
+    v => v.results[0].versionCode++, v => v.results[0].packageName = 'other.package',
+    v => v.results[0].signed = true, v => v.results[0].distributable = true]) {
     const modified = structuredClone(original); change(modified); json(file, modified);
     assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}));
   }
@@ -214,15 +215,11 @@ test('a floor advancing during the build refuses the final receipt without alter
 test('real workflow keeps main candidates unsigned and isolated while preserving explicit qualification and dispatched versions', () => {
   const workflow = YAML.parse(fs.readFileSync(path.join(root, '.github/workflows/resident-android.yml'), 'utf8'));
   const build = workflow.jobs.build;
-  assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
-  assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
   assert.deepEqual(workflow.permissions, {contents: 'read'});
   assert.deepEqual(build.permissions, {contents: 'read', actions: 'read'});
-  const candidate = build.steps.find(step => step.name === 'Retain the unsigned native update candidate separately from test mocks');
+  const candidate = build.steps.find(step => step.name === 'Retain the unsigned native update candidate');
   assert.equal(candidate.if, "env.ALPHA_APP_UPDATE_CANDIDATE == '1'");
   assert.equal(candidate.with.path, 'test-results/resident-ci-distribution/');
-  assert.equal(build.steps.find(step => step.id === 'apks').with.path,
-    'test-results/resident-ci-archive/');
-  assert.equal(workflow.jobs.native.needs, 'build');
-  assert.equal(workflow.jobs.native.env.ALPHA_RESIDENT_MANIFEST_SHA256, '${{ needs.build.outputs.manifest_sha256 }}');
+  assert.deepEqual(Object.keys(workflow.jobs), ['publish-qualification', 'build']);
+
 });

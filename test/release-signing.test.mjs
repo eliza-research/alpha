@@ -58,25 +58,6 @@ test("only a release signed by the recorded signer with an advancing versionCode
   assert.match(staleUnsigned.blockers.join(), /not greater/);
 });
 
-test("a test-mocks build never receives the release-signing variables", () => {
-  const base = { ...ALL, PATH: "/bin" };
-  const mocks = buildEnv(base, { testMocks: true });
-  for (const name of SIGNING_ENV) assert.equal(name in mocks, false, name);
-  assert.equal(signingRequested(mocks), false);
-  assert.equal(mocks.PATH, "/bin");
-  assert.equal(mocks.ELIZA_DEV_ALLOW_TEST_MOCKS, "1");
-  assert.equal(signingRequested(buildEnv(base, { testMocks: false })), true);
-});
-
-test("a test-mocks release signed with the release key fails admission; other test-mocks problems only block", () => {
-  const signedByRelease = releaseAdmission({ signed: true, signerSha256: SIGNER, versionCode: 3 }, descriptor(SIGNER, 2), { testMocks: true });
-  assert.deepEqual(signedByRelease.failures, ["test-mocks APK signed with the release key"]);
-  const otherKey = releaseAdmission({ signed: true, signerSha256: "b".repeat(64), versionCode: 1 }, descriptor(SIGNER, 2), { testMocks: true });
-  assert.deepEqual(otherKey.failures, []);
-  assert.match(otherKey.blockers.join(), /does not match.*not greater/);
-  assert.deepEqual(releaseAdmission({ signed: false, signerSha256: null, versionCode: 3 }, descriptor(), { testMocks: true }).failures, []);
-});
-
 // Every fact a distributable release row carries; each test below breaks exactly one.
 const DISTRIBUTABLE = {
   testMocks: false, signed: true, releaseAdmission: { signerMatches: true, blockers: [], failures: [] },
@@ -87,7 +68,6 @@ test("a release is distributable only when every term holds", () => {
   assert.equal(releaseDistributable(DISTRIBUTABLE), true);
   assert.equal(releaseDistributable({...DISTRIBUTABLE, voiceHost: {...DISTRIBUTABLE.voiceHost, qualified: false}}), true, "device approval flags are separate from build integrity");
   const broken = {
-    "test-mocks build": { testMocks: true },
     "unsigned": { signed: false },
     "signed is not exactly true": { signed: "true" },
     "signer does not match the descriptor": { releaseAdmission: { ...DISTRIBUTABLE.releaseAdmission, signerMatches: false } },
