@@ -23,7 +23,7 @@ import tempfile
 from urllib.parse import quote, urlencode
 import zipfile
 
-from app_update_producer import HOSTED_DISPATCH, apk_member_limit, copy_verified, decode, producer_kind, release_contract
+from app_update_producer import HOSTED_DISPATCH, apk_member_limit, copy_verified, decode, input_contract, producer_kind, release_contract
 
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = "eliza-research/alpha"
@@ -345,6 +345,7 @@ def signed_bundle(signed, receipt, plan, plan_bytes):
 
 def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_signed=signed_download, *, source_root=None):
     variants = release_contract(plan)["variants"]
+    inputs = input_contract(plan)
     unsigned, signed = work / "producer.zip", work / "signed.tar"
     fetch_unsigned(plan, unsigned)
     PRODUCER.admit(unsigned, plan, source_root=source_root or product)
@@ -352,12 +353,25 @@ def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_si
     plan_bytes = read_bounded(work / "signing-plan.json", PLAN_LIMIT)
     with signed_bundle(signed, record["signedBundle"], plan, plan_bytes) as (archive, entries, apks):
         require(apks == record["signedApkSHA256"], "Signed checksum receipt differs")
-        restore_producer_evidence(unsigned, product, producer_kind(plan), variants)
+        restore_producer_evidence(unsigned, product, producer_kind(plan), inputs["variants"])
+        # The historical verifier requires the complete unsigned pair. They are
+        # verification inputs, never signed/exported release outputs. Keep the
+        # signed launcher separate until its unchanged payload is verified.
+        legacy_cloud = inputs["runtimeProfile"] == "cloud"
+        if legacy_cloud:
+            with zipfile.ZipFile(unsigned) as producer:
+                for variant in inputs["variants"]:
+                    name = variant + "-release-unsigned.apk"
+                    member = producer.getinfo(name)
+                    with producer.open(member) as content:
+                        restore_file(product, "artifacts/" + name, content, member.file_size,
+                                     plan["unsignedApkSHA256"][variant], "Unsigned verifier input differs")
         for variant in variants:
             name = variant + "-release.apk"
             member = entries[name]
             with archive.extractfile(member) as content:
-                restore_file(product, "artifacts/" + name, content, member.size, apks[variant],
+                restore_file(work if legacy_cloud else product,
+                             ("signed/" if legacy_cloud else "artifacts/") + name, content, member.size, apks[variant],
                              "Signed APK bytes differ from qualification")
 
 

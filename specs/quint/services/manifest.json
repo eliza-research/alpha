@@ -2891,6 +2891,7 @@
       "scripts/ci/admit-cloud-signing-input.py",
       "scripts/ci/private-apk-storage.py",
       "scripts/ci/qualified-app-update.py",
+      "scripts/ci/verify-qualified-cloud-launcher.py",
       "scripts/sign-release-apks.ts",
       "scripts/verify-apks.ts",
       "scripts/deliver-app-update.ts",
@@ -2901,7 +2902,8 @@
     "abstractions": [
       "One candidate, two exact producer attempts, and a public release with three version-floor classes. The main-push candidate route requires an exact native receipt and reviewed private mirror.",
       "Actual shell, Python and TypeScript helpers execute over controlled endpoint, filesystem and transport fixtures. Protected workflow stage order is checked separately against the parsed YAML.",
-      "Private object durability and public partial effects are selected port outcomes. Production keys, platform protections, signer/APK qualification, live public transport and phone acceptance remain separate."
+      "Private object durability and public partial effects are selected port outcomes. Production keys, platform protections, signer/APK qualification, live public transport and phone acceptance remain separate.",
+      "The protected release output is always one launcher. A retained Cloud archive's original two unsigned inputs remain authenticated custody, not two signing or publication outputs. Its unmodified producer verifier and Alpha-owned signed-payload handoff have separate source attribution; actual APK/signature equivalence is covered by the focused release owners, not this finite orchestration model."
     ],
     "bounds": {
       "maxSamples": 1000,

@@ -133,6 +133,7 @@ export function signArguments(options: SigningKey & {pin?: boolean; input: strin
   const {mode, pin = false, input, output, rotationLineage} = options;
   const rotation = rotationLineage ? [
     "--lineage", rotationLineage, "--rotation-min-sdk-version", "28", "--min-sdk-version", "29",
+    "--alignment-preserved", "true",
     "--v1-signing-enabled", "false", "--v2-signing-enabled", "false", "--v3-signing-enabled", "true",
   ] : [];
   const tail = [...rotation, "--v4-signing-enabled", "false", "--out", output, input];

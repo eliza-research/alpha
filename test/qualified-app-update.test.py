@@ -8,11 +8,14 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
+import struct
 import subprocess
 import sys
 import tarfile
 import tempfile
 import unittest
+import warnings
 from unittest.mock import patch
 import zipfile
 
@@ -28,6 +31,7 @@ def load(name, file):
 
 
 BRIDGE = load("qualified_update", "scripts/ci/qualified-app-update.py")
+LAUNCHER = load("qualified_cloud_launcher", "scripts/ci/verify-qualified-cloud-launcher.py")
 FIXTURES = load("qualified_producer_fixtures", "test/cloud-signing-input.test.py")
 
 
@@ -125,6 +129,200 @@ class QualifiedUpdateTest(unittest.TestCase):
                      lambda _plan, target: shutil.copyfile(self.producer.archive, target),
                      lambda _plan, _receipt, target: shutil.copyfile(self.signed_tar, target),
                      source_root=os.environ.get("ALPHA_NATIVE_SOURCE_ROOT"))
+
+    def use_private_cloud_pair(self):
+        payload = b"retained unsigned standalone fixture"
+        self.producer.apk_bytes["standalone-release-unsigned.apk"] = payload
+        self.plan["unsignedApkSHA256"]["standalone"] = BRIDGE.sha(payload)
+        release = copy.deepcopy(next(row for row in self.producer.verification["results"] if row["mode"] == "release"))
+        release.update(variant="standalone", file="artifacts/standalone-release-unsigned.apk", home=False, sha256=BRIDGE.sha(payload))
+        self.producer.verification["results"].append(release)
+        for row in self.producer.verification["results"]:
+            if row["mode"] == "release":
+                row["packageName"] = "ai.elizaresearch.alphaphone"
+        for record in (self.producer.verification, self.producer.build, self.producer.producer):
+            record["runtimeProfile"] = "cloud"
+        debug = {variant + "-debug.apk": (variant + " debug fixture").encode() for variant in ("standalone", "launcher")}
+        self.producer.verification["results"] = [row for row in self.producer.verification["results"] if row["mode"] != "debug"]
+        self.producer.verification["results"].extend({"variant": variant, "mode": "debug", "sha256": BRIDGE.sha(debug[variant + "-debug.apk"])}
+                                                    for variant in ("standalone", "launcher"))
+        private = {"schema": 1, "producerKind": self.plan["producerKind"], "project": "alpha-aosp-lab-20261024",
+                   "instanceId": "8999310923263914877", "alphaCommit": self.plan["alphaCommit"],
+                   "sdkCommit": self.plan["sdkCommit"], "versionCode": self.plan["versionCode"],
+                   "unsignedApkSHA256": self.plan["unsignedApkSHA256"], "runtimeProfile": "cloud",
+                   "updateChannel": self.plan["updateChannel"], "checks": {name: "passed" for name in
+                   ("productSourceGuard", "sdkSourceGuard", "normalPreparation", "combinedVerification", "apkArchive")}}
+        raw = json.dumps(private).encode()
+        self.plan["privateProducerReceiptSHA256"] = BRIDGE.sha(raw)
+        self.producer.write_archive({**debug, "private-producer.json": raw})
+        self.plan["archiveBytes"] = self.producer.archive.stat().st_size
+        self.plan["privateStorage"].update(inputObject=f"unsigned/{self.plan['archiveSHA256']}.zip",
+                                          outputObject=f"signed/{self.plan['archiveSHA256']}/{'d' * 32}/signed-apks.tar")
+        self.signed_entries["signing-plan.json"] = encoded(self.record, "signingPlan", self.plan)
+        self.write_signed()
+        self.write_delivery_receipt()
+
+    def test_cloud_pair_is_unsigned_verifier_input_but_only_launcher_is_signed_output(self):
+        self.use_private_cloud_pair()
+        product = self.directory / "retained-cloud"
+        self.stage_fixture(product)
+        self.assertEqual({file.name for file in (product / "artifacts").glob("*.apk")},
+                         {"standalone-release-unsigned.apk", "launcher-release-unsigned.apk", "standalone-debug.apk", "launcher-debug.apk"})
+        self.assertEqual((self.directory / "size-stage/signed/launcher-release.apk").read_bytes(), self.signed_apks["launcher"])
+        self.assertFalse((self.directory / "size-stage/signed/standalone-release.apk").exists())
+        with BRIDGE.signed_bundle(self.signed_tar, self.record["signedBundle"], self.plan,
+                                 base64.b64decode(self.record["signingPlanBase64"])) as (_, _, signed):
+            self.assertEqual(set(signed), {"launcher"})
+        self.record["signedApkSHA256"]["standalone"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "release contract"):
+            BRIDGE.validate(self.record)
+
+    def test_cloud_pair_refuses_an_extra_signed_standalone_tar_member(self):
+        self.use_private_cloud_pair()
+        self.write_signed({"standalone-release.apk": b"must not be a release output"})
+        with self.assertRaisesRegex(ValueError, "Unexpected signed bundle members"):
+            with BRIDGE.signed_bundle(self.signed_tar, self.record["signedBundle"], self.plan,
+                                     base64.b64decode(self.record["signingPlanBase64"])):
+                self.fail("retired release output admitted")
+
+    def test_cloud_handoff_retains_raw_inputs_and_derives_only_a_signed_launcher(self):
+        payload = SignedLauncherPayloadTest(methodName="test_v3_layout_preserves_every_compressed_entry_and_local_byte")
+        payload.setUp()
+        self.addCleanup(payload.doCleanups)
+        original = payload.unsigned.read_bytes()
+        self.producer.apk_bytes["launcher-release-unsigned.apk"] = original
+        self.plan["unsignedApkSHA256"]["launcher"] = BRIDGE.sha(original)
+        next(row for row in self.producer.verification["results"] if row["mode"] == "release")["sha256"] = BRIDGE.sha(original)
+        self.set_signed_launcher(payload.signed.read_bytes())
+        lineage = b"synthetic public lineage fixture"
+        self.plan["rotation"] = {"lineageBase64": base64.b64encode(lineage).decode(), "lineageSHA256": BRIDGE.sha(lineage)}
+        self.signed_entries["rotation.lineage"] = lineage
+        self.use_private_cloud_pair()
+        product = self.directory / "handoff-product"
+        self.stage_fixture(product)
+        (product / "upstream.lock.json").write_text(json.dumps({"commit": self.plan["sdkCommit"]}))
+        source = self.directory / "admission-source"
+        (source / "android").mkdir(parents=True)
+        fields = ("alphaCommit", "sdkCommit", "versionCode", "updateChannel", "archiveBytes", "archiveSHA256",
+                  "producerManifestSHA256", "privateProducerReceiptSHA256", "unsignedApkSHA256")
+        descriptor = {"schema": 1, "signerSha256": "f" * 64, "lastRelease": {"versionCode": None},
+                      "apkSigningRotation": {"schema": 1, "approval": "approved", "versionCode": self.plan["versionCode"],
+                                             "unsignedApkSHA256": {"launcher": self.plan["unsignedApkSHA256"]["launcher"]},
+                                             "lineageSha256": BRIDGE.sha(lineage)},
+                      "privateProducerApproval": {"approval": "approved", **{key: self.plan[key] for key in fields}}}
+        (source / "android/release-signer.json").write_text(json.dumps(descriptor))
+        checked = copy.deepcopy(self.producer.verification)
+        checked["signing"] = {"release": {"signed": False}}
+        checked["runtimePackaging"] = []
+        for row in checked["results"]:
+            if row["mode"] == "release":
+                row.update(distributable=False, runtimeProfile="cloud", voiceHost={"packaged": False, "differences": []})
+                checked["runtimePackaging"].append({"apk": row["file"], "runtime": "PACKAGED", "distributable": True,
+                                                   "release": True, "runtimeProfile": "cloud", "runtimeExecution": False,
+                                                   "upstreamCommit": self.plan["sdkCommit"]})
+        changed = copy.deepcopy(checked)
+        changed["runtimePackaging"][0]["distributable"] = False
+        with self.assertRaisesRegex(ValueError, "runtime byte verification differs"):
+            LAUNCHER.unsigned_release(changed, self.plan)
+        calls = []
+        def verifier(command, **options):
+            calls.append(command)
+            self.assertEqual(command[1:], ["run", "android:verify", "--", "--runtime-profile=cloud"])
+            self.assertEqual(options["cwd"], product)
+            self.assertFalse((product / "artifacts/launcher-release.apk").exists())
+            self.assertFalse((product / "artifacts/standalone-release.apk").exists())
+            (product / "artifacts/apk-manifest.json").write_text(json.dumps(checked))
+        work = self.directory / "size-stage"
+        proof = {"verified": True, "minApi": 29, "maxApi": 37, "versionCode": 44}
+        # Only the old verifier process and crypto result are closed ports;
+        # archive admission, restored files, all ZIP comparisons and voice
+        # admission below execute their actual implementations.
+        with patch.object(LAUNCHER, "ROOT", source), \
+             patch.object(LAUNCHER.subprocess, "check_output", side_effect=lambda command, **options:
+                          self.plan["alphaCommit"] if options["cwd"] == product else "e" * 40), \
+             patch.object(LAUNCHER, "verify_signature", return_value=proof):
+            admission = LAUNCHER.verify(self.record, work, product, run=verifier)
+        final = json.loads((product / "artifacts/apk-manifest.json").read_text())
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([(row["variant"], row["mode"], row["signed"]) for row in final["results"]], [("launcher", "release", True)])
+        self.assertEqual(final["evidence"], "alpha-signed-payload-admission")
+        self.assertEqual(final["signedPayloadAdmission"]["admissionCommit"], "e" * 40)
+        self.assertEqual(admission["producerCommit"], self.plan["alphaCommit"])
+        self.assertEqual(admission["sdkCommit"], self.plan["sdkCommit"])
+        self.assertEqual(admission["producerVerificationSHA256"], BRIDGE.sha((work / "producer-apk-verification.json").read_bytes()))
+        self.assertEqual((work / "producer-apk-verification.json").read_bytes(),
+                         json.dumps(self.producer.verification).encode())
+        raw = json.loads((work / "unsigned-apk-verification.json").read_text())
+        self.assertEqual({row["variant"] for row in raw["results"] if row["mode"] == "release"}, {"standalone", "launcher"})
+        self.assertTrue(all(row["signed"] is False for row in raw["results"] if row["mode"] == "release"))
+        self.assertEqual((product / "artifacts/launcher-release.apk").read_bytes(), payload.signed.read_bytes())
+        self.assertFalse((product / "artifacts/standalone-release.apk").exists())
+
+    def test_cloud_rotation_cannot_reenroll_standalone_as_output(self):
+        self.use_private_cloud_pair()
+        descriptor = {"apkSigningRotation": {"approval": "approved", "versionCode": 44,
+                                             "unsignedApkSHA256": self.plan["unsignedApkSHA256"]}}
+        with self.assertRaisesRegex(ValueError, "only this launcher"):
+            LAUNCHER.verify_signature(self.record, self.plan, self.directory, self.signed_tar, descriptor)
+
+    def test_cloud_signature_handoff_pins_tools_lineage_signer_and_all_android_apis(self):
+        self.use_private_cloud_pair()
+        lineage = b"synthetic public lineage fixture"
+        self.plan["rotation"] = {"lineageBase64": base64.b64encode(lineage).decode(), "lineageSHA256": BRIDGE.sha(lineage)}
+        self.signed_entries["rotation.lineage"] = lineage
+        self.signed_entries["signing-plan.json"] = encoded(self.record, "signingPlan", self.plan)
+        self.write_signed()
+        sdk = self.directory / "sdk"
+        tools = sdk / "build-tools/36.0.0"
+        (tools / "lib").mkdir(parents=True)
+        (tools / "apksigner").write_bytes(b"pinned controlled apksigner")
+        jar = tools / "lib/apksigner.jar"
+        jar.write_bytes(b"pinned controlled verification jar")
+        fields = ("alphaCommit", "sdkCommit", "versionCode", "updateChannel", "archiveBytes", "archiveSHA256",
+                  "producerManifestSHA256", "privateProducerReceiptSHA256", "unsignedApkSHA256")
+        descriptor = {"signerSha256": "f" * 64,
+                      "privateProducerApproval": {"approval": "approved", **{key: self.plan[key] for key in fields}},
+                      "apkSigningRotation": {"schema": 1, "approval": "approved", "versionCode": 44,
+                        "unsignedApkSHA256": {"launcher": self.plan["unsignedApkSHA256"]["launcher"]},
+                        "lineageSha256": BRIDGE.sha(lineage), "previousSignerSha256": "e" * 64,
+                        "apksignerSha256": BRIDGE.file_sha(tools / "apksigner"), "verifierJarSha256": BRIDGE.file_sha(jar),
+                        "preserveSignaturePermissions": True}}
+        proof = {"verified": True, "minApi": 29, "maxApi": 37, "versionCode": 44}
+        calls = []
+        def port(command, **options):
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(proof).encode())
+        def invoke(label):
+            work = self.directory / label
+            work.mkdir()
+            shutil.copyfile(self.signed_tar, work / "signed.tar")
+            (work / "signing-plan.json").write_bytes(base64.b64decode(self.record["signingPlanBase64"]))
+            with patch.dict(os.environ, {"ANDROID_HOME": str(sdk), "JAVA_HOME": str(self.directory / "jdk")}):
+                return LAUNCHER.verify_signature(self.record, self.plan, work, self.signed_tar, descriptor, run=port)
+        self.assertEqual(invoke("signature-positive"), proof)
+        self.assertEqual(calls[0], [str(tools / "zipalign"), "-c", "-P", "16", "4", str(self.signed_tar)])
+        self.assertEqual(calls[1][1:4], ["-cp", str(jar), str(ROOT / "scripts/owner/VerifyApkRotation.java")])
+        self.assertIn("--signed-output", calls[1])
+        self.assertEqual(calls[1][-4:], ["ai.elizaresearch.alphaphone", "29", "37", "--preserve-signature-permissions"])
+        self.assertIn(self.record["signedApkSHA256"]["launcher"], calls[1])
+        self.assertIn(descriptor["signerSha256"], calls[1])
+        calls.clear()
+        original_jar = jar.read_bytes()
+        jar.write_bytes(b"substituted verifier")
+        with self.assertRaisesRegex(ValueError, "verifier tool differs"):
+            invoke("signature-wrong-tool")
+        self.assertEqual(calls, [])
+        jar.write_bytes(original_jar)
+        proof["versionCode"] = 43
+        with self.assertRaisesRegex(ValueError, "admission differs"):
+            invoke("signature-wrong-version")
+        proof["versionCode"] = 44
+        self.signed_entries["rotation.lineage"] = b"substituted public lineage"
+        self.write_signed()
+        calls.clear()
+        with self.assertRaisesRegex(ValueError, "signer or lineage differs"):
+            invoke("signature-wrong-lineage")
+        self.assertEqual(calls, [])
 
     def test_native_exact_debug_and_signed_members_can_exceed_the_cloud_limit(self):
         payload = bytes(4097)
@@ -501,6 +699,90 @@ class QualifiedUpdateTest(unittest.TestCase):
             with patch.object(BRIDGE.STORAGE, "connection", return_value=(conn, {})), patch.object(BRIDGE.STORAGE, "read_json", return_value={**metadata, **metadata_change}):
                 with self.assertRaises(ValueError):
                     BRIDGE.signed_download(self.plan, receipt, self.directory / f"refused-{index}.tar")
+
+
+class SignedLauncherPayloadTest(unittest.TestCase):
+    """Real ZIP reads; the inserted block is not a cryptographic signature."""
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="alpha-signed-payload-")
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
+        self.unsigned = self.directory / "unsigned.apk"
+        self.signed = self.directory / "signed.apk"
+        self.entries = [("AndroidManifest.xml", b"manifest fixture"),
+                        ("assets/agent/agent-bundle.js", b"unchanged runtime fixture" * 200)]
+        self.write_unsigned()
+
+    def write_unsigned(self, *, entries=None, compression=zipfile.ZIP_DEFLATED, metadata=None):
+        with zipfile.ZipFile(self.unsigned, "w", compression=compression) as archive:
+            for name, payload in entries or self.entries:
+                if metadata:
+                    info = zipfile.ZipInfo(name)
+                    info.compress_type = compression
+                    metadata(info)
+                    archive.writestr(info, payload)
+                else:
+                    archive.writestr(name, payload)
+        self.add_block(self.unsigned.read_bytes())
+
+    def add_block(self, raw):
+        # Model the ZIP layout change only. Production additionally requires the
+        # pinned Android verifier to authenticate a genuine v3-only signature.
+        end = raw.rindex(b"PK\x05\x06")
+        offset = struct.unpack_from("<I", raw, end + 16)[0]
+        block = b"synthetic outside-ZIP signature block"
+        result = bytearray(raw[:offset] + block + raw[offset:])
+        struct.pack_into("<I", result, end + len(block) + 16, offset + len(block))
+        self.signed.write_bytes(result)
+
+    def check(self):
+        return LAUNCHER.identical_zip_payload(self.unsigned, self.signed,
+                                             BRIDGE.file_sha(self.unsigned), BRIDGE.file_sha(self.signed))
+
+    def test_v3_layout_preserves_every_compressed_entry_and_local_byte(self):
+        proof = self.check()
+        self.assertEqual(proof["members"], len(self.entries))
+        self.assertGreater(proof["unchangedLocalBytes"], 0)
+        self.assertEqual(proof["unsignedApkSHA256"], BRIDGE.file_sha(self.unsigned))
+        self.assertEqual(proof["signedApkSHA256"], BRIDGE.file_sha(self.signed))
+
+    def test_digest_substitution_or_no_signature_block_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "digest differs"):
+            LAUNCHER.identical_zip_payload(self.unsigned, self.signed, "0" * 64, BRIDGE.file_sha(self.signed))
+        self.signed.write_bytes(self.unsigned.read_bytes())
+        with self.assertRaisesRegex(ValueError, "no added signing block"):
+            self.check()
+
+    def test_missing_extra_duplicate_reordered_and_changed_zip_entries_are_refused(self):
+        original = self.unsigned.read_bytes()
+        variants = [self.entries[:1], self.entries + [("extra", b"no")], self.entries + [self.entries[0]],
+                    list(reversed(self.entries)), [(self.entries[0][0], b"changed") , self.entries[1]]]
+        for entries in variants:
+            with self.subTest(entries=[name for name, _ in entries]):
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    self.write_unsigned(entries=entries)
+                self.unsigned.write_bytes(original)
+                with self.assertRaises((ValueError, zipfile.BadZipFile)):
+                    self.check()
+
+    def test_compression_and_entry_metadata_changes_are_refused(self):
+        original = self.unsigned.read_bytes()
+        for options in ({"compression": zipfile.ZIP_STORED}, {"metadata": lambda info: setattr(info, "comment", b"changed")},
+                        {"metadata": lambda info: setattr(info, "external_attr", (stat.S_IFLNK | 0o777) << 16)}):
+            with self.subTest(options=list(options)):
+                self.write_unsigned(**options)
+                self.unsigned.write_bytes(original)
+                with self.assertRaisesRegex(ValueError, "metadata differs"):
+                    self.check()
+
+    def test_different_compressed_local_bytes_fail_even_with_matching_plaintext_and_crc(self):
+        raw = bytearray(self.signed.read_bytes())
+        # The local timestamp is independent of the central-directory facts.
+        raw[10] ^= 1
+        self.signed.write_bytes(raw)
+        with self.assertRaisesRegex(ValueError, "local payload bytes differ"):
+            self.check()
 
 
 if __name__ == "__main__":

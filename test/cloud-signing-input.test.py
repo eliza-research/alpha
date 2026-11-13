@@ -1,6 +1,7 @@
 """Synthetic archive fixtures. No real APK, signing key or provider is accessed."""
 
 import copy
+import base64
 import importlib.util
 import json
 import os
@@ -610,6 +611,20 @@ class CloudSigningInputTest(unittest.TestCase):
         self.write_archive(entries)
         self.assertEqual(ADMISSION.admit(self.archive, self.pin)["unsignedApkSHA256"],
                          self.pin["unsignedApkSHA256"])
+        # The full pair remains authenticated input custody. Only its launcher
+        # may cross the signing boundary, even with both hashes in the plan.
+        self.assertEqual(PRODUCER.input_contract(self.pin)["variants"], ("standalone", "launcher"))
+        self.assertEqual(PRODUCER.release_contract(self.pin)["variants"], ("launcher",))
+        stage = Path(self.temporary.name) / "launcher-signing-input"
+        ADMISSION.admit(self.archive, self.pin, stage)
+        self.assertEqual({item.name for item in stage.iterdir()}, {"launcher-release-unsigned.apk"})
+        self.assertEqual((stage / "launcher-release-unsigned.apk").read_bytes(), self.apk_bytes["launcher-release-unsigned.apk"])
+        changed = dict(entries)
+        changed["standalone-release-unsigned.apk"] = b"changed retired input"
+        self.write_archive(changed)
+        with self.assertRaisesRegex(ValueError, "standalone APK bytes differ"):
+            ADMISSION.admit(self.archive, self.pin)
+        self.write_archive(entries)
         for record, field, replacement in (
                 (self.producer, "runtimeProfile", "native"),
                 (self.build, "runtimeProfile", "native"),
@@ -766,10 +781,15 @@ class PrivateProducerSourceReviewTest(unittest.TestCase):
             fields = ("alphaCommit", "sdkCommit", "versionCode", "updateChannel", "archiveBytes",
                       "archiveSHA256", "producerManifestSHA256", "privateProducerReceiptSHA256", "unsignedApkSHA256")
             approval = {"approval": "approved", **{key: plan[key] for key in fields}}
+            lineage = b"synthetic public lineage fixture"
+            plan["rotation"] = {"lineageBase64": base64.b64encode(lineage).decode(), "lineageSHA256": ADMISSION.digest(lineage)}
+            rotation = {"schema": 1, "approval": "approved", "versionCode": plan["versionCode"],
+                        "unsignedApkSHA256": {"launcher": plan["unsignedApkSHA256"]["launcher"]},
+                        "lineageSha256": ADMISSION.digest(lineage)}
             comparison = {"status": "diverged", "merge_base_commit": {"sha": "4" * 40}}
             for name, body in {
                 "git": '#!/bin/sh\nprintf "%s\\n" "$GITHUB_SHA"\n',
-                "gh": '#!/bin/sh\nprintf "%s\\n" "$TEST_COMPARISON"\n',
+                "gh": '#!/bin/sh\nprintf "called\\n" >> "$TEST_GH_CALLS"\nprintf "%s\\n" "$TEST_COMPARISON"\n',
             }.items():
                 path = root / "bin" / name
                 path.write_text(body)
@@ -779,16 +799,34 @@ class PrivateProducerSourceReviewTest(unittest.TestCase):
                    "GITHUB_REPOSITORY": PRODUCER.REPOSITORY, "GITHUB_REPOSITORY_ID": str(PRODUCER.REPOSITORY_ID),
                    "RUNNER_TEMP": directory,
                    "GITHUB_OUTPUT": str(root / "output"), "SIGNING_PLAN": json.dumps(plan),
-                   "TEST_COMPARISON": json.dumps(comparison)}
+                   "TEST_COMPARISON": json.dumps(comparison), "TEST_GH_CALLS": str(root / "gh-calls")}
             for field in (None, "approval", *fields):
                 with self.subTest(changed_field=field):
                     candidate = copy.deepcopy(approval)
                     if field is not None:
                         candidate[field] = "unreviewed"
-                    (root / "android/release-signer.json").write_text(json.dumps({"privateProducerApproval": candidate}))
+                    (root / "android/release-signer.json").write_text(json.dumps({"privateProducerApproval": candidate, "apkSigningRotation": rotation}))
                     result = subprocess.run(["bash", "scripts/ci/verify-cloud-signing-input.sh"],
                                             cwd=root, env=env, capture_output=True, text=True)
                     self.assertEqual(result.returncode == 0, field is None, result.stderr)
+            (root / "android/release-signer.json").write_text(json.dumps({"privateProducerApproval": approval, "apkSigningRotation": rotation}))
+            # Even an ancestor of main cannot omit or substitute the approved
+            # migration. The refusal happens before remote reads or key access.
+            env["TEST_COMPARISON"] = json.dumps({"status": "ahead", "merge_base_commit": {"sha": plan["alphaCommit"]}})
+            for supplied in (None, {**plan["rotation"], "lineageBase64": "not base64"},
+                             {**plan["rotation"], "lineageSHA256": "0" * 64}):
+                with self.subTest(rotation=supplied):
+                    candidate = copy.deepcopy(plan)
+                    if supplied is None:
+                        candidate.pop("rotation")
+                    else:
+                        candidate["rotation"] = supplied
+                    env["SIGNING_PLAN"] = json.dumps(candidate)
+                    (root / "gh-calls").unlink(missing_ok=True)
+                    result = subprocess.run(["bash", "scripts/ci/verify-cloud-signing-input.sh"], cwd=root, env=env,
+                                            capture_output=True, text=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertFalse((root / "gh-calls").exists())
 
 
 if __name__ == "__main__":

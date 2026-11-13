@@ -10,6 +10,19 @@ printf '%s' "$SIGNING_PLAN" > "$directory/pins.json"
 unset SIGNING_PLAN
 source=$(jq -er '.alphaCommit | select(type == "string" and test("^[0-9a-f]{40}$"))' "$directory/pins.json")
 kind=$(python3 -B scripts/ci/app_update_producer.py kind "$directory/pins.json")
+if [[ "$kind" == root-reviewed-private-runner ]]; then
+  # A retained archive pair is input custody only. Its one new output must use
+  # the committed launcher migration; omitting rotation cannot reach the key.
+  python3 -B - "$directory/pins.json" <<'PY'
+import json, runpy, sys
+from pathlib import Path
+sys.path.insert(0, str(Path('scripts/ci').resolve()))
+admission = runpy.run_path('scripts/ci/admit-cloud-signing-input.py')
+plan = json.loads(Path(sys.argv[1]).read_text())
+if admission['input_contract'](plan)['runtimeProfile'] == 'cloud':
+    admission['approved_cloud_rotation'](plan, json.loads(Path('android/release-signer.json').read_text()))
+PY
+fi
 gh api "repos/$GITHUB_REPOSITORY/compare/$source...$GITHUB_SHA" > "$directory/source-comparison.json"
 if ! jq -e --arg source "$source" '
     (.status == "ahead" or .status == "identical") and

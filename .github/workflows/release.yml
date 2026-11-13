@@ -244,6 +244,7 @@ jobs:
           print(" ".join(release_contract(json.load(open(sys.argv[1])))["variants"]))
           PYCONTRACT
           )
+          export ALPHA_RELEASE_VARIANTS="$variants"
           echo "ALPHA_RELEASE_VARIANTS=$variants" >> "$GITHUB_ENV"
           for variant in $variants; do
             "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$work/unsigned/$variant-release-unsigned.apk"
@@ -264,7 +265,7 @@ jobs:
           const expectedPackage = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'app.config.json'), 'utf8')).appId;
           const channel = validateUpdateChannel(plan.updateChannel);
           const aapt = path.join(process.env.ANDROID_HOME, 'build-tools', '36.0.0', 'aapt');
-          for (const variant of Object.keys(plan.unsignedApkSHA256)) {
+          for (const variant of process.env.ALPHA_RELEASE_VARIANTS.split(' ')) {
             const apk = path.join(directory, variant + '-release-unsigned.apk');
             const badging = execFileSync(aapt, ['dump', 'badging', apk], { encoding: 'utf8' });
             const xml = execFileSync(aapt, ['dump', 'xmltree', apk, 'AndroidManifest.xml'], { encoding: 'utf8' });
@@ -295,7 +296,7 @@ jobs:
           const plan = read(path.join(work, 'pins.json'));
           const descriptor = read('android/release-signer.json');
           const lineage = path.join(work, 'rotation.lineage');
-          const variants = Object.keys(plan.unsignedApkSHA256);
+          const variants = process.env.ALPHA_RELEASE_VARIANTS.split(' ');
           const targets = variants.map(variant => ({input: path.join(work, 'unsigned', variant + '-release-unsigned.apk')}));
           const approval = await approvedSigningRotation(descriptor, lineage, targets);
           if (approval.lineageSha256 !== plan.rotation.lineageSHA256 || approval.versionCode !== plan.versionCode ||
@@ -509,13 +510,16 @@ jobs:
         working-directory: qualified-product
         run: bun run upstream:prepare-client
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
-        working-directory: qualified-product
         run: |
           set -euo pipefail
           profile=$(jq -er '.runtimeProfile' "$RUNNER_TEMP/qualified-stage/qualification-summary.json")
-          profile_args=()
-          if [[ "$profile" == cloud ]]; then profile_args=(--runtime-profile=cloud); fi
-          bun run android:verify -- "${profile_args[@]}" --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+          if [[ "$profile" == cloud ]]; then
+            python3 -B scripts/ci/verify-qualified-cloud-launcher.py \
+              "$RUNNER_TEMP/qualification.json" --work "$RUNNER_TEMP/qualified-stage" \
+              --product "$GITHUB_WORKSPACE/qualified-product"
+          else
+            (cd qualified-product && bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json")
+          fi
       - name: Require the qualified launcher release row before publication
         run: |
           python3 - <<'PY'
@@ -554,4 +558,7 @@ jobs:
           path: |
             ${{ runner.temp }}/qualified-stage/qualification-summary.json
             ${{ runner.temp }}/qualified-stage/apk-manifest.json
+            ${{ runner.temp }}/qualified-stage/unsigned-apk-verification.json
+            ${{ runner.temp }}/qualified-stage/producer-apk-verification.json
+            ${{ runner.temp }}/qualified-stage/signed-payload-admission.json
             qualified-product/artifacts/app-update-delivery.json
