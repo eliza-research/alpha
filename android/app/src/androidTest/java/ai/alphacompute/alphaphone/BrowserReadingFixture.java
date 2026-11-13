@@ -19,9 +19,9 @@ import static org.junit.Assert.*;
  * private loopback speech route, the native review dialog and the approval sequence. Synthetic data only. */
 final class BrowserReadingFixture {
  static final String ARTICLE="Synthetic article for explicit reading.",SECRET="excluded-synthetic-marker";
- static final String MARKUP="<article><p>"+ARTICLE+"</p><form><p>"+SECRET+"</p><input value='"+SECRET+"'></form><p hidden>"+SECRET+"</p><p style='opacity:0'>"+SECRET+"</p><p aria-hidden='true'>"+SECRET+"</p><div contenteditable>"+SECRET+"</div></article>";
+ static final String MARKUP="<aside>Recovery codes: "+SECRET+"</aside><article><p>"+ARTICLE+"</p><form><p>"+SECRET+"</p><input value='"+SECRET+"'></form><p hidden>"+SECRET+"</p><p style='opacity:0'>"+SECRET+"</p><p aria-hidden='true'>"+SECRET+"</p><div contenteditable>"+SECRET+"</div></article>";
  /** Pages the review must refuse by their content, before any token or outbound speech. */
- static final String[] SENSITIVE_PAGES={"<article><div>Your vault</div><div>synthetic-only</div></article>","<article><div>Password: synthetic-only</div></article>","<aside>Recovery codes: synthetic-only</aside><article>Garden journal</article>","<article><span>Verification</span><span>code</span><div>123456</div></article>","<article>123456</article>","<input type='password' hidden><article>Garden journal</article>","<input autocomplete='one-time-code'><article>Garden journal</article>","<article>"+"garden ".repeat(10000)+"</article>"};
+ static final String[] SENSITIVE_PAGES={"<article><div>Your vault</div><div>synthetic-only</div></article>","<article><div>Password: synthetic-only</div></article>","<article><aside>Recovery codes: synthetic-only</aside>Garden journal</article>","<article><span>Verification</span><span>code</span><div>123456</div></article>","<article>123456</article>","<input type='password' hidden><article>Garden journal</article>","<input autocomplete='one-time-code'><article>Garden journal</article>","<article>"+"garden ".repeat(10000)+"</article>"};
  final BrowserFlowInstrumentedTest child=new BrowserFlowInstrumentedTest();
  final String key="__alphaReading"+UUID.randomUUID().toString().replace("-","");
 
@@ -31,12 +31,27 @@ final class BrowserReadingFixture {
   throw new IllegalStateException("No resumed Alpha Activity");
  }
  void waitFor(String condition)throws Exception{for(int i=0;i<300;i++){if("true".equals(js("Boolean("+condition+")")))return;SystemClock.sleep(100);}fail("Browser reading state timed out: "+condition);}
- void invoke(String code)throws Exception{js("window.__readingResult=null;Promise.resolve("+code+").then(v=>window.__readingResult=JSON.stringify(v||{}),()=>window.__readingResult=JSON.stringify({error:true}))");}
+ void invoke(String code)throws Exception{js("window.__readingResult=null;Promise.resolve().then(()=>"+code+").then(v=>window.__readingResult=JSON.stringify(v||{}),e=>window.__readingResult=JSON.stringify({error:true,code:String(e?.code??'')}))");}
  JSONObject result()throws Exception{waitFor("window.__readingResult!==null");return new JSONObject((String)new JSONTokener(js("window.__readingResult")).nextValue());}
  JSONObject call(String code)throws Exception{invoke(code);return result();}
  static String text(View view){String out=view instanceof TextView?((TextView)view).getText().toString():"";if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++)out+="\n"+text(group.getChildAt(i));}return out;}
  /** The review helper's own dialog, once it is showing. */
- AlertDialog dialog()throws Exception{AtomicReference<AlertDialog> result=new AtomicReference<>();for(int i=0;i<150;i++){BoundedActivityScenario.main(()->{MainActivity activity=resumedActivity();try{Object plugin=activity.getBridge().getPlugin("AlphaBrowser").getInstance();java.lang.reflect.Field reading=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("reading");reading.setAccessible(true);Object helper=reading.get(plugin);java.lang.reflect.Field field=ai.eliza.plugins.browsersurface.BrowserReviewedReading.class.getDeclaredField("dialog");field.setAccessible(true);result.set((AlertDialog)field.get(helper));}catch(Exception e){throw new AssertionError(e);}});if(result.get()!=null&&result.get().isShowing())return result.get();SystemClock.sleep(100);}throw new AssertionError("Actual review dialog missing");}
+ AlertDialog currentDialog()throws Exception{
+  AtomicReference<AlertDialog> result=new AtomicReference<>();
+  BoundedActivityScenario.main(()->{
+   try{
+    Object plugin=resumedActivity().getBridge().getPlugin("AlphaBrowser").getInstance();
+    java.lang.reflect.Field reading=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("reading");
+    reading.setAccessible(true);
+    java.lang.reflect.Field field=ai.eliza.plugins.browsersurface.BrowserReviewedReading.class.getDeclaredField("dialog");
+    field.setAccessible(true);
+    AlertDialog dialog=(AlertDialog)field.get(reading.get(plugin));
+    if(dialog!=null&&dialog.isShowing())result.set(dialog);
+   }catch(ReflectiveOperationException error){throw new AssertionError(error);}
+  });
+  return result.get();
+ }
+ AlertDialog dialog()throws Exception{for(int i=0;i<150;i++){AlertDialog dialog=currentDialog();if(dialog!=null)return dialog;SystemClock.sleep(100);}throw new AssertionError("Actual review dialog missing");}
  static byte[] wav(){int samples=1600;ByteBuffer b=ByteBuffer.allocate(44+samples*2).order(ByteOrder.LITTLE_ENDIAN);b.put("RIFF".getBytes(StandardCharsets.US_ASCII)).putInt(36+samples*2).put("WAVEfmt ".getBytes(StandardCharsets.US_ASCII)).putInt(16).putShort((short)1).putShort((short)1).putInt(8000).putInt(16000).putShort((short)2).putShort((short)16).put("data".getBytes(StandardCharsets.US_ASCII)).putInt(samples*2);return b.array();}
  /** Loopback paired-speech route: answers PairedSpeechContract's TTS path, echoing X-Request-Id. */
  static final class Server implements AutoCloseable {
@@ -74,9 +89,16 @@ final class BrowserReadingFixture {
  }
  /** Every SENSITIVE_PAGES body is refused before a review dialog, a token or outbound speech. */
  void sensitivePagesRefused(Server server,String binding)throws Exception{
-  for(String sensitive:SENSITIVE_PAGES){
+  for(int index=0;index<SENSITIVE_PAGES.length;index++){
+   String sensitive=SENSITIVE_PAGES[index];
    assertEquals("true",child.child("document.body.innerHTML="+JSONObject.quote(sensitive)+";true"));
-   JSONObject denied=call(review(binding));assertTrue(denied.toString(),denied.has("error"));assertFalse(denied.has("readingToken"));assertEquals(0,server.bodies.size());
+   invoke(review(binding));
+   for(int attempt=0;attempt<150&&"true".equals(js("window.__readingResult===null"));attempt++){
+    assertNull("Sensitive fixture "+index+" must not open review",currentDialog());
+    SystemClock.sleep(100);
+   }
+   assertEquals("Sensitive fixture "+index+" must settle","true",js("window.__readingResult!==null"));
+   JSONObject denied=result();assertEquals("Sensitive fixture "+index,ai.eliza.plugins.browsersurface.BrowserPageReading.SENSITIVE_PAGE,denied.optString("code"));assertFalse(denied.has("readingToken"));assertEquals(0,server.bodies.size());
    assertTrue(call("Capacitor.Plugins.AlphaVoiceCloud.synthesizeBrowserReading({"+binding+",readingToken:'not-issued',requestId:'blocked-fixture'})").has("error"));assertEquals(0,server.bodies.size());
   }
  }

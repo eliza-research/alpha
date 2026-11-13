@@ -248,6 +248,8 @@ test('suite plans: default classes; reading classes with the builds and gates th
  assert.deepEqual(reading[1].env,{ANDROID_SERIAL:'emulator-5554',ALPHA_DISPOSABLE_WEBVIEW_FIXTURE:'api35-default-x86_64'});
  assert.deepEqual(reading[0].command.slice(1),['scripts/prepare-ci-emulator.ts']);
  assert.deepEqual([...READING_CLASSES,...READING_TEST_MOCKS_CLASSES].sort(),['BrowserIsolatedReading','BrowserPageQuestion','BrowserReading','BrowserReadingNavigation','BrowserSensitiveReading']);
+ assert.deepEqual(READING_CLASSES,['BrowserReadingNavigation']);
+ assert.ok(READING_TEST_MOCKS_CLASSES.includes('BrowserPageQuestion'),'the actual question journey needs the signed-out fixture views');
  // The runner itself accepts both invocations, on both distributions, with each class's own gate.
  const flagOff=parseInstrumentationArgs(reading[2].command.slice(4)),mocks=parseInstrumentationArgs(reading[3].command.slice(4));
  assert.equal(flagOff.testMocks,false);assert.equal(mocks.testMocks,true);assert.equal(mocks.apkDir,'artifacts/test-mocks');
@@ -291,8 +293,8 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
  // Both evidence runs execute although the first has a failed class.
  let calls=[];
  const failing=runSuite('browser-reading',{environment:hosted,execute:(command,env)=>{calls.push([command,env]);const step=suitePlan('browser-reading').find(row=>row.command===command||JSON.stringify(row.command)===JSON.stringify(command));
-  if(step.name==='ci-reading'){results(root,step,{BrowserReadingNavigation:'failed',BrowserPageQuestion:'passed'});return 1;}
-  if(step.name==='ci-reading-test-mocks'){results(root,step,{BrowserReading:'passed',BrowserSensitiveReading:'passed',BrowserIsolatedReading:'passed'});return 0;}
+  if(step.name==='ci-reading'){results(root,step,{BrowserReadingNavigation:'failed'});return 1;}
+  if(step.name==='ci-reading-test-mocks'){results(root,step,{BrowserPageQuestion:'passed',BrowserReading:'passed',BrowserSensitiveReading:'passed',BrowserIsolatedReading:'passed'});return 0;}
   return 0;}});
  assert.equal(calls.length,4);assert.deepEqual(calls[1][1],{ANDROID_SERIAL:'emulator-5554',ALPHA_DISPOSABLE_WEBVIEW_FIXTURE:'api35-default-x86_64'});
  assert.deepEqual(failing.steps.map(row=>row.status),['passed','passed','failed','passed']);assert.equal(failing.passed,false);
