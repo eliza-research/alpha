@@ -869,6 +869,7 @@
   {
     "path": "specs/quint/legacy/PhotosLibrary.qnt",
     "module": "PhotosLibrary",
+    "verifyBackend": "tlc-bounded",
     "init": "checkerInit",
     "step": "step",
     "invariant": "safety",
@@ -974,6 +975,7 @@
   {
     "path": "specs/quint/legacy/NotesView.qnt",
     "module": "NotesView",
+    "verifyBackend": "tlc-bounded",
     "init": "checkerInit",
     "step": "step",
     "invariant": "safety",
@@ -1101,6 +1103,7 @@
   {
     "path": "specs/quint/legacy/FilesBrowser.qnt",
     "module": "FilesBrowser",
+    "verifyBackend": "tlc-bounded",
     "init": "checkerInit",
     "step": "step",
     "invariant": "safety",
@@ -2311,6 +2314,7 @@
   {
     "path": "specs/quint/legacy/CoreServiceLifecycleDesign.qnt",
     "module": "CoreServiceLifecycleDesign",
+    "verifyBackend": "tlc-bounded",
     "init": "init",
     "step": "step",
     "invariant": "safety",
