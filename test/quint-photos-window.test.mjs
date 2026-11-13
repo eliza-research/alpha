@@ -1,8 +1,9 @@
+import {scaledTimeout} from "../specs/quint/refinement/timeouts.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { checkPhotosWindow, compilePhotosWindow, createPhotosWindowFixture } from "../specs/quint/refinement/application/photos-window.mjs";
-test("native Photos window keeps hidden and replaced reads from publishing", { timeout: 18e4 }, async () => {
+test("native Photos window keeps hidden and replaced reads from publishing", { timeout: scaledTimeout(180_000) }, async () => {
   const receipt = await checkPhotosWindow([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

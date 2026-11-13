@@ -165,7 +165,7 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
       // The harness still registers the device (it answers the committed-enrollment read from that
       // registration); only the capabilities the agent offers in its answer change.
       if (plugin === 'Agent' && method === 'request' && input.path === '/api/client-devices/register' && options.offered) { const registered = await base(plugin, method, input); return { ...registered, body: JSON.stringify({ ...JSON.parse(registered.body), capabilities: options.offered }) }; }
-      if (plugin === 'DailyApps' && method === 'surfaceInfo' && options.clockRepeatDaysVersion !== undefined) { f.calls.push('DailyApps.surfaceInfo'); return { developmentBuild: false, assistant: false, clockRepeatDaysVersion: options.clockRepeatDaysVersion }; }
+      if (plugin === 'DailyApps' && method === 'surfaceInfo' && options.clockRepeatDaysVersion !== undefined) { f.calls.push('DailyApps.surfaceInfo'); return { assistant: false, clockRepeatDaysVersion: options.clockRepeatDaysVersion }; }
       if (plugin === 'Agent' && method === 'request') {
         const answer = await conversations(input.method || 'GET', input.path, input.body ? JSON.parse(input.body) : {});
         // Anything else reaches the harness, which records it as unexpected.

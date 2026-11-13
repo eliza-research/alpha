@@ -1,4 +1,5 @@
 // Packaging toolchain checks, not image or native speech qualification.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -28,7 +29,7 @@ test('the selected NDK normal strip produces both recorded packaged STL librarie
     const expected = descriptor.abis.find(entry => entry.abi === abi).libraries.find(entry => entry.name === 'libc++_shared.so');
     const raw = path.join(toolchain, 'sysroot/usr/lib', triple, expected.name);
     const output = path.join(dir, `${abi}.so`);
-    execFileSync(strip, ['--strip-unneeded', '-o', output, raw], {timeout:30000});
+    execFileSync(strip, ['--strip-unneeded', '-o', output, raw], {timeout:scaledTimeout(30000)});
     const bytes = fs.readFileSync(output);
     assert.equal(bytes.length, expected.bytes, `${abi} packaged size`);
     assert.equal(createHash('sha256').update(bytes).digest('hex'), expected.sha256, `${abi} packaged hash`);

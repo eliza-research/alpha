@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const option=(key:string)=>process.argv.slice(2).find(argument=>argument.startsWith(`--${key}=`))?.slice(key.length+3);
@@ -18,7 +19,7 @@ const sdk=process.env.ANDROID_HOME??path.join(os.homedir(),'Library/Android/sdk'
 const tools=path.join(sdk,'build-tools/36.0.0'),jar=path.join(sdk,'platforms/android-36/android.jar');
 const java=process.env.JAVA_HOME??'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home';
 const env={...process.env,JAVA_HOME:java,PATH:`${java}/bin:${process.env.PATH}`};
-const run=(command:string,args:string[])=>execFileSync(command,args,{encoding:'utf8',env,timeout:120000,stdio:['ignore','pipe','pipe']}).trim();
+const run=(command:string,args:string[])=>execFileSync(command,args,{encoding:'utf8',env,timeout:scaledTimeout(120000),stdio:['ignore','pipe','pipe']}).trim();
 const adb=(...args:string[])=>run(path.join(sdk,'platform-tools/adb'),['-s',serial,...args]);
 const pkg='ai.alphacompute.alphaphone.pendingotafixture',host='ai.alphacompute.alphaphone',activity=`${pkg}/${host}.ContinuationActivity`;
 const pathOrEmpty=()=>{try{return adb('shell','pm','path','--user','0',pkg);}catch(error){const failure=error as Partial<SpawnSyncReturns<string>>;if(failure.status===1&&!String(failure.stdout??'').trim()&&!String(failure.stderr??'').trim())return '';throw error;}};

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {notesTrashReadFixture} from './fixtures/notes-trash-read.mjs';
@@ -25,7 +26,7 @@ test('a held Trash error cannot publish after a source switch and return', async
   assert.equal(f.observe().writes, 0);
 });
 
-test('actual Previous Notes Trash read publication refines Quint', {timeout: 60_000}, async () => {
+test('actual Previous Notes Trash read publication refines Quint', {timeout: scaledTimeout(60_000)}, async () => {
   const receipt = await checkNotesTrashReadPublication();
   assert.equal(receipt.passed, true);
   assert.equal(receipt.driverInputsBound, true);

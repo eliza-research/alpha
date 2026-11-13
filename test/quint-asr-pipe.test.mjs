@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -21,7 +22,7 @@ async function checkAsrPipe(extraSources=[]){
  ]});
 }
 
-test('actual ASR pipe preserves cutoff, owner retirement and terminal futures', {timeout:360000}, async()=>{
+test('actual ASR pipe preserves cutoff, owner retirement and terminal futures', {timeout:scaledTimeout(360000)}, async()=>{
   const receipt=await checkAsrPipe(['test/quint-asr-pipe.test.mjs']);
   assert.equal(receipt.passed,true);
   assert.equal(receipt.traces,asrPipeScenarios.length);

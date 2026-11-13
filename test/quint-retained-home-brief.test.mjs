@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -133,7 +134,7 @@ async function checkRetainedHomeBrief(extraSources = []) {
     ]}));
 }
 
-test('the retained Home brief refines scope, selection and exact publication', {timeout: 120000}, async () => {
+test('the retained Home brief refines scope, selection and exact publication', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkRetainedHomeBrief([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 6);
   assert.equal(receipt.observedFields.length, 6);

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {prepareNativeFixture,noticeSources} from './fixtures/native-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,7 +12,7 @@ test('phone-step approval notices post once per approval, expire, open after res
  const shared=noticeSources(prepareNativeFixture(root,temporary).root,'NoticeDelivery','NoticeOwner','NoticeRoutes','NoticeCoordinator');
  const source=name=>join(root,'android/app/src/main/java/ai/alphacompute/alphaphone',name);
  try{
-  execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,...shared,source('WorkflowNoticeDelivery.java'),source('WorkflowNoticeTaps.java'),join(root,'test/fixtures/WorkflowApprovalNoticeTest.java')],{timeout:120000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.alphacompute.alphaphone.WorkflowApprovalNoticeTest'],{encoding:'utf8',timeout:120000}),/^PASS workflow approval notices/);
+  execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,...shared,source('WorkflowNoticeDelivery.java'),source('WorkflowNoticeTaps.java'),join(root,'test/fixtures/WorkflowApprovalNoticeTest.java')],{timeout:scaledTimeout(120000)});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.alphacompute.alphaphone.WorkflowApprovalNoticeTest'],{encoding:'utf8',timeout:scaledTimeout(120000)}),/^PASS workflow approval notices/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

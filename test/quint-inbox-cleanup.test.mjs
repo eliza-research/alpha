@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
-test('Inbox cleanup checks each durable write, lost reply, stale binding and peer save', {timeout: 180000}, () => {
+test('Inbox cleanup checks each durable write, lost reply, stale binding and peer save', {timeout: scaledTimeout(180000)}, () => {
   const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runInboxCleanupRefinement} from './specs/quint/refinement/services/inbox-cleanup.mjs';
@@ -17,7 +18,7 @@ test('Inbox cleanup checks each durable write, lost reply, stale binding and pee
     assert.ok(receipt.actions.restoreRetained);
     assert.ok(receipt.actions.peerSave);
     console.log(JSON.stringify({traces: receipt.traces, checkpoints: receipt.checkpoints}));
-  `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 170000, maxBuffer: 8 * 1024 * 1024});
+  `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: scaledTimeout(170000), maxBuffer: 8 * 1024 * 1024});
   assert.ifError(result.error);
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.match(result.stdout, /"traces":9/);

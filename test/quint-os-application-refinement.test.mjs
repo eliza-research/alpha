@@ -123,7 +123,7 @@ async function checkOSSourceStaging(extraSources=[]){
 for(const [model,check,count,actions] of [
  ['OSProvisioning',checkOSProvisioning,12,['begin','callback','timeout','destroy','authorityLost','ownerKeyboard','keyboardDefault','finish','requestAppearance','applyAppearance']],
  ['OSSourceStaging',checkOSSourceStaging,7,['badAssets','drift','admit','backup','write','failure','verify']],
-])test(model+' executes OS source with independently retained harness inputs',{timeout:240000},async()=>{
+])test(model+' executes OS source with independently retained harness inputs',{timeout:scaledTimeout(240000)},async()=>{
  const receipt=await check([fileURLToPath(import.meta.url)]);
  assert.equal(receipt.model,model);assert.ok(receipt.passed&&receipt.driverInputsBound&&receipt.inputsUnchanged);
  assert.equal(receipt.traces,count);assert.ok(Object.keys(receipt.generatedSourceSnapshots).length>0);

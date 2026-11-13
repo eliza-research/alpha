@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -119,7 +120,7 @@ async function checkRendererDigestQueue(extraSources = []) {
     ]}));
 }
 
-test('renderer digest sync queues by exact scope and retires queued callers', {timeout: 120000}, async () => {
+test('renderer digest sync queues by exact scope and retires queued callers', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkRendererDigestQueue([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 6);
   assert.deepEqual(receipt.observedFields, ['s.lastOrder', 's.requests']);

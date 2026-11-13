@@ -2,6 +2,7 @@
 // writes ITF traces naming the action taken and its nondeterministic picks at every step. A Java
 // harness performs each step on the product class and prints what it observed after every step;
 // the observation must equal the model state.
+import {scaledTimeout} from '../timeouts.mjs';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
@@ -29,7 +30,7 @@ function simulate(model, options, expectViolation) {
   try {
     const result = spawnSync(process.execPath, [quint, 'run', join(root, `specs/quint/native/${model}.qnt`),
       `--main=${model}`, '--backend=typescript', ...options, '--mbt', `--out-itf=${join(directory, 'trace-{seq}.itf.json')}`],
-    {cwd: root, encoding: 'utf8', timeout: 180000, maxBuffer: 64 * 1024 * 1024});
+    {cwd: root, encoding: 'utf8', timeout: scaledTimeout(180000), maxBuffer: 64 * 1024 * 1024});
     assert.equal(result.status === 0, !expectViolation, `${options.join(' ')}\n${result.stdout}\n${result.stderr}`);
     const files = readdirSync(directory).filter(name => name.endsWith('.itf.json')).sort();
     assert.ok(files.length > 0, 'the simulator wrote no trace');

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -17,7 +18,7 @@ async function checkCredentialLeasePolicies(extraSources=[]) {
  ]});
 }
 
-test('native request and shutdown leases preserve exact ownership', {timeout:120000}, async () => {
+test('native request and shutdown leases preserve exact ownership', {timeout:scaledTimeout(120000)}, async () => {
  const receipt=await checkCredentialLeasePolicies(['test/quint-credential-leases.test.mjs']);
  assert.equal(receipt.passed,true);
  assert.equal(receipt.traces,13);

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -238,7 +239,7 @@ async function checkBrowserNoteRecordingJournal(extraSources = []) {
   ]});
 }
 
-test('pending browser recording publication and retirement refine the journal model', {timeout: 120000}, async () => {
+test('pending browser recording publication and retirement refine the journal model', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkBrowserNoteRecordingJournal([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.traces, 16);

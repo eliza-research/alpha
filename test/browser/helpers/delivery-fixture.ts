@@ -42,7 +42,7 @@ function defineDeliveryFixture(gmail:boolean){
    return {};
   }
   if(plugin==='DailyApps'){
-   if(method==='surfaceInfo')return {developmentBuild:true,reminderTapVersion:1};
+   if(method==='surfaceInfo')return {reminderTapVersion:1};
    if(method==='pendingReminderTap')return f.reminderTap||{};
    if(method==='listReminders')return {reminders:f.reminder?[f.reminder]:[]};
    if(method==='consumeReminderTap'){if(input.token!==f.reminderTap?.token)throw Error('changed');f.consumed=(f.consumed||0)+1;f.reminderTap={};return {};}

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -99,7 +100,7 @@ async function checkDrawerInteraction(extraSources = []) {
   ]}));
 }
 
-test('the mounted Apps drawer preserves current pointer, menu and exact App Info ownership', {timeout: 120000}, async () => {
+test('the mounted Apps drawer preserves current pointer, menu and exact App Info ownership', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkDrawerInteraction([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

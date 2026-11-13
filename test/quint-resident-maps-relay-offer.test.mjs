@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelNames, modelTraces, replayTraces, repositoryRoot} from '../specs/quint/refinement/services/maps-model-traces.mjs';
@@ -103,7 +104,7 @@ async function replayResidentMapsRelayOffer({scenarios, witnesses, random = 60, 
   return replayTraces(traces, () => driver(code), {project});
 }
 
-test('the resident navigation relay follows every ResidentMapsRelayOffer model trace step by step', {timeout: 300000}, async () => {
+test('the resident navigation relay follows every ResidentMapsRelayOffer model trace step by step', {timeout: scaledTimeout(300000)}, async () => {
   const {scenarios, witnesses} = modelNames('specs/quint/services/ResidentMapsRelayOffer.qnt');
   assert.equal(scenarios.length, 8);
   assert.equal(witnesses.length, 6);

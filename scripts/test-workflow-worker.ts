@@ -6,6 +6,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 const artifact=workerArtifactDirectory(resolve(import.meta.dirname,'..'));
 const {manifest}=verifyWorkerArtifact(artifact);
 const dependencies: {name: string; version: string}[]=JSON.parse(readFileSync(join(artifact,'dependencies.json'),'utf8'));
@@ -33,7 +34,7 @@ console.log('ALPHA_WORKER_RESULT '+JSON.stringify(result));process.exit(result.s
  const env={PATH:process.env.PATH,HOME:temporary,TMPDIR:temporary,RUN_ID:runId,ELIZA_SMTHRS_DB_PATH:join(temporary,'runs.sqlite'),MSGPACKR_NATIVE_ACCELERATION_DISABLED:'true'};
  type WorkerResult = {status: string; events?: {nodeId: string; iteration: number}[]};
  const invoke=(script: string, environment: NodeJS.ProcessEnv): WorkerResult=>{
-  const stdout=execFileSync(process.env.ALPHA_BUN||'bun',['--no-install',script],{cwd:temporary,env:environment,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+  const stdout=execFileSync(process.env.ALPHA_BUN||'bun',['--no-install',script],{cwd:temporary,env:environment,encoding:'utf8',timeout:scaledTimeout(60000),maxBuffer:4*1024*1024});
   const prefix='ALPHA_WORKER_RESULT ';
   const line=stdout.split('\n').find(line=>line.startsWith(prefix));
   assert.ok(line,`Missing terminal result from ${script}`);

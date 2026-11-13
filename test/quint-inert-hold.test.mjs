@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -15,7 +16,7 @@ const load = () => {
   return context.api;
 };
 
-test('simulated InertHold traces agree with holdPhoneInert after every step', {timeout: 120000}, async () => {
+test('simulated InertHold traces agree with holdPhoneInert after every step', {timeout: scaledTimeout(120000)}, async () => {
   const traces = modelTraces({module: 'InertHold', traces: 60, steps: 30});
   const result = await replay(traces, {
     start() {

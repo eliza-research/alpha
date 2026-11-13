@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync, rmSync, readFileSync} from 'node:fs';
@@ -46,7 +47,7 @@ async function checkNotePermission(extraSources=[]){
  }finally{platform.close();rmSync(state,{recursive:true,force:true});}
 }
 
-test('actual Note bridge rechecks call and lifecycle before queued microphone admission', {timeout:300000}, async()=>{
+test('actual Note bridge rechecks call and lifecycle before queued microphone admission', {timeout:scaledTimeout(300000)}, async()=>{
   const receipt=await checkNotePermission(['test/quint-note-permission.test.mjs']);
   assert.equal(receipt.passed,true);
   assert.equal(receipt.traces,notePermissionScenarios.length);

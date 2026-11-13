@@ -9,14 +9,14 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import org.json.JSONObject;
 import org.junit.Test;
 import java.util.*;
-import ai.alphacompute.alphaphone.WorkflowNoticeProcessDeathInstrumentedTest.Identity;
-import static ai.alphacompute.alphaphone.WorkflowNoticeProcessDeathInstrumentedTest.awaitMain;
-import static ai.alphacompute.alphaphone.WorkflowNoticeProcessDeathInstrumentedTest.killMainWithoutTasks;
-import static ai.alphacompute.alphaphone.WorkflowNoticeProcessDeathInstrumentedTest.sendOriginalTap;
+import ai.alphacompute.alphaphone.MainProcessDeathBoundary.Identity;
+import static ai.alphacompute.alphaphone.MainProcessDeathBoundary.awaitMain;
+import static ai.alphacompute.alphaphone.MainProcessDeathBoundary.killMainWithoutTasks;
+import static ai.alphacompute.alphaphone.MainProcessDeathBoundary.sendOriginalTap;
 import static org.junit.Assert.*;
 
 /** Runs only in the separate instrumentation host; main dies while the test remains alive. The death
- * boundary (Identity, killMainWithoutTasks, sendOriginalTap) is shared with WorkflowNoticeProcessDeathInstrumentedTest. */
+ * boundary (Identity, killMainWithoutTasks, sendOriginalTap) lives in MainProcessDeathBoundary. */
 public final class ReminderTapProcessDeathInstrumentedTest {
  private static final String APP="ai.alphacompute.alphaphone";
  private static StatusBarNotification notice(NotificationManager manager,String id){

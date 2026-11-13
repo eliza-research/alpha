@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
@@ -107,7 +108,7 @@ async function checkHostedDigestMutation(extraSources = []) {
   ]}));
 }
 
-test('mounted digest saves and discard preserve exact journal and publication ownership', {timeout: 120000}, async () => {
+test('mounted digest saves and discard preserve exact journal and publication ownership', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkHostedDigestMutation([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 8);
   assert.equal(receipt.observedFields.length, 13);

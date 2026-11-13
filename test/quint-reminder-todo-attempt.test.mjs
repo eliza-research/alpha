@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {actionCounts, modelTraces, sameState} from '../specs/quint/refinement/application/calendar-itf.mjs';
@@ -107,7 +108,7 @@ async function checkReminderTodoAttempt(mutate) {
   return {traces: traces.length, steps, actions: actionCounts(traces), sources: compiled.sources};
 }
 
-test('the reminder adapter follows every ReminderTodoAttempt model step', {timeout: 240000}, async () => {
+test('the reminder adapter follows every ReminderTodoAttempt model step', {timeout: scaledTimeout(240000)}, async () => {
   const result = await checkReminderTodoAttempt();
   assert.equal(result.traces, 17);
   for (const action of ['addTodo', 'nativeSave', 'readback', 'startDecision', 'finishDecision', 'stutter'])
@@ -115,7 +116,7 @@ test('the reminder adapter follows every ReminderTodoAttempt model step', {timeo
   assert.ok(result.sources.includes('apps/app/src/prototype/reminder-adapter.ts'));
 });
 
-test('a retry that mints a new id is rejected by the replay', {timeout: 240000}, async () => {
+test('a retry that mints a new id is rejected by the replay', {timeout: scaledTimeout(240000)}, async () => {
   const reuse = 'todoOwner.todoAttempt?.body === body ?';
   await assert.rejects(checkReminderTodoAttempt(code => {
     assert.ok(code.includes(reuse));

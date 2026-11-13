@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelTraces, replayTraces, loadBundled, installDocument, countListeners, settle} from '../specs/quint/refinement/application/browser-model-traces.mjs';
@@ -76,7 +77,7 @@ async function checkBrowserReviews({random = 40, steps = 30} = {}) {
     calls: s.calls, settled: s.settled, last: s.last})});
 }
 
-test('the browser review dialogs follow every BrowserReviews trace', {timeout: 240000}, async () => {
+test('the browser review dialogs follow every BrowserReviews trace', {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await checkBrowserReviews();
   assert.equal(receipt.traces, 49);
   assert.ok(receipt.checkpoints > 1000, `checkpoints ${receipt.checkpoints}`);

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -39,6 +40,6 @@ test('native deadline agrees on same-boot restart, exact expiry, reboot and inva
  const dir=mkdtempSync(join(tmpdir(),'alpha-delete-deadline-'));
  const shared=join(root,'vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDeadline.java');
  try{const file=join(dir,'DeadlineTest.java');writeFileSync(file,`import ai.eliza.plugins.actionjournal.deletion.DeletionDeadline; public class DeadlineTest {static void check(boolean v){if(!v)throw new AssertionError();}static String state(DeletionDeadline d,String boot,long elapsed){return DeletionDeadline.window(d.continuity,d.createdElapsed,d.expiresElapsed,boot,elapsed);}public static void main(String[] args){check(DeletionDeadline.WINDOW_MS==10000);DeletionDeadline d=new DeletionDeadline("boot:1",100,100000);check(d.expiresAt==110000);check(state(d,"boot:1",10099).equals("open"));check(state(d,"boot:1",10100).equals("expired"));check(state(d,"boot:1",99).equals("clock-changed"));check(state(d,"boot:2",20000).equals("clock-changed"));try{new DeletionDeadline("boot",Long.MAX_VALUE,0);throw new AssertionError();}catch(IllegalArgumentException expected){}System.out.println("PASS deletion deadline");}}`);
- execFileSync(javaBinary('javac'),['--release','11','-d',dir,shared,file],{timeout:60000});assert.match(execFileSync(javaBinary('java'),['-cp',dir,'DeadlineTest'],{encoding:'utf8',timeout:10000}),/PASS deletion deadline/);
+ execFileSync(javaBinary('javac'),['--release','11','-d',dir,shared,file],{timeout:scaledTimeout(60000)});assert.match(execFileSync(javaBinary('java'),['-cp',dir,'DeadlineTest'],{encoding:'utf8',timeout:scaledTimeout(10000)}),/PASS deletion deadline/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

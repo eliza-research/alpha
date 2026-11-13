@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -35,7 +36,7 @@ async function checkNativeNavigationOwnership(extraSources=[]){
  }finally{platform.close();}
 }
 
-test('native Maps service keeps terminal and notification authority with the exact session', {timeout:180000},async()=>{
+test('native Maps service keeps terminal and notification authority with the exact session', {timeout:scaledTimeout(180000)},async()=>{
  const receipt=await checkNativeNavigationOwnership(['test/quint-native-navigation-ownership.test.mjs']);
  assert.equal(receipt.passed,true);
  assert.equal(receipt.traces,navigationServiceScenarios.length);

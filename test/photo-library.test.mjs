@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';import {join,resolve} from 'node:path';import {execFileSync} from 'node:child_process';// Device photo/video library rules (issue 408). Source-level: this proves the renderer contract and
 // the native source shape, not Android behaviour (see PhotoLibraryInstrumentedTest for that).
 const m=await import('../apps/app/src/runtime/photo-library.ts');
@@ -161,7 +162,7 @@ test('selected outbound model context carries no names, album names, sizes, modi
 
 test('adapter: agent reads are identity-only; select, view requests and reviews act on the main Library',()=>{
  const root=resolve(import.meta.dirname,'..');
- assert.match(execFileSync(process.execPath,[join(root,'test/fixtures/photo-library-adapter.mjs')],{cwd:root,encoding:'utf8',timeout:120000}),/PASS photo library adapter/);
+ assert.match(execFileSync(process.execPath,[join(root,'test/fixtures/photo-library-adapter.mjs')],{cwd:root,encoding:'utf8',timeout:scaledTimeout(120000)}),/PASS photo library adapter/);
 });
 
 test('library operations are registered in Alpha device actions: Photos-only, negotiated, journaled and receipted',async()=>{
@@ -174,7 +175,7 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  out.locked=d.proposalContextNotice({type:'photo_library_search'},{view:'photos',revision:'1',sensitive:true});
  out.photos=d.proposalContextNotice({type:'photo_library_search'},{view:'photos',revision:'1',sensitive:false})??null;
  console.log(JSON.stringify(out));`;
- const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
+ const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:scaledTimeout(120000)}));
  assert.deepEqual(out.search,{type:'photo_library_search',limit:5});
  assert.equal(out.query,'refused');
  assert.equal(out.home,'Open Photos to review this action.');

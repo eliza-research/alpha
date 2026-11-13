@@ -14,7 +14,7 @@ import static org.junit.Assert.*;
 
 /** The process-death boundary shared by WorkflowApprovalNoticeProcessDeathInstrumentedTest and
  * ReminderTapProcessDeathInstrumentedTest: main dies while the separate instrumentation host stays alive. */
-public final class WorkflowNoticeProcessDeathInstrumentedTest {
+public final class MainProcessDeathBoundary {
  private static final String APP="ai.alphacompute.alphaphone";
  /** Package-visible: WorkflowApprovalNoticeProcessDeathInstrumentedTest and ReminderTapProcessDeathInstrumentedTest prove the same death boundary. */
  static final class Identity {

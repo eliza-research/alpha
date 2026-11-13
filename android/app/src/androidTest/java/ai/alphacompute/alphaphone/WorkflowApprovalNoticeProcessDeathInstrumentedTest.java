@@ -41,7 +41,7 @@ public final class WorkflowApprovalNoticeProcessDeathInstrumentedTest {
  @Test public void productionSignedOutColdStartWithdrawsPersistedSyntheticApproval()throws Exception {
   org.junit.Assume.assumeTrue("Explicit isolated product cold-start campaign","1".equals(InstrumentationRegistry.getArguments().getString("workflowApprovalNoticeProcessDeath")));
   assertEquals(APP+":workflowNoticeTest",Application.getProcessName());assertTrue(android.os.Process.myUid()/100000>0);
-  Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();AlphaCredentialStore store=new AlphaCredentialStore(context);assertTrue("Main absent before native fixture seed",WorkflowNoticeProcessDeathInstrumentedTest.mainPids(context).isEmpty());
+  Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();AlphaCredentialStore store=new AlphaCredentialStore(context);assertTrue("Main absent before native fixture seed",MainProcessDeathBoundary.mainPids(context).isEmpty());
   assertNull(store.readCredentialSlot(WorkflowNoticeTaps.OWNER_SLOT));assertNull(store.readCredentialSlot(WorkflowNoticeTaps.SLOT));assertNull(store.readCredentialSlot(WorkflowNoticeDelivery.APPROVAL_SLOT));
   NotificationManager manager=context.getSystemService(NotificationManager.class);WorkflowNoticeTaps taps=WorkflowNoticeTapsFactory.create(context);WorkflowNoticeDelivery delivery=WorkflowNoticeTapsFactory.delivery(context);
   String id="approval-"+(UUID.randomUUID().toString()+UUID.randomUUID()).replace("-","");
@@ -53,7 +53,7 @@ public final class WorkflowApprovalNoticeProcessDeathInstrumentedTest {
    long expires=System.currentTimeMillis()+600000,end=SystemClock.elapsedRealtime()+10000;String published;
    do{published=delivery.postApproval(taps,id,"b".repeat(64),route,expires,System.currentTimeMillis());if("succeeded".equals(published))break;assertEquals("unknown",published);SystemClock.sleep(50);}while(SystemClock.elapsedRealtime()<end);
    assertEquals("succeeded",published);PendingIntent original=notice(manager,id).getNotification().contentIntent;
-   Intent launch=context.getPackageManager().getLaunchIntentForPackage(APP);assertNotNull(launch);context.startActivity(launch);WorkflowNoticeProcessDeathInstrumentedTest.awaitMain(context);
+   Intent launch=context.getPackageManager().getLaunchIntentForPackage(APP);assertNotNull(launch);context.startActivity(launch);MainProcessDeathBoundary.awaitMain(context);
    boolean settled=false;end=SystemClock.elapsedRealtime()+20000;
    do{String raw=store.readCredentialSlot(WorkflowNoticeTaps.OWNER_SLOT);settled=raw!=null&&new JSONObject(raw).has("owner")&&new JSONObject(raw).isNull("owner");if(settled&&approvals(manager).isEmpty())break;SystemClock.sleep(50);}while(SystemClock.elapsedRealtime()<end);
    assertTrue("Actual product initializer settles signed-out owner",settled);assertTrue("Product cold startup withdraws persisted approval",approvals(manager).isEmpty());assertFalse(taps.pending().has("token"));

@@ -1,5 +1,6 @@
 // patches/eliza/photos-library.patch on the patched source (Photos review findings). The Android paths
 // themselves are device-checked by the Photos instrumented tests; this pins the rules in the patched code.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -210,6 +211,6 @@ public final class PhotoRecoveryCheck {
 }`),
  ];
  const classpath=jsonJar+path.delimiter+androidJar;
- execFileSync(javaBinary('javac'),['-proc:none','-nowarn','-implicit:none','-d',path.join(work,'out'),'-cp',classpath,...sources],{timeout:120000,stdio:'pipe'});
- assert.equal(execFileSync(javaBinary('java'),['-cp',path.join(work,'out')+path.delimiter+classpath,'ai.eliza.plugins.media.PhotoRecoveryCheck',path.join(work,'data')],{encoding:'utf8',timeout:60000}).trim(),'ok');
+ execFileSync(javaBinary('javac'),['-proc:none','-nowarn','-implicit:none','-d',path.join(work,'out'),'-cp',classpath,...sources],{timeout:scaledTimeout(120000),stdio:'pipe'});
+ assert.equal(execFileSync(javaBinary('java'),['-cp',path.join(work,'out')+path.delimiter+classpath,'ai.eliza.plugins.media.PhotoRecoveryCheck',path.join(work,'data')],{encoding:'utf8',timeout:scaledTimeout(60000)}).trim(),'ok');
 });

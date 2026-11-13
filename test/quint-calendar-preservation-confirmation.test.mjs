@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -222,7 +223,7 @@ async function checkCalendarPreservationConfirmation(extraSources = []) {
       'Source checkpoints group independently scheduled capture, marker read and CAS receipts around stable UI commits. Device process death and arbitrary storage failures remain outside this campaign.']}));
 }
 
-test('mounted Calendar preservation matches exact review and owner-keyed marker traces', {timeout: 420_000}, async () => {
+test('mounted Calendar preservation matches exact review and owner-keyed marker traces', {timeout: scaledTimeout(420_000)}, async () => {
   const receipt = await checkCalendarPreservationConfirmation([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

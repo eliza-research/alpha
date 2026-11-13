@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
@@ -59,7 +60,7 @@ function fixture(covers) {
   };
 }
 
-test('simulated InlineModalFocus traces agree with createInlineModal after every step', {timeout: 170000}, async t => {
+test('simulated InlineModalFocus traces agree with createInlineModal after every step', {timeout: scaledTimeout(170000)}, async t => {
   t.mock.timers.enable({apis: ['setTimeout']});
   const traces = modelTraces({module: 'InlineModalFocus', traces: 120, steps: 30});
   const result = await replay(traces, {

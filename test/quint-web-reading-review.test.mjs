@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelTraces, replayTraces, loadBundled, installDocument, settle} from '../specs/quint/refinement/application/browser-model-traces.mjs';
@@ -104,7 +105,7 @@ async function checkWebReadingReview({random = 40, steps = 30} = {}) {
     sourceLive: s.sourceLive, text: s.text, speaking: s.speaking, unsettled: s.unsettled, audible: s.speaking ? [s.generation] : []})});
 }
 
-test('the read-aloud review follows every WebReadingReview trace', {timeout: 240000}, async () => {
+test('the read-aloud review follows every WebReadingReview trace', {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await checkWebReadingReview();
   assert.equal(receipt.traces, 47);
   assert.ok(receipt.checkpoints > 1000, `checkpoints ${receipt.checkpoints}`);

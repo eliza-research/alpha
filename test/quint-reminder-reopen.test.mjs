@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {checkReminderReopen} from '../specs/quint/refinement/application/reminder-reopen.mjs';
 
-test('Reopen and Reopen tomorrow follow every ReminderReopen model step', {timeout: 280000}, async () => {
+test('Reopen and Reopen tomorrow follow every ReminderReopen model step', {timeout: scaledTimeout(280000)}, async () => {
   const result = await checkReminderReopen();
   assert.equal(result.traces, 46);
   for (const action of ['start', 'lookup', 'selectedRead', 'afterRetain', 'operated', 'receipt', 'readback', 'leave', 'show',
@@ -11,7 +12,7 @@ test('Reopen and Reopen tomorrow follow every ReminderReopen model step', {timeo
     'apps/app/src/runtime/reminder-journal-store.ts']) assert.ok(result.sources.includes(source), source);
 });
 
-test('reporting a reopen whose read back shows the reminder completed again is rejected by the replay', {timeout: 280000}, async () => {
+test('reporting a reopen whose read back shows the reminder completed again is rejected by the replay', {timeout: scaledTimeout(280000)}, async () => {
   const guard = 'if (!saved || saved.status === "completed" || saved.occurrenceId === event.reminderOccurrence || saved.dueAt !== schedule.dueAt) throw Error("Mismatch");';
   await assert.rejects(checkReminderReopen(code => {
     assert.ok(code.includes(guard));
@@ -19,7 +20,7 @@ test('reporting a reopen whose read back shows the reminder completed again is r
   }), /Unconfirmed|readback/);
 });
 
-test('reopening at a reviewed time that has passed is rejected by the replay', {timeout: 280000}, async () => {
+test('reopening at a reviewed time that has passed is rejected by the replay', {timeout: scaledTimeout(280000)}, async () => {
   const guard = /if \(schedule\.at <= Date\.now\(\)\) \{\s*api\.toast\("Time passed"\);\s*return;\s*\}/;
   await assert.rejects(checkReminderReopen(code => {
     assert.match(code, guard);

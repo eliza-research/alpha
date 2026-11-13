@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {checkCanonicalNotesDraft} from '../specs/quint/refinement/application/canonical-notes-draft.mjs';
 
-test('canonical Notes draft snapshots and queued edits refine actual editor operations', {timeout:120000}, async () => {
+test('canonical Notes draft snapshots and queued edits refine actual editor operations', {timeout:scaledTimeout(120000)}, async () => {
   const receipt = await checkCanonicalNotesDraft([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

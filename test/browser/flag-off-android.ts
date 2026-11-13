@@ -296,7 +296,7 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
         if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: true, version: 'flag-off-harness' };
         // The fixture's image listener is stopped through its real readback contract.
         if (plugin === 'ElizaSense' && (method === 'status' || method === 'turnOff')) return { available: true, state: 'OFF', label: 'Listening off', consented: false, listening: false, microphoneOpen: false, ...(method === 'turnOff' ? { saved: true } : {}) };
-        if (plugin === 'DailyApps' && method === 'surfaceInfo') return { developmentBuild: false, assistant: false };
+        if (plugin === 'DailyApps' && method === 'surfaceInfo') return { assistant: false };
         // No reminders are saved on this phone.
         if (plugin === 'DailyApps' && method === 'listReminders') return { reminders: [] };
         if (plugin === 'DailyApps' && method === 'pendingReminderTap') return {};

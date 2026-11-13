@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
@@ -14,7 +15,7 @@ test('workflow compilation rejects a changed graph or mismatched captured source
   await assert.rejects(prepareEngineModule(sources, {...hashes, [key]: '0'.repeat(64)}), /compiled bytes differ/);
 });
 
-test('workflow engine SQL admission and source coordinator refine bounded Quint traces', {timeout: 360000}, () => {
+test('workflow engine SQL admission and source coordinator refine bounded Quint traces', {timeout: scaledTimeout(360000)}, () => {
   const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runWorkflowEngineRefinement} from './specs/quint/refinement/services/workflow-engine/index.mjs';
@@ -30,7 +31,7 @@ test('workflow engine SQL admission and source coordinator refine bounded Quint 
     assert.ok(receipt.actions.replayScheduled);
     assert.ok(result.obligations.length >= 4);
     console.log(JSON.stringify({traces: receipt.traces, checkpoints: receipt.checkpoints}));
-  `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 340000, maxBuffer: 16 * 1024 * 1024});
+  `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: scaledTimeout(340000), maxBuffer: 16 * 1024 * 1024});
   assert.ifError(result.error);
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });

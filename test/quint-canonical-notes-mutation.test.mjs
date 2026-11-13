@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -155,7 +156,7 @@ async function checkCanonicalNotesMutation(extraSources = []) {
     'Collection membership is returned input, including valid unchanged membership. The codec checks identity consistency, but these renderer traces do not prove provider deletion, restoration, revision allocation or durable storage semantics.'] }));
 }
 
-test('canonical Notes delete and restore preserve actual save and owner continuations', {timeout:180000}, async () => {
+test('canonical Notes delete and restore preserve actual save and owner continuations', {timeout:scaledTimeout(180000)}, async () => {
   const receipt = await checkCanonicalNotesMutation([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -240,7 +241,7 @@ async function checkClientObservationSupport(extraSources = []) {
       'Admission here is an optional observation field decision. Authentication, transport delivery, provider integration and native device access are separate.']});
 }
 
-test('optional observation support requires a live session and a fresh matching peer', {timeout: 120000}, async () => {
+test('optional observation support requires a live session and a fresh matching peer', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkClientObservationSupport([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.traces, 21);

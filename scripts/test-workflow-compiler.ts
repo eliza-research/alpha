@@ -6,6 +6,7 @@ import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {sourceDirectory,workerArtifactDirectory} from './local-agent-source.ts';
 import {verifyWorkerArtifact} from './workflow-worker-artifact.ts';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 const artifact=workerArtifactDirectory(resolve(import.meta.dirname,'..'));
 const verified=verifyWorkerArtifact(artifact);
 const source=sourceDirectory(resolve(import.meta.dirname,'..'));
@@ -36,7 +37,7 @@ try{
  assert.ok('compiler' in verified.manifest,'Worker manifest must bind the compiler descriptor');
  assert.deepEqual(descriptor,verified.manifest.compiler);
  for(const [name,text,expected] of cases){
-  const result: {ok: boolean; diagnostics: unknown}=JSON.parse(execFileSync(process.env.ALPHA_BUN||'bun',['--no-install','-e',program,join(anchor,descriptor.compilerModule)],{cwd:temporary,env:{PATH:process.env.PATH,HOME:temporary,TMPDIR:temporary},input:JSON.stringify({source:text,anchor}),encoding:'utf8',timeout:15000,maxBuffer:16384}));
+  const result: {ok: boolean; diagnostics: unknown}=JSON.parse(execFileSync(process.env.ALPHA_BUN||'bun',['--no-install','-e',program,join(anchor,descriptor.compilerModule)],{cwd:temporary,env:{PATH:process.env.PATH,HOME:temporary,TMPDIR:temporary},input:JSON.stringify({source:text,anchor}),encoding:'utf8',timeout:scaledTimeout(15000),maxBuffer:16384}));
   assert.equal(result.ok,expected,`${name}: ${JSON.stringify(result.diagnostics)}`);
   console.log(`${name}: passed`);
  }

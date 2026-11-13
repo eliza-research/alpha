@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -173,7 +174,7 @@ async function checkAppUpdateCandidate(extraSources = []) {
   } finally {for (const cleanup of cleanups.reverse()) cleanup();}
 }
 
-test('unsigned candidate CLI results refine version floors, exact attempts and immutable evidence', {timeout: 120000}, async () => {
+test('unsigned candidate CLI results refine version floors, exact attempts and immutable evidence', {timeout: scaledTimeout(120000)}, async () => {
   const result = await checkAppUpdateCandidate([fileURLToPath(import.meta.url)]);
   assert.equal(result.passed, true);
   assert.equal(result.inputsUnchanged, true);

@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {startMountedCalendar} from './fixtures/calendar-mounted-editor.mjs';
 import {mountCameraPreviewPort} from './fixtures/camera-preview-port.mjs';
 
-test('mounted Camera Leave retires preview before Home commits', {timeout: 240_000}, async t => {
+test('mounted Camera Leave retires preview before Home commits', {timeout: scaledTimeout(240_000)}, async t => {
   const browser = await startMountedCalendar({observeCamera: true});
   try {
     for (const phase of ['starting', 'ready']) {

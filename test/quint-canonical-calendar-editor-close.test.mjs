@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -203,7 +204,7 @@ async function checkCanonicalCalendarEditorClose(extraSources = []) {
       'Provider saves, other destination adapters, and arbitrary document recovery are separate. Checkpoints group committed renderer state and selected durable receipts.']}));
 }
 
-test('mounted Calendar Back, close and discard match the retained editor model', {timeout: 420_000}, async () => {
+test('mounted Calendar Back, close and discard match the retained editor model', {timeout: scaledTimeout(420_000)}, async () => {
   const receipt = await checkCanonicalCalendarEditorClose([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

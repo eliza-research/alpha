@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -90,7 +91,7 @@ async function runOwnNoticeQuestionReplay({random = 80, steps = 30} = {}) {
 
 // OwnNoticeQuestion model traces (scenarios, witnesses and random walks from the pinned Quint CLI)
 // replayed step by step against reviewOwnNoticeQuestion and its review sheet in a JSDOM window.
-test('the own-notification question review follows every OwnNoticeQuestion model trace', {timeout: 240000}, async () => {
+test('the own-notification question review follows every OwnNoticeQuestion model trace', {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await runOwnNoticeQuestionReplay();
   assert.equal(receipt.traces, 89);
   assert.ok(receipt.checkpoints > 2000, `checkpoints ${receipt.checkpoints}`);

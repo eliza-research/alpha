@@ -35,7 +35,7 @@ const document={addEventListener(){},removeEventListener(){},querySelector(){ret
 const localStorage={getItem:(key: string)=>store.get(key)||null,setItem:(key: string,value: string)=>{if(failStorage)throw Error('full');store.set(key,value);}};
 let repeatVersion=1;
 const DailyApps={
- surfaceInfo:async()=>({developmentBuild:false,assistant:false,...(repeatVersion?{clockRepeatDaysVersion:repeatVersion}:{})}),
+ surfaceInfo:async()=>({assistant:false,...(repeatVersion?{clockRepeatDaysVersion:repeatVersion}:{})}),
  clockHandoff:async(request: ClockRequest): Promise<ClockResult>=>{
   writes.push(request);
   if(deferred)return deferred.promise;

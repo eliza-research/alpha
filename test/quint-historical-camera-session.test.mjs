@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -168,7 +169,7 @@ async function checkHistoricalCameraSession(extraSources = []) {
   ]};
 }
 
-test('current mounted Camera matches selected original Design session transitions', {timeout: 240_000}, async () => {
+test('current mounted Camera matches selected original Design session transitions', {timeout: scaledTimeout(240_000)}, async () => {
   const {receipts: [receipt], obligations} = await checkHistoricalCameraSession([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

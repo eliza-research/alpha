@@ -4,6 +4,7 @@
  * reachability witness, and random walks of `step`. Every trace step names the action taken, its
  * arguments and the model state after it. A driver runs the same action against product code and
  * the replay compares an observation of that code with the model state after every step. */
+import {scaledTimeout} from '../timeouts.mjs';
 import assert from 'node:assert/strict';
 import {captureReplayInputs,recordComparedObservation} from '../observed-replay.mjs';
 import {spawnSync} from 'node:child_process';
@@ -112,7 +113,7 @@ function scenarioActions(source, name, seen = new Set()) {
 }
 
 function quint(args) {
-  const result = spawnSync(process.execPath, [cli, ...args], {cwd: repositoryRoot, encoding: 'utf8', timeout: 150000, maxBuffer: 64 * 1024 * 1024});
+  const result = spawnSync(process.execPath, [cli, ...args], {cwd: repositoryRoot, encoding: 'utf8', timeout: scaledTimeout(150000), maxBuffer: 64 * 1024 * 1024});
   assert.ifError(result.error);
   return result;
 }

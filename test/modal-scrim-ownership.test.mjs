@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {observeModalScrim} from './fixtures/modal-scrim-chromium.mjs';
 
-test('a modal retires an older raised-composer scrim press and its compatibility fallback', {timeout:60000}, async () => {
+test('a modal retires an older raised-composer scrim press and its compatibility fallback', {timeout:scaledTimeout(60000)}, async () => {
   const rows = await observeModalScrim();
   const uninterrupted = rows.filter(row => row.name.startsWith('uninterrupted') || row.name.startsWith('unrelated'));
   for (const row of uninterrupted) {

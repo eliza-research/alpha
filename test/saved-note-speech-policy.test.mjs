@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -35,7 +36,7 @@ test('actual saved-note native selector fences ownership, clips windows and remo
   if(cache.list().length!=0||!original.isFile()||original.length()!=1)throw new AssertionError("Original changed");System.out.println("PASS actual native selector policy; media APIs are test doubles");
  }} `),
  path.resolve('vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/RecordingWindow.java')];
- execFileSync(javaBinary('javac'),['--release','11','-d',dir,...sources],{timeout:30000});
- const out=execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.SavedNoteSpeechPolicyTest',dir],{encoding:'utf8',timeout:30000});assert.match(out,/PASS actual native selector policy/);
+ execFileSync(javaBinary('javac'),['--release','11','-d',dir,...sources],{timeout:scaledTimeout(30000)});
+ const out=execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.SavedNoteSpeechPolicyTest',dir],{encoding:'utf8',timeout:scaledTimeout(30000)});assert.match(out,/PASS actual native selector policy/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

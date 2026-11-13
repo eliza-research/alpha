@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync} from 'node:fs';
@@ -21,9 +22,9 @@ function launch({route,override,swaps,existingToken=true,retainedIdentity=true,r
  let ownedLivePid;
  const env={...process.env,ALPHA_UNRELATED_ENV:'must-stay-outside',ELIZA_ASR_ENABLED:'0',ELIZA_PARADEE_ENABLED:'0',ALPHA_ELIZA_SOURCE:source,ALPHA_REMOTE_PROFILE:profile,ALPHA_REMOTE_PORT:'47999',ALPHA_BUN:bun,CEREBRAS_API_KEY:'synthetic-fixture-key'};for(const key of ['ELIZA_SECRET_SWAP_ENABLED','ELIZA_PII_SWAP_ENABLED','CEREBRAS_MODEL','ELIZA_PGLITE_AUTO_RESET'])delete env[key];Object.assign(env,swaps||{});if(override!==undefined)env.CEREBRAS_MODEL=override;if(autoReset!==undefined)env.ELIZA_PGLITE_AUTO_RESET=autoReset;
  try {
-  let result=spawnSync(process.execPath,[resolve('scripts/start-local-remote.ts')],{env,encoding:'utf8',timeout:15000});
+  let result=spawnSync(process.execPath,[resolve('scripts/start-local-remote.ts')],{env,encoding:'utf8',timeout:scaledTimeout(15000)});
   const firstChild=existsSync(childReceipt)?JSON.parse(readFileSync(childReceipt,'utf8')):null;
-  if(repeat){assert.equal(result.status,0,result.stderr);result=spawnSync(process.execPath,[resolve('scripts/start-local-remote.ts')],{env,encoding:'utf8',timeout:15000});}
+  if(repeat){assert.equal(result.status,0,result.stderr);result=spawnSync(process.execPath,[resolve('scripts/start-local-remote.ts')],{env,encoding:'utf8',timeout:scaledTimeout(15000)});}
   const child=existsSync(childReceipt)?JSON.parse(readFileSync(childReceipt,'utf8')):null;let childAlive=false;if(child)try{process.kill(child.pid,0);childAlive=true;ownedLivePid=child.pid;}catch(error){if(error.code!=='ESRCH')throw error;}
   const launchRecord=join(profile,'process.json');
   return {status:result.status,error:result.stderr,firstChild,child,launch:existsSync(launchRecord)?JSON.parse(readFileSync(launchRecord,'utf8')):null,childAlive,retainedToken,token:readFileSync(tokenPath,'utf8'),models:existsSync(receipt)?JSON.parse(readFileSync(receipt,'utf8')):null,before,after:existsSync(config)?readFileSync(config,'utf8'):null};

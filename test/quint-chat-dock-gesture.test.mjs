@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -128,7 +129,7 @@ function fixture() {
   };
 }
 
-test("partial source contract: simulated ChatDock traces agree with the chat gesture adapter after every step", {timeout: 170000}, async t => {
+test("partial source contract: simulated ChatDock traces agree with the chat gesture adapter after every step", {timeout: scaledTimeout(170000)}, async t => {
   t.mock.timers.enable({apis: ['setTimeout', 'Date'], now: 1_000_000});
   const traces = modelTraces({module: 'ChatDock', traces: 300, steps: 40});
   const result = await replay(traces, {

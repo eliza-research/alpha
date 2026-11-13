@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -181,7 +182,7 @@ test('the privately staged launcher cannot differ from the initial release admis
 test('the staging CLI refuses a production listener before reading unqualified inputs', () => {
  const target = ['--target', 'pixel10a', '--aosp-source', 'missing-source', '--factory-image', 'missing-factory'];
  const stage = (...args) => execFileSync(process.execPath, ['scripts/stage-aosp.ts', ...target, ...args],
-  {stdio:'pipe', encoding:'utf8', timeout:30000});
+  {stdio:'pipe', encoding:'utf8', timeout:scaledTimeout(30000)});
  assert.throws(() => stage('--listener-apk', 'missing-listener.apk'), /requires Pixel 10a, --listener-apk, --listener-descriptor and --listener-qualification/);
  assert.throws(() => stage('--listener-apk', 'missing-listener.apk', '--listener-descriptor', 'missing.json',
   '--listener-qualification', 'missing-qualification.json'), /requires chip, ops, alpha-protected-power and alpha-sense-policy/);

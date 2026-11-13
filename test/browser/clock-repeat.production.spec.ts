@@ -28,7 +28,7 @@ async function clockBridge(page: Page, repeatDaysVersion: number | null) {
         w.flagOff.calls.push('Agent.request');
         return { status: 200, body: JSON.stringify({ [emptyDiscoveries[input.path]]: [] }) };
       }
-      if (plugin === 'DailyApps' && method === 'surfaceInfo') { w.flagOff.calls.push('DailyApps.surfaceInfo'); return { developmentBuild: false, assistant: false, ...(version === null ? {} : { clockRepeatDaysVersion: version }) }; }
+      if (plugin === 'DailyApps' && method === 'surfaceInfo') { w.flagOff.calls.push('DailyApps.surfaceInfo'); return { assistant: false, ...(version === null ? {} : { clockRepeatDaysVersion: version }) }; }
       if (plugin === 'DailyApps' && method === 'clockHandoff') { w.flagOff.calls.push('DailyApps.clockHandoff'); (w.clockHandoffs ??= []).push(structuredClone(input)); return { action: input.action, status: 'opened', message: 'Approved Clock handoff sent. Check Clock; Alpha cannot confirm an alarm was changed.' }; }
       return original(plugin, method, input);
     };

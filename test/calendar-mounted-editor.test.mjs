@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {startMountedCalendar} from './fixtures/calendar-mounted-editor.mjs';
@@ -5,7 +6,7 @@ import {reviewCalendarDraftDiscard} from './fixtures/calendar-draft-handoff.mjs'
 
 const back = page => page.evaluate(() => window.dispatchEvent(new Event('alpha-back', {cancelable: true})));
 
-test('mounted Calendar Back and Discard clear the validation latch after the retained draft is consumed', {timeout: 180_000}, async () => {
+test('mounted Calendar Back and Discard clear the validation latch after the retained draft is consumed', {timeout: scaledTimeout(180_000)}, async () => {
   const browser = await startMountedCalendar();
   try {
     const f = await browser.page();

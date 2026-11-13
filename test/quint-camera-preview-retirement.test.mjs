@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -90,7 +91,7 @@ async function checkCameraPreviewRetirement(extraSources = []) {
       'The projection covers Home and active Camera with a closed conversation. Native OS permission behavior, capture writes and camera hardware remain separate.']}));
 }
 
-test('mounted Camera retirement matches preview ownership across the Home commit', {timeout: 240_000}, async () => {
+test('mounted Camera retirement matches preview ownership across the Home commit', {timeout: scaledTimeout(240_000)}, async () => {
   const receipt = await checkCameraPreviewRetirement([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

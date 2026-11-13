@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -93,7 +94,7 @@ function create() {
   };
 }
 
-test("partial source contract: the connection step slot follows ConnectionController scenarios, witnesses and random walks", {timeout: 240000}, async () => {
+test("partial source contract: the connection step slot follows ConnectionController scenarios, witnesses and random walks", {timeout: scaledTimeout(240000)}, async () => {
   assert.ok(SCENARIOS.length >= 8 && WITNESSES.length >= 6);
   const traces = modelTraces({...MODEL, scenarios: SCENARIOS, witnesses: WITNESSES, random: 80, steps: 30});
   const receipt = await replayTraces(traces, create, {project});

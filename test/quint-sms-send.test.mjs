@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelTraces, replayTraces, repositoryRoot, settle} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
@@ -146,5 +147,5 @@ async function runSmsSendCase2(t, {canaries=true}={}) {
 
 async function runSmsSendReplay(){return runSmsSendCase1(undefined,{canaries:false});}
 
-test('the Messages adapter follows SmsSend scenarios, witnesses and random walks', {timeout: 240000}, async () => runSmsSendCase1(undefined));
+test('the Messages adapter follows SmsSend scenarios, witnesses and random walks', {timeout: scaledTimeout(240000)}, async () => runSmsSendCase1(undefined));
 test('accepted empty SMS and retired uncertain SMS cannot dispatch; fresh owner text mints a new identity', async () => runSmsSendCase2(undefined));

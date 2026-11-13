@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkFilesBrowserRefinement} from '../specs/quint/legacy/files-browser/check-files-browser-refinement.mjs';
 
-test('historical Files design and ablations compare against mounted current Files', {timeout: 240000}, async () => {
+test('historical Files design and ablations compare against mounted current Files', {timeout: scaledTimeout(240000)}, async () => {
   const {receipts: [receipt], mismatches} = await checkFilesBrowserRefinement([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.model, 'FilesBrowserReplay');
   assert.equal(receipt.traces, 3);

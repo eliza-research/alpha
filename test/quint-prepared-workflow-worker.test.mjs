@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
@@ -44,7 +45,7 @@ const deferred = () => {
   return {promise, resolve};
 };
 
-async function waitForPreparedWorkerProducer(entered, preparation, timeoutMs = 30000) {
+async function waitForPreparedWorkerProducer(entered, preparation, timeoutMs = scaledTimeout(30000)) {
   let timer;
   try {
     await Promise.race([
@@ -190,14 +191,14 @@ async function checkPreparedWorkflowWorker(extraSources = []) {
   } finally {fs.rmSync(directory, {recursive: true, force: true});}
 }
 
-test('prepared worker reuse and interrupted builds refine exact provenance admission', {timeout: 120000}, async () => {
+test('prepared worker reuse and interrupted builds refine exact provenance admission', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkPreparedWorkflowWorker([fileURLToPath(import.meta.url)]);
   assert.ok(receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound);
   assert.equal(receipt.traces, 13);
   assert.equal(receipt.observedFields.length, 10);
 });
 
-test('worker replay reports preparation rejection before the producer can enter', {timeout: 5000}, async () => {
+test('worker replay reports preparation rejection before the producer can enter', {timeout: scaledTimeout(5000)}, async () => {
   const directory = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), 'alpha-worker-entry-refusal-')));
   const source = join(directory, 'artifacts/source');
   const output = join(directory, 'artifacts/worker');

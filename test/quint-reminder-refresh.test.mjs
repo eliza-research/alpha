@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {actionCounts, modelTraces, sameState} from '../specs/quint/refinement/application/calendar-itf.mjs';
@@ -85,7 +86,7 @@ async function checkReminderRefresh(mutate) {
   return {traces: traces.length, steps, actions: actionCounts(traces), sources: compiled.sources};
 }
 
-test('the reminder adapter follows every ReminderRefresh model step', {timeout: 240000}, async () => {
+test('the reminder adapter follows every ReminderRefresh model step', {timeout: scaledTimeout(240000)}, async () => {
   const result = await checkReminderRefresh();
   assert.equal(result.traces, 34);
   for (const action of ['refresh', 'deviceRead', 'reminderChanged', 'reminderOpened', 'complete', 'unmount', 'stutter'])
@@ -93,7 +94,7 @@ test('the reminder adapter follows every ReminderRefresh model step', {timeout: 
   assert.ok(result.sources.includes('apps/app/src/prototype/reminder-adapter.ts'));
 });
 
-test('a superseded refresh that publishes is rejected by the replay', {timeout: 240000}, async () => {
+test('a superseded refresh that publishes is rejected by the replay', {timeout: scaledTimeout(240000)}, async () => {
   const guard = 'generation !== this.reminderRefreshGeneration';
   await assert.rejects(checkReminderRefresh(code => {
     assert.ok(code.includes(guard));

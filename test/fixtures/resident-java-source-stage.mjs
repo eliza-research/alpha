@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -98,7 +99,7 @@ fs.writeFileSync = (file, ...args) => {
 };
 `);
     const result = spawnSync(process.execPath, [...(preload ? ['--preload', preload] : []), stageScript], {
-      cwd: directory, encoding: 'utf8', timeout: 30000, env: {...gitEnv, ALPHA_LOCAL_AGENT_SOURCE_DIR: runtime},
+      cwd: directory, encoding: 'utf8', timeout: scaledTimeout(30000), env: {...gitEnv, ALPHA_LOCAL_AGENT_SOURCE_DIR: runtime},
     });
     assert.ifError(result.error);
     assert.equal(result.signal, null);

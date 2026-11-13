@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
@@ -66,7 +67,7 @@ test('the pinned binding rules and password policy pass their JVM tests', () => 
   delete env.NODE_TEST_CONTEXT;
   // A nested Bun test run. Bun has no TAP reporter and folds subtests into their parent, so each
   // JVM consumer is read from the line the upstream subtest prints only after its assertion passed.
-  const result = spawnSync(process.execPath, ['test', './vendor/eliza/plugins/plugin-native-browser-surface/test/native-host/policies.node.mjs'], {encoding: 'utf8', timeout: 180000, env});
+  const result = spawnSync(process.execPath, ['test', './vendor/eliza/plugins/plugin-native-browser-surface/test/native-host/policies.node.mjs'], {encoding: 'utf8', timeout: scaledTimeout(180000), env});
   const detail = result.stdout + result.stderr;
   assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.status, 0, detail);

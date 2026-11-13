@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -28,6 +29,6 @@ out.otherDay=await rejects(()=>c.assertWorkflowOperation(review,binding,target,{
 out.widened=await rejects(()=>c.assertWorkflowOperation(review,binding,target,{...op,maximumItems:200},now));
 console.log(JSON.stringify(out));`;
 test('selected reminder reads stay inside the reviewed owner-day window',()=>{
- const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
+ const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:scaledTimeout(60000)}));
  assert.deepEqual(out,{op:{type:'read_selected_reminders',window:'open_and_completed_today',day:'2026-10-08',timeZone:'America/Los_Angeles',maximumItems:3},badWindow:true,badDay:true,extra:true,valid:['open','done'],future:true,oldCompletion:true,tampered:true,privateBody:true,overflow:true,bound:true,otherDay:true,widened:true});
 });
