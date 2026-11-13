@@ -285,7 +285,7 @@ test("head qualification records the full Chromium suite and the production surf
 });
 
 test("the candidate manifest admits only campaigns whose APK hashes are this qualify run's", () => {
-  const apks = [{ variant: "launcher", mode: "debug", sha256: "1".repeat(64) }, { variant: "standalone", mode: "debug", sha256: "2".repeat(64) }];
+  const apks = [{ variant: "launcher", mode: "debug", sha256: "1".repeat(64) }, { variant: "launcher", mode: "release", sha256: "2".repeat(64) }];
   const campaign = (id, apkSha256, passed = true) => ({ id, present: true, passed, apkSha256, records: [`${id}.json`] });
   const all = CAMPAIGNS.map(row => campaign(row.id, ["1".repeat(64)]));
   const ok = candidateManifest(apks, all);
@@ -303,7 +303,7 @@ test("the candidate manifest admits only campaigns whose APK hashes are this qua
   assert.equal(candidateManifest(undefined, all).complete, false, "no candidate APKs admits nothing");
 });
 
-test("campaign records are read from emulator-suite, resident proofs and resident CI results", t => {
+test("campaign records are read from emulator-suite and resident proofs", t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-candidate-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const write = (rel, value) => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), JSON.stringify(value)); };
@@ -312,16 +312,13 @@ test("campaign records are read from emulator-suite, resident proofs and residen
     steps: [{ name: "prepare-emulator" }, { name: "ci-default", results: "test-results/android-instrumentation/ci-default/results.json" }] });
   write("test-results/android-instrumentation/ci-default/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: app }, { variant: "launcher", role: "test", sha256: test }] });
   write("test-results/resident-instrumentation/redaction.json", { passed: true, apkSha256: app });
-  write("test-results/resident-ci-archive/apk-manifest.json", { "launcher-debug.apk": app, "launcher-androidTest.apk": test, "private-peer-debug.apk": "4".repeat(64) });
-  write("test-results/resident-ci-native/launcher-recovery.json", { passed: true, cleanupComplete: true });
   const campaigns = readCampaigns(root);
   const byId = Object.fromEntries(campaigns.map(row => [row.id, row]));
   assert.deepEqual(byId["emulator-suite:instrumentation"].apkSha256, [app], "test APKs are not the candidate");
-  assert.deepEqual(byId["resident-android"].apkSha256, [app], "helper and test APKs are not the candidate");
   const result = recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root);
   assert.deepEqual(Object.fromEntries(result.candidate.campaigns.map(row => [row.id, row.status])), {
     "emulator-suite:instrumentation": "passed", "emulator-suite:browser-reading": "missing",
-    "resident-instrumentation": "passed", "resident-android": "passed" });
+    "resident-instrumentation": "passed" });
   // A missing campaign leaves the candidate unqualified, even though the head itself qualified.
   assert.equal(result.qualified, true);
   assert.equal(result.candidateQualified, false);
