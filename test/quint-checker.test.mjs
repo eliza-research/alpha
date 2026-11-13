@@ -17,6 +17,37 @@ test('all registered scenarios need an actual successful execution record', () =
   assert.deepEqual(missingQuintScenarios(['reviewTest'], '    ok reviewTest passed 0 test(s)\n'), ['reviewTest']);
 });
 
+test('unknown model selection fails before source loading while valid selections validate the entire registry', t => {
+  const root = mkdtempSync(join(tmpdir(), 'alpha-quint-selection-'));
+  t.after(() => rmSync(root, {recursive: true, force: true}));
+  mkdirSync(join(root, 'scripts'));
+  for (const name of ['check-quint.ts', 'quint-lib.ts']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+  const models = ['Selected', 'Unselected'].map(module => ({module,
+    path: `specs/quint/application/${module}.qnt`, init: 'init', step: 'step', invariant: 'safety',
+    tests: ['exampleTest'], sources: module === 'Unselected' ? ['missing-unselected.ts'] : []}));
+  for (const family of ['application', 'services', 'native', 'legacy']) {
+    mkdirSync(join(root, 'specs/quint', family), {recursive: true});
+    writeFileSync(join(root, 'specs/quint', family, 'manifest.json'), JSON.stringify(family === 'application' ? models : []));
+  }
+  const run = name => spawnSync(process.env.ALPHA_BUN ?? process.execPath,
+    ['scripts/check-quint.ts', 'typecheck', `--models=${name}`, '--out=proof.json'],
+    {cwd: root, encoding: 'utf8', timeout: 30000});
+  const refused = (result, message) => {
+    assert.ifError(result.error);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, message);
+    assert.equal(existsSync(join(root, 'proof.json')), false, 'Invalid selections or registry entries never start a checker');
+  };
+  refused(run('Unknown'), /Unknown model Unknown/);
+  for (const model of models) writeFileSync(join(root, model.path),
+    `module ${model.module} { var n: int action init = n' = 0 action step = n' = n val safety = true run exampleTest = init }`);
+  refused(run('Selected'), /missing-unselected\.ts/);
+  writeFileSync(join(root, 'missing-unselected.ts'), 'controlled source');
+  models[1].tests = ['missingTest'];
+  writeFileSync(join(root, 'specs/quint/application/manifest.json'), JSON.stringify(models));
+  refused(run('Selected'), /Missing scenario Unselected\.missingTest/);
+});
+
 test('manifest budgets and extra proof initializers cannot silently disappear', () => {
   const model = {module: 'Fixture', path: 'Fixture.qnt', tests: ['exampleTest'],
     bounds: {maxSamples: 1000, maxSteps: 60, maxVerifyDepth: 8, seed: '123'},

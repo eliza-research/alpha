@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { availableParallelism, tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
-import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, sha256, type BoundedTlcEvidence, type CheckerResult, type QuintModel } from './quint-lib.ts';
+import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, registeredQuintModelNames, repositoryRoot, runQuintChecker, sha256, type BoundedTlcEvidence, type CheckerResult, type QuintModel } from './quint-lib.ts';
 
 const args = process.argv.slice(2);
 const commands = ['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal', 'compare'] as const;
@@ -34,8 +34,12 @@ const requestedBackend = value('backend');
 const serverEndpoint = value('server-endpoint', '127.0.0.1:8845');
 if (requestedBackend !== undefined && requestedBackend !== 'apalache' && requestedBackend !== 'tlc' && requestedBackend !== 'tlc-bounded') throw Error('Verification backend must be apalache, tlc or tlc-bounded');
 const backendOption = requestedBackend;
-const allModels = loadModels();
 const requested = value('models', '').split(',').filter(Boolean);
+if (requested.length) {
+  const registered = new Set(registeredQuintModelNames());
+  for (const name of requested) if (!registered.has(name)) throw Error(`Unknown model ${name}`);
+}
+const allModels = loadModels();
 for (const name of requested) if (!allModels.some(model => model.module === name)) throw Error(`Unknown model ${name}`);
 const models = requested.length ? allModels.filter(model => requested.includes(model.module)) : allModels;
 const jobs = Math.min(requestedJobs, availableParallelism(), Math.max(1, models.length));

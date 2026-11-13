@@ -95,6 +95,11 @@ function readModelFamily(family: ModelFamily) {
     sources: [...new Set([...(model.sources || []), ...(model.sharedSources || []).map(path => `vendor/eliza/${path}`)])]}));
 }
 
+/** Registry names for rejecting invalid selections before loading model/source bodies. */
+export function registeredQuintModelNames(): string[] {
+  return modelFamilies.flatMap(readModelFamily).map(model => model.module);
+}
+
 export function filesWithin(directory: string, accept: (path: string) => boolean = () => true): string[] {
   const result: string[] = [];
   for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
