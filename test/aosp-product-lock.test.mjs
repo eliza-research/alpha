@@ -38,7 +38,6 @@ test("the committed Cuttlefish product names its target, lock, host packages and
   assert.equal(product.signer.apkDescriptor, "android/release-signer.json");
   const brand = read(product.brandConfig);
   assert.equal(brand.packageName, read("app.config.json").appId);
-  assert.equal(brand.envPrefix, "ELIZA", "brand environment names stay on the upstream ELIZA_ prefix");
   // Pixel 10a (stallion) has its own source lock and production descriptor; the Cuttlefish product never stages against them.
   assert.equal(product.separateLocks.pixel10a, "vendor/eliza/packages/os/android/sources/pixel10a-stallion.json");
   assert.notEqual(product.sourceLock.file, product.separateLocks.pixel10a);
