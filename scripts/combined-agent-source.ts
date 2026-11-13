@@ -14,7 +14,7 @@ export interface SourceManifest {format: 1; revision: string; entries: Record<st
 export function sourceManifest(source: string): SourceManifest{
  if(!path.isAbsolute(source))throw Error('Explicit absolute source path required');
  const files=execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z'],{cwd:source,maxBuffer:20*1024*1024}).toString().split('\0').filter(Boolean);
- const allowedEmptyGitlinks: Record<string, string> = {'plugins/plugin-local-inference/native/llama.cpp':'6337fd4c4bd071c17235986344d552d4036e177b'};
+ const allowedEmptyGitlinks: Record<string, string> = {'plugins/plugin-local-inference/native/llama.cpp':'5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd'};
  const staged=execFileSync('git',['ls-files','--stage','-z'],{cwd:source,maxBuffer:20*1024*1024}).toString().split('\0').filter(Boolean),gitlinks=new Map<string, string>();
  for(const entry of staged){const match=entry.match(/^(\d+) ([a-f0-9]{40}) (\d+)\t([\s\S]+)$/);if(!match||match[3]!=='0')throw Error('Unmerged or invalid source index');if(match[1]==='160000')gitlinks.set(match[4],match[2]);}
  const entries=new Map<string, SourceEntry>();

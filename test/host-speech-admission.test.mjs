@@ -20,27 +20,28 @@ test('admission verifies exact bytes and reviewed digest, rejecting links and ov
  symlinkSync(file,join(root,'link'));assert.throws(()=>verifiedFile(join(root,'link'),sha,data.length));
 });
 
-// The reviewed source uses the qualified fused-speech engine at 6337fd4c.
-test('source snapshots accept only the reviewed 6337 engine and reject old or foreign gitlinks',t=>{
+// Source snapshots admit the current reviewed engine; retained library records keep their original pin.
+test('source snapshots accept only the reviewed 5c5d engine and reject old or foreign gitlinks',t=>{
  const root=mkdtempSync(join(tmpdir(),'alpha-engine-identity-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
  const git=(...args)=>execFileSync('git',['-c','core.hooksPath=/dev/null','-c','user.name=Admission fixture','-c','user.email=fixture@example.invalid','-C',root,...args],{encoding:'utf8'}).trim();
  git('init');git('commit','--allow-empty','-m','Fixture');
  const engine='plugins/plugin-local-inference/native/llama.cpp';mkdirSync(join(root,engine),{recursive:true});
- for(const pin of new Set(['cc8c979157e1f577448d8b8c6ff598b7cfc3d661','1'.repeat(40),'b3eb2bf63b3c02cd37ee09d442911ace99975b38'])){
+ for(const pin of new Set(['6337fd4c4bd071c17235986344d552d4036e177b','cc8c979157e1f577448d8b8c6ff598b7cfc3d661','1'.repeat(40),'b3eb2bf63b3c02cd37ee09d442911ace99975b38'])){
   git('update-index','--add','--cacheinfo','160000,'+pin+','+engine);
   assert.throws(()=>sourceManifest(root),/Unqualified source gitlink identity/);
  }
- const pin='6337fd4c4bd071c17235986344d552d4036e177b';git('update-index','--cacheinfo','160000,'+pin+','+engine);
+ const pin='5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd';git('update-index','--cacheinfo','160000,'+pin+','+engine);
  assert.deepEqual(sourceManifest(root).entries[engine],{type:'gitlink',commit:pin,initialized:false});
 });
 
 test('embedding source admission rejects the historical producer and binds current JNI identity',()=>{
- const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
+ const reviewed='5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd';
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  assert.equal(actual,reviewed);
  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
  const {appId}=JSON.parse(readFileSync(new URL('../app.config.json',import.meta.url),'utf8'));
- assert.equal(qualification.forkPin,reviewed);
+ assert.equal(qualification.forkPin,'6337fd4c4bd071c17235986344d552d4036e177b','historical library provenance is retained');
+ assert.notEqual(qualification.forkPin,reviewed,'old library bytes are not relabeled as the current engine');
  assert.equal(qualification.identity,appId);
  assert.equal(qualification.jniBinding.className,appId.replaceAll('.','/')+'/ElizaVoiceNative');
  assert.throws(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}), /Embedding producer input changed/,
