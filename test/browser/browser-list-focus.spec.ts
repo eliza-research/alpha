@@ -16,7 +16,7 @@ async function browserState(page: Page) {
     const state = fiber.stateNode.vget('browser');
     const buttons = [...document.querySelectorAll('button')].filter(button => button.getAttribute('aria-label')?.startsWith('Switch to '));
     const focused = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    return {tabs:state.tabs.map((tab: any) => ({id:tab.id,private:!!tab.priv})),
+    return {tabs:state.tabs.map((tab: any) => ({id:tab.id,private:!!tab.priv})),visits:state.visits as string[],
       current:state.cur,open:!!state.tabsOpen,focused:focused >= 0 ? state.tabs[focused].id : null};
   });
 }
@@ -99,3 +99,52 @@ test('removing an earlier bookmark preserves the focused link and its destinatio
   await page.keyboard.press('Enter');
   await expect(page.frameLocator('[data-browser-surface] iframe').getByRole('heading',{name:'/two',exact:true})).toBeVisible();
 });
+
+for (const viewport of [{width:390,height:844},{width:1280,height:900}]) {
+  test.describe(`delayed saved session at ${viewport.width}px`, () => {
+    test.use({viewport});
+
+    for (const savedId of ['saved-normal','b0']) {
+      test(`restoring saved tabs preserves the focused new tab and its activation (${savedId})`, async ({page}) => {
+        await page.addInitScript((savedId: string) => {
+          localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({kind:'offline'}));
+          localStorage.setItem('alpha.browser.session.v1', JSON.stringify({
+            history:['https://focus.example/saved'],
+            tabs:[{id:savedId,url:'https://focus.example/saved',title:'Saved page'}],
+            cur:savedId,
+          }));
+          // Hold the real document migration while the owner opens the tab chooser.
+          const w = window as any;
+        void navigator.locks.request(
+            JSON.stringify(['browser-document','alpha.browser.documents.v1','alpha.browser.session.v1']),
+            async () => {
+              w.browserRestoreHeld = true;
+              await new Promise<void>(release => {w.releaseBrowserRestore = release;});
+            },
+          );
+        }, savedId);
+        await page.goto('/');
+        await expect.poll(() => page.evaluate(() => !!(window as any).browserRestoreHeld)).toBe(true);
+        await page.getByRole('button',{name:'Browser',exact:true}).click();
+        await page.getByRole('button',{name:'Tabs',exact:true}).click();
+        const choices = page.getByRole('button',{name:/^Switch to /});
+        await expect(choices).toHaveCount(1);
+        const temporary = (await browserState(page)).current;
+        await choices.first().focus();
+        await page.evaluate(() => {(window as any).focusedBeforeRestore = document.activeElement;});
+
+        await page.evaluate(() => (window as any).releaseBrowserRestore());
+        await expect.poll(async () => (await browserState(page)).visits.includes('https://focus.example/saved')).toBe(true);
+        const restored = await browserState(page);
+        expect.soft(restored.tabs.map(tab => tab.id)).toEqual([temporary,savedId]);
+        expect.soft(restored.current).toBe(temporary);
+        expect.soft(await page.evaluate(() => document.activeElement === (window as any).focusedBeforeRestore)).toBe(true);
+        await expect(page.getByRole('button',{name:'Switch to Saved page',exact:true})).toBeVisible();
+        // Complete the owner's original keyboard action even when a regression moved focus.
+        await page.keyboard.press('Enter');
+        await expect(choices).toHaveCount(0);
+        expect((await browserState(page)).current).toBe(temporary);
+      });
+    }
+  });
+}

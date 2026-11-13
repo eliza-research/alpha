@@ -319,6 +319,8 @@
     "tests": [
       "privateRestartTest",
       "lateRestoreTest",
+      "focusedTabSurvivesRestoreTest",
+      "fullSavedRecordKeepsFreshFocusedTabTest",
       "normalHistoryTest",
       "closeEarlierTabKeepsFocusTest",
       "closeFocusedTabClearsFocusTest",
@@ -339,8 +341,8 @@
       "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java"
     ],
     "abstractions": [
-      "Three tabs stand for the open-tab limit of 8. Normal tabs are 1, 2 and 4 and the private tab is 3; an identity may be opened again after it was closed.",
-      "init is a launch whose read of an empty saved record already succeeded. restart is a relaunch whose read replaces the single untouched tab; coldStart leaves the read pending so restoreRead and lateRestore can settle it after the user acted or fail it.",
+      "Three tabs stand for the open-tab limit of 8. Four normal identities, 1, 2, 4 and 5, represent up to three saved tabs plus a distinct fresh launch placeholder; the private tab is 3. The launch placeholder is chosen outside the saved record. An identity may be reused after its previous process or tab retired; generations and random UUID entropy are outside this finite abstraction.",
+      "init is a launch whose read of an empty saved record already succeeded. restart is a relaunch whose read replaces the single untouched tab; coldStart leaves the read pending so restoreRead and lateRestore can settle it after the user acted or fail it. An open tab chooser keeps the open tabs and their focus when that read settles.",
       "The saved record is written in one step and holds every normal tab; blank or invalid address filtering is a separate source boundary. The write queue, change detection and backoff are in BrowserSessionPersistence, and native tab creation and the restore retry are in BrowserTabLifecycle.",
       "privateHistory stands for a private tab's own native session history, which the renderer never holds and which ends with the tab.",
       "A clear requested while the launch read is still pending is not modeled.",
