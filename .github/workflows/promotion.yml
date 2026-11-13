@@ -1,87 +1,16 @@
-name: Promotion checks
-# Checks for promoting develop to main: Chromium, Firefox/WebKit storage and the production surface,
-# the Quint gate and its node tests, bounded symbolic checking, the
-# historical comparisons and temporal properties, and the LemmaScript proofs. Nothing here runs
-# on pull requests into develop or on pushes; authors run `bun run test:browser`,
-# `bun run test:browser:production`, `bun run quint:check`, `bun run quint:tests` and
-# `bun run lemma:check` locally.
+name: Native crash harvest default qualification
+run-name: Equivalent harvested NativeCrashJournal CI6 harvest default qualification
+# Isolated branch experiment only. No canonical workflow or model change.
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
-    inputs:
-      models:
-        description: Comma-separated module names for symbolic checking (empty checks every model)
-        type: string
-        default: ''
 permissions:
   contents: read
 concurrency:
-  group: promotion-${{ github.ref }}
-  cancel-in-progress: true
+  group: native-crash-harvest-default-candidate-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   symbolic:
-    name: Bounded symbolic safety (${{ matrix.family }}, partition ${{ matrix.partition }})
-    runs-on: ubuntu-24.04
-    timeout-minutes: 240
-    strategy:
-      fail-fast: false
-      matrix:
-        family: ${{ fromJSON(inputs.models && '["selected"]' || '["application","services","native","legacy"]') }}
-        partition: [0, 1]
-        exclude:
-          - family: selected
-            partition: 1
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '21'
-      - run: bun run upstream:prepare-client
-      - name: Bounded symbolic safety and additional proof inits
-        env:
-          MODELS: ${{ inputs.models }}
-          MODEL_FAMILY: ${{ matrix.family }}
-          MODEL_PARTITION: ${{ matrix.partition }}
-        run: |
-          if [ -z "$MODELS" ]; then
-            MODELS="$(bun -e '
-              import fs from "node:fs";
-              const family = process.env.MODEL_FAMILY;
-              const partition = process.env.MODEL_PARTITION;
-              if (!["application", "services", "native", "legacy"].includes(family))
-                throw Error("Unknown safety model family");
-              if (!["0", "1"].includes(partition))
-                throw Error("Invalid safety model partition");
-              const models = JSON.parse(fs.readFileSync("specs/quint/" + family + "/manifest.json", "utf8"));
-              if (!Array.isArray(models) || models.length === 0)
-                throw Error("Safety model family must not be empty");
-              const names = models.map(model => model.module);
-              if (names.some(name => typeof name !== "string" || !/^[A-Za-z][A-Za-z0-9_]*$/.test(name)))
-                throw Error("Safety model family contains an invalid module");
-              const width = Math.ceil(names.length / 2);
-              const selected = names.slice(Number(partition) * width, (Number(partition) + 1) * width);
-              if (!selected.length) throw Error("Safety model partition must not be empty");
-              process.stdout.write(selected.join(","));
-            ')"
-            test -n "$MODELS"
-          fi
-          bun scripts/check-quint.ts verify --steps=6 ${MODELS:+--models=$MODELS}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: quint-symbolic-${{ matrix.family }}-${{ matrix.partition }}
-          path: test-results/quint/
-  comparison:
-    name: Historical comparisons and counterexamples
-    if: ${{ !inputs.models }}
+    name: Equivalent harvested NativeCrashJournal CI6 harvest default
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     steps:
@@ -97,264 +26,120 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: bun run upstream:prepare-client
-      # Every declared comparison and expected counterexample runs on promotion.
-      - name: Expected counterexamples and current-design comparisons
-        run: bun scripts/check-quint.ts compare
+      - name: Admit exact original source and sealed scheduling configuration
+        run: |
+          sha256sum --check <<'PINS'
+          21e1a8cf2bbd16ebbaea9214869384b5a34590e3107651dfc5e25c2cf191e7ae  specs/quint/native/NativeCrashJournal.qnt
+          ed660c8af7dc49a71e7b9d476a77525021f9cd9f73425550e6d06e166077b5d1  scripts/check-quint.ts
+          eca738dbc8155b8e2da07ff1a72a27aea10ba0fe3256289ad8b18ef5846bec7e  scripts/ci/native-crash-harvest-default.json
+          PINS
+      - name: Original full CI6 safety with harvest default scheduling
+        run: |
+          set -euo pipefail
+          unset JVM_ARGS JVM_GC_ARGS JAVA_TOOL_OPTIONS _JAVA_OPTIONS SMT_ENCODING SMT_SOLVER CONFIG_FILE OUT_DIR RUN_DIR WRITE_INTERMEDIATE
+          alpha_crash_watch=$(mktemp -d "$RUNNER_TEMP/alpha-crash-after.XXXXXX")
+          bun scripts/check-quint.ts verify --models=NativeCrashJournal --steps=6 --out=test-results/quint/native-crash-harvest-default.json &
+          alpha_crash_checker_pid=$!
+          python3 - "$alpha_crash_watch" "$alpha_crash_checker_pid" <<'PYWATCH' &
+          from pathlib import Path
+          import json,subprocess,sys,time
+          control,root=Path(sys.argv[1]),int(sys.argv[2])
+          destination=Path('test-results/quint/native-crash-harvest-default-process.json')
+          while not (control/'stop').exists():
+            probe=subprocess.run(['lsof','-t','-nP','-iTCP:8845','-sTCP:LISTEN'],capture_output=True,text=True)
+            for value in probe.stdout.split():
+              pid=int(value)
+              row=subprocess.run(['ps','-p',str(pid),'-o','pid=,ppid=,pgid=,args='],capture_output=True,text=True).stdout.strip()
+              fields=row.split(None,3)
+              if len(fields)!=4 or '-jar' not in fields[3] or 'apalache.jar' not in fields[3] or '--port=8845' not in fields[3]:continue
+              chain=[pid];parent=int(fields[1])
+              for _ in range(16):
+                chain.append(parent)
+                if parent==root:break
+                answer=subprocess.run(['ps','-p',str(parent),'-o','ppid='],capture_output=True,text=True).stdout.strip()
+                if not answer:break
+                parent=int(answer)
+              if root not in chain:continue
+              destination.parent.mkdir(parents=True,exist_ok=True)
+              destination.write_text(json.dumps({'rootPid':root,'serverPid':pid,'ownedAncestorChain':chain,
+                'actualProcess':row,'capturedWhileOwned':True},indent=2)+'\n')
+              raise SystemExit(0)
+            time.sleep(0.25)
+          PYWATCH
+          alpha_crash_watcher_pid=$!
+          alpha_crash_finish() {
+            alpha_crash_status=$?
+            touch "$alpha_crash_watch/stop"
+            wait "$alpha_crash_watcher_pid" || true
+            return "$alpha_crash_status"
+          }
+          trap alpha_crash_finish EXIT
+          wait "$alpha_crash_checker_pid"
+      - name: Preserve actual checker output and proof custody
+        if: always()
+        run: |
+          python3 - <<'PYCUSTODY'
+          from pathlib import Path
+          import hashlib,json,re,shutil,subprocess
+          out=Path('test-results/quint');out.mkdir(parents=True,exist_ok=True)
+          proof=out/'native-crash-harvest-default.json'
+          receipt=json.loads(proof.read_text()) if proof.exists() else {}
+          phases=receipt.get('results',[])
+          result=phases[0] if len(phases)==1 else {}
+          output=result.get('output','')
+          (out/'native-crash-harvest-default-output.log').write_text(output)
+          config_file=Path('scripts/ci/native-crash-harvest-default.json')
+          config=json.loads(config_file.read_text())
+          jar=Path.home()/'.quint/apalache-dist-0.62.4/apalache/lib/apalache.jar'
+          digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          process_file=out/'native-crash-harvest-default-process.json'
+          process=json.loads(process_file.read_text()) if process_file.exists() else None
+          vc_counts=[int(x) for x in re.findall(r'VCGen produced ([0-9]+) verification condition',output)]
+          holds={(int(s),int(i)) for s,i in re.findall(r'State ([0-9]+): state invariant ([0-9]+) holds\.',output)}
+          source=re.search(r'^Output directory: (.+)$',output,re.M)
+          raw_files={}
+          if source:
+            server=Path(source[1].strip()).resolve()
+            admitted=(Path.cwd()/'_apalache-out').resolve()
+            assert server.is_relative_to(admitted)
+            destination=out/'native-crash-harvest-default-actual-server';destination.mkdir(exist_ok=True)
+            for item in server.iterdir():
+              if item.is_file() and not item.is_symlink() and (item.name in ['detailed.log','log0.smt','run.txt'] or item.name.startswith('violation')):
+                target=destination/item.name;shutil.copyfile(item,target);raw_files[item.name]={'bytes':target.stat().st_size,'sha256':digest(target)}
+          custody={'head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'modelSha256':digest(Path('specs/quint/native/NativeCrashJournal.qnt')),
+            'configuration':config,'configurationSha256':digest(config_file),
+            'checkerSha256':digest(Path('scripts/check-quint.ts')),
+            'jarSha256':digest(jar) if jar.exists() else None,
+            'actualJvm':process,'VCCounts':vc_counts,'completedStateInvariantPairs':sorted(holds),
+            'rawServerFiles':raw_files,'passed':receipt.get('passed',False),
+            'scope':'Original raw-integer model, all seven safety VCs, states0–6, default deadlocks/oopsla19/4GiB/1800. Only harvested relation factorization changes; original Z3/default before/deadlocks/encoding/heap/deadline retained; debug observes logs.'}
+          (out/'native-crash-harvest-default-custody.json').write_text(json.dumps(custody,indent=2)+'\n')
+          assert receipt, 'Missing actual checker receipt'
+          assert config=={'debug':True}
+          assert receipt['timeoutSeconds']==1800 and not receipt['finalInputErrors']
+          assert custody['modelSha256']=='21e1a8cf2bbd16ebbaea9214869384b5a34590e3107651dfc5e25c2cf191e7ae'
+          assert custody['jarSha256']=='e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262'
+          assert receipt['inputHashes']['scripts/ci/native-crash-harvest-default.json']==custody['configurationSha256']
+          assert receipt['inputHashes']['.github/workflows/promotion.yml']==digest(Path('.github/workflows/promotion.yml'))
+          if receipt.get('passed'):
+            assert len(phases)==1 and result['model']=='NativeCrashJournal' and result['phase']=='apalache' and result['backend']=='apalache'
+            assert result['exitCode']==0 and result['signal'] is None and not result.get('error') and not result.get('interruptedAttempt')
+            assert receipt['modelOptions']['NativeCrashJournal']['steps']==6
+            for argument in ['--main=NativeCrashJournal','--backend=apalache','--max-steps=6','--init=init','--step=step','--invariant=safety']:
+              assert argument in result['argv'],argument
+            assert any(x.endswith('/scripts/ci/native-crash-harvest-default.json') and x.startswith('--apalache-config=') for x in result['argv'])
+            assert vc_counts==[7] and holds=={(s,i) for s in range(7) for i in range(7)}
+            assert 'The outcome is: NoError' in output and not re.search(r'=> TIMEOUT|Assuming it holds|Found a deadlock|invariant [0-9]+.* violated',output)
+            assert process and process['capturedWhileOwned'] and '-Xmx4096m' in process['actualProcess']
+            assert raw_files, 'Missing actual server output custody'
+            detailed='\n'.join(p.read_text(errors='replace') for p in (out/'native-crash-harvest-default-actual-server').rglob('detailed.log'))
+            smt='\n'.join(p.read_text(errors='replace') for p in (out/'native-crash-harvest-default-actual-server').rglob('*.smt'))
+            assert 'Creating Z3 solver context' in detailed and 'Creating CVC5 solver context' not in detailed
+          PYCUSTODY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: quint-comparison
+          name: native-crash-original-ci6-after
           path: test-results/quint/
-  temporal:
-    name: Fairness-guarded temporal properties (${{ matrix.group }})
-    if: ${{ !inputs.models }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 240
-    strategy:
-      fail-fast: false
-      matrix:
-        group: [PhotosLibrary, NotesView, remaining]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '21'
-      - run: bun run upstream:prepare-client
-      # Every declared temporal property runs on promotion.
-      - name: Fairness-guarded temporal properties
-        env:
-          TEMPORAL_GROUP: ${{ matrix.group }}
-        run: |
-          MODELS="$(bun -e '
-            import fs from "node:fs";
-            const group = process.env.TEMPORAL_GROUP;
-            if (!["PhotosLibrary", "NotesView", "remaining"].includes(group))
-              throw Error("Unknown temporal model group");
-            const models = ["application", "services", "native", "legacy"].flatMap(family =>
-              JSON.parse(fs.readFileSync("specs/quint/" + family + "/manifest.json", "utf8")));
-            const names = models.filter(model => model.temporal?.length).map(model => model.module);
-            if (names.some(name => typeof name !== "string" || !/^[A-Za-z][A-Za-z0-9_]*$/.test(name))
-              || new Set(names).size !== names.length) throw Error("Invalid temporal model registry");
-            const separate = ["PhotosLibrary", "NotesView"];
-            const selected = names.filter(name => group === "remaining" ? !separate.includes(name) : name === group);
-            if (!selected.length) throw Error("Temporal model group must not be empty");
-            process.stdout.write(selected.join(","));
-          ')"
-          test -n "$MODELS"
-          bun scripts/check-quint.ts temporal --models="$MODELS"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: quint-temporal-${{ matrix.group }}
-          path: test-results/quint/
-  conformance:
-    name: ${{ matrix.name }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 180
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - lane: proofs
-            name: Quint models and function proofs
-            artifact: quint-models-and-functions
-          - lane: source
-            name: Quint source contracts and Node tests
-            artifact: quint-source-tests
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "26.13.0"
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - name: Install browser for source-refinement checks
-        run: bash scripts/ci/install-playwright-browser.sh chromium
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Prepare pinned JSON dependency for native refinement
-        shell: bash
-        run: bash scripts/ci/prepare-host-test-json.sh
-      - name: Prepare reviewed Kotlin compiler for native refinement
-        run: bun test/fixtures/kotlin-tools.mjs --prepare
-      - name: Prepare hash-pinned Dafny function verifier
-        run: bash scripts/ci/prepare-dafny.sh
-      - name: Prepare pinned SDK for refinement against the real runtime
-        shell: bash
-        run: |
-          ALPHA_BUN="$(command -v bun)"
-          export ALPHA_BUN
-          test "$("$ALPHA_BUN" --version)" = '1.4.2'
-          bun scripts/prepare-local-agent.ts
-          prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
-          echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
-          echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
-      - run: bun run upstream:prepare-client
-      - name: Typecheck, scenarios and sampled simulation of every model
-        if: matrix.lane == 'proofs'
-        run: bun run quint:check
-      - name: Function proofs
-        if: matrix.lane == 'proofs'
-        env:
-          LEMMA_REQUIRE_BACKEND: '1'
-        run: bun run lemma:check
-      - name: Quint node tests
-        if: matrix.lane == 'source'
-        env:
-          ALPHA_REQUIRE_PREPARED_SDK: '1'
-          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
-          ALPHA_QUINT_BUN: ${{ env.ALPHA_BUN }}
-          # Each file starts compilers and the Quint interpreter; keep their deadlines exact.
-          ALPHA_TEST_CONCURRENCY: '1'
-        run: bun run quint:tests
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: ${{ matrix.artifact }}
-          path: |
-            test-results/quint/
-            test-results/quint-refinement/
-            test-results/lemma/
-          retention-days: 7
-  browser:
-    name: Browser development surface (shard ${{ matrix.shard }}/6)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6]
-    steps:
-      - name: Free disk on the disposable browser runner
-        if: runner.environment == 'github-hosted'
-        run: |
-          for unused in /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/powershell; do
-            if [ -d "$unused" ]; then sudo rm -rf -- "$unused"; fi
-          done
-          df -h "$GITHUB_WORKSPACE"
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - run: bash scripts/ci/install-playwright-browser.sh chromium
-      - name: Chromium suite on the flag-on development server
-        env:
-          # Development shards opt into test mocks, fixtures and device controls explicitly.
-          ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
-        run: bun run test:browser -- --shard=${{ matrix.shard }}/6
-      # Every case in these files needs the local-agent bridge profile. The bridge answers the
-      # reminder spec's storage route itself, so the unreachable synthetic agent origin is enough.
-      - name: Exercise synthetic local-agent speech profile and host reminder recovery
-        if: matrix.shard == 1
-        run: |
-          bun -e "import fs from 'node:fs'; fs.writeFileSync(process.env.RUNNER_TEMP + '/alpha-synthetic-owner-token', 'a'.repeat(64), {mode: 0o600});"
-          PLAYWRIGHT_HTML_OUTPUT_DIR=test-results/browser-agent-profile-report ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE="$RUNNER_TEMP/alpha-synthetic-owner-token" ALPHA_LOCAL_AGENT_ORIGIN=http://127.0.0.1:1 bun run test:browser -- test/browser/browser-agent-tts.spec.ts test/browser/browser-host-disclosure.spec.ts test/browser/host-reminder-recovery.spec.ts --output=test-results/browser-agent-profile
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: browser-development-shard-${{ matrix.shard }}-of-6
-          path: |
-            test-results/browser/
-            test-results/browser-report/
-            test-results/browser-agent-profile/
-            test-results/browser-agent-profile-report/
-          retention-days: 3
-  storage:
-    name: Browser storage (${{ matrix.browser }})
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [firefox, webkit]
-    steps:
-      - name: Free disk on the disposable browser runner
-        if: runner.environment == 'github-hosted'
-        run: |
-          for unused in /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/powershell; do
-            if [ -d "$unused" ]; then sudo rm -rf -- "$unused"; fi
-          done
-          df -h "$GITHUB_WORKSPACE"
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - name: Install storage browser and system dependencies
-        run: bash scripts/ci/install-playwright-browser.sh ${{ matrix.browser }}
-      - name: Start the headless Firefox audio device
-        if: matrix.browser == 'firefox'
-        # Firefox needs an audio server for real Web Audio capture, even when the
-        # oscillator only feeds MediaRecorder and playback is muted.
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install --yes --no-install-recommends pulseaudio
-          pulseaudio --start --exit-idle-time=-1
-          pactl load-module module-null-sink sink_name=alpha_browser_audio
-          pactl set-default-sink alpha_browser_audio
-          pactl info
-      - run: bun run upstream:prepare-client
-      - name: Storage contracts on the flag-on development server
-        env:
-          ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
-        # The selected project uses the existing storageSpecPattern in playwright.config.ts.
-        # test:browser selects Chromium, so invoke Playwright directly for this matrix.
-        run: bunx --bun --no-install playwright test --project=${{ matrix.browser }}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: browser-storage-${{ matrix.browser }}
-          path: |
-            test-results/browser/
-            test-results/browser-report/
-          retention-days: 3
-  production:
-    name: Browser production surface (flag off)
-    # Runs production-surface.spec.ts and every *.production.spec.ts (playwright.config.ts).
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "26.13.0"
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - run: bun install --frozen-lockfile
-      - run: bash scripts/ci/install-playwright-browser.sh chromium
-      - run: bun run upstream:prepare-client
-      - name: Test-mocks bundle records its flag
-        run: |
-          bun run build:test-mocks -- --outDir ../../test-results/test-mocks-web
-          bun scripts/audit-production-bundle.ts test-results/test-mocks-web --expect-test-mocks
-      # Builds and previews a flag-off bundle; the flag is deliberately unset here.
-      - run: bun run test:browser:production
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: browser-production-surface
-          path: |
-            test-results/browser/
-            test-results/browser-report/
-          retention-days: 3
+          if-no-files-found: error
