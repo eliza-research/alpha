@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {parse as parseYaml} from 'yaml';
-import {AVD,BROWSER_CONTROLS_CLASSES,READING_CLASSES,SERIAL,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.ts';
+import {AVD,READING_CLASSES,SERIAL,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.ts';
 import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.ts';
 import {assertBefore} from './fixtures/assert-order.mjs';
 
@@ -19,7 +19,7 @@ function jobs(text){
 }
 const job=jobs(workflow);
 const emulatorJobs=['instrumentation','browser-reading'];
-const suites=['instrumentation','browser-reading','browser-controls'];
+const suites=['instrumentation','browser-reading'];
 const hosted={GITHUB_ACTIONS:'true',RUNNER_ENVIRONMENT:'github-hosted',GITHUB_SHA:'a'.repeat(40),GITHUB_RUN_ID:'7'};
 
 test('emulator evidence workflow has no trigger but a dispatch that names a suite',()=>{
@@ -40,12 +40,10 @@ test('every emulator job is selected by the suite input, needs the build, and it
  for(const name of emulatorJobs){
   const text=job[name];
   assert.match(text,/\n    needs: build\n/,name);
-  const alternate=name==='browser-reading'?" || inputs.suite == 'browser-controls'":'';
-  assert.ok(text.includes(`\n    if: inputs.suite == '${name}'${alternate} || inputs.suite == 'all'\n`),`${name} runs only when selected`);
+  assert.ok(text.includes(`\n    if: inputs.suite == '${name}' || inputs.suite == 'all'\n`),`${name} runs only when selected`);
   assert.match(text,/\n    timeout-minutes: \d+\n/,name);
   assert.equal((text.match(/reactivecircus\/android-emulator-runner@/g)??[]).length,1,name);
-  const selection=name==='browser-reading'?'${{ env.BROWSER_SUITE }}':name;
-  assert.ok(text.includes(`\n          script: bun scripts/ci/emulator-suite.ts ${selection}\n`),`${name} runs its own suite`);
+  assert.ok(text.includes(`\n          script: bun scripts/ci/emulator-suite.ts ${name}\n`),`${name} runs its own suite`);
   // API 35 default x86_64 is the fixture the preparation scripts admit (AVD "test", emulator-5554).
   assert.match(text,/api-level: 35\n          target: default\n          arch: x86_64\n/,name);
   // The APKs are the build job's, proven by the manifest hash, at the build job's commit.
@@ -79,7 +77,7 @@ test('every emulator job uploads its result directory, also after a failure',()=
   assert.match(uploads[0],/if-no-files-found: error/,name);
   assert.match(uploads[0],/retention-days: 3/,name);
   assert.match(uploads[0],/\n            test-results\/emulator-suite\/\n/,name);
-  assert.match(uploads[0],/name: (?:[a-z0-9_-]+|android-emulator-\$\{\{ env\.BROWSER_SUITE \}\})-\$\{\{ github\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,`${name} artifact is named by commit and run`);
+  assert.match(uploads[0],/name: [a-z0-9_-]+-\$\{\{ github\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,`${name} artifact is named by commit and run`);
   // The emulator step comes before the upload and is not allowed to fail quietly.
   assertBefore(job[name],'android-emulator-runner@','actions/upload-artifact@',name);
   assert.doesNotMatch(job[name],/continue-on-error/,name);
@@ -195,21 +193,6 @@ test('the reading job provisions the pinned WebView on the fixture its provision
  assert.doesNotMatch(job.instrumentation,/-writable-system/);
 });
 
-test('browser controls are opt-in and record their exact classes',()=>{
- const browser=parseYaml(workflow).jobs['browser-reading'];
- assert.equal(browser.env.BROWSER_SUITE,"${{ inputs.suite == 'browser-controls' && 'browser-controls' || 'browser-reading' }}");
- assert.equal(browser.steps.find(step=>step.with?.script).with.script,'bun scripts/ci/emulator-suite.ts ${{ env.BROWSER_SUITE }}');
- assert.match(browser.steps.find(step=>step.uses?.startsWith('actions/upload-artifact@')).with.name,/^android-emulator-\$\{\{ env\.BROWSER_SUITE \}\}-/);
- const controls=suitePlan('browser-controls');
- assert.deepEqual(controls.slice(0,2),suitePlan('browser-reading').slice(0,2),'uses the same pinned WebView preparation');
- assert.deepEqual(controls.map(step=>step.name),['prepare-emulator','prepare-webview','ci-browser-controls']);
- const options=parseInstrumentationArgs(controls[2].command.slice(4));
- assert.deepEqual(BROWSER_CONTROLS_CLASSES,['PasswordBrowserFill']);
- assert.deepEqual(options.classes.map(name=>name.split('.').at(-1)),BROWSER_CONTROLS_CLASSES.map(name=>`${name}InstrumentedTest`));
- assert.equal(options.apkDir,'artifacts');
- assert.equal(controls[2].results,'test-results/android-instrumentation/ci-browser-controls/results.json');
-});
-
 test('suite plans: default classes; reading classes with the gates they need',()=>{
  const instrumentation=suitePlan('instrumentation');
  assert.deepEqual(instrumentation.map(step=>[step.name,step.kind]),[['prepare-emulator','preparation'],['ci-default','evidence']]);
@@ -261,7 +244,7 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
  assert.deepEqual(failing.steps.map(row=>row.status),['passed','passed','failed']);assert.equal(failing.passed,false);
  assert.deepEqual(failing.steps[2].evidence.classes[0],{variant:'launcher',class:'BrowserReadingNavigation',status:'failed',failed:['m']});
  assert.equal(failing.evidenceClass,'E');assert.equal(failing.commit,'a'.repeat(40));
- const summary=summarize(failing);assert.match(summary,/`browser-reading`: FAILED/);assert.match(summary,/\| launcher \| BrowserReadingNavigation \| failed \|/);assert.match(summary,/Not a device or acceptance/);
+ const summary=summarize(failing);assert.match(summary,/`browser-reading`: FAILED/);assert.match(summary,/\| launcher \| BrowserReadingNavigation \| failed \|/);assert.match(summary,/Not a distributable build, a device or acceptance/);
 
  // A provider that cannot be installed stops the suite: the reading classes are not run on WebView 124.
  fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});calls=[];

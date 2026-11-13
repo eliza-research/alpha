@@ -171,7 +171,6 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   HostedResultNotice: { note: "builders only here; the posted and denied notices need the notification permission set first: bun scripts/test-native-permissions.ts notice|notice-denied APP.apk TEST.apk OUTPUT" },
   WorkflowApprovalNotice: { args: { workflowApprovalNotice: "1" }, grant: ["POST_NOTIFICATIONS"], note: "the runner grants the notification permission the class requires after clearing app data" },
   BrowserReadingNavigation: { args: { browserIsolatedReading: "1" }, note: "one method per provider: the stale-document method needs isolated-world injection; without it only the reading-unavailable method runs and the other is listed as skipped (INSTRUMENTATION_STATUS browserReadingProvider says which)" },
-  PasswordBrowserFill: {},
   InboxOperationJournal: { args: { inboxOperationNative: "1" } },
   MailAttachment: { args: { mailAttachmentNative: "1" } },
   SystemShade: { note: "homeAsksAndroidForItsShadeOnTheLauncherOnly skips on a signed-out build. Launcher Home asks Android for its shade (EXPAND_STATUS_BAR) (#416, #417). Not AOSP-image or device acceptance" },
@@ -267,7 +266,7 @@ export const CAMPAIGN_RUNNERS = [
 
 const MOCK_BUILD_ONLY = "asserts or assumes BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS (mock mode, loopback HTTP fixtures or Home without an account), which no APK build sets; other live sources still reference the class";
 const CALENDAR_CAMPAIGN = "ran only in the Calendar regression campaign, which installed the test-mocks pair to get past the required sign-in";
-const NO_HOSTED_SUPERVISOR = "ran only under the resident-android.yml emulator supervisors, which installed the test-mocks archive";
+const NO_HOSTED_SUPERVISOR = "ran only under the resident-android.yml emulator supervisors (scripts/ci/resident-native.py and pending-recovery-ui.py), which installed the test-mocks archive in an owned secondary user; the class keeps its own argument gate, and running it on the launcher debug APK needs a runner that provides that orchestration";
 
 /**
  * @Test classes that no runner in this repository can run, each with the reason. A class
@@ -299,6 +298,7 @@ export const NOT_RUN_BY_A_RUNNER = {
   BrowserIsolatedReading: MOCK_BUILD_ONLY,
   BrowserWebFeatures: MOCK_BUILD_ONLY,
   IsolatedPdf: MOCK_BUILD_ONLY,
+  PasswordBrowserFill: "drives the Browser view on an emulator (it asserts ro.kernel.qemu), and on a signed-out emulator build P-43's required sign-in covers the views; tests never sign in, so no APK reaches it",
   PosterCalendarJourney: "J01 drives the removed Camera Scan mode (decision C1); Choose image remains in the composed Camera tools, but this old mode-based journey needs a rewrite to the agent scan path before any runner takes it again",
   LocalServerSocketRelease: "platform probe for an upstream resident defect (upstream defect 4): it measures Android, not Alpha, and is run by hand when that defect is revisited",
   ResetExternalFixture: "requires an external host controller, disposable non-owner user, synthetic device credential and separate companion/media sentinels; reset kills instrumentation, so phases cannot run as a single generic campaign",

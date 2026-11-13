@@ -1,20 +1,19 @@
 name: Android emulator evidence
 # Dispatch only. Every job after `build` boots an emulator on a hosted runner, so nothing
 # here runs on a push, a pull request or a schedule. The result is
-# emulator-class evidence for the launcher debug APK on an x86_64 SDK image: never a device
-# or acceptance.
+# emulator-class evidence for the launcher debug APK on an x86_64 SDK image: never a
+# distributable build, a device or acceptance.
 on:
   workflow_dispatch:
     inputs:
       suite:
-        description: Emulator evidence to produce (browser-controls runs only when selected)
+        description: Emulator evidence to produce
         type: choice
         required: true
         default: instrumentation
         options:
           - instrumentation
           - browser-reading
-          - browser-controls
           - all
 permissions:
   contents: read
@@ -28,7 +27,7 @@ jobs:
   build:
     name: Build the launcher APKs
     runs-on: ubuntu-24.04
-    timeout-minutes: 150
+    timeout-minutes: 180
     outputs:
       artifact_id: ${{ steps.apks.outputs.artifact-id }}
       source_sha: ${{ github.sha }}
@@ -174,15 +173,14 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  # The selected browser suite, on the pinned Chromium 157 WebView.
+  # The browser reading suite, on the pinned Chromium 157 WebView.
   browser-reading:
-    name: ${{ inputs.suite == 'browser-controls' && 'Browser controls on WebView 157' || 'Browser reading on WebView 157' }}
+    name: Browser reading on WebView 157
     needs: build
-    if: inputs.suite == 'browser-reading' || inputs.suite == 'browser-controls' || inputs.suite == 'all'
+    if: inputs.suite == 'browser-reading' || inputs.suite == 'all'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
-      BROWSER_SUITE: ${{ inputs.suite == 'browser-controls' && 'browser-controls' || 'browser-reading' }}
       SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
       EXPECTED_MANIFEST_SHA256: ${{ needs.build.outputs.manifest_sha256 }}
     steps:
@@ -228,11 +226,11 @@ jobs:
           # provisioner reads back.
           emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -writable-system -append-userspace-opt 'androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:05.0 pci0000:00/0000:00:06.0'
           disable-animations: true
-          script: bun scripts/ci/emulator-suite.ts ${{ env.BROWSER_SUITE }}
+          script: bun scripts/ci/emulator-suite.ts browser-reading
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: android-emulator-${{ env.BROWSER_SUITE }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: android-emulator-browser-reading-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           # The pinned URL and hashes reproduce the provider archive; it is not uploaded again.
           path: |
             test-results/android-instrumentation/
