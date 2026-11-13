@@ -22,7 +22,7 @@ async function compile(extraSources) {
       builder.onLoad({filter: /\/files-browser-adapter\.ts$/}, args => {
         const text = readFileSync(args.path, 'utf8'), marker = '  const repaint = () =>';
         assert.equal(text.split(marker).length, 2, 'One Files closure observation seam');
-        return {loader: 'ts', contents: text.replace(marker, `  __ports.inspect=()=>({bound:!!api,active,place,generation,stateGeneration,access,volumes,entries,loaded,busy,error});\n${marker}`)};
+        return {loader: 'ts', contents: text.replace(marker, `  __ports.inspect=()=>({bound:!!api,active,place,generation,stateGeneration,access,volumes,entries,loaded,busy,loading,error});\n${marker}`)};
       });
     }}]});
   const sources = [...Object.keys(compiled.metafile.inputs).filter(path => !path.startsWith('<')),
@@ -66,7 +66,8 @@ async function fixture(compiled) {
     const value = port.inspect();
     return {'s.bound': value.bound, 's.active': value.active, 's.place': paths[value.place.path], 's.generation': value.generation,
       's.stateGeneration': value.stateGeneration, 's.access': value.access, 's.volumes': value.volumes.map(item => item.primary ? 1 : 2),
-      's.entries': value.entries.map(entryId), 's.loaded': value.loaded, 's.busy': value.busy, 's.error': !!value.error,
+      // The model's read-in-progress flag is loading; busy owns unrelated mutations.
+      's.entries': value.entries.map(entryId), 's.loaded': value.loaded, 's.busy': value.loading, 's.error': !!value.error,
       's.states': qset(states.filter(request => !request.settled).map(request => request.id)),
       's.lists': qset(lists.filter(request => !request.settled).map(request => request.id)),
       's.requests': qmap(ids.map(id => {const request = states[id - 1]; return [id, request

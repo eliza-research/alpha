@@ -22,7 +22,7 @@ test('two held-monitor acquire calls retain the current generation death recipie
  assert.equal(result.unrestoredIdentities,0);
 });
 
-test('both host distributions select the shared patched listener source set',()=>{
+test('the launcher host selects the shared patched listener source set',()=>{
  const staged=preparePatchedNative();
  const module='packages/app/platforms/android/sense';
  const descriptor=readFileSync('android/sense/build.gradle','utf8');
@@ -31,7 +31,7 @@ test('both host distributions select the shared patched listener source set',()=
  assert.match(descriptor,/ext\.elizaSenseSourceDir = new File\(preparedSense\.root\.toString\(\), 'packages\/app\/platforms\/android\/sense'\)/);
  assert.match(descriptor,/apply from: new File\(elizaSenseSourceDir, 'consumer.gradle'\)/);
  const profile=JSON.parse(readFileSync('android/consumer-host.json','utf8')).profile;
- assert.deepEqual(profile.flavors.map(row=>row.name),['standalone','launcher']);
+ assert.deepEqual(profile.flavors.map(row=>row.name),['launcher']);
  assert.equal(profile.modules.find(row=>row.name==='sense').source.path,'android/sense');
  const consumer=readFileSync(join(staged.root,module,'consumer.gradle'),'utf8');
  assert.match(consumer,/sourceSets\.main\s*\{\s*java\.srcDirs = \[new File\(source, 'src\/main\/java'\)/);
