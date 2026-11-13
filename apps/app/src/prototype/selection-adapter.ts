@@ -200,7 +200,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
           name, nativeSelectionId:selected.result.selectionId, base: name, ext: '', canForget:true, forget, meta: mime + ' · selected on this device', d: '',
           isPages: !!selected.pdf||rows.length>0, pages: selected.pdf ? [] : pages, isPdf: !!selected.pdf, pdfImage: selected.pdf?.image || '', pdfLabel: selected.pdf ? 'Page ' + (selected.pdf.page+1) + ' of ' + selected.pdf.count : '', pdfPrevious: () => selected.pdf && selected.pdf.page > 0 ? pdfPage(selected.pdf.page-1,api) : undefined, pdfNext: () => selected.pdf && selected.pdf.page+1 < selected.pdf.count ? pdfPage(selected.pdf.page+1,api) : undefined, pdfHasPrevious: !!selected.pdf && selected.pdf.page > 0, pdfHasNext: !!selected.pdf && selected.pdf.page+1 < selected.pdf.count, paper: '#FFFFFF', isPhoto: false,
           mediaImage:media?.kind==='image',mediaVideo:media?.kind==='video',mediaAudio:media?.kind==='audio',mediaUrl:media?.url,mediaRef,
-          mediaError:()=>{if(!sameSelection())return;current={...selected,mediaFailed:true,status:'Preview unavailable for this file.'};refresh();},
+          mediaError:()=>{if(!sameSelection()||!current)return;current={...current,mediaFailed:true,status:'Preview unavailable for this file.'};refresh();},
           previewStatus:!media&&!selected.pdf&&selected.text===undefined?selected.status:'',
           canOpenElsewhere:selected.result.status==='selected'&&!!selected.result.selectionId,
           openElsewhereLabel:Capacitor.isNativePlatform()?'Open in Android':'Download file',openElsewhere:()=>void open(api,selected,!Capacitor.isNativePlatform()),
