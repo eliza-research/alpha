@@ -9,7 +9,7 @@ async function protocol(env){
 }
 test('actual Cloud adapter admits explicit staging resident without mocks and refuses packaged staging',async()=>{
  const flags={DEV:true,VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_ALPHA_CLOUD_ENVIRONMENT:'staging',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:''};
- const staging=await protocol(flags);assert.equal(staging.cloudEnvironmentAvailable('staging'),true);assert.equal(staging.planManagementUrl('staging'),'https://cloud-staging.eliza.app/cloud/billing?app=alpha');
+ const staging=await protocol(flags);assert.equal(staging.cloudEnvironmentAvailable('staging'),true);assert.equal(staging.planManagementUrl('staging'),'https://cloud-staging.eliza.app/cloud/billing');
  for(const env of [{...flags,DEV:false},{...flags,VITE_ALPHA_CLOUD_RESIDENT:''},{...flags,VITE_ALPHA_CLOUD_ENVIRONMENT:'production'}]){
   const p=await protocol(env);assert.equal(p.cloudEnvironmentAvailable('staging'),false);assert.throws(()=>p.planManagementUrl('staging'),/unavailable/);assert.equal(p.cloudEnvironmentAvailable('production'),true);
  }

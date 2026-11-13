@@ -54,7 +54,7 @@ export function cloudEnvironmentAvailable(environment: CloudEnvironment): boolea
 export function planManagementUrl(environment: CloudEnvironment): string {
   const authority = authorities[environment];
   if (!authority) throw new Error("This Cloud environment is unavailable in this build.");
-  return `https://${authority.agents}/cloud/billing?app=alpha`;
+  return `https://${authority.agents}/cloud/billing`;
 }
 export interface CloudCredential {
   /** Local generation identifier, never an authentication credential. */
