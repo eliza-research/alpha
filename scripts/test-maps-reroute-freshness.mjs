@@ -35,7 +35,7 @@ async function fixture() {
  class Voice { enabled=true; pause(){} update(){} toggle(){this.enabled=!this.enabled;} }
  const storage = {getItem:()=>null,setItem:noop};
  const context = vm.createContext({console,queueMicrotask, setTimeout, clearTimeout, AbortController,
-  MapsScreenController, mapShareLabel:()=> 'Share', shareMap:async()=>'closed', insideCloudCoverage:()=>true, describeMapsDisclosure:()=>'', DailyApps:{}, mapsEventStillThere:()=>false, connectionController:{getSnapshot:()=>({open:false})},
+  MapsScreenController, devSurfacesEnabled:false, canShareMap:()=>true, mapShareLabel:()=> 'Share', shareMap:async()=>'closed', insideCloudCoverage:()=>true, describeMapsDisclosure:()=>'', DailyApps:{}, mapsEventStillThere:()=>false, connectionController:{getSnapshot:()=>({open:false})},
   initializeRegionalMaps:async()=>{}, regionalDiagnostics:()=>({}),
   MapsController:class extends MapsController { constructor(c,p){super(c,p,new SavedPlaces('freshness',storage),new Location());} },
   locationPermissionGranted:async()=>true,NativeMapsLocation:Location,BackgroundNavigation:Background,NavigationVoice:Voice,registerPlugin:()=>({}),Capacitor:{isNativePlatform:()=>false},isAndroid:false,

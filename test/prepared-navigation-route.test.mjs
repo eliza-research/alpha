@@ -1,3 +1,4 @@
+import {nativeAgentGate} from './fixtures/native-agent-gate.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdtempSync,rmSync} from 'node:fs';
@@ -36,8 +37,7 @@ test('local and remote navigation entrypoints admit only exact preparation, reta
 });
 test('actual native request gate agrees on preparation shape, method, owner and encoded paths',{skip:jsonJarSkip},()=>{
  const source=readFileSync(nativeSource('AlphaLocalAgentPlugin.java'),'utf8');
- const start=source.indexOf('  if((group!=null?',source.indexOf(' @PluginMethod public void request('));
- const end=source.indexOf('){',start);const expression=source.slice(start+5,end);
+ const gate=nativeAgentGate(source);
  const temp=mkdtempSync(join(tmpdir(),'alpha-navigation-gate-'));
  try{
   const file=join(temp,'NavigationGateTest.java');
@@ -45,9 +45,10 @@ test('actual native request gate agrees on preparation shape, method, owner and 
 import org.json.*;
 class OwnerRoutes { boolean allowed(String g,String p,String m){return true;} }
 public class NavigationGateTest {
+ ${gate.helpers}
  static boolean allowed(String path,String method,String body,String expectedOwner){
   if(path.endsWith("/navigate")&&!PreparedViewNavigation.allowed(path,method,body))return false;
-  String group=null;OwnerRoutes routes=new OwnerRoutes();return !(${expression});
+  String group=null;OwnerRoutes routes=new OwnerRoutes();${gate.declarations}return !(${gate.condition});
  }
  public static void main(String[]args)throws Exception{
   JSONArray rows=new JSONArray(new String(System.in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));

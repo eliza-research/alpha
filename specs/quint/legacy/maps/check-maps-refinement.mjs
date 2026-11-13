@@ -308,7 +308,7 @@ async function guidanceTargets(page, viewports) {
           };
         }, width > height);
         assert.equal(noSubstituteMap, true, 'A provider without tiles does not expose a substitute basemap');
-        assert.equal(targets.length, 3, 'End, reroute and status remain usable without tiles');
+        assert.equal(targets.length, 2, 'End and status remain usable without tiles');
         for (const {label, owned} of targets) {
           assert.ok(owned.length && owned.every(Boolean), `${width}×${height} at ${percent}%: ${label} owns its sampled points`);
         }
@@ -334,24 +334,17 @@ async function reroute(page) {
   await route(page, t);
   await start(page, t);
   await geo(page, far);
-  await expect(status(page)).toContainText('Off route. Tap Reroute from here.');
-  const rerouteButton = button(page, 'Reroute from here');
-  await expect(rerouteButton).toBeVisible();
+  await expect(status(page)).toContainText('Off route.');
+  await expect(button(page, 'Reroute from here')).toHaveCount(0);
   assert.equal((await requests(page)).filter(row => row.endpoint === 'routes').length, 1);
   await t.point('An off-route fix preserves the route pending an explicit choice', null);
   const portrait = await guidanceTargets(page, [[412, 915], [360, 640]]);
   const landscape = await guidanceTargets(page, [[915, 412], [640, 360]]);
+  await geo(page, far);
   await page.evaluate(() => {
     window.closedMaps.routeRefusal = true;
-    document.addEventListener('pointerdown', event => {
-      const button = event.target.closest('button');
-      window.closedMaps.reroutePointer = {label: button?.textContent.trim(),
-        layer: event.target.closest('[data-alpha-layer]')?.getAttribute('data-alpha-layer')};
-    }, {capture: true, once: true});
+    window.rerouteHistoricalMaps();
   });
-  await rerouteButton.tap();
-  assert.deepEqual(await page.evaluate(() => window.closedMaps.reroutePointer),
-    {label: 'Reroute from here', layer: 'app'});
   await expect(button(page, 'End navigation')).toBeVisible();
   await expect(status(page)).toContainText('Cloud Maps is temporarily unavailable. Try again later.');
   await page.waitForFunction(() => window.closedMapsGeo.watches.size === 1);
@@ -406,7 +399,7 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
           const anchor = '  let returningToEvent:';
           assert.equal(code.split(anchor).length, 2);
           const fields = holdRouteReplies ? ', guidance: surface.guidance(), session: screen.navSession, publication: screen.reroutePublication' : '';
-          return code.replace(anchor, '  Object.assign(window, {inspectHistoricalMaps: () => ({route: mapsController?.snapshot().route, arrived: surface.guidance()?.arrived === true'+fields+'})});\n'+anchor);
+          return code.replace(anchor, '  Object.assign(window, {rerouteHistoricalMaps: () => screen.reroute(), inspectHistoricalMaps: () => ({route: mapsController?.snapshot().route, arrived: surface.guidance()?.arrived === true'+fields+'})});\n'+anchor);
         }
       }}]});
     await server.listen();
