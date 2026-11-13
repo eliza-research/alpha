@@ -580,6 +580,52 @@ class CloudSigningInputTest(unittest.TestCase):
             "signed": False,
         })
 
+    def test_private_cloud_pair_preserves_profile_identity_and_complete_variants(self):
+        payload = b"synthetic standalone APK bytes"
+        self.apk_bytes["standalone-release-unsigned.apk"] = payload
+        self.pin["unsignedApkSHA256"]["standalone"] = ADMISSION.digest(payload)
+        standalone = copy.deepcopy(self.verification["results"][0])
+        standalone.update(variant="standalone", file="artifacts/standalone-release-unsigned.apk",
+                          home=False, sha256=ADMISSION.digest(payload))
+        self.verification["results"].append(standalone)
+        for record in (self.verification, self.build, self.producer):
+            record["runtimeProfile"] = "cloud"
+        for row in self.verification["results"]:
+            row["packageName"] = "ai.elizaresearch.alphaphone"
+        self.pin.update(producerKind=PRODUCER.PRIVATE_RUNNER, privateStorage={})
+        private = {
+            "schema": 1, "producerKind": PRODUCER.PRIVATE_RUNNER,
+            "project": "alpha-aosp-lab-20261024", "instanceId": "8999310923263914877",
+            "alphaCommit": self.pin["alphaCommit"], "sdkCommit": self.pin["sdkCommit"],
+            "versionCode": self.pin["versionCode"], "runtimeProfile": "cloud",
+            "updateChannel": self.pin["updateChannel"],
+            "unsignedApkSHA256": self.pin["unsignedApkSHA256"],
+            "checks": {name: "passed" for name in (
+                "productSourceGuard", "sdkSourceGuard", "normalPreparation",
+                "combinedVerification", "apkArchive")},
+        }
+        raw = json.dumps(private).encode()
+        self.pin["privateProducerReceiptSHA256"] = ADMISSION.digest(raw)
+        entries = {"private-producer.json": raw}
+        self.write_archive(entries)
+        self.assertEqual(ADMISSION.admit(self.archive, self.pin)["unsignedApkSHA256"],
+                         self.pin["unsignedApkSHA256"])
+        for record, field, replacement in (
+                (self.producer, "runtimeProfile", "native"),
+                (self.build, "runtimeProfile", "native"),
+                (standalone, "packageName", PRODUCER.CANDIDATE_PACKAGE)):
+            with self.subTest(field=field, replacement=replacement):
+                previous = record[field]
+                record[field] = replacement
+                self.write_archive(entries)
+                with self.assertRaises(ValueError):
+                    ADMISSION.admit(self.archive, self.pin)
+                record[field] = previous
+        self.verification["results"].remove(standalone)
+        self.write_archive(entries)
+        with self.assertRaises(ValueError):
+            ADMISSION.admit(self.archive, self.pin)
+
     def test_channel_substitution_is_refused_at_each_evidence_boundary(self):
         for boundary in [self.verification, self.build, self.producer, *self.verification["results"]]:
             original = boundary["updateChannel"]
