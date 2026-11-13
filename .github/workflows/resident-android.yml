@@ -67,6 +67,7 @@ jobs:
       ELIZA_ANDROID_BUN_TARGET: linux-musl
       ELIZA_ANDROID_TARGET_ABIS: arm64-v8a,x86_64
       ELIZA_BUN_CHANNEL: stable
+      XDG_CACHE_HOME: ${{ runner.temp }}/alpha-cache
       ELIZAOS_VERSION_CODE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_version_code || '' }}
       ANDROID_NDK: /usr/local/lib/android/sdk/ndk/28.2.13676358
       ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
@@ -86,12 +87,6 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: Check the automatic native input manifest and artifact availability
-        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
-        timeout-minutes: 3
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 -B scripts/ci/hosted-native-inputs.py --check-remote
       # Install the selected toolchain before capacity provisioning authenticates it.
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -185,7 +180,7 @@ jobs:
       - name: Check embedding artifact contract
         run: |
           python3 test/embedding-artifact-inputs.test.py
-          python3 -B test/hosted-native-inputs.test.py
+          bun test --timeout=120000 test/native-build-inputs.test.mjs
       - name: Validate dispatched build version
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -215,24 +210,26 @@ jobs:
           PYCODE
           echo "ALPHA_LOCAL_AGENT_SOURCE_DIR=$GITHUB_WORKSPACE/artifacts/resident-ci-92fc" >> "$GITHUB_ENV"
           echo "ALPHA_WORKFLOW_WORKER_OUTPUT=$GITHUB_WORKSPACE/artifacts/worker-ci-92fc" >> "$GITHUB_ENV"
-      - name: Acquire exact native inputs for the automatic candidate
-        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
-        timeout-minutes: 12
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci/resident-phase.py --name native-input-download --seconds 600 python3 -B scripts/ci/hosted-native-inputs.py --acquire
-      - name: Stage the admitted voice and embedding inputs
-        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
-        run: |
-          bun scripts/android-stage-voice-models.ts --from test-results/resident-ci-native-inputs/voice
-          bun scripts/build-embedding-host.ts --from test-results/resident-ci-native-inputs/embedding
-          bun scripts/voice-host.ts --verify
       - name: Qualify supervisor on real Linux processes
         timeout-minutes: 10
         run: |
           python3 scripts/ci/test-resident-phase.py
           python3 test/resident-crash-diagnostic.test.py
       - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 bun install --frozen-lockfile
+      - name: Resolve the current native build recipe
+        id: native-recipe
+        run: |
+          echo "sha256=$(bun -e 'import {nativeRecipe,nativeRecipeDigest} from "./scripts/native-build-inputs.ts"; process.stdout.write(nativeRecipeDigest(nativeRecipe(process.cwd())))')" >> "$GITHUB_OUTPUT"
+      - name: Cache verified native source and model inputs
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ env.XDG_CACHE_HOME }}/alpha/native-inputs
+          key: alpha-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-recipe.outputs.sha256 }}
+      - name: Build and stage native voice and embeddings from verified inputs
+        timeout-minutes: 95
+        run: |
+          python3 scripts/ci/resident-phase.py --name native-input-build --seconds 5400 bun run agent:build-embedding-host
+          bun scripts/voice-host.ts --verify
       - name: Admit the automatic candidate version against the public inventory
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
@@ -257,10 +254,6 @@ jobs:
                 test/private-preview-cartesia-route.test.mjs
             '
       - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
-      # Noncandidate diagnostics retain their existing absent-input check.
-      - name: Verify the diagnostic on-device voice host record
-        if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'
-        run: bun scripts/voice-host.ts --verify --allow-absent
       - name: Prepare and qualify fresh resident source with normal hooks
         env:
           RUN_TURBO_CONCURRENCY: "1"
@@ -376,6 +369,7 @@ jobs:
               ('android/app/src/main/assets/agent', 'android/app/src/main/assets/agent'),
               ('android/app/src/main/jniLibs', 'android/app/src/main/jniLibs'),
               (generated_manifest, 'native-source-manifest.json'),
+              ('.eliza/native-inputs/receipt.json', 'native-build-receipt.json'),
               (str(Path(os.environ['ALPHA_LOCAL_AGENT_SOURCE_DIR']) / '.alpha-runtime-source.json'), 'prepared-source-stamp.json'),
               (str(Path(os.environ['ALPHA_WORKFLOW_WORKER_OUTPUT']) / 'manifest.json'), 'worker-manifest.json'),
           ]
@@ -421,7 +415,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp test-results/resident-ci-native-inputs/admission.json test-results/resident-ci-distribution/native-input-admission.json
+          cp .eliza/native-inputs/receipt.json test-results/resident-ci-distribution/native-input-admission.json
           bun scripts/app-update-candidate.ts receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
       - name: Retain the unsigned native update candidate separately from test mocks
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'

@@ -25,6 +25,5 @@ const noGrpc=python(['-c','import grpc, grpc_tools'],30000).status===0?false:'Py
 test('recovery UI guard admission, transcript and refusal flows',()=>runCi('test-recovery-ui-guard.py'));
 test('pending recovery phase loop settles and refuses each fault',()=>runCi('test-pending-recovery-phases.py'));
 test('resident crash diagnostic projection and refusals',()=>run('resident-crash-diagnostic.test.py'));
-test('launcher native input expiry and reviewed replacement pins',()=>run('native-input-expiry.test.py'));
 test('Android app ABI selection and build-type filters',{skip:noGroovy},()=>run('android-app-abi-selection.test.py'));
 test('emulator microphone preflight never injects or reads audio unsafely',{skip:noGrpc},()=>run('emulator-microphone-preflight.test.py'));

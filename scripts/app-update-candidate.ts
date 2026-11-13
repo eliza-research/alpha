@@ -10,6 +10,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {publicObject} from './deliver-app-update.ts';
 import {updateArtifactDigest} from './update-artifact.ts';
+import {NATIVE_BUILD_RECEIPT, readNativeBuildReceipt, verifyNativeBuildFiles, type NativeBuildReceipt} from './native-build-inputs.ts';
 import {
   APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY as REPOSITORY, APP_UPDATE_REPOSITORY_ID as REPOSITORY_ID,
   APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG,
@@ -28,13 +29,6 @@ interface ArchiveRecord {testMocks: boolean; runtimeProfile: string; updateChann
 interface VerifiedApk extends ArchiveRecord {mode: string; variant: string; file: string; packageName: string; versionCode: number; signed: boolean; signerSha256: string | null; distributable: boolean; debuggable: boolean; runtime: string; home: boolean; launcher: boolean; sha256: string; releaseAdmission: {failures: unknown[]; blockers: string[]}}
 interface ArchiveVerification extends ArchiveRecord {upstream: {commit: string}; allowUnpackagedRuntime: boolean; results: VerifiedApk[]}
 interface InputFreeze {files: Record<string, string>; digest: string}
-interface NativeInputAdmission {
-  schema: string; source: string; sdkCommit: string; packageName: string; runId: string; attempt: string;
-  manifestSha256: string; voiceRecordSha256: string; embeddingRecordSha256: string;
-  artifacts: Record<string, {artifactId: number; sha256: string; source: string; run: number; archiveBytes: number; expandedBytes: number}>;
-  embedding: {compiledAlpha: string; compiledSDK: string; native: string; qualifiedAt: string; qualificationTransferred: boolean};
-}
-interface NativeInputPlan {artifacts: Record<string, {id: string; sha256: string}>}
 interface UploadedCandidate {
   id: number; name: string; digest: string; expired: boolean; size_in_bytes: number;
   workflow_run?: {id: number; head_sha: string; head_branch: string; repository_id: number; head_repository_id: number};
@@ -48,13 +42,6 @@ const WORKFLOW = '.github/workflows/resident-android.yml';
 const WORKFLOW_ID = 373209004;
 const MAX_CODE = 2100000000;
 const NATIVE_INPUT_RECEIPT = 'native-input-admission.json';
-const GENERATED_NATIVE_INPUT_RECEIPT = 'test-results/resident-ci-native-inputs/admission.json';
-const NATIVE_ARTIFACTS = ['voice', 'embeddingComponent', 'embeddingQualification'];
-const NATIVE_INPUT_RECORDS = {
-  manifestSha256: 'android/hosted-native-inputs.json',
-  voiceRecordSha256: 'android/voice-host/qualified-voice-host.json',
-  embeddingRecordSha256: 'android/embedding-host/qualified-host.json',
-} as const;
 const hash = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
 const readJson = <T>(file: string): T => JSON.parse(fs.readFileSync(file, 'utf8')) as T;
 function code(value: number) {
@@ -95,9 +82,9 @@ function archiveDirectory(root: string, archive: string) {
 }
 function nativeInputReceipt(archive: string) {
   const file = path.join(archive, NATIVE_INPUT_RECEIPT), stat = fs.lstatSync(file);
-  assert.ok(stat.isFile() && stat.size > 0 && stat.size <= 65536, 'Candidate needs a bounded native input admission receipt');
+  assert.ok(stat.isFile() && stat.size > 0 && stat.size <= 2 * 1024 * 1024, 'Candidate needs a bounded native input admission receipt');
   const bytes = fs.readFileSync(file);
-  return {record: JSON.parse(bytes.toString('utf8')) as NativeInputAdmission, sha256: hash(bytes)};
+  return {record: JSON.parse(bytes.toString('utf8')) as NativeBuildReceipt, sha256: hash(bytes)};
 }
 
 /** Reuse delivery's stable APK names and anonymous manifest transport. Read all
@@ -186,31 +173,28 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
   assert.equal(hash(JSON.stringify(before.files)), before.digest, 'Archive input fingerprint differs');
   assert.equal(before.files['upstream.lock.json'], hash(fs.readFileSync(path.join(root, 'upstream.lock.json'))), 'Archive source lock differs');
   const native = nativeInputReceipt(archive);
-  assert.equal(before.files[GENERATED_NATIVE_INPUT_RECEIPT], native.sha256, 'Generated native input receipt differs from the build freeze');
-  assert.ok(native.record.schema === 'alpha-hosted-native-input-admission/v1' &&
-    native.record.source === context.sourceCommit && native.record.sdkCommit === context.sdkCommit &&
-    native.record.packageName === config.appId && native.record.runId === context.runId && native.record.attempt === context.runAttempt,
-  'Native input admission does not bind the exact candidate source, package, SDK and run attempt');
-  for (const key of Object.keys(NATIVE_INPUT_RECORDS) as (keyof typeof NATIVE_INPUT_RECORDS)[]) {
-    const file = NATIVE_INPUT_RECORDS[key], digest = native.record[key];
-    assert.ok(/^[0-9a-f]{64}$/.test(digest) && before.files[file] === digest &&
-      hash(fs.readFileSync(path.join(root, file))) === digest, `Native input admission differs from frozen ${file}`);
+  assert.equal(before.files[NATIVE_BUILD_RECEIPT], native.sha256, 'Generated native input receipt differs from the build freeze');
+  const generated = readNativeBuildReceipt(root);
+  assert.ok(generated, 'Native input build receipt is missing');
+  assert.equal(hash(fs.readFileSync(path.join(root, NATIVE_BUILD_RECEIPT))), native.sha256,
+    'Native input receipt differs from the staged build');
+  verifyNativeBuildFiles(root, generated);
+  for (const file of generated.files) {
+    assert.equal(before.files[file.path], file.sha256, `Native output differs from frozen ${file.path}`);
   }
-  const plan = readJson<NativeInputPlan>(path.join(root, NATIVE_INPUT_RECORDS.manifestSha256));
-  assert.deepEqual(Object.keys(native.record.artifacts ?? {}).sort(), [...NATIVE_ARTIFACTS].sort(), 'Native input admission needs all three artifacts');
-  for (const name of NATIVE_ARTIFACTS) {
-    const actual = native.record.artifacts[name], expected = plan.artifacts[name];
-    assert.ok(expected && Number.isSafeInteger(actual.artifactId) && String(actual.artifactId) === expected.id &&
-      actual.sha256 === expected.sha256 && /^[0-9a-f]{64}$/.test(actual.sha256) && /^[0-9a-f]{40}$/.test(actual.source) &&
-      Number.isSafeInteger(actual.run) && actual.run > 0 &&
-      Number.isSafeInteger(actual.archiveBytes) && actual.archiveBytes > 0 &&
-      Number.isSafeInteger(actual.expandedBytes) && actual.expandedBytes > 0, `Native input artifact ${name} differs from its frozen plan`);
+  assert.ok(native.record.schema === 'alpha-native-build/v1' &&
+    native.record.consumerSdkCommit === admission.sdkCommit &&
+    /^[0-9a-f]{40}$/.test(native.record.producer.sdkCommit) &&
+    native.record.recipe.identity === config.appId &&
+    native.record.producer.ndk === native.record.recipe.toolchain.ndk &&
+    native.record.producer.cmake === native.record.recipe.toolchain.cmake &&
+    native.record.producer.python === native.record.recipe.python &&
+    ['linux', 'darwin'].includes(native.record.producer.platform) &&
+    ['x64', 'arm64'].includes(native.record.producer.arch),
+  'Native input build must bind its actual source, package and toolchain');
+  for (const [file, digest] of Object.entries(native.record.recipe.productInputs)) {
+    assert.equal(before.files[file], digest, `Native input recipe differs from frozen ${file}`);
   }
-  const component = native.record.embedding;
-  const engine = readJson<{forkPin: string}>(path.join(root, NATIVE_INPUT_RECORDS.embeddingRecordSha256)).forkPin;
-  assert.ok(component && /^[0-9a-f]{40}$/.test(component.compiledAlpha) && /^[0-9a-f]{40}$/.test(component.compiledSDK) &&
-    component.native === engine && typeof component.qualifiedAt === 'string' && Number.isFinite(Date.parse(component.qualifiedAt)) &&
-    component.qualificationTransferred === false, 'Native input embedding qualification is incomplete');
   const manifest = readJson<Record<string, string>>(path.join(archive, 'apk-manifest.json'));
   const releases = verified.results.filter(row => row.mode === 'release');
   assert.equal(releases.length, 2, 'Exactly two release variants required');

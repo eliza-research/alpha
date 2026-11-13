@@ -83,18 +83,110 @@ def candidate_evidence(data, pin, apk_manifest):
             "Candidate source fingerprint differs")
     native_bytes = data("native-input-admission.json")
     require(digest(native_bytes) == candidate["nativeInputAdmissionSha256"] ==
-            files.get("test-results/resident-ci-native-inputs/admission.json"),
+            files.get(".eliza/native-inputs/receipt.json"),
             "Candidate native input admission differs from frozen source")
     native = json.loads(native_bytes)
-    require(native["schema"] == "alpha-hosted-native-input-admission/v1" and
-            native["source"] == pin["alphaCommit"] and native["sdkCommit"] == pin["sdkCommit"] and
-            native["packageName"] == CANDIDATE_PACKAGE and native["runId"] == pin["producerRunId"] and
-            native["attempt"] == str(pin["producerRunAttempt"]), "Candidate native input identity differs")
-    for field, path in (("manifestSha256", "android/hosted-native-inputs.json"),
-                        ("voiceRecordSha256", "android/voice-host/qualified-voice-host.json"),
-                        ("embeddingRecordSha256", "android/embedding-host/qualified-host.json")):
-        require(matches(SHA, native[field]) and native[field] == files.get(path),
-                f"Candidate native input record differs from {path}")
+    require(native["schema"] == "alpha-native-build/v1" and native["consumerSdkCommit"] == candidate["sdkCommit"],
+            "Candidate native input schema or consumer source differs")
+    recipe = native["recipe"]
+    require(recipe["schema"] == "alpha-native-recipe/v1" and recipe["identity"] == CANDIDATE_PACKAGE and
+            matches(COMMIT, recipe["engineCommit"]) and
+            digest(json.dumps(recipe, ensure_ascii=False, separators=(",", ":")).encode()) == native["recipeSha256"],
+            "Candidate native input recipe differs")
+    require(native["qualification"] == {"deviceExecuted": False, "userAccepted": False} and
+            native["voice"]["qualified"] is False,
+            "Candidate native inputs cannot claim device qualification")
+    producer = native["producer"]
+    require(matches(COMMIT, producer["sdkCommit"]) and producer["platform"] in ("linux", "darwin") and
+            producer["arch"] in ("x64", "arm64") and producer["ndk"] == recipe["toolchain"]["ndk"] and
+            producer["cmake"] == recipe["toolchain"]["cmake"] and producer["python"] == recipe["python"],
+            "Candidate native input producer toolchain differs")
+    for component in (native["voice"], native["embedding"]):
+        require(component["identity"] == CANDIDATE_PACKAGE and component["forkPin"] == recipe["engineCommit"],
+                "Candidate native input component identity differs")
+    expected_trees = {
+        'package.json',
+        'packages/agent/package.json',
+        'packages/app/package.json',
+        'packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt',
+        'packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp',
+        'packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java',
+        'packages/app/scripts/aosp/compile-libllama-paths.ts',
+        'packages/app/scripts/aosp/compile-libllama.ts',
+        'packages/app/scripts/aosp/compile-shim.ts',
+        'packages/app/scripts/aosp/vulkan-source-contract.ts',
+        'packages/app/scripts/aosp/zig-toolchain.ts',
+        'packages/app/scripts/build-helpers/arm64-simd.ts',
+        'packages/app/scripts/build-helpers/elizavoice-build-flags.ts',
+        'packages/app/scripts/build-helpers/omnivoice-merged.ts',
+        'packages/app/scripts/build-helpers/verify-fused-symbols.ts',
+        'packages/app/scripts/lib/repo-root.ts',
+        'packages/app/scripts/paradee-voice/build-native.ts',
+        'packages/app/scripts/stage-elizavoice-lib.ts',
+        'packages/app/scripts/voice/build-phonon2-gguf.ts',
+        'plugins/plugin-local-inference/native/android',
+        'plugins/plugin-native-inference/src/model-catalog/voice-model-versions.json',
+    }
+    require(set(recipe["sourceTrees"]) == expected_trees and
+            all(matches(COMMIT, value) for value in recipe["sourceTrees"].values()),
+            "Candidate native source trees differ")
+    expected_inputs = {"android/embedding-host/build-toolchain.json", "android/embedding-host/native-requirements.txt",
+                       "android/embedding-host/bootstrap-requirements.txt",
+                       "android/paradee-voice/asr-inputs.json", "scripts/native-build-inputs.ts",
+                       "scripts/build-embedding-host.ts", "scripts/prepare-embedding-host.ts",
+                       "scripts/embedding-native-contract.ts", "scripts/embedding-build-remap.ts",
+                       "scripts/android-stage-voice-models.ts"}
+    require(isinstance(recipe["productInputs"], dict) and expected_inputs <= recipe["productInputs"].keys() and
+            all(matches(SHA, value) and value == files.get(name) for name, value in recipe["productInputs"].items()),
+            "Candidate native recipe differs from frozen product inputs")
+    voice, embedding = native["voice"], native["embedding"]
+    require(voice["pin"] == producer["sdkCommit"] == embedding["pin"] and
+            voice["models"] == recipe["models"] and voice["asrSlot"] == recipe["asrSlot"],
+            "Candidate native producer source or models differ")
+    abis, libraries = voice["abis"], embedding["libraries"]
+    require(isinstance(abis, list) and [row["abi"] for row in abis] == ["arm64-v8a", "x86_64"] and
+            embedding["abi"] == "arm64-v8a" and embedding["jniIdentityRelocated"] is True and
+            isinstance(libraries, list) and sorted(row["name"] for row in libraries) ==
+            ["libc++_shared.so", "libelizainference.so", "libelizavoicejni.so"],
+            "Candidate native library inventory differs")
+    expected_outputs = {".eliza/paradee-voice/native/build-record.json": None,
+                        ".eliza/paradee-voice/native/assets/paradee-voice/v1/manifest.json": None}
+    for model in voice["models"]:
+        expected_outputs[".eliza/paradee-voice/native/assets/paradee-voice/v1/" + model["path"]] = model
+    for abi in abis:
+        require(abi["alignment16KiB"] is True and type(abi["abiVersion"]) is int and abi["abiVersion"] >= 17 and
+                [row["name"] for row in abi["libraries"]] == ["libelizainference.so", "libc++_shared.so"],
+                "Candidate native voice ABI differs")
+        for library in abi["libraries"]:
+            expected_outputs[f"android/app/src/main/jniLibs/{abi['abi']}/{library['name']}"] = library
+            if library["name"] == "libelizainference.so":
+                expected_outputs[f".eliza/paradee-voice/native/jniLibs/{abi['abi']}/{library['name']}"] = library
+    require(all(row["alignment16KiB"] is True for row in libraries), "Candidate native JNI alignment differs")
+    for library in abis[0]["libraries"]:
+        same = next(row for row in libraries if row["name"] == library["name"])
+        require(same["bytes"] == library["bytes"] and same["sha256"] == library["sha256"],
+                "Candidate voice and embedding engines differ")
+    expected_outputs["android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so"] = next(
+        row for row in libraries if row["name"] == "libelizavoicejni.so")
+    outputs = native["files"]
+    require(isinstance(outputs, list) and outputs and len(outputs) <= 4096, "Candidate native output inventory is empty or excessive")
+    output_paths = set()
+    for row in outputs:
+        name = row["path"]
+        require(isinstance(name, str) and name not in output_paths and
+                not PurePosixPath(name).is_absolute() and "\\" not in name and
+                all(part not in ("", ".", "..") for part in name.split("/")) and
+                matches(SHA, row["sha256"]) and row["sha256"] == files.get(name) and
+                type(row["bytes"]) is int and row["bytes"] > 0,
+                "Invalid candidate native output")
+        output_paths.add(name)
+        require(name in expected_outputs, "Unexpected candidate native output")
+        expected = expected_outputs[name]
+        require(expected is None or row["sha256"] == expected["sha256"] and row["bytes"] == expected["bytes"],
+                "Candidate native output differs from its component record")
+    require(output_paths == expected_outputs.keys(), "Incomplete candidate native output inventory")
+    require(data("producer-evidence/native-build-receipt.json") == native_bytes,
+            "Native build receipt differs from retained producer evidence")
     require(isinstance(candidate["apks"], dict) and set(candidate["apks"]) == set(VARIANTS),
             "Candidate receipt must bind exactly both release variants")
     return candidate["apks"]
@@ -148,7 +240,7 @@ def producer_evidence_members(names, inventory):
     """Apply the same member and expansion limits before signing and restoring."""
     require(isinstance(inventory, dict) and len(inventory) <= 4096, "Invalid producer inventory")
     exact_paths = ("artifacts/build-config.json", "artifacts/apk-manifest.json", "native-source-manifest.json",
-                   "prepared-source-stamp.json", "worker-manifest.json")
+                   "prepared-source-stamp.json", "worker-manifest.json", "native-build-receipt.json")
     directories = ("artifacts/sbom/", "apps/app/public/licenses/", "licenses/",
                    "android/app/src/main/assets/agent/", "android/app/src/main/jniLibs/")
     total = 0

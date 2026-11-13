@@ -138,6 +138,15 @@ class QualifiedUpdateTest(unittest.TestCase):
         for mode in ("debug", "release"):
             self.assertEqual((product / f"artifacts/launcher-{mode}.apk").read_bytes(), payload)
 
+    def test_native_stage_restores_the_exact_generated_native_receipt(self):
+        self.use_main_candidate()
+        product = self.directory / "native-receipt-stage"
+        self.stage_fixture(product)
+        with zipfile.ZipFile(self.producer.archive) as archive:
+            expected = archive.read("native-input-admission.json")
+        self.assertEqual((product / ".eliza/native-inputs/receipt.json").read_bytes(), expected)
+        self.assertFalse(json.loads(expected)["qualification"]["deviceExecuted"])
+
     def test_legacy_cloud_signed_member_keeps_its_ceiling(self):
         self.set_signed_launcher(bytes(4097))
         with patch.object(FIXTURES.PRODUCER, "LEGACY_APK_MEMBER_BYTES", 4096):

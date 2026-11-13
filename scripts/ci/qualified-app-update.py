@@ -295,7 +295,9 @@ def restore_producer_evidence(unsigned, product, kind):
                 if name in ("prepared-source-stamp.json", "worker-manifest.json"):
                     copy_verified(content, entry.file_size, expected, failure)
                 else:
-                    target = "android/app/build/generated/local-agent/source-manifest.json" if name == "native-source-manifest.json" else name
+                    targets = {"native-source-manifest.json": "android/app/build/generated/local-agent/source-manifest.json",
+                               "native-build-receipt.json": ".eliza/native-inputs/receipt.json"}
+                    target = targets.get(name, name)
                     restore_file(product, target, content, entry.file_size, expected, failure)
         for name, (entry, digest) in debug.items():
             with archive.open(entry) as content:

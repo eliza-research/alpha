@@ -51,3 +51,23 @@ test('source snapshot binds the shared client source preparer and managed source
  write(root,'scripts/prepare-client-features.ts','changed helper');
  assert.notEqual(snapshot(root).digest,before.digest);
 });
+
+
+test('source snapshot binds generated native recipe and excludes reusable cache contents', t => {
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-recipe-snapshot-'));
+ t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ const receipt='.eliza/native-inputs/receipt.json';
+ write(root,receipt,'first recipe');
+ write(root,'scripts/native-build-inputs.ts','producer helper');
+ const model='.eliza/paradee-voice/native/assets/paradee-voice/v1/fixture-model.bin';
+ const modelBytes=Buffer.alloc(4*1024*1024+11,7);
+ write(root,model,modelBytes);
+ const first=snapshot(root);
+ assert.equal(first.files[model],sha(modelBytes));
+ assert.equal(first.files[receipt],sha('first recipe'));
+ write(root,receipt,'changed recipe');
+ assert.notEqual(snapshot(root).digest,first.digest);
+ const changed=snapshot(root);
+ write(root,'.cache/alpha/native-inputs/private-cache/blob','unrelated cache bytes');
+ assert.deepEqual(snapshot(root),changed);
+});
