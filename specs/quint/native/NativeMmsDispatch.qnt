@@ -3,21 +3,23 @@
 module NativeMmsDispatch {
   type Record = { binding: int, status: str, dispatching: bool, boot: int, row: bool }
   type Review = { binding: int, sim: bool }
+  type Events = {listeners: Set[int], deliveries: int -> int}
   type State = {
     groupRecipients: bool, reviewA: Review, reviewB: Review,
     reply: str, replyKind: str, replyBinding: int, positiveBinding: int, memory: Record, disk: Record, tombstoneBinding: int,
     smsAttempts: int, mmsAttempts: int, mmsAccepted: int,
-    files: int, mmsBox: int, deletedMms: int, events: int,
+    files: int, mmsBox: int, deletedMms: int, events: Events,
     role: bool, carrier: bool, size: bool, sim: bool, provider: bool, locked: bool, process: int, boot: int
   }
   var s: State
   val actors = Set(1,2)
   val noReview = {binding:0,sim:false}
   val noRecord = {binding:0,status:"none",dispatching:false,boot:0,row:false}
+  val noEvents = {listeners:actors,deliveries:actors.mapBy(_=>0)}
 
   action initWith(groupRecipients: bool): bool = s' = {
     groupRecipients:groupRecipients,reviewA:noReview,reviewB:noReview,reply:"none",replyKind:"none",replyBinding:0,positiveBinding:0,
-    memory:noRecord,disk:noRecord,tombstoneBinding:0,smsAttempts:0,mmsAttempts:0,mmsAccepted:0,files:0,mmsBox:0,deletedMms:0,events:0,
+    memory:noRecord,disk:noRecord,tombstoneBinding:0,smsAttempts:0,mmsAttempts:0,mmsAccepted:0,files:0,mmsBox:0,deletedMms:0,events:noEvents,
     role:true,carrier:true,size:true,sim:true,provider:true,locked:false,process:1,boot:1
   }
   action init = {
@@ -106,12 +108,15 @@ module NativeMmsDispatch {
   }
 
   val callbackModes=Set("complete","bad-uri","foreign-kind","failure-conf","unreadable-conf","before","after")
+  // Preserve four publications per bridge; the two live bridges each receive the same callback.
+  pure def noticeBudget(events: Events): bool = events.deliveries.keys()==actors and
+    actors.forall(actor=>events.deliveries.get(actor)>=0 and events.deliveries.get(actor)<=4)
   action callback(mode: str, ok: bool): bool = all {
-    callbackModes.contains(mode), s.mmsAccepted==1, isMms(s.memory.binding), s.events<4,
+    callbackModes.contains(mode), s.mmsAccepted==1, isMms(s.memory.binding),
     val finalAlready=s.memory.status.in(Set("sent","failed"))
     all {
       not(finalAlready and mode.in(Set("before","after"))),
-      s' = if (mode.in(Set("bad-uri","foreign-kind"))) s
+      val candidateState=if (mode.in(Set("bad-uri","foreign-kind"))) s
       else {
         val status=if (finalAlready) s.memory.status else if (ok and mode!="failure-conf") "sent" else "failed"
         val record={ ...s.memory,status:status }
@@ -119,8 +124,11 @@ module NativeMmsDispatch {
         val box=if (not(mode.in(Set("before","after"))) and s.role and s.mmsBox==4)
           (if (status=="sent") 2 else 5) else s.mmsBox
         { ...s,memory:record,disk:disk,files:0,mmsBox:box,
-          events:if (not(finalAlready) and not(s.locked) and not(mode.in(Set("before","after")))) s.events+1 else s.events }
+          events:if (not(finalAlready) and not(s.locked) and not(mode.in(Set("before","after"))))
+            { ...s.events,deliveries:actors.mapBy(actor=>s.events.deliveries.get(actor)+
+              (if (s.events.listeners.contains(actor)) 1 else 0)) } else s.events }
       }
+      all {noticeBudget(candidateState.events), s' = candidateState}
     }
   }
 
@@ -138,7 +146,7 @@ module NativeMmsDispatch {
     val disk=s.disk
     val recovered=if (disk.dispatching or (reboot and disk.status=="submitted"))
       { ...disk,status:"unknown",dispatching:false } else disk
-    s'=reject({ ...s,boot:boot,process:s.process+1,reviewA:noReview,reviewB:noReview,memory:recovered,disk:recovered,events:0 },"none")
+    s'=reject({ ...s,boot:boot,process:s.process+1,reviewA:noReview,reviewB:noReview,memory:recovered,disk:recovered,events:noEvents },"none")
   }
 
   val OneKindOwnsDispatch = s.smsAttempts<=2 and s.mmsAccepted<=s.mmsAttempts and s.mmsAttempts<=1
@@ -152,8 +160,10 @@ module NativeMmsDispatch {
   val TombstoneRetiresRecord = s.tombstoneBinding==0 or (s.memory.binding==0 and s.disk.binding==0)
   val ApprovedReceiptMatchesReview = s.positiveBinding==0 or s.replyBinding==0
     or (s.replyBinding==s.positiveBinding and s.replyKind==wireKind(s.positiveBinding))
+  val LiveBridgeListeners = s.events.listeners==actors
+  val PerBridgeNoticeCapacity = noticeBudget(s.events)
   val safety = OneKindOwnsDispatch and DurableHandoffBinding and PduHeldForAcceptedMms and MmsNeverClaimsDelivery
-    and OutboxOnlyForMms and TombstoneRetiresRecord and ApprovedReceiptMatchesReview
+    and OutboxOnlyForMms and TombstoneRetiresRecord and ApprovedReceiptMatchesReview and LiveBridgeListeners and PerBridgeNoticeCapacity
 
   action step = any {
     nondet actor=actors.oneOf()
@@ -230,4 +240,13 @@ module NativeMmsDispatch {
     .expect(s.disk.status=="unknown" and s.files==1).then(request(2,1,"valid"))
     .expect(s.reply=="unknown" and s.mmsAttempts==1).then(callback("complete",true))
     .expect(s.disk.status=="sent" and s.files==0)
+
+  run bothMmsBridgesReceiveAndRestartRetiresTheirCountersTest = handedA.then(callback("complete",true))
+    .expect(safety and s.events.listeners==actors and s.events.deliveries==Map(1->1,2->1))
+    .then(restart(false)).expect(safety and s.events==noEvents)
+
+  run lockedMmsCallbackCannotPublishOrReplayALateNoticeTest = handedA.then(controls("locked",true))
+    .then(callback("complete",true)).expect(s.events==noEvents)
+    .then(controls("locked",false)).then(callback("complete",true))
+    .expect(safety and s.events==noEvents)
 }

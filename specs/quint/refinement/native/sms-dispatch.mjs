@@ -35,8 +35,8 @@ function driverInputs(temporary, sourceRoot, resolveSource=path=>join(sourceRoot
   return {files,complete:compiled.map(name=>resolveSource(shared+name+'.java'))};
 }
 
-function runScenarios(scenarios, {files,complete}) {
-  return javaTraceCampaign(harness,[...product,...complete,...files],scenarios.map(mode=>[mode]),'ai.eliza.plugins.messages.SmsDispatchTraces');
+function runScenarios(scenarios, {files,complete}, historical=false) {
+  return javaTraceCampaign(harness,[...product,...complete,...files],scenarios.map(mode=>historical?[mode,'historical']:[mode]),'ai.eliza.plugins.messages.SmsDispatchTraces');
 }
 
 /** Reproduce only the historical raw-pin regression with authenticated immutable bytes. */
@@ -45,7 +45,7 @@ export function historicalSmsSourceTraces(scenarios) {
   try {
     const history=materializeHistoricalSources(root,paths.map(path=>'vendor/eliza/'+path),historicalInventory);
     const hashes=captureInputs(history.sources);
-    try {return runScenarios(scenarios,driverInputs(temporary,null,path=>history.resolveSource('vendor/eliza/'+path)));}
+    try {return runScenarios(scenarios,driverInputs(temporary,null,path=>history.resolveSource('vendor/eliza/'+path)),true);}
     finally {assert.deepEqual(captureInputs(history.sources),hashes,'Historical SMS inputs changed during replay');}
   }
   finally {rmSync(temporary,{recursive:true,force:true});}
@@ -88,14 +88,16 @@ export async function checkNativeSmsDispatch(extraSources = []) {
       'multipart-provider-cannot-prove-delivery','expired-provider-attribution','default-role-outbox','provider-insert-refused','retired-role-outbox',
     ],inputs);
     for(const trace of traces)for(const {expect} of [trace,...trace.steps]){
-      for(const field of ['foreground','closed','outbox','sentRows','failedRows'])expect['s.'+field]=qset(expect['s.'+field]);
+      for(const field of ['foreground','closed','listeners','outbox','sentRows','failedRows'])expect['s.'+field]=qset(expect['s.'+field]);
       expect['s.reviews']=qmap(expect['s.reviews']);
+      expect['s.events']=qmap(expect['s.events']);
       for(const view of ['memory','disk'])for(const field of ['sent','failed','reported','delivered','deliveryFailed','rows'])
         expect['s.'+view][field]=qset(expect['s.'+view][field]);
     }
     const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,scope:'bounded-orchestration',assumptions:[
       'The exact product telephony plugin and receiver use the authenticated staged SMS dispatch/journal and extracted exact review and provider members.',
       'Synthetic radio, provider, dialog, Android image/permissions and encrypted-slot ports execute no device or real SMS operations.',
+      'Exact registered identities and per-bridge opaque operation-ID notifications are observed. The synthetic Handler runs posted work immediately within each macrostep; arbitrary held UI-queue retirement races remain separate.',
     ]});
     return {receipt,obligations:[
       {model,obligation:'Installed AOSP and carrier authority',

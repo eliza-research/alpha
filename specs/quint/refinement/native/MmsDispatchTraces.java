@@ -20,8 +20,10 @@ import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 public final class MmsDispatchTraces {
+ static boolean historicalListeners;
  static final String OP="synthetic-mms", SLOT="sms-send-ledger:v1:device", BODY="Synthetic message";
  static final long NOW=1_760_000_000_000L;
  static final int SUB=7;
@@ -36,7 +38,11 @@ public final class MmsDispatchTraces {
   if(failure!=null&&!failure.equals("pass"))throw new IOException("Synthetic journal refusal "+failure);
  }
  static void check(boolean value,String reason){if(!value)throw new AssertionError(reason);}
- static void drain()throws Exception{SmsTelephony.WORK.submit(()->{}).get(5,TimeUnit.SECONDS);}
+ static void drain()throws Exception{
+  // A queued review can enqueue its durable decision after the first barrier.
+  SmsTelephony.WORK.submit(()->{}).get(5,TimeUnit.SECONDS);
+  SmsTelephony.WORK.submit(()->{}).get(5,TimeUnit.SECONDS);
+ }
  static String digest(byte[] bytes)throws Exception{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));}
  static boolean group(int binding){return binding==1||binding==2;}
 
@@ -94,6 +100,12 @@ public final class MmsDispatchTraces {
 
   static java.lang.reflect.Field sharedField(String name)throws Exception{
    var field=SmsTelephony.class.getDeclaredField(name);field.setAccessible(true);return field;
+  }
+
+  Set<?> registeredListeners()throws Exception{
+   if(!historicalListeners)return (Set<?>)sharedField("LISTENERS").get(null);
+   Object listener=sharedField("listener").get(null);
+   return listener==null?Set.of():Set.of(listener);
   }
 
   SmsSendJournal.Record readMemory()throws Exception{
@@ -273,7 +285,9 @@ public final class MmsDispatchTraces {
     ((java.util.concurrent.ExecutorService)Trace.read(plugins[actor],"reader")).shutdownNow();
     reviewCalls[actor]=null;
    }
-   ((Map<?,?>)sharedField("JOURNALS").get(null)).clear();sharedField("listener").set(null,null);
+   ((Map<?,?>)sharedField("JOURNALS").get(null)).clear();
+   if(historicalListeners)sharedField("listener").set(null,null);
+   else ((Set<?>)sharedField("LISTENERS").get(null)).clear();
    context.dynamicReceivers.clear();if(reboot)context.boot++;
    load();process++;reply="none";replyKind="none";replyBinding=0;positiveBinding=0;
    point("restart",reboot);
@@ -287,7 +301,15 @@ public final class MmsDispatchTraces {
    int review1=Trace.read(plugins[1],"reviewCall")==null?0:reviews[1];
    int review2=Trace.read(plugins[2],"reviewCall")==null?0:reviews[2];
    int mmsBox=context.provider.mms.isEmpty()?0:(int)context.provider.mms.values().iterator().next().get(Telephony.Mms.MESSAGE_BOX);
-   int events=plugins[1].notices.size()+plugins[2].notices.size();
+   JSONArray listeners=new JSONArray(),deliveries=new JSONArray();
+   Set<?> registered=registeredListeners();
+   for(int actor=1;actor<=2;actor++){
+    if(registered.contains(Trace.read(plugins[actor],"sendListener")))listeners.put(actor);
+    for(JSObject notice:plugins[actor].notices)check(OP.equals(notice.opt("operationId")),"Every bridge notice names the exact fixed operation");
+    deliveries.put(new JSONArray().put(actor).put(plugins[actor].notices.size()));
+   }
+   check(registered.size()==listeners.length(),"Every native listener belongs to an observed current bridge");
+   JSONObject events=new JSONObject().put("listeners",listeners).put("deliveries",deliveries);
    return Trace.fields("groupRecipients",to.length==2,"reviewA",review(review1,1),"reviewB",review(review2,2),"reply",reply,
     "replyKind",replyKind,"replyBinding",replyBinding,"positiveBinding",positiveBinding,
     "memory",record(readMemory()),"disk",record(readDisk()),"tombstoneBinding",tombstoneBinding(),
@@ -310,6 +332,7 @@ public final class MmsDispatchTraces {
  }
 
  public static void main(String[] args)throws Exception{
+  historicalListeners=args.length>1&&args[1].equals("historical");
   String mode=args[0];
   Fixture f=new Fixture(mode,mode.equals("group-carrier-confirm"));
   try{

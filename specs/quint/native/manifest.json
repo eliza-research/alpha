@@ -2522,14 +2522,19 @@
         "dispatchMarkerRefusalRecoversUnknownTest",
         "providerReadbackRequiresReportAndUniqueRowTest",
         "multipartReportDoesNotProveDeliveryTest",
-        "emptyDivisionCannotReviveReviewedIdTest"
+        "emptyDivisionCannotReviveReviewedIdTest",
+        "bothBridgesReceiveTheSameCallbackTest",
+        "pausedAndDestroyedBridgesRetireOnlyTheirDeliveryTest",
+        "eightCallbackPublicationsReachBothBridgesTest"
       ],
       "invariants": [
         "OneRadioCallPerRecipient",
         "RadioNeedsDurableIntent",
         "TombstoneRetiresLiveRecord",
         "DeliveryNeedsSentAndReport",
-        "ProviderRowsHaveOnePhase"
+        "ProviderRowsHaveOnePhase",
+        "LiveBridgeListeners",
+        "PerBridgeNoticeCapacity"
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java",
@@ -2547,7 +2552,7 @@
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsProviderReader.java"
       ],
       "stateMapping": {
-        "reviews/foreground/closed/listener/events": "Exact review calls, saved SIM/tuple, Activity lifecycle and latest native callback publisher",
+        "reviews/foreground/closed/listeners/events": "Exact review calls, saved SIM/tuple, Activity lifecycle, registered bridge identities and each bridge's actual opaque notification count",
         "recipients/parts/attempts/accepted": "Synthetic exact reviewed radio handoff prefix and per-part PendingIntent identity",
         "memory/disk/tombstoneBinding/boot/process": "Real live and durable SmsSendJournal records, pruned binding tombstone and reconstruction after process or boot boundaries",
         "role/outbox/sentRows/failedRows/candidate/providerStatus": "Actual outgoing provider inserts/updates and controlled unique provider readback",
@@ -2557,7 +2562,9 @@
       "abstractions": [
         "One operation ID, two reviewed payloads and bridge actors, one or two recipients with one or two parts each. The existing journal model covers wider ID retirement and capacity.",
         "Successful pruning of the fixed ID retains its binding. Wider tombstone compaction, pruning write faults and capacity are separate from this retained-receipt boundary.",
-        "Controlled AOSP admission, radio, provider, storage and Activity ports. Installed carrier or permission behavior, legacy journal file migration, MMS and larger interleavings remain separate."
+        "Controlled AOSP admission, radio, provider, storage and Activity ports. Installed carrier or permission behavior, legacy journal file migration, MMS and larger interleavings remain separate.",
+        "Eight callback publications per bridge retain the original callback depth with at most sixteen deliveries across two recipients. Only a candidate transition that would overflow a recipient's count is refused; stopped bridges do not consume another bridge's capacity.",
+        "Handler.post executes immediately within each controlled JVM macrostep. Registration, foreground/lock filtering and exact destruction are observed; arbitrary held UI-queue retirement races remain outside this schedule."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -2582,7 +2589,9 @@
         "carrierFailureOverridesAndroidSuccessTest",
         "providerChildRefusalKeepsRadioAndDeletesPartialRowTest",
         "failedCallbackWriteDeletesPduButLosesEvidenceOnRestartTest",
-        "interruptedHandoffRecoversWithoutResendTest"
+        "interruptedHandoffRecoversWithoutResendTest",
+        "bothMmsBridgesReceiveAndRestartRetiresTheirCountersTest",
+        "lockedMmsCallbackCannotPublishOrReplayALateNoticeTest"
       ],
       "invariants": [
         "OneKindOwnsDispatch",
@@ -2591,7 +2600,9 @@
         "MmsNeverClaimsDelivery",
         "OutboxOnlyForMms",
         "TombstoneRetiresRecord",
-        "ApprovedReceiptMatchesReview"
+        "ApprovedReceiptMatchesReview",
+        "LiveBridgeListeners",
+        "PerBridgeNoticeCapacity"
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java",
@@ -2614,13 +2625,15 @@
         "reply/replyKind/replyBinding/positiveBinding": "Wire status, typed SMS/MMS result and exact retained and approved binding classes",
         "memory/disk/tombstoneBinding/boot/process": "Actual shared live/durable journal, capacity tombstone and process or boot reconstruction",
         "smsAttempts/mmsAttempts/mmsAccepted/files": "Controlled radio boundary and actual temporary PDU retention",
-        "mmsBox/deletedMms/events": "Outgoing MMS provider state, partial-row rollback and newest bridge callback publication",
+        "mmsBox/deletedMms/events": "Outgoing MMS provider state, partial-row rollback, registered bridge identities and exact per-bridge opaque notification counts",
         "role/carrier/size/sim/provider/locked": "Controlled device admission and failure classes"
       },
       "abstractions": [
         "One ID shared across SMS and MMS, two bridge instances and two exact MMS attachment variants. The SMS competitor is a one-part message.",
         "Successful capacity pruning is observed for a settled MMS. Tombstone compaction and pruning write faults are outside this retained-receipt boundary.",
-        "PDU encoding, staged file and journal execute real code with synthetic Android radio, provider and preview ports. Installed URI grants, provider semantics, platform scheduling, and carrier behavior remain separate."
+        "PDU encoding, staged file and journal execute real code with synthetic Android radio, provider and preview ports. Installed URI grants, provider semantics, platform scheduling, and carrier behavior remain separate.",
+        "Four callback publications per bridge retain the original depth with at most eight deliveries across the two live bridges. Process restart clears every old listener and loads both current bridge identities with zero counters.",
+        "Handler.post executes immediately within each controlled JVM macrostep. Arbitrary held UI-queue retirement races and additional bridge lifecycle interleavings remain separate."
       ],
       "bounds": {
         "maxSamples": 1000,

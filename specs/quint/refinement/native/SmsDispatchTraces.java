@@ -29,6 +29,7 @@ public final class SmsDispatchTraces {
  static final String[] BODY={"","Synthetic reviewed body A","Synthetic reviewed body B"};
  public static long now=1_760_000_000_000L;
  static final ArrayDeque<String> faults=new ArrayDeque<>();
+ static boolean historicalListeners;
 
  public static void write(Context context,String slot,String value)throws Exception{
   if(!slot.equals(SLOT))throw new AssertionError("Exact Alpha installed journal slot");
@@ -39,7 +40,11 @@ public final class SmsDispatchTraces {
 
  static void check(boolean condition,String reason){if(!condition)throw new AssertionError(reason);}
  static String wire(SmsSendJournal.Record record){return record==null?"none":record.status();}
- static void drain()throws Exception{SmsTelephony.WORK.submit(()->{}).get(5,TimeUnit.SECONDS);}
+ static void drain()throws Exception{
+  // A queued review can enqueue its durable decision after the first barrier.
+  SmsTelephony.WORK.submit(()->{}).get(5,TimeUnit.SECONDS);
+  SmsTelephony.WORK.submit(()->{}).get(5,TimeUnit.SECONDS);
+ }
 
  static final class Fixture {
   final Context context=new Context();
@@ -99,6 +104,12 @@ public final class SmsDispatchTraces {
 
   static java.lang.reflect.Field staticField(String name)throws Exception{
    var field=SmsTelephony.class.getDeclaredField(name);field.setAccessible(true);return field;
+  }
+
+  Set<?> registeredListeners()throws Exception{
+   if(!historicalListeners)return (Set<?>)staticField("LISTENERS").get(null);
+   Object listener=staticField("listener").get(null);
+   return listener==null?Set.of():Set.of(listener);
   }
 
   int binding(SmsSendJournal.Record record){
@@ -214,16 +225,19 @@ public final class SmsDispatchTraces {
   JSONObject observe()throws Exception{
    JSONArray reviews=new JSONArray(),foreground=new JSONArray(),closed=new JSONArray(),outbox=new JSONArray(),
     sentRows=new JSONArray(),failedRows=new JSONArray();
-   int listener=0,events=0;
+   JSONArray listeners=new JSONArray(),events=new JSONArray();
+   Set<?> registered=registeredListeners();
    for(int bridge=1;bridge<=2;bridge++){
     var plugin=plugins[bridge];boolean held=Trace.read(plugin,"reviewCall")!=null;
     reviews.put(new JSONArray().put(bridge).put(new JSONObject()
      .put("binding",held?reviewedBinding[bridge]:0).put("sim",held?reviewedSim[bridge]:0)));
     if((boolean)Trace.read(plugin,"foreground"))foreground.put(bridge);
     if((boolean)Trace.read(plugin,"closed"))closed.put(bridge);
-    if(Trace.read(plugin,"sendListener")==staticField("listener").get(null))listener=bridge;
-    events+=plugin.notices.size();
+    if(registered.contains(Trace.read(plugin,"sendListener")))listeners.put(bridge);
+    for(JSObject notice:plugin.notices)check(OP.equals(notice.opt("operationId")),"Every bridge notice names the exact fixed operation");
+    events.put(new JSONArray().put(bridge).put(plugin.notices.size()));
    }
+   check(registered.size()==listeners.length(),"Every native listener belongs to an observed current bridge");
    for(var entry:context.provider.rows.entrySet()){
     if(entry.getKey()>=900)continue;
     var row=entry.getValue();
@@ -233,7 +247,7 @@ public final class SmsDispatchTraces {
    return Trace.fields("recipients",recipients,"parts",parts,"reply",reply,"replyBinding",replyBinding,
     "memory",record(readMemory()),"disk",record(readDisk()),"tombstoneBinding",tombstoneBinding(),
     "attempts",context.radio.attempts,"accepted",context.radio.accepted.size(),
-    "reviews",reviews,"foreground",foreground,"closed",closed,"listener",listener,"events",events,
+    "reviews",reviews,"foreground",foreground,"closed",closed,"listeners",listeners,"events",events,
     "image",context.admitted,"send",context.send,"phone",context.phone,"read",context.read,"locked",context.lock.locked,
     "role",context.role,"sim",context.subscriptions.revision,"process",process,"boot",context.boot,"old",old,
     "candidate",candidate,"providerStatus",providerStatus,"refuseOutbox",context.provider.refuseInsert,"outbox",outbox,"sentRows",sentRows,"failedRows",failedRows);
@@ -256,7 +270,9 @@ public final class SmsDispatchTraces {
 
   void lifecycle(int bridge,String mode)throws Exception{
    var plugin=plugins[bridge];
-   PluginCall pending=(PluginCall)Trace.read(plugin,"reviewCall");
+   Object held=Trace.read(plugin,"reviewCall");
+   PluginCall pending=held==null?null:reviewCalls[bridge];
+   if(held!=null&&!historicalListeners)check(Trace.read(held,"original")==pending,"The reviewed wrapper retains the exact original bridge call");
    var off=(android.content.BroadcastReceiver)Trace.read(plugin,"screenOff");
    Looper.runMain(()->{
     switch(mode){
@@ -298,7 +314,9 @@ public final class SmsDispatchTraces {
     executor.shutdownNow();reviewCalls[bridge]=null;reviewedBinding[bridge]=0;reviewedSim[bridge]=0;
    }
    context.dynamicReceivers.clear();
-   ((Map<?,?>)staticField("JOURNALS").get(null)).clear();staticField("listener").set(null,null);
+   ((Map<?,?>)staticField("JOURNALS").get(null)).clear();
+   if(historicalListeners)staticField("listener").set(null,null);
+   else ((Set<?>)staticField("LISTENERS").get(null)).clear();
    if(reboot)context.boot++;
    for(int bridge=1;bridge<=2;bridge++){plugins[bridge]=new AlphaTelephonyPlugin();plugins[bridge].attach(context);plugins[bridge].load();drain();}
    process++;reply="none";replyBinding=0;
@@ -363,6 +381,7 @@ public final class SmsDispatchTraces {
  }
 
  public static void main(String[] args)throws Exception{
+  historicalListeners=args.length>1&&args[1].equals("historical");
   String mode=args[0];
   int recipients=mode.equals("per-recipient-sim-change")||mode.equals("partial-radio-throw")?2:1;
   int parts=mode.equals("multipart-provider-cannot-prove-delivery")||mode.equals("default-role-outbox")?2:1;

@@ -386,10 +386,18 @@ public abstract class Plugin {
   'com/getcapacitor/PluginMethod.java': `package com.getcapacitor;public @interface PluginMethod {}`,
   'com/getcapacitor/JSObject.java': `package com.getcapacitor;public class JSObject extends org.json.JSONObject {}`,
   'com/getcapacitor/JSArray.java': `package com.getcapacitor;public class JSArray extends org.json.JSONArray {}`,
+  'com/getcapacitor/MessageHandler.java': `package com.getcapacitor;public class MessageHandler {}`,
   'com/getcapacitor/PluginCall.java': `package com.getcapacitor;
-public final class PluginCall {
+public class PluginCall {
  private final JSObject data;public JSObject result;public String rejection;public boolean answered;
- public PluginCall(JSObject data){this.data=data;}
+ private final String pluginId,callbackId,methodName;
+ public PluginCall(JSObject data){this(null,"fixture-plugin","fixture-callback","fixture-method",data);}
+ public PluginCall(MessageHandler handler,String pluginId,String callbackId,String methodName,JSObject data){
+  this.data=data;this.pluginId=pluginId;this.callbackId=callbackId;this.methodName=methodName;
+ }
+ public String getPluginId(){return pluginId;}
+ public String getCallbackId(){return callbackId;}
+ public String getMethodName(){return methodName;}
  public JSObject getData(){return data;}
  public String getString(String key){return data.optString(key,null);}
  public String getString(String key,String fallback){return data.optString(key,fallback);}
@@ -397,8 +405,9 @@ public final class PluginCall {
  public JSArray getArray(String key){return data.opt(key) instanceof JSArray?(JSArray)data.opt(key):null;}
  public void resolve(){resolve(new JSObject());}
  public void resolve(JSObject value){answer();result=value;}
- public void reject(String text){reject(text,"closed");}
- public void reject(String text,String code){answer();rejection=code;}
+ public void reject(String text){reject(text,null,null,null);}
+ public void reject(String text,String code){reject(text,code,null,null);}
+ public void reject(String text,String code,Exception cause,JSObject detail){answer();rejection=code==null?"closed":code;}
  private void answer(){if(answered)throw new AssertionError("Duplicate plugin answer");answered=true;}
 }`,
   'com/getcapacitor/annotation/Permission.java': `package com.getcapacitor.annotation;
