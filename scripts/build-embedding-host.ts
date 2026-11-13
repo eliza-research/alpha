@@ -98,7 +98,8 @@ export async function preparePortableNativeInputs(root:string) {
   if(!fs.existsSync(python)){command(uv,['venv','--python',NATIVE_PYTHON,venv]);fs.writeFileSync(location,venv);}
   const requirements=path.join(root,NATIVE_BUILD_REQUIREMENTS),requirementsStamp=path.join(venv,'requirements.sha256');
   if(!fs.existsSync(requirementsStamp)||fs.readFileSync(requirementsStamp,'utf8')!==fileDigest(requirements)) {
-    command(uv,['pip','install','--python',python,'--require-hashes','--extra-index-url','https://download.pytorch.org/whl/cpu','--index-strategy','unsafe-best-match','-r',requirements]);
+    const platformIndex=process.platform==='linux'?['--extra-index-url','https://download.pytorch.org/whl/cpu','--index-strategy','unsafe-best-match']:[];
+    command(uv,['pip','install','--python',python,'--require-hashes',...platformIndex,'-r',requirements]);
     fs.writeFileSync(requirementsStamp,fileDigest(requirements));
   }
   if([source,cache,sdk].some(file=>/[\s=\0]/.test(file)))throw Error('Native compiler path remapping requires build/cache/SDK paths without whitespace');
