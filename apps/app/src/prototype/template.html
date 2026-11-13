@@ -2048,8 +2048,8 @@
         <sc-if value="{{maps.pc.hasPhone}}">
           <button class="ib" aria-label="Call" onClick="{{maps.pc.call}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.phone}}"></path></svg></button>
         </sc-if>
-        <button class="ib" aria-label="{{maps.pc.saveLabel}}" aria-pressed="{{maps.pc.saved}}" onClick="{{maps.pc.save}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2); {{maps.pc.starCss}}"><svg class="i" viewBox="0 0 24 24" style="{{maps.pc.starFill}}"><path d="{{ic.star}}"></path></svg></button>
-        <sc-if value="{{maps.nativeCanShare}}"><button class="ib" aria-label="{{maps.nativeShareLabel}}" onClick="{{maps.pc.share}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button></sc-if>
+        <button class="ib" aria-label="{{maps.pc.saveLabel}}" disabled="{{maps.pc.loading}}" aria-pressed="{{maps.pc.saved}}" onClick="{{maps.pc.save}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2); {{maps.pc.starCss}}"><svg class="i" viewBox="0 0 24 24" style="{{maps.pc.starFill}}"><path d="{{ic.star}}"></path></svg></button>
+        <sc-if value="{{maps.nativeCanShare}}"><button class="ib" aria-label="{{maps.nativeShareLabel}}" disabled="{{maps.pc.loading}}" onClick="{{maps.pc.share}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button></sc-if>
         <sc-if value="{{maps.pc.hasWeb}}">
           <button class="ib" aria-label="Website" onClick="{{maps.pc.web}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.globe}}"></path></svg></button>
         </sc-if>

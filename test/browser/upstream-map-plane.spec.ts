@@ -37,12 +37,22 @@ for(const mode of ['granted','denied','late-fix'] as const)test(`Maps location r
  await page.route('https://tiles.openfreemap.org/**',route=>route.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#e7ebed'}}]}}));
  await context.grantPermissions(['geolocation']);await context.setGeolocation({latitude:43.739,longitude:7.425,accuracy:5});await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  if(mode!=='granted')await page.addInitScript(mode=>{const w=window as any;navigator.geolocation.watchPosition=((success:any,error:any)=>{if(mode==='denied')queueMicrotask(()=>error({code:1}));else w.mapsLateFix=success;return 19;}) as any;navigator.geolocation.clearWatch=()=>{};},mode);
- await page.goto('/');await page.getByRole('button',{name:'Maps',exact:true}).click();const status=page.locator('[data-alpha-maps-status]');await expect(page.locator('[data-alpha-map-plane]')).toHaveAttribute('data-map-ready','true');expect(await page.evaluate(async()=>{const {mapsConnection}=await import('/src/maps/runtime.ts');return mapsConnection().config.status;})).toBe('unconfigured');await expect(page.getByRole('button',{name:'Recenter',exact:true})).toBeVisible();await page.getByRole('button',{name:'Recenter',exact:true}).click();
+ await page.goto('/');
+ await page.getByRole('button',{name:'Maps',exact:true}).click();
+ const status=page.locator('[data-alpha-maps-status]');
+ const map=page.locator('[data-alpha-map-plane]');
+ expect(await page.evaluate(async()=>{const {mapsConnection}=await import('/src/maps/runtime.ts');return mapsConnection().config.status;})).toBe('unconfigured');
+ if(mode==='late-fix') {
+  await expect(map).toHaveCount(0);
+ } else {
+  await expect(map).toHaveAttribute('data-map-ready','true');
+  await page.getByRole('button',{name:'Recenter',exact:true}).click();
+ }
  if(mode==='granted'){await expect(page.locator('[data-alpha-map-plane]').getByRole('img',{name:'Your position',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Directions',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Recenter',exact:true})).toBeVisible();await expect(page.getByRole('region',{name:'Maps'})).toBeVisible();}
  if(mode==='denied'){await expect(status).toHaveAttribute('data-location-state','denied');await expect(page.getByRole('button',{name:'Location settings',exact:true})).toBeVisible();await expect(status).toContainText('browser site settings');await page.getByRole('button',{name:'Location settings',exact:true}).click();await expect(page.getByRole('dialog',{name:'privacy settings',exact:true})).toBeVisible();await page.getByRole('button',{name:'Done',exact:true}).click();}
  if(mode==='late-fix')await expect(status).toHaveAttribute('data-location-state','loading');
  const search=page.getByRole('textbox',{name:'Search places',exact:true});await search.click();await expect(search).toBeFocused();await search.fill('43.74000, 7.42600');await search.press('Enter');await expect(page.getByText('Dropped pin',{exact:true})).toBeVisible();
- if(mode==='late-fix'){await page.evaluate(()=>(window as any).mapsLateFix({coords:{latitude:43.73,longitude:7.42,accuracy:5},timestamp:Date.now()}));await expect(page.getByText('Dropped pin',{exact:true})).toBeVisible();await expect(page.getByText('Current location',{exact:true})).toHaveCount(0);}
+ if(mode==='late-fix'){await page.evaluate(()=>(window as any).mapsLateFix({coords:{latitude:43.73,longitude:7.42,accuracy:5},timestamp:Date.now()}));await expect(map).toHaveAttribute('data-map-ready','true');await expect(map.getByRole('img',{name:'Your position',exact:true})).toBeVisible();await expect(page.getByText('Dropped pin',{exact:true})).toBeVisible();await expect(page.getByText('Current location',{exact:true})).toHaveCount(0);}
 });
 
 // A separate server configures this group with the synthetic Maps provider.
@@ -60,7 +70,7 @@ for(const mode of ['granted','outside-coverage','webgl','tiles'] as const)test(`
 
  if(mode==='webgl'||mode==='tiles'){await expect(status).toHaveAttribute('data-map-state','error');await expect(page.getByRole('button',{name:'Retry map',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Search places',exact:true})).toBeVisible();if(mode==='webgl')await page.evaluate(()=>(window as any).restoreMapWebGL());else badTiles=false;await page.getByRole('button',{name:'Retry map',exact:true}).click();}
  await expect(map).toHaveAttribute('data-map-ready','true');await expect(map.locator('canvas')).toBeVisible();await page.getByRole('button',{name:'Recenter',exact:true}).click();await expect(map.getByRole('img',{name:'Your position',exact:true})).toHaveCount(1);
- if(mode==='outside-coverage'){await expect(status).toHaveAttribute('data-map-state','outside-coverage');await expect(status).toContainText('outside Synthetic Monaco fixture map coverage');await expect(map.locator('.maplibregl-marker:not([data-map-position])')).toHaveCount(0);}else{await expect(map).toHaveAttribute('data-map-ready','true');await expect(map.locator('.maplibregl-marker:not([data-map-position])')).toHaveCount(1);}
+ if(mode==='outside-coverage'){await expect(status).toHaveAttribute('data-map-state','outside-coverage');await expect(status).toContainText('outside Synthetic Monaco fixture map coverage');await expect(map.locator('.maplibregl-marker:not([data-map-position])')).toHaveCount(1);await expect(page.getByRole('button',{name:'Directions',exact:true})).toHaveCount(0);}else{await expect(map).toHaveAttribute('data-map-ready','true');await expect(map.locator('.maplibregl-marker:not([data-map-position])')).toHaveCount(1);}
  await expect(map.getByRole('img',{name:'Your position',exact:true})).toHaveCount(1);
  if(mode==='granted'){const destination=page.getByRole('textbox',{name:'Search places',exact:true});await destination.fill('43.74, 7.426');await destination.press('Enter');await page.getByRole('button',{name:'Directions',exact:true}).click();await page.getByRole('button',{name:'Use my location',exact:true}).click();await expect(page.getByRole('textbox',{name:'Starting point',exact:true})).toHaveValue('My location');}
  await expect(page.getByRole('region',{name:'Maps'})).toBeVisible();

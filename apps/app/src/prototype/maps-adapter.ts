@@ -328,7 +328,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       // Provider detail for this exact place: opening hours, phone and website when the
       // source has them. Phone is shown as text; calling stays deferred with Phone.
       data.pc = {
-        name: place.name, meta: place.meta, addr: place.address,
+        name: place.name, meta: place.meta, addr: place.address, loading: place.loading,
         hasHours: !!place.hours, hoursRows: (place.hours || '').split(/;|\s+·\s+/).map((text,index)=>{const separator=text.indexOf(':');return {id:String(index),day:separator>0?text.slice(0,separator).trim():'',hours:separator>0?text.slice(separator+1).trim():text.trim()};}).filter(row=>row.hours),
         hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
         canDir: place.canDirections, min: 'Directions', saved: place.saved,
@@ -337,7 +337,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         dirs: () => screen.openDirections(true),
         share: () => screen.sharePlace(),
         nativeName: place.name, nativeEditing: place.editingName, nativeNameAction:saveNamedPlace?'Save':'Done',
-        nativeTitleRole: 'button', nativeTitleTabIndex: 0, nativeTitleLabel: 'Rename place',
+        nativeTitleRole: place.loading?'heading':'button', nativeTitleTabIndex: place.loading?-1:0, nativeTitleLabel: place.loading?'Loading place':'Rename place',
         nativeEdit: () => {saveNamedPlace=false;screen.startRename();},
         nativeEditKey: (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); saveNamedPlace=false;screen.startRename(); } },
         nativeRename: (event: Event) => screen.rename((event.target as HTMLInputElement).value),
