@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "repository": "elizaOS/eliza",
-  "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "head": "f22d9f602d76b9fa808cb134c1f2248403b8277a",
-  "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...f22d9f602d76b9fa808cb134c1f2248403b8277a",
+  "base": "develop",
+  "baseCommit": "1d9a9a367d6785c2e98e4a95da53ae9ea8c4f288",
+  "head": "89dffa7ab1e90203fcacc81f1b06d6579125ffb2",
+  "recordedAt": "2026-11-13",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...89dffa7ab1e90203fcacc81f1b06d6579125ffb2",
   "status": "diverged",
-  "aheadBy": 77,
-  "behindBy": 617,
+  "aheadBy": 82,
+  "behindBy": 662,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -114,10 +114,6 @@
     {
       "sha": "d8e6354d74ec287f29a649a840e4187bc6021277",
       "subject": "Merge commit '765725575c6c1062cf75b01c69e7949da968314d' into codex/review-calendar-39435"
-    },
-    {
-      "sha": "b520b1f0bc622a8fd9e8cbc8843dd0da692dbf8c",
-      "subject": "Merge commit 'd8e6354d74ec287f29a649a840e4187bc6021277' into codex/alpha-sense-absence-20261112"
     },
     {
       "sha": "bace08c870a2d3170a263e1ac3348d4eedcab0e1",
@@ -316,8 +312,29 @@
       "subject": "Expose the existing conversation search result contract as a leaf"
     },
     {
-      "sha": "f22d9f602d76b9fa808cb134c1f2248403b8277a",
+      "sha": "25383411f565c2f5d7f107847e8b3443741fea01",
       "subject": "Keep attachment type re-exports free of unused bindings"
+    },
+    {
+      "sha": "6b31922d16d56eba3f89df93554ca8464285115e",
+      "subject": "Keep loaded maps usable after cancelled or failed tile requests"
+    },
+    {
+      "sha": "f22d9f602d76b9fa808cb134c1f2248403b8277a",
+      "subject": "Narrow MapLibre error metadata before classification"
+    },
+    {
+      "sha": "c55ed513155634e15d6b2c2ca1156274de51a5de",
+      "subject": "Resolve tapped places and retain map imagery during attribution refresh"
+    },
+    {
+      "sha": "3edd60f7dbf01029cea985e5a5a3cfe3d8fed3e4",
+      "subject": "fix(maps): honor server cooldown across tile and place requests"
+    },
+    {
+      "sha": "89dffa7ab1e90203fcacc81f1b06d6579125ffb2",
+      "subject": "test(maps): exercise typed throttling response"
     }
-  ]
+  ],
+  "pullRequests": []
 }
