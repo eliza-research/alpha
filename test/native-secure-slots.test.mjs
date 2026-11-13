@@ -22,3 +22,9 @@ test('an Inbox operation journal saved by the installed Alpha journal keeps its 
  assert.equal(await InboxOperation.discardUnsent(store,owner,grantId),false,'a dispatching record is never discarded');
  assert.deepEqual(slots.get(key),installed);
 });
+
+test('the renderer keeps its 200-link note-origin bound',async()=>{
+ // The bound is the shared Notes client's NOTE_ORIGIN_LIMIT, re-exported under Alpha's name.
+ const {noteOriginLimit}=await import('../apps/app/src/runtime/note-origin.ts');
+ assert.equal(noteOriginLimit,200,'the renderer keeps its 200-link bound');
+});

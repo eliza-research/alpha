@@ -3,7 +3,6 @@
 // request worker and cancelRequest from AlphaLocalAgentPlugin.java on the host JVM with finite
 // Capacitor and transport fixtures. No device or runtime: neither half is Android evidence.
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';
-import path from 'node:path';
 const stub=`export const Capacitor={isNativePlatform:()=>true,isPluginAvailable:()=>true,getPlatform:()=>'android',convertFileSrc:value=>value};
 export function registerPlugin(name){const plugins=globalThis.__alphaNativePlugins??={};return plugins[name]??={};}
 export class WebPlugin {}`;

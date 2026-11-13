@@ -8,6 +8,8 @@ import {join} from 'node:path';
 import {root} from './fixtures/jvm-tools.mjs';
 import {build} from 'esbuild';
 import {serializeOwnerRouteTable} from '../apps/app/src/product/owner-route-table.ts';
+import {loadBrowserModule} from './fixtures/browser-source.mjs';
+const [{ownerRouteGroup,ownerRouteAllowed}]=await loadBrowserModule(['apps/app/src/runtime/owner-route-policy.ts'],{testMocks:true});
 
 // Tables that cannot load: missing, empty, malformed, an invalid pattern, an {id} route in a group without an id pattern.
 const shippedTable=serializeOwnerRouteTable(),edited=edit=>{const table=JSON.parse(shippedTable);edit(table);return JSON.stringify(table);};
@@ -22,4 +24,9 @@ test('the renderer interpreter fails to load every owner route table the Android
   .then(({outputFiles})=>import('data:text/javascript;base64,'+Buffer.from(outputFiles[0].text).toString('base64')));
  assert.equal(typeof (await load(shippedTable)).ownerRouteAllowed,'function');
  for(const [name,table] of brokenTables)await assert.rejects(load(table),undefined,name);
+});
+
+test('the renderer refuses unknown owner route group names',()=>{
+ assert.throws(()=>ownerRouteGroup('/api/triggers','automations','nope'),/Unknown owner route group nope/);
+ assert.throws(()=>ownerRouteAllowed('nope','/api/triggers','POST'),/Unknown owner route group nope/);
 });

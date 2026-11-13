@@ -980,3 +980,32 @@ for(const selected of ['production','staging'])test(`managed Calendar host stays
   assert.equal((await fetch(changed)).status,409);
  }finally{await f.close();}
  });
+
+
+test('owner key management HTTP keeps keys masked, revision-fenced and RAM-only',async()=>{
+ const {productCharacterHostFixture}=await import('./fixtures/product-character-host.mjs');
+ const residentFixture=productCharacterHostFixture(undefined,{request:async()=>Response.json({data:[{id:'qwen-3.8-27b'}]})});
+ const resident=await residentFixture.make();let pauseReveal=false,entered,release;
+ const paused=new Promise(resolve=>entered=resolve),resume=new Promise(resolve=>release=resolve);
+ const f=await fixture({...resident,async revealProviderKey(input,signal){const value=await resident.revealProviderKey(input,signal);if(pauseReveal){entered();await resume;}return value;}});
+ const call=(operation,input={})=>f.rpc({operation,environment:'production',expectedRevision:resident.status().revision,...input});
+ try{
+  const saved=await call('residentProviderEdit',{textKey:'synthetic-http-text',voiceKey:'synthetic-http-voice'});
+  assert.equal(saved.status,200);assert.equal(saved.data.mode,'cloud');assert.equal(JSON.stringify(saved.data).includes('synthetic-http'),false);
+  assert.equal((await call('residentProviderSelect',{mode:'own'})).status,200);
+  assert.equal((await call('residentProviderSelect',{mode:'cloud'})).status,200);
+  const status=await f.rpc({operation:'residentStatus',environment:'production'});
+  assert.deepEqual(status.data.keys,{text:{configured:true},voice:{configured:true}});assert.equal(JSON.stringify(status.data).includes('synthetic-http'),false);
+  const response=await f.send({operation:'residentProviderReveal',environment:'production',key:'voice',expectedRevision:resident.status().revision});
+  assert.equal(response.headers.get('cache-control'),'no-store');assert.equal((await response.json()).value,'synthetic-http-voice');
+  const forbidden=await f.send({operation:'residentProviderReveal',environment:'production',key:'text',expectedRevision:resident.status().revision},{headers:{Origin:'https://untrusted.invalid'}});
+  assert.equal(forbidden.status,403);assert.equal((await forbidden.text()).includes('synthetic-http'),false);
+  const revision=resident.status().revision;await call('residentProviderRemove',{key:'voice'});
+  const stale=await call('residentProviderReveal',{key:'text',expectedRevision:revision});assert.equal(stale.status,409);assert.equal(JSON.stringify(stale.data).includes('synthetic-http'),false);
+  pauseReveal=true;const revealing=call('residentProviderReveal',{key:'text'});await paused;
+  await resident.bind({token:'synthetic-http-cloud',credentialId:'replacement',reference:'replacement-ref'});release();
+  const retired=await revealing;assert.equal(retired.status,409);assert.equal(JSON.stringify(retired.data).includes('synthetic-http'),false);
+  for(const event of f.diagnostics)assert.equal(JSON.stringify(event).includes('synthetic-http'),false);
+  assert.equal((await readFile(profileFile(f.profile,'initial-credential.json'),'utf8')).includes('synthetic-http'),false);
+ }finally{release();await f.close();await resident.close();residentFixture.close();}
+});

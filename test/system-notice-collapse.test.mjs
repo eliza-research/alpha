@@ -1,11 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {build} from 'esbuild';
+// Upstream's escalation service posts "Eliza needs attention" into client chat for any repeated
+// error (a Notes state the resident could not read at start produced one per boot), and history
+// replays every stored copy. Alpha shows at most the latest notice, only while it can be true.
+const ts=source=>stripTypeScriptTypes(source,{mode:'strip'});
 const bundle=await build({entryPoints:['apps/app/src/runtime/action-message-presentation.ts'],bundle:true,platform:'node',format:'esm',write:false});
 const notices=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
-const {collapseSystemNotices,systemNoticeDisplayText,MODEL_UNAVAILABLE_NOTICE,RUNTIME_ERROR_NOTICE,RUNTIME_ERROR_BACKGROUND_NOTICE}=notices;
+const {systemNoticeText}=await import('data:text/javascript;base64,'+Buffer.from(ts(fs.readFileSync('vendor/eliza/packages/core/src/types/system-notice.ts','utf8'))).toString('base64'));
+const {collapseSystemNotices,systemNoticeKind,systemNoticeDisplayText,MODEL_UNAVAILABLE_NOTICE,RUNTIME_ERROR_NOTICE,RUNTIME_ERROR_BACKGROUND_NOTICE}=notices;
+const ui=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),adapter=fs.readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const notice=(id,kind='runtime-error')=>({id,from:'agent',text:systemNoticeDisplayText(kind),systemNotice:kind});
 const user=(id,text='hi')=>({id,from:'user',text}),reply=(id,text='Hello')=>({id,from:'agent',text});
+
+test('the recognized texts are byte-equal to the pinned upstream systemNoticeText()',()=>{
+ assert.equal(notices.UPSTREAM_RUNTIME_ERROR_NOTICE,systemNoticeText('runtime-error'));
+ assert.equal(notices.UPSTREAM_MODEL_UNAVAILABLE_NOTICE,systemNoticeText('model-unavailable'));
+ for(const kind of ['runtime-error','model-unavailable','model-and-runtime-error'])assert.equal(systemNoticeKind(systemNoticeText(kind)),kind);
+ assert.equal(systemNoticeKind('Eliza needs attention.'),undefined,'only the exact notice is recognized');
+ assert.equal(systemNoticeKind(undefined),undefined);
+});
 
 test('the runtime-error copy names an owner step, not the host operator diagnostics',()=>{
  for(const copy of [RUNTIME_ERROR_NOTICE,RUNTIME_ERROR_BACKGROUND_NOTICE])assert.doesNotMatch(copy,/host|diagnostics|—/);
@@ -15,6 +31,16 @@ test('the runtime-error copy names an owner step, not the host operator diagnost
  assert.equal(systemNoticeDisplayText('runtime-error',true),RUNTIME_ERROR_NOTICE);
  assert.equal(systemNoticeDisplayText('model-and-runtime-error'),`${MODEL_UNAVAILABLE_NOTICE}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`,'a combined notice keeps both halves');
  for(const waiting of [false,true])assert.equal(systemNoticeDisplayText('model-and-runtime-error',waiting).match(/Open Settings/g).length,1,'a combined notice gives one recovery step');
+});
+
+test('model-unavailable display is product-neutral while raw protocol recognition and stored bytes remain intact',()=>{
+ assert.match(MODEL_UNAVAILABLE_NOTICE,/AI provider · Open Settings/);
+ for(const kind of ['model-unavailable','runtime-error','model-and-runtime-error'])assert.doesNotMatch(systemNoticeDisplayText(kind),/Eliza|connected host|host's diagnostics/);
+ const original=[user('u1'),{id:'m1',from:'agent',text:systemNoticeText('model-unavailable'),systemNotice:'model-unavailable'}],saved=structuredClone(original);
+ const shown=collapseSystemNotices(original);
+ assert.equal(shown.find(m=>m.id==='m1').text,MODEL_UNAVAILABLE_NOTICE);
+ assert.deepEqual(original,saved,'presentation must never rewrite stored notice bytes');
+ assert.equal(systemNoticeKind(systemNoticeText('model-unavailable')),'model-unavailable');
 });
 
 test('replayed history with four identical notices and a normal reply shows no notice',()=>{
@@ -51,3 +77,9 @@ test('failed, unfinished, streaming, card and phone receipt rows do not prove ch
  for(const row of [{id:'x',from:'agent',text:'This reply did not finish.',unfinished:true},{id:'x',from:'agent',text:'Partial',streaming:true},{id:'x',from:'agent',text:'Open browser destination https://a.example',card:{proposalId:'p'}},{id:'x',from:'agent',text:'Reminder set for 9:00.',deviceReceipt:true}])
   assert.deepEqual(collapseSystemNotices([user('u1'),notice('n1'),row]).map(m=>m.id),['u1','n1','x'],JSON.stringify(row));
 });
+
+
+
+
+
+

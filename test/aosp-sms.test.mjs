@@ -145,3 +145,18 @@ test("journal history restores unknown operations without draft content or optim
  assert.deepEqual(calls.map(([method])=>method),['smsSendHistory']);
  await assert.rejects(createAospTelephony(plugin,false).smsSendHistory(),TelephonyUnavailable);
 });
+
+
+test("standalone SMS stays unavailable at the UI and agent boundaries", async () => {
+  // UI: the Messages view stays deferred and no image view adapter is admitted for it.
+  const { ADMITTED_AOSP_VIEW_ADAPTERS, admittedAospViews } = await import("../apps/app/src/runtime/aosp-image.ts");
+  assert.ok(ADMITTED_AOSP_VIEW_ADAPTERS.includes("messages"));
+  assert.deepEqual(admittedAospViews(false, ["messages", "phone", "contacts"]), []);
+  // Agent SMS is negotiated only by the verified image, then validated by the reviewed shared contract.
+  // One negotiation (deviceCapabilities) serves the resident, remote and Cloud runtimes.
+  const {selectDeviceCapabilities}=await import("../apps/app/src/runtime/phone-context.ts");
+  const profile={android:true,native:true,camera:false,foregroundReview:false,clockRepeatDays:false,aospImage:false};
+  assert.equal(selectDeviceCapabilities(["sms.send.v1"],profile).includes("sms.send.v1"),false,"a standalone APK never negotiates SMS");
+  assert.equal(selectDeviceCapabilities(["sms.send.v1"],{...profile,aospImage:true}).includes("sms.send.v1"),true,"the image negotiates SMS when the agent offers it");
+  assert.equal(selectDeviceCapabilities([],{...profile,aospImage:true}).includes("sms.send.v1"),false);
+});

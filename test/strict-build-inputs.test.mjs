@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST, Stop, compareWithQualified, describeDifference, run, stageReproduced, stagedLibraries} from '../scripts/build-embedding-host.ts';
 import {formatReport, strictBuildInputs} from '../scripts/android-build-preflight.ts';
 
@@ -153,4 +154,14 @@ test('the real checkout reports its inputs without failing and without building'
   assert.equal(row('on-device voice outputs').suppliedBy, 'person');
   assert.equal(row('embedding host libraries').suppliedBy, 'script');
   for (const item of rows) assert.equal(item.action === null, item.state === 'ready', item.input);
+});
+
+
+test('path remapping is opt-in, recorded in the receipt and leaves the default build unchanged', () => {
+  // An unknown option is still refused before anything is written.
+  const output = path.join(os.tmpdir(), `alpha-embed-unknown-${process.pid}`);
+  const result = spawnSync(process.execPath, ['scripts/prepare-embedding-host.ts', '--fork', ROOT, '--output', output, '--remap'], {cwd: ROOT, encoding: 'utf8'});
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unknown option/);
+  assert.equal(fs.existsSync(output), false);
 });

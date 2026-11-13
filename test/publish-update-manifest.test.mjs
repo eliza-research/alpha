@@ -36,6 +36,20 @@ function fixture(t, rows = {}) {
 const io = () => { const out = [], err = []; return { out, err, inspectApk: () => ({signerRootSha256:SIGNER}), log: line => out.push(line), error: line => err.push(line) }; };
 const written = dir => path.join(dir, "artifacts/app-stable", MANIFEST_NAME);
 
+
+test("a distributable signed release becomes the manifest phones parse, beside its APK copy", t => {
+  const dir = fixture(t);
+  const run = io();
+  assert.equal(main(["--variant", "launcher", "--notes", "Fixes"], { root: dir, ...run }), 0, run.err.join("\n"));
+  const update = JSON.parse(fs.readFileSync(written(dir), "utf8"));
+  const { updateManifestUrl } = JSON.parse(fs.readFileSync(path.join(root, "app.config.json"), "utf8"));
+  assert.deepEqual(update, {
+    schema: "alpha-update/v1", versionCode: 2, versionName: "0.1.1", variant: "launcher", signerSha256: SIGNER,
+    apkUrl: new URL("alpha-phone-2.apk", updateManifestUrl).href, sha256: sha("launcher bytes"), sizeBytes: "launcher bytes".length, notes: "Fixes",
+  });
+  assert.equal(fs.readFileSync(path.join(dir, "artifacts/app-stable/alpha-phone-2.apk"), "utf8"), "launcher bytes");
+});
+
 test("a release that is not distributable, unsigned, signed otherwise or not the verified file writes nothing", t => {
   const cases = [
     [{ distributable: false }, /not distributable/],

@@ -7,7 +7,8 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { instrumentationClassResults, listedInstrumentationTests, writeInstrumentationRecord } from "../scripts/instrumentation-result.ts";
-import { admitApks, admitHome, CLASS_REGISTRY, DEFAULT_CLASSES, instrumentArgs, parseInstrumentationArgs, PACKAGE, readHome, restoreHome, runLeased, selectAlphaHome } from "../scripts/android-instrumentation.ts";
+import { admitApks, admitHome, classIsolationCommands, CAMPAIGN_RUNNERS, CLASS_REGISTRY, DEFAULT_CLASSES, instrumentArgs, NOT_RUN_BY_A_RUNNER, parseInstrumentationArgs, PACKAGE, readHome, restoreHome, runLeased, selectAlphaHome } from "../scripts/android-instrumentation.ts";
+import { cases as permissionCases } from "../scripts/test-native-permissions.ts";
 
 const C = name => `${PACKAGE}.${name}InstrumentedTest`;
 const block = (cls, method, code, numtests = 1) =>
@@ -348,3 +349,159 @@ test("classes that assert a secondary user run in a disposable user the runner c
   assert.ok(!none.commands.some(command => command.startsWith("install")));
 });
 
+test("the runner passes a core-loop gate and leaves the notice gates to the permission runner", () => {
+  // A core-loop class with a gate runs its gated methods instead of reporting them skipped.
+  assert.deepEqual(instrumentArgs(C("ClockHandoff")).slice(-6, -1), ["clockHandoff", "1", "-e", "class", C("ClockHandoff")]);
+  // HostedResultNotice's posted and denied notices need the notification permission set first, so
+  // this runner passes neither gate and the permission runner owns both.
+  assert.equal(CLASS_REGISTRY.HostedResultNotice.args, undefined);
+  for (const scenario of ["notice", "notice-denied"]) assert.equal(permissionCases[scenario].testClass, "HostedResultNoticeInstrumentedTest");
+});
+
+
+test("guarded app, recording and catalog cases require an owned secondary user", () => {
+  for (const name of ["AppInfo", "NoteRecorder", "NoteRecordingSave", "StorageCategories", "PhotosCatalogOrder"]) {
+    assert.equal(CLASS_REGISTRY[name].secondaryUser, true, name);
+    assert.throws(() => parseInstrumentationArgs(["--classes", name]), /requires --owned-emulator/);
+  }
+  assert.equal(CLASS_REGISTRY.NoteRecorder.grant, undefined, "preserve the effective guarded recorder policy");
+});
+
+
+
+test("every campaign runner exists and every class not run by a runner gives a specific reason", () => {
+  for (const file of CAMPAIGN_RUNNERS) assert.ok(fs.existsSync(file), `campaign runner ${file} is missing`);
+  for (const [name, reason] of Object.entries(NOT_RUN_BY_A_RUNNER))
+    assert.ok(typeof reason === "string" && reason.trim().length >= 40, `NOT_RUN_BY_A_RUNNER.${name} needs a specific reason`);
+});
+
+test("the microphone and notice permission scenarios revoke the permission they test", () => {
+  assert.deepEqual(permissionCases.voice.permissions, [["revoke", "RECORD_AUDIO"]]);
+  assert.deepEqual(permissionCases["notice-denied"].permissions, [["revoke", "POST_NOTIFICATIONS"]]);
+});
+
+
+test("each named class starts from cleared app data with Android's shade closed", () => {
+  // First emulator runs: Video, Accessibility and SettingsFlow passed or failed with the order of
+  // the classes before them, and a system shade left open failed every later gesture.
+  const commands = classIsolationCommands();
+  assert.ok(commands.some(command => command.join(" ") === `shell pm clear ${PACKAGE}`));
+  assert.ok(commands.some(command => command.join(" ") === "shell cmd statusbar collapse"));
+  // Only the app under test is cleared; the instrumentation package and other apps keep their data.
+  assert.equal(commands.filter(command => command.includes("clear")).length, 1);
+  // In the secondary-user phase the same isolation applies to that user only.
+  assert.ok(classIsolationCommands("10").some(command => command.join(" ") === `shell pm clear --user 10 ${PACKAGE}`));
+});
+
+
+
+
+test("declared permissions are granted after isolation, and a failed listing is kept", () => {
+  // First run: WorkflowApprovalNotice failed to post because nothing had granted the notification
+  // permission its fixture requires. RealClock needs AOSP Clock's own notification permission.
+  assert.deepEqual(CLASS_REGISTRY.WorkflowApprovalNotice.grant, ["POST_NOTIFICATIONS"]);
+  assert.deepEqual(CLASS_REGISTRY.RealClock.grantOther, { "com.android.deskclock": ["POST_NOTIFICATIONS"] });
+});
+
+
+
+
+test("a class whose every method is skipped by its gate is recorded as skipped, a skipped phase as failed", async () => {
+  // Round 7: BrowserDownload on a build without test mocks was recorded "failed" although the
+  // verification guide promises "skipped" for a class skipped by its own assumption gate.
+  const dir = apkDir(), emulator = fakeEmulator({ mode: "all-skipped" });
+  try {
+    const options = parseInstrumentationArgs(["--owned-emulator", "--avd", "fixture-avd", "--serial", "emulator-5554", "--variants", "standalone", "--classes", "Shell,BrowserDownload", "--apk-dir", dir, "--output", path.join(dir, "out")]);
+    const result = await runFixture(dir, { options, serial: "emulator-5554", adb: emulator.adb, timing });
+    assert.deepEqual(result.classes.map(row => [row.class.split(".").at(-1), row.status]), [["ShellInstrumentedTest", "passed"], ["BrowserDownloadInstrumentedTest", "skipped"]]);
+    assert.equal(result.passed, false, "a skipped class is not a pass");
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+
+
+test("BrowserFlow's live search page runs only with --live-network; the default run is offline", () => {
+  // Rounds 7 and 8: the default campaign failed on www.google.com/search for environment reasons.
+  assert.ok(!instrumentArgs(C("BrowserFlow")).includes("browserFlowLive"), "a default run never passes the live gate");
+  assert.deepEqual(instrumentArgs(C("BrowserFlow"), { live: true }).slice(-6, -1), ["browserFlowLive", "1", "-e", "class", C("BrowserFlow")]);
+  assert.equal(parseInstrumentationArgs([]).liveNetwork, false);
+  assert.equal(parseInstrumentationArgs(["--live-network"]).liveNetwork, true);
+  assert.ok(DEFAULT_CLASSES.includes("BrowserFlow"));
+  assert.match(CLASS_REGISTRY.BrowserFlow.note, /--live-network \(browserFlowLive=1\)/);
+});
+
+
+
+
+test("ConnectionRoutes runs only on a flag-off build", () => {
+  assert.equal(parseInstrumentationArgs(["--classes", "ConnectionRoutes"]).classes[0], C("ConnectionRoutes"));
+  assert.throws(() => parseInstrumentationArgs(["--test-mocks", "--classes", "ConnectionRoutes"]), /flag-off policy/);
+  for (const [name, spec] of Object.entries(CLASS_REGISTRY).filter(([, spec]) => spec.flagOffOnly)) {
+    assert.ok(!spec.requiresTestMocksBuild && !spec.testMocks, `${name} cannot need test mocks too`);
+  }
+});
+
+
+
+
+test("round-9 registrations: new classes, campaigns and removed reasons", () => {
+  for (const name of ["RendererRecovery", "ChatContinuity", "SelectedDocument", "PasswordVaultSettings", "PasswordVaultFill"]) {
+    assert.ok(Object.hasOwn(CLASS_REGISTRY, name), name);
+    assert.ok(!CLASS_REGISTRY[name].campaign, `${name} runs through this runner`);
+  }
+  // --classes SelectedDocument runs its ungated methods; only the restart phase stays with its campaign.
+  assert.equal(parseInstrumentationArgs(["--classes", "SelectedDocument"]).classes[0], C("SelectedDocument"));
+  assert.equal(CLASS_REGISTRY.SelectedDocument.args, undefined);
+  assert.equal(CLASS_REGISTRY.WorkflowLegacyReminderUpgrade.campaign.split(" ").slice(0, 3).join(" "), "bun scripts/test-installed-upgrade.ts reminder");
+  assert.throws(() => parseInstrumentationArgs(["--classes", "WorkflowLegacyReminderUpgrade"]), /test-installed-upgrade/);
+  // SettingsCrashLog has its two-process runner now.
+  assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, "SettingsCrashLog"));
+  assert.throws(() => parseInstrumentationArgs(["--classes", "SettingsCrashLog"]), /test-native-restart\.ts crash-log/);
+  // The reviewed-workflow host classes were deleted, not left unreachable.
+  for (const name of ["Workflow", "WorkflowApproval", "WorkflowCancellation", "WorkflowLifecycle", "WorkflowMetadata", "WorkflowSubmission"]) {
+    assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, name), name);
+    assert.ok(!fs.existsSync(path.join("android/app/src/androidTest/java", `ai/alphacompute/alphaphone/${name}InstrumentedTest.java`)), `${name} is deleted`);
+  }
+  // The vault classes change device security state, so they are gated and never default.
+  for (const name of ["PasswordVaultSettings", "PasswordVaultFill"]) assert.ok(CLASS_REGISTRY[name].args && !DEFAULT_CLASSES.includes(name), name);
+});
+
+
+
+test("PrototypeFlow and CalendarFlow are registered; the retired resident Activity test is gone", () => {
+  // PrototypeFlow's four methods need no host: the class runs by name, and its live-agent journey is LiveAgent's.
+  assert.ok(Object.hasOwn(CLASS_REGISTRY, "PrototypeFlow") && !Object.hasOwn(NOT_RUN_BY_A_RUNNER, "PrototypeFlow"));
+  assert.equal(parseInstrumentationArgs(["--classes", "PrototypeFlow"]).classes[0], C("PrototypeFlow"));
+  // CalendarFlow changes the device time zone: gated, in a disposable user, with Calendar access granted.
+  assert.deepEqual(CLASS_REGISTRY.CalendarFlow.args, { calendarFlow: "1" });
+  assert.equal(CLASS_REGISTRY.CalendarFlow.secondaryUser, true);
+  assert.deepEqual(CLASS_REGISTRY.CalendarFlow.grant, ["READ_CALENDAR", "WRITE_CALENDAR"]);
+  assert.throws(() => parseInstrumentationArgs(["--classes", "CalendarFlow"]), /requires --owned-emulator/);
+  assert.deepEqual(instrumentArgs(C("CalendarFlow")).slice(-6, -1), ["calendarFlow", "1", "-e", "class", C("CalendarFlow")]);
+  assert.ok(!Object.hasOwn(CLASS_REGISTRY, "ResidentAgent") && !Object.hasOwn(NOT_RUN_BY_A_RUNNER, "ResidentAgent"));
+  // Each BrowserContinuity method drives the views, so a signed-out flag-off default run could only skip it.
+  assert.ok(!DEFAULT_CLASSES.includes("BrowserContinuity"));
+  assert.throws(() => parseInstrumentationArgs(["--classes", "BrowserContinuity"]), /test-mocks app build/);
+});
+
+
+
+
+test("round-9 journeys and links: J01, J05, the note link and the Maps return are registered offline", () => {
+  // J01 drives Camera UI the view refresh removed; it is listed as not run until it is rewritten.
+  assert.ok(Object.hasOwn(NOT_RUN_BY_A_RUNNER, "PosterCalendarJourney") && !Object.hasOwn(CLASS_REGISTRY, "PosterCalendarJourney"));
+  for (const [name, gate] of [["JourneyJ05", "journeyJ05"], ["Maps", "mapsEventReturn"]]) {
+    assert.equal(CLASS_REGISTRY[name].args[gate], "1", `${name} passes ${gate}`);
+    assert.ok(!DEFAULT_CLASSES.includes(name), `${name} is not a default class`);
+  }
+  // Maps has a runner entry, so it is not listed as unreachable.
+  assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, "Maps"));
+  assert.equal(parseInstrumentationArgs(["--classes", "Maps"]).classes[0], C("Maps"));
+  // J05 composes the flag-off journey: a test-mocks build is refused.
+  assert.equal(CLASS_REGISTRY.JourneyJ05.flagOffOnly, true);
+  assert.throws(() => parseInstrumentationArgs(["--test-mocks", "--classes", "JourneyJ05"]), /flag-off policy/);
+  // The note link needs no gate or provider.
+  assert.equal(CLASS_REGISTRY.NoteOrigin.args, undefined);
+  assert.doesNotMatch(CLASS_REGISTRY.BrowserPageQuestion.note, /needs network|example\.com/);
+});

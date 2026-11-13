@@ -411,3 +411,34 @@ test('Back leaves edit mode under voice or an open conversation, and a menu whos
     assert.equal(home.state.drawerMenu,null);
   } finally { home.componentWillUnmount(); if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
 });
+
+test('a favorites save that fails in Home edit mode shows its error in the edit bar; the next good edit clears it', async () => {
+  const previous=globalThis.document,previousFrame=globalThis.requestAnimationFrame;
+  globalThis.document=Object.assign(new EventTarget(),{hidden:false,querySelector:()=>null,elementsFromPoint:()=>[]});
+  globalThis.requestAnimationFrame=()=>0;
+  let saved=['alpha:inbox','alpha:notes'],fail=false;
+  const Shell=shellClass([]);
+  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{if(fail)throw Error('full');saved=[...keys];}}});
+  const home=new Shell();home.renderVals();home.componentDidMount();
+  const tile=key=>{const face={getAttribute:()=>key};const el={querySelector:()=>face,style:{},setAttribute(){},removeAttribute(){}};el.closest=s=>s==='[data-mobile-shell-tile]'?el:null;return el;};
+  const event=(target,extra={})=>{const e={target,button:0,clientX:0,clientY:0,detail:0,preventDefault(){},stopPropagation(){},...extra};return e;};
+  try {
+    await shell.launcher.load();
+    home.setState({homeEdit:true});
+    assert.equal(home.renderVals().homeEdit.error,'');
+    fail=true;
+    home.renderVals().homeShell.props.gridProps.onClickCapture(event(tile('alpha:notes')));
+    assert.deepEqual(saved,['alpha:inbox','alpha:notes'],'nothing changed');
+    assert.match(home.renderVals().homeEdit.error,/Favorites could not be saved/);
+    fail=false;
+    home.renderVals().homeShell.props.gridProps.onKeyDown(event(tile('alpha:inbox'),{key:'ArrowRight'}));
+    assert.deepEqual(saved,['alpha:notes','alpha:inbox']);
+    assert.equal(home.renderVals().homeEdit.error,'');
+  } finally { home.componentWillUnmount(); globalThis.requestAnimationFrame=previousFrame; if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
+  const {readFileSync}=await import('node:fs');
+  const template=readFileSync(new URL('../apps/app/src/prototype/template.html',import.meta.url),'utf8');
+  const alert=/<sc-if value="\{\{homeEdit\.error\}\}"><p role="alert"[^>]*>([\s\S]*?)<\/p><\/sc-if>/.exec(template);
+  assert.ok(alert,'the current save error still owns an alert');
+  assert.match(alert[1],/Couldn’t save/);
+  assert.match(alert[1],/<span class="settings-sr-only">\{\{homeEdit\.error\}\}<\/span>/,'full failure remains accessible');
+});

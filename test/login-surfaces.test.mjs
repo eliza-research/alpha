@@ -73,3 +73,12 @@ test('the pinned binding rules and password policy pass their JVM tests', () => 
   for (const name of ['BrowserFieldOriginTest', 'BrowserHttpAuthOriginTest', 'BrowserLinkAutofillPolicyTest']) assert.match(result.stdout, new RegExp(`^${name}: \\d+ assertions passed$`, 'm'), name);
   assert.match(result.stderr, /^ 0 fail$/m, detail);
 });
+
+test('External authorization and Google sign-in are inventoried as external-browser surfaces', () => {
+  for (const id of ['eliza-cloud-sign-in', 'google-account-authorization']) {
+    const surface = inventory.surfaces.find(s => s.id === id);
+    assert.equal(surface?.kind, 'external-browser', id);
+    assert.equal(surface.eligible, false, id);
+  }
+  assert.equal(inventory.surfaces.find(s=>s.id==='eliza-cloud-sign-in-google').kind,'external-browser');
+});

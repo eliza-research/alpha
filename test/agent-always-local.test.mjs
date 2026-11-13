@@ -6,11 +6,18 @@
 // composed flow with synthetic ports.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {DENYLIST, RETIRED_NO_AGENT_TEXT} from '../scripts/audit-production-bundle.ts';
+import {DENYLIST, RETIRED_NO_AGENT_TEXT, RETIRED_REMOTE_AGENT_TEXT} from '../scripts/audit-production-bundle.ts';
 
 test('production bundles forbid the retired no-agent copy', () => {
   for (const text of ['without AI', 'Continue offline', 'Connect an agent']) {
     assert.ok(RETIRED_NO_AGENT_TEXT.includes(text), text);
+    assert.ok(DENYLIST.includes(text), text);
+  }
+});
+
+test('production bundles forbid remote-agent fallback copy, which stays test-mocks only (#381)', () => {
+  for (const text of ['Connect your remote agent', 'No remote agent connected', 'Connect a remote agent']) {
+    assert.ok(RETIRED_REMOTE_AGENT_TEXT.includes(text), text);
     assert.ok(DENYLIST.includes(text), text);
   }
 });

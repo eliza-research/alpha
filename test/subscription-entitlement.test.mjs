@@ -4,6 +4,10 @@
 // Alpha's copy binding, that no second implementation remains here, the account panel and that only
 // admission and its background refresher read the entitlement. Plan names and numbers are synthetic.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {transformSync} from 'esbuild';
 import test from 'node:test';
 import {
   describeSubscription, planAdmission, readServiceLimit, redeemFailureMessage, serviceLimitMessage, subscriptionSummary,
@@ -46,4 +50,53 @@ test('the organization credit balance is read only from an exact, fresh billing 
   for (const bad of [snapshot('-1'), snapshot('1e3'), {success: true, data: {schemaVersion: 1}}, null])
     assert.equal(organizationCreditFromLimits(bad, NOW).state, 'unavailable');
   assert.equal(organizationCreditFromLimits(snapshot('5'), NOW + 400000).state, 'unavailable', 'a stale observation is not shown');
+});
+
+
+test('the subscription sheet leads with the plan and reports its allowance and latest Cloud limit read-only', async () => {
+  const {subscriptionSummary: sharedSummary, serviceLimitNextChange, alphaSubscriptionCopy} = await import('../apps/app/src/runtime/subscription-entitlement.ts');
+  // The sheet renders through the projected shared hook (elizaOS/eliza#38105), evaluated as shipped.
+  const hookSource = fs.readFileSync('.eliza/client-features/packages/ui/src/components/settings/cloud-subscription-summary.tsx', 'utf8');
+  const hookCompiled = transformSync(hookSource.replace(/^import [\s\S]*?;\n/gm, '').replaceAll('export ', ''), {loader: 'tsx', jsxFactory: 'React.createElement'}).code;
+  const useCloudSubscriptionSummary = new Function('React', 'useEffect', 'useState', 'subscriptionSummary', 'serviceLimitNextChange', hookCompiled + ';return useCloudSubscriptionSummary;')(React, React.useEffect, React.useState, sharedSummary, serviceLimitNextChange);
+  const source = fs.readFileSync('apps/app/src/runtime/cloud-membership-ui.tsx', 'utf8');
+  const compiled = transformSync(source.replace(/^import .*;\n/gm, '').replaceAll('export ', ''), {loader: 'tsx', jsxFactory: 'React.createElement'}).code;
+  Object.assign(globalThis, new Function('React', transformSync(fs.readFileSync('apps/app/src/runtime/status-ui.tsx', 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export ', ''), {loader: 'tsx', jsxFactory: 'React.createElement'}).code + ';return {Busy,StatusDot};')(React), {iconStyle: () => ({})});
+  const Controls = new Function('React', 'useEffect', 'useId', 'useRef', 'useState', 'useCloudSubscriptionSummary', 'alphaSubscriptionCopy', compiled + ';return CloudMembershipControls;')(React, React.useEffect, React.useId, React.useRef, React.useState, useCloudSubscriptionSummary, alphaSubscriptionCopy);
+  const render = props => renderToStaticMarkup(React.createElement(Controls, {balance: 'member', busy: false, email: 'owner@example.invalid', serviceName: 'Eliza Cloud', onRedeem: async () => true, onManagePlan() {}, onRefresh() {}, ...props}));
+  const active = render({plan: {kind: 'active', planName: 'Synthetic plan', status: 'active', allowance: {unit: 'usd_micros', granted: 100, remaining: 25, periodStart: Date.now() - 1000, resetsAt: Date.now() + 86400000}, expiresAt: Date.now() + 1000, refreshFailed: false},
+    endsAt: Date.now() + 10 * 86400000, lastLimit: {kind: 'rate-limited', retryAfterMs: 60000, resetsAt: null, observedAt: Date.now()}});
+  assert.match(active, /Synthetic plan/);
+  assert.match(active, /25% of this billing period&#x27;s plan allowance is left/);
+  assert.match(active, /\d+d left/);
+  assert.match(active, /<dt>Limit<\/dt><dd role="status">The AI request rate limit was reached\. Try again in about (59|60) seconds\./);
+  assert.match(active, /aria-label="Balance and membership"/);
+  assert.match(active, /<dt>Plan<\/dt>/);
+  assert.match(active, />Plan</);
+  assert.doesNotMatch(active, /Available credits|Add credits|\bUSD\b/);
+  assert.match(active, />Code</);
+  const credits = render({balance: 'funded', plan: {kind: 'credits', source: 'billing-limits'}});
+  assert.match(credits, /No plan/);
+  assert.match(credits, />Choose plan</);
+  assert.doesNotMatch(credits, /Available credits|Add credits|\bUSD\b/);
+  assert.doesNotMatch(credits, /plan allowance|<dt>Limit/, 'no allowance or limit line without a reported allowance or a current limit');
+  const none = render({balance: 'zero', plan: {kind: 'inactive', planName: null, status: 'none', source: 'billing-limits'}});
+  assert.doesNotMatch(none, /Choose a plan or enter a membership code to ask Alpha\./);
+  // After Cloud declined a turn for billing the sheet says so, above the same two actions.
+  const refused = render({balance: 'funded', refused: true, plan: {kind: 'credits', source: 'billing-limits'}});
+  assert.match(refused, /Billing declined/);
+  assert.match(refused, />Choose plan</);
+  assert.match(refused, />Code</);
+  // A lapsed limit is not shown.
+  const lapsed = render({plan: {kind: 'credits', source: 'billing-limits'}, lastLimit: {kind: 'rate-limited', retryAfterMs: 1000, resetsAt: null, observedAt: Date.now() - 120000}});
+  assert.doesNotMatch(lapsed, /<dt>Limit/);
+  // The section renders again only when a shown wait ends or a reset passes (bounded), never every second.
+  // The timing is the shared serviceLimitNextChange (covered upstream); these are the sheet's cases.
+  const change = (limit, now) => serviceLimitNextChange(limit, limit.observedAt, now);
+  const at = 1_000_000_000_000;
+  assert.equal(change({kind: 'rate-limited', retryAfterMs: 60000, resetsAt: null, observedAt: at - 20000}, at), 40000);
+  assert.equal(change({kind: 'rate-limited', retryAfterMs: 60000, resetsAt: at + 5000, observedAt: at}, at), 5000);
+  assert.equal(change({kind: 'allowance-exhausted', retryAfterMs: null, resetsAt: at + 30 * 86400000, observedAt: at}, at), 3600000, 'a far reset never overflows a timer');
+  assert.equal(change({kind: 'billing-refused', retryAfterMs: null, resetsAt: null, observedAt: at - 59900}, at), 1000);
+  assert.equal(change({kind: 'rate-limited', retryAfterMs: 1000, resetsAt: at - 1, observedAt: at - 5000}, at), null, 'nothing is scheduled for a lapsed limit');
 });

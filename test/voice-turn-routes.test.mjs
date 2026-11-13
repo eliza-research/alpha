@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 // The resident's end-of-turn (elizaOS #36546) and heard (#36547) routes as the voice assistant
 // uses them (apps/app/src/runtime/voice-turn-routes.ts, #423). Fake request ports only: this is
@@ -206,4 +207,30 @@ test('voice timing and diagnostics keep the endpoint path and heard outcome as e
   const exported = report.voiceTiming.records.find(row => row.id === id);
   assert.deepEqual(exported.endpoint, {by: 'semantic', semantic: 'complete', latencyMs: 41});
   assert.equal(exported.heard, 'conflict');
+});
+
+
+test('the end-of-turn chain keeps Clef off: the local scorer decides, and its path is kept as an enum', async () => {
+  const {stripTypeScriptTypes} = await import('./support/strip-types.mjs'), vm = await import('node:vm');
+  const source = fs.readFileSync(new URL('../apps/app/src/runtime/voice-selection.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function').replaceAll('export type', 'type');
+  const box = {testMocksEnabled: true, connectionController: {}};
+  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'strip'}) + '\nglobalThis.selection={clefEndpointStage};}', box);
+  const selection = box.selection;
+  assert.deepEqual(JSON.parse(JSON.stringify(selection.clefEndpointStage())), {enabled: false, client: null});
+  assert.equal(routes.clefEndpointStageEnabled(selection.clefEndpointStage()), false);
+  const asked = [];
+  const chain = routes.createEndpointChain({local: routes.residentEndpoint(() => (path, body) => { asked.push(path); return Promise.resolve({available: false, reason: 'ram-pressure'}); }), clef: selection.clefEndpointStage()});
+  assert.deepEqual(await chain('turn off the lights', new AbortController().signal), {decision: 'unavailable', reason: 'ram-pressure', path: 'local'});
+  assert.deepEqual(asked, ['/api/asr/local-inference/end-of-turn'], 'only the resident is asked; no text goes to Cloud');
+  timing.clearVoiceTiming();
+  const id = timing.beginVoiceTurn({route: 'local-agent', cold: false, entry: 'conversation'});
+  assert.equal(timing.recordEndpointVoiceTiming({by: 'semantic', semantic: 'complete', latencyMs: 30, path: 'clef'}), true);
+  const later = timing.beginVoiceTurn({route: 'local-agent', cold: false, entry: 'conversation'});
+  assert.equal(timing.recordEndpointVoiceTiming({by: 'gap', semantic: 'unavailable', reason: 'clef-timeout', path: 'clef'}), true);
+  const report = buildDiagnostics({voiceTiming: JSON.parse(timing.exportVoiceTiming())});
+  assert.deepEqual(report.voiceTiming.records.find(row => row.id === id).endpoint, {by: 'semantic', semantic: 'complete', latencyMs: 30, path: 'clef'});
+  assert.deepEqual(report.voiceTiming.records.find(row => row.id === later).endpoint, {by: 'gap', semantic: 'unavailable', reason: 'clef-timeout', path: 'clef'});
+  // Diagnostics copies only allowlisted enums.
+  const forged = buildDiagnostics({voiceTiming: {format: 'alpha-voice-timing-v1', records: [{version: 1, id, recordedAt: 1, route: 'local-agent', cold: false, entry: 'conversation', marks: {}, endpoint: {by: 'gap', semantic: 'timeout', path: 'cloud-text', reason: 'clef-says-yes'}}]}});
+  assert.deepEqual(forged.voiceTiming.records[0].endpoint, {by: 'gap', semantic: 'timeout'});
 });

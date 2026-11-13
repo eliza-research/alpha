@@ -197,3 +197,16 @@ console.log(JSON.stringify(out));`);
  assert.deepEqual(out.fall,['run 2026-11-01T01:30',null]);
 });
 
+
+test('development digest admission uses the pinned agent threshold, order and record text',async()=>{
+ const out=run(occurrencePrelude+`
+const p=await import(${JSON.stringify(resolve(root,'.eliza/client-features/plugins/plugin-workflow/src/services/hosted-digest-policy.ts'))});
+out.window=o.DIGEST_RUN_WINDOW_MS;out.missed=o.DIGEST_MISSED_TEXT;out.unavailable=o.DIGEST_UNAVAILABLE_TEXT;
+out.shared=[o.DIGEST_RUN_WINDOW_MS===p.DIGEST_RUN_WINDOW_MS,o.DIGEST_MISSED_TEXT===p.DIGEST_MISSED_TEXT,o.DIGEST_UNAVAILABLE_TEXT===p.DIGEST_PAUSED_TEXT];
+out.states=[[false,'2026-10-08T00:00:00.000Z'],[false,'2026-10-07T08:00:00.000Z'],[false,'2026-10-07T07:59:59.999Z'],[true,'2026-10-08T00:00:00.000Z'],[true,'2026-10-01T00:00:00.000Z']].map(([revoked,expiresAt])=>o.digestSourceState({revoked,expiresAt},at('2026-10-07T08:00:00.000Z')));
+console.log(JSON.stringify(out));`);
+ // Threshold: the agent records missed only when more than 30 minutes late (owner decision, #680).
+ assert.equal(out.window,30*60000);
+ assert.deepEqual(out.shared,[true,true,true],'the development scheduler uses the agent policy module itself');
+ assert.deepEqual(out.states,['current','expired','expired','revoked','revoked']);
+});
