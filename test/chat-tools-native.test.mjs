@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {execFileSync} from 'node:child_process';
-import {conversationReadPathAllowed} from '../apps/app/src/runtime/conversation-read-path.ts';
-import {localAgentPathAllowed} from '../scripts/local-agent-dev-bridge.ts';
+import {execFileSync,spawnSync} from 'node:child_process';
+if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
+ const child = spawnSync(process.execPath, ['--import','tsx',process.argv[1]], {stdio:'inherit',timeout:60000});
+ process.exit(child.status ?? 1);
+}
+const {conversationReadPathAllowed} = await import('../apps/app/src/runtime/conversation-read-path.ts');
+const {localAgentPathAllowed} = await import('../scripts/local-agent-dev-bridge.ts');
 
 const conversation='11111111-1111-4111-8111-111111111111';
 const message='22222222-2222-4222-8222-222222222222';
