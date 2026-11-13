@@ -257,8 +257,9 @@ export function boundedTlcSpec(source: string, depth: number) {
   return {source: instrumented, configuration, evidence};
 }
 
-export function loadModels(): QuintModel[] {
+export function loadModels(requested: readonly string[] = []): QuintModel[] {
   const models = modelFamilies.flatMap(readModelFamily);
+  for (const name of requested) if (!models.some(model => model.module === name)) throw Error(`Unknown model ${name}`);
   const names = new Set();
   const paths = new Set<string>();
   for (const model of models) {
