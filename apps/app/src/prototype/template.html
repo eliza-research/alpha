@@ -2939,12 +2939,16 @@
       </sc-if>
     </sc-if>
     <sc-if value="{{files.browse.denied}}">
-      <div role="alert" style="display: flex; align-items: center; gap: 12px; margin: 8px; padding: 14px 16px; border-radius: 20px; background: var(--s2)">
-        <span style="flex-grow: 1; font-size: 15px">{{files.browse.deniedLabel}}</span>
-        <button onClick="{{files.browse.grant}}" style="min-height: 40px; padding: 0 16px; border-radius: 20px; background: var(--acc); color: var(--alpha-white); font-weight: 600">Allow</button>
+      <div class="files-storage-status">
+        <div role="alert">
+          <strong>{{files.browse.deniedLabel}}</strong>
+          <p>{{files.browse.deniedText}}</p>
+        </div>
+        <button onClick="{{files.browse.grant}}">Allow</button>
       </div>
     </sc-if>
-    <sc-if value="{{files.browse.unavailable}}"><div role="alert" style="margin: 8px; padding: 14px 16px; border-radius: 20px; background: var(--s2); font-size: 15px; display: flex; align-items: center; gap: 10px"><span aria-hidden="true" style="position:relative;display:flex"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.folder}}"></path></svg><span style="position:absolute;left:50%;top:-2px;width:2px;height:24px;margin-left:-1px;border-radius:2px;background:currentColor;transform:rotate(-45deg)"></span></span><span class="settings-sr-only">Storage </span>Unavailable</div></sc-if>
+    <sc-if value="{{files.browse.unavailable}}"><div class="files-storage-status" role="alert">Storage unavailable</div></sc-if>
+    <sc-if value="{{files.browse.loading}}"><p class="files-read-status" role="status">{{files.loadingText}}</p></sc-if>
     <sc-if value="{{files.browse.ready}}">
       <button onClick="{{files.browse.allFiles}}" aria-label="All files" class="tap" style="display:flex;align-items:center;gap:14px;width:100%;min-height:60px;padding:8px;border-radius:18px;text-align:left"><span style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--s2);color:var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="{{files.browse.allFilesIcon}}"></path></svg></span><span style="font-size:16px;font-weight:500">All files</span></button>
       <sc-for list="{{files.browse.cats}}" as="c" key="{{c.id}}">
@@ -2997,8 +3001,19 @@
           </sc-for>
         </nav>
       </sc-if>
-      <sc-if value="{{files.nativeTreeStatus}}"><div role="status" style="padding: 8px 24px; color: var(--mut); font-size: 14px">{{files.nativeTreeStatus}}</div></sc-if>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 0 8px 150px; box-sizing: border-box">
+        <sc-if value="{{files.browse.denied}}">
+          <div class="files-storage-status">
+            <div role="alert">
+              <strong>{{files.browse.deniedLabel}}</strong>
+              <p>{{files.browse.deniedText}}</p>
+            </div>
+            <button onClick="{{files.browse.grant}}">Allow</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{files.browse.unavailable}}"><div class="files-storage-status" role="alert">Storage unavailable</div></sc-if>
+        <sc-if value="{{files.fd.loading}}"><p class="files-read-status" role="status">{{files.loadingText}}</p></sc-if>
+        <sc-if value="{{files.fileReadNotice}}"><p class="files-read-status" role="status">{{files.fileReadNotice}}</p></sc-if>
         <sc-if value="{{files.fd.empty}}">
           <div class="files-empty-state" role="status">
             <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 44px; height: 44px"><path d="{{files.fd.emptyD}}"></path></svg>
