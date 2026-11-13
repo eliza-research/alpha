@@ -528,11 +528,14 @@ The reviewed batch through `0f4b3b0b0` adds [markdown-it 15](https://github.com/
 [MapLibre development dependencies](https://github.com/elizaOS/eliza/pull/39350),
 the [native dependency installer cleanup](https://github.com/elizaOS/eliza/pull/39484)
 and the [2.0.6 release cohort](https://github.com/elizaOS/eliza/pull/39483).
-Renderer, core implementation and native compiler sources are unchanged from
-`1b39e1854`; the dependency graph and producer package manifests changed, so
-SDK preparation and native receipt admission run again for this pin.
-The native engine gitlink is unchanged. Historical native measurements retain their original
-source attribution. New builds use the current source recipe and generated
+The current SDK pin `442586ce66abf43ff382a951b8d439efd400af84` adds the reviewed
+Phonon model provenance and hash diagnostics to that `0f4b3b0b0` baseline. Its
+engine pin `5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd` canonicalizes zero mel
+weights so the source-built model is byte-identical on ARM64 and x86_64.
+Renderer and core implementation sources are unchanged. SDK preparation and
+native receipt admission run again for the new source recipe.
+Historical native measurements retain their original source attribution.
+New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
 hardware. Qualify the launcher APK from the exact current inputs
 before distribution or OS enrollment.

@@ -63,6 +63,9 @@ jobs:
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: bun install --frozen-lockfile
+      - name: Install browser for manual host verification
+        if: github.event_name == 'workflow_dispatch'
+        run: bash scripts/ci/install-playwright-browser.sh chromium
       # The host JVM tests in bun run verify and the Calendar bridge both need the pinned org.json jar.
       - name: Prepare normal host-test JSON
         timeout-minutes: 1

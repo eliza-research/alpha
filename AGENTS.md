@@ -16,6 +16,8 @@ building. The Android build refuses a pin older than main's, and there is no ove
 `upstream.lock.json` records the shared source revision.
 After changing the pin, refresh its recorded develop comparison with
 `bun scripts/verify-upstream.ts --record-reachability`.
+Review the pin-bound core source catalog, mobile build policy and current formal-source
+inventory too; verify every recorded target hash before advancing their revisions.
 `apps/app` owns this product's renderer; `android` owns its Android packaging.
 Run `bun run verify` and the Android build: `bun run android:build:local` (input check,
 `agent:build-embedding-host`, `agent:prepare`, `agent:build-workflow-worker`, `agent:stage-android`,
