@@ -66,10 +66,6 @@ export async function checkNativeAssistantEntry(extraSources=[]) {
       assert.ok(patches.every(patch=>patch.targets.every(target=>target.path!==path)),`Image input has a staged patch: ${path}`);
       assert.equal(driverHashes[join(root,source)],imagePinned.get(path).sha256);
     }
-    const bridge=readFileSync(join(root,capacitor,'BridgeActivity.java'),'utf8');
-    const load=bridge.slice(bridge.indexOf('    protected void load()'),bridge.indexOf('    public void registerPlugin('));
-    assert.match(load,/bridge = bridgeBuilder[^;]*\.create\(\);[\s\S]*this\.onNewIntent\(getIntent\(\)\);/);
-    assert.match(bridge,/protected void onNewIntent\(Intent intent\)[\s\S]*this\.bridge\.onNewIntent\(intent\);/);
     const traces=javaTraceCampaign(harness,[...appSources,...sharedSources,...ports,...fixture.paths],scenarios);
     for(const trace of traces) {
       mapSurfaces(trace.expect);
@@ -86,7 +82,7 @@ export async function checkNativeAssistantEntry(extraSources=[]) {
       ]});
     return {receipt,obligations:[
       {model,obligation:'Android authority and delivery of assistant entry',reason:'Closed ports do not prove OS caller disclosure, installed protected component availability, tile unlock/lifecycle delivery or Android task placement.'},
-      {model,obligation:'Live Sense/renderer binding and capture',reason:'Host replay uses controlled lease, foreground and credential inputs and performs no audio capture. The exact bridge-load guard and public delivery replay are checked against installed Capacitor call ordering.'},
+      {model,obligation:'Live Sense/renderer binding and capture',reason:'Host replay uses controlled lease, foreground and credential inputs and performs no audio capture. The bridge-load guard and public delivery replay run against a closed Capacitor BridgeActivity port.'},
     ]};
   } finally {fixture.close();}
 }
