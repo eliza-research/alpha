@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,verifyNativeJava} from './embedding-native-contract.ts';
+import {readNativeBuildReceipt} from './native-build-inputs.ts';
 const root=path.resolve(import.meta.dirname,'..');
 const sha=(value: string | Buffer)=>createHash('sha256').update(value).digest('hex');
 const hash=(file: string)=>sha(fs.readFileSync(file));
@@ -91,7 +92,7 @@ export function verifyEmbeddingEngine(productRoot: string,manifest: Pick<Embeddi
  const file=path.join(productRoot,voiceRecord);
  if(!fs.existsSync(file))throw Error(voiceRecord+' is missing; '+embeddingRecord+' cannot be checked against it');
  const engine=(row: { libraries?: Library[] } | undefined)=>row?.libraries?.find(library=>library.name==='libelizainference.so');
- const voiceManifest: { abis?: { abi: string; libraries?: Library[] }[] } = JSON.parse(fs.readFileSync(file,'utf8'));
+ const voiceManifest: { abis?: { abi: string; libraries?: Library[] }[] } = readNativeBuildReceipt(productRoot)?.voice ?? JSON.parse(fs.readFileSync(file,'utf8'));
  const embedding=engine(manifest),voice=engine(voiceManifest.abis?.find(row=>row.abi==='arm64-v8a'));
  const label=(row: Library | undefined)=>row?String(row.sha256).slice(0,8)+'/'+row.bytes+' bytes':'none';
  if(!embedding||!voice||embedding.sha256!==voice.sha256||embedding.bytes!==voice.bytes)throw Error('arm64-v8a libelizainference.so differs: '+embeddingRecord+' records '+label(embedding)+', '+voiceRecord+' records '+label(voice)+'; both ship as jniLibs/arm64-v8a/libelizainference.so');
@@ -107,7 +108,7 @@ export function verifyEmbeddingHost(productRoot: string,{allowAbsentRuntime=fals
   if(files.every(file=>!fs.existsSync(path.join(productRoot,file))))return {status:'not-packaged',distributable:false};
  }
 
- const manifest: EmbeddingManifest=JSON.parse(fs.readFileSync(path.join(productRoot,embeddingRecord),'utf8'));
+ const manifest: EmbeddingManifest=readNativeBuildReceipt(productRoot)?.embedding as EmbeddingManifest ?? JSON.parse(fs.readFileSync(path.join(productRoot,embeddingRecord),'utf8'));
  if(manifest.jniIdentityRelocated!==true)throw Error('Embedding host JNI identity missing or changed');
  verifyEmbeddingEngine(productRoot,manifest);
  verifyEmbeddingInputs(productRoot,manifest,{requireProducerInputs});

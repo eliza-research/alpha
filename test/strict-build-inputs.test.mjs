@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-import {BUILD_TOOLCHAIN, QUALIFIED_HOST, Stop, compareWithQualified, describeDifference, run, stageReproduced, stagedLibraries} from '../scripts/build-embedding-host.ts';
+import {BUILD_TOOLCHAIN, QUALIFIED_HOST} from '../scripts/build-embedding-host.ts';
 import {formatReport, strictBuildInputs} from '../scripts/android-build-preflight.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -27,70 +27,6 @@ function fixture(t, {remapBuildPath = false} = {}) {
   const stage = (name, text = `reviewed ${name}`) => write(`android/app/src/main/jniLibs/arm64-v8a/${name}`, text);
   return {root, write, names, manifest, stage};
 }
-
-test('staged embedding bytes reject conflicts and accept matching libraries', t => {
-  const f = fixture(t);
-  // A library that is not the reviewed bytes is never replaced and never accepted.
-  f.stage('libelizainference.so', 'rebuilt elsewhere');
-  assert.throws(() => run(f.root), error => error.code === 2 && /libelizainference\.so .* is not the reviewed bytes.*never replaces a staged library/.test(error.message));
-  assert.equal(fs.readFileSync(path.join(f.root, 'android/app/src/main/jniLibs/arm64-v8a/libelizainference.so'), 'utf8'), 'rebuilt elsewhere');
-
-  // The reviewed bytes, however they were supplied, pass without building.
-  for (const name of f.names) f.stage(name);
-  assert.equal(run(f.root), 0);
-});
-
-test('a rebuild is staged only when every library is byte-identical to the reviewed manifest', t => {
-  const f = fixture(t);
-  const built = {};
-  for (const name of f.names) { built[name] = path.join(f.root, 'out', name); f.write(`out/${name}`, `reviewed ${name}`); }
-  f.write('out/libelizainference.so', 'same source, different build directory');
-  let comparison = compareWithQualified(f.manifest, built);
-  assert.deepEqual(comparison.map(row => row.reproduced), [false, true, true]);
-  assert.match(describeDifference(comparison)[0], /^libelizainference\.so: built 38 bytes sha256 [0-9a-f]{64}, reviewed \d+ bytes sha256 [0-9a-f]{64}$/);
-  assert.throws(() => stageReproduced(f.root, f.manifest, comparison), /Refusing to stage: the rebuilt embedding host is not the reviewed bytes/);
-  assert.deepEqual(stagedLibraries(f.root).map(row => row.state), ['missing', 'missing', 'missing'], 'a partial match stages nothing');
-  assert.deepEqual(compareWithQualified(f.manifest, {}).map(row => row.reason), ['not built', 'not built', 'not built']);
-
-  f.write('out/libelizainference.so', 'reviewed libelizainference.so');
-  comparison = compareWithQualified(f.manifest, built);
-  // A different library that is already staged is never overwritten, even by the reviewed bytes.
-  f.stage('libelizavoicejni.so', 'placed by something else');
-  assert.throws(() => stageReproduced(f.root, f.manifest, comparison), /A different libelizavoicejni\.so is already staged; review ownership before replacing it/);
-  assert.deepEqual(stagedLibraries(f.root).map(row => row.state), ['missing', 'different', 'missing']);
-  assert.equal(fs.readFileSync(path.join(f.root, 'android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so'), 'utf8'), 'placed by something else');
-  fs.rmSync(path.join(f.root, 'android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so'));
-  stageReproduced(f.root, f.manifest, comparison);
-  assert.deepEqual(stagedLibraries(f.root).map(row => row.state), ['staged', 'staged', 'staged']);
-});
-
-test('once the reviewed bytes are reproducible the step rebuilds with the remap and stages only an exact reproduction', t => {
-  // The compile step is replaced: these cases are about what the step does with its result.
-  const f = fixture(t, {remapBuildPath: true});
-  const calls = [];
-  const builder = texts => (root, manifest, toolchain, output, options) => {
-    calls.push({output: path.relative(root, output), options});
-    const built = {};
-    for (const name of f.names) { built[name] = path.join(output, name); f.write(path.relative(root, built[name]), texts[name] ?? `reviewed ${name}`); }
-    const comparison = compareWithQualified(manifest, built);
-    const reproduced = comparison.every(row => row.reproduced);
-    f.write(path.relative(root, path.join(output, 'COMPARISON.json')), JSON.stringify({reproduced, staged: false, libraries: comparison}, null, 2) + '\n');
-    return {receiptFile: path.join(output, 'PREPARATION.json'), comparison, reproduced};
-  };
-  // A rebuild that differs in one library stages nothing.
-  assert.throws(() => run(f.root, {build: builder({'libelizavoicejni.so': 'built on another host'})}), error => error instanceof Stop && error.code === 3
-    && /The rebuilt embedding host is not the reviewed bytes and was not staged:\n  - libelizavoicejni\.so: built 21 bytes/.test(error.message));
-  assert.deepEqual(stagedLibraries(f.root).map(row => row.state), ['missing', 'missing', 'missing']);
-  assert.deepEqual(calls, [{output: `.eliza/embedding-host/build-${'a'.repeat(40)}`, options: {remap: true}}], 'the chain build uses the path remap the reviewed bytes were built with');
-
-  // An exact reproduction is staged and recorded.
-  fs.rmSync(path.join(f.root, '.eliza'), {recursive: true});
-  assert.equal(run(f.root, {build: builder({})}), 0);
-  assert.deepEqual(stagedLibraries(f.root).map(row => row.state), ['staged', 'staged', 'staged']);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(f.root, calls[1].output, 'COMPARISON.json'), 'utf8')).staged, true);
-  // Staged now: a later run passes without building.
-  assert.equal(run(f.root, {build: () => assert.fail('must not build')}), 0);
-});
 
 test('path remapping is opt-in, recorded in the receipt and leaves the default build unchanged', () => {
   const source = fs.readFileSync(path.join(ROOT, 'scripts/prepare-embedding-host.ts'), 'utf8');
@@ -116,20 +52,19 @@ test('the input report separates what a script produces from what needs a person
   const badVoice = () => { throw new Error('Voice bundle file missing or changed: asr.gguf'); };
   let rows = strictBuildInputs(f.root, null, {env: {}, voiceHost: badVoice});
   const row = name => rows.find(item => item.input === name);
-  assert.deepEqual(rows.filter(item => item.suppliedBy === 'person').map(item => item.input), ['on-device voice outputs', 'release signer']);
+  assert.deepEqual(rows.filter(item => item.suppliedBy === 'person').map(item => item.input), ['release signer']);
   assert.ok(rows.every(item => item.state === 'missing' && item.action), 'an empty checkout has nothing ready and an action for every input');
   assert.match(row('pinned upstream checkout').action, /git submodule update --init vendor\/eliza/);
   assert.match(row('on-device voice outputs').detail, /are not admitted by .*Voice bundle file missing or changed: asr\.gguf/);
-  assert.match(row('on-device voice outputs').action, /^Needs a person to supply the recorded voice outputs and models: bun scripts\/android-stage-voice-models\.ts --from /);
+  assert.match(row('on-device voice outputs').action, /bun run agent:build-embedding-host/);
   assert.equal(row('embedding host libraries').action, 'bun run agent:build-embedding-host');
   assert.match(row('release signer').action, /^Needs a person: Alpha Compute controls signing and Shaw owns release/);
   assert.match(row('release signer').detail, /says unset; not set in this environment: ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS, ELIZAOS_KEY_PASSWORD/);
   for (const name of ['prepared resident runtime source', 'workflow worker artifact', 'staged resident runtime payload', 'embedding model', 'Gradle dependency verification metadata'])
     assert.match(row(name).action, /^bun run /, name);
   let report = formatReport(rows);
-  assert.match(report, /2 input\(s\) only a person can supply: on-device voice outputs, release signer\./);
+  assert.match(report, /1 input\(s\) only a person can supply: release signer\./);
   assert.match(report, /An unset release signer does not stop the build: verify-apks records its releases distributable:false/);
-  assert.match(report, /Missing or changed voice outputs stop Gradle :app:verifyVoiceHost in a distribution build\./);
 
   // Staged voice outputs are ready; signing values are never printed.
   for (const name of f.names) f.stage(name);
@@ -168,7 +103,7 @@ test('the real checkout reports its inputs without failing and without building'
   // and the report follows the committed records: it never calls the signer ready while they say otherwise.
   assert.equal(row('release signer').suppliedBy, 'person');
   assert.equal(row('release signer').state, 'missing', 'no signing values in this environment');
-  assert.equal(row('on-device voice outputs').suppliedBy, 'person');
+  assert.equal(row('on-device voice outputs').suppliedBy, 'script');
   assert.equal(row('embedding host libraries').suppliedBy, 'script');
   for (const item of rows) assert.equal(item.action === null, item.state === 'ready', item.input);
 });

@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ASR_BACKEND_ROLES, PARADEE_NATIVE, PARADEE_SOURCE, asrSlotFiles, verifyParadeeRuntime, type AsrBackend, type AsrSlot, type ParadeeBuildRecord, type ParadeeVoiceManifest} from './paradee-runtime.ts';
+import {readNativeBuildReceipt} from './native-build-inputs.ts';
 
 export const VOICE_HOST_MANIFEST = 'android/voice-host/qualified-voice-host.json';
 export const VOICE_ASR_SLOT = 'android/paradee-voice/asr-inputs.json';
@@ -35,6 +36,7 @@ interface VoiceAbi {
 interface VoiceHostRecord {
   schemaVersion: number;
   pin: string;
+  producerPin?: string;
   forkPin: string;
   identity: string;
   provider: string;
@@ -108,7 +110,10 @@ export function voiceHostProblems(value: unknown, label = VOICE_HOST_MANIFEST): 
 
 /** Reads and admits the committed record against the pin, the shared Paradee inputs and the ASR slot. */
 export function readVoiceHost(root: string): VoiceHostRecord {
-  const record: VoiceHostRecord = readJson(root, VOICE_HOST_MANIFEST);
+  const generated = readNativeBuildReceipt(root);
+  // The generated receipt retains the original build pin. This consumer view is
+  // current only after the recipe proved those exact producer source inputs equal.
+  const record: VoiceHostRecord = generated ? {...generated.voice, pin:generated.consumerSdkCommit,producerPin:generated.producer.sdkCommit} as VoiceHostRecord : readJson(root, VOICE_HOST_MANIFEST);
   const problems = voiceHostProblems(record);
   if (problems.length) throw Error(problems.join('\n'));
   const pin = readJson(root, 'upstream.lock.json').commit;

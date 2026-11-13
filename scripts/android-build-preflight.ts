@@ -19,6 +19,7 @@ import {verifyEmbeddingHost} from './stage-embedding-host.ts';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.ts';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.ts';
 import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter.ts';
+import {readNativeBuildReceipt} from './native-build-inputs.ts';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
@@ -145,7 +146,7 @@ function assessVoiceHost(root: string, {allowUnpackagedRuntime = false, voiceHos
   try {
     return {status: voiceHost(root, {allowAbsentRuntime: allowUnpackagedRuntime}), problems: []};
   } catch (error) {
-    return {status: null, problems: [`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (${message(error)}; Gradle :app:verifyVoiceHost rejects the build). ${FULL_CHAIN} does not produce them: stage them with bun scripts/android-stage-voice-models.ts --from <directory of the recorded voice outputs and models> (see ${VOICE_GUIDE}).`]};
+    return {status: null, problems: [`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (${message(error)}; Gradle :app:verifyVoiceHost rejects the build). ${FULL_CHAIN} produces them automatically from pinned public source and model inputs; run bun run agent:build-embedding-host to prepare the native cache.`]};
   }
 }
 
@@ -206,7 +207,7 @@ export function embeddingHostProblems(root: string, {allowUnpackagedRuntime = fa
     const partial = allowUnpackagedRuntime
       ? ' An unpackaged developer build must have no resident payload at all: remove android/app/src/main/assets/agent, android/app/src/main/jniLibs and .eliza/paradee-voice/native (its staged voice outputs keep :app:verifyParadeeAppLinkage checking jniLibs), or stage the host.'
       : '';
-    return [`The qualified embedding host is not staged (${message(error)}; Gradle :app:verifyEmbeddingHost rejects the build). bun run agent:build-embedding-host (a step of ${FULL_CHAIN}) stages the libraries only when it can reproduce the reviewed bytes, and says so when it cannot. ${partial}`];
+    return [`The qualified embedding host is not staged (${message(error)}; Gradle :app:verifyEmbeddingHost rejects the build). bun run agent:build-embedding-host (a step of ${FULL_CHAIN}) downloads pinned inputs, builds the libraries and verifies generated source/output receipts. ${partial}`];
   }
 }
 
@@ -238,14 +239,17 @@ export function strictBuildInputs(root: string, preparedSource: string | null, {
   // Every distribution build packages on-device speech and the embedding host.
   {
     const {status: voiceStatus, problems: voice} = assessVoiceHost(root, {voiceHost});
-    add('on-device voice outputs', voice.length === 0, 'person',
+    add('on-device voice outputs', voice.length === 0, 'script',
       voice.length ? voice[0] : `staged outputs match ${VOICE_HOST_MANIFEST}`,
-      `Needs a person to supply the recorded voice outputs and models: bun scripts/android-stage-voice-models.ts --from <directory> (see ${VOICE_GUIDE}).`);
+      'bun run agent:build-embedding-host (downloads pinned public sources, builds and caches voice and embedding inputs)');
 
   }
 
   {
-    const host = readJson(root, QUALIFIED_HOST), toolchain = readJson(root, BUILD_TOOLCHAIN);
+    let host;
+    try{host=readNativeBuildReceipt(root)?.embedding;}catch{/* A stale generated receipt is a missing input, not a broken report. */}
+    host??=readJson(root,QUALIFIED_HOST);
+    const toolchain = readJson(root, BUILD_TOOLCHAIN);
     const libraries = stagedLibraries(root, host);
     const hostState = embeddingHostState(host, toolchain, libraries);
     add('embedding host libraries', hostState.ready, hostState.suppliedBy,
@@ -303,6 +307,10 @@ async function main() {
     return;
   }
   const notes: string[] = [];
+  if(!args.includes('--allow-unpackaged-runtime')&&readHead(path.join(root,'vendor/eliza'))===readJson(root,'upstream.lock.json').commit) {
+    const {preparePortableNativeInputs}=await import('./build-embedding-host.ts');
+    await preparePortableNativeInputs(root);
+  }
   let problems = checkoutProblems(root,{allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime'),notes});
   for (const note of notes) console.error(`Note: ${note}`);
   if (!problems.length && !args.includes('--before-prepare')) {

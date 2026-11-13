@@ -48,6 +48,7 @@ import {METADATA as GRADLE_METADATA, coordinateChecksum, parseVerificationMetada
 import {classifyLicence, orderFlags} from './licence-policy.ts';
 import {LOCKFILE, readBunLock} from './bun-lock.ts';
 import {verifyEmbeddingInputs} from './stage-embedding-host.ts';
+import {readNativeBuildReceipt,NATIVE_BUILD_RECEIPT} from './native-build-inputs.ts';
 
 export const LICENCE_NOT_RECORDED = 'not recorded in this inventory';
 
@@ -187,12 +188,13 @@ function embeddingInputsCurrent(root: string, record: EmbeddingRecord | null) {
 }
 function embeddingHostComponents(root: string): Component[] {
   if (!exists(root, EMBEDDING_HOST)) return [];
-  const host: EmbeddingRecord = readJson(root, EMBEDDING_HOST);
-  const hostScope = exists(root, 'vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle') ? 'legacy qualification record; incompatible with current Paradee engine; not current packaged bytes' : WITH_RESIDENT_RUNTIME;
+  const generated=readNativeBuildReceipt(root);
+  const host: EmbeddingRecord = generated?.embedding as EmbeddingRecord ?? readJson(root, EMBEDDING_HOST);
+  const hostScope = generated ? WITH_RESIDENT_RUNTIME : exists(root, 'vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle') ? 'legacy qualification record; incompatible with current Paradee engine; not current packaged bytes' : WITH_RESIDENT_RUNTIME;
   const modelScope = host.requalification?.required === true
     ? 'legacy qualification record; requalification pending; not current packaged bytes'
     : embeddingInputsCurrent(root, host) ? WITH_RESIDENT_RUNTIME : SUPERSEDED_EMBEDDING_MODEL;
-  const source = `${EMBEDDING_HOST} (elizaOS ${host.pin}, engine ${host.forkPin})`;
+  const source = `${generated?NATIVE_BUILD_RECEIPT:EMBEDDING_HOST} (elizaOS ${host.pin}, engine ${host.forkPin})`;
   return [
     ...host.libraries.map(library => ({
       type: 'library' as const, 'bom-ref': `embedding-host:${host.abi}/${library.name}`, name: `${library.name} (${host.abi})`, version: library.name === 'libc++_shared.so' ? 'Android NDK C++ runtime' : `engine ${host.forkPin}`,
@@ -221,7 +223,7 @@ function walkFiles(directory: string, base = directory, out: string[] = []): str
 function residentRuntimeComponents(root: string): Component[] {
   if (!packagedRuntimePresent(root)) throw new Error('--packaged-runtime: no resident runtime is staged. Run: bun run agent:build-workflow-worker && bun run agent:stage-android');
   const out: Component[] = [];
-  const record: EmbeddingRecord | null = exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null;
+  const record: EmbeddingRecord | null = readNativeBuildReceipt(root)?.embedding as EmbeddingRecord ?? (exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null);
   // Only current source inputs make the recorded hashes authoritative. A superseded record
   // stays in the source inventory while staged candidates are enumerated by their actual bytes.
   const embedding = embeddingInputsCurrent(root, record) ? record : null;
@@ -275,7 +277,7 @@ function apkComponents(root: string, directory: string): Component[] {
 /** The libelizainference voice host: its recorded engine libraries per ABI and every bundle file it pins. */
 function voiceHostComponents(root: string): Component[] {
   if (!exists(root, VOICE_HOST)) return [];
-  const record = readJson(root, VOICE_HOST);
+  const record = readNativeBuildReceipt(root)?.voice ?? readJson(root, VOICE_HOST);
   const problems = voiceHostProblems(record);
   if (problems.length) throw new Error(problems.join('\n'));
   const out: Component[] = [];
