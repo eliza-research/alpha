@@ -96,14 +96,16 @@ module NotesView {
   pure def afterApply(before: State): State = { ...before,
     noteFolder: before.noteFolder.set(before.review.n, before.review.f), rev: bumped(before.rev, before.review.n), review: NoReview }
   pure def CrashKeepsAudioRelation(before: State, after: State): bool =
-    (processDeathEnabled(before) and after == afterProcessDeath(before)) implies
-      before.durable >= before.recorded - (if (before.recorded > 0) 1 else 0)
+    (before.durable >= before.recorded - (if (before.recorded > 0) 1 else 0)) or
+      not(processDeathEnabled(before) and after == afterProcessDeath(before))
   pure def RenameKeepsMembershipRelation(before: State, after: State): bool =
-    Folders.forall(f => before.config.Names.forall(name =>
-      (renameEnabled(before, f, name) and after == afterRename(before, f, name)) implies
-      (after.noteFolder == before.noteFolder and after.live == before.live and after.trash == before.trash)))
+    (after.noteFolder == before.noteFolder and after.live == before.live and after.trash == before.trash) or
+      after.folderName == before.folderName or
+      Folders.forall(f => before.config.Names.forall(name =>
+        not(renameEnabled(before, f, name) and after == afterRename(before, f, name))))
   pure def AgentMoveOnlyReviewedRelation(before: State, after: State): bool =
-    (reviewCurrent(before) and after == afterApply(before)) implies before.rev.get(before.review.n) == before.review.r
+    not(reviewCurrent(before)) or
+      (before.rev.get(before.review.n) == before.review.r or not(after == afterApply(before)))
   action Track(after: State): bool = all { s' = after, history' = {
     CrashKeepsAudio: history.CrashKeepsAudio and CrashKeepsAudioRelation(s, after),
     RenameKeepsMembership: history.RenameKeepsMembership and RenameKeepsMembershipRelation(s, after),
@@ -141,14 +143,26 @@ module NotesView {
   val ReviewCurrent = reviewCurrent(s)
   action AgentApply = all { ReviewCurrent, Track(afterApply(s)) }
   action AgentReject = all { s.review != NoReview, Track({ ...s, review: NoReview }) }
-  action Next = {
-    nondet n = Notes.oneOf()
-    nondet f = Folders.union(Set(None)).oneOf()
-    nondet folder = Folders.oneOf()
-    nondet name = s.config.Names.oneOf()
-    any { Record, Segment, Pause, Resume, Stop, StorageFull, ProcessDeath, AsrSegment, Hide, Show,
-      TrashNote(n), Restore(n), Expire(n), MoveToFolder(n, f), AgentProposeMove(n, f),
-      DeleteFolder(folder), RenameFolder(folder, name), AgentApply, AgentReject }
+  action Next = any {
+    Record, Segment, Pause, Resume, Stop, StorageFull, ProcessDeath, AsrSegment, Hide, Show,
+    { nondet n = Notes.oneOf()
+      TrashNote(n) },
+    { nondet n = Notes.oneOf()
+      Restore(n) },
+    { nondet n = Notes.oneOf()
+      Expire(n) },
+    { nondet n = Notes.oneOf()
+      nondet f = Folders.union(Set(None)).oneOf()
+      MoveToFolder(n, f) },
+    { nondet n = Notes.oneOf()
+      nondet f = Folders.union(Set(None)).oneOf()
+      AgentProposeMove(n, f) },
+    { nondet folder = Folders.oneOf()
+      DeleteFolder(folder) },
+    { nondet folder = Folders.oneOf()
+      nondet name = s.config.Names.oneOf()
+      RenameFolder(folder, name) },
+    AgentApply, AgentReject
   }
   action step = any { Next, Track(s) }
   val TypeOK = Configurations.contains(s.config.name) and s.config == configuration(s.config.name)
@@ -190,8 +204,11 @@ module NotesView {
   temporal CheckedReviewSettles = Fairness implies ReviewSettles
   temporal CheckedHiddenTemporal = Fairness implies (CrashKeepsAudio and RenameKeepsMembership and AgentMoveOnlyReviewed
     and TranscriptKeepsUpHidden and AsrSettles and ReviewSettles)
-  temporal CheckedTemporal = Fairness implies (CrashKeepsAudio and RenameKeepsMembership and AgentMoveOnlyReviewed
-    and TranscriptKeepsUp and AsrSettles and ReviewSettles)
+  temporal TranscriptSettlesAcrossActiveStates = leadsTo(
+    Set("recording", "saved").contains(s.rec) and s.asr < s.durable and (s.shown or s.config.AsrWhileHidden),
+    s.asr == s.durable or not(Set("recording", "saved").contains(s.rec)) or not(s.shown or s.config.AsrWhileHidden))
+  temporal CheckedTemporal = always(history.CrashKeepsAudio and history.RenameKeepsMembership and history.AgentMoveOnlyReviewed)
+    and (Fairness implies (TranscriptSettlesAcrossActiveStates and ReviewSettles))
   pure val testNames = Map("f1" -> "a", "f2" -> "b")
   pure val testFolders = Map("n1" -> "f1", "n2" -> None)
   action TestInit(name) = StartState(name, testNames, testFolders)

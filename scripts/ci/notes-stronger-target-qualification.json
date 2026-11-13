@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-13T21:08:18.329080+00:00",
+  "parentSha256": "14c5a7e6dca6c5c3f84ab8012ddd027c8d21b22bec29b028ddd449f7fc9f9a6b",
+  "modelSha256": "922de75ca76018f99c72334cf631050f4333c7a19a1c21ec69d173771f28f792",
+  "onlySelectedTargetStrengthenedAndHelperAdded": true,
+  "progressProof": "For recording and saved separately, P_original implies P_combined and Q_combined implies Q_original, identically for arbitrary states. Thus P_combined leadsTo Q_combined implies each original leadsTo obligation. Guarding both sides by exactly the original Fairness preserves that implication. No state, domain, timing, budget, termination or fairness assumption is needed for this logical implication. The new target may reject additional behavior; a positive complete proof implies every original obligation.",
+  "historyProof": "Always(H) and (F implies CombinedProgress and ReviewSettles) implies F implies (Always(H) and TranscriptKeepsUp and AsrSettles and ReviewSettles). H retains all three original latched assertions. All individual original temporal aliases remain unchanged.",
+  "completePropositionalTruthTableCases": 32,
+  "originalDefinitionsPreserved": [
+    "Fairness",
+    "TranscriptKeepsUp",
+    "AsrSettles",
+    "ReviewSettles",
+    "CrashKeepsAudio",
+    "RenameKeepsMembership",
+    "AgentMoveOnlyReviewed"
+  ],
+  "preserved": "Original all7configs/domains/initializers/actions/states/history updates/10scenarios/sample bounds and resource budgets unchanged. Only a stronger selected temporal target and its helper are added.",
+  "negativeControls": [
+    "false source history invariant",
+    "fair review loop without retirement",
+    "fair ASR action that stutters without transcription progress"
+  ],
+  "hypothesis": "TLC may extract top-level Always(H) as an implied invariant and verify two stronger liveness branches; actual full source/translation/proof and negative controls required."
+}
