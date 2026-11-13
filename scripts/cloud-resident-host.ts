@@ -6,6 +6,7 @@ import {randomUUID,randomBytes} from 'node:crypto';
 import {preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment,startPrivateRuntimeProcess} from './private-runtime-launch.ts';
 import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from './local-agent-source.ts';
 import {verifyWorkerArtifact} from './workflow-worker-artifact.ts';
+import {readUpstreamPin} from './upstream-pin.ts';
 import {verifyNativeGoogleHostArtifact} from './native-google-host-artifact.ts';
 import {nativeViewDeclarationsJson} from './native-view-policy.ts';
 import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment} from './agent-embeddings.ts';
@@ -69,7 +70,7 @@ export const CLOUD_MODEL='cerebras/qwen-3.8-27b';
 export async function createCloudResidentHost({source,profile,port,environment='production',launch=startPrivateRuntimeProcess,inherited=process.env,request=fetch,startGoogleHost,cloudRealtimeVoice=false}: CloudResidentOptions): Promise<CloudResidentHost> {
  if(!['production','staging'].includes(environment))throw Error('Invalid Cloud environment');
  const root=path.resolve(import.meta.dirname,'..');
- const commit=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;
+ const commit=readUpstreamPin(root).commit;
  verifySource(source,commit);
  // The product declaration comes only from the current verified worker module,
  // independent of provider credentials. No inherited module path or character JSON.

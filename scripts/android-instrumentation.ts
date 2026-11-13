@@ -34,7 +34,8 @@
  * real-integration or user acceptance.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import {sha256, sha256File} from "./sha256.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -430,7 +431,6 @@ export const VARIANT = "launcher";
 /** Locate the app/test APK pair and bind the app to the verify-apks manifest. */
 export function admitApks(apkDir: string) {
   const variant = VARIANT;
-  const sha = (file: string) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
   const manifestFile = path.join(apkDir, "apk-manifest.json");
   if (!fs.existsSync(manifestFile)) throw new Error(`${manifestFile} is missing; build and verify the APKs first`);
   const manifest: {
@@ -442,7 +442,7 @@ export function admitApks(apkDir: string) {
   const app = path.join(apkDir, `${variant}-debug.apk`);
   const test = path.join(apkDir, "instrumentation", `${variant}-androidTest.apk`);
   for (const file of [app, test]) if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
-  const appSha256 = sha(app), testSha256 = sha(test);
+  const appSha256 = sha256File(app), testSha256 = sha256File(test);
   const row = manifest.results?.find(entry => entry.variant === variant && entry.mode === "debug");
   if (!row || row.sha256 !== appSha256) throw new Error(`${app} does not match the verified ${manifestFile} row`);
   // verify-apks records the instrumentation APK built with this app; an unrecorded one is not bound to it.
@@ -581,7 +581,7 @@ export async function runLeased({ options, serial, adb, timing = {}, withSeconda
 
   const classes: ClassRunEvidence[] = [];
   const installed: string[] = [];
-  const emulator = { avd, abi: prop("ro.product.cpu.abi"), sdk: prop("ro.build.version.sdk"), serialSha256: createHash("sha256").update(serial).digest("hex") };
+  const emulator = { avd, abi: prop("ro.product.cpu.abi"), sdk: prop("ro.build.version.sdk"), serialSha256: sha256(serial) };
   const fingerprint = (pkg: string, expected: string) => {
     const apkPath = /^package:(\/\S+\.apk)$/m.exec(adb(["shell", "pm", "path", pkg]))?.[1];
     const actual = apkPath && adb(["shell", "sha256sum", apkPath]).trim().split(/\s+/)[0];

@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {registerHooks} from '../../../../test/support/module-hooks.mjs';
 import {writeWorkerFixture} from '../../../../test/fixtures/workflow-worker-assets.mjs';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
+import {sha256 as workerHash} from '../../../../scripts/sha256.ts';
 
 const driver = fileURLToPath(import.meta.url);
 // Bun binds named node:fs imports once (syncBuiltinESMExports does nothing there). The exact product
@@ -28,7 +29,7 @@ const hooks = registerHooks({resolve(specifier, context, next) {
 }});
 // The fixture module has already loaded the helper; this is a second instance of the same source bytes.
 // (Bun keeps the query of a path specifier, and drops that of a file: URL.)
-const {stageWorkerArtifact, verifyWorkerArtifact, workerHash} = await import(fileURLToPath(artifactSource)+'?live-fs');
+const {stageWorkerArtifact, verifyWorkerArtifact} = await import(fileURLToPath(artifactSource)+'?live-fs');
 hooks.deregister();
 assert.ok(liveFsBound, 'The exact staging helper imported the instrumented filesystem port');
 const model = 'WorkflowWorkerStaging';

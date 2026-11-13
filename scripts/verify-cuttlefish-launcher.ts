@@ -6,7 +6,7 @@
  * (scripts/stage-aosp.ts LAUNCHER_DEFAULT_PERMISSIONS). No install, role change, alarm, or runtime request.
  */
 import {execFileSync} from 'node:child_process';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -90,7 +90,7 @@ export function runAlphaLauncherVerifier(argv: string[], target: ImageTarget) {
       try { return execFileSync(options['--adb'] ?? 'adb', ['-s', options['--serial'], ...args], {encoding: 'utf8', timeout: 15_000, maxBuffer: 16 << 20, stdio: ['ignore', 'pipe', 'pipe']}); }
       catch { throw Error('ADB observation failed or timed out'); }
     };
-    const report = {...verifyAlphaLauncherImage(run, expected, options['--user'], target), descriptorSha256: createHash('sha256').update(descriptor).digest('hex'), observedAt: new Date().toISOString()};
+    const report = {...verifyAlphaLauncherImage(run, expected, options['--user'], target), descriptorSha256: sha256(descriptor), observedAt: new Date().toISOString()};
     fs.writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
     console.log(`PASS ${options['--out']}: ${report.evidence} checks only`);
   } catch (error) {

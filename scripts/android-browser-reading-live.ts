@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
+import {sha256 as hash} from './sha256.ts';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -54,7 +55,6 @@ assert.ok(owner.token.length > 20);
 
 const host = 'http://127.0.0.1:47858';
 const origin = 'http://10.0.2.2:47861';
-const hash = (value: Buffer) => crypto.createHash('sha256').update(value).digest('hex');
 
 async function request<T>(route: string): Promise<T> {
   const response = await fetch(host + route, {

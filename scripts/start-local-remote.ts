@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import {sha256File} from './sha256.ts';
 import {execFileSync} from 'node:child_process';
 import {preparePrivateRuntimeProfile,runtimeEnvironment,startPrivateRuntimeProcess,writePrivateRuntimeJson} from './private-runtime-launch.ts';
 import {AGENT_MODEL,agentModelEnvironment} from './agent-model.ts';
@@ -14,6 +15,7 @@ import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment} from './agent-embedding
 import {speechEnvironment} from './host-speech-admission.ts';
 import {developmentCartesiaEnvironment} from './dev-cartesia.ts';
 import {nativeViewDeclarationsJson} from './native-view-policy.ts';
+import {readUpstreamPin} from './upstream-pin.ts';
 const root=path.resolve(import.meta.dirname,'..');
 const source = process.env.ALPHA_ELIZA_SOURCE ? path.resolve(process.env.ALPHA_ELIZA_SOURCE) : sourceDirectory(path.resolve(import.meta.dirname,'..'));
 // Upstream's own swap switches. Only both together are qualified, and only on verified pinned source.
@@ -22,8 +24,7 @@ for (const value of swapFlags) if (value !== undefined && !['true', 'false'].inc
 if ((swapFlags[0] === 'true') !== (swapFlags[1] === 'true')) throw new Error('Set ELIZA_SECRET_SWAP_ENABLED and ELIZA_PII_SWAP_ENABLED together');
 const redaction = swapFlags[0] === 'true' ? 'all' : 'off';
 if (redaction === 'all') {
-  const lock=JSON.parse(fs.readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8'));
-  verifySource(source,lock.commit);
+  verifySource(source,readUpstreamPin(root).commit);
 }
 const profile = path.resolve(process.env.ALPHA_REMOTE_PROFILE || path.join(os.homedir(), '.local/share/alphaphone/local-remote'));
 const port = Number(process.env.ALPHA_REMOTE_PORT || 47839);
@@ -51,8 +52,7 @@ const asrEnvironment = speechEnvironment('asr');
 const ttsEnvironment = speechEnvironment('tts');
 const cartesiaEnvironment = developmentCartesiaEnvironment();
 if ((asrEnvironment.ELIZA_ASR_ENABLED === '1' || ttsEnvironment.ELIZA_PARADEE_ENABLED === '1') && redaction !== 'all') {
-  const lock=JSON.parse(fs.readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8'));
-  verifySource(source,lock.commit);
+  verifySource(source,readUpstreamPin(root).commit);
 }
 const env=runtimeEnvironment({
  inherited:process.env,allow:['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME','ELIZA_PGLITE_AUTO_RESET'],
@@ -67,7 +67,7 @@ try {
  const running=await startPrivateRuntimeProcess({command:process.env.ALPHA_BUN||'bun',args:coreRuntimeArguments(root,source,['--no-install','--conditions=eliza-source',entry]),cwd:profile,env:{...env,ALPHA_CORE_STATE_SOURCE:source},stdio:['ignore',log,log],
   async recordLaunch({pid,launchedAt}){
    const sourceManifest=path.join(source,'.alpha-runtime-source.json');
-   const metadata={cartesiaConfigured:cartesiaEnvironment.ELIZA_SELF_HOSTED_VOICE_ENABLED==='1',localTtsConfigured:ttsEnvironment.ELIZA_PARADEE_ENABLED==='1',localAsrConfigured:asrEnvironment.ELIZA_ASR_ENABLED==='1',speechReadiness:'worker-initialization-required',egressRedactionRequested:redaction,sourceManifestSha256:fs.existsSync(sourceManifest)?crypto.createHash('sha256').update(fs.readFileSync(sourceManifest)).digest('hex'):null,pid,port,profile,source,revision:execFileSync('git',['rev-parse','HEAD'],{cwd:source,encoding:'utf8'}).trim(),startedAt:new Date(launchedAt).toISOString()};
+   const metadata={cartesiaConfigured:cartesiaEnvironment.ELIZA_SELF_HOSTED_VOICE_ENABLED==='1',localTtsConfigured:ttsEnvironment.ELIZA_PARADEE_ENABLED==='1',localAsrConfigured:asrEnvironment.ELIZA_ASR_ENABLED==='1',speechReadiness:'worker-initialization-required',egressRedactionRequested:redaction,sourceManifestSha256:fs.existsSync(sourceManifest)?sha256File(sourceManifest):null,pid,port,profile,source,revision:execFileSync('git',['rev-parse','HEAD'],{cwd:source,encoding:'utf8'}).trim(),startedAt:new Date(launchedAt).toISOString()};
    await writePrivateRuntimeJson(path.join(profile,'process.json'),metadata);
    console.log(JSON.stringify({...metadata,log:path.join(profile,'server.log')}));
   },

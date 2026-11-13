@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import {sha256File} from './sha256.ts';
 import {execFileSync} from 'node:child_process';
 import {androidEnv} from './toolchain.ts';
 import {generateAlphaAndroidHost} from './android-host.ts';
@@ -22,7 +22,7 @@ for(const flavor of ['selected','excluded']){
  const badging=execFileSync(aapt,['dump','badging',apk],{env,encoding:'utf8'}),cert=execFileSync(apksigner,['verify','--print-certs',apk],{env,encoding:'utf8'});
  if(!badging.includes(`package: name='ai.alphacompute.notificationfixture.${flavor}'`)||badging.includes("name='android.permission.INTERNET'"))throw Error('Unexpected fixture identity or network permission');
  const signer=cert.match(/Signer #1 certificate SHA-256 digest: ([a-f0-9]+)/i)?.[1];if(!signer)throw Error('Fixture signer missing');
- result.apks[flavor]={file:path.basename(apk),packageName:`ai.alphacompute.notificationfixture.${flavor}`,sha256:crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex'),signer};
+ result.apks[flavor]={file:path.basename(apk),packageName:`ai.alphacompute.notificationfixture.${flavor}`,sha256:sha256File(apk),signer};
 }
 fs.writeFileSync(path.join(output,'manifest.json'),JSON.stringify(result,null,2));
 console.log('Built separately signed, synthetic-only notification witness APKs.');

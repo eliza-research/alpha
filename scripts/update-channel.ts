@@ -1,4 +1,4 @@
-import {createHash} from 'node:crypto';
+import {sha256 as digest} from './sha256.ts';
 import type {ManifestNode} from './apk.ts';
 
 export const UPDATE_CHANNEL_META='ai.alphacompute.alphaphone.UPDATE_CHANNEL';
@@ -20,7 +20,6 @@ export function isPublishedUpdateApkUrl(url: string, tag: typeof APP_UPDATE_TAG 
     url === `https://github.com/${repository}/releases/download/${tag}/alpha-phone-${versionCode}.apk`);
 }
 
-const digest=(bytes: string | Buffer)=>createHash('sha256').update(bytes).digest('hex');
 const refused=()=>new Error('Update channel input refused');
 
 export interface UpdateChannel {

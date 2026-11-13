@@ -5,7 +5,8 @@ import {execFileSync} from 'node:child_process';
 import {registerHooks} from '../../../../test/support/module-hooks.mjs';
 import {pathToFileURL} from 'node:url';
 import {policySource, writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
-import {workerHash, verifyWorkerArtifact} from '../../../../scripts/workflow-worker-artifact.ts';
+import {verifyWorkerArtifact} from '../../../../scripts/workflow-worker-artifact.ts';
+import {sha256 as workerHash} from '../../../../scripts/sha256.ts';
 import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
 import {CORE_STATE_MANIFEST, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.ts';
 import {controlName, digest, eventsName, fixtureModule, fixtureSource, productInput}
@@ -37,7 +38,7 @@ const productFiles = [
   'scripts/build-native-google-host.ts', 'scripts/local-agent-source.ts', 'scripts/native-google-host-artifact.ts',
   'scripts/prepare-client-features.ts', 'package.json', 'tsconfig.json',
   'vendor/eliza/tsconfig.json',
-  'scripts/upstream-native-source.ts', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
+  'scripts/upstream-native-source.ts', 'scripts/upstream-pin.ts', 'scripts/sha256.ts', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
 ];
 const workerFiles = ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
   'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json', 'lib/worker.js'];

@@ -22,7 +22,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash} from 'node:crypto';
+import {sha256File} from './sha256.ts';
 import {fileURLToPath} from 'node:url';
 import {regularFiles} from './regular-files.ts';
 import {HELD_OUTSIDE_REPOSITORY, NO_FONT_LICENCE, UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, UNVERIFIED} from './licence-policy.ts';
@@ -87,7 +87,7 @@ export function fontLicenceFindings(publicDir: string, {
   const digests = new Map<string, string>();
   for (const file of [...regularFiles(publicDir)].filter(file => FONT_FILE.test(file)).sort()) {
     const name = path.relative(publicDir, file).split(path.sep).join('/');
-    digests.set(name, createHash('sha256').update(fs.readFileSync(file)).digest('hex'));
+    digests.set(name, sha256File(file));
   }
   const stated = new Map(ownerStatedFonts.map(font => [font.sha256, font.name]));
   // The bytes decide first: a recorded hash is resolved, a listed-unrecorded hash is unresolved, wherever the file sits.

@@ -5,6 +5,7 @@
  * and must be repaired by retrying this same candidate, never by changing its APK.
  */
 import {createHash} from 'node:crypto';
+import {sha256 as sha} from './sha256.ts';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -45,7 +46,6 @@ interface DeliveryPorts {
 interface ReleaseAsset {name: string; id?: string; state?: string; size?: number; digest?: string | null}
 interface ReleaseRecord {isDraft?: boolean; assets?: ReleaseAsset[]}
 
-const sha = (bytes: NodeJS.ArrayBufferView) => createHash('sha256').update(bytes).digest('hex');
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 /** Anonymous HTTPS only, bounded redirects/body/time, streamed APK digest. */

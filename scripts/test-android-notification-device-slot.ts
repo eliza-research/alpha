@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdtempSync,mkdirSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import {execFileSync} from 'node:child_process';
 import {nativeSource,javaBinary} from '../test/fixtures/jvm-tools.mjs';
 const android=process.env.ALPHA_ANDROID_JSON_SOURCE;
@@ -27,12 +27,12 @@ class AlphaLocalAgentPlugin {static JSONObject captureReminderOwnerSession(){thr
 class HostedInbox {static String id(String value){if(!value.matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}"))throw new SecurityException();return value;}}
 class HostedResultNotices {static String hash(String text)throws Exception{return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}}`);
   const owner='10000000-0000-4000-8000-000000000001',agent='20000000-0000-4000-8000-000000000002';
-  const expected='device:'+createHash('sha256').update(JSON.stringify(['https://device.alpha.invalid',owner,agent])).digest('hex');
+  const expected='device:'+sha256(JSON.stringify(['https://device.alpha.invalid',owner,agent]));
   put('DeviceKeyTest.java',`package ai.alphacompute.alphaphone;import org.json.*;
 public class DeviceKeyTest {public static void main(String[]args)throws Exception{
  String owner="${owner}",agent="${agent}",expected="${expected}";
- if(!NativeDeviceEnrollmentKey.local("https://remote.example.test/api",owner,agent).equals("device:${createHash('sha256').update(JSON.stringify(['https://remote.example.test/api',owner,agent])).digest('hex')}"))throw new AssertionError("Remote key differs");
- if(!NativeDeviceEnrollmentKey.cloud("https://cloud.example.test/api","user_alias",agent).equals("device:${createHash('sha256').update(JSON.stringify(['cloud','https://cloud.example.test/api','user_alias',agent])).digest('hex')}"))throw new AssertionError("Cloud key differs");
+ if(!NativeDeviceEnrollmentKey.local("https://remote.example.test/api",owner,agent).equals("device:${sha256(JSON.stringify(['https://remote.example.test/api',owner,agent]))}"))throw new AssertionError("Remote key differs");
+ if(!NativeDeviceEnrollmentKey.cloud("https://cloud.example.test/api","user_alias",agent).equals("device:${sha256(JSON.stringify(['cloud','https://cloud.example.test/api','user_alias',agent]))}"))throw new AssertionError("Cloud key differs");
 
  String legacy="device:"+HostedResultNotices.hash(new JSONArray().put("https://device.alpha.invalid").put(owner).put(agent).toString());
  if(expected.equals(legacy))throw new AssertionError("Test did not reproduce Android slash escaping");

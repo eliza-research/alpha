@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {embeddingAbiLibraries,embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,verifyNativeJava} from './embedding-native-contract.ts';
 import {readNativeBuildReceipt} from './native-build-inputs.ts';
+import {ANDROID_ABIS} from './android-abis.ts';
 const root=path.resolve(import.meta.dirname,'..');
 const sha=(value: string | Buffer)=>createHash('sha256').update(value).digest('hex');
 const hash=(file: string)=>sha(fs.readFileSync(file));
@@ -108,7 +109,7 @@ export function verifyEmbeddingHost(productRoot: string,{requireProducerInputs=f
  verifyEmbeddingInputs(productRoot,manifest,{requireProducerInputs});
  if(manifest.model?.sha256!==model.sha256||manifest.model?.path!==model.path||manifest.model?.dimensions!==384)throw Error('Embedding host model admission changed');
  const abis=embeddingAbiLibraries(manifest);
- if(abis.some((row,index)=>row.abi!==(index===0?'arm64-v8a':'x86_64'))||abis.length>2)throw Error('Invalid embedding ABI inventory');
+ if(abis.some((row,index)=>row.abi!==ANDROID_ABIS[index])||abis.length>2)throw Error('Invalid embedding ABI inventory');
  for(const abi of abis){
  if(!Array.isArray(abi.libraries)||abi.libraries.length!==names.length||new Set(abi.libraries.map(row=>row.name)).size!==names.length)throw Error('Incomplete embedding host library set');
  for(const row of abi.libraries){

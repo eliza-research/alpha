@@ -32,7 +32,8 @@
  * erasing data, and the rollback design (A-06) is still blocked.
  */
 import { execFileSync } from "node:child_process";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
+import {sha256} from "./sha256.ts";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -69,7 +70,6 @@ type Unit = {
   updates?: unknown[];
 };
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
-const sha256 = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
 
 // The comparison, inventory and export parsers are shared with every product
 // (vendor/eliza/packages/os/scripts/android/apk-release-record.mjs); Alpha binds its package.

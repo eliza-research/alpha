@@ -5,6 +5,7 @@ import {HOST_DESCRIPTOR, generateAlphaAndroidHost, readHostDescriptor} from './a
 import {HOST_TEMPLATES, referencePath} from './gradle-verification.ts';
 import {readAgentBundleDependencies} from './agent-bundle-dependencies.ts';
 import {LOCKFILE, readBunLock, type PackageLock} from './bun-lock.ts';
+import {readUpstreamPin} from './upstream-pin.ts';
 export type {PackageLock};
 // Generates the third-party notices shipped in the web bundle and in every APK payload.
 //
@@ -32,7 +33,7 @@ export type {PackageLock};
 // Generation fails only on broken input: a package that is not installed or whose manifest
 // cannot be read, a pinned licence copy or core that drifted from its recorded hash, a stale
 // Android classpath snapshot, a malformed font licence record. A flag is not legal review.
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -141,7 +142,6 @@ const errorMessage = (error: unknown) => error instanceof Error ? error.message 
 const read = (root: string, rel: string) => fs.readFileSync(path.join(root, rel), 'utf8');
 export const readJson = (root: string, rel: string) => JSON.parse(read(root, rel));
 export const exists = (root: string, rel: string) => fs.existsSync(path.join(root, rel));
-export const sha256 = (data: string | NodeJS.ArrayBufferView) => createHash('sha256').update(data).digest('hex');
 const normalizeText = (text: string) => text.replace(/\r\n?/g, '\n').replace(/[ \t]+$/gm, '').replace(/^\n+|\n+$/g, '');
 
 /**
@@ -570,7 +570,7 @@ function fontEntries(root: string, templates: Templates, errors: string[]) {
 }
 
 function elizaEntry(root: string): NoticeDraft {
-  const lock = readJson(root, 'upstream.lock.json');
+  const lock = readUpstreamPin(root);
   const version = exists(root, 'vendor/eliza/package.json') ? readJson(root, 'vendor/eliza/package.json').version : 'pinned';
   return {name: 'elizaOS', version: `${version} (${lock.commit})`, license: 'MIT', source: `${lock.url.replace(/\.git$/, '')}/tree/${lock.commit}`,
     text: normalizeText(read(root, 'vendor/eliza/LICENSE'))};

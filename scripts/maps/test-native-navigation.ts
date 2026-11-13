@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import {sha256File as digest} from '../sha256.ts';
 import {execFileSync,spawn} from 'node:child_process';
 import {androidEnv} from '../toolchain.ts';
 import type { Place, Route } from '../../.eliza/client-features/plugins/plugin-maps/src/client/contracts.ts';
@@ -9,7 +9,6 @@ const serial=process.env.ANDROID_SERIAL;
 if(!appApk||!testApk||!serial||!/^emulator-\d+$/.test(serial))throw Error('Explicit emulator serial and matching APP.apk TEST.apk required');
 const env=androidEnv(),adb=path.join(env.ANDROID_HOME,'platform-tools/adb'),app='ai.alphacompute.alphaphone';
 const run=(...args: string[])=>execFileSync(adb,['-s',serial,...args],{env,encoding:'utf8',timeout:30000,stdio:['ignore','pipe','pipe']});
-const digest=(p: string)=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const evidence: {mode?: string; scope: string; serial: string; appSha256: string; testSha256: string; phases: string[]; passed: boolean; error?: string; restoreError?: string}={scope:'Public Monaco simulator GPS through actual Android location provider; foreground guidance plus a screen-off phase with a single notification Stop; not physical navigation',serial,appSha256:digest(appApk),testSha256:digest(testApk),phases:[],passed:false};
 fs.mkdirSync(output,{recursive:true});
 const places: Place[]=await fetch('http://127.0.0.1:47850/search?q=Casino%20de%20Monte%20Carlo',{signal:AbortSignal.timeout(5000)}).then(r=>r.json());

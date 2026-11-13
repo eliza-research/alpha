@@ -14,14 +14,13 @@
  * from it are emulator-class evidence for those exact APKs, never a qualified-archive result.
  */
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import {sha256File as sha} from "./sha256.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { admitApks } from "./android-instrumentation.ts";
 
 const USAGE = "Use: bun scripts/developer-archive.ts [--apk-dir <dir>] test-results/<new-folder>";
-const sha = (file: string) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 
 export function parseDeveloperArchiveArgs(argv: readonly string[]) {
   const options: {apkDir: string | null; destination: string | null} = { apkDir: null, destination: null };

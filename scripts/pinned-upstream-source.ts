@@ -1,12 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { verifyCommittedWorkspace } from "../vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs";
+import { readUpstreamPin } from "./upstream-pin.ts";
 
 /** Authenticate vendor bytes before resolving or compiling consumer source. */
 export function verifyPinnedUpstream(root: string) {
-	const { commit }: {commit?: unknown} = JSON.parse(
-		fs.readFileSync(path.join(root, "upstream.lock.json"), "utf8"),
-	);
+	const { commit }: {commit?: unknown} = readUpstreamPin(root);
 	if (typeof commit !== "string") throw Error("Exact admitted runtime commit required");
 	const directory = path.join(root, "vendor/eliza");
 	verifyCommittedWorkspace(directory, commit, {

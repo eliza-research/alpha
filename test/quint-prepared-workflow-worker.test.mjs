@@ -5,7 +5,8 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ensurePreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.ts';
-import {verifyWorkerArtifact, workerHash} from '../scripts/workflow-worker-artifact.ts';
+import {verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.ts';
+import {sha256 as workerHash} from '../scripts/sha256.ts';
 import {captureInputs, checkTraces} from '../specs/quint/refinement/check-traces.mjs';
 
 const model = 'PreparedWorkflowWorker';

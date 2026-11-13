@@ -5,7 +5,8 @@ import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
 import {createServer} from 'vite';
 import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
-import {filesWithin, sha256, repositoryRoot as root} from '../../../../scripts/quint-lib.ts';
+import {filesWithin, repositoryRoot as root} from '../../../../scripts/quint-lib.ts';
+import {sha256} from '../../../../scripts/sha256.ts';
 import {preloadPageModules} from '../../../../test/browser/helpers/page-modules.ts';
 import {captureInputs, checkTraces} from '../../refinement/check-traces.mjs';
 

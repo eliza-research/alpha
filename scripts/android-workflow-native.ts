@@ -17,11 +17,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import {sha256File as hash} from './sha256.ts';
 import {androidEnv} from './toolchain.ts';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {verifyPinnedUpstream} from './pinned-upstream-source.ts';
+import {isAndroidAbi} from './android-abis.ts';
 import type {IsolatedAndroidTest, IsolatedUserState} from './native-test-fixture.ts';
 
 type Case = {
@@ -66,13 +67,12 @@ assert.ok(!requestedPhase||PHASES.includes(requestedPhase),'Unknown phase');
 const serial=process.env.ANDROID_SERIAL,avd=process.env.ALPHA_WORKFLOW_TEST_AVD,abi=process.env.ALPHA_WORKFLOW_TEST_ABI;
 assert.ok(serial&&/^emulator-\d+$/.test(serial),'Explicit emulator serial required');
 assert.ok(avd&&/^[A-Za-z0-9_.-]+$/.test(avd),'Explicit owned AVD name required');
-assert.ok(abi==='x86_64'||abi==='arm64-v8a','Explicit owned emulator ABI required');
+assert.ok(isAndroidAbi(abi),'Explicit owned emulator ABI required');
 assert.ok(process.env.ALPHA_BUILD_ARCHIVE,'Set ALPHA_BUILD_ARCHIVE');
 const archive=path.resolve(process.env.ALPHA_BUILD_ARCHIVE),output=path.resolve(process.env.ALPHA_CAMPAIGN_OUTPUT??path.join(archive,'workflow-native'));
 assert.ok(output.startsWith(path.resolve('test-results')+path.sep),'Evidence must remain beneath test-results');assert.ok(!fs.existsSync(output),'Use a new evidence folder');
 const env=androidEnv(),adb=path.join(env.ANDROID_HOME,'platform-tools/adb'),aapt=path.join(env.ANDROID_HOME,'build-tools/36.0.0/aapt');
 const pkg=JSON.parse(fs.readFileSync('app.config.json','utf8')).appId;assert.equal(pkg,'ai.alphacompute.alphaphone');
-const hash=(file: string)=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const cases: Case[]=[{class:'WorkflowPhoneNativeInstrumentedTest',method:'privateReadResultSurvivesRecreationButNeverExpandsPassiveHistory',gate:'workflowPhoneNative',grant:true}, {class:'WorkflowPhoneNativeInstrumentedTest',method:'selectedCalendarQueryExcludesOtherAccountsAndRefusesOverflow',gate:'workflowPhoneNative',grant:true}, {class:'WorkflowPhoneNativeInstrumentedTest',method:'morningAndEveningShareOneCalendarSourceWithDistinctWindows',gate:'workflowPhoneNative',grant:true}, {class:'WorkflowPhoneNativeInstrumentedTest',method:'deniedCalendarGrantReturnsNoEvents',gate:'workflowPhoneDenied',grant:false}, {class:'WorkflowDraftNativeInstrumentedTest',method:'encryptedDraftIsAtomicAndSurvivesRecreation',gate:'workflowDraftNative',grant:false},
  {class:'WorkflowApprovalNoticeInstrumentedTest',method:'approvalAndStepBuildersAreRedactedAndExpire',gate:'workflowApprovalNotice',grant:false,phase:'approval-notice'},
  // The OS post and tap need the runtime notification permission in the owned secondary user.

@@ -40,6 +40,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {CLOUD_SIGN_IN_REGISTRATION} from './cloud-deployment-policy.ts';
+import {readUpstreamPin} from './upstream-pin.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const vendorDir = path.join(root, 'vendor/eliza');
@@ -108,7 +109,7 @@ function ownedExport(exportDir: string): string | null {
 async function prepare({dir, exportDir, source}: Layout) {
   const current = ownedExport(exportDir);
   const head = execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
-  const commit = source === vendorDir ? JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit as string : head;
+  const commit = source === vendorDir ? readUpstreamPin(root).commit : head;
   if (head !== commit) throw new Error('vendor/eliza is not at the pinned commit (upstream.lock.json)');
   if (source !== vendorDir && execFileSync('git', ['-C', source, 'status', '--porcelain'], {encoding: 'utf8'}).trim()) throw new Error('--source has uncommitted changes; only a commit is exported');
   if (current !== commit) {
