@@ -27,4 +27,19 @@ test('current Maps guidance follows cursor, reroute and exact background ownersh
  assert.equal(after('stale-start-refusal')['s.watch'],3);
  assert.equal(after('stale-start-refusal')['s.bridgeOwner'],3);
  assert.equal(after('stale-start-refusal')['s.releases'],0);
+ const fixes=name=>receipt.traceInputs.find(trace=>trace.name===name).steps.filter(step=>step.action.name==='fix').map(step=>
+  [step.expect['s.navStep'],step.expect['s.navCleared']]);
+ assert.deepEqual(fixes('two-clear-fixes'),[[0,1],[1,0],[1,1],[2,0]]);
+ assert.deepEqual(fixes('nonclear-resets-clearance'),[[0,1],[0,0],[0,1]]);
+ assert.deepEqual(fixes('offroute-resets-clearance'),[[0,1],[0,0],[0,1]]);
+ assert.deepEqual(fixes('retired-watch-cannot-confirm'),[[0,1],[0,1],[1,0]]);
+ assert.equal(after('end-during-reroute')['s.watch'],3);
+ assert.equal(after('end-during-reroute')['s.navStep'],0);
+ assert.equal(after('end-during-reroute')['s.navCleared'],0);
 });
+
+for(const mutant of ['single-clear-fix','retain-clearance','retired-watch-fix']){
+ test(`navigation source canary rejects ${mutant}`,{timeout:120000},async()=>{
+  await assert.rejects(checkNavigationProgress(['test/quint-navigation-progress.test.mjs'],{mutant}),/Source\/model trace mismatch/);
+ });
+}

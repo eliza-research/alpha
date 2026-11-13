@@ -3,6 +3,7 @@ import {existsSync,readFileSync} from 'node:fs';
 import {relative,resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import assert from 'node:assert/strict';
 import {captureInputs,checkTraces,qmap,qset} from '../check-traces.mjs';
 
 const model='NavigationProgress';
@@ -25,7 +26,13 @@ function hold(){
  const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});
  return {resolve,reject,promise};
 }
-async function captureImplementation(additionalSources=[]){
+async function captureImplementation(additionalSources=[],{mutant}={}){
+ const mutations={
+  'single-clear-fix':{file:'guidance.ts',before:'if (++cleared === 2)',after:'if (++cleared === 1)'},
+  'retain-clearance':{file:'guidance.ts',before:'} else cleared = 0;',after:'} else { /* source canary retains clearance */ }'},
+  'retired-watch-fix':{file:'maps-screen.ts',before:'if (session === this.navSession) this.onFix(fix);',after:'this.onFix(fix);'}
+ };
+ if(mutant&&!Object.hasOwn(mutations,mutant))throw Error('Unknown navigation source canary');
  const root=resolve('.');
  const options={absWorkingDir:root,stdin:{contents:`
   export {MapsScreenController} from './apps/app/src/maps/screen.ts';
@@ -50,7 +57,18 @@ async function captureImplementation(additionalSources=[]){
   const expected=manifest.files[relative(prepared,path)];
   if(createHash('sha256').update(readFileSync(path)).digest('hex')!==expected)throw Error('Unauthenticated Maps input '+path);
  }
- const compiled=await build(options);
+ let changed=0;
+ const compiled=await build(mutant?{...options,plugins:[{name:'navigation-source-canary',setup(builder){
+  builder.onLoad({filter:/\/(guidance|maps-screen)\.ts$/},({path})=>{
+   const mutation=mutations[mutant];
+   if(path!==resolve(maps,mutation.file))return;
+   const original=readFileSync(path,'utf8');
+   assert.equal(createHash('sha256').update(original).digest('hex'),driverHashes[path]??driverHashes[relative(root,path)],'Source canary starts with authenticated bytes');
+   assert.equal(original.split(mutation.before).length,2,'One exact source canary seam');
+   changed++;return {contents:original.replace(mutation.before,mutation.after),loader:'ts'};
+  });
+ }}]}:options);
+ if(mutant)assert.equal(changed,1,'The navigation source canary changed exactly one authenticated input');
  const implementation=await import('data:text/javascript;base64,'+Buffer.from(compiled.outputFiles[0].text).toString('base64'));
  return {implementation,sources,driverHashes};
 }
@@ -132,13 +150,18 @@ async function fixture({MapsScreenController,MapsController,SavedPlaces,Backgrou
   const route=screen.state?.route,nav=screen.controller?screen.view().navigation:undefined;
   const session=background.session;
   const description=session&&startDescriptions.get(bgId(session.id));
+  const stepHold=screen.navStep;
+  assert.ok(stepHold&&typeof stepHold==='object'&&!Array.isArray(stepHold),'Actual StepHold is a record');
+  assert.deepEqual(Object.keys(stepHold).sort(),['cleared','index'],'Actual StepHold has its exact two fields');
+  assert.ok(Number.isInteger(stepHold.index)&&stepHold.index>=0&&stepHold.index<=2,'Actual maneuver index is in range');
+  assert.ok(Number.isInteger(stepHold.cleared)&&stepHold.cleared>=0&&stepHold.cleared<=1,'Actual clearance count is in range');
   return {
    's.foreground':foreground,'s.permission':permission,'s.releases':screen.lifecycle.releases,
    's.selected':!!screen.selected,'s.routePhase':route?.phase??'none','s.route':routeId(route?.value),
    's.routeRequests':requests.length,'s.pendingRoutes':qset(requests.flatMap((request,i)=>request.settled?[]:[i+1])),
    's.abortedRequests':qset(requests.flatMap((request,i)=>request.signal.aborted?[i+1]:[])),
    's.navigating':screen.navigating,'s.navSession':screen.navSession,'s.navRoute':screen.navRouteId?Number(screen.navRouteId.slice('fixture-route-'.length)):0,
-   's.navStep':screen.navStep,'s.follow':screen.follow,'s.arrived':screen.arrived,'s.offRoute':screen.offRoute,
+   's.navStep':stepHold.index,'s.navCleared':stepHold.cleared,'s.follow':screen.follow,'s.arrived':screen.arrived,'s.offRoute':screen.offRoute,
    's.rerouting':screen.rerouting,'s.rerouteCleared':screen.rerouteCleared,
    's.fixPresent':!!screen.navFix,'s.fixUsable':usableNavigationFix(screen.navFix,now),'s.accuracy':screen.navFix?.accuracyMeters??-1,
    's.displayedStep':nav?labels.indexOf(nav.instruction):-1,'s.canReroute':nav?.canReroute??false,
@@ -225,7 +248,13 @@ export const navigationProgressScenarios={
  'location-failure-and-stale':[['start',false],['end'],['start',false],['locationFailed',1],['fix',1,30,true,0,'near-arrival'],['locationFailed',3]],
  'freshness-edges':[['start',false],['fix',1,30,true,-5000,'past'],['fix',1,30,true,-5001,'past'],
   ['fix',1,50,true,30000,'near-first'],['fix',1,51,true,0,'near-second'],['fix',1,30,true,30001,'near-second']],
- 'follow':[['start',false],['stopFollowing'],['recenter'],['end']]
+ 'follow':[['start',false],['stopFollowing'],['recenter'],['end']],
+ 'two-clear-fixes':[['start',false],['fix',1,30,true,0,'past'],['fix',1,30,true,0,'past'],
+  ['fix',1,30,true,0,'past'],['fix',1,30,true,0,'past']],
+ 'nonclear-resets-clearance':[['start',false],['fix',1,30,true,0,'past'],['fix',1,30,true,0,'away-first'],['fix',1,30,true,0,'past']],
+ 'offroute-resets-clearance':[['start',false],['fix',1,30,true,0,'past'],['fix',1,30,true,0,'off-76'],['fix',1,30,true,0,'past']],
+ 'retired-watch-cannot-confirm':[['start',false],['end'],['start',false],['fix',3,30,true,0,'past'],
+  ['fix',1,30,true,0,'past'],['fix',3,30,true,0,'past']]
 };
 async function sourceTraces(implementation){
  const traces=[];
@@ -239,12 +268,13 @@ async function sourceTraces(implementation){
  }
  return traces;
 }
-export async function checkNavigationProgress(extraSources=[]){
- const {implementation,sources,driverHashes}=await captureImplementation(extraSources);
+export async function checkNavigationProgress(extraSources=[],options={}){
+ const {implementation,sources,driverHashes}=await captureImplementation(extraSources,options);
  const traces=await sourceTraces(implementation);
- return checkTraces({model,modelPath,sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+ return checkTraces({model,id:options.mutant?model+'-canary-'+options.mutant:model,modelPath,sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
   'The actual prepared MapsScreenController, MapsController and BackgroundNavigation execute with controlled GPS, provider, storage, voice and Capacitor ports.',
   'Three maneuver coordinates, two route identities, held route/provider replies and exact synthetic background IDs bound the schedules. Observations settle synchronous route invalidation/loading and promise callbacks between steps.',
+  'Clearance counter source evidence uses the initial straight route from 0 to 500 m with maneuvers at 100/250/500 m. Replacement replies reset both hold fields; this campaign has no admitted current-watch fix after successful replacement. Its old post-replacement fix targets a retired watch. Provider-dependent replacement clearance geometry remains external.',
   'Physical GPS/geometry completeness, installed Android background ownership, permission UI and unrestricted asynchronous schedules remain separate.'
  ]});
 }
