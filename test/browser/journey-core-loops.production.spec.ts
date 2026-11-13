@@ -477,7 +477,7 @@ test('loops D and F in the web build: digests and mail name the missing account 
   await openRetainedDigests(page);
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   await expect(digests).not.toContainText('Choose where your agent runs');
-  await expect(digests).toContainText('Result link is waiting for a verified connection.');
+  await expect(digests).toContainText('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.');
   await expect(digests).not.toContainText(/remote agent/i);
   // None of the development scheduler exists: no snapshot, no schedule review, no "runs while open".
   await expect(digests.getByText('Share a snapshot', { exact: true })).toHaveCount(0);

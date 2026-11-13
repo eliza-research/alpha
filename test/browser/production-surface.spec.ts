@@ -212,7 +212,8 @@ test('deferred apps are absent and root views show honest unconnected states', a
     await page.goto('/?tools=1');
     await page.getByRole('button', { name: view, exact: true }).and(page.locator('[data-mobile-shell-tile]')).click();
     await expect(page.locator('html')).toHaveAttribute('data-active-view', view.toLowerCase());
-    await expect(page.locator('[data-screen]')).toContainText(expected);
+    if (view === 'Maps') await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toBeVisible();
+    else await expect(page.locator('[data-screen]')).toContainText(expected);
     const text = await page.locator('body').innerText();
     for (const name of fixtureNames) expect(text, `${view} shows fixture ${name}`).not.toContain(name);
   }
