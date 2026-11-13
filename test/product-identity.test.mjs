@@ -9,6 +9,8 @@ import path from 'node:path';
 import {tsImport} from './support/ts-import.mjs';
 import ts from 'typescript-ast';
 
+import {hostIdentity, readHostDescriptor} from '../scripts/android-host.ts';
+
 const identity = JSON.parse(fs.readFileSync('app.config.json', 'utf8'));
 
 function sources(dir, out = []) {
@@ -65,6 +67,13 @@ test('app.config.json carries the Alpha Compute package identity', () => {
   assert.equal(identity.appName, 'Alpha Phone');
 });
 
+test('the Android build derives namespace, applicationId and app_name from app.config.json', () => {
+  // scripts/android-host.ts hands app.config.json to the generator; the descriptor carries no identity.
+  assert.deepEqual(hostIdentity('.'), {appId: identity.appId, appName: identity.appName, version: identity.version, versionCode: identity.versionCode});
+  const {profile} = readHostDescriptor('.');
+  assert.doesNotMatch(JSON.stringify(profile), /applicationId|appName|"identity"/);
+});
+
 test('every literal localStorage key under apps/app/src uses an Alpha prefix', () => {
   const keys = literalStorageKeys('apps/app/src');
   assert.ok(keys.length >= 20, `found only ${keys.length} keys; the scan no longer sees the storage calls`);
@@ -98,4 +107,10 @@ test('the product record validates and carries the same identity as app.config.j
   assert.equal(record.storage.launcherBuiltinPrefix, 'alpha:');
   assert.equal(record.storage.launcherDefaultPolicy, 'alpha-apps');
   assert.doesNotMatch(JSON.stringify(record.storage), FOREIGN);
+});
+
+test('the product theme sets the Alpha accent in both appearances', async () => {
+  const {alphaThemeVariables} = await tsImport('../apps/app/src/product/alpha-product.ts', import.meta.url);
+  assert.equal(alphaThemeVariables('light')['--acct'], '#0000FF');
+  assert.equal(alphaThemeVariables('dark')['--acct'], '#8A93FF');
 });

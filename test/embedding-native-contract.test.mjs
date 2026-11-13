@@ -50,3 +50,10 @@ test('registered receipt admission binds Java, full native set and product class
   fs.appendFileSync(path.join(vendor,nativeJavaPath),'\n// changed');git('add','.');git('commit','-m','Java source changed');fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git('rev-parse','HEAD')}));assert.throws(()=>verifyEmbeddingInputs(root,receipt),/Native build input changed/);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
+
+test('current pinned streaming JNI callback matches its exact Object descriptor',()=>{
+ const source=fs.readFileSync('vendor/eliza/packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp','utf8');
+ const declarations=fs.readFileSync('vendor/eliza/'+nativeJavaPath,'utf8');
+ assert.ok(verifyNativeJava(source,declarations)>3);
+ assert.throws(()=>verifyNativeJava(source,declarations.replace('Object sink','String sink')),/signature changed: nativeParadeeSynthesizeStream/);
+});

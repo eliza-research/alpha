@@ -42,6 +42,19 @@ test('prepared client source repairs changed, missing and unexpected cached file
  assert.equal(prepareClientFeatures({root,projectVoice:false}),source);assert.deepEqual(fs.readFileSync(path.join(source,file)),original);assert.equal(fs.existsSync(path.join(source,'unexpected.ts')),false);
  fs.unlinkSync(path.join(source,file));prepareClientFeatures({root,projectVoice:false});assert.deepEqual(fs.readFileSync(path.join(source,file)),original);assert.equal(stamp.baseCommit,commit);
 }));
+test('concurrent preparers after a source change all succeed and leave one authenticated tree',()=>fixture(async({root,vendor,git})=>{
+ prepareClientFeatures({root,projectVoice:false});
+ fs.appendFileSync(path.join(vendor,fixtureLeaf),'export const changed = 2;\n');
+ git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Change']);
+ const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
+ const script=`import {prepareClientFeatures} from ${JSON.stringify(path.resolve('scripts/prepare-client-features.ts'))};prepareClientFeatures({root:${JSON.stringify(root)},projectVoice:false});`;
+ const run=()=>new Promise(resolve=>{const child=spawn(process.execPath,['-e',script],{stdio:['ignore','ignore','pipe']});let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});child.on('close',status=>resolve({status,stderr}));});
+ for(const result of await Promise.all(Array.from({length:12},run))) assert.equal(result.status,0,result.stderr);
+ const source=path.join(root,'.eliza/client-features'),stamp=JSON.parse(fs.readFileSync(path.join(source,'.source.json')));
+ assert.equal(stamp.baseCommit,commit);assert.match(fs.readFileSync(path.join(source,fixtureLeaf),'utf8'),/changed = 2/);
+ assert.equal(prepareClientFeatures({root,projectVoice:false,check:true}),source);
+ assert.deepEqual(fs.readdirSync(path.join(root,'.eliza')),['client-features'],'no staging or set-aside tree is left behind');
+}));
 test('client feature publication retires once while a peer moves the winner',()=>fixture(async({root,vendor,git})=>{
  const destination=prepareClientFeatures({root,projectVoice:false});
  const prior=JSON.parse(fs.readFileSync(path.join(destination,'.source.json')));
@@ -185,6 +198,17 @@ test('client source rejects committed symlinks and missing source groups',()=>fi
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Nonregular upstream/);
  fs.unlinkSync(file);git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Missing source']);
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Missing upstream source/);
+}));
+test('direct local development launcher prepares a clean client tree before starting services',()=>fixture(({root,commit})=>{
+ for(const file of ['scripts/dev-local.ts','scripts/dev-speech-settings.ts','scripts/speech-env.ts','scripts/local-agent-source.ts','scripts/copy-file-clone.ts','scripts/prepare-client-features.ts','scripts/upstream-native-source.ts']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
+ // The generic copier fixture explicitly tests the non-voice projection path.
+ const prep=path.join(root,'scripts/prepare-client-features.ts');fs.writeFileSync(prep,fs.readFileSync(prep,'utf8').replace('projectVoice = true','projectVoice = false'));
+ // Source hashing and materialization can exceed 20 seconds on a loaded build host.
+ const result=spawnSync(process.execPath,[path.join(root,'scripts/dev-local.ts')],{cwd:root,env:{...process.env,ALPHA_REMOTE_PORT:'0',ALPHA_REMOTE_PROFILE:path.join(root,'empty-profile')},encoding:'utf8',timeout:120000});
+ assert.equal(result.status,1);assert.match(result.stderr,/Invalid local agent port/);
+ assert.equal(JSON.parse(fs.readFileSync(path.join(root,'.eliza/client-features/.source.json'))).baseCommit,commit);
+ // Development uses authenticated upstream source without a patch cache.
+ assert.equal(fs.existsSync(path.join(root,'.eliza/patched')),false);
 }));
 
 test('actual pinned client features retain shared voice source unchanged and exclude dashboard transport',()=>{

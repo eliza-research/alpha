@@ -78,7 +78,6 @@ export function honestTiles(tiles: ShadeTile[], facts: TileFacts, options: { fla
     return { ...tile, on, aria: tileAccessibleName(tile.label, key, on), pressed: key === 'torch' ? on : undefined, stateText: tileStateText(key, on), css: (on ? 'background:var(--acc);color:#fff' : 'background:var(--s2);color:var(--fg)') + ';flex-direction:column;gap:3px', toggle: () => options.act(key, tile) };
   });
 }
-// return-gate:begin (dependency-free; test/comms-settings.test.mjs)
 /** One run per return to the app. Android reports a single return as visibilitychange, focus and
  * appResumed together, so triggers inside the window after a run are ignored until the app is left. */
 export function returnGate(windowMs = 250, now: () => number = () => performance.now()) {
@@ -88,7 +87,6 @@ export function returnGate(windowMs = 250, now: () => number = () => performance
     left() { last = -Infinity; },
   };
 }
-// return-gate:end
 /** Run each time the owner comes back to the app or its window regains focus (returning from an
  * Android page, or closing Android's own quick settings), so a changed switch is read again. */
 export function watchReturnToApp(run: () => void): () => void {

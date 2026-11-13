@@ -39,6 +39,7 @@ test('browser controls are opt-in and record the three exact classes on both tes
  const browser=parseYaml(workflow).jobs['browser-reading'];
  assert.equal(browser.env.BROWSER_SUITE,"${{ inputs.suite == 'browser-controls' && 'browser-controls' || 'browser-reading' }}");
  assert.equal(browser.steps.find(step=>step.with?.script).with.script,'bun scripts/ci/emulator-suite.ts ${{ env.BROWSER_SUITE }}');
+ assert.match(browser.steps.find(step=>step.uses?.startsWith('actions/upload-artifact@')).with.name,/^android-emulator-\$\{\{ env\.BROWSER_SUITE \}\}-/);
  const controls=suitePlan('browser-controls');
  assert.deepEqual(controls.slice(0,2),suitePlan('browser-reading').slice(0,2),'uses the same pinned WebView preparation');
  assert.deepEqual(controls.map(step=>step.name),['prepare-emulator','prepare-webview','ci-browser-controls']);
@@ -78,6 +79,49 @@ test('suite plans: default classes; reading classes with the builds and gates th
 
  assert.throws(()=>suitePlan('all'),/Unknown suite/);assert.throws(()=>suitePlan('resident'),/Unknown suite/);
  assert.equal(SERIAL,'emulator-5554');assert.equal(AVD,'test');
+});
+
+test('a default class can run on the flag-off build it is run on',()=>{
+ for(const name of DEFAULT_CLASSES){
+  const spec=CLASS_REGISTRY[name];assert.ok(spec,name);
+  for(const key of ['testMocks','requiresTestMocksBuild','secondaryUser','homeRole','campaign','requires'])assert.equal(spec[key],undefined,`${name}.${key} needs an option a default run does not pass`);
+ }
+ assert.ok(!DEFAULT_CLASSES.includes('BrowserDownload'));assert.ok(CLASS_REGISTRY.BrowserDownload,'still runnable by name with --test-mocks');
+});
+
+test('only the admitted release workflows may sign or publish',()=>{
+ const signing=parseYaml(read('.github/workflows/release-cloud-app-signing.yml'));
+ assert.deepEqual(signing.permissions,{});
+ assert.deepEqual(Object.keys(signing.on),['workflow_dispatch']);
+ assert.deepEqual(Object.keys(signing.jobs).sort(),['admit','sign']);
+ assert.deepEqual(signing.jobs.admit.permissions,{actions:'read',contents:'read'});
+ assert.equal(signing.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+ const sign=signing.jobs.sign;
+ assert.deepEqual(sign.permissions,{actions:'read',contents:'read','id-token':'write'});
+ assert.equal(sign.environment,'release');
+ assert.equal(sign.needs,'admit');
+ assert.equal(sign.if,"needs.admit.result == 'success' && needs.admit.outputs.plan_sha256 != '' && inputs.workflow_commit == github.sha");
+ assert.deepEqual(signing.concurrency,{group:'release-signing','cancel-in-progress':false});
+ const ota=parseYaml(read('.github/workflows/release-os-ota-signing.yml'));
+ assert.deepEqual(ota.permissions,{});
+ assert.deepEqual(Object.keys(ota.on),['workflow_dispatch']);
+ assert.deepEqual(Object.keys(ota.jobs),['sign']);
+ assert.deepEqual(ota.jobs.sign.permissions,{contents:'read','id-token':'write'});
+ assert.equal(ota.jobs.sign.environment,'release');
+ assert.equal(ota.jobs.sign.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+ assert.deepEqual(ota.concurrency,{group:'preserving-os-ota-signing','cancel-in-progress':false});
+ const publication=parseYaml(read('.github/workflows/publish-qualified-app-update.yml'));
+ assert.deepEqual(publication.permissions,{});
+ assert.deepEqual(Object.keys(publication.on),['workflow_dispatch']);
+ assert.deepEqual(Object.keys(publication.jobs).sort(),['admit','publish']);
+ assert.deepEqual(publication.jobs.admit.permissions,{contents:'read',actions:'read'});
+ assert.equal(publication.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+ const publish=publication.jobs.publish;
+ assert.deepEqual(publish.permissions,{actions:'read',contents:'write','id-token':'write'});
+ assert.equal(publish.environment,'release');
+ assert.equal(publish.needs,'admit');
+ assert.equal(publish.if,"needs.admit.result == 'success' && needs.admit.outputs.qualification_sha256 != '' && inputs.workflow_commit == github.sha");
+ assert.deepEqual(publication.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
 });
 
 /** A results.json as the instrumentation runner writes it, at the path a step names. */

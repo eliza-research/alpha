@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {fullName, ghGetAll, loadIocs, parseArgs} from '../scripts/owner/gh-readonly.ts';
+import {assertReadOnlyEndpoint, fullName, ghGetAll, loadIocs, parseArgs} from '../scripts/owner/gh-readonly.ts';
 import {exposureCutoff, forgedPrefixes, matchRuns, rotationState, auditRepository as auditCi} from '../scripts/owner/incident-ci-exposure.ts';
 import {actorPermission, actorHasAccess, grantsAccess, hookRow, hostOf, keyRow, summarizeAudit, auditRepository as auditAccess} from '../scripts/owner/incident-access-audit.ts';
 import {contentMarkers, initScripts, parseLsRemote, pathMarkers, scanExitCode, scanHead} from '../scripts/owner/forged-branch-scan.ts';
@@ -25,6 +25,12 @@ test('the IOC file transcribes the cleanup record', () => {
   assert.equal(fullName(iocs, 'alphaphone'), 'alphacompute/alphaphone');
   assert.equal(fullName(iocs, 'vera'), 'AlphaCompute/vera');
   for (const row of iocs.branches) for (const key of ['preAttack', 'forged']) assert.match(row[key], /^[0-9a-f]{9}$/);
+});
+
+test('the read-only guard refuses a method flag and passes a GET endpoint through', () => {
+  assert.throws(() => assertReadOnlyEndpoint('-X'), /refusing/);
+  assert.throws(() => assertReadOnlyEndpoint('repos/a/b --method POST'), /refusing/);
+  assert.equal(assertReadOnlyEndpoint('repos/a/b/environments/x%20(prod)/secrets?per_page=100'), 'repos/a/b/environments/x%20(prod)/secrets?per_page=100');
 });
 
 test('argument parsing rejects unknown flags and collects repeated options', () => {

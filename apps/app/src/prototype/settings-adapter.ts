@@ -368,7 +368,7 @@ function checkForUpdate(force: boolean, automatic = false): Promise<boolean> | u
   return updateCheck;
 }
 
-// settings-reads:begin (dependency-free; exercised by test/comms-settings.test.mjs)
+// settings-reads:begin (dependency-free)
 /** Orders listener status reads against Pause and Turn off. No read starts while an action runs, a read
  * already in flight is dropped once an action starts, and the action's own result is always applied. */
 export function listenerReadGate() {
