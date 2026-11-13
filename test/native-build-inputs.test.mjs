@@ -11,7 +11,7 @@ const root=path.resolve(import.meta.dirname,'..');
 function fixture(t) {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-recipe-'));
   t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
-  for(const name of ['upstream.lock.json','app.config.json','android/voice-host/qualified-voice-host.json','android/embedding-host/build-toolchain.json','android/embedding-host/native-requirements.txt','android/embedding-host/bootstrap-requirements.txt','android/paradee-voice/asr-inputs.json','scripts/build-embedding-host.ts','scripts/prepare-embedding-host.ts','scripts/embedding-native-contract.ts','scripts/embedding-build-remap.ts','scripts/native-build-inputs.ts','scripts/android-stage-voice-models.ts','scripts/local-agent-source.ts']){
+  for(const name of ['upstream.lock.json','app.config.json','android/voice-host/qualified-voice-host.json','android/embedding-host/build-toolchain.json','android/embedding-host/qualified-host.json','android/embedding-host/native-requirements.txt','android/embedding-host/bootstrap-requirements.txt','android/paradee-voice/asr-inputs.json','scripts/build-embedding-host.ts','scripts/prepare-embedding-host.ts','scripts/embedding-native-contract.ts','scripts/embedding-build-remap.ts','scripts/native-build-inputs.ts','scripts/android-stage-voice-models.ts','scripts/local-agent-source.ts']){
     fs.mkdirSync(path.dirname(path.join(dir,name)),{recursive:true});fs.copyFileSync(path.join(root,name),path.join(dir,name));
   }
   fs.mkdirSync(path.join(dir,'vendor'));fs.symlinkSync(path.join(root,'vendor/eliza'),path.join(dir,'vendor/eliza'),'dir');
@@ -31,7 +31,7 @@ function receiptFor(dir){
   const voice=JSON.parse(fs.readFileSync(path.join(dir,'android/voice-host/qualified-voice-host.json')));voice.pin=pin;
   const source=name=>execFileSync('git',['-C',path.join(dir,'vendor/eliza'),'show',pin+':'+name]);
   const binding=nativeBinding(source(nativeInputPaths.at(-1)).toString(),source(nativeInputPaths.at(-2)).toString(),recipe.identity);
-  const embedding={identity:recipe.identity,pin,forkPin:recipe.engineCommit,abi:'arm64-v8a',jniIdentityRelocated:true,jniBinding:binding,
+  const embedding={model:JSON.parse(fs.readFileSync(path.join(dir,'android/embedding-host/qualified-host.json'))).model,identity:recipe.identity,pin,forkPin:recipe.engineCommit,abi:'arm64-v8a',jniIdentityRelocated:true,jniBinding:binding,
     libraries:[...voice.abis[0].libraries.map(row=>({...row,alignment16KiB:true})),{name:'libelizavoicejni.so',bytes:4,sha256:'a'.repeat(64),alignment16KiB:true}],
     inputs:nativeInputs(binding).map(name=>({path:name,sourceSha256:bytesDigest(source(name)),generatedSha256:bytesDigest(nativeGenerated(name,source(name).toString(),recipe.identity,binding))})),
     producerInputs:embeddingProducerInputPaths.map(name=>({path:name,sha256:bytesDigest(source(name))}))};
