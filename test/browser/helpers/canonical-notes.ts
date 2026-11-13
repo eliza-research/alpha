@@ -13,7 +13,10 @@ export async function canonicalNotesFixture(page:Page,{path='/',notes=[],failRea
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto(path);
  await preloadPageModules(page,['/src/runtime/connection-ui.tsx','/src/prototype/canonical-notes-controller.ts','/src/browser/daily.ts']);
- await page.evaluate(async({notes,failReads})=>{
+ await page.waitForFunction(()=>!!(window as any).__alphaModules?.['/src/runtime/connection-ui.tsx']?.connectionController.getSnapshot().startupResolved);
+ await page.evaluate(({notes,failReads})=>{
+  const status=(window as any).__alphaNotesFixtureStatus={done:false,error:''};
+  const prepare=async()=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
   const f=(window as any).canonicalNotesFixture={state:{notes,trash:[],revision:notes.length?1:0},requests:[],otherRequests:[],fail:false,failReads,failAfterApplied:false};
   f.acceptedReads=[];
@@ -67,7 +70,13 @@ export async function canonicalNotesFixture(page:Page,{path='/',notes=[],failRea
    f.state.revision++;if(f.failAfterApplied)throw Error('Closed canonical fixture accepted write response loss');return {requestId:crypto.randomUUID(),success:true,result:{success:true,text:'Completed',state:structuredClone(f.state),data:{note:structuredClone(note)}}};
   }} as any);
   await c.offline();
+  };
+  // Keep the exact inspector-awaited promise reachable until setup completes.
+  (window as any).__alphaNotesFixtureSetup=prepare().then(()=>{status.done=true;},error=>{status.error=String(error?.stack||error);status.done=true;});
  },{notes:structuredClone(notes),failReads});
+ await page.waitForFunction(()=>(window as any).__alphaNotesFixtureStatus?.done===true);
+ const setupError=await page.evaluate(()=>{const error=(window as any).__alphaNotesFixtureStatus.error;delete (window as any).__alphaNotesFixtureSetup;delete (window as any).__alphaNotesFixtureStatus;return error;});
+ if(setupError)throw Error(setupError);
  return {foreign,errors};
 }
 export async function openCanonicalNotes(page:Page){
