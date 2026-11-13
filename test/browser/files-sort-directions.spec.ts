@@ -17,7 +17,9 @@ test('All files exposes direct folder/view controls and all six sort directions 
  await page.getByRole('button',{name:'Files',exact:true}).click();
  await expect(page.getByRole('button',{name:'All files',exact:true})).toBeVisible();
  await page.getByLabel('Files tools',{exact:true}).click();
- for(const name of ['New folder','Sort files','Grid view'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ const browse=page.locator('[data-alpha-subview="files-list"]');
+ await expect(browse.getByRole('button',{name:'New folder',exact:true})).toBeVisible();
+ for(const name of ['Sort files','Grid view'])await expect(browse.getByRole('button',{name,exact:true})).toHaveCount(0);
  await page.getByLabel('Files tools',{exact:true}).click();
  await page.getByRole('button',{name:'All files',exact:true}).click();
  await expect(page.getByRole('heading',{name:'All files',exact:true})).toBeVisible();
