@@ -149,7 +149,12 @@ export async function checkAppUpdateCandidate(extraSources = []) {
         else if (mutation === 'final inventory') fixture.state.pages = [];
         else {
           const file = path.join(output, 'apk-verification.json'), value = read(file);
-          if (mutation === 'signed') value.results[1].signed = true;
+          if (mutation === 'signed') {
+            const release = value.results.find(row => row.mode === 'release' && row.variant === 'launcher');
+            assert.ok(release, 'The negative signing fixture needs the actual launcher release row');
+            assert.equal(release.signed, false, 'The signing mutation must change an unsigned release');
+            release.signed = true;
+          }
           else value.runtimeProfile = 'cloud';
           json(file, value);
         }
