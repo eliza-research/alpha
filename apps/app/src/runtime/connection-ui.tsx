@@ -273,6 +273,7 @@ const ALWAYS_LOCAL = 'Your agent always runs on this phone.';
  * runs meanwhile (without Cloud inference). Offline is not a sign-in requirement.
  */
 let providerStatusGeneration=0;
+let homePresentationRevision=0;
 function ownProviderSelected(snapshot: Pick<ConnectionSnapshot,'providerStatus'>=state): boolean { return snapshot.providerStatus?.selected===true&&snapshot.providerStatus.provider==='cerebras'; }
 function residentSignInRequired(): boolean { return !ownProviderSelected()&&residentCloudFlow() && !state.cloudAccount && state.residentPlanNotice !== 'offline' && !state.residentStarting; }
 function residentEnvironment(): CloudEnvironment { return browserCloudResidentEnabled?browserCloudResidentEnvironment:residentQa() ?? 'production'; }
@@ -3136,6 +3137,7 @@ export const connectionController = {
    */
   async residentRedeem(code:string):Promise<boolean> {
     if(operation)return false;
+    const presentationRevision=homePresentationRevision;
     let redeemed=false;
     const idempotencyKey=crypto.randomUUID();
     update({redeemError:'',redeemNotice:''});
@@ -3165,7 +3167,7 @@ export const connectionController = {
       // The restart re-verifies the account into a new connection object: compare the account, not the object.
       if(known&&service?.identity.environment===account.identity.environment&&service.identity.credentialId===account.identity.credentialId){recordEnd();update({planEndsAt:endsAt});}
       // The code was redeemed from the plan panel: show its outcome there beside the running agent.
-      if(!state.error)update({open:true,purpose:'plan',redeemNotice:notice,message:''});
+      if(!state.error&&presentationRevision===homePresentationRevision)update({open:true,purpose:'plan',redeemNotice:notice,message:''});
     });
     return redeemed;
   },
@@ -3772,8 +3774,8 @@ export function ConnectionChooser() {
     return () => { releaseInert(); previous?.focus(); };
   }, [visible]);
   useEffect(() => {
-    if (!visible) return;
     const home = () => {
+      homePresentationRevision++;
       if (signInEntryRequired) connectionController.close();
       else update({open:false});
     };
