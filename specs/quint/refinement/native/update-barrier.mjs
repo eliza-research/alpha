@@ -69,7 +69,7 @@ export async function runNativeUpdateActivationRefinement(extraSources = []) {
       for (const key of ['s.registered', 's.seen', 's.waiting', 's.acknowledged', 's.eligible', 's.preparedEligible']) observation[key] = qset(observation[key]);
     }
   }
-  const receipt = await checkTraces({model, traces, sources, driverHashes, scope: 'partial-source-contract', assumptions: [
+  const receipt = await checkTraces({model, traces, sources, driverHashes, scope: 'bounded-orchestration', assumptions: [
     'The unmodified updater methods execute with synthetic Android/Capacitor ports and the real pinned RuntimeUpdatePause implementation. Network input comes from an in-memory fixture; no APK is installed.',
     'Three bridge instance classes, two exact activation UUID classes, one staged attempt and one pending synthetic installer session. Sealing and the observed stop request are two model actions in one source checkpoint.',
     'The exact sealed reconnect receipt is independent of Android confirmation ownership. Old or startup ACKs can prepare without granting reconnect. The terminal audience is retired without a handoff.',

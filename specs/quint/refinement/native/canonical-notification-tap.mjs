@@ -52,7 +52,7 @@ export async function checkCanonicalNotificationTap(extraSources = []) {
   }
 
   const receipt = await checkTraces({model, sources: paths, driverHashes, traces,
-    scope: 'partial-source-contract', assumptions: [
+    scope: 'bounded-orchestration', assumptions: [
       'Exact extracted actor custody/check/detach and bridge read, acknowledgement, lifecycle and wakeup methods execute on the host JVM. The exact pinned foreground gate and route whitelist execute with synthetic Android Intent and activity ports.',
       'One bridge, three synthetic actor identities, at most four captures and controlled wall time. The driver chooses a verifier invocation at the same entry used by hydration and polling and holds unrelated executor work.',
       'Owner provisioning, projector result and read acknowledgement are controlled ports. A post means the fake read acknowledgement port was reached after native token consumption, with no provider transport.',

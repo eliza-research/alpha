@@ -164,7 +164,7 @@ export async function checkNativeHostedResultNotices(extraSources = []) {
     for (const field of ['retained','phases','digests','postCount']) expect['s.'+field]=qmap(expect['s.'+field]);
     expect['s.posted']=qset(expect['s.posted']);
   }
-  const receipt = await checkTraces({model,sources,driverHashes,traces,scope: 'partial-source-contract',assumptions:[
+  const receipt = await checkTraces({model,sources,driverHashes,traces,scope: 'bounded-orchestration',assumptions:[
     'Complete HostedResultNotices.java and the pinned NoticeOwner.java execute on the JVM. Extracted production bridge handlers execute exact foreground checks, a real serial worker and synthetic Android Intent/call ports.',
     'Synthetic storage, retained-inbox and poster ports control write/cancel refusals, dispatch interruption, and OS removal. Durable and readback JSON keys are independently checked for exact route and redaction.',
     'The driver also verifies the exact 200-row cap and pending-tap eviction exemption as a separate real-source assertion. The model covers four fixed routes, the exact owner tuple partition and four token generations.',

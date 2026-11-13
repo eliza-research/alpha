@@ -83,7 +83,7 @@ export function mmsSourceProbe(selected, options) {
 
 export function checkNativeMmsDispatch(extraSources=[]) {
   return campaign(scenarios,extraSources,async evidence=>{
-    const receipt=await checkTraces({...evidence,scope: 'partial-source-contract',assumptions:[
+    const receipt=await checkTraces({...evidence,scope: 'bounded-orchestration',assumptions:[
       'Actual product wrapper, staged SMS/MMS core, extracted native review and outbox members, and exact JVM PDU codec.',
       'One installed ID shared by two reviews. Synthetic Android telephony, provider, preview, and credential storage ports. Temporary PDU custody uses real file operations.',
       'Both live bridge registrations and exact per-bridge operation-ID notification counts are observed. Process reconstruction replaces all old registrations; the immediate Handler port does not qualify arbitrary held UI-queue retirement races.',

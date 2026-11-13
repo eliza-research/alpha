@@ -49,7 +49,7 @@ export async function checkNativeCrashJournal(extraSources=[]) {
         checkpoint.expect[field]=qset(checkpoint.expect[field]);
       }
     }
-    const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,scope: 'partial-source-contract',assumptions:[
+    const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,scope: 'bounded-orchestration',assumptions:[
       'Actual AlphaDevicePlugin diagnostics and teardown members, actual PluginWorkers, and the exact authenticated Android CrashLog core.',
       'Two separate real JVM diagnostics executors with one admitted call per bridge. Synthetic exit history, deterministic wall time, and actual private temporary files with a controlled atomic replacement port.',
       'Fifty identical seeded old rows are represented by their count. Tagged rows remain ordered; time, history, and write fault inputs are finite.',

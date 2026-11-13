@@ -45,7 +45,7 @@ export async function checkNativeSettingsHandoff(extraSources=[]) {
     assert.equal(driverHashes[join(root,'vendor/eliza',settingsPagesPath)],pinned.sha256);
     assert.equal(driverHashes[core],staged.files[settingsPagesPath]);
     const traces=javaTraceCampaign(harness,[provider,core,...ports],scenarios.map(name=>[name]));
-    const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,scope: 'partial-source-contract',assumptions:[
+    const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,scope: 'bounded-orchestration',assumptions:[
       'Exact AlphaDevicePlugin members and PasswordProviderSupport plus the authenticated installed SystemSettingsPages source.',
       'Android Settings constants are distinct closed-port symbols. Explicit string actions, package URIs, package extra, flags, attempts and native result fields are observed.',
       'A single pending request per trace position. Synthetic Activity outcomes execute no installed settings, provider, permission or external launch.',

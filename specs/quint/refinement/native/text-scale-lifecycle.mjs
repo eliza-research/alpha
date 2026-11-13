@@ -25,7 +25,7 @@ export async function checkNativeTextScaleLifecycle(extraSources=[]) {
       ...(jsonJar?[jsonJar]:[]),...extraSources];
     const driverHashes=captureInputs(sources);
     const traces=javaTraceCampaign(harness,compiled,scenarios.map(name=>[name]));
-    const receipt=await checkTraces({model,sources,driverHashes,generatedSources:fixture.paths,traces,scope: 'partial-source-contract',assumptions:[
+    const receipt=await checkTraces({model,sources,driverHashes,generatedSources:fixture.paths,traces,scope: 'bounded-orchestration',assumptions:[
       'Actual MainActivity callbacks and exact AlphaDevicePlugin appearance and timeout members execute against controlled Android and Capacitor ports.',
       'Two Activity instances, a shared appearance preference, finite float and bridge input classes, and a FIFO UI queue with at most one pending write per owner.',
       'Controlled SharedPreferences modes distinguish refusal before a visible write and refusal after only a visible write. A modeled process restart reloads the durable value.',
