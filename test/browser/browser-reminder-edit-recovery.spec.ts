@@ -2,12 +2,13 @@ import {reviewCalendarAction} from './helpers/calendar-review';
 import {chooseCalendarEventAction} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 test.use({timezoneId:'Asia/Tokyo'});
+// Storage tests launch Calendar from the keyboard; a delayed pointer release is a Home long press.
 async function editor(page:any,completed=false){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.clock.setFixedTime(new Date('2027-03-13T00:00Z'));await page.goto('/');await page.getByRole('button',{name:'Calendar',exact:true}).waitFor();
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').scheduleReminder({id:'reschedule',title:'Reviewed reminder',body:'Original',at:Date.parse('2027-03-13T14:00Z')});});
  if(completed)await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const daily=registerPlugin<any>('DailyApps');const r=(await daily.listReminders()).reminders[0];await daily.reminderDecision({id:r.id,occurrenceId:r.occurrenceId,action:'done'});});
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Reviewed reminder,/}).click();await chooseCalendarEventAction(page, 'Edit event');await page.getByRole('button',{name:'Start later',exact:true}).click();
+ await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).press('Enter');await page.getByRole('button',{name:/^Reviewed reminder,/}).click();await chooseCalendarEventAction(page, 'Edit event');await page.getByRole('button',{name:'Start later',exact:true}).click();
 }
 test('stale rendered schedule must not overwrite a newer canonical edit',async({page})=>{
  await editor(page);
@@ -25,7 +26,7 @@ for(const metadata of [false,true])test(`committed ${metadata?'metadata':'resche
  await expect.poll(()=>page.evaluate(()=>(window as any).editCalls)).toBe(1);
  expect(await page.evaluate(async ()=>(await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw()))).toBe(first);
  expect(await page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions()).length)).toBe(1);
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).press('Enter');
  await expect.poll(()=>page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions()).length)).toBe(0);
  expect(await page.evaluate(async ()=>(await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw()))).toBe(first);
 });
