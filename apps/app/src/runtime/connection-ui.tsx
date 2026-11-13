@@ -2565,7 +2565,9 @@ export const connectionController = {
     return {sessionId,subscribe:listener=>remote.subscribeVoiceEvents(listener),request:(path,body,signal)=>remote.request(path,body,signal,{},body===undefined?'GET':'POST')};
   },
   async refreshDeveloperVoiceHistory(binding:VoiceConversationBinding,signal:AbortSignal,afterStop=false){
-    const read=async(own:AbortSignal,canCommit?:()=>boolean)=>{if(!browserLocalAgentEnabled||active?.kind!=='resident'||!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');await restoreConversationHistory(binding.conversationId,own,true,false,undefined,canCommit);if(!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');};
+    const check=()=>{if(!browserLocalAgentEnabled||active?.kind!=='resident'||!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');};
+    check();
+    const read=async(own:AbortSignal,canCommit?:()=>boolean)=>{check();await restoreConversationHistory(binding.conversationId,own,true,false,undefined,canCommit);check();};
     if(!afterStop)return read(signal);
     cancelStoppedVoiceRead();
     const owned=new AbortController(),first=new AbortController(),current=()=>stoppedVoiceRead===record&&!sending&&!operation;

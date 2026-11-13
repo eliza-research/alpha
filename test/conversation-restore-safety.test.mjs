@@ -93,7 +93,7 @@ const stoppedVoiceCode=stripTypeScriptTypes([
  part('async function restoreConversationHistory(', '/** Restored chats'),
  part('function startConversationEvents(', '/** Insert canonical delivery IDs'),
  'globalThis.controller={',part('  async refreshDeveloperVoiceHistory(', '  getPairedVoiceBinding()'),
- 'voiceConversationCurrent:()=>true};',
+ 'voiceConversationCurrent:binding=>binding.conversationId===\'saved\'};',
 ].join('\n'),{mode:'strip'});
 function stoppedVoiceFixture(){
  const session={sessionId:'session',agentId:'agent'},pending=[],writes=[],channel={};
@@ -145,6 +145,14 @@ test('a receipt saved after the first Direct Stop read still refreshes once',asy
  f.rows.push({id:'receipt',role:'assistant',text:'Stopped'});f.updated();await f.settle();await f.release(1);
  assert.deepEqual(f.state.history.messages.map(row=>row.id),['question','receipt']);
  f.updated();await f.settle();assert.equal(f.pending.length,2);
+});
+test('an older voice session finishing Stop cannot retire the current stopped conversation read',async()=>{
+ const f=stoppedVoiceFixture(),first=f.refresh();first.catch(()=>{});await f.settle();
+ await assert.rejects(f.box.controller.refreshDeveloperVoiceHistory({conversationId:'older'},new AbortController().signal,true),/conversation changed/);
+ f.rows.push({id:'receipt',role:'assistant',text:'Current stopped reply'});f.updated();await f.settle();
+ assert.equal(f.pending.length,2,'the current record still receives its announced receipt');
+ await f.release(1);await f.release(0);await assert.rejects(first,{name:'AbortError'});
+ assert.deepEqual(f.state.history.messages.map(row=>row.id),['question','receipt']);
 });
 test('the browser event channel forwards saved conversation announcements alongside proactive messages',async()=>{
  const source=readFileSync('apps/app/src/runtime/local-agent.ts','utf8'),start=source.indexOf('function subscribeBrowserConversationEvents('),end=source.indexOf('\nfunction record(',start);
