@@ -2752,7 +2752,7 @@
         "preflight": "Actual preflight problem classes"
       },
       "abstractions": [
-        "Two synthetic SDK commits and a controlled external voice admission result.",
+        "Two synthetic SDK commits and a controlled external voice integrity admission result with qualified:false. Voice inputs have an automatic producer; only release signing needs human custody. Input readiness establishes no device qualification.",
         "Source stamps and worker presence are private fixture bytes.",
         "Staging, Gradle verification, signing, build execution and actual Android artifacts remain separate."
       ],

@@ -20,7 +20,8 @@ module AndroidBuildInputReadiness {
       .union(rowIf(i.prepared, "prepared")).union(rowIf(artifactReady, "worker"))
       .union(rowIf(payloadReady, "payload")).union(rowIf(i.support, "model")).union(rowIf(i.support, "gradle"))
       .union(rowIf(signerReady, "signer"))
-    val attention = rowIf(not(voiceReady), "voice").union(rowIf(not(signerReady), "signer"))
+    // The native producer supplies voice inputs. Only signing custody needs a person.
+    val attention = rowIf(not(signerReady), "signer")
     val preflight = rowIf(not(pinReady), "pin").union(rowIf(not(voiceReady), "voice"))
     val notices = rowIf(ready.size() == 9, "allInputs").union(rowIf(not(voiceReady), "voiceBlocker"))
       .union(rowIf(not(signerReady), "unsigned"))

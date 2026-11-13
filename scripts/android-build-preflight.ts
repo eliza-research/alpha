@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 /**
- * Fail fast, before the long runtime preparation, web sync and Gradle, when an input that
- * `bun run android:build:local` cannot produce is missing: the pinned upstream checkout (every
- * step runs pinned code) and the on-device voice outputs, which only a person can supply.
+ * Prepare the source-bound native inputs, then fail before the long runtime preparation,
+ * web sync and Gradle when the pinned checkout or on-device voice outputs are unavailable.
+ * The normal build produces the native inputs automatically; only release signing needs
+ * human-supplied custody. Input readiness does not establish device qualification.
  *
  *   bun scripts/android-build-preflight.ts
  *   bun scripts/android-build-preflight.ts --report     (bun run android:build:inputs)
@@ -219,7 +220,7 @@ export function formatReport(rows: readonly InputReportRow[]) {
   lines.push('', open.length === 0 ? 'Every build input is present. This is an input check, not a build or a distributable APK.'
     : `${script.length} input(s) a script can produce: ${script.map(row => row.input).join(', ') || 'none'}.\n${person.length} input(s) only a person can supply: ${person.map(row => row.input).join(', ') || 'none'}.`);
   if (person.some(row => row.input === 'release signer')) lines.push('An unset release signer does not stop the build: verify-apks records its releases distributable:false and names them.');
-  if (person.some(row => row.input === 'on-device voice outputs')) lines.push('Missing or changed voice outputs stop Gradle :app:verifyVoiceHost.');
+  if (open.some(row => row.input === 'on-device voice outputs')) lines.push('Missing or changed voice outputs stop Gradle :app:verifyVoiceHost.');
   return lines.join('\n');
 }
 
