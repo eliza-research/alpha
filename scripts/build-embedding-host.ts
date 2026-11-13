@@ -10,7 +10,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import type {EmbeddingManifest} from "./stage-embedding-host.ts";
-import {nativeCacheRoot,nativeCacheDirectory,nativeRecipe,nativeRecipeDigest,NATIVE_BUILD_RECEIPT,NATIVE_BUILD_REQUIREMENTS,NATIVE_PYTHON,fileDigest,verifyNativeBuildFiles,verifyNativeBuildLibraries,validateNativeBuildReceipt,nativeOutputInventory,writeNativeBuildReceipt,assertNativeOutputPath,withNativeCacheLock,nativeAndroidSdk,prepareNativeSource,type NativeBuildReceipt} from './native-build-inputs.ts';
+import {nativeCacheRoot,nativeCacheDirectory,nativeRecipe,nativeRecipeDigest,NATIVE_BUILD_RECEIPT,NATIVE_BUILD_REQUIREMENTS,NATIVE_PYTHON,fileDigest,verifyNativeBuildFiles,verifyNativeBuildLibraries,validateNativeBuildReceipt,nativeOutputInventory,writeNativeBuildReceipt,assertNativeOutputPath,withNativeCacheLock,nativeAndroidSdk,prepareNativeSource,clearStagedNativeInputs,type NativeBuildReceipt} from './native-build-inputs.ts';
 import {stageVoiceModels} from './android-stage-voice-models.ts';
 import {voiceHostProblems} from './voice-host.ts';
 import {embeddingAbiLibraries} from './embedding-native-contract.ts';
@@ -166,9 +166,7 @@ export async function preparePortableNativeInputs(root:string) {
   }
   // Owned generated directories may be replaced after a recipe changes. Never modify vendor or committed admission data.
   assertHeld();
-  assertNativeOutputPath(root,'.eliza/paradee-voice');assertNativeOutputPath(root,'android/app/src/main/jniLibs');
-  fs.rmSync(path.join(root,'.eliza/paradee-voice'),{recursive:true,force:true});
-  for(const abi of ['arm64-v8a','x86_64'])for(const name of ['libelizainference.so','libelizavoicejni.so','libc++_shared.so'])fs.rmSync(path.join(root,'android/app/src/main/jniLibs',abi,name),{force:true});
+  clearStagedNativeInputs(root);
   stageVoiceModels(root,{from:[path.join(cacheOutput,'.eliza/paradee-voice/native'),path.join(cacheOutput,'android/app/src/main')],record:{...receipt.voice,pin} as Parameters<typeof stageVoiceModels>[1]['record']});
   for(const abi of embeddingAbiLibraries<any>(receipt.embedding as any))for(const library of abi.libraries) {
     const source=path.join(cacheOutput,'android/app/src/main/jniLibs',abi.abi,library.name);

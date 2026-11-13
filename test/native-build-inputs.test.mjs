@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated} from '../scripts/embedding-native-contract.ts';
-import {nativeRecipe,nativeRecipeDigest,readNativeBuildReceipt,verifyNativeFileBytes,nativeOutputInventory,NATIVE_BUILD_RECEIPT,fileDigest,bytesDigest,withNativeCacheLock,prepareNativeSource,nativeAndroidSdk} from '../scripts/native-build-inputs.ts';
+import {nativeRecipe,nativeRecipeDigest,readNativeBuildReceipt,verifyNativeFileBytes,nativeOutputInventory,NATIVE_BUILD_RECEIPT,fileDigest,bytesDigest,withNativeCacheLock,prepareNativeSource,nativeAndroidSdk,clearStagedNativeInputs} from '../scripts/native-build-inputs.ts';
 
 const root=path.resolve(import.meta.dirname,'..');
 function fixture(t) {
@@ -55,6 +55,42 @@ test('native cache reuse rejects changed, linked and escaping outputs',t=>{
   fs.writeFileSync(file,'evil');assert.throws(()=>verifyNativeFileBytes(dir,files),/Native output changed/);
   fs.unlinkSync(file);fs.symlinkSync(path.join(root,'package.json'),file);assert.throws(()=>verifyNativeFileBytes(dir,files),/symbolic link/);
   files[0].path='../output';assert.throws(()=>verifyNativeFileBytes(dir,files),/Invalid native output path/);
+});
+for(const linkedAbi of ['arm64-v8a','x86_64'])test(`native refresh refuses linked ${linkedAbi} before deleting any staged inputs`,t=>{
+  const temp=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-refresh-')));
+  t.after(()=>fs.rmSync(temp,{recursive:true,force:true}));
+  const product=path.join(temp,'product'),external=path.join(temp,'external');
+  const bundle=path.join(product,'.eliza/paradee-voice/native/build-record.json');
+  fs.mkdirSync(path.dirname(bundle),{recursive:true});fs.writeFileSync(bundle,'prior bundle');
+  const survivors=[bundle];
+  for(const abi of ['arm64-v8a','x86_64']){
+    const directory=path.join(product,'android/app/src/main/jniLibs',abi);
+    fs.mkdirSync(path.dirname(directory),{recursive:true});
+    const target=abi===linkedAbi?external:directory;fs.mkdirSync(target,{recursive:true});
+    if(abi===linkedAbi)fs.symlinkSync(external,directory,'dir');
+    for(const name of ['libelizainference.so','libelizavoicejni.so','libc++_shared.so']){
+      const file=path.join(target,name);fs.writeFileSync(file,'retained '+abi);survivors.push(file);
+    }
+  }
+  assert.throws(()=>clearStagedNativeInputs(product),/symbolic link/);
+  for(const file of survivors)assert.ok(fs.existsSync(file),`refresh removed ${file}`);
+  assert.equal(fs.readFileSync(bundle,'utf8'),'prior bundle');
+  for(const name of ['libelizainference.so','libelizavoicejni.so','libc++_shared.so'])assert.equal(fs.readFileSync(path.join(external,name),'utf8'),'retained '+linkedAbi);
+});
+test('native refresh clears its owned outputs and preserves unrelated JNI files',t=>{
+  const product=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-refresh-owned-')));
+  t.after(()=>fs.rmSync(product,{recursive:true,force:true}));
+  const bundle=path.join(product,'.eliza/paradee-voice/native/build-record.json');
+  fs.mkdirSync(path.dirname(bundle),{recursive:true});fs.writeFileSync(bundle,'prior bundle');
+  const removed=[bundle],retained=[];
+  for(const abi of ['arm64-v8a','x86_64']){
+    const directory=path.join(product,'android/app/src/main/jniLibs',abi);fs.mkdirSync(directory,{recursive:true});
+    for(const name of ['libelizainference.so','libelizavoicejni.so','libc++_shared.so']){const file=path.join(directory,name);fs.writeFileSync(file,'old');removed.push(file);}
+    const other=path.join(directory,'libeliza_bun.so');fs.writeFileSync(other,'unrelated');retained.push(other);
+  }
+  clearStagedNativeInputs(product);
+  for(const file of removed)assert.equal(fs.existsSync(file),false);
+  for(const file of retained)assert.equal(fs.readFileSync(file,'utf8'),'unrelated');
 });
 test('concurrent native producers serialize and a failed producer releases its cache',async t=>{
   const dir=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-lock-')));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));

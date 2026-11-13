@@ -83,6 +83,17 @@ export function assertNativeOutputPath(root:string,relative:string) {
   }
 }
 
+/** Clear only the generated voice bundle and the staged native libraries. */
+export function clearStagedNativeInputs(root:string) {
+  const voice='.eliza/paradee-voice';
+  const libraries=['arm64-v8a','x86_64'].flatMap(abi=>['libelizainference.so','libelizavoicejni.so','libc++_shared.so'].map(name=>`android/app/src/main/jniLibs/${abi}/${name}`));
+  // Check every target before removing anything: an ABI directory may redirect
+  // a library path even when the common jniLibs parent is a real directory.
+  for(const relative of [voice,...libraries])assertNativeOutputPath(root,relative);
+  fs.rmSync(path.join(root,voice),{recursive:true,force:true});
+  for(const relative of libraries)fs.rmSync(path.join(root,relative),{force:true});
+}
+
 export function readNativeBuildReceipt(root:string):NativeBuildReceipt|null {
   const file=path.join(root,NATIVE_BUILD_RECEIPT);
   assertNativeOutputPath(root,NATIVE_BUILD_RECEIPT);
