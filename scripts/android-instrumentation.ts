@@ -259,8 +259,6 @@ export const CAMPAIGN_RUNNERS = [
   "scripts/test-installed-upgrade.ts", "scripts/test-reminder-one-off.ts", "scripts/test-reminder-recurrence.ts",
   "scripts/reminder-recovery-fixture.ts",
   "scripts/android-workflow-native.ts", "scripts/android-resident-instrumentation.ts", "scripts/android-browser-reading-live.ts",
-  "scripts/maps/test-native-navigation.ts",
-  "scripts/maps/test-native-recovery.ts",
   // Added on main while the reachability check was being written: BrowserStorageFormat.
   "scripts/test-browser-storage-format.ts",
 ];
@@ -268,6 +266,8 @@ export const CAMPAIGN_RUNNERS = [
 const SIGNED_IN_ONLY = "its views need a phone its owner signed in to Eliza Cloud (P-43's required sign-in covers them otherwise); tests never sign in, so no runner reaches them. AccessibilityLifecycle uses AccessibilityViews' helpers";
 const CALENDAR_CAMPAIGN = "ran only in the Calendar regression campaign, which installed the test-mocks pair to get past the required sign-in";
 const NO_HOSTED_SUPERVISOR = "ran only under the resident-android.yml emulator supervisors (scripts/ci/resident-native.py and pending-recovery-ui.py), which installed the test-mocks archive in an owned secondary user; the class keeps its own argument gate, and running it on the launcher debug APK needs a runner that provides that orchestration";
+
+const NO_NATIVE_REGIONAL_GATEWAY = "ran only through scripts/maps/test-native-navigation.ts and test-native-recovery.ts against the plain-HTTP emulator regional gateway (10.0.2.2:47850), which the app reached only through AlphaMapsTransport.request; that transport and both runners were removed, so a run needs an HTTPS regional gateway in a test-mocks build";
 
 /**
  * @Test classes that no runner in this repository can run, each with the reason. A class
@@ -306,6 +306,8 @@ export const NOT_RUN_BY_A_RUNNER = {
   PhotosFixtureRecovery: "operator tool that inventories or deletes stranded test-owned media (alphaPhotoRecovery=inventory|delete); never part of a campaign",
   VideoCopyClosedFailureReview: "native-only preservation operator for one existing closed failed copy; requires the exact operation, reviewed record SHA, owner UID and explicit main-process lifecycle approval. Never a generic or bulk campaign; the signed entry is admitted separately after fixture qualification",
   PublicCloudTransportProbe: "reads the public Eliza Cloud identity and balance with an owned account (ownedCloudRead=1); a human sign-in step",
+  MapsRegional: NO_NATIVE_REGIONAL_GATEWAY,
+  MapsBackgroundNavigation: NO_NATIVE_REGIONAL_GATEWAY,
   ResidentModelResponseContractTest: "plain contract test without the InstrumentedTest suffix; it runs under --all or by its full dotted name and needs no registry entry",
   SpeechPipelineTrace: "diagnostic acquisition for the on-device speech failure, explicitly not acceptance evidence",
   VoiceFloatPathDiagnostic: "root-cause diagnostic for the on-device speech round trip, explicitly not acceptance evidence",

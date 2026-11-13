@@ -6,7 +6,6 @@ import { validateReminderOperation, reminderFields, reminderTiming, type Reminde
 import { BrowserFiles } from './files';
 import { initialReminderDue, completeReminderOccurrence, snoozeReminderOccurrence } from '../../../../.eliza/client-features/plugins/plugin-native-reminders/src/occurrence.ts';
 import { WebPlugin } from '@capacitor/core';
-import { devSurfacesEnabled } from '../build-flags';
 import type { Reminder, ClockRequest } from '../daily';
 import { revision } from './revision';
 import {notificationState} from './notification-store';
@@ -75,7 +74,7 @@ export class BrowserDaily extends WebPlugin {
       return dismissed;
     },signal);
   }
-  async surfaceInfo(){return {developmentBuild:devSurfacesEnabled,assistant:false,reminderCreationVersion:1 as const,reminderTimingVersion:2 as const,topInset:0,bottomInset:0};}
+  async surfaceInfo(){return {assistant:false,reminderCreationVersion:1 as const,reminderTimingVersion:2 as const,topInset:0,bottomInset:0};}
   async closeAssistant(){window.dispatchEvent(new Event('alpha-back',{cancelable:true}));return {closed:true};}
   async scheduleReminder(input:{id:string;title:string;body?:string;at:number;recurrence?:Reminder['recurrence'];dueAt?:number;alertMinutes?:number|null}) {
     if(!Number.isSafeInteger(input.at)||input.at<=Date.now())return {status:'past',id:input.id,mode:'inexact'};
