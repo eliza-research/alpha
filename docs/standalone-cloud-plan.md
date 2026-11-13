@@ -72,7 +72,7 @@ deployment-config object.
 
 - One policy file, `scripts/cloud-deployment-policy.ts`, feeds the renderer
   (`apps/app/src/runtime/cloud-deployment.generated.ts`), native code (`CloudDeployment.java`),
-  Gradle and the manifest app-link host. `npm run verify` fails on drift.
+  Gradle and the manifest app-link host. `bun run verify` fails on drift.
 - `test/cloud-deployment.test.mjs` already drives a different deployment through native login,
   request admission, revocation and inference configuration.
 - The display name is white-labelled and enforced by `test/white-label-copy.test.mjs`. CSP,
@@ -218,8 +218,8 @@ certificate fingerprints for asset links.
 | Default-deploy parity | eliza.app built through the public API passes the existing cloud test and certification suites unchanged | Upstream (U11) |
 | Conformance suite | Sign-in (email code, Google), app-auth PKCE, entitlement token and keys, inference, embeddings, STT and TTS, Maps, Google connector, key self-revocation | Against local harness, Alpha staging, Alpha production |
 | Migration test | A fresh database reaches the current schema from the baseline; an existing Eliza database is unaffected | Upstream |
-| App against candidate cloud | Existing flows (`test/cloud-deployment.test.mjs`, sign-in, voice, Maps, Gmail and Calendar suites) pass with the `candidate` row | This repo, test-mocks builds |
-| Production unchanged | `npm run verify`, `scripts/audit-production-bundle.ts`, storage fingerprint equal to the current namespace, the launcher release built with the required resident runtime | This repo, every change before cutover |
+| App against candidate cloud | Existing flows (`test/cloud-deployment.test.mjs`, sign-in, voice, Maps, Gmail and Calendar suites) pass with the `candidate` row | This repo, explicit browser test/preview with `ELIZA_DEV_ALLOW_TEST_MOCKS=1` |
+| Production unchanged | `bun run verify`, `scripts/audit-production-bundle.ts`, storage fingerprint equal to the current namespace, the launcher release built with the required resident runtime | This repo, every change before cutover |
 | Device | Release-signed APK: App Link verified for the new host, Google native sign-in, resident agent first reply, voice, Maps | Emulator HOME-role test, then real device; neither proves the other |
 | Cutover rehearsal | Upgrade an installed, signed-in build to the cutover build: namespace migration, re-sign-in prompt, old key revoked | Device |
 
@@ -230,8 +230,8 @@ certificate fingerprints for asset links.
 2. **Upstream foundations**: U1 to U4, then U12's guard. Each is behaviour-preserving for
    eliza.app and can merge independently.
 3. **Upstream packaging**: U5 to U11. First publish of the server packages.
-4. **Alpha cloud staging**: A5 and A6; deploy to a staging domain; conformance green; test-mocks
-   builds use it as `candidate`.
+4. **Alpha cloud staging**: A5 and A6; deploy to a staging domain; conformance green; explicit browser test/preview
+   with `ELIZA_DEV_ALLOW_TEST_MOCKS=1` uses it as `candidate`.
 5. **Alpha cloud production, dark**: deployed and conformance green while shipped builds still
    use Eliza Cloud.
 6. **Cutover**: A7 in one release. Grace follows the same phases from G1.
@@ -293,7 +293,7 @@ What the local Cloud taught us (inputs to U1 to U3):
   post-build self-check fails at this pin although its output is usable.
 
 Next in this repository: extend the check to inference, speech, Maps and the Google
-connector (needs provider keys), then point a test-mocks build at the local Cloud.
+connector (needs provider keys), then point an explicit browser test/preview (`ELIZA_DEV_ALLOW_TEST_MOCKS=1`) at the local Cloud.
 
 ## 8. Upstream and Grace branches (local only, not pushed)
 
@@ -323,7 +323,7 @@ connector (needs provider keys), then point a test-mocks build at the local Clou
 - One policy (`apps/app/scripts/cloud-deployment-policy.ts`) generates the gateway presets and
   host allowlist, Java defaults, App Link hosts, APK policy rows and the user-facing Cloud
   name; `GRACE_CLOUD_DEPLOYMENT_FILE` selects a candidate Cloud that is never signed.
-- Evidence reported by that work: `npm run verify` green on Node 24 (3373 tests, 0 fail), a
+- Evidence reported by that work: `bun run verify` green on Node 24 (3373 tests, 0 fail), a
   default `android:build -- --ci-shell`, and a candidate rehearsal whose manifest and dex
   carry no `cloud.eliza.app`. Not run: device build with agent and voice, emulator, sign-in.
 
