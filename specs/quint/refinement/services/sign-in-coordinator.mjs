@@ -53,7 +53,7 @@ export async function runSignInCoordinatorRefinement(scenarios = defaultScenario
       scope: 'bounded-orchestration',
       assumptions: [
         'The actual patched shared CloudSignInPlugin and Alpha registration orchestrate callbacks, authorization, HTTP, persistence, acknowledgement, revocation and recovery on its own executors.',
-        'Every HTTPS connection is intercepted at URL.openConnection and unmatched hosts/routes are refused. Android presentation, primitive storage and credential-intent tickets are controlled ports.',
+        'Every HTTPS connection is intercepted at URL.openConnection and unmatched hosts/routes are refused. Android presentation, primitive storage and credential-intent tickets are controlled ports. Preference apply/commit publish in memory with successful commit; disk durability and failed commits remain outside these schedules.',
         'Replacement and receipt-failure scenarios start with a full successful source sign-in. Burn-failure and cancellation-race scenarios begin with a fresh persisted attempt. App Link verification, Keystore and real provider behavior remain installed-integration obligations.',
       ],
     });

@@ -2,7 +2,7 @@ import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, dirname} from 'node:path';
 
-/** Android/Capacitor presentation and storage ports for the actual native coordinator. */
+/** Android/Capacitor ports; preference commits provide controlled successful in-memory publication. */
 export function signInPlatform() {
   const root = mkdtempSync(join(tmpdir(), 'quint-sign-in-platform-'));
   const files = {
@@ -14,11 +14,19 @@ public class NativeGoogleCredential {
  public static void clear(android.app.Activity activity,Runnable completed){completed.run();}
 }`,
     'android/content/SharedPreferences.java': `package android.content;
-public interface SharedPreferences {String getString(String key,String fallback);Editor edit();interface Editor {Editor remove(String key);Editor putString(String key,String value);void apply();}}`,
+public interface SharedPreferences {String getString(String key,String fallback);Editor edit();interface Editor {Editor remove(String key);Editor putString(String key,String value);boolean commit();void apply();}}`,
     'android/content/Context.java': `package android.content;
 import java.util.HashMap;import android.content.pm.PackageManager;
 public class Context {public static final int MODE_PRIVATE=0;private final HashMap<String,String> values=new HashMap<>();public Context getApplicationContext(){return this;}public String getPackageName(){return "ai.alphacompute.alphaphone";}public PackageManager getPackageManager(){return new PackageManager();}public <T>T getSystemService(Class<T> type){return null;}
- public SharedPreferences getSharedPreferences(String name,int mode){return new SharedPreferences(){public String getString(String key,String fallback){return values.getOrDefault(key,fallback);}public Editor edit(){return new Editor(){public Editor remove(String key){values.remove(key);return this;}public Editor putString(String key,String value){values.put(key,value);return this;}public void apply(){}};}};}}`,
+ public SharedPreferences getSharedPreferences(String name,int mode){return new SharedPreferences(){
+  public String getString(String key,String fallback){synchronized(values){return values.getOrDefault(key,fallback);}}
+  public Editor edit(){return new Editor(){private final HashMap<String,String> changes=new HashMap<>();
+   public Editor remove(String key){changes.put(key,null);return this;}
+   public Editor putString(String key,String value){changes.put(key,value);return this;}
+   public boolean commit(){apply();return true;}
+   public void apply(){synchronized(values){for(var entry:changes.entrySet()){if(entry.getValue()==null)values.remove(entry.getKey());else values.put(entry.getKey(),entry.getValue());}changes.clear();}}
+  };}
+ };}}`,
     'android/content/Intent.java': `package android.content;
 import android.net.Uri;
 public class Intent {public static final String ACTION_VIEW="android.intent.action.VIEW", ACTION_MAIN="android.intent.action.MAIN", CATEGORY_BROWSABLE="android.intent.category.BROWSABLE", CATEGORY_HOME="android.intent.category.HOME";
