@@ -7,6 +7,7 @@
     "releaseMinify": true,
     "kotlin": false,
     "preserveRuntimeBytes": true,
+    "nativeLibraries": "extract-16k",
     "manifest": { "root": "consumer", "path": "android/app/src/main/AndroidManifest.xml" },
     "flavors": [
       {

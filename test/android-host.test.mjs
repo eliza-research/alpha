@@ -78,6 +78,7 @@ test('the pinned generator accepts the descriptor and owns identity, version and
  // Debug ABIs are fixed in android/app/product.gradle, so the descriptor names none.
  assert.deepEqual(profile.buildTypes.debug.abiFilters, []);
  assert.equal(profile.preserveRuntimeBytes, true, 'packaged resident runtime bytes keep their provenance');
+ assert.equal(profile.nativeLibraries, 'extract-16k', 'image staging requires stored, aligned libraries while Android extracts them on install');
  assert.equal(profile.kotlin, false);
  const gradle = fs.readFileSync(path.join(root, 'android/app/build.gradle'), 'utf8');
  assert.match(gradle, /keepDebugSymbols \+= \["\*\*\/libeliza_\*\.so", "\*\*\/libsigsys-handler\.so"\]/);
