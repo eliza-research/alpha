@@ -46,6 +46,15 @@ module NativeCrashJournal {
     s'={now:if (seed=="unsafe") lastSafeOffset else 10,a:noRequest,b:noRequest,closedA:false,closedB:false,disk:seeded(seed),
       history:Set(),historyMode:"available",held:0,captured:Set(),reply:noReply,delegated:0}
   }
+  // Exhaustive aliases of the original init seed choice; actions and safety are unchanged.
+  action proofInitEmpty = initWith("empty")
+  action proofInitCapacity = initWith("capacity")
+  action proofInitAges = initWith("ages")
+  action proofInitLegacy = initWith("legacy")
+  action proofInitUnsafe = initWith("unsafe")
+  action proofInitCorrupt = initWith("corrupt")
+  action proofInitOversize = initWith("oversize")
+
   action init = {
     nondet seed=seeds.oneOf()
     initWith(seed)
