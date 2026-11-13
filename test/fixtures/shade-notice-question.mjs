@@ -22,7 +22,7 @@ function range(source, start, end) {
 export function shadeNoticeQuestionFixture({initialRows} = {}) {
   const a = readFileSync(adapter, 'utf8'), s = readFileSync(selection, 'utf8');
   const code = stripTypeScriptTypes([range(s, 'const OPAQUE = ', '\n'),
-    range(s, 'const sessionMarker = ', 'export type FolderSelection'),
+    range(s, 'const sessionMarker = ', '\n'),
     range(s, 'export const ASKABLE_NOTICE_KINDS', 'export type CaptureSelection'),
     range(a, 'const opaque', 'type Notice ='), a.slice(a.indexOf('export function installNotificationsAdapter')),
     readFileSync(dialog, 'utf8').replace(/^import .*?;?\n/gm, ''), 'installNotificationsAdapter(Shell);',

@@ -1,106 +1,17 @@
 /** Selection identity and review scope for sources whose own views publish them:
- * the Files folder being browsed, the open Settings page, a pressed Alpha Phone
- * notification and the capture a question is about. Dependency-free so the rules
- * run in node tests (test/context-selection.test.mjs).
+ * the open Settings page, a pressed Alpha Phone notification and the capture a
+ * question is about. Dependency-free so the rules run in node tests
+ * (test/context-selection.test.mjs).
  *
- * Identities are opaque. A display name, path or provider URI never becomes an
- * identity, and neither does a folder's or a capture's own revision string (those
- * embed names, sizes and times): their shared revision is a counter local to this
- * app session. Content is shared only as an excerpt the owner reviewed. */
+ * Identities are opaque. A display name, path, provider URI or provider revision
+ * never becomes an identity. Content is shared only after owner review. */
 type Bag = Record<string, any>;
 // LemmaScript (specs/lemma) has no model for a RegExp; no proved function reads it.
 //@ skip
 const OPAQUE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-export const FOLDER_CONTEXT_EVENT = 'alpha-folder-context';
-
-export type FolderScopeEntry = { id: string; revision: string; name: string; mimeType: string; directory: boolean };
-/** Exactly what a folder review covers: one folder and the entries loaded for it. */
-export type FolderScope = {
-  folder: { id: string; revision: string; name: string };
-  entries: FolderScopeEntry[];
-  /** Entries the provider reported for the folder, when known. */
-  total?: number;
-  /** More entries exist than the loaded ones. */
-  more: boolean;
-};
-type Listed = { folder?: Bag; entries?: Bag[]; total?: number; cursor?: string; truncated?: boolean };
-
-const entryOf = (value: Bag): FolderScopeEntry | undefined =>
-  value && typeof value.id === 'string' && typeof value.revision === 'string' && typeof value.name === 'string'
-    ? { id: value.id, revision: value.revision, name: value.name, mimeType: typeof value.mimeType === 'string' ? value.mimeType : '', directory: value.directory === true }
-    : undefined;
-
-/** The reviewable scope of a ready folder listing, or undefined when it has no usable identity. */
-export function folderScope(listing: Listed | undefined): FolderScope | undefined {
-  const folder = listing?.folder;
-  if (!folder || typeof folder.id !== 'string' || !OPAQUE.test(folder.id) || typeof folder.revision !== 'string') return undefined;
-  const entries: FolderScopeEntry[] = [];
-  for (const row of listing!.entries || []) { const entry = entryOf(row); if (!entry) return undefined; entries.push(entry); }
-  return {
-    folder: { id: folder.id, revision: folder.revision, name: typeof folder.name === 'string' && folder.name ? folder.name : 'Selected folder' },
-    entries, more: !!listing!.cursor || listing!.truncated === true,
-    ...(Number.isSafeInteger(listing!.total) ? { total: listing!.total } : {}),
-  };
-}
-
-/** Local comparison key. It contains provider revisions (which may embed names), so it is never sent. */
-export function folderSignature(scope: FolderScope): string {
-  return JSON.stringify([scope.folder.id, scope.folder.revision, scope.entries.map(entry => [entry.id, entry.revision]).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)]);
-}
 
 /** Random per app session, so a later session can never repeat a revision for other content. */
 const sessionMarker = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), byte => byte.toString(16).padStart(2, '0')).join('');
-export type FolderSelection = { kind: 'folder'; id: string; revision: string };
-const FOLDER_REVISIONS_KEPT = 64;
-/** Maps each distinct listing of a folder to a counter that is local to this app session.
- * The counter (with a random session marker, so a later session can never repeat it for
- * other content) is the only revision that leaves the phone: it changes whenever the folder
- * or a loaded entry changes, and reveals nothing about names, sizes or times. */
-export function createFolderRevisions() {
-  const seen = new Map<string, { signature: string; revision: number }>();
-  const session = sessionMarker();
-  let counter = 0;
-  return (scope: FolderScope | undefined): FolderSelection | undefined => {
-    if (!scope) return undefined;
-    const signature = folderSignature(scope), previous = seen.get(scope.folder.id);
-    const revision = previous?.signature === signature ? previous.revision : ++counter;
-    // Most recently used last. A forgotten folder simply gets a new revision when revisited.
-    seen.delete(scope.folder.id); seen.set(scope.folder.id, { signature, revision });
-    if (seen.size > FOLDER_REVISIONS_KEPT) seen.delete(seen.keys().next().value as string);
-    return { kind: 'folder', id: scope.folder.id, revision: 'listing-' + session + '-' + revision };
-  };
-}
-
-export const FOLDER_EXCERPT_LIMIT = 200;
-/** Whether a fresh read of the folder still matches what was reviewed. A removed, renamed,
- * replaced or added entry, a changed folder, or lost access all fail. The fresh read is the
- * folder's first page. It must be exactly the entries the review loaded first, it must cover
- * every entry the excerpt names, and the reported total must be unchanged: an entry that left
- * the first page is noticed even when another loaded entry slides into its place. */
-export function folderScopeCurrent(reviewed: FolderScope, fresh: Listed & { status?: string }): boolean {
-  if (fresh.status !== undefined && fresh.status !== 'ready') return false;
-  const now = folderScope(fresh);
-  if (!now || now.folder.id !== reviewed.folder.id || now.folder.revision !== reviewed.folder.revision) return false;
-  if (now.total !== reviewed.total) return false;
-  const count = now.entries.length;
-  if (count > reviewed.entries.length || (!now.more && count !== reviewed.entries.length)) return false;
-  if (count < Math.min(reviewed.entries.length, FOLDER_EXCERPT_LIMIT)) return false;
-  const first = new Map(reviewed.entries.slice(0, count).map(entry => [entry.id, entry.revision]));
-  return first.size === count && now.entries.every(entry => first.get(entry.id) === entry.revision);
-}
-
-/** The excerpt offered for review: names and types of the loaded entries of this one folder.
- * Nothing inside a file or a subfolder is read. */
-export function folderExcerpt(scope: FolderScope, typeLabel: (mimeType: string, directory: boolean) => string): string {
-  const shown = scope.entries.slice(0, FOLDER_EXCERPT_LIMIT), hidden = scope.entries.length - shown.length;
-  const lines = ['Folder: ' + scope.folder.name];
-  if (!shown.length) lines.push(scope.more ? 'Not loaded' : 'Empty');
-  else lines.push(shown.length + (shown.length === 1 ? ' entry' : ' entries') + ' listed by name and type. File contents and subfolder contents are not included.');
-  for (const entry of shown) lines.push('- ' + entry.name + ' (' + typeLabel(entry.mimeType, entry.directory) + ')');
-  if (hidden > 0) lines.push(hidden + ' more loaded ' + (hidden === 1 ? 'entry is' : 'entries are') + ' not listed here.');
-  if (scope.more) lines.push('More…' + (scope.total !== undefined ? ' (' + scope.total + ' total)' : ''));
-  return lines.join('\n');
-}
 
 //@ skip
 const SETTINGS_SECTION = /^[a-z][a-z0-9-]{0,63}$/;
@@ -289,34 +200,9 @@ export function locationMimeTypes(name: string): string[] | undefined {
   return types?.every(type => MIME_TYPE.test(type)) ? types : undefined;
 }
 
-/** Publishes the folder and Settings identities the agent context reads from the shell.
- * The folder identity exists only while its folder is the visible Files subview. */
+/** Publishes the visible Settings section to agent context. */
 export function installContextSelection(Component: any) {
-  const p = Component.prototype, mount = p.componentDidMount, unmount = p.componentWillUnmount;
-  p.componentDidMount = function () {
-    mount?.call(this);
-    this.alphaFolderContextHandler = (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      const next = detail && detail.kind === 'folder' && typeof detail.id === 'string' && OPAQUE.test(detail.id) && typeof detail.revision === 'string' && OPAQUE.test(detail.revision)
-        ? { kind: 'folder' as const, id: detail.id, revision: detail.revision } : undefined;
-      if (JSON.stringify(next) === JSON.stringify(this.alphaFolderSelection)) return;
-      this.alphaFolderSelection = next;
-      // Re-render so the agent context is recomputed with the new identity.
-      this.setState({ folderContextRevision: Date.now() });
-    };
-    window.addEventListener(FOLDER_CONTEXT_EVENT, this.alphaFolderContextHandler);
-  };
-  p.componentWillUnmount = function () {
-    window.removeEventListener(FOLDER_CONTEXT_EVENT, this.alphaFolderContextHandler);
-    this.alphaFolderSelection = undefined;
-    unmount?.call(this);
-  };
-  p.folderSelection = function (): FolderSelection | undefined {
-    const chosen = this.alphaFolderSelection as FolderSelection | undefined;
-    if (!chosen || document.hidden || this.S().view !== 'files') return undefined;
-    const files = this.vget('files');
-    return files.folder === '__native_tree' && !files.open ? { ...chosen } : undefined;
-  };
+  const p = Component.prototype;
   p.settingsSelection = function () {
     return document.hidden || this.S().view !== 'settings' ? undefined : settingsSelection(this.vget('settings'));
   };

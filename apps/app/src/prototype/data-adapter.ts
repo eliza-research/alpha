@@ -55,7 +55,7 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     return ({
     ...out,
     locs: (out.locs || []).map((location: Bag) => ({
-      ...location, sub: location.nativeTree ? location.sub : location.name === 'Photos' ? 'Choose a photo' : 'Choose a document',
+      ...location, sub: location.name === 'Photos' ? 'Choose a photo' : 'Choose a document',
     })),
     ...(browserStorage?storageUsage:{storageW:'0%',storageText:'Storage usage unavailable',storageBarStyle:'display:none'}),
   });});

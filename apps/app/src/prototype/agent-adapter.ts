@@ -684,8 +684,6 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
     }
     if(view==='workflows'&&shell.clockSelection?.())providerSelection=shell.clockSelection();
-    // Folder, notification and settings selections are published by the views that own them.
-    if(view==='files'&&!providerSelection&&shell.vget('files').open!=='__native_selected_document'&&shell.folderSelection?.())providerSelection=shell.folderSelection();
     if(view==='settings'&&!providerSelection&&shell.settingsSelection?.())providerSelection=shell.settingsSelection();
     if(s.shade&&shell.notificationSelection?.())providerSelection=shell.notificationSelection();
     // The owning Calendar hook checks readiness/privacy; a chat overlay does not replace its underlying view.
