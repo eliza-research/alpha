@@ -44,7 +44,7 @@ import { assetLinksGrants, publishedAssetLinksCheck, readAssetLinksSource } from
 
 /** The return path and Steward app client Alpha's native sign-in registers (AlphaCloudSignInPlugin). */
 export const CALLBACK_PATH = CLOUD_SIGN_IN_REGISTRATION.callbackPath;
-export const STEWARD_APP_CLIENT = "alpha-phone";
+export const STEWARD_APP_CLIENT = CLOUD_SIGN_IN_REGISTRATION.stewardAppClient;
 const TIMEOUT_MS = 15_000;
 const USAGE = "Usage: bun scripts/cloud-readiness.ts registration [--environment production|staging] [--json]\n       bun scripts/cloud-readiness.ts probe [--environment production|staging] [--signer SHA256] [--json]";
 const readJson = <T>(root: string, file: string): T => JSON.parse(fs.readFileSync(path.join(root, file), "utf8"));

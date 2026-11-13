@@ -8,7 +8,8 @@ import { spawnSync } from "node:child_process";
 import { auditWebBundle } from "../scripts/audit-production-bundle.ts";
 import { appLinkFilters, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.ts";
 import { buildEnv, partialSigningProblem, readReleaseSigner, releaseAdmission, SIGNING_ENV, signingRequested, validateReleaseSigner } from "../scripts/build-android.ts";
-import { releaseDistributable } from "../scripts/release-distributable.ts";
+import { nativeCartesiaBlockers, releaseDistributable } from "../scripts/release-distributable.ts";
+import { CLOUD_VOICE_CHECKS, cloudVoiceAdmission } from "../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs";
 
 const ALL = { ELIZAOS_KEYSTORE_PATH: "/k", ELIZAOS_KEYSTORE_PASSWORD: "p", ELIZAOS_KEY_ALIAS: "a", ELIZAOS_KEY_PASSWORD: "q" };
 const SIGNER = "a".repeat(64);
@@ -108,11 +109,37 @@ test("a release is distributable only when every term holds", () => {
     assert.equal(releaseDistributable({ ...DISTRIBUTABLE, ...change }), false, name);
 });
 
+test("native OTA releases require both on-device ASR and exact supplied Cartesia evidence", () => {
+  const hashes = ["b".repeat(64), "c".repeat(64)];
+  const evidenceSha256 = "d".repeat(64);
+  const checks = Object.fromEntries(CLOUD_VOICE_CHECKS.map(name => [name, true]));
+  const evidence = {format: "alpha-cloud-voice-qualification-v1", results: hashes.map(apkSha256 => ({
+    apkSha256, provider: "cartesia", outcome: "passed", checks,
+  }))};
+  const assess = (apkSha256, input, options = {}) => {
+    const admission = cloudVoiceAdmission(apkSha256, input, options.evidenceSha256 ?? evidenceSha256);
+    return releaseDistributable({...DISTRIBUTABLE, ...(options.facts ?? {}), cartesia: {apkSha256, admission}});
+  };
+  for (const hash of hashes) assert.equal(assess(hash, evidence), true);
+  assert.equal(assess(hashes[0], evidence, {facts: {voiceHost: {packaged: false, asr: false}}}), false);
+  assert.equal(assess(hashes[0], evidence, {facts: {voiceHost: {packaged: true, asr: false}}}), false);
+  assert.equal(assess(hashes[0], evidence, {evidenceSha256: "invalid"}), false);
+  assert.equal(assess(hashes[0], null), false);
+  assert.equal(assess(hashes[0], {...evidence, results: [evidence.results[1]]}), false);
+  assert.equal(assess(hashes[0], {...evidence, results: [evidence.results[0], evidence.results[0]]}), false);
+  for (const change of [{provider: "other"}, {outcome: "failed"}, {checks: {...checks, stopReleased: false}}]) {
+    assert.equal(assess(hashes[0], {...evidence, results: [{...evidence.results[0], ...change}]}), false);
+  }
+  const admission = cloudVoiceAdmission(hashes[0], evidence, evidenceSha256);
+  assert.match(nativeCartesiaBlockers(hashes[1], admission).join("\n"), /does not match this APK/);
+});
+
 test("verify-apks gates every release on public distribution and releaseDistributable; there is one runtime profile", () => {
   const source = fs.readFileSync("scripts/verify-apks.ts", "utf8");
   // One assignment, so a later overwrite of the row is caught here.
   assert.deepEqual(source.match(/\.distributable\s*=[^=]/g), [".distributable = "]);
-  assert.match(source, /const releaseReady = releaseDistributable\(\{testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission,\s+runtime, runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers\}\)\s+&& \(!cloudEvidence \|\| cloudVoiceBlockers\(row,'cartesia'\)\.length===0\);/);
+  assert.match(source, /const cartesia = cloudEvidenceSha256 === undefined \? undefined : \{\s+apkSha256: row\.sha256,\s+admission: cloudVoiceAdmission\(row\.sha256, cloudEvidence, cloudEvidenceSha256\),/);
+  assert.match(source, /const releaseReady = releaseDistributable\(\{testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission,\s+runtime, runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers, cartesia\}\);/);
   // No profile branch can admit a release without packaged on-device voice.
   assert.doesNotMatch(source, /runtimeProfile\s*===\s*['"]cloud['"]|--runtime-profile=cloud|speechQualified/);
   assert.match(source, /const runtimeProfile="native";/);

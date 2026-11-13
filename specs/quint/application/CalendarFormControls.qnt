@@ -3,7 +3,7 @@ module CalendarFormControls {
   type State = { off: int, start: int, duration: int, days: int, leading: int }
   var s: State
   pure def windowStart(off: int): int = if (off == 0) 1 else if (off > 0) (if (off > 3) off - 3 else 1) else off - 3
-  pure def window(off: int): Set[int] = Set(0).union(windowStart(off).to(windowStart(off) + 20))
+  pure def window(off: int): Set[int] = Set(0).union(0.to(20).map(day => windowStart(off) + day))
   val windowDays = window(s.off)
   val rows = if (s.days + s.leading <= 35) 35 else 42
   action init = s' = {off: 0, start: 720, duration: 60, days: 30, leading: 1}

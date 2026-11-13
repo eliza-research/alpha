@@ -47,13 +47,12 @@ test('pull requests run one verify job, Android and resident preparation only fo
   assert.ok(resident.includes("${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}"));
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'push'/);
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'nightly'/);
-  // Primary main attempts may supersede automatic candidate work; reruns are isolated. Develop pushes and
-  // nightly qualification retain distinct groups; manual qualification stays isolated by
-  // ref and upload-only carriers retain their extra suffix.
+  // Independent main runs cannot cancel each other even if GitHub starts the older one later.
+  // Reruns keep their run ID. Develop, nightly and manual qualification keep their existing groups.
   const carrierGroupSuffix = "${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}";
   const concurrency = YAML.parse(resident).concurrency;
-  assert.equal(concurrency.group, "resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && (github.run_attempt == 1 && 'app-candidate-main' || format('app-candidate-run-{0}', github.run_id)) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}" + carrierGroupSuffix);
-  assert.equal(concurrency['cancel-in-progress'], "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1) }}");
+  assert.equal(concurrency.group, "resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('app-candidate-run-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}" + carrierGroupSuffix);
+  assert.equal(concurrency['cancel-in-progress'], "${{ github.event_name == 'workflow_dispatch' }}");
 });
 
 test('browser tests, the Quint gate, its node tests and the Lemma proofs run in CI only for promotion to main and on dispatch', () => {

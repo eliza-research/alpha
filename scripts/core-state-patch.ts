@@ -18,7 +18,7 @@ export const NAMED_EMBEDDING_TARGETS = [
 ];
 export const NOTES_STATE_TARGET = 'plugins/plugin-notes/src/service.ts';
 export const NOTES_STATE_TARGETS = [NOTES_STATE_TARGET, 'plugins/plugin-notes/src/store.ts',
-  'plugins/plugin-notes/src/types.ts', 'plugins/plugin-notes/src/validation.ts'];
+  'plugins/plugin-notes/src/types.ts', 'plugins/plugin-notes/src/validation.ts', 'plugins/plugin-notes/src/trash-retention.ts'];
 export const CORE_STATE_TARGETS = [
   CORE_STATE_TARGET, ...NOTES_STATE_TARGETS, TURN_STATE_TARGET,
   ROOM_QUEUE_TARGET, EMBEDDING_STATE_TARGET, ...NAMED_EMBEDDING_TARGETS,
@@ -100,7 +100,7 @@ export function coreStateBuildPlugin(root: string, source: string) {
   const transforms: CoreTransform[] = [];
   const byPath = new Map([...prepared.files].map(([name, entry]) => [path.resolve(source, name), {name, entry}]));
   const plugin = {name: 'authenticated-core-state', setup(build: CoreBuildContext) {
-    build.onLoad({filter: /(?:[\\/]packages[\\/]core[\\/]src[\\/]services[\\/]task\.ts|[\\/]packages[\\/]core[\\/]src[\\/]plugin-lifecycle\.ts|[\\/]packages[\\/]core[\\/]src[\\/]runtime[\\/](?:turn-controller|room-handler-queue|embeddings)\.ts|[\\/]plugins[\\/]plugin-notes[\\/]src[\\/](?:service|store|types|validation)\.ts|[\\/]plugins[\\/]plugin-sql[\\/]src[\\/]base\.ts|[\\/]packages[\\/]agent[\\/]src[\\/]api[\\/]conversation-routes\.ts|[\\/]plugins[\\/]plugin-assistant[\\/]src[\\/]features[\\/]advanced-capabilities[\\/]experience[\\/]service\.ts)$/}, args => {
+    build.onLoad({filter: /(?:[\\/]packages[\\/]core[\\/]src[\\/]services[\\/]task\.ts|[\\/]packages[\\/]core[\\/]src[\\/]plugin-lifecycle\.ts|[\\/]packages[\\/]core[\\/]src[\\/]runtime[\\/](?:turn-controller|room-handler-queue|embeddings)\.ts|[\\/]plugins[\\/]plugin-notes[\\/]src[\\/](?:service|store|types|validation|trash-retention)\.ts|[\\/]plugins[\\/]plugin-sql[\\/]src[\\/]base\.ts|[\\/]packages[\\/]agent[\\/]src[\\/]api[\\/]conversation-routes\.ts|[\\/]plugins[\\/]plugin-assistant[\\/]src[\\/]features[\\/]advanced-capabilities[\\/]experience[\\/]service\.ts)$/}, args => {
       const selected = byPath.get(path.resolve(args.path));
       if (!selected) throw Error('Unexpected core source module path');
       const {name, entry} = selected;

@@ -20,6 +20,9 @@ spec.loader.exec_module(native)
 export_spec = importlib.util.spec_from_file_location('export_native_inputs', ROOT / 'scripts/ci/export-native-inputs.py')
 exporter = importlib.util.module_from_spec(export_spec)
 export_spec.loader.exec_module(exporter)
+stage_spec = importlib.util.spec_from_file_location('stage_native_input_packet', ROOT / 'scripts/ci/stage-native-input-packet.py')
+stager = importlib.util.module_from_spec(stage_spec)
+stage_spec.loader.exec_module(stager)
 PACKAGE, SDK, ENGINE, SOURCE = 'ai.alphacompute.alphaphone', 'a' * 40, 'b' * 40, 'c' * 40
 
 
@@ -161,6 +164,144 @@ class NativeInputPacketTest(unittest.TestCase):
 
     def export(self):
         return exporter.export_packet(self.root, *self.inputs, self.output)
+
+    def assert_stage_refused(self, packet, reason, *, expected_sha256=None):
+        output = self.output / 'staged'
+        before = {path.name for path in self.output.iterdir()}
+        if expected_sha256 is None:
+            expected_sha256 = digest(packet.read_bytes())
+        with self.assertRaisesRegex((ValueError, OSError), reason):
+            stager.stage_packet(self.root, packet, expected_sha256, output)
+        self.assertFalse(output.exists())
+        self.assertEqual({path.name for path in self.output.iterdir()}, before)
+
+    def exported_entries(self):
+        with zipfile.ZipFile(self.export()) as archive:
+            return {name: archive.read(name) for name in archive.namelist()}
+
+    def test_stages_original_packet_for_canonical_hosted_acquisition(self):
+        packet = self.export()
+        self.git('commit', '--allow-empty', '-qm', 'Later consumer commit with the same reviewed records')
+        self.assertNotEqual(self.git('rev-parse', 'HEAD').strip(), self.source)
+        output = self.output / 'staged'
+        self.assertEqual(stager.stage_packet(self.root, packet, digest(packet.read_bytes()), output), output)
+        with zipfile.ZipFile(packet) as archive:
+            receipt = archive.read(exporter.RECEIPT)
+        self.assertEqual({path.relative_to(output).as_posix(): path.read_bytes()
+                          for path in output.rglob('*') if path.is_file()},
+                         {**self.expected, exporter.RECEIPT: receipt})
+        self.assertEqual({path.name for path in output.iterdir()},
+                         {'voice', 'embedding-component', 'embedding-qualification', exporter.RECEIPT})
+
+        archives = {}
+        artifacts = {}
+        for number, (artifact, folder) in enumerate(zip(
+                native.ARTIFACTS, ('voice', 'embedding-component', 'embedding-qualification')), 11):
+            tree = output / folder
+            archive = zipped({path.relative_to(tree).as_posix(): path.read_bytes()
+                              for path in tree.rglob('*') if path.is_file()})
+            archives[str(number)] = archive
+            artifacts[artifact] = {'id': str(number), 'sha256': digest(archive)}
+        identity, _, _ = native.reviewed_inputs(self.root)
+        write(self.root, native.MANIFEST, {
+            'schema': 'alpha-hosted-native-inputs/v1', **identity, 'artifacts': artifacts,
+        })
+        self.git('add', native.MANIFEST)
+        self.git('commit', '-qm', 'Admit the three resulting artifact pins')
+        env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
+               'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
+               'GITHUB_SHA': self.git('rev-parse', 'HEAD').strip(),
+               'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1'}
+        api = ArtifactAPI(archives)
+        with patch.object(native.urllib.request, 'build_opener', return_value=api):
+            native.acquire(self.root, env, *native.load_plan(self.root))
+        acquired = self.root / native.OUTPUT
+        admission = json.loads((acquired / 'admission.json').read_bytes())
+        self.assertEqual(admission['source'], env['GITHUB_SHA'])
+        for artifact, entry in artifacts.items():
+            self.assertEqual(admission['artifacts'][artifact]['artifactId'], int(entry['id']))
+            self.assertIn(['artifacts', entry['id'], 'zip'], api.requests)
+        self.assertEqual((acquired / 'voice' / native.VOICE_ASSETS / 'model.gguf').read_bytes(), b'voice')
+        self.assertEqual((acquired / 'embedding/libelizavoicejni.so').read_bytes(), b'libelizavoicejni.so')
+        self.assertEqual((acquired / 'qualification/QUALIFICATION.json').read_bytes(),
+                         self.expected['embedding-qualification/QUALIFICATION.json'])
+
+    def test_staging_refuses_wrong_outer_digest_without_output(self):
+        packet = self.export()
+        self.assert_stage_refused(packet, r'(?i)digest|sha-?256', expected_sha256=digest(b'wrong packet'))
+
+    def test_staging_refuses_self_consistent_forged_voice_bytes_without_output(self):
+        entries = self.exported_entries()
+        member = f'voice/{native.VOICE_ASSETS}/model.gguf'
+        entries[member] = b'other'
+        receipt = json.loads(entries[exporter.RECEIPT])
+        receipt['files'][member] = fact(entries[member])
+        entries[exporter.RECEIPT] = encoded(receipt)
+        forged = self.output / 'forged.zip'
+        forged.write_bytes(zipped(entries))
+        self.assert_stage_refused(forged, r'(?i)voice|reviewed|digest')
+
+    def test_staging_refuses_forged_receipt_file_digest_without_output(self):
+        entries = self.exported_entries()
+        receipt = json.loads(entries[exporter.RECEIPT])
+        receipt['files']['embedding-qualification/QUALIFICATION.json']['sha256'] = digest(b'other receipt')
+        entries[exporter.RECEIPT] = encoded(receipt)
+        forged = self.output / 'forged.zip'
+        forged.write_bytes(zipped(entries))
+        self.assert_stage_refused(forged, r'(?i)receipt|member|digest')
+
+    def test_staging_refuses_stale_reviewed_record_without_output(self):
+        packet = self.export()
+        voice_record = self.root / native.VOICE_RECORD
+        voice_record.write_bytes(voice_record.read_bytes() + b'\n')
+        self.git('add', native.VOICE_RECORD)
+        self.git('commit', '-qm', 'New reviewed record bytes')
+        self.assert_stage_refused(packet, r'(?i)record|reviewed')
+
+    def test_staging_refuses_unknown_and_duplicate_members_without_output(self):
+        entries = self.exported_entries()
+        unknown = self.output / 'unknown.zip'
+        unknown.write_bytes(zipped({**entries, 'voice/unreviewed.log': b'unreviewed'}))
+        self.assert_stage_refused(unknown, r'(?i)inventory|member|ZIP directory')
+
+        duplicate = self.output / 'duplicate.zip'
+        duplicate.write_bytes(zipped(entries))
+        member = f'voice/{native.VOICE_ASSETS}/model.gguf'
+        with self.assertWarnsRegex(UserWarning, 'Duplicate name'), zipfile.ZipFile(duplicate, 'a') as archive:
+            archive.writestr(member, entries[member])
+        self.assert_stage_refused(duplicate, r'(?i)inventory|member|ZIP directory')
+
+    def test_staging_preserves_existing_output(self):
+        packet = self.export()
+        output = self.output / 'staged'
+        output.mkdir()
+        packet_sha256 = digest(packet.read_bytes())
+        with self.assertRaisesRegex((ValueError, OSError), r'(?i)exist'):
+            stager.stage_packet(self.root, packet, packet_sha256, output)
+        self.assertEqual(list(output.iterdir()), [])
+        sentinel = output / 'operator-file'
+        sentinel.write_bytes(b'keep')
+        with self.assertRaisesRegex((ValueError, OSError), r'(?i)exist'):
+            stager.stage_packet(self.root, packet, packet_sha256, output)
+        self.assertEqual(list(output.iterdir()), [sentinel])
+        self.assertEqual(sentinel.read_bytes(), b'keep')
+        self.assertEqual({path.name for path in self.output.iterdir()}, {packet.name, output.name})
+
+    def test_staging_publication_race_preserves_other_empty_directory(self):
+        packet = self.export()
+        output = self.output / 'staged'
+        original_publish = stager.publish_directory
+
+        def raced(*args):
+            output.mkdir()
+            self.raced_inode = output.stat().st_ino
+            original_publish(*args)
+
+        with patch.object(stager, 'publish_directory', side_effect=raced), self.assertRaises(FileExistsError):
+            stager.stage_packet(self.root, packet, digest(packet.read_bytes()), output)
+        self.assertEqual(output.stat().st_ino, self.raced_inode)
+        self.assertEqual(list(output.iterdir()), [])
+        self.assertEqual({path.name for path in self.output.iterdir()}, {packet.name, output.name})
 
     def test_exports_only_exact_inputs_and_binds_the_committed_records(self):
         target = self.export()
@@ -353,7 +494,7 @@ class HostedNativeInputsTest(unittest.TestCase):
 
     def acquire(self, root, **options):
         _, archives = fixture(root, **options)
-        env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
+        env = {'GH_TOKEN': 'inert-fixture-token',
                'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
                'GITHUB_SHA': SOURCE, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2'}
         def committed(args, **kwargs):
@@ -381,7 +522,7 @@ class HostedNativeInputsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root)
-            env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
+            env = {'GH_TOKEN': 'inert-fixture-token',
                    'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
                    'GITHUB_SHA': SOURCE, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2'}
             changed = native.subprocess.CompletedProcess([], 0, b'other committed input pins')

@@ -61,6 +61,16 @@ test('a held or failed Files query does not report an empty result',async({page}
  await expect(results.getByRole('status').filter({hasText:'Files could not read this filter.'})).toBeVisible();
  await expect(empty).toHaveCount(0);
 });
+test('an older Files port without a completeness marker shows an incomplete search',async({page})=>{
+ await page.evaluate(async()=>{
+  const {BrowserFiles}=await import('/src/browser/files.ts');
+  BrowserFiles.prototype.storageQuery=async()=>({status:'ready',entries:[]});
+ });
+ expect((await execute(page,{type:'files_filter',text:'unknown-completeness'})).status).toBe('failed');
+ const results=page.locator('[data-alpha-subview="files-list"]');
+ await expect(results.getByRole('status').filter({hasText:'Search incomplete.'})).toBeVisible();
+ await expect(results.getByText('No results to show',{exact:true})).toHaveCount(0);
+});
 test('an agent open waits for the first Files render and opens the requested file',async({page})=>{
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['Review this text'],'notice.txt',{type:'text/plain'}));});
  expect(await execute(page,{type:'files_open',path:'notice.txt'})).toEqual({status:'succeeded',summary:'Opened the file in Files.'});

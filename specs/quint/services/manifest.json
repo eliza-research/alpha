@@ -22,7 +22,7 @@
       "Two sign-in attempts and owners, five wrong-code attempts and three ack attempts.",
       "Opaque PKCE states, proofs and credentials are represented by identities. Cryptography, endpoint shapes and encrypted persistence are checked by existing implementation tests.",
       "Storage failure before the key commit ends the attempt. After key persistence, cancellation cannot stop acknowledgement. Authentication delivery precedes best-effort Steward logout and local-session cleanup.",
-      "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may retain the unretired record but cannot acquire a new live credential intent or exchange it. A recovered key acknowledgement loses the transient previous-token revocation capability and never claims it was revoked.",
+      "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may retain the unretired record but cannot acquire a new live credential intent or exchange it. The native client attempts previous-key revocation after the current acknowledgement attempts, including when activation is pending. Restart drops the transient previous-token capability and preserves an observed revocation.",
       "Legacy top-level key/receipt/ack fields describe the current Attempt. The canonical activation record retains an older committed owner during replacement admission. CurrentActivationProjection requires matching representations when both refer to the same committed attempt. beginWork represents the queued worker reaching the replacement pending write after old cleanup. Restart preserves durable replacement pending bytes while restoring the stored activation owner.",
       "A successful server acknowledgment may leave its durable receipt if cancellation retired the interaction. Startup can retry acknowledgment before removing that receipt; the stored credential remains committed."
     ],
@@ -34,7 +34,7 @@
     "tests": [
       "failedCallbackBurnTest",
       "failedCancelBurnTest",
-      "recoveredAckLosesPreviousRevocationTest",
+      "pendingAckRevokesPreviousBeforeRestartTest",
       "googleReturnTest",
       "ackRecoveryTest",
       "exhaustedCodesTest",
@@ -1723,6 +1723,7 @@
       "vendor/eliza/plugins/plugin-notes/src/interact.ts",
       "vendor/eliza/plugins/plugin-notes/src/types.ts",
       "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+      "vendor/eliza/plugins/plugin-notes/src/trash-retention.ts",
       ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
     ],
     "tests": [
@@ -1733,7 +1734,8 @@
       "legacyTieUsesRawOrderTest",
       "mixedLegacyEditTest",
       "rawRestoreMembershipTest",
-      "lostAckPreservesStaleCacheTest",
+      "lostAckFencesSharedCacheTest",
+      "fencedStoreCannotAdmitTest",
       "staleWriterRejectedTest",
       "restartLoadsUnknownCommitTest",
       "staleRevisionRejectedTest",
@@ -1749,7 +1751,8 @@
       "VisibleContentUnique",
       "ReplyIdentityPresent",
       "ConfirmedRevisionBounded",
-      "NewerOrderWins"
+      "NewerOrderWins",
+      "FencedCacheIsUnavailable"
     ],
     "abstractions": [
       "Two plain physical notes and two content classes; collection revisions zero through eight; wall-clock values zero through two.",
@@ -2373,6 +2376,7 @@
       "vendor/eliza/plugins/plugin-notes/src/store.ts",
       "vendor/eliza/plugins/plugin-notes/src/types.ts",
       "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+      "vendor/eliza/plugins/plugin-notes/src/trash-retention.ts",
       "vendor/eliza/packages/core/src/plugin-lifecycle.ts",
       "vendor/eliza/packages/core/src/runtime/room-handler-queue.ts",
       "vendor/eliza/packages/core/src/services/task.ts",

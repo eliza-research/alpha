@@ -153,6 +153,13 @@ export async function evaluate(socketUrl: string, expression: string, timeoutMs 
   });
 }
 
+// The installed renderer persists pending marks on a zero-delay timer. Queue the
+// snapshot on the same WebView timer queue, allowing for the 4 ms nested-timer minimum.
+export const rendererTimingSnapshot = `new Promise(resolve => setTimeout(() => {
+  try { resolve(JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1') || '[]')); }
+  catch { resolve([]); }
+}, 4))`;
+
 export async function collectDevice({ serial }: { serial?: string } = {}) {
   const args = serial ? ['-s', serial] : [];
   const adb = async (...command: string[]) => (await exec('adb', [...args, ...command], { timeout: 15000, maxBuffer: 2 * 1024 * 1024 })).stdout.trim();
@@ -168,8 +175,8 @@ export async function collectDevice({ serial }: { serial?: string } = {}) {
     const page = pages.find(item => item.type === 'page' && item.url === 'https://localhost/');
     if (!page?.webSocketDebuggerUrl?.startsWith(`ws://127.0.0.1:${port}/`)) throw Error('The expected Alpha app page is unavailable');
     const raw = await evaluate(page.webSocketDebuggerUrl, `(async () => {
-      let build = null, native = null, streaming = null, provider = null, turns = [];
-      try { turns = JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1') || '[]'); } catch {}
+      const turns = await ${rendererTimingSnapshot};
+      let build = null, native = null, streaming = null, provider = null;
       try { build = await (await fetch('/build-flags.json')).json(); } catch {}
       try { native = await Promise.race([window.Capacitor.Plugins.AlphaVoiceCloud.cloudVoiceTiming(), new Promise(resolve => setTimeout(() => resolve(null), 2000))]); } catch {}
       try {

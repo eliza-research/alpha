@@ -19,10 +19,8 @@ spec = importlib.util.spec_from_file_location('native_expiry', ROOT / 'scripts/c
 expiry = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(expiry)
 NOW = datetime(2026, 11, 11, 13, 47, tzinfo=timezone.utc)
-REPO = expiry.native.embedding.REPOSITORY
 REPO_ID = expiry.native.embedding.REPOSITORY_ID
-ENV = {'GITHUB_REPOSITORY': REPO, 'GITHUB_REPOSITORY_ID': str(REPO_ID),
-       'GH_TOKEN': 'inert-fixture-token'}
+ENV = {'GITHUB_REPOSITORY_ID': str(REPO_ID), 'GH_TOKEN': 'inert-fixture-token'}
 SOURCE = 'a' * 40
 DIGEST = 'b' * 64
 VOICE_BYTES = 256 * 1024 * 1024
@@ -56,7 +54,7 @@ class MetadataAPI:
     def open(self, request, timeout):
         url = urlsplit(request.full_url)
         assert request.get_method() == 'GET' and url.netloc == 'api.github.com'
-        path = url.path.removeprefix(f'/repos/{REPO}/')
+        path = url.path.removeprefix(f'/repositories/{REPO_ID}/')
         self.calls.append(path)
         return io.BytesIO(json.dumps(self.routes[path]).encode())
 

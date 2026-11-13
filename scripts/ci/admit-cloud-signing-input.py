@@ -3,18 +3,21 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
 import stat
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 import zipfile
 
 from app_update_producer import (
     CANDIDATE, CANDIDATE_PACKAGE, MAX_ARCHIVE_BYTES, PRIVATE_APK_BUCKET, PRIVATE_RUNNER, REPOSITORY,
-    WORKFLOW, WORKFLOW_ID, apk_member_limit, archive_pins, copy_verified, decode, gh_json, github_candidate,
-    matches, positive_id, producer_kind, validate_private_storage,
+    WORKFLOW, WORKFLOW_ID, apk_member_limit, archive_pins, copy_verified, decode, download_github_archive,
+    gh_json, github_candidate, github_candidate_download_pins, matches, positive_id, producer_kind,
+    validate_private_storage,
 )
 
 VARIANTS = ("standalone", "launcher")
@@ -347,26 +350,45 @@ def prepare_candidate(archive, artifact_id, *, input_generation=None, delivery_i
                        "sha256": archive_hash}}
 
 
-def candidate_cli(argv):
-    parser = argparse.ArgumentParser(description="Prepare a read-only Alpha native candidate signing handoff")
+def fetch_candidate(archive, artifact_id, *, api=gh_json, download=download_github_archive):
+    require(not os.path.lexists(archive), "Candidate archive destination already exists")
+    pins = github_candidate_download_pins(artifact_id, api)
+    with TemporaryDirectory(prefix=".alpha-candidate-", dir=archive.parent) as temporary:
+        downloaded = Path(temporary) / "candidate.zip"
+        download(pins, downloaded)
+        request = prepare_candidate(downloaded, artifact_id, api=api)
+        require(request["mirror"]["bytes"] == pins["archiveBytes"] and
+                request["mirror"]["sha256"] == pins["archiveSHA256"],
+                "Candidate artifact changed during download")
+        os.link(downloaded, archive)
+    return request
+
+
+def candidate_cli(command, argv):
+    parser = argparse.ArgumentParser(prog=f"{Path(sys.argv[0]).name} {command}",
+                                     description="Prepare an Alpha native candidate signing handoff")
     parser.add_argument("archive", type=Path)
     parser.add_argument("artifact_id")
-    parser.add_argument("--input-generation")
-    parser.add_argument("--delivery-id")
+    if command == "prepare-candidate":
+        parser.add_argument("--input-generation")
+        parser.add_argument("--delivery-id")
     args = parser.parse_args(argv)
     try:
-        plan = prepare_candidate(args.archive, args.artifact_id, input_generation=args.input_generation,
-                                 delivery_id=args.delivery_id)
+        if command == "fetch-candidate":
+            plan = fetch_candidate(args.archive, args.artifact_id)
+        else:
+            plan = prepare_candidate(args.archive, args.artifact_id, input_generation=args.input_generation,
+                                     delivery_id=args.delivery_id)
         print(json.dumps(plan, indent=2))
     except (KeyError, TypeError, ValueError, OSError, zipfile.BadZipFile) as error:
         parser.exit(1, f"Refused candidate signing handoff: {error}\n")
     except subprocess.SubprocessError:
-        parser.exit(1, "Refused candidate signing handoff: GitHub metadata unavailable.\n")
+        parser.exit(1, "Refused candidate signing handoff: GitHub metadata or download failed.\n")
 
 
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["prepare-candidate"]:
-        candidate_cli(sys.argv[2:])
+    if sys.argv[1:2] in (["fetch-candidate"], ["prepare-candidate"]):
+        candidate_cli(sys.argv[1], sys.argv[2:])
         sys.exit(0)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", type=Path)

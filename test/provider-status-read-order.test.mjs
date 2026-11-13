@@ -157,3 +157,20 @@ test('a superseded failed-turn check can be retried and only a current unbound r
   assert.equal(reads.length, 3);
   assert.equal(rebinds(), 1);
 });
+
+test('retiring a provider generation releases the failed-turn card for another check', async () => {
+  const {controller, reads, state, rebinds} = fixture();
+  const retired = controller.recheckResidentProvider('failed-turn');
+  controller.cancelProviderSelection();
+  reads[0].resolve(unbound);
+  await retired;
+  assert.equal(state.residentInference, 'cloud');
+  assert.equal(rebinds(), 0);
+
+  const current = controller.recheckResidentProvider('failed-turn');
+  assert.equal(reads.length, 2, 'closing the provider chooser leaves the card retryable');
+  reads[1].resolve(unbound);
+  await current;
+  assert.equal(state.residentInference, 'unavailable');
+  assert.equal(rebinds(), 1);
+});

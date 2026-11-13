@@ -27,6 +27,7 @@ MOBILE_CORE_SOURCE_TARGETS = [
     'plugins/plugin-notes/src/store.ts',
     'plugins/plugin-notes/src/types.ts',
     'plugins/plugin-notes/src/validation.ts',
+    'plugins/plugin-notes/src/trash-retention.ts',
     'packages/core/src/runtime/turn-controller.ts',
     'packages/core/src/runtime/room-handler-queue.ts',
     'packages/core/src/runtime/embeddings.ts',

@@ -54,7 +54,10 @@ test('download cookies come only from the requesting tab, for its exact origin',
   assert.match(downloads, /if \(!allowed\(Uri\.parse\(next\.toString\(\)\)\)\)\s*throw new Refused/, 'a redirect to a non-HTTPS address is refused');
   // Closing a private tab, Clear browsing data and Clear data for this site stop an unfinished
   // signed-in fetch, so its copied cookie is never sent on a later redirect hop.
-  assert.match(downloads, /for \(BrowserDownloadPolicy\.Entry entry : removed\)\s*if \(entry\.id < 0 && entry\.running\)\s*cancelled\.add\(entry\.id\);/);
+  assert.match(downloads, /history\.removeWhere\(entry -> \{\s*if \(!match\.test\(entry\)\)\s*return false;\s*if \(entry\.id < 0 && entry\.running\)\s*cancelTransfer\(entry\.id\);/);
+  assert.match(downloads, /private void cancelTransfer\(long id\) \{\s*transfers\.replace\(id, TransferState\.FETCHING, TransferState\.CANCELLED\);/, 'removal cancels an unfinished fetch atomically');
+  assert.match(downloads, /if \(transfers\.get\(id\) == TransferState\.CANCELLED\)\s*throw new Cancelled\(\);\s*HttpURLConnection connection/, 'a cancelled fetch opens no later cookie-bearing redirect hop');
+  assert.match(downloads, /if \(id != 0 && !transfers\.replace\(id, TransferState\.FETCHING, TransferState\.PUBLISHING\)\)\s*throw new Cancelled\(\);/, 'cancellation competes with final publication for this exact transfer');
   for (const method of ['public void forgetPrivate(String tab) {\n    boolean changed = removeEntries(', 'public void clearHistory() {\n    removeEntries(', 'boolean changed = removeEntries(entry -> BrowserWebOrigin.withinSite(']) assert.ok(downloads.includes(method), method);
   assert.doesNotMatch(downloads, /history\.clear\(\)|history\.forgetEphemeralTab|history\.clearSite/, 'every bulk removal goes through removeEntries');
 });

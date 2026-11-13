@@ -27,6 +27,14 @@ class EmbeddingInputsTest(unittest.TestCase):
                         {'workflow_run':{**value['workflow_run'],'head_repository_id':0}}]:
             with self.subTest(changed=changed),self.assertRaises(ValueError):module.validate_metadata({**value,**changed},'11','a'*64)
 
+    def test_repository_admission_follows_the_same_id_across_owner_transfer(self):
+        for name in ('eliza-research/alpha', 'alphacompute/alpha'):
+            with self.subTest(name=name):
+                env = {'GITHUB_REPOSITORY': name, 'GITHUB_REPOSITORY_ID': str(module.REPOSITORY_ID)}
+                self.assertTrue(module.canonical_repository(env))
+                self.assertFalse(module.canonical_repository({**env, 'GITHUB_REPOSITORY_ID': '1'}))
+        self.assertFalse(module.canonical_repository({}))
+
     def test_redirects_never_accept_local_or_non_tls_hosts(self):
         module.safe_redirect('https://release.blob.core.windows.net/valid?signature=opaque')
         for url in ['http://github.com/x','https://localhost/x','https://127.0.0.1/x','https://evil.test/x','https://user:pass@github.com/x']:
@@ -46,6 +54,10 @@ class EmbeddingInputsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             target=Path(tmp)/'artifact.zip';module.download('11',digest,target,'synthetic-token',Opener())
             self.assertEqual(target.read_bytes(),data)
+        api = f'https://api.github.com/repositories/{module.REPOSITORY_ID}/'
+        self.assertEqual([request.full_url for request in requests[:3]], [
+            api + 'actions/artifacts/11', api + 'actions/runs/13', api + 'actions/artifacts/11/zip',
+        ])
         self.assertIsNotNone(requests[2].get_header('Authorization'))
         self.assertIsNone(requests[3].get_header('Authorization'))
 

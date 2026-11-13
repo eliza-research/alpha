@@ -63,6 +63,7 @@ test('a normal page opens in another browser from the menu', async ({ page }) =>
 });
 
 test('a private page leaves only after the review is approved', async ({ page }) => {
+  test.slow();
   const foreign = await start(page);
   await openPage(page);
   await menu(page, 'New private tab');

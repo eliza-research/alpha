@@ -91,8 +91,11 @@ test("Sense qualification provisioning leaves fresh telephony assignment disable
 test("stage-aosp writes provisioning for production and Sense qualification with separate fresh telephony admission", () => {
   const source = fs.readFileSync("scripts/stage-aosp.ts", "utf8");
   assert.match(source, /if \(production && development\) throw/);
-  assert.match(source, /const tree = execFileSync\(tool\("aapt"\), \["dump", "xmltree", apk, "AndroidManifest\.xml"\]/);
-  assert.match(source, /assertImageLauncherManifest\(tree, production\);/);
+  assert.match(source, /if \(reviewed\.apkSha256 !== hash\)/);
+  assert.match(source, /updateArtifactDigest\(stagedLauncher\)\.sha256 !== hash/);
+  assert.match(source, /const provisioningTree = aaptManifestTree\(stagedLauncher, /);
+  assert.match(source, /if \(senseImage\) assertSenseLauncher\(provisioningTree, identity\.appId\);/);
+  assert.match(source, /assertProvisioningUpdateChannel\(apkUpdateChannelOrLegacy\(parseXmlTree\(provisioningTree\)\), reviewedUpdateChannel\);/);
   assert.match(source, /assertImageLauncherManifest\(provisioningTree, production\);/);
   assert.match(source, /if \(production \|\| senseActivation\) \{\n  const components = provisioningComponents\(provisioningTree, identity\.appId, \{assistant: senseActivation !== null\}\);\n  writeProvisioningOverlay\(output, identity\.appId, components, \{freshTelephony: production\}\);/);
 });

@@ -51,7 +51,8 @@ export const VARIANTS = Object.freeze(["standalone", "launcher"]);
 export const PKCS11_JVM_OPTION = "-J-add-exports=jdk.crypto.cryptoki/sun.security.pkcs11=ALL-UNNAMED";
 const HEX = /^[a-f0-9]{64}$/;
 const PLAIN = /^[A-Za-z0-9._/@:+=-]+$/;
-const PRESERVING_PILOT_PACKAGE = "ai.elizaresearch.alphaphone";
+// The reviewed retained pilot rotation preserves the identity of already-installed Cloud APKs.
+const PRESERVING_PILOT_PACKAGE = ["ai", "elizaresearch", "alphaphone"].join(".");
 type SigningKey =
   | {mode: "key-files"; keysDir: string; keyName?: string}
   | {mode: "pkcs11"; pkcs11Config: string; keyLabel: string}

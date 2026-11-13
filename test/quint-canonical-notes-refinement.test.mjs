@@ -34,10 +34,15 @@ async function runCanonicalNotesRefinement(extraSources = []) {
     async function observe(includeReply = true) {
       const service = f.selected, cache = service.store.shared.document;
       const durable = await f.raw();
-      const state = {'s.phase': service.status().phase,
-        CacheRevision: service.status().revision ?? -1, DurableRevision: durable.revision,
+      const status = service.status();
+      const fenced = status.error?.code === 'NOTES_STORE_WRITE_FAILED';
+      let visible = [];
+      if (status.phase === 'ready') visible = service.snapshot().notes;
+      else assert.throws(() => service.snapshot(), {code: fenced ? 'NOTES_STORE_WRITE_FAILED' : 'NOTES_STORE_UNAVAILABLE'});
+      const state = {'s.phase': status.phase, 's.handles': service.store.shared.references, 's.fenced': fenced,
+        CacheRevision: status.revision ?? -1, DurableRevision: durable.revision,
         CacheNotes: members(cache?.notes ?? []), DurableNotes: members(durable.notes),
-        VisibleNotes: members(cache ? service.snapshot().notes : []),
+        VisibleNotes: members(visible),
         's.cache.trashPresent': !!cache && Object.hasOwn(cache, 'trash'), 's.durable.trashPresent': Object.hasOwn(durable, 'trash'),
         's.cache.notes': (cache?.notes ?? []).map(identity), 's.cache.trash': members((cache?.trash ?? []).map(entry => entry.note)),
         's.durable.notes': durable.notes.map(identity), 's.durable.trash': members((durable.trash ?? []).map(entry => entry.note))};
@@ -95,13 +100,31 @@ async function runCanonicalNotesRefinement(extraSources = []) {
     await invoke('update-note', {id: 'note-fixture-1', content: 'Alpha', expectedRevision: 2});
     await record('versioned edit supersedes legacy timestamp representative', commit(action('edit', 1, 1, 0, 2)));
   }, {legacy});
-  await scenario('failed CAS readback preserves unknown commit until restart', async ({f, record, invoke}) => {
-    f.backend.nextRead = 'fail'; const result = await invoke('create-note', {content: 'Alpha', forceNew: true}); assert.ok(result.error);
-    await record('write persisted but readback failed', [action('create', 1, 1, 0, true), action('write'), action('lostAcknowledgement')]);
-    const conflict = await invoke('create-note', {content: 'Beta', forceNew: true}); assert.equal(conflict.error.code, 'NOTES_EDIT_CONFLICT');
-    await record('stale cache cannot overwrite unknown commit', [action('create', 2, 2, 0, true), action('conflict')]);
-    await f.selected.stop(); await record('last store releases cache', [action('requestStop'), action('stopped')]);
-    await f.open(); await record('restart loads durable unknown commit', action('restart'), false);
+  await scenario('uncertain encrypted write fences all shared handles until authoritative reopen', async ({f, record, invoke, create}) => {
+    await create(1, 'Alpha');
+    const first = f.selected, peer = await f.open();
+    await record('second handle opens the same cache', action('openShared'));
+    const broadcasts = f.events.length;
+    f.backend.nextRead = 'fail';
+    const {error} = await invoke('create-note', {content: 'Beta', forceNew: true});
+    assert.equal(error.code, 'NOTES_STORE_WRITE_FAILED');
+    assert.equal(error.cause?.message, 'controlled encrypted read failure');
+    assert.throws(() => first.snapshot(), actual => actual === error);
+    assert.throws(() => peer.snapshot(), actual => actual === error);
+    await record('committed bytes diverge from the fenced private cache', [action('create', 2, 2, 0, true), action('write'), action('lostAcknowledgement')]);
+    assert.equal(f.events.length, broadcasts);
+    const durable = f.backend.raw, calls = f.backend.calls.length;
+    await first.stop();
+    await record('surviving handle retains the same failure', action('closeShared'));
+    await assert.rejects(peer.initialize(), actual => actual === error);
+    const refused = await invoke('clear-notes', {expectedRevision: 1, confirm: true});
+    assert.equal(refused.error, error);
+    assert.equal(f.backend.raw, durable);
+    assert.equal(f.backend.calls.length, calls);
+    assert.equal(f.events.length, broadcasts);
+    await record('refused operation reaches neither storage nor listeners', action('refuseFenced'));
+    await peer.stop(); await record('last handle releases the cache and failure', [action('requestStop'), action('stopped')]);
+    await f.open(); await record('reopen reads the durable committed document', action('restart'), false);
   });
   await scenario('independent stale writer and readback preserve its cache', async ({f, record, invoke}) => {
     const stale = f.selected, winner = await f.open({freshPort: true});

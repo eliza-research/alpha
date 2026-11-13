@@ -1,0 +1,26 @@
+{
+  "production": {
+    "workerName": "example-cloud-api",
+    "accountId": "00000000000000000000000000000000",
+    "zone": "example.org",
+    "blobHost": "blob.cloud.example.org",
+    "loginApiUrl": "https://login.cloud.example.org",
+    "mailFrom": "noreply@cloud.example.org",
+    "hyperdriveId": "00000000000000000000000000000021",
+    "kvNamespaceId": "00000000000000000000000000000022",
+    "r2Bucket": "example-cloud-blob",
+    "rateLimitNamespaceIds": {"GLOBAL_RATE_LIMITER": "2011", "CHAT_ROUTE_RATE_LIMITER": "2012", "DASHBOARD_CHAT_ROUTE_RATE_LIMITER": "2013", "MOBILE_API_KEY_INGRESS_LIMITER": "2014"}
+  },
+  "staging": {
+    "workerName": "example-cloud-api-staging",
+    "accountId": "00000000000000000000000000000000",
+    "zone": "example.org",
+    "blobHost": "blob-staging.cloud.example.org",
+    "loginApiUrl": "https://login-staging.cloud.example.org",
+    "mailFrom": "noreply@cloud.example.org",
+    "hyperdriveId": "00000000000000000000000000000011",
+    "kvNamespaceId": "00000000000000000000000000000012",
+    "r2Bucket": "example-cloud-blob-staging",
+    "rateLimitNamespaceIds": {"GLOBAL_RATE_LIMITER": "2001", "CHAT_ROUTE_RATE_LIMITER": "2002", "DASHBOARD_CHAT_ROUTE_RATE_LIMITER": "2003", "MOBILE_API_KEY_INGRESS_LIMITER": "2004"}
+  }
+}

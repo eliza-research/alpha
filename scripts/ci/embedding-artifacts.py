@@ -14,16 +14,16 @@ import urllib.parse
 import urllib.request
 import zipfile
 
-REPOSITORY = 'alphacompute/alpha'
+REPOSITORY = 'eliza-research/alpha'
 REPOSITORY_ID = 1396333361
+REPOSITORY_API = f'https://api.github.com/repositories/{REPOSITORY_ID}/'
 LIBRARIES = ('libelizainference.so', 'libelizavoicejni.so', 'libc++_shared.so')
 MAX_ARCHIVE = 128 * 1024 * 1024
 MAX_EXPANDED = 192 * 1024 * 1024
 
 
 def canonical_repository(env):
-    return (env.get('GITHUB_REPOSITORY') == REPOSITORY and
-            env.get('GITHUB_REPOSITORY_ID') == str(REPOSITORY_ID))
+    return env.get('GITHUB_REPOSITORY_ID') == str(REPOSITORY_ID)
 
 
 def require(value, message):
@@ -37,7 +37,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def json_api(path, token, opener):
-    url = 'https://api.github.com/repos/' + REPOSITORY + '/' + path
+    url = REPOSITORY_API + path
     request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + token,
         'Accept': 'application/vnd.github+json', 'User-Agent': 'alpha-qualified-embedding-inputs'})
     try:
@@ -86,7 +86,7 @@ def admit_artifact_metadata(identity, digest, token, opener, *, max_archive=MAX_
 
 def download(identity, digest, target, token, opener, *, max_archive=MAX_ARCHIVE):
     metadata, run = admit_artifact_metadata(identity, digest, token, opener, max_archive=max_archive)
-    url = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + identity + '/zip'
+    url = REPOSITORY_API + 'actions/artifacts/' + identity + '/zip'
     for attempt in range(5):
         headers = {'User-Agent': 'alpha-qualified-embedding-inputs'}
         if attempt == 0:

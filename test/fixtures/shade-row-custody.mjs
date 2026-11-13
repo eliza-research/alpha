@@ -101,11 +101,18 @@ export function shadeRowCustodyFixture() {
     unmount() {shell.componentWillUnmount();},
     observe() {
       const {shade, screen} = shell.state;
+      const selected = shell.alphaNoticeSelection ? copy(shell.alphaNoticeSelection) : null;
+      if (shell.alphaNoticesLive && !document.hidden && shade && screen === 'home') {
+        const wire = shell.notificationSelection();
+        assert.deepEqual(wire === undefined ? undefined : copy(wire), selected ?
+          {kind: 'notification', id: selected.id, revision: selected.revision, accountId: 'own'} : undefined,
+        'the real context accessor expands only the exact selected opaque notice');
+      }
       const identity = shell.alphaNoticeVisit;
       if (!visits.has(identity)) visits.set(identity, ++lastVisit);
       return {shade, screen, visit: visits.get(identity), epoch: shell.alphaNoticeEpoch, hidden: document.hidden, live: shell.alphaNoticesLive,
         items: copy(shell.alphaNotices.map(({id, revision, source, canOpen, clearable}) => ({id, revision, source, canOpen, clearable}))),
-        selection: shell.alphaNoticeSelection ? copy(shell.alphaNoticeSelection) : null,
+        selection: selected,
         renderedSelection: JSON.parse(shell.alphaNoticeSelectionRendered),
         busy: !!shell.alphaNoticesBusy, error: !!shell.alphaNoticeError, calendarError: !!shell.alphaCalendarAlertError,
         reads: requests.length, renders: shell.renders,
