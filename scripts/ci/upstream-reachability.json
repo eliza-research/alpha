@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "3bd025ff9db54e1231066a4882d360880a92a590",
-  "head": "1f456ab75d2de8962fb0e2632cada86d0d8dbc8c",
+  "baseCommit": "c7b84cba420be6b9fb94056fa1684cd8599ecf8f",
+  "head": "8ef6cce96348f993d041eaa6d83cd32ab4b2ffdf",
   "recordedAt": "2026-11-13",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...1f456ab75d2de8962fb0e2632cada86d0d8dbc8c",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...8ef6cce96348f993d041eaa6d83cd32ab4b2ffdf",
   "status": "diverged",
-  "aheadBy": 89,
-  "behindBy": 699,
+  "aheadBy": 92,
+  "behindBy": 1097,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -362,6 +362,18 @@
     {
       "sha": "1f456ab75d2de8962fb0e2632cada86d0d8dbc8c",
       "subject": "test(reminders): pin the explicit-date fixture clock"
+    },
+    {
+      "sha": "e7af5b2c3513bf895c997af0c8575995056b2174",
+      "subject": "test(personal-assistant): format fixed-clock reminder cases"
+    },
+    {
+      "sha": "190be9c83300acfe08f34643caeee7894bd2b9e7",
+      "subject": "test(personal-assistant): include timezone case in approval conformance"
+    },
+    {
+      "sha": "8ef6cce96348f993d041eaa6d83cd32ab4b2ffdf",
+      "subject": "fix(host): recover a reset before speech session admission"
     }
   ],
   "pullRequests": []
