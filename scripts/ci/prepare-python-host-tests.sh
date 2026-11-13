@@ -13,19 +13,26 @@ if ! test -f "$sdk/emulator/lib/emulator_controller.proto"; then
 fi
 test -f "$sdk/emulator/lib/emulator_controller.proto"
 python3 -I - "$root" "$sdk" "$output" <<'PY'
-import hashlib, importlib.metadata, importlib.util, json, pathlib, platform, subprocess, sys, unittest
+import hashlib, importlib.metadata, importlib.util, json, pathlib, platform, re, sys, unittest
 root, sdk, output = map(pathlib.Path, sys.argv[1:])
 proto = sdk / 'emulator/lib/emulator_controller.proto'
+properties_path = sdk / 'emulator/source.properties'
+properties_bytes = properties_path.read_bytes()
+properties = dict(line.split('=', 1) for line in properties_bytes.decode().splitlines() if '=' in line)
+revision = properties.get('Pkg.Revision', '')
+if properties.get('Pkg.Path') != 'emulator' or not re.fullmatch(r'\d+(?:\.\d+){1,3}', revision):
+    raise SystemExit('Installed Android emulator package metadata is missing its identity or revision')
 spec = importlib.util.spec_from_file_location('microphone_safety', root / 'test/emulator-microphone-preflight.test.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 with (output / 'microphone-preflight.log').open('w') as log:
     result = unittest.TextTestRunner(stream=log, verbosity=2).run(unittest.defaultTestLoader.loadTestsFromModule(module))
-version = subprocess.check_output([str(sdk / 'emulator/emulator'), '-version'], text=True, stderr=subprocess.STDOUT, timeout=30)
 record = {'python': platform.python_version(), 'packages': {name: importlib.metadata.version(name) for name in ('grpcio', 'grpcio-tools', 'protobuf', 'setuptools', 'typing-extensions')},
-          'emulatorVersion': version.splitlines()[0], 'proto': str(proto), 'protoSha256': hashlib.sha256(proto.read_bytes()).hexdigest(),
+          'emulatorPackageRevision': revision, 'emulatorSourceProperties': str(properties_path),
+          'emulatorSourcePropertiesSha256': hashlib.sha256(properties_bytes).hexdigest(),
+          'proto': str(proto), 'protoSha256': hashlib.sha256(proto.read_bytes()).hexdigest(),
           'testsRun': result.testsRun, 'skipped': len(result.skipped), 'passed': result.wasSuccessful() and result.testsRun > 0 and not result.skipped,
-          'scope': 'Offline host-tool tests with controlled process/RPC doubles; no emulator connection, microphone read or audio injection.'}
+          'scope': 'Offline host-tool tests with controlled process/RPC doubles; no emulator executable launch or connection, microphone read or audio injection.'}
 (output / 'qualification.json').write_text(json.dumps(record, indent=2) + '\n')
 print(json.dumps(record, indent=2))
 if not record['passed']:
