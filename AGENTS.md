@@ -14,6 +14,8 @@ Stay on the latest upstream: whenever upstream moves, advance `upstream.lock.jso
 submodule together to the newest reviewed commit, and bring your branch up to main's pin before
 building. The Android build refuses a pin older than main's, and there is no override.
 `upstream.lock.json` records the shared source revision.
+After changing the pin, refresh its recorded develop comparison with
+`bun scripts/verify-upstream.ts --record-reachability`.
 `apps/app` owns this product's renderer; `android` owns its Android packaging.
 Run `bun run verify` and the Android build: `bun run android:build:local` (input check,
 `agent:build-embedding-host`, `agent:prepare`, `agent:build-workflow-worker`, `agent:stage-android`,
