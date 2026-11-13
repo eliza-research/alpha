@@ -13,6 +13,7 @@ import type {EmbeddingManifest} from "./stage-embedding-host.ts";
 import {nativeCacheRoot,nativeCacheDirectory,nativeRecipe,nativeRecipeDigest,NATIVE_BUILD_RECEIPT,NATIVE_BUILD_REQUIREMENTS,NATIVE_PYTHON,fileDigest,verifyNativeBuildFiles,verifyNativeBuildLibraries,validateNativeBuildReceipt,nativeOutputInventory,writeNativeBuildReceipt,assertNativeOutputPath,withNativeCacheLock,nativeAndroidSdk,prepareNativeSource,type NativeBuildReceipt} from './native-build-inputs.ts';
 import {stageVoiceModels} from './android-stage-voice-models.ts';
 import {voiceHostProblems} from './voice-host.ts';
+import {embeddingAbiLibraries} from './embedding-native-contract.ts';
 
 export const QUALIFIED_HOST = 'android/embedding-host/qualified-host.json';
 export const BUILD_TOOLCHAIN = 'android/embedding-host/build-toolchain.json';
@@ -133,21 +134,28 @@ export async function preparePortableNativeInputs(root:string) {
       const shared=path.join(cacheRoot,'models',model.path);
       if(!fs.existsSync(shared)||fileDigest(shared)!==model.sha256){fs.mkdirSync(path.dirname(shared),{recursive:true});const pending=`${shared}.${randomUUID()}.partial`;fs.copyFileSync(file,pending);fs.renameSync(pending,shared);}
     }
-    const embeddingOutput=path.join(cache,'embedding');
+    const preparations=[];
+    for(const abi of ['arm64-v8a','x86_64']) {
+    const embeddingOutput=path.join(cache,'embedding',abi);
     const preparedFile=path.join(embeddingOutput,'PREPARATION.json');
     if(fs.existsSync(preparedFile)&&readJson<{built:boolean}>(preparedFile).built!==true)fs.rmSync(embeddingOutput,{recursive:true,force:true});
-    if(!fs.existsSync(path.join(embeddingOutput,'PREPARATION.json')))command(env.ALPHA_NODE||'node',[path.join(root,'scripts/prepare-embedding-host.ts'),'--fork',fork,'--output',embeddingOutput,'--abi','arm64-v8a','--engine',path.join(voiceOutput,'jniLibs/arm64-v8a'),'--build','--remap-build-path'],root,env);
+    if(!fs.existsSync(path.join(embeddingOutput,'PREPARATION.json')))command(env.ALPHA_NODE||'node',[path.join(root,'scripts/prepare-embedding-host.ts'),'--fork',fork,'--output',embeddingOutput,'--abi',abi,'--engine',path.join(voiceOutput,'jniLibs',abi),'--build','--remap-build-path'],root,env);
     const preparation=readJson<any>(path.join(embeddingOutput,'PREPARATION.json'));
-    if(!preparation.built)throw Error('Native JNI preparation did not complete');
+    if(!preparation.built||preparation.abi!==abi)throw Error('Native JNI preparation did not complete for '+abi);
+    preparations.push(preparation);
+    }
+    const preparation=preparations[0];
+    for(const other of preparations.slice(1))for(const field of ['pin','forkPin','identity','inputs','producerInputs','jniBinding'])if(JSON.stringify(other[field])!==JSON.stringify(preparation[field]))throw Error('Native JNI ABI producer inputs differ');
     const libraries=preparation.libraries.map((row:any)=>({name:path.basename(row.path),sha256:row.sha256,bytes:row.bytes,alignment16KiB:row.alignment16KiB}));
+    const additionalAbis=preparations.slice(1).map(other=>({abi:other.abi,libraries:other.libraries.map((row:any)=>({name:path.basename(row.path),sha256:row.sha256,bytes:row.bytes,alignment16KiB:row.alignment16KiB}))}));
     const original=readJson<any>(path.join(root,QUALIFIED_HOST));
-    const embedding={pin,forkPin:recipe.engineCommit,identity:recipe.identity,abi:'arm64-v8a',model:original.model,libraries,jniIdentityRelocated:true,inputs:preparation.inputs,producerInputs:preparation.producerInputs,jniBinding:preparation.jniBinding};
+    const embedding={pin,forkPin:recipe.engineCommit,identity:recipe.identity,abi:'arm64-v8a',model:original.model,libraries,additionalAbis,jniIdentityRelocated:true,inputs:preparation.inputs,producerInputs:preparation.producerInputs,jniBinding:preparation.jniBinding};
     receipt={schema:'alpha-native-build/v1',recipeSha256:nativeRecipeDigest(recipe),recipe,consumerSdkCommit:pin,producer:{sdkCommit:pin,platform:process.platform,arch:process.arch,ndk:toolchain.ndk,cmake:toolchain.cmake,python:NATIVE_PYTHON},voice,embedding,files:[],qualification:{deviceExecuted:false,userAccepted:false}};
     fs.rmSync(cacheOutput,{recursive:true,force:true});
     const inputs='vendor/eliza/plugins/plugin-local-inference/native/android/inputs.json';
     fs.mkdirSync(path.dirname(path.join(cacheOutput,inputs)),{recursive:true});fs.copyFileSync(path.join(root,inputs),path.join(cacheOutput,inputs));
     stageVoiceModels(cacheOutput,{from:[voiceOutput],record:voice});
-    for(const library of preparation.libraries){if(fs.statSync(library.path).size!==library.bytes||fileDigest(library.path)!==library.sha256)throw Error('Built embedding library changed');fs.copyFileSync(library.path,path.join(cacheOutput,'android/app/src/main/jniLibs/arm64-v8a',path.basename(library.path)));}
+    for(const prepared of preparations)for(const library of prepared.libraries){if(fs.statSync(library.path).size!==library.bytes||fileDigest(library.path)!==library.sha256)throw Error('Built embedding library changed');fs.copyFileSync(library.path,path.join(cacheOutput,'android/app/src/main/jniLibs',prepared.abi,path.basename(library.path)));}
     receipt.files=[...nativeOutputInventory(receipt).keys()].sort().map(file=>({path:file,bytes:fs.statSync(path.join(cacheOutput,file)).size,sha256:fileDigest(path.join(cacheOutput,file))}));
     validateNativeBuildReceipt(root,receipt);verifyNativeBuildFiles(cacheOutput,receipt);verifyNativeBuildLibraries(cacheOutput,receipt);assertHeld();writeNativeBuildReceipt(cacheOutput,receipt);
   }
@@ -157,9 +165,9 @@ export async function preparePortableNativeInputs(root:string) {
   fs.rmSync(path.join(root,'.eliza/paradee-voice'),{recursive:true,force:true});
   for(const abi of ['arm64-v8a','x86_64'])for(const name of ['libelizainference.so','libelizavoicejni.so','libc++_shared.so'])fs.rmSync(path.join(root,'android/app/src/main/jniLibs',abi,name),{force:true});
   stageVoiceModels(root,{from:[path.join(cacheOutput,'.eliza/paradee-voice/native'),path.join(cacheOutput,'android/app/src/main')],record:{...receipt.voice,pin} as Parameters<typeof stageVoiceModels>[1]['record']});
-  for(const library of receipt.embedding.libraries) {
-    const source=path.join(cacheOutput,'android/app/src/main/jniLibs/arm64-v8a',library.name);
-    const target=path.join(root,'android/app/src/main/jniLibs/arm64-v8a',library.name);
+  for(const abi of embeddingAbiLibraries<any>(receipt.embedding as any))for(const library of abi.libraries) {
+    const source=path.join(cacheOutput,'android/app/src/main/jniLibs',abi.abi,library.name);
+    const target=path.join(root,'android/app/src/main/jniLibs',abi.abi,library.name);
     if(fs.existsSync(target)&&fileDigest(target)!==library.sha256)throw Error('Voice and embedding producer libraries differ');
     fs.copyFileSync(source,target);
   }

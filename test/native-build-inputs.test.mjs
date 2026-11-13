@@ -34,7 +34,8 @@ function receiptFor(dir){
   const embedding={model:JSON.parse(fs.readFileSync(path.join(dir,'android/embedding-host/qualified-host.json'))).model,identity:recipe.identity,pin,forkPin:recipe.engineCommit,abi:'arm64-v8a',jniIdentityRelocated:true,jniBinding:binding,
     libraries:[...voice.abis[0].libraries.map(row=>({...row,alignment16KiB:true})),{name:'libelizavoicejni.so',bytes:4,sha256:'a'.repeat(64),alignment16KiB:true}],
     inputs:nativeInputs(binding).map(name=>({path:name,sourceSha256:bytesDigest(source(name)),generatedSha256:bytesDigest(nativeGenerated(name,source(name).toString(),recipe.identity,binding))})),
-    producerInputs:embeddingProducerInputPaths.map(name=>({path:name,sha256:bytesDigest(source(name))}))};
+    producerInputs:embeddingProducerInputPaths.map(name=>({path:name,sha256:bytesDigest(source(name))})),
+    additionalAbis:[{abi:'x86_64',libraries:[...voice.abis[1].libraries.map(row=>({...row,alignment16KiB:true})),{name:'libelizavoicejni.so',bytes:4,sha256:'b'.repeat(64),alignment16KiB:true}]}]};
   const receipt={schema:'alpha-native-build/v1',consumerSdkCommit:pin,recipeSha256:nativeRecipeDigest(recipe),recipe,producer:{sdkCommit:pin,platform:'linux',arch:'x64',...recipe.toolchain,python:recipe.python},voice,embedding,files:[],qualification:{deviceExecuted:false,userAccepted:false}};
   receipt.files=[...nativeOutputInventory(receipt)].map(([name,row])=>({path:name,bytes:row?.bytes||4,sha256:row?.sha256||'a'.repeat(64)}));
   return receipt;
@@ -43,7 +44,7 @@ test('generated native receipts reject qualification claims, incomplete inventor
   const dir=fixture(t),original=receiptFor(dir);
   const file=path.join(dir,NATIVE_BUILD_RECEIPT);fs.mkdirSync(path.dirname(file),{recursive:true});
   fs.writeFileSync(file,JSON.stringify(original));assert.ok(readNativeBuildReceipt(dir));
-  for(const mutate of [r=>r.qualification.deviceExecuted=true,r=>r.voice.models[0].sha256='0'.repeat(64),r=>r.files.pop(),r=>r.files.push({path:'extra',bytes:1,sha256:'a'.repeat(64)}),r=>r.embedding.libraries[0].sha256='0'.repeat(64),r=>r.voice.abis[0].libraries[0].sha256='0'.repeat(64)]){
+  for(const mutate of [r=>r.qualification.deviceExecuted=true,r=>r.voice.models[0].sha256='0'.repeat(64),r=>r.files.pop(),r=>r.files.push({path:'extra',bytes:1,sha256:'a'.repeat(64)}),r=>r.embedding.libraries[0].sha256='0'.repeat(64),r=>r.voice.abis[0].libraries[0].sha256='0'.repeat(64),r=>delete r.embedding.additionalAbis,r=>r.embedding.additionalAbis[0].abi='arm64-v8a',r=>r.embedding.additionalAbis[0].libraries[0].sha256='0'.repeat(64),r=>r.embedding.additionalAbis[0].libraries.pop()]){
     const receipt=structuredClone(original);mutate(receipt);fs.writeFileSync(file,JSON.stringify(receipt));assert.throws(()=>readNativeBuildReceipt(dir));
   }
 });

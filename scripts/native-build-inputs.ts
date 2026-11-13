@@ -5,7 +5,7 @@ import os from 'node:os';
 import {createHash,randomUUID} from 'node:crypto';
 import {execFileSync,spawn,spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
-import {embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,verifyNativeSymbols} from './embedding-native-contract.ts';
+import {embeddingAbiLibraries,embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,verifyNativeSymbols} from './embedding-native-contract.ts';
 
 export const NATIVE_BUILD_RECEIPT = '.eliza/native-inputs/receipt.json';
 export const NATIVE_BUILD_REQUIREMENTS = 'android/embedding-host/native-requirements.txt';
@@ -111,8 +111,13 @@ export function validateNativeBuildReceipt(root:string,receipt:NativeBuildReceip
   const abis=receipt.voice.abis,libraries=receipt.embedding.libraries;
   if(!Array.isArray(abis)||abis.map((row:any)=>row.abi).join()!=='arm64-v8a,x86_64'||!Array.isArray(libraries)||libraries.map((row:any)=>row.name).sort().join()!=='libc++_shared.so,libelizainference.so,libelizavoicejni.so')throw Error('Native library inventory changed');
   for(const abi of abis)if(abi.alignment16KiB!==true||abi.abiVersion<17||abi.libraries.map((row:any)=>row.name).join()!=='libelizainference.so,libc++_shared.so')throw Error('Native voice ABI changed');
-  for(const library of libraries)if(library.alignment16KiB!==true)throw Error('Native JNI alignment changed');
-  for(const library of abis[0].libraries) {const same=libraries.find((row:any)=>row.name===library.name);if(same?.bytes!==library.bytes||same?.sha256!==library.sha256)throw Error('Voice and embedding engines differ');}
+  const additional=receipt.embedding.additionalAbis;
+  if(!Array.isArray(additional)||additional.length!==1||additional[0]?.abi!=='x86_64'||!Array.isArray(additional[0].libraries))throw Error('Native embedding ABI inventory is incomplete');
+  for(const embedding of embeddingAbiLibraries<any>(receipt.embedding as any)) {
+    if(embedding.libraries.map((row:any)=>row.name).sort().join()!=='libc++_shared.so,libelizainference.so,libelizavoicejni.so')throw Error('Native embedding library inventory changed');
+    for(const library of embedding.libraries)if(library.alignment16KiB!==true||!Number.isSafeInteger(library.bytes)||library.bytes<=0||!/^[a-f0-9]{64}$/.test(library.sha256))throw Error('Native JNI library metadata changed');
+    for(const library of abis.find((row:any)=>row.abi===embedding.abi).libraries) {const same=embedding.libraries.find((row:any)=>row.name===library.name);if(same?.bytes!==library.bytes||same?.sha256!==library.sha256)throw Error('Voice and embedding engines differ');}
+  }
   if(!Array.isArray(receipt.files)||!receipt.files.length||new Set(receipt.files.map(row=>row.path)).size!==receipt.files.length)throw Error('Native producer inventory is incomplete');
   for(const row of receipt.files)if(typeof row.path!=='string'||path.isAbsolute(row.path)||row.path.split(/[\\/]/).some(part=>!part||part==='.'||part==='..')||!/^[a-f0-9]{64}$/.test(row.sha256)||!Number.isSafeInteger(row.bytes)||row.bytes<=0)throw Error('Invalid native producer output');
   const expected=nativeOutputInventory(receipt);
@@ -125,7 +130,7 @@ export function nativeOutputInventory(receipt:NativeBuildReceipt) {
   for(const model of receipt.voice.models)expected.set(`${native}/assets/paradee-voice/v1/${model.path}`,model);
   expected.set(`${native}/assets/paradee-voice/v1/manifest.json`,null);expected.set(`${native}/build-record.json`,null);
   for(const abi of receipt.voice.abis)for(const library of abi.libraries){expected.set(`android/app/src/main/jniLibs/${abi.abi}/${library.name}`,library);if(library.name==='libelizainference.so')expected.set(`${native}/jniLibs/${abi.abi}/${library.name}`,library);}
-  expected.set('android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so',receipt.embedding.libraries.find((row:any)=>row.name==='libelizavoicejni.so'));
+  for(const abi of embeddingAbiLibraries<any>(receipt.embedding as any))expected.set(`android/app/src/main/jniLibs/${abi.abi}/libelizavoicejni.so`,abi.libraries.find((row:any)=>row.name==='libelizavoicejni.so'));
   return expected;
 }
 export function verifyNativeBuildFiles(root:string,receipt=readNativeBuildReceipt(root)) {
@@ -164,8 +169,15 @@ export function verifyNativeBuildLibraries(root:string,receipt:NativeBuildReceip
       if(actual.abiVersion!==abi.abiVersion)throw Error('Native voice ABI receipt differs');
     }
   }
-  const jni=path.join(root,'android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so');
-  verifyNativeSymbols(execFileSync(tool('llvm-nm'),['-D','--defined-only',jni],{encoding:'utf8'}),receipt.embedding.jniBinding);
+  for(const abi of embeddingAbiLibraries<any>(receipt.embedding as any)) {
+    const jni=path.join(root,'android/app/src/main/jniLibs',abi.abi,'libelizavoicejni.so'),bytes=fs.readFileSync(jni);
+    if(bytes.length<64||bytes.readUInt32BE(0)!==0x7f454c46||bytes[4]!==2||bytes[5]!==1||bytes.readUInt16LE(18)!==(abi.abi==='arm64-v8a'?183:62)||minElfLoadAlignment(bytes)<16384)throw Error('Native JNI ABI or page alignment differs');
+    verifyNativeSymbols(execFileSync(tool('llvm-nm'),['-D','--defined-only',jni],{encoding:'utf8'}),receipt.embedding.jniBinding);
+    const linkage=execFileSync(tool('llvm-readelf'),['-W','-d',jni],{encoding:'utf8'});
+    const needed=[...linkage.matchAll(/\(NEEDED\).*\[([^\]]+)\]/g)].map(match=>match[1]);
+    const system=new Set(['libc.so','libm.so','libdl.so','liblog.so','libandroid.so','libc++_shared.so','libelizainference.so']);
+    if(!needed.includes('libelizainference.so')||needed.some(name=>!system.has(name)))throw Error('Native JNI dependency closure differs');
+  }
   return receipt;
 }
 export function writeNativeBuildReceipt(root:string,receipt:NativeBuildReceipt) {
