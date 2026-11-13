@@ -3,12 +3,12 @@ module AssistantConversation {
   type State = { connected: bool, sensitive: bool, epoch: int, revision: int,
     busy: str, capturedEpoch: int, capturedRevision: int, proposal: bool,
     consumed: bool, dispatches: int, draft: str, savedDraft: str,
-    draftRevision: int, expectedDraftRevision: int, outcome: str }
+    draftRevision: int, expectedDraftRevision: int, outcome: str, summaryView: str, summaryBody: str }
   var s: State
   action init = s' = { connected: false, sensitive: false, epoch: 0, revision: 0,
     busy: "none", capturedEpoch: 0, capturedRevision: 0, proposal: false,
     consumed: false, dispatches: 0, draft: "", savedDraft: "", draftRevision: 0,
-    expectedDraftRevision: 0, outcome: "none" }
+    expectedDraftRevision: 0, outcome: "none", summaryView: "none", summaryBody: "" }
   action connect = all { s.epoch < 2, s' = { ...s, connected: true, epoch: s.epoch + 1,
     busy: "none", proposal: false, consumed: false, dispatches: 0 } }
   action send = all { s.connected, not(s.sensitive), s.busy == "none",
@@ -34,13 +34,19 @@ module AssistantConversation {
   action concurrentSave = all { s.draftRevision < 2,
     s' = { ...s, savedDraft: "other", draftRevision: s.draftRevision + 1 } }
   action rejectedSave = s' = s
-  action step = any { connect, send, reply, approve, startWorkflow, workflowReply, receipt, cancel, changeView(true), changeView(false),
+  action receiveSummary = s' = { ...s, summaryView: "compact", summaryBody: "complete source" }
+  action toggleSummary = all { s.summaryView != "none", s' = { ...s, summaryView: if (s.summaryView == "compact") "expanded" else "compact" } }
+  action step = any { receiveSummary, toggleSummary, connect, send, reply, approve, startWorkflow, workflowReply, receipt, cancel, changeView(true), changeView(false),
     disconnect, edit, save, concurrentSave, rejectedSave }
   val OneDispatch = s.dispatches <= 1
   val SensitiveIsolation = s.sensitive implies (s.busy == "none" and not(s.proposal))
   val ProposalAdmission = s.proposal implies (s.connected and not(s.consumed))
   val InFlightSession = s.busy == "send" implies (s.connected and s.capturedEpoch == s.epoch and s.capturedRevision == s.revision)
-  val safety = OneDispatch and SensitiveIsolation and ProposalAdmission and InFlightSession
+  val SummaryRetained = s.summaryView != "none" implies s.summaryBody == "complete source"
+  val safety = OneDispatch and SensitiveIsolation and ProposalAdmission and InFlightSession and SummaryRetained
+  run summaryCardTest = init.then(receiveSummary).then(toggleSummary)
+    .expect(s.summaryView == "expanded" and s.summaryBody == "complete source" and s.dispatches == 0)
+    .then(toggleSummary).expect(s.summaryView == "compact" and safety)
   run reviewedSendTest = init.then(connect).then(send).then(reply).then(approve).then(receipt)
     .expect(s.dispatches == 1 and s.consumed and safety)
   run unknownNoReplayTest = init.then(connect).then(send).then(reply).then(approve).then(cancel)

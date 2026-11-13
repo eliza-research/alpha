@@ -23,3 +23,19 @@ for(const name of ['Reply','Copy','Read aloud'])test(`Action ${name} has a round
 for(const size of [{width:412,height:915},{width:1440,height:900}])for(const theme of ['light','dark'])test(`Transcript fades only overflowing edges: ${theme} ${size.width}`,async({page},info)=>{
  await page.setViewportSize(size);await setup(page,theme,35);await settleTransitions(page);const transcript=page.locator('[data-alpha-transcript]');const scroll=async(where:'top'|'middle'|'bottom')=>{await transcript.evaluate((el,where)=>new Promise<void>(resolve=>{el.scrollTop=where==='top'?0:where==='bottom'?el.scrollHeight:(el.scrollHeight-el.clientHeight)/2;requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()));}),where);return transcript.evaluate(el=>{const s=getComputedStyle(el);return {top:parseFloat(s.getPropertyValue('--calendar-scroll-fade-top')),bottom:parseFloat(s.getPropertyValue('--calendar-scroll-fade-bottom')),mask:s.maskImage,clientHeight:el.clientHeight,scrollHeight:el.scrollHeight};});};const top=await scroll('top');expect(top.top).toBe(0);expect(top.bottom).toBeCloseTo(12,1);const middle=await scroll('middle');expect(middle.top).toBeCloseTo(12,1);expect(middle.bottom).toBeCloseTo(12,1);await page.screenshot({path:info.outputPath('transcript-middle-'+theme+'.png'),animations:'disabled'});const bottom=await scroll('bottom');expect(bottom.top).toBeCloseTo(12,1);expect(bottom.bottom).toBe(0);await page.evaluate(()=>new Promise<void>(resolve=>(window as any).messagePolish.shell.setState({msgs:[{id:'short',from:'agent',text:'One short message.'}]},()=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())))));const short=await scroll('top');expect(short.scrollHeight).toBe(short.clientHeight);expect(short.top).toBe(0);expect(short.bottom).toBe(0);await writeFile(info.outputPath('scroll-fade.json'),JSON.stringify({size,theme,top,middle,bottom,short},null,2));
 });
+
+for(const size of [{width:412,height:915},{width:1280,height:900}])test(`Scheduled summaries expand in one compact card: ${size.width}`,async({page},info)=>{
+ await page.setViewportSize(size);await setup(page);
+ const body='Closeout\n\nCalendar: one meeting tomorrow.\n\nSleep recap\nTypical sleep is an estimate from activity.';
+ await page.evaluate(body=>new Promise<void>(resolve=>{const shell=(window as any).messagePolish.shell;shell.setState({msgs:[{id:'summary',from:'agent',text:body+'\n[stored service marker]',displayText:body,checkin:true}]},resolve);}),body);
+ const card=page.locator('[data-alpha-chat-summary]');await expect(card).toHaveCount(1);await expect(card).not.toHaveAttribute('open','');
+ await expect(card.locator('.alpha-chat-summary-body')).toBeHidden();
+ await card.locator('summary').click();await expect(card).toHaveAttribute('open','');
+ await expect(card.locator('.alpha-chat-summary-body')).toContainText(body);
+ await expect(card).toContainText('Sleep figures are estimates.');
+ await expect(card).not.toContainText('[stored service marker]');
+ expect(await page.evaluate(()=>(window as any).messagePolish.shell.S().msgs[0].text)).toBe(body+'\n[stored service marker]');
+ await page.screenshot({path:info.outputPath('summary-expanded.png'),animations:'disabled'});
+ await card.locator('summary').click();await expect(card.locator('.alpha-chat-summary-body')).toBeHidden();
+ await page.screenshot({path:info.outputPath('summary-compact.png'),animations:'disabled'});
+});

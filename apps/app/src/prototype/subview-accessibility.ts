@@ -206,7 +206,7 @@ export function installReplyAnnouncer(Component: any) {
     const settled = !!was?.streaming && !after.some(message => message.streaming);
     const arrived = before.length > 0 && added.length === 1 && added[0] === last;
     if (!settled && !arrived) { if (!state.typing && !state.turnStatus) this.replyAnnounced = false; return; }
-    const text = String(last.text || last.card?.title || '').trim();
+    const text = last.checkin === true ? 'New daily summary' : String(last.displayText || last.text || last.card?.title || '').trim();
     this.replyAnnouncedId = last.id; this.replyAnnounced = false;
     if (text) say(bounded(text),this);
   };

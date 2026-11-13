@@ -1,5 +1,6 @@
 html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;background:var(--alpha-white)}
 .alpha-browser-start > * { flex-shrink: 0; }
+.alpha-landscape .alpha-browser-start { padding-top:24px!important; padding-right:calc(var(--alpha-dock-width) + 32px)!important; gap:16px!important; }
 .alpha-phone{position:absolute!important;left:var(--phone-left,0px)!important;top:var(--phone-top,0px)!important;width:var(--phone-width,412px)!important;height:var(--phone-height,915px)!important;padding:0!important;display:block!important;transform-origin:top left;transform:scale(var(--phone-scale,1));background:var(--bg)!important}
 .browser-desktop body{background:var(--alpha-desktop-backdrop)}
 .browser-desktop .alpha-phone{box-shadow:0 12px 60px var(--alpha-shadow-soft);border-radius:24px;overflow:hidden}
@@ -984,3 +985,14 @@ html:not(.alpha-large-text):not(.alpha-landscape) [data-alpha-maps-guidance="tru
 .chat-file-chip > img { width:40px;height:40px;object-fit:cover;border-radius:8px; }
 .chat-file-chip > span { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .alpha-search-hit { outline:2px solid var(--acc);outline-offset:6px;border-radius:16px; }
+
+.alpha-chat-summary { border:1px solid var(--line); border-radius:22px; background:var(--s2); overflow:hidden; }
+.alpha-chat-summary summary { padding:16px; cursor:pointer; list-style:none; }
+.alpha-chat-summary summary::-webkit-details-marker { display:none; }
+.alpha-chat-summary-heading { display:flex; align-items:center; gap:10px; font-size:15px; }
+.alpha-chat-summary-chevron { margin-left:auto; transition:transform .18s ease; }
+.alpha-chat-summary[open] .alpha-chat-summary-chevron { transform:rotate(180deg); }
+.alpha-chat-summary-preview { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; margin-top:10px; color:var(--mut); font-size:14px; line-height:1.5; white-space:pre-line; }
+.alpha-chat-summary[open] .alpha-chat-summary-preview { display:none; }
+.alpha-chat-summary-body { padding:0 16px 16px; font-size:15px; line-height:1.5; white-space:pre-wrap; user-select:text; overflow-wrap:anywhere; }
+.alpha-chat-summary-note { display:block; margin-top:12px; color:var(--mut); font-size:12px; }

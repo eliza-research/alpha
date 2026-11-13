@@ -87,6 +87,7 @@ export interface RestoredMessage { clientMessageId?:string; id: string; from: 'u
   systemNotice?:SystemNoticeKind;
   /** Trusted service presentation; original text remains the copy/reply source. */
   displayText?:string;
+  checkin?:true;
   /** A restored interrupted reply cannot prove a later system notice is resolved. */
   unfinished?:true;
   /** The upstream failure kind a saved failed reply carried; its text is Alpha's static copy for it. */
@@ -1658,7 +1659,7 @@ function restoredMessages(items:Record<string,unknown>[]):RestoredMessage[] {
     const failureKind=item.role==='assistant'&&item.interrupted!==true&&failureKindOf(item)&&!calendarRefusalKept(item)?failureKindOf(item):undefined;
     if(failureKind)return {id:item.id,from:'agent',text:Object.hasOwn(RESTORED_FAILURES,failureKind)?RESTORED_FAILURES[failureKind]:'This reply couldn’t be completed.',unfinished:true,failureKind};
     const displayText=item.source==='lifeops-checkin'?checkinDisplayText(item):undefined;
-    return {id:item.id,...(typeof item.clientMessageId==='string'?{clientMessageId:item.clientMessageId}:{}),from:item.role==='user'?'user':'agent',text:item.role==='user'?restoredText(item.text,item.userTextFormat):item.interrupted===true&&!item.text?'This reply did not finish.':item.text,...(item.role==='assistant'&&item.interrupted===true?{unfinished:true as const}:{}),...(displayText===undefined?{}:{displayText})};
+    return {id:item.id,...(typeof item.clientMessageId==='string'?{clientMessageId:item.clientMessageId}:{}),from:item.role==='user'?'user':'agent',text:item.role==='user'?restoredText(item.text,item.userTextFormat):item.interrupted===true&&!item.text?'This reply did not finish.':item.text,...(item.role==='assistant'&&item.interrupted===true?{unfinished:true as const}:{}),...(displayText===undefined?{}:{displayText,checkin:true as const})};
   });
 }
 /** Eliza Cloud's API answers credentialed browser requests only from Eliza's own origins

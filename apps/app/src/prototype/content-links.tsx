@@ -53,6 +53,7 @@ export function installContentLinks(Component: any) {
     result.msgs = (result.msgs || []).map((message: any) => ({
       ...message,
       linkedText: linkedMessageText(String(message.isAgent ? message.displayText ?? message.text ?? '' : message.text ?? '')),
+      linkedSummaryText: message.summaryText ? linkedMessageText(message.summaryText) : undefined,
     }));
     return result;
   };

@@ -1489,6 +1489,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       return {...m,displayText:parsed.text,hasCalendarText:m.hasCalendarText!==false&&!!parsed.text,workflowRuns:parsed.runs.map(run=>({...run,open:()=>{if(typeof this.openWorkflowRun==='function')this.openWorkflowRun(run.workflowId,run.runId);else this.openView('workflows');}}))};
     });
     out.msgs=projectActionMessages(out.msgs||[],live);
+    out.msgs=out.msgs.map((message:Shell)=>{
+      const saved=live.find(item=>item.id===message.id);
+      return saved?.checkin===true&&typeof saved.displayText==='string'
+        ? {...message,hasCalendarText:false,summaryText:saved.displayText,summaryPreview:saved.displayText.replace(/\s+/g,' ').trim(),summaryHasSleep:/sleep recap/i.test(saved.displayText)}
+        : message;
+    });
     out.canStopReply=!!this.S().typing&&alphaClient.getState().pending;
     // While a reply is pending the composer's send/talk button becomes Stop; Send and Talk stay hidden for the whole turn so a tap after the request ends cannot start voice.
     const turn=!!this.S().typing;

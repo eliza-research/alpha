@@ -4006,6 +4006,10 @@
         </sc-if>
         <sc-if value="{{m.isAgent}}">
           <div style="display: flex; flex-direction: column; gap: 12px">
+            <sc-if value="{{m.summaryText}}"><details class="alpha-chat-summary" data-alpha-chat-summary>
+              <summary><span class="alpha-chat-summary-heading"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.spark}}"></path></svg><strong>Daily summary</strong><svg class="i alpha-chat-summary-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.down}}"></path></svg></span><span class="alpha-chat-summary-preview">{{m.summaryPreview}}</span></summary>
+              <div class="alpha-chat-summary-body">{{m.linkedSummaryText}}<sc-if value="{{m.summaryHasSleep}}"><small class="alpha-chat-summary-note">Sleep figures are estimates.</small></sc-if></div>
+            </details></sc-if>
             <sc-if value="{{m.hasCalendarText}}"><div data-alpha-message-text role="{{m.messageActionsRole}}" tabIndex="{{m.messageActionsTabIndex}}" aria-label="{{m.messageActionsLabel}}" aria-haspopup="{{m.messageActionsPopup}}" aria-expanded="{{m.messageActionsOpen}}" onClick="{{m.openMessageActions}}" onKeyDown="{{m.messageActionsKey}}" onContextMenu="{{m.messageActionsContext}}" onPointerDown="{{m.messageActionsDown}}" onPointerMove="{{m.messageActionsMove}}" onPointerUp="{{m.messageActionsCancel}}" onPointerCancel="{{m.messageActionsCancel}}" style="font-size: 16px; line-height: 1.5">{{m.linkedText}}</div></sc-if>
             <sc-for list="{{m.calendarReviews}}" as="review"><section class="calendar-request-review" data-calendar-request-id="{{review.id}}"><strong>Calendar request</strong><p role="status">{{review.status}}</p><button class="tap" aria-label="Review Calendar request {{review.id}}" onClick="{{review.open}}">Review request</button></section></sc-for>
             <sc-for list="{{m.workflowRuns}}" as="run"><section class="workflow-run-card" data-workflow-run-id="{{run.runId}}"><strong>{{run.title}}</strong><p>Run submitted</p><button class="tap" aria-label="Open workflow run {{run.title}}" onClick="{{run.open}}">Open run</button></section></sc-for>

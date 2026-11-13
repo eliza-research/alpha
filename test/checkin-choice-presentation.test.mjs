@@ -39,6 +39,9 @@ test('actual history projection preserves source text and only attaches a truste
  const [checkin,user,quoted]=project([row,{...row,id:'user',role:'user'},{...row,id:'quoted',source:'client_chat'}]);
  assert.equal(checkin.displayText,'Take twenty quiet minutes before bed.');
  assert.equal(checkin.text,text);
+ assert.equal(checkin.checkin,true);
+ assert.equal(user.checkin,undefined);
+ assert.equal(quoted.checkin,undefined);
  assert.equal(user.text,text);assert.equal(user.displayText,undefined);
  assert.equal(quoted.text,text);assert.equal(quoted.displayText,undefined);
  const model=readFileSync('apps/app/src/prototype/model.js','utf8');

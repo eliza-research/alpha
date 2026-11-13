@@ -138,18 +138,24 @@
       "lateReplyTest",
       "workflowNavigationTest",
       "sensitiveStopsWorkflowTest",
-      "draftConflictTest"
+      "draftConflictTest",
+      "summaryCardTest"
     ],
     "sources": [
       "apps/app/src/runtime/alpha-client.ts",
       "apps/app/src/runtime/assistant-draft-record.ts",
       "apps/app/src/runtime/assistant-draft-store.ts",
       "apps/app/src/runtime/conversation-selection.ts",
-      "apps/app/src/prototype/agent-adapter.ts"
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/content-links.tsx",
+      "test/checkin-choice-presentation.test.mjs",
+      "test/browser/chat-message-polish.spec.ts"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "Summary expansion is the native details element. Complete service text stays stored; the browser test checks the actual collapsed and expanded rendering."
     ]
   },
   {
