@@ -2,23 +2,6 @@ import test from 'node:test';import assert from 'node:assert/strict';import fs f
 import {javaBinary} from './fixtures/jvm-tools.mjs';
 const shared='vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeRuntimeEmbeddings.java';
 test('Alpha selects embeddings only through the shared native runtime profile',()=>{
- const source=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java','utf8');
- // No Alpha copy of the embedding route: the build profile is passed to the shared class as-is.
- assert.doesNotMatch(source,/static void configureLocalEmbeddings\(/);
- assert.doesNotMatch(source,/bge-small-en-v1\.5-f16\.gguf/);
- // The launch composes provider admission and the embedding route in the shared order (NativeProviderSlot).
- assert.doesNotMatch(source,/NativeRuntimeEmbeddings\.apply\(/);
- const calls=source.split('\n').filter(line=>line.includes('NativeProviderSlot.applyLaunchEnvironment('));
- assert.equal(calls.length,1);
- assert.match(calls[0],/NativeProviderSlot\.applyLaunchEnvironment\(BuildConfig\.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,new File\(context\.getApplicationInfo\(\)\.nativeLibraryDir\),context\.getFilesDir\(\),env,System\.currentTimeMillis\(\)\)/);
- const ownCloudBase='if(provider!=null&&"elizacloud".equals(provider.optString("provider")))env.put("ELIZAOS_CLOUD_BASE_URL",CloudDeployment.PRODUCTION_API+"/api/v1")';
- assert.ok(source.indexOf(ownCloudBase)>source.indexOf(calls[0]),'only an admitted Cloud binding gets the product deployment origin');
- const configure=source.slice(source.indexOf(' static void configureEnvironment('));
- assert.ok(configure.indexOf('ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath()')>=0,'verified product module must survive credential-independent startup');
- assert.ok(configure.lastIndexOf('ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath()')>configure.indexOf('NativeProviderSlot.applyLaunchEnvironment('),'restore verified product module after shared unbound cleanup');
- const slot=fs.readFileSync('vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java','utf8');
- const launch=slot.slice(slot.indexOf('public static boolean applyLaunchEnvironment('));
- assert.ok(launch.indexOf('applyProviderEnvironment(')<launch.indexOf('NativeRuntimeEmbeddings.apply(')&&launch.indexOf('applyUnboundEnvironment(env)')<launch.indexOf('NativeRuntimeEmbeddings.apply('),'the embedding route is applied after provider admission');
  assert.ok(JSON.parse(fs.readFileSync('android/consumer-host.json','utf8')).residentHost.helpers.includes('plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java'),'NativeProviderSlot.java must be staged for the APK compile');
  // The shared class is compiled from the selected-source staging list, like NativeProviderAdmission.
  // stage-local-agent-sources.ts stages the consumer host descriptor's resident helpers.

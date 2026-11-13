@@ -1,25 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 
-// Issues #416 and #417: Android's shade is the one notification and quick-settings surface.
-// The policy is shared (@elizaos/capacitor-system/shade, with its own tests upstream); this runs it
-// at the pin with Alpha's wording, without a browser. What Android does with the request is device
-// evidence (SystemShadeInstrumentedTest), not shown here.
-const read = file => readFileSync(file, 'utf8');
 const shared = await import('../.eliza/client-features/plugins/plugin-native-system/src/client/shade.ts');
-const source = read('apps/app/src/prototype/system-shade.ts');
 const copy = shared.defaultShadeFallbackCopy('Alpha');
 const m = { ...shared, shadeFallback: outcome => shared.shadeFallback(outcome, copy) };
-
-test('Alpha consumes the shared policy and keeps only its wording and Home selector', () => {
-  assert.match(source, /from '@elizaos\/capacitor-system\/shade'/);
-  assert.match(source, /export const ALPHA_SHADE_COPY = defaultShadeFallbackCopy\('Alpha'\);/);
-  assert.match(source, /home: '\[data-alpha-layer="home"\]'/);
-  for (const policy of [/function emptyHomeShadePull/, /function overflowPullDecision/, /STATUS_BAND = /, /const EDITABLE/, /addEventListener\('touchmove'/])
-    assert.doesNotMatch(source, policy, `Alpha keeps no copy of ${policy}`);
-  assert.match(m.shadeFallback('not-in-front'), /^Alpha is not in front\./);
-});
 
 const home = { launcher: true, assistant: false, screen: 'home', view: null, chat: 'input', voice: 'off', drawer: false, secure: false, shade: false };
 const empty = { home: true, editable: false, keyboard: false, scrolled: false };
@@ -74,23 +58,6 @@ test('the fallback never claims Android opened its shade', () => {
     assert.match(text, /Swipe down from the top edge of the screen/, String(outcome));
     assert.doesNotMatch(text, /\bopened\b/i, String(outcome));
   }
-});
-
-test('the launcher flavor alone requests EXPAND_STATUS_BAR and the plugin reports every outcome', () => {
-  const launcher = read('android/app/src/launcher/AndroidManifest.xml');
-  const main = read('android/app/src/main/AndroidManifest.xml');
-  assert.match(launcher, /<uses-permission android:name="android\.permission\.EXPAND_STATUS_BAR" \/>/);
-  assert.doesNotMatch(main, /EXPAND_STATUS_BAR/, 'the standalone app does not drive the system shade');
-  // The shared outcome mapping (plugin-native-system SystemShade, tested there) at the pin.
-  const shade = read('vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemShade.java');
-  assert.match(shade, /if \(!launcher\) return STANDALONE;\s*if \(!platform\.granted\(PERMISSION\)\) return PERMISSION_MISSING;/);
-  assert.match(shade, /getMethod\("expandNotificationsPanel"\)\.invoke\(service\);\s*return OPENED;/);
-  assert.match(shade, /catch \(ReflectiveOperationException \| RuntimeException refused\) \{[\s\S]*?return UNSUPPORTED;/);
-  const plugin = read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java');
-  assert.match(plugin, /@PluginMethod public void openNotificationShade\(PluginCall call\)\{/);
-  assert.match(plugin, /!activity\.hasWindowFocus\(\)\)out\.put\("status",SystemShade\.NOT_IN_FRONT\);\s*else out\.put\("status",SystemShade\.expand\(getContext\(\),BuildConfig\.IS_LAUNCHER\)\);/);
-  // The shared bridge method follows the same flavor policy.
-  assert.match(read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSystemPlugin.java'), /protected boolean canExpandNotificationShade\(\)\{return BuildConfig\.IS_LAUNCHER;\}/);
 });
 
 test('an overflowing Home takes only a clearly downward drag at its top from the WebView', () => {

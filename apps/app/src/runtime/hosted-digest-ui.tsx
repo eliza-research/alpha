@@ -218,7 +218,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
             const nativeSupported=supported&&advertised.nativeSources&&isAndroid&&connection.kind==='resident';
             // The dossier needs native phone sources, which only the resident agent has. That agent is staged
             // from upstream.lock.json, whose plugin-workflow registers POST /api/workflow/hosted/dossier
-            // (elizaOS/eliza#35906, test/digest-route-registration.test.mjs); /status does not advertise it.
+            // (elizaOS/eliza#35906); /status does not advertise it.
             setNativeSourceProtocol(nativeSupported);const advertisedFeatures={nativeEvening:nativeSupported&&advertised.nativeEvening,sourcePause:supported&&advertised.sourcePause,dossier:nativeSupported};setFeatures(prior=>same(prior,advertisedFeatures)?prior:advertisedFeatures);
 			if (!supported) {
 				setMessage("Not available");

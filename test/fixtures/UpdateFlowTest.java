@@ -33,8 +33,8 @@ import java.util.function.Consumer;
 import javax.net.ssl.HttpsURLConnection;
 
 /**
- * Host-JVM run of AlphaDevicePlugin's update members, compiled from the plugin source by
- * test/app-update.test.mjs against the stubs in test/fixtures/app-update-jvm: one Context is one process whose
+ * Host-JVM run of AlphaDevicePlugin's update members, compiled from the plugin source by the update
+ * refinements under specs/quint/refinement/native against the stubs in test/fixtures/app-update-jvm: one Context is one process whose
  * bridges all hear each broadcast. Most HTTPS responses are served in memory, with the download deadline
  * shortened only in the trickle scenario. Not Android, PackageInstaller or network evidence: the stubs transcribe what AOSP's source
  * does, they do not prove it. One separate cache-retry scenario uses owned loopback TLS and real files;

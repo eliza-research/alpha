@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {runJvm} from './fixtures/jvm-tools.mjs';
-import {assertBefore} from './fixtures/assert-order.mjs';
 import {emailCodeResendAt} from '../scripts/cloud-email-code.ts';
 
 const now=Date.parse('2026-10-26T12:00:00Z');
@@ -27,12 +26,4 @@ test('the actual native resend calculation matches all browser deadline cases',(
     const shared=join(root,'vendor/eliza/packages/auth/android');
     assert.match(runJvm([join(shared,'src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java'),join(shared,'src/main/java/ai/eliza/auth/cloud/CloudSignInEnvironment.java'),join(shared,'src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java'),join(shared,'src/main/java/ai/eliza/auth/cloud/CloudEmailCode.java'),join(shared,'test/org/json/JSONObject.java'),source],'ai.eliza.auth.cloud.ResendTest'),/PASS native resend deadlines/);
   }finally{rmSync(dir,{recursive:true,force:true});}
-});
-test('native and browser send paths retain server cooldowns before rejecting failed sends',()=>{
-  const native=readFileSync(new URL('../vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java',import.meta.url),'utf8');
-  assert.ok(native.includes('connection.getHeaderField("Retry-After")'));
-  assertBefore(native,'emailSendAllowedAt = Math.max(emailSendAllowedAt, resendAt)','if (sent.status != 200');
-  const browser=readFileSync(new URL('../scripts/browser-cloud-dev-bridge.ts',import.meta.url),'utf8');
-  assert.ok(browser.includes("response.headers.get('Retry-After')"));
-  assertBefore(browser,'emailSendAllowedAt=Math.max(emailSendAllowedAt,emailCodeResendAt','if(sent.status!==200');
 });

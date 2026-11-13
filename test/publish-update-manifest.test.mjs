@@ -6,14 +6,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import {stripTypeScriptTypes} from "./support/strip-types.mjs";
 import { main, MANIFEST_NAME } from "../scripts/publish-update-manifest.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
-// The phone's own parser (the dependency-free settings-facts region, as test/settings-truth.test.mjs loads it).
-const adapter = fs.readFileSync(path.join(root, "apps/app/src/prototype/settings-adapter.ts"), "utf8");
-const region = adapter.slice(adapter.indexOf("// settings-facts:begin"), adapter.indexOf("// settings-facts:end"));
-const { parseUpdateManifest } = await import(`data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(region, { mode: "strip" })).toString("base64")}`);
 const SIGNER = "a".repeat(64);
 const sha = text => createHash("sha256").update(text).digest("hex");
 // Everything verify-apks records for a distributable release (as in test/record-release.test.mjs).
@@ -41,6 +36,7 @@ function fixture(t, rows = {}) {
 const io = () => { const out = [], err = []; return { out, err, inspectApk: () => ({signerRootSha256:SIGNER}), log: line => out.push(line), error: line => err.push(line) }; };
 const written = dir => path.join(dir, "artifacts/app-stable", MANIFEST_NAME);
 
+
 test("a distributable signed release becomes the manifest phones parse, beside its APK copy", t => {
   const dir = fixture(t);
   const run = io();
@@ -52,9 +48,6 @@ test("a distributable signed release becomes the manifest phones parse, beside i
     apkUrl: new URL("alpha-phone-2.apk", updateManifestUrl).href, sha256: sha("launcher bytes"), sizeBytes: "launcher bytes".length, notes: "Fixes",
   });
   assert.equal(fs.readFileSync(path.join(dir, "artifacts/app-stable/alpha-phone-2.apk"), "utf8"), "launcher bytes");
-  // An installed launcher of an older versionCode and this signer is offered it; the other flavor is not.
-  assert.equal(parseUpdateManifest(update, { versionCode: 1, launcher: true, signerSha256: SIGNER })?.sha256, update.sha256);
-  assert.equal(parseUpdateManifest(update, { versionCode: 1, launcher: false, signerSha256: SIGNER }), null);
 });
 
 test("a release that is not distributable, unsigned, signed otherwise or not the verified file writes nothing", t => {

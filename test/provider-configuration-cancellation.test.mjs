@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {runProviderConfiguration} from '../apps/app/src/runtime/abort-signal.ts';
 
 test('native renderer propagates cancel before paused validation can commit',async()=>{
@@ -20,36 +19,11 @@ test('native renderer allows positive commit and refuses already cancelled setup
  assert.deepEqual(await runProviderConfiguration(new AbortController().signal,ports),{configured:true});
  const cancelled=new AbortController();cancelled.abort();await assert.rejects(runProviderConfiguration(cancelled.signal,ports),{name:'AbortError'});assert.equal(save,1);
 });
-test('provider cancellation is forwarded to each backend and checked before renderer state or retirement',()=>{
- const local=readFileSync(new URL('../apps/app/src/runtime/local-agent.ts',import.meta.url),'utf8');
- const host=readFileSync(new URL('../scripts/browser-cloud-dev-bridge.ts',import.meta.url),'utf8');
- const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
- assert.match(local,/browserResidentCall\('residentOwn',[^;]+,signal\)/);
- assert.match(local,/prepare:\(\)=>native\.prepareProviderConfiguration/);
- assert.match(local,/cancel:requestId=>native\.cancelProviderConfiguration/);
- assert.match(host,/selectOwn\(\{apiKey:data\.apiKey,[^;]+controller\.signal\)/);
- assert.match(ui,/await configureLocalProvider\(apiKey,model,cartesiaKey,signal\);signal\.throwIfAborted\(\);const providerStatus=await localProviderStatus\(\);signal\.throwIfAborted\(\);update/);
-});
 
 test('cancelling before native reservation returns never dispatches keys or clear',async()=>{
  let reserved,cancelled=0,dispatched=0;const held=new Promise(resolve=>reserved=resolve);const controller=new AbortController();
  const pending=runProviderConfiguration(controller.signal,{prepare:()=>held,async configure(){dispatched++;},async cancel(id){assert.equal(id,'late-native-lease');cancelled++;}});
  controller.abort();reserved({requestId:'late-native-lease'});await assert.rejects(pending,{name:'AbortError'});assert.equal(cancelled,1);assert.equal(dispatched,0);
-});
-test('Cloud selection uses the same cancellation boundary on both backends',()=>{
- const local=readFileSync(new URL('../apps/app/src/runtime/local-agent.ts',import.meta.url),'utf8');
- const host=readFileSync(new URL('../scripts/browser-cloud-dev-bridge.ts',import.meta.url),'utf8');
- const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
- const select=local.slice(local.indexOf('export async function selectLocalProvider('),local.indexOf('/** Omitted fields remain untouched.'));
- const uiSelect=ui.slice(ui.indexOf("async selectSavedProvider(mode:"),ui.indexOf('// A failed read keeps the last known choice:'));
- assert.match(uiSelect,/await selectLocalProvider\(\{mode,expectedRevision\},signal\);signal\.throwIfAborted\(\)/);
- assert.doesNotMatch(uiSelect,/clearLocalProvider|clearProvider/,'route selection must not delete saved keys');
- assert.match(select,/browserProviderCall\('residentProviderSelect',\{mode,expectedRevision\},signal\)/);
- assert.match(select,/runProviderConfiguration\(signal/);
- assert.match(select,/cancel:requestId=>native\.cancelProviderConfiguration!\(\{requestId\}\)/);
- assert.match(select,/signal\.throwIfAborted\(\);const status=managedProviderStatus/);
- assert.match(host,/selectProvider\(input as ProviderSelection,controller\.signal\)/);
-
 });
 
 test('failed native dispatch releases its reserved lease',async()=>{

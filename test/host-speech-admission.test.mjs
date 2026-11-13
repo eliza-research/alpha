@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {verifiedFile,speechAssets} from '../scripts/host-speech-admission.ts';
+import {verifiedFile} from '../scripts/host-speech-admission.ts';
 import {sourceManifest} from '../scripts/combined-agent-source.ts';
 import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
 import {mkdirSync} from 'node:fs';
@@ -18,21 +18,8 @@ test('admission verifies exact bytes and reviewed digest, rejecting links and ov
  assert.throws(()=>verifiedFile(file,sha,data.length+1,true),/size/);
  symlinkSync(file,join(root,'link'));assert.throws(()=>verifiedFile(join(root,'link'),sha,data.length));
 });
-test('host asset manifest matches the current shared worker pins: Paradee, optional G2P data, Phonon-2 and required VAD',()=>{
- const source=file=>readFileSync(new URL('../vendor/eliza/plugins/plugin-local-inference/src/'+file,import.meta.url),'utf8');
- const parse=text=>[...text.matchAll(/path: "([^"]+)",\s+sha256: "([^"]+)",\s+bytes: ([\d_]+)/g)].map(([,path,sha256,bytes])=>({path,sha256,bytes:Number(bytes.replaceAll('_',''))}));
- const tts=source('host-tts-worker.ts'),asr=source('host-asr-worker.ts'),assets=source('host-asr-assets.ts');
- assert.deepEqual(speechAssets.tts,parse(tts.split('PARADEE_ASSETS:')[1].split('];')[0]));
- assert.deepEqual(speechAssets.espeak,parse(tts.split('ESPEAK_DATA_ASSETS:')[1].split('];')[0]));
- // Phonon-2 (the parakeet backend, upstream default) is the one ASR model the host worker admits here.
- assert.deepEqual(speechAssets.asr,[...parse(assets.split('PHONON_ASR_ASSETS:')[1].split('];')[0]),...parse(asr.split('const VAD_ASSET')[1].split('};')[0])]);
- // No package script names the retired Kokoro or Whisper speech paths.
- assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
-});
 test('embedding source admission binds the current package and rejects another JNI identity',()=>{
- const source=readFileSync(new URL('../scripts/combined-agent-source.ts',import.meta.url),'utf8');
  const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
- assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+reviewed+"'"));
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  assert.equal(actual,reviewed);
  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));

@@ -78,7 +78,7 @@ function watchDockScrimPress(shell: Shell, owner: HTMLElement, press: ScrimPress
 	return dock;
 }
 
-// chat-release:begin (dependency-free; exercised by test/chat-release.test.mjs)
+// chat-release:begin (dependency-free)
 type Mode = "hidden" | "input" | "sheet" | "full";
 type Sample = { y: number; t: number };
 /** How close to the collapsed form or the top a release must land to snap there, in canvas pixels. */

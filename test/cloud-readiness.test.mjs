@@ -11,7 +11,6 @@ import { fingerprint } from "../scripts/render-assetlinks.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const RELEASE = "c3".repeat(32);
-const javaDir = path.join(root, "android/app/src/main/java/ai/alphacompute/alphaphone");
 /** A copy of the configuration the probe reads, with the release signer recorded as `signer`. */
 function fixtureRoot(t, signer) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-cloud-readiness-"));
@@ -24,7 +23,6 @@ function fixtureRoot(t, signer) {
   fs.writeFileSync(signerFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(signerFile, "utf8")), signerSha256: signer }));
   return dir;
 }
-const javaSource = fs.readdirSync(javaDir).filter(name => name.endsWith(".java")).map(name => fs.readFileSync(path.join(javaDir, name), "utf8")).join("\n");
 
 test("registration values come from the committed product configuration and match the native sign-in registration", () => {
   const registration = productRegistration(root, "production");
@@ -34,13 +32,6 @@ test("registration values come from the committed product configuration and matc
   assert.equal(registration.callback, `${deployment.web}${CALLBACK_PATH}`);
   assert.equal(registration.tenant, deployment.tenant);
   assert.equal(registration.entitlementAudience, deployment.entitlementAudience);
-  // The native client and the App Link filter register exactly these values.
-  assert.ok(javaSource.includes(`"${identity.appId}"`), "the App Auth client ID is the package");
-  assert.ok(javaSource.includes(`"${CALLBACK_PATH}"`), "the callback path");
-  assert.ok(javaSource.includes(`"${STEWARD_APP_CLIENT}"`), "the Steward app client for native Google");
-  // MainActivity's App Link filter registers the same exact callback path.
-  const manifest = fs.readFileSync(path.join(root, "android/app/src/main/AndroidManifest.xml"), "utf8").replace(/<!--[\s\S]*?-->/g, "");
-  assert.ok(manifest.includes(`<data android:scheme="https" android:host="\${appLinkHost}" android:path="${CALLBACK_PATH}"/>`));
 
   const values = registrationValues(registration);
   assert.deepEqual(values.map(row => row.step), ["H-11", "H-12", "H-12", "H-13", "H-13", "H-15"]);

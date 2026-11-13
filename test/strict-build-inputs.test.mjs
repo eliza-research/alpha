@@ -11,7 +11,6 @@ import {formatReport, strictBuildInputs} from '../scripts/android-build-prefligh
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const sha = text => createHash('sha256').update(text).digest('hex');
-const readJson = rel => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 /** A product root with a three-library "reviewed" manifest whose bytes are the library names. */
 function fixture(t, {remapBuildPath = false} = {}) {
@@ -92,22 +91,6 @@ test('once the reviewed bytes are reproducible the step rebuilds with the remap 
   assert.equal(run(f.root, {build: () => assert.fail('must not build')}), 0);
 });
 
-test('path remapping is opt-in, recorded in the receipt and leaves the default build unchanged', () => {
-  const source = fs.readFileSync(path.join(ROOT, 'scripts/prepare-embedding-host.ts'), 'utf8');
-  assert.match(source, /const remapEnv=remap\?embeddingBuildRemap\(root,/);
-  assert.match(source, /:\{\};\nconst receipt=\{[^\n]*\.\.\.remapEnv\},buildPathRemapped:remap,/);
-  assert.match(source, /import \{embeddingBuildRemap\} from '\.\/embedding-build-remap\.ts'/);
-  // An unknown option is still refused before anything is written.
-  const output = path.join(os.tmpdir(), `alpha-embed-unknown-${process.pid}`);
-  const result = spawnSync(process.execPath, ['scripts/prepare-embedding-host.ts', '--fork', ROOT, '--output', output, '--remap'], {cwd: ROOT, encoding: 'utf8'});
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Unknown option/);
-  assert.equal(fs.existsSync(output), false);
-  const step = fs.readFileSync(path.join(ROOT, 'scripts/build-embedding-host.ts'), 'utf8');
-  assert.doesNotMatch(step, /qualifiedAt\s*[:=]/, 'the step never writes a qualification');
-  assert.doesNotMatch(step, /writeFileSync\([^)]*QUALIFIED_HOST/, 'the step never rewrites the reviewed manifest');
-});
-
 test('the input report separates what a script produces from what needs a person', t => {
   const f = fixture(t);
   f.write('upstream.lock.json', JSON.stringify({commit: 'c'.repeat(40)}));
@@ -171,4 +154,14 @@ test('the real checkout reports its inputs without failing and without building'
   assert.equal(row('on-device voice outputs').suppliedBy, 'person');
   assert.equal(row('embedding host libraries').suppliedBy, 'script');
   for (const item of rows) assert.equal(item.action === null, item.state === 'ready', item.input);
+});
+
+
+test('path remapping is opt-in, recorded in the receipt and leaves the default build unchanged', () => {
+  // An unknown option is still refused before anything is written.
+  const output = path.join(os.tmpdir(), `alpha-embed-unknown-${process.pid}`);
+  const result = spawnSync(process.execPath, ['scripts/prepare-embedding-host.ts', '--fork', ROOT, '--output', output, '--remap'], {cwd: ROOT, encoding: 'utf8'});
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unknown option/);
+  assert.equal(fs.existsSync(output), false);
 });

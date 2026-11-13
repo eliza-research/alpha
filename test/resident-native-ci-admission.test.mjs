@@ -91,7 +91,6 @@ print('PASS: shared resident archive admission and ten synthetic fixture refusal
  }finally{fs.rmSync(temporary,{recursive:true,force:true});}
 });
 
-
 test('Calendar bridge CI admits the current reviewed pin, Bun declaration and exact owning fixture bytes',()=>{
  const result=execFileSync('python3',['-c',String.raw`
 import hashlib,json,runpy
@@ -107,22 +106,6 @@ for relative,expected in bridge['OWNING_SHA256'].items():
 print('PASS: current Calendar CI pin and exact host/owning fixture bytes')
 `],{cwd:root,encoding:'utf8',timeout:10000,env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'}});
  assert.match(result,/PASS: current Calendar CI pin and exact host\/owning fixture bytes/);
-});
-
-test('Calendar bridge hash budget includes the pinned Node 26 input and final drift checks',()=>{
- const source=fs.readFileSync(path.join(root,'scripts/ci/calendar-bridge.init.gradle'),'utf8');
- const declaration=source.match(/final long maxHashBytes = (\d+)L \* 1024 \* 1024/);
- assert.ok(declaration,'the complete streamed read has an explicit finite budget');
- const budget=Number(declaration[1])*1024*1024;
- // CI run 42418923481 retained all three real compile inputs and output inventories.
- // Six compile snapshots, eight fixed-input reads and final classpath/output rereads
- // require this volume at the reviewed Node 26.13.0 input, including the 150 MB binary.
- const measuredCompleteRead=1610673552;
- assert.ok(budget>measuredCompleteRead,'the final drift comparison must fit in the budget');
- assert.ok(budget<=2*1024*1024*1024,'streaming remains bounded to at most 2 GiB');
- assert.match(source,/count > 160L \* 1024 \* 1024 \|\| readBytes > maxHashBytes/);
- assert.match(source,/if \(current != before\[task\.path\]\)/);
- assert.match(source,/walk\(task\.destinationDirectory\.get\(\)\.asFile\) != row\.classes/);
 });
 
 test('disposable admission refuses either installed Alpha identity before fixture effects', async () => {

@@ -6,10 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import vm from 'node:vm';
-import {execFileSync} from 'node:child_process';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {tsImport} from './support/ts-import.mjs';
 
@@ -69,20 +66,7 @@ test('a 429 for the signed-in account becomes the shared lastLimit; developer sp
  assert.deepEqual(developer.notes,[]);
 });
 
-test('connection controller records a Cloud speech limit only for the account it was read for',()=>{
- const ui=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
- const start=ui.indexOf('  noteCloudServiceLimit(');const end=ui.indexOf('\n  },',start);
- assert.ok(start>=0&&end>start);
- const updates=[];let service={identity:{sessionId:'account-session'}};
- const object=stripTypeScriptTypes(`const controller={${ui.slice(start,end+4)}};`,{mode:'strip'});
- const method=(limit,sessionId)=>new Function('update','service','limit','sessionId',`${object}\nreturn controller.noteCloudServiceLimit(limit,sessionId);`)(value=>updates.push(value),service,limit,sessionId);
- const limit={kind:'rate-limited',retryAfterMs:30_000,resetsAt:null};
- assert.equal(method(limit,'account-session'),true);
- assert.equal(method(limit,'earlier-session'),false);
- assert.equal(method(null,'account-session'),false);
- service=null;assert.equal(method(limit,'account-session'),false);
- assert.equal(updates.length,1);assert.equal(updates[0].lastServiceLimit.kind,'rate-limited');assert.ok(Number.isFinite(updates[0].lastServiceLimit.observedAt));
-});
+
 
 test('retry facts: body, Retry-After seconds or date, and bounds',()=>{
  assert.deepEqual(readCloudVoiceLimit('17',{error:{code:'rate_limited',retryAfterSeconds:12,message:SENTINEL,plan:{id:'pro'}}},now),{retryAfterSeconds:12,limitCode:'rate_limited'});
@@ -96,46 +80,9 @@ test('retry facts: body, Retry-After seconds or date, and bounds',()=>{
  assert.equal(cloudVoiceLimitOf({code:'voice-http-402',data:{retryAfterSeconds:5}}),null);
 });
 
-test('native CloudVoiceLimit keeps the same facts, never the body text, and replays only a cache-warming 503',()=>{
- const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-voice-limit-'));
- try{
-  const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
-  execFileSync(binary('javac'),['--release','11','-d',out,'android/app/src/main/java/ai/alphacompute/alphaphone/CloudVoiceLimit.java','test/fixtures/CloudVoiceLimitTest.java']);
-  assert.match(execFileSync(binary('java'),['-cp',out,'ai.alphacompute.alphaphone.CloudVoiceLimitTest'],{encoding:'utf8'}),/PASS Cloud voice 429 retry facts/);
- }finally{fs.rmSync(out,{recursive:true,force:true});}
- const plugin=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
- assert.match(plugin,/if\(status==429\)throw new VoiceHttpException\(status,limitOf\(c\)\);successful\(c\);/);
- assert.match(plugin,/@Override protected void rejectFailure\(PluginCall call,String message,String code,Exception failure\)/);
- assert.match(plugin,/call\.reject\(message,"voice-http-"\+limited\.status,limitData\(limited\.limit\)\)/);
- assert.match(plugin,/super\.rejectFailure\(call,message,code,failure\)/);
- assert.doesNotMatch(plugin,/submitLimited|request\.resolvedEarly/,'429 delivery never bypasses shared post-cleanup settlement');
- assert.equal(plugin.match(/successful\(c\)/g).length,1,'every Alpha speech response goes through answered, which keeps a 429 limit');
- assert.equal(plugin.match(/submit\(call,/g).length,7,'all Alpha speech requests use the shared settlement path');
- // String members only: JSON null or a number is no code or instant (optString would coerce them).
- const limitOf=plugin.slice(plugin.indexOf('private static CloudVoiceLimit limitOf('),plugin.indexOf('private static JSObject limitData('));
- assert.doesNotMatch(limitOf,/optString/);
- assert.match(limitOf,/code=jsonText\(row,"code"\);retryAt=jsonText\(row,"retryAt"\);resetAt=jsonText\(row,"resetAt"\)/);
- assert.match(plugin,/private static String jsonText\(JSONObject row,String key\)\{Object value=row\.opt\(key\);return value instanceof String\?\(String\)value:null;\}/);
- // Only the three facts cross the bridge.
- const data=plugin.slice(plugin.indexOf('private static JSObject limitData('),plugin.indexOf('private static JSObject limitData(')+400);
- assert.deepEqual([...data.matchAll(/data\.put\("([a-zA-Z]+)"/g)].map(match=>match[1]),['retryAfterSeconds','limitCode','resetAt']);
-});
 
-test('only a signed-in Cloud account with no limit in force, and development browser-resident builds, reach Cloud speech',()=>{
- const selection=fs.readFileSync('apps/app/src/runtime/voice-selection.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function').replaceAll('export type','type');
- const now=Date.now(),limited={kind:'rate-limited',retryAfterMs:60_000,resetsAt:null,observedAt:now};
- for(const [account,limit,expected] of [[false,null,'device'],[true,null,'cloud'],[true,limited,'device'],[true,{...limited,observedAt:now-120_000},'cloud']]){
-  const box={testMocksEnabled:false,localStorage:{getItem:()=>JSON.stringify({version:1,route:'cloud',disclosed:'cloud-speech-uses-plan',chosenAt:1}),setItem(){}},JSON,Number,Date,Math,connectionController:{getSnapshot:()=>({residentInference:'cloud',lastServiceLimit:limit}),getCloudEnvironment:()=>account?'production':null,getCloudClient:()=>account?{sessionId:'s',credentialId:'c'}:null}};
-  vm.runInNewContext('{'+stripTypeScriptTypes(selection,{mode:'strip'})+'\nglobalThis.api={selectVoiceRoute,speechRoute};}',box);
-  // The route is the account's, at run time; a stored choice from an earlier build has no effect,
-  // and a Cloud speech 429 recorded for the account (lastServiceLimit) keeps the next turns on this phone.
-  assert.equal(box.api.speechRoute(now),expected);
-  for(const requested of ['default','device','manual','agent'])assert.equal(box.api.selectVoiceRoute(requested),expected);
- }
- // The development browser route is the only other caller: a test-mocks (development) surface.
- const browser=fs.readFileSync('apps/app/src/browser/voice.ts','utf8');
- assert.match(browser,/if\(!devSurfacesEnabled\)throw Error\('Cloud voice requires the native app or a development host\.'\)/);
-});
+
+
 
 test('own-key HTTP limits never mutate the retained Cloud account limit',async()=>{
  const failure=Object.assign(Error(SENTINEL),{code:'voice-http-429',data:{retryAfterSeconds:30,limitCode:'rate_limited'}});

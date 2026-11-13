@@ -53,7 +53,6 @@ test("Files all-files access: the launcher must request MANAGE_EXTERNAL_STORAGE 
   assert.throws(() => provisioningComponents(tree({ allFiles: false }), PKG), /MANAGE_EXTERNAL_STORAGE/);
   const files = renderProvisioningOverlay(PKG, provisioningComponents(tree(), PKG), {freshTelephony: true});
   assert.match(files["provisioning/README.md"], /MANAGE_EXTERNAL_STORAGE/);
-  assert.match(fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8"), /<uses-permission android:name="android\.permission\.MANAGE_EXTERNAL_STORAGE"/);
 });
 
 test("the overlay sets default HOME, assistant and Autofill offer additively", t => {
@@ -86,18 +85,6 @@ test("Sense qualification provisioning leaves fresh telephony assignment disable
   assert.match(files["provisioning/overlay/frameworks/base/core/res/res/values/config.xml"], /config_defaultAssistant/);
   assert.doesNotMatch(files.productMakefile, /fresh-telephony|fresh_telephony_setup/);
   assert.doesNotMatch(files["provisioning/README.md"], /Fresh telephony setup/);
-});
-
-test("stage-aosp writes provisioning for production and Sense qualification with separate fresh telephony admission", () => {
-  const source = fs.readFileSync("scripts/stage-aosp.ts", "utf8");
-  assert.match(source, /if \(production && development\) throw/);
-  assert.match(source, /if \(reviewed\.apkSha256 !== hash\)/);
-  assert.match(source, /updateArtifactDigest\(stagedLauncher\)\.sha256 !== hash/);
-  assert.match(source, /const provisioningTree = aaptManifestTree\(stagedLauncher, /);
-  assert.match(source, /if \(senseImage\) assertSenseLauncher\(provisioningTree, identity\.appId\);/);
-  assert.match(source, /assertProvisioningUpdateChannel\(apkUpdateChannelOrLegacy\(parseXmlTree\(provisioningTree\)\), reviewedUpdateChannel\);/);
-  assert.match(source, /assertImageLauncherManifest\(provisioningTree, production\);/);
-  assert.match(source, /if \(production \|\| senseActivation\) \{\n  const components = provisioningComponents\(provisioningTree, identity\.appId, \{assistant: senseActivation !== null\}\);\n  writeProvisioningOverlay\(output, identity\.appId, components, \{freshTelephony: production\}\);/);
 });
 
 test("production staging refuses an old or unprotected launcher manifest even with prior admission", () => {

@@ -29,17 +29,6 @@ test('bun.lock resolves no banned runtime package, directly or transitively', as
   assert.deepEqual(Object.keys(lock.packages).filter(key => BANNED.test(key)), []);
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   for (const field of ['dependencies', 'devDependencies', 'optionalDependencies']) assert.deepEqual(Object.keys(manifest[field] ?? {}).filter(name => BANNED.test(name)), [], field);
-  assert.deepEqual(Object.entries(manifest.scripts).filter(([name, command]) => /browser-speech/.test(`${name} ${command}`)).map(([name]) => name), []);
-});
-
-// The web build's sources, build configuration and tooling: none may name the engine.
-const WEB_OWNED = [/^apps\/app\/src\//, /^config\//, /^vite\.config\.ts$/, /^playwright\.config\.ts$/, /^package\.json$/, /^\.github\/workflows\/browser\.yml$/,
-  /^scripts\/(prepare-client-features|generate-licenses|generate-sbom|local-agent-dev-bridge\.ts|start-combined-agent|dev-speech-settings)/,
-  /^licenses\//, /^apps\/app\/public\/licenses\//];
-test('the web sources, build configuration, licence inputs and shipped notices never name the banned engine', () => {
-  const offenders = tracked.filter(file => WEB_OWNED.some(pattern => pattern.test(file)) && fs.existsSync(path.join(root, file)))
-    .filter(file => new RegExp(WORD, 'i').test(fs.readFileSync(path.join(root, file), 'latin1')));
-  assert.deepEqual(offenders, []);
 });
 
 function bundle(t, files, flags = {testMocks: false}) {

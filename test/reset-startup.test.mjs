@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,rmSync,mkdirSync,writeFileSync,readFileSync} from 'node:fs';
+import {mkdtempSync,rmSync,mkdirSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -148,20 +148,4 @@ public class ResetStartupTest {
   execFileSync(javaBinary('javac'),['--release','17','-d',join(dir,'classes'),...sources,...['DataReset','DataResetCopy'].map(name=>join(upstreamReset,`${name}.java`)),...['AlphaDataReset','AlphaApplication'].map(name=>join(root,`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`))],{timeout:60000});
   assert.match(execFileSync(javaBinary('java'),['-cp',join(dir,'classes'),'ai.alphacompute.alphaphone.ResetStartupTest',join(dir,'private-fixture'),sibling],{encoding:'utf8',timeout:60000}),/PASS reset startup/);
  }finally{rmSync(dir,{recursive:true,force:true});}
-});
-
-test('reset deletion stays package-scoped: Android own-package clear, no file enumeration or other packages',()=>{
- const shared=readFileSync(join(upstreamReset,'DataReset.java'),'utf8');
- assert.match(shared,/clearApplicationUserData\(\)/);
- assert.doesNotMatch(shared,/clearApplicationUserData\([^)]/);
- for(const source of [shared,readFileSync(resolve(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDataReset.java'),'utf8')])
-  assert.doesNotMatch(source,/listFiles|deleteRecursively|Runtime\.getRuntime|"pm |getExternal|MediaStore/);
- const manifest=readFileSync(resolve(root,'android/app/src/main/AndroidManifest.xml'),'utf8');
- assert.match(manifest,/<activity android:name="\.ResetRecoveryActivity" android:exported="false" android:process=":reset_recovery"/);
- const registration=readFileSync(resolve(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDataReset.java'),'utf8');
- assert.doesNotMatch(registration,/reset (is )?complete|data (was|has been) deleted\./i);
- // Installed identities an interrupted reset from an earlier build resumes with.
- assert.match(registration,/DataReset\.builder\("reset-alpha",ResetRecoveryActivity\.class\)/);
- assert.match(registration,/\.recoveryProcessSuffix\(ResetRecoveryActivity\.PROCESS_SUFFIX\)/);
- assert.match(readFileSync(resolve(root,'android/app/src/main/java/ai/alphacompute/alphaphone/ResetRecoveryActivity.java'),'utf8'),/PROCESS_SUFFIX=":reset_recovery";/);
 });

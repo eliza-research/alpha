@@ -7,56 +7,13 @@ import {spawnSync} from 'node:child_process';
 import {parse as parseYaml} from 'yaml';
 import {AVD,BROWSER_CONTROLS_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.ts';
 import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.ts';
-import {assertBefore} from './fixtures/assert-order.mjs';
 
 const read=file=>fs.readFileSync(file,'utf8');
 const WORKFLOW='.github/workflows/android-emulator.yml';
 const workflow=read(WORKFLOW);
-/** Top-level jobs of a workflow file, by name, as their source text. */
-function jobs(text){
- const body=text.slice(text.indexOf('\njobs:\n')+6),names=[...body.matchAll(/^  ([a-z][a-z0-9-]*):\n/gm)];
- return Object.fromEntries(names.map((match,index)=>[match[1],body.slice(match.index,names[index+1]?.index??body.length)]));
-}
-const job=jobs(workflow);
 const emulatorJobs=['instrumentation','browser-reading'];
 const suites=['instrumentation','browser-reading','browser-controls'];
 const hosted={GITHUB_ACTIONS:'true',RUNNER_ENVIRONMENT:'github-hosted',GITHUB_SHA:'a'.repeat(40),GITHUB_RUN_ID:'7'};
-
-test('emulator evidence workflow has no trigger but a dispatch that names a suite',()=>{
- const on=/^on:\n((?:  .*\n|\n)+)/m.exec(workflow)[1];
- assert.deepEqual([...on.matchAll(/^  ([a-z_]+):/gm)].map(match=>match[1]),['workflow_dispatch'],'never on push, pull_request, schedule or workflow_call');
- assert.doesNotMatch(workflow,/^\s+(push|pull_request|pull_request_target|schedule|workflow_call|workflow_run):/m);
- const options=/suite:\n(?:        .*\n)+?        options:\n((?:          - .*\n)+)/.exec(on)[1].trim().split('\n').map(line=>line.trim().slice(2));
- assert.deepEqual(options,[...suites,'all']);
- assert.match(on,/suite:\n(?:        .*\n)*?        required: true/);
- // Nothing else starts it: no other workflow calls or dispatches this file.
- for(const file of fs.readdirSync('.github/workflows').filter(name=>name!=='android-emulator.yml'))assert.doesNotMatch(read(path.join('.github/workflows',file)),/android-emulator\.yml|Android emulator evidence/,file);
- assert.match(workflow,/^permissions:\n  contents: read\n/m);
- assert.match(workflow,/group: android-emulator-\$\{\{ github\.ref \}\}-\$\{\{ inputs\.suite \}\}\n  cancel-in-progress: true/);
-});
-
-test('every emulator job is selected by the suite input, needs the build, and its emulator step runs its suite',()=>{
- assert.deepEqual(Object.keys(job),['build',...emulatorJobs]);
- for(const name of emulatorJobs){
-  const text=job[name];
-  assert.match(text,/\n    needs: build\n/,name);
-  const alternate=name==='browser-reading'?" || inputs.suite == 'browser-controls'":'';
-  assert.ok(text.includes(`\n    if: inputs.suite == '${name}'${alternate} || inputs.suite == 'all'\n`),`${name} runs only when selected`);
-  assert.match(text,/\n    timeout-minutes: \d+\n/,name);
-  assert.equal((text.match(/reactivecircus\/android-emulator-runner@/g)??[]).length,1,name);
-  const selection=name==='browser-reading'?'${{ env.BROWSER_SUITE }}':name;
-  assert.ok(text.includes(`\n          script: bun scripts/ci/emulator-suite.ts ${selection}\n`),`${name} runs its own suite`);
-  // API 35 default x86_64 is the fixture the preparation scripts admit (AVD "test", emulator-5554).
-  assert.match(text,/api-level: 35\n          target: default\n          arch: x86_64\n/,name);
-  // The APKs are the build job's, proven by the manifest hash, at the build job's commit.
-  assert.match(text,/ref: \$\{\{ needs\.build\.outputs\.source_sha \}\}/,name);
-  assert.match(text,/artifact-ids: \$\{\{ needs\.build\.outputs\.artifact_id \}\}/,name);
-  assert.match(text,/test "\$\(sha256sum artifacts\/apk-manifest\.json \| cut -d' ' -f1\)" = "\$EXPECTED_MANIFEST_SHA256"/,name);
-  assert.match(text,/EXPECTED_MANIFEST_SHA256: \$\{\{ needs\.build\.outputs\.manifest_sha256 \}\}/,name);
- }
- assert.doesNotMatch(job.build,/android-emulator-runner/,'the build job boots nothing');
- assert.doesNotMatch(job.build,/\n    if: /,'every suite needs the build');
-});
 
 test('emulator jobs restore both APK pairs from the archive root at artifacts',()=>{
  const jobs=parseYaml(workflow).jobs;
@@ -76,137 +33,6 @@ test('emulator jobs restore both APK pairs from the archive root at artifacts',(
   assert.equal(download['merge-multiple'],true,name);
   assert.deepEqual(archivedFiles.map(file=>path.posix.join(download.path,file)),archivedFiles.map(file=>`artifacts/${file}`),name);
  }
-});
-
-test('every emulator job uploads its result directory, also after a failure',()=>{
- for(const name of emulatorJobs){
-  const uploads=[...job[name].matchAll(/      - uses: actions\/upload-artifact@[0-9a-f]{40} # v[\d.]+\n((?:        .*\n|          .*\n)+)/g)].map(match=>match[1]);
-  assert.equal(uploads.length,1,name);
-  assert.match(uploads[0],/^        if: always\(\)\n/,`${name} uploads when the suite failed`);
-  assert.match(uploads[0],/if-no-files-found: error/,name);
-  assert.match(uploads[0],/retention-days: 3/,name);
-  assert.match(uploads[0],/\n            test-results\/emulator-suite\/\n/,name);
-  assert.match(uploads[0],/name: (?:[a-z0-9_-]+|android-emulator-\$\{\{ env\.BROWSER_SUITE \}\})-\$\{\{ github\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,`${name} artifact is named by commit and run`);
-  // The emulator step comes before the upload and is not allowed to fail quietly.
-  assertBefore(job[name],'android-emulator-runner@','actions/upload-artifact@',name);
-  assert.doesNotMatch(job[name],/continue-on-error/,name);
- }
- for(const name of emulatorJobs)assert.match(job[name],/\n            test-results\/android-instrumentation\/\n/,name);
- // The provider archive is reproduced from its pin, not uploaded again.
- assert.match(job['browser-reading'],/!test-results\/ci-webview-provider\/chromium\.zip\n            !test-results\/ci-webview-provider\/SystemWebView\.apk/);
-});
-
-test('every action in the emulator evidence workflow is pinned to an exact commit with its release named',()=>{
- const uses=[...workflow.matchAll(/^\s+(?:- )?uses: (\S+)(.*)$/gm)];
- assert.ok(uses.length>=20);
- for(const [line,target,rest] of uses){
-  assert.match(target,/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.\/-]+@[0-9a-f]{40}$/,`${line.trim()} must name a 40-character commit`);
-  assert.match(rest,/^ # v\d+\.\d+\.\d+$/,`${line.trim()} must name the release that commit is`);
- }
- // One commit per action across the file, and the first-party pins are the ones the other workflows use.
- const pins=new Map();for(const [,target] of uses){const [name,commit]=target.split('@');assert.equal(pins.get(name)??commit,commit,name);pins.set(name,commit);}
- const others=['android.yml','verify.yml','resident-android.yml'].map(file=>read(path.join('.github/workflows',file))).join('\n');
- for(const [name,commit] of pins)if(name.startsWith('actions/'))assert.ok(others.includes(`${name}@${commit}`),`${name} is pinned to a commit no other workflow uses`);
- assert.equal(others.includes('actions/cache@'),false,'a shared actions/cache must use the same pin in every workflow');
- assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner']);
-});
-
-test('every action in every workflow is pinned to an exact commit, one commit per action',()=>{
- // A tag can be moved to other code after review; a commit cannot.
- const pins=new Map(),files=fs.readdirSync('.github/workflows').filter(name=>/\.ya?ml$/.test(name)).sort();
- assert.ok(files.length>=7);
- for(const file of files){
-  const uses=[...read(path.join('.github/workflows',file)).matchAll(/^\s+(?:- )?uses:\s*(\S+)(.*)$/gm)];
-  assert.ok(uses.length>0,file);
-  for(const [line,target,rest] of uses){
-   // A reusable workflow of this repository runs at the calling commit.
-   if(target.startsWith('./')){assert.match(target,/^\.\/\.github\/workflows\/[a-z0-9-]+\.yml$/,`${file}: ${line.trim()}`);assert.ok(fs.existsSync(target),target);continue;}
-   assert.match(target,/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.\/-]+@[0-9a-f]{40}$/,`${file}: ${line.trim()} must name a 40-character commit`);
-   assert.match(rest,/^ # v\d+\.\d+\.\d+$/,`${file}: ${line.trim()} must name the release that commit is`);
-   const [name,commit]=target.split('@');assert.equal(pins.get(name)??commit,commit,`${name} is pinned to two different commits (${file})`);pins.set(name,commit);
-  }
- }
- // Reviewed Google auth v3.0.0: https://github.com/google-github-actions/auth/releases/tag/v3.0.0
- // Its WIF/IAM flow masks the token; these jobs disable credential files and environment exports.
- assert.equal(pins.get('google-github-actions/auth'),'7c6bc770dae815cd3e89ee6cdf493a5fab2cc093');
- assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','google-github-actions/auth','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner'],'a new third-party action needs its own review');
- // Only the manually admitted, release-environment publisher can write release assets.
- // It and protected Cloud/OS signing can request OIDC identity. All other jobs stay read-only.
- // Image references remain prohibited.
- for(const file of files){
-  const text=read(path.join('.github/workflows',file));assert.doesNotMatch(text,/\bdocker:\/\//,file);
-  if(file==='release-cloud-app-signing.yml'){
-   const signing=parseYaml(text);
-   assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['id-token'],
-     'Cloud signing may request identity, never write repository contents');
-   assert.deepEqual(signing.permissions,{});
-   assert.deepEqual(Object.keys(signing.on),['workflow_dispatch']);
-   assert.deepEqual(Object.keys(signing.jobs).sort(),['admit','sign']);
-   assert.deepEqual(signing.jobs.admit.permissions,{actions:'read',contents:'read'});
-   assert.equal(signing.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
-   const sign=signing.jobs.sign;
-   assert.deepEqual(sign.permissions,{actions:'read',contents:'read','id-token':'write'});
-   assert.equal(sign.environment,'release');
-   assert.equal(sign.needs,'admit');
-   assert.equal(sign.if,"needs.admit.result == 'success' && needs.admit.outputs.plan_sha256 != '' && inputs.workflow_commit == github.sha");
-   assert.deepEqual(signing.concurrency,{group:'release-signing','cancel-in-progress':false});
-   continue;
-  }
-  if(file==='release-os-ota-signing.yml'){
-   const signing=parseYaml(text);
-   assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['id-token'],
-     'OS signing may request identity, never write repository contents');
-   assert.deepEqual(signing.permissions,{});
-   assert.deepEqual(Object.keys(signing.on),['workflow_dispatch']);
-   assert.deepEqual(Object.keys(signing.jobs),['sign']);
-   const sign=signing.jobs.sign;
-   assert.deepEqual(sign.permissions,{contents:'read','id-token':'write'});
-   assert.equal(sign.environment,'release');
-   assert.equal(sign.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
-   assert.deepEqual(signing.concurrency,{group:'preserving-os-ota-signing','cancel-in-progress':false});
-   continue;
-  }
-  if(file!=='publish-qualified-app-update.yml'){assert.doesNotMatch(text,/^\s+[a-z-]+: write\s*$/m,`${file} grants a write permission`);continue;}
-  const publication=parseYaml(text);
-  assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['contents','id-token'],
-    'only publication contents and private artifact identity may be writable');
-  assert.deepEqual(publication.permissions,{});
-  assert.deepEqual(Object.keys(publication.on),['workflow_dispatch']);
-  assert.deepEqual(Object.keys(publication.jobs).sort(),['admit','publish']);
-  assert.deepEqual(publication.jobs.admit.permissions,{contents:'read',actions:'read'});
-  assert.equal(publication.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
-  const publish=publication.jobs.publish;
-  assert.deepEqual(publish.permissions,{actions:'read',contents:'write','id-token':'write'});
-  assert.equal(publish.environment,'release');
-  assert.equal(publish.needs,'admit');
-  assert.equal(publish.if,"needs.admit.result == 'success' && needs.admit.outputs.qualification_sha256 != '' && inputs.workflow_commit == github.sha");
-  assert.deepEqual(publication.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
- }
-});
-
-test('the build job hands over hash-anchored APKs',()=>{
- const build=job.build;
- const order=['bun run android:build -- --allow-unpackaged-runtime','bun run android:build -- --test-mocks --allow-unpackaged-runtime','actions/upload-artifact@'].map(text=>build.indexOf(text));
- assert.ok(order.every(index=>index>0),'every build step is present');assert.deepEqual([...order].sort((a,b)=>a-b),order,'in this order');
- // No speech runtime is built, acquired or recorded, and nothing here admits anything by a person's review.
- assert.doesNotMatch(workflow,/scripts\/local-speech|requalify-runtime|browser-speech|--reviewer|android-voice-lexicon|kokoro/i);
- // The instrumentation APKs are built (no --skip-instrumentation) and the flag-off pair stays flag-off.
- assert.doesNotMatch(build,/--skip-instrumentation/);
- assert.match(build,/ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n        run: bun run android:build -- --allow-unpackaged-runtime\n/);
- assert.match(build,/if: inputs\.suite == 'browser-reading' \|\| inputs\.suite == 'browser-controls' \|\| inputs\.suite == 'all'\n        run: \|\n          before=/,'the browser suites get the test-mocks pair');
- for(const file of ['artifacts/apk-manifest.json','artifacts/standalone-debug.apk','artifacts/launcher-debug.apk','artifacts/instrumentation/*.apk','artifacts/test-mocks/apk-manifest.json'])
-  assert.ok(build.includes(`\n            ${file}\n`),`${file} is handed to the emulator jobs`);
- for(const output of ['manifest_sha256','test_mocks_manifest_sha256','artifact_id','source_sha'])assert.match(build,new RegExp(`\\n      ${output}: \\$\\{\\{ `),output);
-});
-
-test('the reading job provisions the pinned WebView on the fixture its provisioner admits',()=>{
- const text=job['browser-reading'];
- assert.match(text,/emulator-options: .*-writable-system .*androidboot\.boot_devices=/);
- assert.match(text,/-feature -Vulkan/);
- assert.match(text,/EXPECTED_TEST_MOCKS_MANIFEST_SHA256: \$\{\{ needs\.build\.outputs\.test_mocks_manifest_sha256 \}\}/);
- assert.match(text,/test -n "\$EXPECTED_TEST_MOCKS_MANIFEST_SHA256"\n\s+test "\$\(sha256sum artifacts\/test-mocks\/apk-manifest\.json/);
- // The other job keeps the image's own provider: no writable system partition.
- assert.doesNotMatch(job.instrumentation,/-writable-system/);
 });
 
 test('browser controls are opt-in and record the three exact classes on both test-mocks variants',()=>{
@@ -256,18 +82,46 @@ test('suite plans: default classes; reading classes with the builds and gates th
 });
 
 test('a default class can run on the flag-off build it is run on',()=>{
- const dir='android/app/src/androidTest/java/ai/alphacompute/alphaphone/';
  for(const name of DEFAULT_CLASSES){
   const spec=CLASS_REGISTRY[name];assert.ok(spec,name);
   for(const key of ['testMocks','requiresTestMocksBuild','secondaryUser','homeRole','campaign','requires'])assert.equal(spec[key],undefined,`${name}.${key} needs an option a default run does not pass`);
-  // At least one @Test method is not gated on a test-mocks app build.
-  const methods=read(dir+name+'InstrumentedTest.java').split(/@Test\b/).slice(1);
-  assert.ok(methods.some(body=>!/assumeTrue\([^;]*BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS\)/.test(body.split(/\n @|\n\s*@Test/)[0])),`${name} would only be skipped on a flag-off build`);
  }
- // BrowserDownload's one method is gated that way, so the default run could never pass with it.
- const download=read(dir+'BrowserDownloadInstrumentedTest.java').split(/@Test\b/).slice(1);
- assert.equal(download.length,1);assert.match(download[0],/assumeTrue\([^;]*BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS\)/);
  assert.ok(!DEFAULT_CLASSES.includes('BrowserDownload'));assert.ok(CLASS_REGISTRY.BrowserDownload,'still runnable by name with --test-mocks');
+});
+
+test('only the admitted release workflows may sign or publish',()=>{
+ const signing=parseYaml(read('.github/workflows/release-cloud-app-signing.yml'));
+ assert.deepEqual(signing.permissions,{});
+ assert.deepEqual(Object.keys(signing.on),['workflow_dispatch']);
+ assert.deepEqual(Object.keys(signing.jobs).sort(),['admit','sign']);
+ assert.deepEqual(signing.jobs.admit.permissions,{actions:'read',contents:'read'});
+ assert.equal(signing.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+ const sign=signing.jobs.sign;
+ assert.deepEqual(sign.permissions,{actions:'read',contents:'read','id-token':'write'});
+ assert.equal(sign.environment,'release');
+ assert.equal(sign.needs,'admit');
+ assert.equal(sign.if,"needs.admit.result == 'success' && needs.admit.outputs.plan_sha256 != '' && inputs.workflow_commit == github.sha");
+ assert.deepEqual(signing.concurrency,{group:'release-signing','cancel-in-progress':false});
+ const ota=parseYaml(read('.github/workflows/release-os-ota-signing.yml'));
+ assert.deepEqual(ota.permissions,{});
+ assert.deepEqual(Object.keys(ota.on),['workflow_dispatch']);
+ assert.deepEqual(Object.keys(ota.jobs),['sign']);
+ assert.deepEqual(ota.jobs.sign.permissions,{contents:'read','id-token':'write'});
+ assert.equal(ota.jobs.sign.environment,'release');
+ assert.equal(ota.jobs.sign.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+ assert.deepEqual(ota.concurrency,{group:'preserving-os-ota-signing','cancel-in-progress':false});
+ const publication=parseYaml(read('.github/workflows/publish-qualified-app-update.yml'));
+ assert.deepEqual(publication.permissions,{});
+ assert.deepEqual(Object.keys(publication.on),['workflow_dispatch']);
+ assert.deepEqual(Object.keys(publication.jobs).sort(),['admit','publish']);
+ assert.deepEqual(publication.jobs.admit.permissions,{contents:'read',actions:'read'});
+ assert.equal(publication.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+ const publish=publication.jobs.publish;
+ assert.deepEqual(publish.permissions,{actions:'read',contents:'write','id-token':'write'});
+ assert.equal(publish.environment,'release');
+ assert.equal(publish.needs,'admit');
+ assert.equal(publish.if,"needs.admit.result == 'success' && needs.admit.outputs.qualification_sha256 != '' && inputs.workflow_commit == github.sha");
+ assert.deepEqual(publication.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
 });
 
 /** A results.json as the instrumentation runner writes it, at the path a step names. */

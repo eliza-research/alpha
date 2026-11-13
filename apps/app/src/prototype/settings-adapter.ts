@@ -135,7 +135,7 @@ export function roleValue(row: RoleRow | undefined): string {
   return androidRoleLabel(row, { packageName: 'ai.alphacompute.alphaphone', appName: 'Alpha Phone' });
 }
 
-// settings-facts:begin (dependency-free; exercised by test/settings-truth.test.mjs)
+// settings-facts:begin (dependency-free)
 /** Version as packaged, with Android's version code when it is a real positive integer. */
 export function versionLabel(version: unknown, code: unknown): string {
   const name = typeof version === 'string' && version ? version : 'Unavailable';
@@ -368,7 +368,7 @@ function checkForUpdate(force: boolean, automatic = false): Promise<boolean> | u
   return updateCheck;
 }
 
-// settings-reads:begin (dependency-free; exercised by test/comms-settings.test.mjs)
+// settings-reads:begin (dependency-free)
 /** Orders listener status reads against Pause and Turn off. No read starts while an action runs, a read
  * already in flight is dropped once an action starts, and the action's own result is always applied. */
 export function listenerReadGate() {

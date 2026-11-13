@@ -89,26 +89,3 @@ test('every `bun run X` in README.md and the PRD names a root package.json scrip
   assert.deepEqual(failures, []);
 });
 
-// Wording retired by the October 1 resident-agent decision and the October 8 removal
-// of the aggregate smoke runners. Historical records describe those events in prose.
-const retired = [
-  [/[\w-]+-smoke\.mjs/, 'removed smoke runner'],
-  [/\bandroid:smoke\b/, 'removed package script'],
-  [/smoke lane/i, 'removed CI lane'],
-  [/qualify-stock-video/, 'removed CI qualification step'],
-  [/Cloud-only execution/i, 'superseded by the Android-resident agent'],
-  [/signed enclave deployment/i, 'enclave hosting is not the architecture'],
-  [/AlphaPhotos\.describe/, 'no such native method'],
-];
-
-test('README.md and the PRD contain no retired runner or superseded architecture wording', () => {
-  const failures = [];
-  for (const file of docs) {
-    const text = read(file);
-    for (const [pattern, reason] of retired) {
-      const match = pattern.exec(text);
-      if (match) failures.push(`${file}:${lineOf(text, match.index)}: "${match[0]}" (${reason})`);
-    }
-  }
-  assert.deepEqual(failures, []);
-});

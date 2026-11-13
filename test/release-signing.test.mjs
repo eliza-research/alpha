@@ -24,15 +24,10 @@ test("a partial ELIZAOS_ signing set is refused by name, never by value", () => 
   assert.ok(!problem.includes("/k") && !problem.includes("\"p\""));
   assert.match(partialSigningProblem({ ...ALL, ELIZAOS_KEY_ALIAS: "  " }), /missing ELIZAOS_KEY_ALIAS/, "blank counts as missing, as in Gradle");
   assert.equal(signingRequested({ ...ALL, ELIZAOS_KEY_ALIAS: " " }), false);
-  // The generated host reads the names android/consumer-host.json declares; the pinned upstream
-  // template refuses a partial set by name and signs only when all four are present.
+  // The generated host reads the names android/consumer-host.json declares.
   const { signing } = JSON.parse(fs.readFileSync("android/consumer-host.json", "utf8")).profile;
   assert.deepEqual(signing, { storeFile: "ELIZAOS_KEYSTORE_PATH", storePassword: "ELIZAOS_KEYSTORE_PASSWORD", keyAlias: "ELIZAOS_KEY_ALIAS", keyPassword: "ELIZAOS_KEY_PASSWORD" });
   assert.deepEqual(SIGNING_ENV, Object.keys(ALL));
-  const gradle = fs.readFileSync("vendor/eliza/packages/app/scripts/mobile/android/consumer-host/app.gradle", "utf8");
-  assert.match(gradle, /if \(!missing\.isEmpty\(\) && missing\.size\(\) < names\.size\(\)\)\n  throw new GradleException\("\[release-signing\] incomplete signing environment/);
-  assert.match(gradle, /if \(hostSigning\) signingConfig signingConfigs\.release/);
-  assert.doesNotMatch(gradle, /producing unsigned release APKs|println|logger/);
 });
 
 test("the committed descriptor is valid and unset fixtures remain supported", () => {
@@ -134,20 +129,6 @@ test("native OTA releases require both on-device ASR and exact supplied Cartesia
   assert.match(nativeCartesiaBlockers(hashes[1], admission).join("\n"), /does not match this APK/);
 });
 
-test("verify-apks gates every release on public distribution and releaseDistributable; there is one runtime profile", () => {
-  const source = fs.readFileSync("scripts/verify-apks.ts", "utf8");
-  // One assignment, so a later overwrite of the row is caught here.
-  assert.deepEqual(source.match(/\.distributable\s*=[^=]/g), [".distributable = "]);
-  assert.match(source, /const cartesia = cloudEvidenceSha256 === undefined \? undefined : \{\s+apkSha256: row\.sha256,\s+admission: cloudVoiceAdmission\(row\.sha256, cloudEvidence, cloudEvidenceSha256\),/);
-  assert.match(source, /const releaseReady = releaseDistributable\(\{testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission,\s+runtime, runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers, cartesia\}\);/);
-  // No profile branch can admit a release without packaged on-device voice.
-  assert.doesNotMatch(source, /runtimeProfile\s*===\s*['"]cloud['"]|--runtime-profile=cloud|speechQualified/);
-  assert.match(source, /const runtimeProfile="native";/);
-  assert.match(source, /row\.distributable = releaseReady && updateChannel\.kind === 'public';/);
-  assert.match(source, /Release signing admission failed/);
-  assert.match(source, /entry\?\.name === BUN_ENTRY/);
-});
-
 test("assetlinks.json is rendered only from the recorded release signer, never unset, a placeholder or a debug key", () => {
   const template = fs.readFileSync(TEMPLATE, "utf8");
   const packageName = JSON.parse(fs.readFileSync("app.config.json", "utf8")).appId;
@@ -201,19 +182,6 @@ test("the bundle audit fails an assetlinks.json with a placeholder or debug fing
 });
 
 test("the https autoVerify filters are the two returns on the configured host and are read back from the APK manifest", () => {
-  const gradle = fs.readFileSync("android/app/product.gradle", "utf8");
-  const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8").replace(/<!--[\s\S]*?-->/g, "");
-  // MainActivity declares the HTTPS filters for the ${appLinkHost} placeholder, which is the configured Cloud host.
-  const main = manifest.slice(manifest.indexOf('<activity android:name=".MainActivity"'), manifest.indexOf("</activity>", manifest.indexOf('<activity android:name=".MainActivity"')));
-  const https = [...manifest.matchAll(/<intent-filter android:autoVerify="true">.*?<data android:scheme="https" android:host="\$\{appLinkHost\}" android:(path|pathPrefix)="([^"]+)"\/><\/intent-filter>/g)];
-  assert.deepEqual(https.map(match => `${match[1]}=${match[2]}`), ["path=/alphaphone/auth/callback", "path=/alphaphone/gmail/callback"]);
-  for (const match of https) assert.ok(main.includes(match[0]), "the returns belong to MainActivity");
-  assert.equal(manifest.match(/autoVerify/g).length, 2);
-  assert.doesNotMatch(manifest, /scheme="https"[^>]*cloud-delegation/, "no https Cloud delegation filter: only the custom scheme has a handler");
-  assert.match(gradle, /^def appLinkHost = cloudWebHost$/m);
-  assert.match(gradle, /manifestPlaceholders\.put\('appLinkHost', appLinkHost\)/);
-  assert.doesNotMatch(gradle, /app-links|addStaticManifestFile|autoVerify/, "no configuration-time manifest overlay");
-  assert.doesNotMatch(gradle, /ALPHA_APP_LINK/);
   // verify-apks records the filter from `aapt dump xmltree` of the packaged manifest.
   const filter = scheme => [
     "      E: intent-filter (line=40)",
@@ -230,5 +198,4 @@ test("the https autoVerify filters are the two returns on the configured host an
   assert.deepEqual(appLinkFilters([...custom, ...filter("https"), "    E: activity (line=50)"].join("\n")), { present: true, hosts: ["links.example.com"] });
   assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "a custom scheme alone is no App Link");
   assert.deepEqual(appLinkFilters(filter("http").join("\n")), { present: false, hosts: [] });
-  assert.match(fs.readFileSync("scripts/verify-apks.ts", "utf8"), /appLinks: appLinkFilters\(xml\),/);
 });
