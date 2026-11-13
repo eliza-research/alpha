@@ -137,7 +137,9 @@ async function fixture(compiled) {
       assert.ok(request, 'Actual pending storageQuery call');
       request.task.settled = true;
       if (disposition === 'rejected') request.task.reject(Error('Injected query rejection'));
-      else request.task.resolve({status: disposition, entries: rows.map(row => files[row - 1])});
+      // Successful schedules supply complete provider results. Omitted metadata is incomplete.
+      else request.task.resolve({status: disposition, entries: rows.map(row => files[row - 1]),
+        ...(disposition === 'ready' ? {truncated: false} : {})});
     },
     clear(method) {
       if (method === 'back') assert.equal(view.back(local, api), true);
