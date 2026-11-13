@@ -79,7 +79,7 @@ flowchart LR
 - **Alpha** is the interface: Home, the built-in apps and the Ask Alpha bar.
 - **The resident agent** runs on the phone. It plans, calls tools, remembers and
   schedules.
-- **Eliza Cloud** supplies managed services: model inference, your subscription,
+- **Alpha Compute Cloud** supplies managed services: model inference, your subscription,
   Gmail, and optional Google Calendar and Maps. It never hosts your agent.
 
 Local speech does not mean an offline language model: text inference is hosted,
@@ -113,11 +113,6 @@ There is one launcher product/flavor with the resident runtime and on-device
 voice in every APK. The build keeps debug, release and instrumentation artifacts
 separate; only the launcher release is a distribution APK. Setup, signing and emulator testing are covered in the
 [developer guide](docs/development.md#android-builds).
-
-| Form         | What it is                                            |
-| ------------ | ----------------------------------------------------- |
-| **Launcher** | Alpha as your home screen.                            |
-| **Alpha OS** | A full phone image. Adds Phone, Contacts and SMS/MMS. |
 
 ## Contributing
 
