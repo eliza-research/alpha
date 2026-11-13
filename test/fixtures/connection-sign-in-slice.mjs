@@ -13,6 +13,7 @@ const ui = readFileSync(new URL('../../apps/app/src/runtime/connection-ui.tsx', 
 const between = (start, end) => { const from = ui.indexOf(start), to = ui.indexOf(end, from + start.length); assert.ok(from >= 0 && to > from, start); return ui.slice(from, to); };
 const plain = text => text.replaceAll(/^export /gm, '');
 const code = stripTypeScriptTypes([
+  between('let stoppedVoiceRead:', 'function cancelStoppedReply()'),
   between('let signInReadinessOwner: AbortSignal | null = null;', '/**\n * The verified optional sign-in methods'),
   between('async function inAppSignInMethods(', '/** A failed or cancelled step leaves'),
   between('function signInFailed(environment', '/** A verified interactive sign-in finishes'),
