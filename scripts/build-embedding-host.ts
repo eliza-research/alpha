@@ -79,7 +79,10 @@ export async function preparePortableNativeInputs(root:string) {
   prepareNativeSource(path.join(root,'vendor/eliza'),source,pin);
   const reference=path.join(root,'vendor/eliza',enginePath);
   const referenceHead=fs.existsSync(path.join(reference,'.git'))?spawnSync('git',['-C',reference,'rev-parse','HEAD'],{encoding:'utf8'}):null;
-  command('git',['submodule','update','--init','--recursive',...(referenceHead?.status===0&&referenceHead.stdout.trim()===recipe.engineCommit?['--reference',reference]:[]),enginePath],source);
+  const referenceShallow=referenceHead?.status===0?spawnSync('git',['-C',reference,'rev-parse','--is-shallow-repository'],{encoding:'utf8'}):null;
+  // Git cannot borrow objects from a shallow reference; fresh CI checkouts use one.
+  const useReference=referenceHead?.status===0&&referenceHead.stdout.trim()===recipe.engineCommit&&referenceShallow?.status===0&&referenceShallow.stdout.trim()==='false';
+  command('git',['submodule','update','--init','--recursive',...(useReference?['--reference',reference]:[]),enginePath],source);
   if(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:source,encoding:'utf8'}).trim())throw Error('Cached native producer source has tracked modifications');
   const fork=path.join(source,'plugins/plugin-local-inference/native/llama.cpp');
   const engineAlternates=execFileSync('git',['-C',fork,'rev-parse','--path-format=absolute','--git-path','objects/info/alternates'],{encoding:'utf8'}).trim();
