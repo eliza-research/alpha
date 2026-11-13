@@ -58,6 +58,21 @@ SettingsNav uses full `tlc` exploration of its finite historical design model.
 Its original row inventories, initializer, transition relation and invariants are
 retained; this historical comparison does not establish current runtime behavior.
 
+NotesView's selected Design proof requires the three history assertions on all
+paths. Its original fairness still guards progress. One stronger ASR obligation
+covers both recording and saved states: each original antecedent implies the
+combined antecedent, and the combined goal implies each original goal. It therefore
+proves both original progress properties, alongside unchanged review retirement.
+The individual historical properties remain available. Branch-local choices and
+history-relation evaluation preserve the original state transitions and domains.
+
+The [full qualification](https://github.com/eliza-research/alpha/actions/runs/43508291814)
+completed 8,398,068 states at depth 23 with an empty queue, two liveness branches,
+and the history assertions as an implied invariant. It retained the 1800-second,
+two-worker, 2 GiB limits and all original scenarios and sampling bounds. Separate
+negative controls detect false history, fair review without retirement, and fair
+ASR without progress. Full TLC output is retained in temporal receipts.
+
 BookmarksHydration also uses full `tlc`, retaining its finite queue, store-version
 and recovery domains. Its source replay remains a partial renderer contract with
 controlled browser ports, as described in its manifest.

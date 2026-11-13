@@ -260,7 +260,7 @@ async function runModel(model: QuintModel) {
     if (model.additionalProofInit) await run(model, `${backend}-additional-init`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
   }
   if (command === 'temporal' && model.temporal?.length) {
-    await run(model, `${backend}-temporal`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--temporal=${model.temporal.join(',')}`, '--verbosity=1']);
+    await run(model, `${backend}-temporal`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--temporal=${model.temporal.join(',')}`, backend.startsWith('tlc') ? '--verbosity=5' : '--verbosity=1']);
   }
   if (command === 'compare') {
     for (const property of model.currentChecks || []) {
