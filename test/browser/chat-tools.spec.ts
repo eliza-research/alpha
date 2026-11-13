@@ -3,7 +3,7 @@ import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {returnToApps} from './app-navigation';
 
 async function setup(page:Page){
-  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+  await page.addInitScript(()=>{if(!localStorage.getItem('alpha.connection.selection.v1'))localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));});
   await page.goto('/?mode=dev&tools=1');
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await openConnectionDiagnostics(page);

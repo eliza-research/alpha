@@ -1,3 +1,4 @@
+import {conversationReadPathAllowed} from '../apps/app/src/runtime/conversation-read-path.ts';
 import {isPreparedViewNavigationRequest} from '../apps/app/src/runtime/prepared-view-navigation.ts';
 import {parseViewInteractionClientId} from "../.eliza/client-features/packages/core/src/views/view-interact-protocol.ts";
 import {ownerRouteAllowed,ownerRouteGroup} from '../apps/app/src/runtime/owner-route-policy.ts';
@@ -16,7 +17,10 @@ export const LOCAL_AGENT_BRIDGE_PATH='/__alpha-local-agent';
 export const LOCAL_RENDERER_WS_PATH='/__alpha-local-renderer/ws';
 export const LOCAL_VOICE_WS_PATH='/__alpha-local-voice/ws';
 const LIMIT=2*1024*1024;
+// The agent chat endpoint accepts 20 MiB. Its JSON-string transport envelope can double that.
+const CHAT_REQUEST_LIMIT=20*1024*1024;
 const AUDIO_ENVELOPE_LIMIT=3*1024*1024;
+const ENVELOPE_LIMIT=CHAT_REQUEST_LIMIT*2+4096;
 const ASR_PATH='/api/asr/libelizainference';
 const TTS_PATH='/api/tts/paradee';
 const VOICE_PATH='/api/v1/voice/session';
@@ -61,6 +65,7 @@ function voiceControlResponse(kind:string,input:any,status:number,raw:string,ori
  return value;
 }
 export function localAgentPathAllowed(path:unknown):path is string {
+  if(conversationReadPathAllowed(path))return true;
   const group=ownerRouteGroup(path);
   if(group)return ['GET','POST','PUT','PATCH','DELETE'].some(method=>ownerRouteAllowed(group,path,method));
   if(typeof path!=='string'||path.length>2048||/[\\#%\r\n]/.test(path)||path.includes('..'))return false;
@@ -114,7 +119,7 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
     const onClose=()=>{if(!res.writableEnded)abort.abort();};res.on('close',onClose);
     try{
       const chunks:Buffer[]=[];let size=0;
-      for await(const chunk of req){size+=chunk.length;if(size>AUDIO_ENVELOPE_LIMIT){fail(413,'Request too large');return;}chunks.push(Buffer.from(chunk));}
+      for await(const chunk of req){size+=chunk.length;if(size>ENVELOPE_LIMIT){fail(413,'Request too large');return;}chunks.push(Buffer.from(chunk));}
       const input=JSON.parse(Buffer.concat(chunks).toString('utf8'));
       const conversationRenderer=input.path==='/api/views/renderer-channel';
       const renderer=conversationRenderer||input.path==='/api/views/voice-channel';
@@ -127,7 +132,8 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
       if(cloudSpeech&&options.cloudVoiceEnabled!==true){fail(400,'Developer Cloud speech is disabled');return;}
       const asr=directAsr||cloudAsr||input.path===ASR_PATH||input.path===ASR_PATH+'/status',tts=directTts||cloudTts||input.path===TTS_PATH||input.path===TTS_PATH+'/status';
       const speech=asr||tts,ttsAudio=(directTts||cloudTts||input.path===TTS_PATH)&&input.method==='POST';
-      if(size>LIMIT&&!((directAsr||cloudAsr||input.path===ASR_PATH)&&input.method==='POST')){fail(413,'Request too large');return;}
+      const chatUpload=input.method==='POST'&&/^\/api\/conversations\/[A-Za-z0-9_-]+\/messages(?:\/stream)?$/.test(input.path)&&typeof input.body==='string'&&Buffer.byteLength(input.body,'utf8')<=CHAT_REQUEST_LIMIT;
+      if(size>(chatUpload?ENVELOPE_LIMIT:((directAsr||cloudAsr||input.path===ASR_PATH)&&input.method==='POST'?AUDIO_ENVELOPE_LIMIT:LIMIT))){fail(413,'Request too large');return;}
       if(input.storage){const result=localAgentStorage(join(dirname(options.tokenFile),'browser-device'),input.storage);res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(result));return;}
       let preparedNavigation=false;
       if(typeof input.body==='string'){
@@ -135,6 +141,7 @@ export function createLocalAgentDevHandler(options:{origin:string;tokenFile:stri
       }
       const group=ownerRouteGroup(input.path);
       if((!renderer&&!voice&&!cloudSpeech&&!directTts&&!directAsr&&!localAgentPathAllowed(input.path)&&!preparedNavigation)||(group?!ownerRouteAllowed(group,input.path,input.method)||typeof input.ownerId!=='string'||!input.ownerId.trim():!['GET','POST'].includes(input.method))||
+         (conversationReadPathAllowed(input.path)&&input.method!=='GET')||
          (trajectoryReadAllowed(input.path)&&(input.method!=='GET'||typeof input.ownerId!=='string'||!input.ownerId.trim()))||
          ((input.path.startsWith('/api/views/')||input.path.endsWith('/messages/truncate'))&&(input.method!=='POST'||typeof input.ownerId!=='string'||!input.ownerId.trim()))||
          (input.body!==undefined&&typeof input.body!=='string')||

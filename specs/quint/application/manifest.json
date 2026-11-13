@@ -3882,5 +3882,27 @@
       "Browser-only read-only Home projection, two accounts and agents, one day boundary and one pending write. Credential changes invalidate pending writes.",
       "Existing authenticated source owners and native secure caches still authorize all data and actions. Browser first-paint timing needs separate live inspection."
     ]
+  },
+  {
+    "path": "specs/quint/application/ChatTools.qnt",
+    "module": "ChatTools",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pickerRetiredTest",
+      "lateSearchTest",
+      "closeCancelsSearchTest",
+      "currentSearchTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/chat-tools-adapter.ts",
+      "apps/app/src/browser/file-picker.ts",
+      "apps/app/src/runtime/conversation-read-path.ts",
+      "apps/app/src/runtime/connection-ui.tsx"
+    ],
+    "abstractions": [
+      "Three owner generations, one file and one pending search. Existing ChatAttachments covers send and saved history. Live browser and Android routing checks remain separate."
+    ]
   }
 ]

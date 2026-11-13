@@ -744,7 +744,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         this.startupDraft=null;
         cancelMessageContext(this);
         this.cancelVoiceScrollFollow();
-        this.closeSummaryReview?.();this.chatImagePreview=null;this.cameraAttachment=null;this.reviewedSourceDraft=null;this.transcriptAttachment=null;this.mailAttachment=null;
+        this.closeSummaryReview?.();this.chatImagePreview=null;this.cameraAttachment=null;this.reviewedSourceDraft=null;this.transcriptAttachment=null;this.mailAttachment=null;this.fileAttachments=[];
         clearMapsSelection();
         this.connectionSession = session;
         alphaClient.disconnect();
@@ -762,7 +762,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           if(!this.live||connectionController.getSnapshot().history!==history)return;
           this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>{
             const saved=messages.find(item=>item.id===message.id);
-            return saved?{...message,...(message.text===history.messages.find(item=>item.id===message.id)?.text?{text:saved.text}:{}),transcriptAttachment:saved.transcriptAttachment,cameraAttachment:saved.cameraAttachment,mailAttachment:saved.mailAttachment}:message;
+            return saved?{...message,...(message.text===history.messages.find(item=>item.id===message.id)?.text?{text:saved.text}:{}),transcriptAttachment:saved.transcriptAttachment,cameraAttachment:saved.cameraAttachment,mailAttachment:saved.mailAttachment,fileAttachments:saved.fileAttachments}:message;
           })}));
         }).catch(()=>this.toast('Saved attachments could not load. Try reopening this conversation.'));
 
@@ -1767,7 +1767,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if (!this.live||!sameChat()) return;
       const identity=reply.messageBinding;
       if(sentAttachment&&identity&&reply.userMessageId&&(mail||transcript||sentAttachment.cameraAttachment||sentAttachment.fileAttachments.length)){
-        await saveAttachment(identity.session,identity.conversationId,reply.userMessageId,sentAttachment);
+        // Restored rows prefer clientMessageId, including the first send that created this chat.
+        await saveAttachment(identity.session,identity.conversationId,userId,sentAttachment);
+        if(reply.userMessageId!==userId)await saveAttachment(identity.session,identity.conversationId,reply.userMessageId,sentAttachment);
       }
 
       const planCard=planActionCard(reply.planAction);

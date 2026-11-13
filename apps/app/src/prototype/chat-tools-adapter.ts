@@ -80,9 +80,25 @@ export function installChatTools(Component: {prototype: Shell}) {
         shell.setState({});
         return;
       }
-      const ownerSession=JSON.stringify(connectionController.getSnapshot().session);
-      if (!existing) await connectionController.restoreHistory(result.conversationId, () => shell.live && shell.chatSearchOpen && JSON.stringify(connectionController.getSnapshot().session) === ownerSession, result.messageId);
-      if (!shell.live || connectionController.getSelectedConversationId() !== result.conversationId) return;
+      const ownerSession = JSON.stringify(connectionController.getSnapshot().session);
+      try {
+        if (!existing) {
+          await connectionController.restoreHistory(result.conversationId,
+            () => shell.live && shell.chatSearchOpen && JSON.stringify(connectionController.getSnapshot().session) === ownerSession,
+            result.messageId);
+        }
+        if (!shell.live || !shell.chatSearchOpen || JSON.stringify(connectionController.getSnapshot().session) !== ownerSession) return;
+        if (connectionController.getSelectedConversationId() !== result.conversationId
+          || !document.querySelector(`[data-alpha-message-id="${CSS.escape(result.messageId)}"]`)) {
+          throw Error('This message could not be opened. Try the search again.');
+        }
+      } catch (error) {
+        if (shell.live && shell.chatSearchOpen && JSON.stringify(connectionController.getSnapshot().session) === ownerSession) {
+          shell.chatSearchError = error instanceof Error ? error.message : 'This message could not be opened.';
+          shell.setState({});
+        }
+        return;
+      }
       closeSearch();
       shell.setState({chat:'full'}, () => requestAnimationFrame(() => {
         const target = document.querySelector<HTMLElement>(`[data-alpha-message-id="${CSS.escape(result.messageId)}"]`);
