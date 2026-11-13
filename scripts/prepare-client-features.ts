@@ -321,12 +321,6 @@ export const CLIENT_FEATURE_PATCHES = [];
 /** Copy authenticated upstream source outside the immutable vendor checkout. With check, only
  * confirm the prepared copy is current and throw instead of rebuilding it. */
 export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false }: PrepareOptions = {}) {
-  for (const prefix of ['app-update-resume-client', 'managed-google-body-limit-client']) {
-    for (const suffix of ['.patch', '-manifest.json']) {
-      const retired = path.join(root, 'patches/eliza', prefix + suffix);
-      if (regularPath(retired)) throw Error('Retired client patch slot: ' + prefix);
-    }
-  }
   const upstream = upstreamNativeSource(root);
   const source = new Map(upstream.readAll(CLIENT_FEATURE_PATHS).flatMap(files => [...files]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));

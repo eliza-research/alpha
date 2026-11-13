@@ -43,7 +43,7 @@ const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', 
 const modelFamilies = ['application', 'services', 'native', 'legacy'] as const;
 type ModelFamily = (typeof modelFamilies)[number];
 type ExpectedCheck = 'pass' | 'violation';
-export type QuintProofBackend = 'apalache' | 'tlc';
+export type QuintProofBackend = 'apalache' | 'tlc' | 'tlc-bounded';
 interface ModelCheck {
   init: string;
   step: string;
@@ -187,13 +187,14 @@ export function quintModelOptions(model: ModelDefinition, command: string = 'che
 }
 
 export function quintProofBackend(model: Pick<ModelDefinition, 'verifyBackend'>, command: string, override?: QuintProofBackend): QuintProofBackend {
+  if (override === 'tlc-bounded' && command !== 'verify') throw Error('tlc-bounded supports safety verification only');
   if (override) return override;
   if (command === 'temporal' || command === 'compare') return 'tlc';
   return command === 'verify' ? model.verifyBackend ?? 'apalache' : 'apalache';
 }
 
 export function validateQuintModelMetadata(model: ModelDefinition, text: string) {
-  if (model.verifyBackend !== undefined && model.verifyBackend !== 'apalache' && model.verifyBackend !== 'tlc') {
+  if (model.verifyBackend !== undefined && !['apalache', 'tlc', 'tlc-bounded'].includes(model.verifyBackend)) {
     throw Error(`Invalid verifyBackend in ${model.module}`);
   }
   for (const test of model.tests) if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(test)) throw Error(`Invalid scenario ${model.module}.${test}`);
@@ -225,6 +226,35 @@ export function validateQuintModelMetadata(model: ModelDefinition, text: string)
     && declaration.name === model.additionalProofInit && declaration.qualifier === 'action')) {
     throw Error(`Missing additional proof init ${model.module}.${model.additionalProofInit}`);
   }
+}
+
+export interface BoundedTlcEvidence {
+  scope: 'safety-through-transition-bound';
+  depth: number;
+  translatedSourceSha256: string;
+  instrumentedSourceSha256: string;
+  configurationSha256: string;
+}
+
+/** Retain every original declaration and check all states at depths 0 through depth. */
+export function boundedTlcSpec(source: string, depth: number) {
+  if (!Number.isSafeInteger(depth) || depth < 1) throw Error('Bounded TLC depth must be a positive integer');
+  if (/\bq_bounded_(?:depth|init|next)\b/.test(source)) throw Error('Bounded TLC namespace collision');
+  const endings = [...source.matchAll(/^={4,}[ \t]*\r?$/gm)];
+  if (endings.length !== 1 || source.slice(endings[0].index! + endings[0][0].length).trim()) {
+    throw Error('Expected one complete translated TLA module');
+  }
+  for (const name of ['q_init', 'q_step', 'q_inv']) {
+    if (!new RegExp(`^${name}[ \\t]*==`, 'm').test(source)) throw Error(`Missing translated ${name}`);
+  }
+  const index = endings[0].index!;
+  const declarations = `\nVARIABLE q_bounded_depth\n\nq_bounded_init == q_init /\\ q_bounded_depth = 0\n\nq_bounded_next == /\\ q_bounded_depth < ${depth}\n                  /\\ q_step\n                  /\\ q_bounded_depth' = q_bounded_depth + 1\n\n`;
+  const instrumented = source.slice(0, index) + declarations + source.slice(index);
+  const configuration = 'INIT q_bounded_init\nNEXT q_bounded_next\nINVARIANT q_inv\n';
+  const evidence: BoundedTlcEvidence = {scope: 'safety-through-transition-bound', depth,
+    translatedSourceSha256: sha256(source), instrumentedSourceSha256: sha256(instrumented),
+    configurationSha256: sha256(configuration)};
+  return {source: instrumented, configuration, evidence};
 }
 
 export function loadModels(): QuintModel[] {

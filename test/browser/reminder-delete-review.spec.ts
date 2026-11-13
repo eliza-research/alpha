@@ -5,7 +5,7 @@ async function setup(page:Page){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.clock.install({time:new Date('2027-03-13T00:00Z')});await page.goto('/');await page.getByRole('button',{name:'Calendar',exact:true}).waitFor();
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').scheduleReminder({id:'delete-boundary',title:'Delete boundary reminder',at:Date.parse('2027-03-13T14:00Z')});});
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Delete boundary reminder,/}).click();
+ await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).press('Enter');await page.getByRole('button',{name:/^Delete boundary reminder,/}).click();
 }
 const read=(page:Page)=>page.evaluate(async()=>JSON.parse((await(await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!));
 for(const mode of ['fresh','stale','response-loss','staging-loss','navigate','legacy','late-stale','reload-loss'])test(`reviewed reminder deletion ${mode}`,async({page})=>{
@@ -40,7 +40,7 @@ for(const mode of ['fresh','stale','response-loss','staging-loss','navigate','le
 });
 for(const width of [412,1440])test(`two browser tabs retain separate Undo intents at width ${width}`,async({page,context},info)=>{
  await page.setViewportSize({width,height:915});await setup(page);await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').scheduleReminder({id:'tab-two',title:'Second tab reminder',at:Date.parse('2027-03-13T14:00Z')});});
- const second=await context.newPage();await second.setViewportSize({width,height:915});await second.clock.install({time:new Date('2027-03-13T00:00Z')});await second.goto('/');await second.getByRole('button',{name:'Calendar',exact:true}).click();await second.getByRole('button',{name:/^Second tab reminder,/}).click();
+ const second=await context.newPage();await second.setViewportSize({width,height:915});await second.clock.install({time:new Date('2027-03-13T00:00Z')});await second.goto('/');await second.getByRole('button',{name:'Calendar',exact:true}).press('Enter');await second.getByRole('button',{name:/^Second tab reminder,/}).click();
  for(const tab of [page,second]){await chooseCalendarEventAction(tab, 'Delete event');await tab.getByRole('dialog',{name:'Delete reminder?',exact:true}).getByRole('button',{name:'Delete reminder',exact:true}).click();}
  await expect.poll(async()=>Object.keys((await read(page)).deletions).length).toBe(2);
  const panel=page.getByRole('complementary',{name:'Pending deletions'});await expect(panel.getByRole('button',{name:'Undo',exact:true})).toHaveCount(2);await page.screenshot({path:info.outputPath('pending-undo.png')});

@@ -1,4 +1,5 @@
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
@@ -7,10 +8,12 @@ import {buildSync} from 'esbuild';
 import {captureInputs} from '../check-traces.mjs';
 
 export const root = fileURLToPath(new URL('../../../../', import.meta.url));
-const captured = new Map();
+// Freeze global model/checker inputs once; checkTraces still revalidates every input.
+const captured = new Map(Object.entries(captureInputs([])));
 export function captureSources(paths) {
-  for (const [path, hash] of Object.entries(captureInputs(paths.map(path => resolve(root, path))))) {
-    if (!captured.has(path)) captured.set(path, hash);
+  for (const source of paths) {
+    const path = resolve(root, source);
+    if (!captured.has(path)) captured.set(path, createHash('sha256').update(readFileSync(path)).digest('hex'));
   }
 }
 captureSources(['specs/quint/refinement/application/support.mjs', 'specs/quint/refinement/check-traces.mjs',

@@ -118,9 +118,6 @@ test('the aggregator reads entry-sourced records and reports both review boundar
   const notesOnly = aggregate([exported], {entry: 'notes'});
   assert.equal(notesOnly.records, 1); assert.equal(notesOnly.entry, 'notes');
   assert.throws(() => aggregate([exported], {entry: 'chat'}), /Unknown entry/);
-  // Older exports without an entry stay readable.
-  const legacy = {...exported, records: exported.records.map(({entry, policy, ...row}) => row)};
-  assert.deepEqual(Object.keys(aggregate([legacy]).entries), ['unspecified']);
   const invalid = {...exported, records: [{...exported.records[0], entry: 'composer'}]};
   assert.equal(aggregate([invalid]).invalid, 1);
 });

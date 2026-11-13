@@ -1,8 +1,9 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
+import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
-import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, sha256, type CheckerResult, type QuintModel } from './quint-lib.ts';
+import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, sha256, type BoundedTlcEvidence, type CheckerResult, type QuintModel } from './quint-lib.ts';
 
 const args = process.argv.slice(2);
 const commands = ['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal', 'compare'] as const;
@@ -31,7 +32,7 @@ const overrides = Object.fromEntries(['samples', 'steps', 'seed'].filter(name =>
   .map(name => [name, name === 'seed' ? value(name) : positiveInteger(name)]));
 const requestedBackend = value('backend');
 const serverEndpoint = value('server-endpoint', '127.0.0.1:8845');
-if (requestedBackend !== undefined && requestedBackend !== 'apalache' && requestedBackend !== 'tlc') throw Error('Verification backend must be apalache or tlc');
+if (requestedBackend !== undefined && requestedBackend !== 'apalache' && requestedBackend !== 'tlc' && requestedBackend !== 'tlc-bounded') throw Error('Verification backend must be apalache, tlc or tlc-bounded');
 const backendOption = requestedBackend;
 const allModels = loadModels();
 const requested = value('models', '').split(',').filter(Boolean);
@@ -66,6 +67,7 @@ type CheckEvidence = {
   missingScenarios?: string[];
   modelSha256: string;
   output: string;
+  boundedProof?: BoundedTlcEvidence;
 };
 type Receipt = {
   schemaVersion: number;
@@ -92,7 +94,8 @@ type Receipt = {
 };
 const proofEvidence = {
   tlc: 'finite-state model checking', apalache: 'bounded symbolic model checking',
-  mixed: 'finite-state and bounded symbolic model checking',
+  'tlc-bounded': 'exhaustive safety checking through the recorded transition bound',
+  mixed: 'model checking with each phase recording its backend and proof scope',
 };
 const receipt: Receipt = { schemaVersion: 1, startedAt: new Date().toISOString(), command, quintVersion: version,
   evidence: checking ? proofEvidence[receiptBackend] : {
@@ -112,9 +115,9 @@ const interrupt = () => {
   process.exit(130);
 };
 
-function runCommand(argv: string[], commandTimeoutSeconds = timeoutSeconds): Promise<CheckerResult> {
+function runCommand(argv: string[], commandTimeoutSeconds = timeoutSeconds, executable = process.execPath): Promise<CheckerResult> {
   return new Promise(resolveResult => {
-    const child = spawn(process.execPath, argv, {
+    const child = spawn(executable, argv, {
       cwd: repositoryRoot, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32',
     });
     let stdout = '', stderr = '';
@@ -156,23 +159,73 @@ function runCommand(argv: string[], commandTimeoutSeconds = timeoutSeconds): Pro
   });
 }
 
+async function runBoundedTlc(options: string[]): Promise<CheckerResult & {boundedProof?: BoundedTlcEvidence}> {
+  const depth = Number(options.find(option => option.startsWith('--max-steps='))?.slice('--max-steps='.length));
+  const deadline = Date.now() + timeoutSeconds * 1000;
+  // Compilation may reuse a server with a different local cache. Provision TLC's
+  // pinned distribution independently, within the same owned phase deadline.
+  const bootstrap = await runCommand(['--eval', `
+    const {fetchApalache} = require('@informalsystems/quint/dist/src/apalache.js');
+    fetchApalache('0.62.4', 0).then(result => {
+      if (result.isLeft()) { console.error(result.value.explanation); process.exitCode = 1; }
+    }).catch(error => { console.error(error); process.exitCode = 1; });
+  `], Math.max(0, (deadline - Date.now()) / 1000));
+  if (bootstrap.status !== 0 || bootstrap.signal || bootstrap.error) return bootstrap;
+  const compileOptions = options.slice(1).filter(option => !['--backend=', '--max-steps=', '--verbosity=', '--tlc-config='].some(prefix => option.startsWith(prefix)));
+  const compiled = await runCommand([cli, 'compile', ...compileOptions, '--target=tlaplus', '--verbosity=0'], Math.max(0, (deadline - Date.now()) / 1000));
+  if (compiled.status !== 0 || compiled.signal || compiled.error) return compiled;
+  const spec = boundedTlcSpec(compiled.stdout || '', depth);
+  const config = readJson<{workers: number | string; maxHeap: string; stackSize: string}>(join(repositoryRoot, 'specs/quint/tlc.json'));
+  if (!config.workers || !config.maxHeap || !config.stackSize) throw Error('Bounded TLC requires configured workers, maxHeap and stackSize');
+  const require = createRequire(import.meta.url);
+  const {apalacheDistDir} = require('@informalsystems/quint/dist/src/config.js') as {apalacheDistDir(version: string): string};
+  const jar = join(apalacheDistDir('0.62.4'), 'apalache/lib/apalache.jar');
+  const name = options.find(option => option.startsWith('--main='))?.slice('--main='.length);
+  if (!name || !/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) throw Error('Bounded TLC requires a module name');
+  const temporary = mkdtempSync(join(tmpdir(), 'alpha-quint-bounded-'));
+  const removeTemporary = () => rmSync(temporary, {recursive: true, force: true});
+  process.once('exit', removeTemporary);
+  try {
+    const file = join(temporary, `${name}.tla`);
+    writeFileSync(file, spec.source);
+    writeFileSync(join(temporary, `${name}.cfg`), spec.configuration);
+    const java = process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin', process.platform === 'win32' ? 'java.exe' : 'java') : 'java';
+    const result = await runCommand([config.maxHeap, config.stackSize, `-Djava.io.tmpdir=${temporary}`, '-cp', jar,
+      'tlc2.TLC', '-deadlock', '-workers', String(config.workers), '-metadir', temporary, file],
+    Math.max(0, (deadline - Date.now()) / 1000), java);
+    const output = `${result.stdout || ''}${result.stderr || ''}`;
+    const complete = output.includes('Model checking completed. No error has been found.')
+      && /[\d,]+ states generated, [\d,]+ distinct states found, 0 states left on queue\./.test(output);
+    if (result.status === 0 && !complete && !result.error) result.error = Error('TLC did not report a completed bounded graph');
+    const violation = result.status === 12 && !result.error && !result.signal && /Invariant q_inv is violated\./.test(output);
+    const conclusion = violation ? '[violation] Found an issue\nerror: found a counterexample\n'
+      : result.status !== 0 || result.error || result.signal ? '[failure] Bounded TLC did not complete successfully\n' : '';
+    return {...result, stdout: `${bootstrap.stdout || ''}${result.stdout || ''}${conclusion}`, stderr: `${bootstrap.stderr || ''}${compiled.stderr || ''}${result.stderr || ''}`,
+      boundedProof: spec.evidence};
+  } finally {
+    process.removeListener('exit', removeTemporary);
+    removeTemporary();
+  }
+}
+
 async function run(model: QuintModel, phase: string, options: string[], expected = 'pass') {
   if (options[0] === 'verify') options.push(`--server-endpoint=${serverEndpoint}`, '--apalache-version=0.62.4', '--tlc-config=specs/quint/tlc.json');
   const argv = [cli, ...options];
   const modelSha256 = sha256(readFileSync(join(repositoryRoot, model.path)));
   const startedAt = new Date().toISOString();
-  const {result, interruptedAttempt} = await runQuintChecker(() => runCommand(argv));
+  const backend = options[0] === 'verify' ? options.find(option => option.startsWith('--backend='))?.slice('--backend='.length) : undefined;
+  const {result, interruptedAttempt} = await runQuintChecker(() => backend === 'tlc-bounded' ? runBoundedTlc(options) : runCommand(argv));
   const output = `${result.stdout || ''}${result.stderr || ''}`;
   const violation = detectedCounterexample(output);
   const modelChanged = modelSha256 !== sha256(readFileSync(join(repositoryRoot, model.path)));
   const completed = Number.isInteger(result.status) && !result.signal && !result.error;
   const missingScenarios = phase === 'scenarios' ? missingQuintScenarios(model.tests, output) : [];
   const passed = !modelChanged && completed && !missingScenarios.length && (expected === 'violation' ? result.status !== 0 && violation : result.status === 0);
-  const backend = options[0] === 'verify' ? options.find(option => option.startsWith('--backend='))?.slice('--backend='.length) : undefined;
+  const boundedProof = 'boundedProof' in result ? result.boundedProof as BoundedTlcEvidence : undefined;
   receipt.results.push({ model: model.module, phase, backend, expected, passed, exitCode: result.status,
     startedAt, finishedAt: new Date().toISOString(), signal: result.signal, interruptedAttempt,
     error: modelChanged ? 'Model changed while its checker was running' : result.error?.message,
-    argv: options, modelSha256, missingScenarios, output });
+    argv: options, modelSha256, missingScenarios, output, boundedProof });
   console.log(`${passed ? 'PASS' : 'FAIL'} ${model.module} ${phase}${expected === 'violation' ? ' (counterexample required)' : ''}`);
   if (interruptedAttempt) console.log(`Retried ${model.module} ${phase} after checker signal ${interruptedAttempt.signal}`);
   if (!passed) {
@@ -198,7 +251,7 @@ async function runModel(model: QuintModel) {
     }
   }
   if (command === 'verify') {
-    await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, backend === 'tlc' ? '--verbosity=5' : '--verbosity=1']);
+    await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, backend.startsWith('tlc') ? '--verbosity=5' : '--verbosity=1']);
     if (model.additionalProofInit) await run(model, `${backend}-additional-init`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
   }
   if (command === 'temporal' && model.temporal?.length) {

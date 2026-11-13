@@ -11,7 +11,7 @@ import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {AGENT_MODEL,agentModelEnvironment} from './agent-model.ts';
 import {AGENT_CHARACTER_ENVIRONMENT,freshAgentProfile,prepareAgentIdentityConfig} from './agent-identity.ts';
-import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment,reportMissingEmbeddingRoute} from './agent-embeddings.ts';
+import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment} from './agent-embeddings.ts';
 import {sourceDirectory} from './local-agent-source.ts';
 // Inputs are flags, not product-specific environment names. The default source is the
 // prepared tree of the pinned commit (vendor/eliza itself has no installed dependencies and is
@@ -39,7 +39,6 @@ if (!fs.existsSync(entry)) throw new Error('Eliza app host source is missing');
 const config = path.join(profile,'eliza.json');
 if (!fs.existsSync(config)) fs.writeFileSync(config, JSON.stringify({cloud:{enabled:false}, serviceRouting:{llmText:{backend:'cerebras',transport:'direct',smallModel:AGENT_MODEL,largeModel:AGENT_MODEL},embeddings:{...LOCAL_EMBEDDING_ROUTE}},plugins:{entries:{scheduling:{enabled:false},'personal-assistant':{enabled:false}}}})+'\n', {mode:0o600, flag:'wx'});
 const savedConfig=await prepareAgentIdentityConfig(config,JSON.parse(fs.readFileSync(config,'utf8')),{freshProfile}), modelEnvironment=agentModelEnvironment(savedConfig);
-reportMissingEmbeddingRoute(savedConfig,config);
 const log = fs.openSync(path.join(profile,'server.log'), 'a', 0o600);
 fs.fchmodSync(log, 0o600);
 const baseEnv = Object.fromEntries(['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));

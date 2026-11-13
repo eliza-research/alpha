@@ -30,7 +30,6 @@ android {
  }
  defaultConfig {
   manifestPlaceholders.put('appLinkHost', appLinkHost)
-  manifestPlaceholders.put('stagingCloudWebHost', stagingCloudWebHost)
   manifestPlaceholders.put('alphaUpdateChannel', 'public')
   manifestPlaceholders.put('alphaUpdateManifestSha256', 'sha256:' + updateManifestSha256)
   // Constant: the value the resident agent is launched with (AlphaLocalAgentPlugin).

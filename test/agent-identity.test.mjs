@@ -41,9 +41,6 @@ test('an explicitly pinned existing identity presents as the product without its
  assert.equal(r.after,r.before);
  assert.deepEqual(r.child.config,JSON.parse(r.before));
  assert.deepEqual(JSON.parse(r.child.character),AGENT_CHARACTER);
- // Reviewed routing is never migrated silently; the omitted embedding route is reported for review.
- assert.match(r.error,/serviceRouting omits embeddings/);
- assert.match(r.error,new RegExp(JSON.stringify(LOCAL_EMBEDDING_ROUTE).replace(/[{}"]/g,'\\$&')));
 });
 
 test('a new profile routes embeddings on-device and the child learns where the fused library is staged',()=>{
@@ -52,7 +49,6 @@ test('a new profile routes embeddings on-device and the child learns where the f
  assert.deepEqual(r.child.config.serviceRouting.embeddings,{...LOCAL_EMBEDDING_ROUTE});
  assert.deepEqual(JSON.parse(r.child.character),AGENT_CHARACTER);
  assert.equal(r.child.libDir,path.join(os.homedir(),'.local/state/eliza/local-inference/lib'));
- assert.doesNotMatch(r.error,/serviceRouting omits embeddings/);
 });
 
 test('the combined launcher refuses the pinned vendor tree whatever directory it is started from',()=>{

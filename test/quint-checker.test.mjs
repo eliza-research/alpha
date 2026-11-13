@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
+import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
+import { scaledTimeout } from '../specs/quint/refinement/timeouts.mjs';
 
 test('all registered scenarios need an actual successful execution record', () => {
   assert.deepEqual(missingQuintScenarios(['reviewTest', 'setup'], '\u001b[32m    ok reviewTest passed 1 test(s)\u001b[0m\n    ok setup passed 3 test(s)\n'), []);
@@ -33,13 +35,141 @@ test('manifest budgets and extra proof initializers cannot silently disappear', 
 test('verification backend honors explicit overrides and preserves other proof defaults', () => {
   assert.equal(quintProofBackend({}, 'verify'), 'apalache');
   assert.equal(quintProofBackend({verifyBackend: 'tlc'}, 'verify'), 'tlc');
+  assert.equal(quintProofBackend({verifyBackend: 'tlc-bounded'}, 'verify'), 'tlc-bounded');
   assert.equal(quintProofBackend({verifyBackend: 'tlc'}, 'verify', 'apalache'), 'apalache');
   for (const phase of ['compare', 'temporal']) {
     assert.equal(quintProofBackend({verifyBackend: 'apalache'}, phase), 'tlc');
     assert.equal(quintProofBackend({verifyBackend: 'tlc'}, phase, 'apalache'), 'apalache');
+    assert.equal(quintProofBackend({verifyBackend: 'tlc-bounded'}, phase), 'tlc');
+    assert.throws(() => quintProofBackend({}, phase, 'tlc-bounded'), /safety verification only/);
   }
   assert.throws(() => validateQuintModelMetadata({module: 'Fixture', tests: ['exampleTest'], verifyBackend: 'unknown'}, ''),
     /Invalid verifyBackend/);
+});
+
+test('bounded TLC preserves original declarations and refuses invalid bounds or namespaces', () => {
+  const source = '---- MODULE Fixture ----\nVARIABLE n\nq_init == n = 0\nq_step == n\' = n + 1\nq_inv == n < 7\n====\n';
+  const spec = boundedTlcSpec(source, 6);
+  assert.ok(spec.source.startsWith(source.slice(0, source.indexOf('===='))));
+  assert.match(spec.source, /q_bounded_init == q_init \/\\ q_bounded_depth = 0/);
+  assert.match(spec.source, /q_bounded_depth < 6[\s\S]*q_step[\s\S]*q_bounded_depth' = q_bounded_depth \+ 1/);
+  assert.equal(spec.configuration, 'INIT q_bounded_init\nNEXT q_bounded_next\nINVARIANT q_inv\n');
+  assert.deepEqual(spec.evidence, {scope: 'safety-through-transition-bound', depth: 6,
+    translatedSourceSha256: sha256(source), instrumentedSourceSha256: sha256(spec.source), configurationSha256: sha256(spec.configuration)});
+  for (const depth of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => boundedTlcSpec(source, depth), /positive integer/);
+  }
+  for (const name of ['q_bounded_depth', 'q_bounded_init', 'q_bounded_next']) {
+    assert.throws(() => boundedTlcSpec(source.replace('VARIABLE n', `VARIABLE ${name}`), 6), /namespace collision/);
+  }
+  for (const name of ['q_init', 'q_step', 'q_inv']) {
+    assert.throws(() => boundedTlcSpec(source.replace(name, 'missing'), 6), /Missing translated/);
+  }
+  for (const invalid of [source.replace('====\n', ''), source + 'untranslated content', source + source]) {
+    assert.throws(() => boundedTlcSpec(invalid, 6), /complete translated TLA module/);
+  }
+});
+
+test('bounded TLC CLI includes the boundary, retains selected init and rejects tool errors', {timeout: scaledTimeout(780000)}, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'alpha-quint-bounded-owner-'));
+  const write = (path, contents) => {
+    const target = join(root, path);
+    mkdirSync(dirname(target), {recursive: true});
+    writeFileSync(target, contents);
+  };
+  const listener = createServer();
+  listener.listen(0, '127.0.0.1');
+  await once(listener, 'listening');
+  const endpoint = `127.0.0.1:${listener.address().port}`;
+  await new Promise(resolve => listener.close(resolve));
+  try {
+    for (const path of [...sourceRoots, 'scripts']) mkdirSync(join(root, path), {recursive: true});
+    for (const name of ['check-quint.ts', 'quint-lib.ts']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    symlinkSync(join(repositoryRoot, 'node_modules'), join(root, 'node_modules'), 'dir');
+    write('upstream.lock.json', JSON.stringify({commit: 'fixture'}));
+    write('bun.lock', '{}');
+    mkdirSync(join(root, 'specs/quint'), {recursive: true});
+    copyFileSync(join(repositoryRoot, 'specs/quint/tlc.json'), join(root, 'specs/quint/tlc.json'));
+    const model = {module: 'BoundedFixture', path: 'specs/quint/application/BoundedFixture.qnt', init: 'init', step: 'step', invariant: 'safety', tests: ['exampleTest'], verifyBackend: 'tlc-bounded'};
+    for (const family of ['application', 'services', 'native', 'legacy']) write(`specs/quint/${family}/manifest.json`, JSON.stringify(family === 'application' ? [model] : []));
+    const source = limit => `module BoundedFixture { var n: int var retained: bool action init = all {n' = 0, retained' = true} action selectedInit = all {n' = 5, retained' = true} action step = all {n' = n + 1, retained' = retained} val safety = n < ${limit} and retained run exampleTest = init.expect(n == 0) }\n`;
+    const run = (depth, expected, failureDepth, env = process.env) => {
+      const result = spawnSync(process.execPath, ['scripts/check-quint.ts', 'verify', '--models=BoundedFixture', `--steps=${depth}`,
+        `--server-endpoint=${endpoint}`, `--timeout=${Math.ceil(scaledTimeout(120000) / 1000)}`, '--out=proof.json'],
+      {cwd: root, encoding: 'utf8', timeout: scaledTimeout(150000), env});
+      assert.equal(result.error, undefined, result.error?.message);
+      const proof = readJson(join(root, 'proof.json'));
+      assert.equal(result.status, expected === 'pass' ? 0 : 1, result.stdout + result.stderr);
+      assert.equal(proof.backend, 'tlc-bounded');
+      assert.deepEqual(proof.finalInputErrors, []);
+      const phase = proof.results[0];
+      assert.equal(phase.boundedProof.scope, 'safety-through-transition-bound');
+      assert.equal(phase.boundedProof.depth, depth);
+      assert.equal(phase.passed, expected === 'pass');
+      if (expected === 'pass') {
+        assert.match(phase.output, /0 states left on queue/);
+      } else {
+        assert.equal(phase.exitCode, 12);
+        assert.equal(detectedCounterexample(phase.output), true);
+        const counters = [...phase.output.matchAll(/q_bounded_depth = (\d+)/g)].map(match => Number(match[1]));
+        assert.equal(counters.at(-1), failureDepth);
+        assert.equal(Math.max(...counters), failureDepth);
+      }
+      return phase;
+    };
+    write(model.path, source(6));
+    run(6, 'violation', 6);
+    write(model.path, source(7));
+    run(6, 'pass');
+    run(7, 'violation', 7);
+    write(model.path, source(6));
+    write('specs/quint/application/manifest.json', JSON.stringify([{...model, init: 'selectedInit'}]));
+    assert.ok(run(1, 'violation', 1).argv.includes('--init=selectedInit'));
+    // A reusable translation server must not hide a missing local TLC JAR.
+    const require = createRequire(import.meta.url);
+    const {apalacheDistDir} = require('@informalsystems/quint/dist/src/config.js');
+    const warmJar = join(apalacheDistDir('0.62.4'), 'apalache/lib/apalache.jar');
+    const java = process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin', process.platform === 'win32' ? 'java.exe' : 'java') : 'java';
+    const server = spawn(java, ['-Xmx512m', '-jar', warmJar, 'server', `--port=${endpoint.split(':')[1]}`], {stdio: ['ignore', 'pipe', 'pipe']});
+    const stopServer = () => server.kill('SIGKILL');
+    process.once('exit', stopServer);
+    let serverOutput = '';
+    server.stdout.on('data', chunk => {serverOutput += chunk;});
+    server.stderr.on('data', chunk => {serverOutput += chunk;});
+    try {
+      const deadline = Date.now() + scaledTimeout(30000);
+      while (!serverOutput.includes('The Apalache server is running')) {
+        assert.equal(server.exitCode, null, serverOutput);
+        assert.ok(Date.now() < deadline, serverOutput);
+        await delay(20);
+      }
+      const freshCache = join(root, 'fresh-quint-cache');
+      assert.equal(existsSync(freshCache), false);
+      write(model.path, source(7));
+      write('specs/quint/application/manifest.json', JSON.stringify([model]));
+      const phase = run(6, 'pass', undefined, {...process.env, QUINT_HOME: freshCache});
+      assert.match(phase.output, /Downloading Apalache distribution 0\.62\.4/);
+      const jarSha256 = sha256(readFileSync(join(freshCache, 'apalache-dist-0.62.4/apalache/lib/apalache.jar')));
+      assert.equal(jarSha256, sha256(readFileSync(warmJar)));
+      console.log('Bounded TLC fresh-cache receipt: ' + JSON.stringify({cacheInitiallyAbsent: true, existingTranslationServer: true,
+        downloadedVersion: '0.62.4', jarSha256, boundedProof: phase.boundedProof}));
+    } finally {
+      process.removeListener('exit', stopServer);
+      if (server.exitCode === null) {
+        const exited = once(server, 'exit');
+        stopServer();
+        await exited;
+      }
+    }
+    write(model.path, 'module BoundedFixture { run exampleTest = true this is not valid Quint }');
+    const invalid = spawnSync(process.execPath, ['scripts/check-quint.ts', 'verify', '--out=invalid.json'], {cwd: root, encoding: 'utf8', timeout: scaledTimeout(30000)});
+    assert.equal(invalid.status, 1);
+    const failure = readJson(join(root, 'invalid.json'));
+    assert.equal(failure.passed, false);
+    assert.equal(detectedCounterexample(failure.results[0].output), false);
+  } finally {
+    rmSync(root, {recursive: true, force: true});
+  }
 });
 
 test('the admitted model registry retains the audited families and scenarios', () => {
