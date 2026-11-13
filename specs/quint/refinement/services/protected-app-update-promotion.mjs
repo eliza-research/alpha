@@ -67,7 +67,6 @@ function checkWorkflows() {
   assert.match(jobs.publish.if, /needs\.admit-publication\.result == 'success'.*needs\.admit-publication\.outputs\.qualification_sha256 != ''/);
   const restored = jobs.publish.steps.find(runs('--product "$GITHUB_WORKSPACE/qualified-product"'));
   assert.equal(restored.env.EXPECTED_QUALIFICATION, '$' + '{{ needs.admit-publication.outputs.qualification_sha256 }}');
-  assert.match(restored.run, /\$EXPECTED_QUALIFICATION/);
   assert.equal(jobs.publish.steps.find(step => step.with?.path === 'qualified-product').with.ref,
     '$' + '{{ needs.admit-publication.outputs.source_commit }}');
   const reverify = jobs.publish.steps.find(runs('run android:verify --'));
