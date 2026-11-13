@@ -58,15 +58,16 @@ function fixture(t, source = 'export function sample(x: number): number {\n  //@
   write('specs/lemma/apps/app/src/sample.dfy.gen', generated);
   write('specs/lemma/apps/app/src/sample.dfy', `${generated}// proof additions\n`);
   write('node_modules/lemmascript/tools/dist/lsc.js', STUB_LSC);
-  write('empty-path/.keep', '');
+  fs.mkdirSync(path.join(root, 'node-path'));
+  fs.symlinkSync(node, path.join(root, 'node-path/node'));
   const log = path.join(root, 'lsc.log');
   fs.writeFileSync(log, '');
   /** A fake `dafny` that only answers --version. */
   const dafny = version => { write(`dafny-${version}/dafny`, `#!/bin/sh\necho "${version}"\n`, 0o755); return path.join(root, `dafny-${version}/dafny`); };
   const run = (env = {}, ...args) => {
-    // PATH holds nothing, so no real dafny on this machine can be picked up.
+    // PATH holds only Node (and the fake dafny), so no real dafny on this machine can be picked up.
     const result = spawnSync(process.execPath, [path.join(root, 'scripts/check-lemma.ts'), ...args], {cwd: root, encoding: 'utf8', env: {
-      PATH: env.DAFNY ? path.dirname(env.DAFNY) : path.join(root, 'empty-path'), ALPHA_NODE: node, STUB_LOG: log, ...env,
+      PATH: [...(env.DAFNY ? [path.dirname(env.DAFNY)] : []), path.join(root, 'node-path')].join(path.delimiter), STUB_LOG: log, ...env,
     }});
     const receiptFile = path.join(root, 'test-results/lemma/check.json');
     return {...result, receipt: fs.existsSync(receiptFile) ? JSON.parse(fs.readFileSync(receiptFile, 'utf8')) : null, commands: fs.readFileSync(log, 'utf8').split('\n').filter(Boolean)};
