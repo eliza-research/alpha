@@ -7,9 +7,10 @@ import {globSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 const root=resolve(import.meta.dirname,'..');
-const python=(args,timeout=120000)=>spawnSync('python3',['-I',...args],{cwd:root,encoding:'utf8',timeout});
+const python=(args,timeout=120000)=>spawnSync('python3',['-I',...args],{cwd:root,encoding:'utf8',timeout:scaledTimeout(timeout)});
 const check=result=>{
  assert.equal(result.error,undefined,String(result.error));
  assert.equal(result.status,0,result.stdout+result.stderr);

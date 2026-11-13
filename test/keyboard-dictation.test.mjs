@@ -61,7 +61,7 @@ test('voice IME and Cloud adapter compile against Android API and shared real re
   const api=join(process.env.ANDROID_HOME||process.env.ANDROID_SDK_ROOT||join(homedir(),process.platform==='darwin'?'Library/Android/sdk':'Android/Sdk'),'platforms/android-36/android.jar');
   assert.ok(existsSync(api),'Android API36 required for actual service compile');
   const shared='vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/';
-  execFileSync(javaBinary('javac'),['--release','17','-cp',api,'-d',work,...Object.keys(stubs).map(n=>join(work,n)),passwords,revision,sharedSpeechSource('CartesiaSpeech.java'),...['KeyboardDictationPolicy.java','KeyboardDictationCloud.java','AlphaKeyboardDictationService.java','CloudSpeechPolicy.java','CloudDeployment.java'].map(nativeSource),shared+'LocalVoiceRecording.java',shared+'RecordingPcm.java'],{stdio:'pipe',timeout:60000});
+  execFileSync(javaBinary('javac'),['--release','17','-cp',api,'-d',work,...Object.keys(stubs).map(n=>join(work,n)),passwords,revision,sharedSpeechSource('CartesiaSpeech.java'),...['KeyboardDictationPolicy.java','KeyboardDictationCloud.java','AlphaKeyboardDictationService.java','CloudSpeechPolicy.java','CloudDeployment.java'].map(nativeSource),shared+'LocalMicrophoneLease.java',shared+'LocalVoiceRecording.java',shared+'RecordingPcm.java'],{stdio:'pipe',timeout:60000});
  }finally{rmSync(work,{recursive:true,force:true});}
 });
 

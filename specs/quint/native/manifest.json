@@ -1286,6 +1286,7 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java"
       ],
       "tests": [
@@ -1319,7 +1320,9 @@
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecorder.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecordingService.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecordingService.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java"
       ],
       "tests": [
         "permissionReturningDuringCallTest",
@@ -1395,6 +1398,7 @@
       "invariant": "safety",
       "sources": [
         "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechRequestGate.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
@@ -1441,6 +1445,7 @@
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
         "android/upstream-native-sources.json",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
@@ -1551,6 +1556,7 @@
       "sources": [
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java"
