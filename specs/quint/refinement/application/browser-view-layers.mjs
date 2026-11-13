@@ -18,7 +18,11 @@ const limitMessage = 'Tab limit';
 export async function browserViewLayersDriver() {
   return async () => {
     const host = await browserAdapterHost({instant: ['bookmarks', 'browsingState', 'saveBrowsingState', 'present', 'close', 'cancelReading', 'readingSupport', 'clearFind', 'find', 'findNext', 'create', 'navigate', 'command']});
-    const state = host.state, ids = new Map([[1, 'b0']]);
+    const state = host.state, initial = state();
+    assert.equal(initial.tabs.length, 1, 'One settled initial browser tab');
+    assert.ok(typeof initial.cur === 'string' && initial.cur.length > 0, 'Initial tab has an opaque identity');
+    assert.equal(initial.tabs[0].id, initial.cur, 'Initial selection names that exact tab');
+    const ids = new Map([[1, initial.cur]]);
     let used = 1, sequence = 0, lastBack = 'none';
     const number = real => real ? [...ids].find(([, id]) => id === real)?.[0] ?? 0 : 0;
     const visible = () => state().tabs;
