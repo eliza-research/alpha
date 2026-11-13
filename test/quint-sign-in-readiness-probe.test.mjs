@@ -24,10 +24,10 @@ const model = readFileSync(`${repositoryRoot}${MODEL.path}`, 'utf8');
 const SCENARIOS = [...model.matchAll(/^\s*run (\w+Test)\s*=/gm)].map(match => match[1]);
 const WITNESSES = [...model.matchAll(/^\s*val (\w+Witness)\s*=/gm)].map(match => match[1]);
 
-const entryOf = s => s.ownKeys === 'saved' ? 'none' : s.host === 'android' && (s.startupResolved || s.ownKeys === 'refused') ? 'required'
+const entryOf = s => s.ownKeys === 'saved' ? 'none' : s.host === 'android' && (s.startupResolved || s.ownKeys === 'refused' || s.pageLatched) ? 'required'
   : s.account ? 'opened' : s.host === 'preview' && s.startupResolved ? 'first-run' : 'none';
 // Whether the probe in the slot is the automatic one is the caller's knowledge, not controller state.
-const project = s => ({host: s.host, operation: s.operation, readinessOwner: s.readinessOwner, entry: entryOf(s), chooser: s.chooser, startupResolved: s.startupResolved,
+const project = s => ({host: s.host, operation: s.operation, readinessOwner: s.readinessOwner, entry: entryOf(s), chooser: s.chooser, startupResolved: s.startupResolved, pageLatched: s.pageLatched,
   latch: s.latch, probes: s.probes, late: s.late, lateAdopted: s.lateAdopted, lateDropped: s.lateDropped, ownKeys: s.ownKeys, residentStarts: s.residentStarts});
 
 function create() {
@@ -35,7 +35,9 @@ function create() {
   let host = 'browser', late = null, lateAdopted = 0, lateDropped = 0;
   // An ended probe leaves its readiness read unanswered; a new probe abandons an answer still owed.
   const ended = async () => { await settle(); if (port.held === 'probe' && !box.operation) port.detach(); };
-  const entry = () => { const view = box.renderSignInEntry(); return !view.signInEntryRequired ? 'none' : view.productionSignInRequired ? 'required' : view.signInPage ? 'first-run' : 'opened'; };
+  // Android's retained page can outlive the raw initial-admission predicate. It remains the
+  // required Android page; only the browser preview's automatic page is a first-run entry.
+  const entry = () => { const view = box.renderSignInEntry(); return !view.signInEntryRequired ? 'none' : view.productionSignInRequired || box.isAndroid && view.signInPage ? 'required' : view.signInPage ? 'first-run' : 'opened'; };
   return {
     host(kind) { host = kind; box.isAndroid = kind === 'android'; box.browserCloudResidentEnabled = kind === 'preview'; },
     // The preview's first run shows the connection sheet.
@@ -68,8 +70,9 @@ function create() {
       assert.equal(!!box.operation, port.held !== 'none', 'the slot is held exactly while a step is in flight');
       assert.equal(box.readinessOwned(), port.held === 'probe', 'the probe in the slot is the readiness owner');
       const saved = box.state.providerStatus?.selected === true;
+      const view = box.renderSignInEntry();
       return {host, operation: port.held, readinessOwner: box.readinessOwner() !== null, entry: entry(), chooser: box.state.signIn?.step === 'choose',
-        startupResolved: box.state.startupResolved, latch: box.automaticLatch(), probes: port.probes, late: late !== null, lateAdopted, lateDropped,
+        startupResolved: box.state.startupResolved, pageLatched: view.signInPage, latch: box.automaticLatch(), probes: port.probes, late: late !== null, lateAdopted, lateDropped,
         ownKeys: port.held === 'own-keys' ? 'saving' : port.waiting('save') ? 'waiting' : saved ? 'saved' : box.state.error === 'busy' ? 'refused' : 'none',
         residentStarts: port.residentStarts};
     },
@@ -84,6 +87,9 @@ test("partial source contract: the readiness probe follows SignInReadinessProbe 
   // The comparison is live: a model in which a probe ended for an own-keys save still started the agent is refused.
   const started = state => state.ownKeys === 'waiting' ? {...project(state), residentStarts: state.residentStarts + 1} : project(state);
   await assert.rejects(replayTraces(traces.filter(trace => trace.name === 'ownKeysOverProbeTest'), create, {project: started}), /ownKeysOverProbeTest step/);
+  const disappeared = state => state.operation === 'probe' && !state.startupResolved && state.pageLatched
+    ? {...project(state), entry: 'none', pageLatched: false} : project(state);
+  await assert.rejects(replayTraces(traces.filter(trace => trace.name === 'refusalRetryBeforeStartupTest'), create, {project: disappeared}), /refusalRetryBeforeStartupTest step/);
   for (const action of ['host', 'startupSettles', 'automaticProbe', 'latchReleases', 'ownerProbe', 'probeSettles', 'lateReadiness', 'stepStarts', 'stepEnds',
     'saveOwnKeys', 'ownKeysTakeSlot', 'ownKeysWaitEnds', 'ownKeysEnd', 'back']) assert.ok(receipt.actions[action] > 0, action);
 });

@@ -15,6 +15,9 @@ module SignInReadinessProbe {
     readinessOwner: bool, probeAutomatic: bool,
     // The owner opened the account sign-in.
     account: bool, chooser: bool, startupResolved: bool,
+    // Once rendered, the automatic page keeps its underlying sign-out reason through a retry.
+    // Startup completion gates its first admission, not an already visible page.
+    pageLatched: bool,
     // The automatic entry probes once until a chooser is shown or the entry ends.
     latch: bool, probes: int,
     // A late readiness answer for the last settled probe may still arrive.
@@ -30,7 +33,7 @@ module SignInReadinessProbe {
   var s: State
   action init = s' = {
     host: "browser", operation: "none", readinessOwner: false, probeAutomatic: false,
-    account: false, chooser: false, startupResolved: false, latch: false, probes: 0,
+    account: false, chooser: false, startupResolved: false, pageLatched: false, latch: false, probes: 0,
     late: false, lateAdopted: 0, lateDropped: 0, ownKeys: "none", residentStarts: 0,
     probeEnd: "none", probeEndStarted: false
   }
@@ -39,11 +42,15 @@ module SignInReadinessProbe {
   /// required page also appears before startup settles once an error is on screen.
   pure def entryOf(v: State): str =
     if (v.ownKeys == "saved") "none"
-    else if (v.host == "android" and (v.startupResolved or v.ownKeys == "refused")) "required"
+    else if (v.host == "android" and (v.startupResolved or v.ownKeys == "refused" or v.pageLatched)) "required"
     else if (v.account) "opened"
     else if (v.host == "preview" and v.startupResolved) "first-run"
     else "none"
-  pure def page(v: State): bool = entryOf(v).in(Set("required", "first-run"))
+  // cancelSignIn uses the controller's raw page predicate, which has no React latch.
+  pure def page(v: State): bool = entryOf({ ...v, pageLatched: false }).in(Set("required", "first-run"))
+  /// The settled render records the actual automatic-page latch. Host changes and a saved
+  /// provider still remove its reason; clearing a refusal while startup is pending does not.
+  pure def rendered(v: State): State = { ...v, pageLatched: entryOf(v).in(Set("required", "first-run")) }
   pure def explicit(v: State): bool = v.ownKeys != "saved" and (v.account or entryOf(v) == "first-run")
   pure def probing(v: State, automatic: bool): State =
     { ...v, operation: "probe", readinessOwner: true, probeAutomatic: automatic, late: false, probes: v.probes + 1,
@@ -57,63 +64,63 @@ module SignInReadinessProbe {
   /// The host is fixed before anything else happens.
   action host(kind: str): bool = all {
     kind.in(Set("android", "preview", "browser")), not(s.startupResolved), s.probes == 0, s.operation == "none", s.ownKeys == "none",
-    s' = { ...s, host: kind }
+    s' = rendered({ ...s, host: kind })
   }
-  action startupSettles = all { not(s.startupResolved), s.ownKeys != "saved", s' = { ...s, startupResolved: true } }
+  action startupSettles = all { not(s.startupResolved), s.ownKeys != "saved", s' = rendered({ ...s, startupResolved: true }) }
   /// The automatic entry checks readiness once: with no chooser shown, nothing in the slot and
   /// startup settled. It starts neither email nor Google.
   action automaticProbe = all {
     entryOf(s) != "none", not(s.chooser), not(s.latch), s.operation == "none", s.startupResolved, s.probes < 4,
-    s' = probing({ ...s, latch: true }, true)
+    s' = rendered(probing({ ...s, latch: true }, true))
   }
   /// The latch is released when a chooser is shown or no entry is required.
-  action latchReleases = all { s.latch, s.chooser or entryOf(s) == "none", s' = { ...s, latch: false } }
+  action latchReleases = all { s.latch, s.chooser or entryOf(s) == "none", s' = rendered({ ...s, latch: false }) }
   /// The owner opens sign-in (account, plan) or retries. A step in the slot refuses it. It clears
   /// an earlier refusal from the screen.
   action ownerProbe = all {
     s.operation == "none", s.probes < 4, s.ownKeys != "saved",
-    s' = probing({ ...s, account: s.account or entryOf(s) == "none", ownKeys: if (s.ownKeys == "refused") "none" else s.ownKeys }, false)
+    s' = rendered(probing({ ...s, account: s.account or entryOf(s) == "none", ownKeys: if (s.ownKeys == "refused") "none" else s.ownKeys }, false))
   }
   /// Readiness answers, or its wait runs out: the chooser is shown. After a probe the owner
   /// started the agent is ensured; an automatic probe starts nothing.
   action probeSettles(lateFollows: bool): bool = all {
     s.operation == "probe",
-    s' = { ...probeEnds(s, "settled"), chooser: true, late: lateFollows }
+    s' = rendered({ ...probeEnds(s, "settled"), chooser: true, late: lateFollows })
   }
   /// The late answer changes the offered methods only while the probe is still the readiness
   /// owner, nothing holds the slot and the same chooser is shown.
   action lateReadiness = all {
     s.late,
     val adopted = s.readinessOwner and s.operation == "none" and s.chooser
-    s' = { ...s, late: false, lateAdopted: if (adopted) s.lateAdopted + 1 else s.lateAdopted,
-      lateDropped: if (adopted) s.lateDropped else s.lateDropped + 1 }
+    s' = rendered({ ...s, late: false, lateAdopted: if (adopted) s.lateAdopted + 1 else s.lateAdopted,
+      lateDropped: if (adopted) s.lateDropped else s.lateDropped + 1 })
   }
   /// Any other step takes the slot and ends the probe's ownership.
   action stepStarts = all {
     s.operation == "none", s.ownKeys != "saved",
-    s' = { ...s, operation: "step", readinessOwner: false, ownKeys: if (s.ownKeys == "refused") "none" else s.ownKeys }
+    s' = rendered({ ...s, operation: "step", readinessOwner: false, ownKeys: if (s.ownKeys == "refused") "none" else s.ownKeys })
   }
-  action stepEnds = all { s.operation == "step", s' = { ...s, operation: "none" } }
+  action stepEnds = all { s.operation == "step", s' = rendered({ ...s, operation: "none" }) }
   /// Saving own keys ends a readiness probe (it is not the owner's attempt): that probe shows no
   /// chooser and starts nothing, and the save takes the slot after one short wait. With the slot
   /// free it saves at once; behind any other step it is refused.
   action saveOwnKeys = all {
     s.ownKeys.in(Set("none", "refused")),
-    s' = if (s.operation == "probe") { ...probeEnds(s, "takeover"), ownKeys: "waiting", late: false }
+    s' = rendered(if (s.operation == "probe") { ...probeEnds(s, "takeover"), ownKeys: "waiting", late: false }
       else if (s.operation == "none") { ...s, ownKeys: "saving", operation: "own-keys", readinessOwner: false }
-      else { ...s, ownKeys: "refused" }
+      else { ...s, ownKeys: "refused" })
   }
   action ownKeysTakeSlot = all {
-    s.ownKeys == "waiting", s.operation == "none", s' = { ...s, ownKeys: "saving", operation: "own-keys", readinessOwner: false }
+    s.ownKeys == "waiting", s.operation == "none", s' = rendered({ ...s, ownKeys: "saving", operation: "own-keys", readinessOwner: false })
   }
   /// The short wait ends with the slot taken by a step that started meanwhile: that step is not
   /// displaced, and the save is refused and says so.
-  action ownKeysWaitEnds = all { s.ownKeys == "waiting", s.operation != "none", s' = { ...s, ownKeys: "refused" } }
+  action ownKeysWaitEnds = all { s.ownKeys == "waiting", s.operation != "none", s' = rendered({ ...s, ownKeys: "refused" }) }
   /// The save finishes, which ends the sign-in entry, or the owner cancels it.
   action ownKeysEnd(saved: bool): bool = all {
     s.operation == "own-keys",
-    s' = if (saved) { ...s, operation: "none", ownKeys: "saved", chooser: false }
-      else { ...s, operation: "none", ownKeys: "none" }
+    s' = rendered(if (saved) { ...s, operation: "none", ownKeys: "saved", chooser: false }
+      else { ...s, operation: "none", ownKeys: "none" })
   }
   /// Back. On an automatic page showing its chooser with nothing pending it does nothing. During
   /// a probe it ends the probe: an owner's probe still ensures the agent, and a dialog the owner
@@ -122,14 +129,14 @@ module SignInReadinessProbe {
   action back = all {
     entryOf(s) != "none",
     val cleared = { ...s, ownKeys: if (s.ownKeys == "refused") "none" else s.ownKeys }
-    s' = if (s.operation == "none" and s.chooser and page(s)) s
+    s' = rendered(if (s.operation == "none" and s.chooser and page(s)) s
       else if (s.operation == "probe")
         val ended = { ...probeEnds(cleared, "back"), late: false }
         if (not(explicit(s)) or (s.chooser and page(s))) ended
         else { ...ended, chooser: false, account: false }
       else if (s.operation != "none")
         { ...cleared, operation: "none", ownKeys: if (s.operation == "own-keys") "none" else cleared.ownKeys }
-      else { ...cleared, chooser: false, account: if (explicit(s)) false else s.account }
+      else { ...cleared, chooser: false, account: if (explicit(s)) false else s.account })
   }
   action step = {
     nondet flag = Set(true, false).oneOf()
@@ -153,7 +160,8 @@ module SignInReadinessProbe {
     and s.residentStarts <= s.probes and s.lateAdopted + s.lateDropped <= s.probes
     and s.probeEnd.in(Set("none", "settled", "back", "takeover"))
   val safety = TypeOK and ProbeIsReadinessOwner and SavingHoldsSlot and LateOnlyAfterSettledProbe and ChooserNeedsEntry
-    and AutomaticProbeAfterStartup and SavedEndsEntry and TakeoverStartsNothing and ClosingNeedsEndedProbe
+    and AutomaticProbeAfterStartup and SavedEndsEntry and TakeoverStartsNothing and ClosingNeedsEndedProbe and PageLatchMatchesEntry
+  val PageLatchMatchesEntry = s.pageLatched == entryOf(s).in(Set("required", "first-run"))
 
   val OwnKeysOverProbeWitness = s.ownKeys == "saving" and s.probes > 0 and not(s.chooser) and s.residentStarts == 0
   val LateAnswerDroppedWitness = s.lateDropped > 0
@@ -207,4 +215,21 @@ module SignInReadinessProbe {
   run backCancelsSaveTest = init.then(ownerProbe).then(probeSettles(false)).then(saveOwnKeys).then(back)
     .expect(s.operation == "none" and s.ownKeys == "none" and s.chooser and safety)
   run secondProbeRefusedTest = init.then(ownerProbe).then(ownerProbe.fail())
+  /// A refused key save can show the required page before startup finishes. Retrying readiness
+  /// clears the refusal but keeps that already visible page and its owned probe together.
+  run refusalRetryBeforeStartupTest = init.then(host("android")).then(stepStarts).then(saveOwnKeys)
+    .expect(entryOf(s) == "required" and s.pageLatched and not(s.startupResolved) and safety)
+    .then(stepEnds).then(ownerProbe)
+    .expect(s.operation == "probe" and s.ownKeys == "none" and entryOf(s) == "required" and safety)
+    .then(probeSettles(false)).expect(s.chooser and s.pageLatched and not(s.startupResolved) and safety)
+    .then(back).expect(not(s.chooser) and s.pageLatched and entryOf(s) == "required" and safety)
+  /// A retained page with its refusal already cleared still cannot start an automatic probe
+  /// while startup is pending. The refusal must be terminal in a Quint scenario.
+  run latchedPageWaitsForStartupTest = init.then(host("android")).then(stepStarts).then(saveOwnKeys)
+    .then(stepEnds).then(ownerProbe).then(back)
+    .expect(s.pageLatched and not(s.startupResolved) and s.operation == "none" and s.ownKeys == "none" and safety)
+    .then(automaticProbe.fail())
+  run latchedPageEndsForOwnKeysTest = init.then(host("android")).then(stepStarts).then(saveOwnKeys)
+    .then(stepEnds).then(ownerProbe).then(back).then(saveOwnKeys).then(ownKeysEnd(true))
+    .expect(not(s.pageLatched) and entryOf(s) == "none" and safety)
 }

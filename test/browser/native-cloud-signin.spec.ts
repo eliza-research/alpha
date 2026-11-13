@@ -26,6 +26,65 @@ async function readySignIn(page:Page){
  await expect(signInDialog(page)).toBeVisible();
 }
 
+test('a required page shown before startup stays rendered while its owner retries readiness',async({page})=>{
+ // Import and render the complete production module. Only startup completion and the native
+ // readiness response are held; the actual work slot, key-save refusal and renderer execute.
+ const held=await startNativeCloudSignInFixture('test-results/signin-readiness-held/vite-cache',[{name:'held-signin-startup',enforce:'post',transform(code,id){
+  if(!id.split('?')[0].endsWith('/runtime/connection-ui.tsx'))return;
+  return code+`\nstartup=new Promise(()=>{});
+   let releaseHeldStep;
+   window.readinessEntryTest={update,
+    holdStep(){void work('Held startup step',()=>new Promise(resolve=>{releaseHeldStep=resolve;}));},
+    releaseStep(){releaseHeldStep();}};`;
+ }}]);
+ try{
+  await fenceNetwork(page);await held.boot(page,{signIn:'readiness-hold'});
+  const main=page.locator('.alpha-auth-page .alpha-cloud-sign-in');
+  const readiness=async()=>(await calls(page)).filter(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='status');
+  await expect(main).toHaveCount(0);
+  expect(await readiness()).toHaveLength(0);
+  await page.evaluate(()=>{(window as any).readinessEntryTest.holdStep();});
+  await expect.poll(async()=>(await snapshot(page)).busy).toBe(true);
+  await page.evaluate(()=>{void (window as any).planController.configureLocal('synthetic-own-key','model',undefined,{onboarding:true});});
+  await expect.poll(async()=>(await snapshot(page)).error).toBe('Busy');
+  await expect(main).toBeVisible();
+  await page.evaluate(()=>{(window as any).readinessEntryTest.releaseStep();});
+  await expect.poll(async()=>(await snapshot(page)).busy).toBe(false);
+  expect((await snapshot(page)).startupResolved).toBe(false);
+  expect(await readiness()).toHaveLength(0);
+  await page.evaluate(()=>{void (window as any).planController.beginSignIn();});
+  await expect.poll(readiness).toHaveLength(1);
+  const probingSnapshot=await snapshot(page);
+  expect(probingSnapshot).toMatchObject({busy:true,startupResolved:false,error:''});
+  expect(probingSnapshot.signIn??null).toBe(null);
+  await expect(main).toBeVisible();
+  await expect(main).toHaveAttribute('role','main');
+  await expect(main).toHaveAttribute('aria-busy','true');
+  await page.evaluate(()=>{(window as any).signInFixture.releaseReadiness();});
+  await expect.poll(async()=>(await snapshot(page)).signIn?.step).toBe('choose');
+  await expect.poll(async()=>(await snapshot(page)).busy).toBe(false);
+  await expect(main).toBeVisible();
+  expect((await snapshot(page)).startupResolved).toBe(false);
+  expect(await readiness()).toHaveLength(1);
+  // A retained page still ends for the existing account, own-provider, offline-identity and
+  // provider-settings boundaries. No actual startup is admitted by retaining the page.
+  const endings=[
+   {cloudAccount:{environment:'production',userId:USER,expiresAt:Date.now()+60000}},
+   {providerStatus:{selected:true,provider:'cerebras'}},
+   {residentSavedCredential:true,residentPlanNotice:'offline'},
+   {purpose:'provider'},
+  ];
+  for(const ending of endings){
+   await page.evaluate(()=>{(window as any).readinessEntryTest.update({startupResolved:false,open:true,purpose:'agent',cloudAccount:null,providerStatus:null,residentSavedCredential:false,residentPlanNotice:null,signIn:null,error:'Busy'});});
+   await expect(main).toBeVisible();
+   await page.evaluate(ending=>{(window as any).readinessEntryTest.update({error:'',...ending});},ending);
+   await expect(main).toHaveCount(0);
+  }
+  expect(await readiness()).toHaveLength(1);
+  await noHandOff(page);
+ }finally{await held.close();}
+});
+
 /** Email and text message share one field; the method follows what was typed. */
 const entry=(page:Page)=>signInDialog(page).getByRole('textbox',{name:/^Email( or phone)?$/});
 

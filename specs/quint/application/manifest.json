@@ -9698,7 +9698,10 @@
       "saveAfterBackTest",
       "secondProbeRefusedTest",
       "firstRunPageKeepsChooserTest",
-      "backCancelsSaveTest"
+      "backCancelsSaveTest",
+      "refusalRetryBeforeStartupTest",
+      "latchedPageWaitsForStartupTest",
+      "latchedPageEndsForOwnKeysTest"
     ],
     "invariants": [
       "TypeOK",
@@ -9709,7 +9712,8 @@
       "ClosingNeedsEndedProbe",
       "ChooserNeedsEntry",
       "AutomaticProbeAfterStartup",
-      "SavedEndsEntry"
+      "SavedEndsEntry",
+      "PageLatchMatchesEntry"
     ],
     "witnesses": [
       "OwnKeysOverProbeWitness",
@@ -9789,11 +9793,13 @@
       "chooser/latch/probes": "state.signIn step choose, automaticSignInProbe.current and readiness reads started",
       "late/lateAdopted/lateDropped": "lateMethods delivered after the readiness wait ran out, and adoptLate()",
       "ownKeys": "configureLocal: its bounded wait after ending a probe, the save holding the slot, OWN_KEY_BUSY on screen, or saved (providerStatus.selected)",
-      "residentStarts/probeEnd/probeEndStarted": "ensureResident() after a probe, how the last probe left the slot (settled, Back, own-keys takeover) and whether the agent was ensured after it"
+      "residentStarts/probeEnd/probeEndStarted": "ensureResident() after a probe, how the last probe left the slot (settled, Back, own-keys takeover) and whether the agent was ensured after it",
+      "pageLatched": "ConnectionChooser signInPageLatched after the settled render; its underlying required-page reason survives clearing an error before startup settles, while saved own keys and host/account/purpose/recovery changes still remove that reason. The raw controller signInEntryPage predicate used by cancelSignIn remains distinct from this React latch."
     },
     "abstractions": [
       "Four probes. Email, phone and Google attempts after the chooser are SignInChooser and IdentitySession; the probe cache and its per-environment coalescing are the shared native sign-in plugin.",
-      "Ending a probe early (Back or an own-keys save) and freeing the slot are one step: inAppSignInMethods races the abort, so the probe unwinds before another event is handled. The agent start after an owner's probe is counted, not held in the slot; another step is any holder of the slot, and queued returns and rebinds are ConnectionController."
+      "Ending a probe early (Back or an own-keys save) and freeing the slot are one step: inAppSignInMethods races the abort, so the probe unwinds before another event is handled. The agent start after an owner's probe is counted, not held in the slot; another step is any holder of the slot, and queued returns and rebinds are ConnectionController.",
+      "The page latch is the actual settled renderer state. First admission and automatic readiness remain gated by the real startupResolved value; only retention of a previously shown page ignores that initial startup gate. The controller member replay is partial source evidence; the owning browser composition separately checks the actual ConnectionChooser branch and its release boundaries with held startup/native ports."
     ]
   },
   {

@@ -3710,7 +3710,7 @@ export function ConnectionChooser() {
   // offline, another purpose). An error alone never takes it away, also when no sign-in view is
   // active (a cancelled readiness check, then a rejected key), as on Android.
   const [signInPageLatched,setSignInPageLatched]=useState(false);
-  const signInPage=signInEntryPage(snapshot)||signInPageLatched&&signInEntryPage({...snapshot,error:''});
+  const signInPage=signInEntryPage(snapshot)||signInPageLatched&&signInEntryPage({...snapshot,error:'',startupResolved:true});
   if(signInPage!==signInPageLatched)setSignInPageLatched(signInPage);
   const signInEntryRequired=snapshot.purpose!=='provider'&&(productionSignInRequired||explicitSignInEntry||signInPage);
   const automaticSignInProbe = useRef(false);
@@ -3729,7 +3729,7 @@ export function ConnectionChooser() {
     void cloudSignIn.savedSignInRecoveryStatus().then(result=>{if(current)update({legacySignInRecovery:result.eligible===true});}).catch(()=>{if(current)update({legacySignInRecovery:false});});
     return()=>{current=false;};
   },[signInEntryRequired,snapshot.signIn?.environment,snapshot.cloudAccount,snapshot.signOutNotice]);
-  const visible=connectionChooserVisible(snapshot,!!sending);
+  const visible=signInEntryRequired||connectionChooserVisible(snapshot,!!sending);
   const [accountSection,setAccountSection]=useState<'provider'|null>(null);
   const [signOutAccount,setSignOutAccount]=useState<ConnectionSnapshot['cloudAccount']>(null);
   useEffect(()=>{setAccountSection(null);setSignOutAccount(null);},[snapshot.purpose,visible,snapshot.cloudAccount?.environment,snapshot.cloudAccount?.userId,snapshot.cloudAccount?.organizationId,snapshot.cloudAccount?.credentialId,snapshot.cloudAccount?.sessionId]);
