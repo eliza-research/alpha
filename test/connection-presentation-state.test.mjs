@@ -121,7 +121,7 @@ function preflightFixture(balance, options = {}) {
     NO_AGENT_SEND: 'No selected session', NO_AGENT_VOICE: 'No selected session',
     noSessionError: () => Error('No selected session'),
     phoneContextMessage: (text, context) => ({text, context}),
-    cancelStoppedReply: () => {}, conversationMemory: new Map(),
+    cancelStoppedVoiceRead: () => {}, cancelStoppedReply: () => {}, conversationMemory: new Map(),
     readNativeNetwork, System: {getNetworkStatus: async () => ({connected: true})},
     planCheckScope: () => 'current-account', retractReadiness: () => {},
     clearPersonalSetup: () => {},

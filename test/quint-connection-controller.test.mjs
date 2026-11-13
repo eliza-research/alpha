@@ -41,7 +41,7 @@ const project = s => ({operation: s.operation, startupResolved: s.startupResolve
 
 function create() {
   let held = null, notices = 0, rebinds = 0, returns = 0;
-  const box = {AbortController, DOMException, Error, Promise, setTimeout, ResidentRebindQueue,
+  const box = {AbortController, DOMException, Error, Promise, setTimeout, ResidentRebindQueue, cancelStoppedVoiceRead(){},
     operation: null, sending: null, epoch: 1, active: null, planRecheck: null, signInReadinessOwner: null, providerStatusGeneration: 0,
     residentStartInBackground: false, residentStartFailure: 'The agent could not start.', testMocksEnabled: false, residentAlwaysPresent: true, returned: [],
     state: {open: false, signIn: null, message: '', error: '', busy: false, startupResolved: false},

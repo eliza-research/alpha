@@ -14,7 +14,7 @@ const credential={credentialId:'fixture-id',credentialReference:'browser-cloud-r
 function fixture({values=[credential,credential],choice={kind:'resident'},attachFails=false,android=false,profile=false,cloudResident=false,accepts=true,search='',readChoice,testMocks=false}={}){
  const calls=[],history={messages:[{id:'retained',text:'Exact retained history'}]};let context;
  const state={open:false,error:'',busy:false,history,cloudAccount:null};
- context=vm.createContext({CalendarApprovalClient,residentAlwaysPresent:false,state,epoch:1,startup:null,operation:null,planRecheck:null,errorKindOf:()=>null,active:null,residentStartInBackground:false,privateLocalPreviewEnabled:true,
+ context=vm.createContext({CalendarApprovalClient,cancelStoppedVoiceRead(){},residentAlwaysPresent:false,state,epoch:1,startup:null,operation:null,planRecheck:null,errorKindOf:()=>null,active:null,residentStartInBackground:false,privateLocalPreviewEnabled:true,
   browserDevProfile:profile,browserCloudResidentEnabled:cloudResident,isAndroid:android,testMocksEnabled:testMocks,
   update:patch=>Object.assign(state,patch),AbortController,DOMException,URLSearchParams,location:{search},residentRecoveryReason:()=>undefined,errorMessage:error=>error.message,expired:()=>false,
   runQueuedResidentRebind(){},runQueuedSignInReturn(){},scheduleResidentAutoRetry(){},residentCloudFlow:()=>false,settleResidentAfterStartup(){},selection:()=>context.choice,choice,
