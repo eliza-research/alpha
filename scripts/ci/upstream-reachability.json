@@ -3,9 +3,9 @@
   "repository": "elizaOS/eliza",
   "base": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
   "baseCommit": "5746aa6b627a83f10c8437db123d08d9fc7f3ae4",
-  "head": "25383411f565c2f5d7f107847e8b3443741fea01",
+  "head": "f22d9f602d76b9fa808cb134c1f2248403b8277a",
   "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...25383411f565c2f5d7f107847e8b3443741fea01",
+  "command": "gh api repos/elizaOS/eliza/compare/5746aa6b627a83f10c8437db123d08d9fc7f3ae4...f22d9f602d76b9fa808cb134c1f2248403b8277a",
   "status": "diverged",
   "aheadBy": 77,
   "behindBy": 617,
@@ -316,7 +316,7 @@
       "subject": "Expose the existing conversation search result contract as a leaf"
     },
     {
-      "sha": "25383411f565c2f5d7f107847e8b3443741fea01",
+      "sha": "f22d9f602d76b9fa808cb134c1f2248403b8277a",
       "subject": "Keep attachment type re-exports free of unused bindings"
     }
   ]
