@@ -109,7 +109,7 @@ test('the inputs report marks the pinned checkout missing for an older pin', t =
 
 test('the preflight entry point exits 2 for an older pin', t => {
   const f = fixture(t, {pin: 'B', mainPin: 'C'});
-  for (const file of ['android-build-preflight.ts', 'voice-host.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'mobile-uuid-adapter.ts', 'android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'toolchain.ts', 'copy-file-clone.ts', 'core-state-patch.ts', 'build-policy-source.ts']) {
+  for (const file of ['android-build-preflight.ts', 'voice-host.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'native-build-inputs.ts', 'android-stage-voice-models.ts', 'mobile-uuid-adapter.ts', 'android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'toolchain.ts', 'copy-file-clone.ts', 'core-state-patch.ts', 'build-policy-source.ts']) {
     fs.mkdirSync(path.join(f.root, 'scripts'), {recursive: true});
     fs.copyFileSync(path.join(ROOT, 'scripts', file), path.join(f.root, 'scripts', file));
   }

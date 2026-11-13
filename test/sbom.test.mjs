@@ -1,4 +1,4 @@
-// The release SBOM is built offline from committed pins and must be reproducible.
+// The release SBOM is built offline from source pins and admitted native outputs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -17,9 +17,11 @@ import {stageAgentBundleDependencies} from '../scripts/agent-bundle-dependencies
 import {execFileSync} from 'node:child_process';
 import {embeddingProducerInputPaths, nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.ts';
 import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
+import {readNativeBuildReceipt} from '../scripts/native-build-inputs.ts';
 
 const sbom = buildSbom(ROOT);
 const read = rel => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+const native = readNativeBuildReceipt(ROOT);
 const lock = readBunLock(ROOT);
 const byRef = new Map(sbom.components.map(component => [component['bom-ref'], component]));
 const prop = (component, name) => component.properties.find(item => item.name === `alphaphone:${name}`)?.value;
@@ -96,7 +98,7 @@ test('Android coordinates, the voice host and the upstream pin match their recor
   const banned = new RegExp(['on' + 'nx', 'sher' + 'pa', 'k2' + 'fsa', 'ort-' + 'wasm'].join('|'), 'i');
   assert.deepEqual(sbom.components.filter(component => banned.test(JSON.stringify(component))).map(component => component['bom-ref']), []);
   if (fs.existsSync(path.join(ROOT, VOICE_HOST))) {
-    const record = read(VOICE_HOST);
+    const record = native?.voice ?? read(VOICE_HOST);
     for (const abi of record.abis) for (const library of abi.libraries) assert.equal(byRef.get(`voice-host:${abi.abi}/${library.name}`).hashes[0].content, library.sha256);
     // Every recorded bundle file (Paradee, misaki, eSpeak NG data, the ASR slot, VAD, notices) is a component.
     for (const model of record.models) assert.equal(byRef.get(`voice-model:${model.path}`).hashes[0].content, model.sha256, model.path);
@@ -107,15 +109,17 @@ test('Android coordinates, the voice host and the upstream pin match their recor
   assert.match(prop(sbom.metadata, 'evidence'), /^source-pin inventory; not a scan of the contents of built APK/);
 });
 
-test('the embedding host is listed from its reviewed pins, without claiming it is staged', () => {
-  const host = read('android/embedding-host/qualified-host.json');
+test('the embedding host is listed from its admitted source record', () => {
+  const host = native?.embedding ?? read('android/embedding-host/qualified-host.json');
   for (const library of host.libraries) {
     const component = byRef.get(`embedding-host:${host.abi}/${library.name}`);
     assert.deepEqual(component.hashes, [{alg: 'SHA-256', content: library.sha256}]);
     assert.equal(prop(component, 'bytes'), String(library.bytes));
     assert.ok(prop(component, 'source').includes(`engine ${host.forkPin}`));
     // The foundation job's unpackaged APKs contain no embedding host; the pin must not read as if they did.
-    assert.match(prop(component, 'ships-in'), /legacy qualification record; incompatible with current Paradee engine/);
+    assert.equal(prop(component, 'ships-in'), native
+      ? 'apk (only one that packages the resident runtime)'
+      : 'legacy qualification record; incompatible with current Paradee engine; not current packaged bytes');
   }
   assert.equal(byRef.get('embedding-model:bge-small-en-v1.5-f16.gguf').hashes[0].content, host.model.sha256);
   let current = false;
@@ -174,12 +178,14 @@ test('staged native candidates retain their actual hashes when the embedding sou
   };
   // Reuse read-only source dependencies while keeping all staged inputs isolated.
   for (const file of ['package.json', 'bun.lock', 'upstream.lock.json', 'app.config.json',
-    'licenses', 'node_modules', 'vendor', '.eliza', 'apps/app/public', 'android/consumer-host.json',
+    'licenses', 'node_modules', 'vendor', 'apps/app/public', 'android/consumer-host.json',
     'android/local-speech', GRADLE_METADATA]) {
     const target = path.join(root, file);
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.symlinkSync(path.join(ROOT, file), target);
   }
+  // This test deliberately exercises a historical record, without importing a live generated receipt.
+  fs.mkdirSync(path.join(root, '.eliza'), {recursive: true});
   const host = read('android/embedding-host/qualified-host.json');
   host.producerInputs[0].sha256 = '0'.repeat(64);
   write('android/embedding-host/qualified-host.json', JSON.stringify(host));
