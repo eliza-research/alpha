@@ -255,7 +255,8 @@ globalThis.cloudQaPorts = {
   preloadGit(program, argv, options) {
     assert.equal(program, 'git');
     assert.equal(options.cwd, source);
-    assert.ok(['rev-parse','ls-tree','diff','ls-files'].includes(argv[0]));
+    if(argv[0]==='-c')assert.deepEqual(argv.slice(0,3),['-c','core.ignoreCase=false','ls-files']);
+    else assert.ok(['rev-parse','ls-tree','diff','ls-files'].includes(argv[0]));
     if (argv.join(' ') === 'rev-parse HEAD') {
       assert.ok(childGitHead);
       childObservedHead = childGitHead;

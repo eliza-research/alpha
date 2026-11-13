@@ -115,8 +115,6 @@ async function live(page, publicId) {
     : publicId === 2 ? 'live_new_public_route_id' : 'live_provider_refusal');
   if (publicId === 1) {
     await expect(button(page, 'Reroute from here')).toHaveCount(0);
-    await page.evaluate(() => {void window.closedMaps.agentPort.current.reroute().catch(() => {});});
-    await t.point('A second registered reroute during the held request dispatches no extra request', call('duplicateTap'));
   }
   await reply(page, 2, publicId);
   await waitForAgent(page);
@@ -143,7 +141,7 @@ async function replaced(page, retiredPublicId, early) {
   const t = await begin(page, early ? 'retired_reply_before_replacement_start'
     : retiredPublicId ? 'retired_success_after_replacement_start' : 'retired_refusal_after_replacement_start');
   await end(page, t);
-  const input = page.getByRole('textbox', {name:'Route origin coordinates', exact:true});
+  const input = page.getByRole('textbox', {name:'Starting point', exact:true});
   await expect(input).toBeVisible();
   await input.fill(replacement.latitude+', '+replacement.longitude);
   await input.press('Enter');

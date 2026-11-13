@@ -22,6 +22,7 @@ module MapsNavigation {
       generation: s.generation + 1, requestGeneration: s.generation + 1,
       requestEpoch: s.epoch, previousRoute: s.route, failure: "none" }
   }
+  action swapEndpoints = all { s.phase == "ready", requestRoute }
   action resumeWithFix = all {
     s.phase == "awaiting-location", s.locationGranted, s.fixFresh,
     s' = { ...s, phase: "planning" }
@@ -69,7 +70,7 @@ module MapsNavigation {
       phase: "idle", route: 0, routeOwner: 0, guidance: false, rerouting: false }
   }
   action step = any {
-    grantLocation, receiveFix(true), receiveFix(false), requestRoute, resumeWithFix,
+    grantLocation, receiveFix(true), receiveFix(false), requestRoute, swapEndpoints, resumeWithFix,
     routeReply(s.generation, s.epoch, true), routeReply(s.generation, s.epoch, false),
     routeReply(0, s.epoch, true), routeReply(s.generation, 3, true), start,
     allowDirectStart, agentStart, beginReroute, rerouteReply(true), rerouteReply(false),
@@ -81,6 +82,11 @@ module MapsNavigation {
   val FailedRerouteKept = s.guidance and s.failure == "network" implies s.route == s.previousRoute
   val TypeOK = s.phase.in(Set("idle", "awaiting-location", "planning", "ready", "error", "navigating", "stopped")) and s.generation.in(0.to(2)) and s.route.in(0.to(2)) and s.epoch.in(0.to(2))
   val safety = TypeOK and GuidanceHasRoute and RerouteKeepsRoute and RetiredRouteHidden and FailedRerouteKept
+  run swapRouteTest = init.then(grantLocation).then(receiveFix(true)).then(requestRoute)
+    .then(routeReply(1, 0, true)).then(swapEndpoints)
+    .expect(s.phase == "planning" and s.previousRoute == 1 and s.generation == 2)
+    .then(routeReply(1, 0, true)).expect(s.phase == "planning" and s.route == 1)
+    .then(routeReply(2, 0, true)).expect(s.phase == "ready" and s.route == 2 and not(s.guidance))
   run waitingForLocationTest = init.then(requestRoute).expect(s.phase == "awaiting-location")
     .then(grantLocation).then(receiveFix(true)).then(resumeWithFix)
     .then(routeReply(1, 0, true)).then(start).expect(s.guidance and safety)

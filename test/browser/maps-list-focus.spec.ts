@@ -99,6 +99,18 @@ test('Maps uses allowed location, shows result distances and dismisses results f
  await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
  await page.mouse.down();await page.mouse.move(bounds.x+bounds.width/2,bounds.y+110,{steps:8});await page.mouse.up();
  await expect(sheet).toHaveCount(0);
+ const plane=page.locator('[data-alpha-map-plane]');
+ await plane.evaluate(element=>(window as any).retainedMapPlane=element);
+ await page.evaluate(async()=>{
+  const {NativeMapsLocation}=await import('/src/maps/native-location.ts');
+  const original=NativeMapsLocation.prototype.start;
+  NativeMapsLocation.prototype.start=async function(_once,onFix){
+   (window as any).finishMapLocation=()=>{NativeMapsLocation.prototype.start=original;onFix({coordinate:{latitude:43.7,longitude:7.425},accuracyMeters:5,timestamp:Date.now(),precision:'precise'});};
+  };
+ });
+ await page.getByRole('button',{name:'Recenter',exact:true}).click();
+ expect(await plane.evaluate(element=>element===(window as any).retainedMapPlane)).toBe(true);
+ await page.evaluate(()=>(window as any).finishMapLocation());
 });
 
 test('place hours have one row per day and its website opens inside Alpha',async({page})=>{

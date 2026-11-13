@@ -916,7 +916,7 @@ function providerSwitchFixture(){
  vm.runInContext(providerSwitchSource,context);
  return {context,events,controller:context.providerController};
 }
-test('the provider sheet stays open until the replacement agent is ready',async()=>{
+test('the provider sheet stays open through replacement readiness until the owner closes it',async()=>{
  const f=providerSwitchFixture();let finish;
  f.context.connectResident=()=>new Promise(resolve=>{finish=resolve;});
  const pending=f.controller.selectCloudProvider();
@@ -924,7 +924,8 @@ test('the provider sheet stays open until the replacement agent is ready',async(
  assert.equal(f.context.state.providerStatus.mode,'cloud');
  assert.equal(f.context.state.open,true,'a committed provider choice must not present the app as ready');
  finish();await pending;
- assert.equal(f.context.state.open,false);
+ assert.equal(f.context.state.open,true);
+ assert.equal(f.context.state.purpose,'provider');
 });
 test('a replacement agent failure keeps the confirmed provider choice open for recovery',async()=>{
  const f=providerSwitchFixture();

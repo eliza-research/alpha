@@ -43,6 +43,8 @@ async function setup(page, google, googleInFeed, mailOnly) {
     const {connectionController: controller} = window.__alphaModules['/src/runtime/connection-ui.tsx'];
     const {client} = controller.getCloudClient(), f = window.googleConnectFixture;
     f.rows = await client.gmailAccounts();
+    f.searches = window.oneCalendarFixture.gmailSearches;
+    if (!f.searches.every(search => f.rows.some(row => row.connectionId === search.grant))) throw Error('A preload used an ungranted mailbox');
     if (mailOnly) for (const row of f.rows) row.grantedCapabilities = row.grantedCapabilities.filter(scope => scope.includes('.gmail.'));
     client.gmailAccounts = async signal => {
       signal?.throwIfAborted();
@@ -61,7 +63,9 @@ async function setup(page, google, googleInFeed, mailOnly) {
       f.initiations.push([calendar, gmail]);
       return authorization;
     };
+    window.dispatchEvent(new Event('alpha:google-accounts-changed'));
   }, {authorization, mailOnly});
+  await expect.poll(async () => (await fixture(page)).reads.length).toBeGreaterThan(0);
 }
 
 async function openInbox(page, connected) {

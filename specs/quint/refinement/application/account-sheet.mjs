@@ -132,9 +132,13 @@ export async function checkAccountSheet(extraSources=[]){
       await panel(page).getByRole('button',{name:'Back to Account',exact:true}).click();await mark('Actual Back restores Account',{name:'back'});
       await page.keyboard.press('Escape');await expect(panel(page)).toHaveCount(0);await mark('Actual Escape dismisses Account',{name:'close'});
      }else{
-      await panel(page).getByRole('button',{name:'Own API keys',exact:true}).click();await expect(panel(page)).toHaveCount(0);
+      await panel(page).getByRole('button',{name:'Own API keys',exact:true}).click();
       await expect.poll(()=>page.evaluate(()=>window.accountController.getSnapshot().residentInference)).toBe('direct');
-      await mark('Actual reviewed provider selection closes the sheet',[{name:'switchMode'},{name:'close'}]);await show();
+      await expect(panel(page)).toBeVisible();
+      await mark('Provider selection keeps the current sheet open',{name:'switchMode'});
+      await panel(page).getByRole('button',{name:'Close Account',exact:true}).click();
+      await expect(panel(page)).toHaveCount(0);
+      await mark('The owner explicitly closes the provider sheet',{name:'close'});await show();
      }
     }
     if(kind!=='navigation'){
