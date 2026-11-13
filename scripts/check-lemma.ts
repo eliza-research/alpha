@@ -53,6 +53,7 @@ try {
   if (config['proof-dir'] !== 'specs/lemma') throw Error('The reviewed proof directory must be specs/lemma');
   const expectedProofs = files.flatMap(file => [file.replace(/\.ts$/, '.dfy'), file.replace(/\.ts$/, '.dfy.gen')].map(path => `specs/lemma/${path}`));
   inputs = [...new Set(['bun.lock', 'lemmascript.json', 'LemmaScript-files.txt', 'scripts/check-lemma.ts',
+    'scripts/quint-lib.ts', 'scripts/sha256.ts', 'scripts/upstream-pin.ts',
     'scripts/run-node-only-tests.ts',
     'specs/quint/refinement/timeouts.mjs',
     ...files, ...expectedProofs, ...proofsWithin(join(root, 'specs/lemma')).map(path => path.slice(root.length + 1))])];

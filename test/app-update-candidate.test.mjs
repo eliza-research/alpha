@@ -5,10 +5,56 @@ import path from 'node:path';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
-import {candidateVersion, candidateReceipt, candidateArchiveSize, main} from '../scripts/app-update-candidate.ts';
+import {candidateVersion, candidateReceipt, candidateArchiveSize, uploadedCandidateMetadata, main} from '../scripts/app-update-candidate.ts';
 import {candidateFixture as fixture, hash, json, legacyManifestUrl, read} from './fixtures/app-update-candidate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+
+test('uploaded artifact metadata retries transient visibility and transport failures within the same authenticated read', async () => {
+  let calls = 0, waits = 0;
+  const result = await uploadedCandidateMetadata('4242', 'controlled-token', {
+    request: async (url, options) => {
+      assert.equal(url, 'https://api.github.com/repos/eliza-research/alpha/actions/artifacts/4242');
+      assert.equal(options.redirect, 'error');
+      assert.equal(options.headers.Authorization, 'Bearer controlled-token');
+      assert.ok(options.signal instanceof AbortSignal);
+      calls++;
+      if (calls === 1) throw Error('controlled network failure');
+      if (calls === 2) return new Response('not visible yet', {status: 404});
+      if (calls === 3) return new Response('temporary service failure', {status: 503});
+      return Response.json({id: 4242, size_in_bytes: 1500});
+    }, wait: async milliseconds => {assert.equal(milliseconds, 1000); waits++;},
+  });
+  assert.deepEqual(result, {id: 4242, size_in_bytes: 1500});
+  assert.equal(calls, 4); assert.equal(waits, 3);
+});
+
+test('artifact metadata never substitutes a floor or retries authorization and malformed responses', async () => {
+  for (const status of [401, 403]) {
+    let calls = 0;
+    await assert.rejects(uploadedCandidateMetadata('4242', 'controlled-token', {
+      request: async () => {calls++; return new Response('private response body', {status});},
+      wait: async () => assert.fail('Authorization failures cannot become a retry'),
+    }), error => error.message === 'Uploaded candidate metadata read failed (HTTP ' + status + ')');
+    assert.equal(calls, 1);
+  }
+  for (const payload of ['not JSON', 'x'.repeat(1024 * 1024 + 1)]) {
+    let calls = 0;
+    await assert.rejects(uploadedCandidateMetadata('4242', 'controlled-token', {
+      request: async () => {calls++; return new Response(payload);},
+      wait: async () => assert.fail('Malformed metadata cannot become a retry'),
+    }), /metadata (?:is not JSON|exceeds 1 MiB)/);
+    assert.equal(calls, 1);
+  }
+  let calls = 0, waits = 0;
+  await assert.rejects(uploadedCandidateMetadata('4242', 'controlled-token', {
+    request: async () => {calls++; return new Response('', {status: 404});},
+    wait: async () => {waits++;},
+  }), /HTTP 404/);
+  assert.equal(calls, 5); assert.equal(waits, 4);
+  await assert.rejects(uploadedCandidateMetadata('../4242', 'controlled-token'), /Exact uploaded candidate/);
+  await assert.rejects(uploadedCandidateMetadata('4242', undefined), /requires a GitHub token/);
+});
 
 test('candidate versions use fixed run numbers above every page of retained assets and all committed/public floors', async t => {
   const f = fixture(t);

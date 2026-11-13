@@ -75,6 +75,49 @@ function gh(args: string[], {missing = false}: {missing?: boolean} = {}): unknow
     throw Error('Candidate inventory read failed; do not guess a version floor');
   }
 }
+
+/** The upload is finalized before this read, but REST visibility can lag it.
+ * Fetch directly so a nested Bun/gh subprocess cannot lose the response. */
+export async function uploadedCandidateMetadata(id: string, token: string | undefined, {
+  request = fetch, wait = (milliseconds: number) => new Promise<void>(resolve => setTimeout(resolve, milliseconds)),
+}: {request?: typeof fetch; wait?: (milliseconds: number) => Promise<void>} = {}): Promise<unknown> {
+  assert.ok(/^[1-9][0-9]{0,15}$/.test(id) && Number.isSafeInteger(Number(id)), 'Exact uploaded candidate artifact required');
+  assert.ok(token && !/[\r\n]/.test(token), 'Candidate metadata requires a GitHub token');
+  for (let attempt = 0; attempt < 5; attempt++) {
+    let response: Response;
+    try {
+      response = await request('https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + id, {
+        headers: {Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'},
+        redirect: 'error', signal: AbortSignal.timeout(10000),
+      });
+    } catch {
+      if (attempt === 4) throw Error('Uploaded candidate metadata read failed after five attempts');
+      await wait(1000); continue;
+    }
+    if (!response.ok) {
+      await response.body?.cancel();
+      if ([404, 429, 500, 502, 503, 504].includes(response.status) && attempt < 4) {await wait(1000); continue;}
+      throw Error('Uploaded candidate metadata read failed (HTTP ' + response.status + ')');
+    }
+    assert.ok(response.body, 'Uploaded candidate metadata body is missing');
+    const reader = response.body.getReader(), chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        let chunk: ReadableStreamReadResult<Uint8Array>;
+        try {chunk = await reader.read();}
+        catch {throw Error('Uploaded candidate metadata stream failed');}
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > 1024 * 1024) {await reader.cancel(); throw Error('Uploaded candidate metadata exceeds 1 MiB');}
+        chunks.push(chunk.value);
+      }
+    } finally {reader.releaseLock();}
+    try {return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
+    catch {throw Error('Uploaded candidate metadata is not JSON');}
+  }
+  throw Error('Uploaded candidate metadata was not available');
+}
 function archiveDirectory(root: string, archive: string) {
   const directory = path.resolve(root, archive);
   assert.ok(directory.startsWith(path.join(root, 'test-results') + path.sep), 'Candidate archive must be an owned test-results leaf');
@@ -287,7 +330,16 @@ export async function main(argv: string[], {root = process.cwd(), env = process.
   assert.ok(file.startsWith(path.join(root, 'test-results') + path.sep), 'Candidate output must be under test-results');
   let result;
   if (mode === 'version') result = await candidateVersion({root, env, api, read});
-  else if (mode === 'archive-size') result = candidateArchiveSize({root, env, api, archive});
+  else if (mode === 'archive-size') {
+    let artifactApi = api;
+    if (!artifactApi) {
+      identity(root, env);
+      assert.match(env.ALPHA_CANDIDATE_ARTIFACT_SHA256 ?? '', /^[0-9a-f]{64}$/, 'Exact uploaded candidate digest required');
+      const metadata = await uploadedCandidateMetadata(env.ALPHA_CANDIDATE_ARTIFACT_ID ?? '', env.GH_TOKEN);
+      artifactApi = () => metadata;
+    }
+    result = candidateArchiveSize({root, env, api: artifactApi, archive});
+  }
   else {
     const admission = readJson<VersionAdmission>(path.resolve(root, destination));
     // The published floor may advance while this unsigned build is running.

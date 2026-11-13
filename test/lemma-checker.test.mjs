@@ -27,6 +27,7 @@ if(process.versions.bun)throw Error('LemmaScript must run on genuine Node.js');
 if(process.argv.includes('extract')){console.log(JSON.stringify({functions:[{name:'policy'}]}));process.exit(0);}
 if(process.env.LEMMA_FIXTURE_DRIFT==='1')fs.appendFileSync('specs/lemma/apps/app/src/policy.dfy.gen','changed');
 if(process.argv.includes('check')){
+ if(process.env.LEMMA_FIXTURE_HELPER_DRIFT)fs.appendFileSync(process.env.LEMMA_FIXTURE_HELPER_DRIFT,'\\n// controlled helper drift\\n');
  if(process.env.LEMMA_FIXTURE_FAIL==='1')process.exit(1);
  console.log('Dafny program verifier finished with '+(process.env.LEMMA_FIXTURE_EMPTY==='1'?'0':'1')+' verified, 0 errors');
 }`);
@@ -44,6 +45,14 @@ if(process.argv.includes('check')){
     check = run({LEMMA_FIXTURE_VERSION: '4.10.0', LEMMA_REQUIRE_BACKEND: '1'}); assert.equal(check.result.status, 2); assert.equal(check.receipt.passed, false);
     check = run({LEMMA_FIXTURE_FAIL: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.status, 'failed');
     check = run({LEMMA_FIXTURE_EMPTY: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.passed, false);
+    for (const helper of ['scripts/quint-lib.ts', 'scripts/sha256.ts', 'scripts/upstream-pin.ts']) {
+      const original = readFileSync(join(root, helper));
+      check = run({LEMMA_FIXTURE_HELPER_DRIFT: helper});
+      assert.equal(check.result.status, 1, helper);
+      assert.equal(check.receipt.passed, false, helper);
+      assert.deepEqual(check.receipt.changedInputs, [helper]);
+      writeFileSync(join(root, helper), original);
+    }
     check = run({LEMMA_FIXTURE_DRIFT: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.passed, false); assert.deepEqual(check.receipt.changedInputs, ['specs/lemma/apps/app/src/policy.dfy.gen']);
     write('apps/app/src/unlisted.ts', '//@ verify\nexport function unlisted() { return true; }\n');
     check = run({}); assert.equal(check.result.status, 1); assert.match(check.receipt.error, /Unregistered function annotations/);
