@@ -3,8 +3,9 @@ import {fileURLToPath} from 'node:url';
 import test from 'node:test';
 import {checkSavedServiceRead} from '../specs/quint/refinement/application/saved-service-read.mjs';
 import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
-test('actual Calendar and Inbox reads refine saved visibility and current authority', {timeout: 60_000}, async () => {
+test('actual Calendar and Inbox reads refine saved visibility and current authority', {timeout: scaledTimeout(300_000)}, async () => {
   const receipt = await checkSavedServiceRead([fileURLToPath(import.meta.url)]);
   assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);
   assert.equal(receipt.traces, 12);

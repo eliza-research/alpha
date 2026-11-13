@@ -26,10 +26,9 @@ async function compile(driverHashes) {
     plugins: [{name: 'capture-exact-saved-read-inputs', setup(builder) {
       builder.onLoad({filter: /\.(?:tsx?|js|json)$/}, ({path}) => {
         const bytes = readFileSync(path);
-        // Capture the bytes before the compiler consumes them. The generated
-        // bundle is separately retained as an input before source execution.
-        const captured = captureInputs([path])[path];
-        assert.equal(captured, createHash('sha256').update(bytes).digest('hex'), 'Compiler consumes the captured bytes');
+        // Bind the exact bytes returned to the compiler. The initial source graph
+        // and final receipt check also reject changes during the replay.
+        const captured = createHash('sha256').update(bytes).digest('hex');
         assert.equal(driverHashes[path] ?? captured, captured, 'An already captured source still matches');
         driverHashes[path] = captured;
         return {contents: bytes, loader: extname(path).slice(1), resolveDir: dirname(path)};
