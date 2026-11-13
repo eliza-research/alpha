@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {nativeSource, runJvm, upstreamBridgeSource, upstreamVoiceFixture, upstreamVoiceSource} from './fixtures/jvm-tools.mjs';
 
 test('capture cancellation unblocks a read and serializes source release', () => {
- assert.match(runJvm([upstreamVoiceSource('LiveCaptureResource.java'), upstreamVoiceFixture('LiveCaptureResourceTest.java')], 'ai.eliza.voice.LiveCaptureResourceTest'), /^PASS live capture resource/);
+ assert.match(runJvm([upstreamVoiceSource('LocalMicrophoneLease.java'), upstreamVoiceSource('LiveCaptureResource.java'), upstreamVoiceFixture('LiveCaptureResourceTest.java')], 'ai.eliza.voice.LiveCaptureResourceTest'), /^PASS live capture resource/);
  // Ensure the exercised owner is wired into the shared production capture and microphone, not a test-only path.
  const source=fs.readFileSync(upstreamVoiceSource('LiveVoiceCapture.java'),'utf8');
  assert.match(source,/resource\.requestStop\(\);[\s\S]*active\.join\(1500\)/);
