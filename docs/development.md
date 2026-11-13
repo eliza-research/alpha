@@ -575,13 +575,15 @@ It also includes the [selected-tab permission](https://github.com/elizaOS/eliza/
 [prepared speech](https://github.com/elizaOS/eliza/pull/39424), [download publication](https://github.com/elizaOS/eliza/pull/39425),
 [held update offer](https://github.com/elizaOS/eliza/pull/39440) and [updater scratch storage](https://github.com/elizaOS/eliza/pull/39446) changes
 and [bounded secure-store allocations](https://github.com/elizaOS/eliza/pull/39461)
-at `37af7168b139b92f9e3b978546c97fb3e61870dc` on upstream develop. This
+at `f2ff172f1aa4683ca89bebc1c86ed6d6b402f091` on upstream develop. This
 also consumes the reviewed [Bun and ABI cleanup](https://github.com/elizaOS/eliza/pull/39420),
 [Cloud, Files and Sense fixes](https://github.com/elizaOS/eliza/pull/39444),
 [Calendar provider timestamps](https://github.com/elizaOS/eliza/pull/39467),
 [owner-clock scheduling](https://github.com/elizaOS/eliza/pull/39470) and
 [model-generated morning summaries](https://github.com/elizaOS/eliza/pull/39471).
-The native engine gitlink is unchanged, but the producer scripts and package
+The [portable fixture and evidence paths](https://github.com/elizaOS/eliza/pull/39478)
+remove personal home directories from the pinned source. The native engine
+gitlink is unchanged, but the producer scripts and package
 manifests differ from the retained `c9247e6966` native records. Those records
 remain attributed to their original inputs; no new native build or qualification
 is claimed. Strict embedding admission refuses this producer drift, and the
