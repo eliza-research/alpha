@@ -15,10 +15,11 @@ const reactKey = '__alphaPermissionChoicesReact';
 const progressKey = 'alpha:startup-permission-walkthrough:v1';
 const memoryKey = 'alpha.startup-permissions.v1';
 const permissionKeys = ['notifications', 'microphone', 'camera', 'location', 'calendar', 'photos', 'files'];
+const imageHeaders=[{name:'AlphaTelephony',methods:[{name:'imageCapability'}]}];
 
 async function compileComponent() {
   const ports = `const fixture=()=>globalThis.${fixtureKey};
-export const Capacitor={getPlatform:()=>fixture().platform,isNativePlatform:()=>fixture().platform==='android'};
+export const Capacitor={getPlatform:()=>fixture().platform,isNativePlatform:()=>fixture().platform==='android',get PluginHeaders(){return fixture().pluginHeaders;}};
 export function registerPlugin(name){return new Proxy({},{get:(_,method)=>(...args)=>fixture().ports[name][method](...args)});}
 export const connectionController={subscribe:fn=>fixture().connection.subscribe(fn),getSnapshot:()=>fixture().connection.snapshot};
 export const googleConnectionController={subscribe:fn=>fixture().google.subscribe(fn),getSnapshot:()=>fixture().google.snapshot};`;
@@ -34,7 +35,7 @@ export const useEffect=(effect,deps)=>{
 };
 export const {useLayoutEffect,useSyncExternalStore}=React;`;
   const built = await build({
-    absWorkingDir:root, stdin:{contents:`export {StartupPermissions} from './apps/app/src/startup-permissions.tsx';export {readStartupPermissionProgress} from './apps/app/src/startup-permission-progress.ts';`,resolveDir:root,loader:'ts'},
+    absWorkingDir:root, stdin:{contents:`export {StartupPermissions} from './apps/app/src/startup-permissions.tsx';export {readStartupPermissionProgress} from './apps/app/src/startup-permission-progress.ts';export {detectTelephonyProfile} from './.eliza/client-features/packages/contracts/src/native-telephony.ts';`,resolveDir:root,loader:'ts'},
     bundle:true,write:false,format:'cjs',platform:'node',metafile:true,
     external:['react/jsx-runtime'], define:{'import.meta.env':'undefined'},
     plugins:[{name:'coordinator-observation-ports',setup(plugin) {
@@ -99,9 +100,11 @@ async function fixture(component, options = {}) {
   dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
   dom.window.HTMLDialogElement.prototype.close=function(){this.open=false;};
   const state = {notifications:true,microphone:'granted',camera:'granted',location:'granted',calendar:'granted',photos:'selected',files:'granted',...options.permissions};
-  const calls = [], held = new Map(), resumes = new Set(), inFlight = new Map();
+  const calls = [], held = new Map(), heldStatus = new Map(), resumes = new Set(), inFlight = new Map();
+  const holdStatus=key=>{let release,reject;const promise=new Promise((yes,no)=>{release=yes;reject=no;});heldStatus.set(key,{promise,release,reject});};
+  for(const key of options.holdStatus??[])holdStatus(key);
   let instance = 0;
-  const runtime = {platform:options.native===false?'web':'android',hooks:{states:[],refs:[]},pauseInvalidation:false,deferredEffects:[],
+  const runtime = {platform:options.native===false?'web':'android',pluginHeaders:options.headers??(options.image?imageHeaders:undefined),hooks:{states:[],refs:[]},pauseInvalidation:false,deferredEffects:[],
     connection:observable({cloudAccount:options.signedOut?null:{credentialId:'owner-a',environment:'production'},open:false}),
     google:observable(false),ports:{},captured:null,flows:new Map(),
     observeFlow(key,inspect){this.flows.set(key,{ticket:this.captured?.ticket,inspect});}};
@@ -113,22 +116,22 @@ async function fixture(component, options = {}) {
     inFlight.set(identity,{key,instance:owner,epoch});
     try { await held.get(key)?.promise; } finally { inFlight.delete(identity); }
   };
-  const read = (key,value) => {calls.push({kind:'read',key});return value;};
+  const read = (key,value) => {calls.push({kind:'read',key});const gate=heldStatus.get(key);return gate?gate.promise.then(value):value();};
   const settings = async input => {calls.push({kind:'settings',page:input.page});};
   runtime.ports = {
-    AlphaNotifications:{async status(){return read('notifications',{permissionGranted:state.notifications,appEnabled:state.notifications});}},
-    DailyApps:{async checkPermissions(){return read('camera',{camera:state.camera});},async requestPermissions(input){await request(input.permissions[0]);},async addListener(_event,fn){resumes.add(fn);return {async remove(){resumes.delete(fn);}};}},
-    AlphaVoiceCloud:{async checkPermissions(){return read('microphone',{microphone:state.microphone});},async requestPermissions(){await request('microphone');}},
-    ElizaLocation:{async checkPermissions(){return read('location',{location:state.location,accuracy:state.location==='granted'?(state.locationAccuracy??'approximate'):'none'});},async requestPermissions(){await request('location');}},
-    AlphaCalendar:{async checkPermissions(){return read('calendar',{calendar:state.calendar});},async requestAccess(){await request('calendar');}},
-    AlphaPhotoLibrary:{async scope(){return read('photos',{scope:state.photos,locked:false});},async requestAccess(){await request('photos');}},
+    AlphaNotifications:{async status(){return read('notifications',()=>({permissionGranted:state.notifications,appEnabled:state.notifications}));}},
+    DailyApps:{async checkPermissions(){return read('camera',()=>({camera:state.camera}));},async requestPermissions(input){await request(input.permissions[0]);},async addListener(_event,fn){resumes.add(fn);return {async remove(){resumes.delete(fn);}};}},
+    AlphaVoiceCloud:{async checkPermissions(){return read('microphone',()=>({microphone:state.microphone}));},async requestPermissions(){await request('microphone');}},
+    ElizaLocation:{async checkPermissions(){return read('location',()=>({location:state.location,accuracy:state.location==='granted'?(state.locationAccuracy??'approximate'):'none'}));},async requestPermissions(){await request('location');}},
+    AlphaCalendar:{async checkPermissions(){return read('calendar',()=>({calendar:state.calendar}));},async requestAccess(){await request('calendar');}},
+    AlphaPhotoLibrary:{async scope(){return read('photos',()=>({scope:state.photos,locked:false}));},async requestAccess(){await request('photos');}},
     AlphaDevice:{openSettings:settings},
-    AlphaFiles:{async storageState(){return read('files',{access:state.files});},async storageRequestAccess(input){if(input?.settings)return settings({page:'files'});await request('files');return {access:state.files};}},
+    AlphaFiles:{async storageState(){return read('files',()=>({access:state.files}));},async storageRequestAccess(input){if(input?.settings)return settings({page:'files'});await request('files');return {access:state.files};}},
   };
   if(options.native===false){
     Object.defineProperty(navigator,'permissions',{configurable:true,value:{async query({name}){
       const key=name==='geolocation'?'location':name;
-      return read(key,{state:state[key]});
+      return read(key,()=>({state:state[key]}));
     }}});
     Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:options.unsupportedMedia?undefined:{async getUserMedia(input){
       const key=input.video?'camera':'microphone';await request(key);
@@ -179,7 +182,7 @@ async function fixture(component, options = {}) {
         review:states[7],states:states[8],busy:states[9],progressError:states[10],canSkip:states[11],checkNotice:states[12]},
       refs:{locationDescription:refs[0]?.current,photoDescription:refs[1]?.current,completedReady:!!states[1]&&states[4]===null,actionPending:refs[6]?.current,sequence:refs[7]?.current},
       controller:{credentialId:runtime.connection.snapshot.cloudAccount?.credentialId??null,open:runtime.connection.snapshot.open,
-        googleOpen:runtime.google.snapshot,native:runtime.platform==='android',enabled,
+        googleOpen:runtime.google.snapshot,native:runtime.platform==='android',image:component.detectTelephonyProfile(runtime.platform,runtime.pluginHeaders,'AlphaTelephony'),enabled,
         setupRevision:runtime.connection.snapshot.setupRevision,accountCreated:runtime.connection.snapshot.accountCreated},
       durable:{progress:stored?JSON.parse(stored):null,memory:memory?JSON.parse(memory):null,
         effectiveProgress:component.readStartupPermissionProgress(localStorage,runtime.platform==='android'),writeWorks:!writeFailure&&!dropWrite},
@@ -191,6 +194,9 @@ async function fixture(component, options = {}) {
   return {state,calls,snapshot,
     async click(label){await React.act(async()=>{const button=[...document.querySelectorAll('button')].find(node=>node.textContent===label);assert(button,`Missing ${label}; ${document.body.textContent}`);button.click();});},
     hold(key){let release,reject;const promise=new Promise((yes,no)=>{release=yes;reject=no;});held.set(key,{promise,release,reject});},
+    holdStatus,
+    async releaseStatus(key,reject=false){const gate=heldStatus.get(key);assert(gate,'Missing held status '+key);heldStatus.delete(key);await React.act(async()=>reject?gate.reject(Error('Injected unavailable status')):gate.release());},
+    async releaseStatuses(keys=permissionKeys){await React.act(async()=>{for(const key of keys){const gate=heldStatus.get(key);if(gate){heldStatus.delete(key);gate.release();}}});},
     async release(key,reject=false){await React.act(async()=>reject?held.get(key).reject(Error('Injected rejected callback')):held.get(key).release());},
     async owner(credentialId){await React.act(async()=>runtime.connection.update({cloudAccount:credentialId?{credentialId,environment:'production'}:null}));},
     async ownerAndSettle(credentialId,key,reject,deferEffect=false,environment='production'){
@@ -256,6 +262,7 @@ function modelObservation(value) {
     shownPermission:permissionKeys.findIndex(key=>value.ui.heading===key[0].toUpperCase()+key.slice(1)),
     buttonDisabled:value.ui.disabled,
     's.native':value.controller.native,
+    's.image':value.controller.image,
     's.signedIn':value.controller.credentialId!==null,
     's.enabled':value.controller.enabled,
     's.connectionOpen':!!value.controller.open,
@@ -301,6 +308,8 @@ const statuses = observation => [
 ];
 const advance = [action('begin'),action('result',true)];
 const restart = observation => [action('restart'),...statuses(observation)];
+const imageAdvances=(from,to)=>Array.from({length:to-from},()=>action('imageContinue'));
+const currentStep=observation=>observation.component.progress?.step??permissionKeys.length;
 
 export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=true}={}) {
   const component=await compileComponent(),scenarios=[],traces=[];
@@ -308,7 +317,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
     if(scenarioFilter && !scenarioFilter.test(name))return;
     const f=await fixture(component,options),checkpoints=[];
     const initial=f.snapshot();
-    const trace={name,init:action(options.native===false?'browserInit':'init'),expect:{'s.pending':-1},steps:[]};
+    const trace={name,init:action(initial.controller.image?'imageInit':options.native===false?'browserInit':'init'),expect:{'s.pending':-1},steps:[]};
     const record=(label,actions=null)=>{
       const observation=f.snapshot(),expected=modelObservation(observation);
       const mapped=typeof actions==='function'?actions(observation):actions;
@@ -321,6 +330,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
       ...(saved?.status==='completed'?[action('restoreCompleted',saved.step)]:saved?.step?[action('restorePending',saved.step)]:[]),
       ...(options.writeFailure||options.dropWrite?[action('storageFails')]:[]),
       action(options.signedOut?'mountSignedOut':'signIn'),...statuses(initial),
+      ...(initial.controller.image&&saved?.status!=='completed'?imageAdvances(saved?.step??0,currentStep(initial)):[]),
     ]);
     try {await work(f,record);scenarios.push({name,checkpoints});traces.push(trace);} finally {await f.dispose();}
   }
@@ -545,6 +555,78 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
     await f.target('camera');record('camera review',action('openTarget',2));
     await f.click('Done');record('browser target done',action('closeTarget'));
     assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+  });
+  await scenario('image-all-ready-completes-without-prompts',{image:true},async(f,record)=>{
+    assert.equal(f.snapshot().ui.heading,'All set');assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
+    assert.equal(f.calls.filter(call=>call.kind==='request').length,0);assert.equal(f.snapshot().homes,0);
+    await f.click('Done');record('owner acknowledges image completion',action('finish'));
+    await f.remount();record('completed image stays completed',restart);
+    assert.equal(f.snapshot().ui.visible,false);assert.equal(f.snapshot().homes,1);
+  });
+  await scenario('browser-image-header-does-not-auto-continue',{native:false,image:true},async(f,record)=>{
+    assert.equal(f.snapshot().controller.image,false);assert.equal(f.snapshot().ui.heading,'Notifications');
+    assert.equal(f.snapshot().component.progress.step,0);await f.click('Continue');record('browser permission remains explicit',advance);
+    assert.equal(f.snapshot().component.progress.step,1);
+  });
+  await scenario('image-denied-row-stops-auto-continuation',{image:true,permissions:{location:'denied'}},async(f,record)=>{
+    assert.equal(f.snapshot().ui.heading,'Location');assert.equal(f.snapshot().component.progress.step,3);
+    assert.equal(f.snapshot().durable.effectiveProgress.status,'pending');assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+    f.state.location='granted';await f.resume();record('fresh platform grant continues remaining image rows',observation=>[...statuses(observation),...imageAdvances(3,7)]);
+    assert.equal(f.snapshot().ui.heading,'All set');assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+  });
+  await scenario('image-unknown-read-stops-without-a-grant',{image:true,holdStatus:['notifications']},async(f,record)=>{
+    assert.equal(f.snapshot().ui.visible,false);assert.equal(f.snapshot().component.progress.step,0);
+    await f.releaseStatus('notifications',true);record('failed platform read is visible and ungranted',statuses);
+    assert.equal(f.snapshot().ui.heading,'Notifications');assert.equal(f.snapshot().component.states.notifications,'unavailable');
+    assert.equal(f.snapshot().component.progress.step,0);assert.equal(f.snapshot().durable.effectiveProgress.status,'pending');
+    assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+  });
+  await scenario('image-checking-timeout-offers-skip-and-retires-late-read',{image:true,holdStatus:permissionKeys},async(f,record)=>{
+    assert.equal(f.snapshot().ui.visible,false);assert.equal(f.snapshot().component.states.notifications,'checking');
+    await f.expireSkip();record('bounded hidden-check recovery',action('skipAvailable'));
+    assert.equal(f.snapshot().ui.visible,true);assert.equal(f.snapshot().ui.disabled,true);
+    await f.click('Skip');record('owner skips unknown image status',action('skip'));
+    await f.releaseStatus('notifications');record('late skipped-row status cannot advance the next row',statuses);
+    assert.equal(f.snapshot().component.progress.step,1);assert.deepEqual(f.snapshot().component.progress.choices,['skipped']);
+    await f.releaseStatuses();record('remaining granted image rows continue',observation=>[...statuses(observation),...imageAdvances(1,7)]);
+    assert.equal(f.snapshot().ui.heading,'All set');assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+  });
+  await scenario('image-owner-suspension-defers-ready-rows',{image:true,holdStatus:permissionKeys},async(f,record)=>{
+    await f.connection(null,false);record('owner retires setup',action('signOut'));
+    await f.releaseStatuses();record('platform readiness while suspended',statuses);
+    assert.equal(f.snapshot().component.progress.step,0);assert.equal(f.snapshot().ui.visible,false);
+    await f.connection('owner-b',true);record('current owner resumes image setup',[action('signIn'),...imageAdvances(0,7)]);
+    assert.equal(f.snapshot().ui.heading,'All set');assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+  });
+  await scenario('image-overlays-defer-ready-rows',{image:true,holdStatus:permissionKeys},async(f,record)=>{
+    await f.overlays(true,false);record('connection overlay suspends setup',action('overlays',true,false));
+    await f.releaseStatuses();record('image reads settle behind overlay',statuses);
+    assert.equal(f.snapshot().component.progress.step,0);
+    await f.overlays(false,true);record('Google overlay still suspends setup',action('overlays',false,true));
+    assert.equal(f.snapshot().component.progress.step,0);
+    await f.overlays(false,false);record('overlays close before image rows continue',[action('overlays',false,false),...imageAdvances(0,7)]);
+    assert.equal(f.snapshot().ui.heading,'All set');assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+  });
+  await scenario('image-failed-progress-reloads-from-durable-marker',{image:true,writeFailure:true,permissions:{location:'denied'}},async(f,record)=>{
+    assert.equal(f.snapshot().component.progress.step,3);assert.equal(f.snapshot().component.progressError,true);
+    assert.equal(f.snapshot().durable.effectiveProgress.step,0);
+    for(const key of permissionKeys)f.holdStatus(key);
+    await f.remount();record('reload cannot invent failed progress writes',restart);
+    assert.equal(f.snapshot().component.progress.step,0);assert.equal(f.snapshot().ui.visible,false);
+    f.recoverStorage();record('progress storage restored',action('storageRecovers'));
+    await f.releaseStatuses();record('fresh ready rows persist after recovery',observation=>[...statuses(observation),...imageAdvances(0,3)]);
+    assert.equal(f.snapshot().component.progress.step,3);assert.equal(f.snapshot().durable.effectiveProgress.step,3);
+    assert.equal(f.snapshot().component.progressError,false);
+  });
+  await scenario('image-settings-review-keeps-every-row-explicit',{image:true,progress:{version:4,status:'completed',step:7}},async(f,record)=>{
+    await f.reopen();record('Settings opens explicit image review',action('reopen'));
+    assert.equal(f.snapshot().ui.heading,'Notifications');assert.equal(f.snapshot().component.review,true);
+    await f.click('Continue');record('owner reviews one image permission',advance);
+    assert.equal(f.snapshot().ui.heading,'Microphone');assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
+    await f.click('Close');record('review closes without changing installation marker',action('closeReview'));
+    await f.target('camera');record('Settings target remains explicit',observation=>[action('openTarget',2),...statuses(observation)]);
+    assert.equal(f.snapshot().ui.heading,'Camera');await f.click('Done');record('target closes explicitly',action('closeTarget'));
+    assert.equal(f.calls.filter(call=>call.kind==='request').length,0);assert.equal(f.snapshot().durable.effectiveProgress.step,7);
   });
   if(!checkModel)return {scenarios,traces,sourceHashes:component.driverHashes};
   const receipt=await checkTraces({model:'PermissionChoices',id:'PermissionChoicesCoordinator',batchSize:8,sources:component.sources,

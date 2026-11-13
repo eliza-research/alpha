@@ -764,16 +764,19 @@
       "failedChoiceWriteStillAdvancesTest",
       "ownerChangeRetiresPendingTest",
       "staleCompletionKeepsNewPendingTest",
-      "completedRemountTest"
+      "completedRemountTest",
+      "imageGrantedProgressTest"
     ],
     "sources": [
       "apps/app/src/startup-permissions.tsx",
       "apps/app/src/startup-permission-progress.ts",
-      "apps/app/src/startup-permission-flow.ts"
+      "apps/app/src/startup-permission-flow.ts",
+      ".eliza/client-features/packages/contracts/src/native-telephony.ts"
     ],
     "abstractions": [
       "Seven permission state machines share one serial UI action and a durable versioned walkthrough. Attempts are retained in memory for the current flow and across restart only when the best-effort write succeeds.",
-      "Platform readiness is external input. Completed installation records grant no platform access."
+      "Platform readiness is external input. Completed installation records grant no platform access.",
+      "Image-provisioned access is replayed through existing platformStatus and advance transitions, with zero request calls and explicit Settings target review. PermissionChoices owns the image visibility, hidden-check recovery and automatic-continuation UI contract."
     ],
     "sharedSources": [
       "packages/ui/src/components/permissions/permission-walkthrough.ts"
@@ -1555,7 +1558,7 @@
   {
     "path": "specs/quint/application/PermissionChoices.qnt",
     "module": "PermissionChoices",
-    "init": "init",
+    "init": "profileInit",
     "step": "step",
     "invariant": "safety",
     "tests": [
@@ -1570,24 +1573,37 @@
       "completedRemountTest",
       "cancelledFlowRecheckTest",
       "nativeDisclosureTest",
-      "directProviderProgressTest"
+      "directProviderProgressTest",
+      "imageAlreadyGrantedCompletesTest",
+      "imageCheckingNeverGrantsTest",
+      "imageCheckingOffersRecoveryTest",
+      "imageDeniedStopsTest",
+      "imageUnknownStopsTest",
+      "imageOverlaySuspendsContinuationTest",
+      "imageOwnerAndOverlayReturnTest",
+      "imageFailedProgressReloadsTest",
+      "imageSettingsReviewIsExplicitTest",
+      "imageTargetReviewNeverContinuesTest"
     ],
     "sources": [
       "apps/app/src/startup-permissions.tsx",
       "apps/app/src/startup-permission-progress.ts",
       "apps/app/src/startup-permission-flow.ts",
       "apps/app/src/startup-browser-permissions.ts",
-      ".eliza/client-features/packages/ui/src/components/permissions/permission-walkthrough.ts"
+      ".eliza/client-features/packages/ui/src/components/permissions/permission-walkthrough.ts",
+      ".eliza/client-features/packages/contracts/src/native-telephony.ts"
     ],
     "abstractions": [
       "Seven Android permissions and four browser permissions use the current React coordinator and staged shared permission-flow/progress implementation.",
       "Progress and reviewed/skipped choices are installation UI intent. Failed or dropped writes leave the current session usable and do not grant platform access.",
       "Generations are bounded to twelve. Actual native calls, shared flow ownership and current UI ownership are distinct. Cancellation can retire a flow before its platform call returns.",
-      "All36 state fields plus derived visibility, busy state, displayed permission and button disabled state are checked against committed React/DOM observations in finite schedules.",
+      "All model state fields plus derived visibility, busy state, displayed permission and button disabled state are checked against committed React/DOM observations in finite schedules.",
       "Permission-attempt marker writes succeed in these coordinator traces. StartupPermissions separately models best-effort attempt-marker failures.",
       "The accountCreated/setupRevision input is retained across remount. Current source can show its completion popup again on remount; this model preserves that behavior.",
-      "Native and browser profiles have independent initializer actions. Native safety uses init, browser safety uses browserInit.",
-      "This current browser/native UI-choice contract complements PermissionWalkthrough, whose retained native model and source schedules cover best-effort attempt persistence and credential ABA retirement."
+      "Ordinary Android, admitted image and browser profiles have independent deterministic initializers for scenarios. profileInit selects all three for sampled safety; the platform profile stays immutable after mount.",
+      "This current browser/native UI-choice contract complements PermissionWalkthrough, whose retained native model and source schedules cover best-effort attempt persistence and credential ABA retirement.",
+      "The image profile comes from the actual Android AlphaTelephony imageCapability plugin header. Its ready row may auto-continue without a permission request; checking stays hidden only until the existing recovery timer of 20 seconds offers Checking and Skip. Denied or unavailable rows never auto-continue.",
+      "Connection and Google overlays, disabled setup and explicit Settings reviews suspend automatic continuation. Installation progress is best effort: a failed write advances only this session, and reload returns to the durable marker. This does not grant platform permission or establish an image boot."
     ],
     "profiles": [
       {
@@ -1601,7 +1617,27 @@
         "init": "browserInit",
         "step": "step",
         "invariant": "safety"
+      },
+      {
+        "name": "image",
+        "init": "imageInit",
+        "step": "step",
+        "invariant": "safety"
       }
+    ],
+    "invariants": [
+      "TypeOK",
+      "DescriptionDomains",
+      "OnePromptPerPermission",
+      "OrderedWalkthrough",
+      "CurrentOperation",
+      "DurableCompletion",
+      "InactiveKeysChecking",
+      "ImageProfileIsNative"
+    ],
+    "witnesses": [
+      "ImageContinuedWitness",
+      "ImageCheckingRecoveryWitness"
     ]
   },
   {
@@ -10431,7 +10467,7 @@
     "stateMapping": {
       "owner/front/session": "the mounted instance, owner.S().view === 'settings' and connectionController.getCloudClient()?.sessionId",
       "current/issued/reads/limits": "capabilityAbort, the refreshCapabilities calls that started a read, Gmail account requests in flight and their 10 s timers",
-      "gmail": "the authorization line: Not checked, Cloud sign-in required, Checking authorization…, a grant label, Authorization not verified",
+      "gmail": "the authorization line: Not checked, Cloud sign-in required, Checking authorization\u2026, a grant label, Authorization not verified",
       "licenses/fetching/fetches": "the module-level licenses.status and the notice file request",
       "dropped": "ghost: answers that arrived for a superseded read, another instance or another session"
     },
