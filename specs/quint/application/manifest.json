@@ -9794,7 +9794,7 @@
       "late/lateAdopted/lateDropped": "lateMethods delivered after the readiness wait ran out, and adoptLate()",
       "ownKeys": "configureLocal: its bounded wait after ending a probe, the save holding the slot, OWN_KEY_BUSY on screen, or saved (providerStatus.selected)",
       "residentStarts/probeEnd/probeEndStarted": "ensureResident() after a probe, how the last probe left the slot (settled, Back, own-keys takeover) and whether the agent was ensured after it",
-      "pageLatched": "ConnectionChooser signInPageLatched after the settled render; its underlying required-page reason survives clearing an error before startup settles, while saved own keys and host/account/purpose/recovery changes still remove that reason. The raw controller signInEntryPage predicate used by cancelSignIn remains distinct from this React latch."
+      "pageLatched": "ConnectionChooser signInPageLatched after the settled render; its underlying required-page reason survives clearing an error before startup settles. Existing account, saved own-provider, retained offline-identity and purpose predicates still govern whether the page is required. The raw controller signInEntryPage predicate used by cancelSignIn remains distinct from this React latch."
     },
     "abstractions": [
       "Four probes. Email, phone and Google attempts after the chooser are SignInChooser and IdentitySession; the probe cache and its per-environment coalescing are the shared native sign-in plugin.",
