@@ -203,9 +203,11 @@ jobs:
                   limits[file] = path.read_text().strip()
           Path('test-results/resident-ci/host-resources.json').write_text(json.dumps({'hostMemoryBytes': os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE'), 'cpuCount': os.cpu_count(), 'kernelMemoryLimits': limits, 'phaseEntryGiB': 10, 'phaseStopGiB': 4, 'PGIDRSSCap': None, 'phaseLogByteCap': None, 'nodeHeapMiB': 4096, 'turboConcurrency': 1}, indent=2) + '\n')
           PYCODE
-          echo "ALPHA_LOCAL_AGENT_SOURCE_DIR=$GITHUB_WORKSPACE/artifacts/resident-ci-92fc" >> "$GITHUB_ENV"
-          echo "ALPHA_WORKFLOW_WORKER_OUTPUT=$GITHUB_WORKSPACE/artifacts/worker-ci-92fc" >> "$GITHUB_ENV"
-          echo "XDG_CACHE_HOME=$RUNNER_TEMP/alpha-cache" >> "$GITHUB_ENV"
+          {
+            echo "ALPHA_LOCAL_AGENT_SOURCE_DIR=$GITHUB_WORKSPACE/artifacts/resident-ci-92fc"
+            echo "ALPHA_WORKFLOW_WORKER_OUTPUT=$GITHUB_WORKSPACE/artifacts/worker-ci-92fc"
+            echo "XDG_CACHE_HOME=$RUNNER_TEMP/alpha-cache"
+          } >> "$GITHUB_ENV"
       - name: Qualify supervisor on real Linux processes
         timeout-minutes: 10
         run: |
