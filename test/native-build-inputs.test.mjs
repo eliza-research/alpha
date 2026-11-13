@@ -56,7 +56,7 @@ test('native cache reuse rejects changed, linked and escaping outputs',t=>{
   files[0].path='../output';assert.throws(()=>verifyNativeFileBytes(dir,files),/Invalid native output path/);
 });
 test('concurrent native producers serialize and a failed producer releases its cache',async t=>{
-  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-lock-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const dir=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-lock-')));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   const events=[];
   let release;
   const pending=new Promise(resolve=>{release=resolve;});
@@ -64,5 +64,6 @@ test('concurrent native producers serialize and a failed producer releases its c
   const second=withNativeCacheLock(dir,async()=>{events.push('second');});
   await new Promise(resolve=>setTimeout(resolve,120));assert.deepEqual(events,['first']);
   release();await assert.rejects(first,/producer failed/);await second;
-  assert.deepEqual(events,['first','second']);assert.equal(fs.existsSync(path.join(dir,'build.lock')),false);
+  assert.deepEqual(events,['first','second']);
+  await withNativeCacheLock(dir,async()=>events.push('third'));assert.equal(events.at(-1),'third');
 });

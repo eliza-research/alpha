@@ -56,8 +56,7 @@ export async function preparePortableNativeInputs(root:string) {
     catch { /* Owned generated output is refreshed below; tracked records and vendor remain untouched. */ }
   }
   assertNativeOutputPath(cacheRoot,path.relative(cacheRoot,cache).split(path.sep).join('/'));
-  fs.mkdirSync(cache,{recursive:true});
-  await withNativeCacheLock(cache,async()=>{
+  await withNativeCacheLock(cache,async(assertHeld)=>{
   const sdk=resolveSdk(),toolchain=recipe.toolchain as Toolchain,ndk=path.join(sdk,'ndk',toolchain.ndk);
   if(!fs.existsSync(path.join(ndk,'source.properties')))command('sdkmanager',[`ndk;${toolchain.ndk}`]);
   const enginePath='plugins/plugin-local-inference/native/llama.cpp';
@@ -145,9 +144,10 @@ export async function preparePortableNativeInputs(root:string) {
     stageVoiceModels(cacheOutput,{from:[voiceOutput],record:voice});
     for(const library of preparation.libraries){if(fs.statSync(library.path).size!==library.bytes||fileDigest(library.path)!==library.sha256)throw Error('Built embedding library changed');fs.copyFileSync(library.path,path.join(cacheOutput,'android/app/src/main/jniLibs/arm64-v8a',path.basename(library.path)));}
     receipt.files=[...nativeOutputInventory(receipt).keys()].sort().map(file=>({path:file,bytes:fs.statSync(path.join(cacheOutput,file)).size,sha256:fileDigest(path.join(cacheOutput,file))}));
-    validateNativeBuildReceipt(root,receipt);verifyNativeBuildFiles(cacheOutput,receipt);verifyNativeBuildLibraries(cacheOutput,receipt);writeNativeBuildReceipt(cacheOutput,receipt);
+    validateNativeBuildReceipt(root,receipt);verifyNativeBuildFiles(cacheOutput,receipt);verifyNativeBuildLibraries(cacheOutput,receipt);assertHeld();writeNativeBuildReceipt(cacheOutput,receipt);
   }
   // Owned generated directories may be replaced after a recipe changes. Never modify vendor or committed admission data.
+  assertHeld();
   assertNativeOutputPath(root,'.eliza/paradee-voice');assertNativeOutputPath(root,'android/app/src/main/jniLibs');
   fs.rmSync(path.join(root,'.eliza/paradee-voice'),{recursive:true,force:true});
   for(const abi of ['arm64-v8a','x86_64'])for(const name of ['libelizainference.so','libelizavoicejni.so','libc++_shared.so'])fs.rmSync(path.join(root,'android/app/src/main/jniLibs',abi,name),{force:true});
@@ -160,7 +160,7 @@ export async function preparePortableNativeInputs(root:string) {
   }
   receipt=structuredClone(receipt);receipt.consumerSdkCommit=pin;
   receipt.files=[...nativeOutputInventory(receipt).keys()].sort().map(file=>({path:file,bytes:fs.statSync(path.join(root,file)).size,sha256:fileDigest(path.join(root,file))}));
-  validateNativeBuildReceipt(root,receipt);verifyNativeBuildFiles(root,receipt);verifyNativeBuildLibraries(root,receipt);writeNativeBuildReceipt(root,receipt);
+  validateNativeBuildReceipt(root,receipt);verifyNativeBuildFiles(root,receipt);verifyNativeBuildLibraries(root,receipt);assertHeld();writeNativeBuildReceipt(root,receipt);
   verifyNativeBuildFiles(root);
   console.log('Built and staged source-bound native voice and embedding inputs; no device qualification claimed.');
   });

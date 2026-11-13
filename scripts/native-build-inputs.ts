@@ -2,8 +2,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import {createHash} from 'node:crypto';
-import {execFileSync} from 'node:child_process';
+import {createHash,randomUUID} from 'node:crypto';
+import {execFileSync,spawn} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,verifyNativeSymbols} from './embedding-native-contract.ts';
 
@@ -33,7 +33,7 @@ export function nativeRecipe(root:string) {
   const git=(...args:string[])=>execFileSync('git',['-C',vendor,...args],{encoding:'utf8',maxBuffer:16*1024*1024}).trim();
   if(!/^[a-f0-9]{40}$/.test(pin)||git('rev-parse','HEAD')!==pin)throw Error('Native producer requires the locked SDK checkout');
   // Trees include the complete upstream producer module closure, model recipes and Java/JNI inputs.
-  const sources=[...new Set([...embeddingProducerInputPaths,...nativeInputPaths,nativeJavaPath,'packages/app/scripts/paradee-voice/build-native.ts','packages/app/scripts/voice/build-phonon2-gguf.ts','plugins/plugin-local-inference/native/android','plugins/plugin-native-inference/src/model-catalog/voice-model-versions.json'])].sort();
+  const sources=[...new Set([...embeddingProducerInputPaths,...nativeInputPaths,nativeJavaPath,'packages/app/scripts','bun.lock','packages/app/scripts/paradee-voice/build-native.ts','packages/app/scripts/voice/build-phonon2-gguf.ts','plugins/plugin-local-inference/native/android','plugins/plugin-native-inference/src/model-catalog','plugins/plugin-native-inference/src/model-catalog/voice-model-versions.json'])].sort();
   const ids=git('rev-parse',...sources.map(name=>`${pin}:${name}`)).split('\n');
   const sourceTrees=Object.fromEntries(sources.map((name,index)=>[name,ids[index]]));
   git('diff','--quiet','HEAD','--',...sources,'plugins/plugin-local-inference/native/llama.cpp');
@@ -52,7 +52,7 @@ export function assertNativeOutputPath(root:string,relative:string) {
   for(const part of relative.split('/')){
     if(!part||part==='.'||part==='..')throw Error('Invalid native output path');
     cursor=path.join(cursor,part);
-    if(fs.existsSync(cursor)&&fs.lstatSync(cursor).isSymbolicLink())throw Error('Native output traverses a symbolic link');
+    if(fs.lstatSync(cursor,{throwIfNoEntry:false})?.isSymbolicLink())throw Error('Native output traverses a symbolic link');
   }
 }
 
@@ -146,24 +146,24 @@ export function writeNativeBuildReceipt(root:string,receipt:NativeBuildReceipt) 
   assertNativeOutputPath(root,NATIVE_BUILD_RECEIPT);
   const target=path.join(root,NATIVE_BUILD_RECEIPT);fs.mkdirSync(path.dirname(target),{recursive:true});
   if(fs.lstatSync(path.dirname(target)).isSymbolicLink())throw Error('Native receipt parent is a link');
-  const temporary=`${target}.${process.pid}.partial`;fs.writeFileSync(temporary,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});fs.renameSync(temporary,target);
+  const temporary=`${target}.${randomUUID()}.partial`;
+  try{fs.writeFileSync(temporary,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});fs.renameSync(temporary,target);}
+  finally{fs.rmSync(temporary,{force:true});}
 }
-export async function withNativeCacheLock<T>(cache:string,build:()=>Promise<T>) {
-  const lock=path.join(cache,'build.lock'),deadline=Date.now()+3*60*60*1000;
+export async function withNativeCacheLock<T>(cache:string,build:(assertHeld:()=>void)=>Promise<T>) {
+  const absolute=path.resolve(cache),base=path.parse(absolute).root;
+  assertNativeOutputPath(base,path.relative(base,absolute).split(path.sep).join('/'));
+  const lock=path.join(cache,'build.lock');
   fs.mkdirSync(cache,{recursive:true});
-  if(fs.lstatSync(cache).isSymbolicLink())throw Error('Native cache root must not be a link');
-  for(;;){
-    try{fs.writeFileSync(lock,String(process.pid),{flag:'wx'});break;}
-    catch(error){
-      if(!(error instanceof Error&&'code' in error&&error.code==='EEXIST'))throw error;
-      if(fs.lstatSync(lock).isSymbolicLink())throw Error('Native cache lock must not be a link');
-      const owner=Number(fs.readFileSync(lock,'utf8'));let alive=Number.isSafeInteger(owner)&&owner>0;
-      if(alive)try{process.kill(owner,0);}catch{alive=false;}
-      if(!alive&&Date.now()-fs.statSync(lock).mtimeMs>1000){fs.rmSync(lock);continue;}
-      if(Date.now()>deadline)throw Error('Timed out waiting for the native producer cache');
-      await new Promise(resolve=>setTimeout(resolve,100));
-    }
-  }
-  try{return await build();}
-  finally{if(fs.existsSync(lock)&&fs.readFileSync(lock,'utf8')===String(process.pid))fs.rmSync(lock);}
+  // Kernel advisory locks survive neither process death nor cache relocation.
+  // Never unlink the inode: another waiting process may already have it open.
+  const holder=spawn('python3',['-c','import fcntl,os,sys\nf=os.fdopen(os.open(sys.argv[1],os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600),"a+")\nfcntl.flock(f,fcntl.LOCK_EX)\nprint("locked",flush=True)\nsys.stdin.read()\n',lock],{stdio:['pipe','pipe','pipe']});
+  await new Promise<void>((resolve,reject)=>{
+    holder.once('error',reject);
+    holder.once('exit',code=>reject(Error(`Native cache lock failed (${code})`)));
+    holder.stdout.once('data',chunk=>String(chunk).trim()==='locked'?resolve():reject(Error('Invalid native lock response')));
+  });
+  const assertHeld=()=>{if(holder.exitCode!==null||holder.signalCode!==null)throw Error('Native cache lock owner exited');};
+  try{assertHeld();return await build(assertHeld);}
+  finally{if(holder.exitCode===null&&holder.signalCode===null)await new Promise<void>(resolve=>{holder.once('exit',()=>resolve());holder.stdin.end();});}
 }
