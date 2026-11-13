@@ -289,8 +289,10 @@ public final class AlphaDevicePlugin extends Plugin {
    if(!AlphaImageCapability.verified(context))return true;
    android.telecom.TelecomManager calls=context.getSystemService(android.telecom.TelecomManager.class);
    // A grant arriving after Telecom returned false cannot authenticate that read.
-   if(calls==null||!canReadUpdateCallState(context,calls)||calls.isInCall())return false;
-   return canReadUpdateCallState(context,calls);
+   if(calls==null||!canReadUpdateCallState(context,calls))return false;
+   // Lint cannot infer the privileged, default-dialer and AppOps checks in the helper.
+   @android.annotation.SuppressLint("MissingPermission") boolean inCall=calls.isInCall();
+   return !inCall&&canReadUpdateCallState(context,calls);
   }catch(SecurityException denied){return false;}
   catch(RuntimeException unknown){return false;}
  }

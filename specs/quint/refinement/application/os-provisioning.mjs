@@ -20,7 +20,7 @@ public class Probe {
  static int generation(){try{Field f=controller.getClass().getDeclaredField("generation");f.setAccessible(true);return f.getInt(controller);}catch(Exception e){throw new RuntimeException(e);}}
  static String keyboard(){String v=activity.resolver.get(Settings.Secure.DEFAULT_INPUT_METHOD);return v==null||v.isEmpty()?"none":v.contains("LatinIME")?"latin":"owner";}
  static JSONObject state(){return new JSONObject().put("s.eligible",AlphaFreshPresets.eligible(activity)).put("s.alive",!activity.isDestroyed()&&!activity.isFinishing())
- .put("s.phase",activity.isDestroyed()?"idle":complete?"done":bool("waiting")?"waiting":presets?"presets":"idle").put("s.generation",generation())
+ .put("s.phase",activity.isDestroyed()?"idle":complete?"done":presets?"presets":bool("waiting")?"waiting":"idle").put("s.generation",generation())
  .put("s.keyboard",keyboard()).put("s.complete",complete).put("s.completionAuthorized",complete&&AlphaFreshPresets.eligible(activity)&&roles.held&&!keyboard().equals("none"));}
  static void mark(String label,Object action,JSONObject observation){trace.getJSONArray("steps").put(new JSONObject().put("label",label).put("action",action==null?JSONObject.NULL:action).put("expect",observation));}
  static void mark(String label,Object action){mark(label,action,state());}
@@ -90,7 +90,7 @@ export async function checkOSProvisioning(extraSources=[]){
   const traces=javaJson(temporary,'com.android.provision.Probe');assert.equal(traces.length,12);
   return await checkTraces({model:'OSProvisioning',sources:[...sources,...generated],driverHashes,generatedSources:generated,traces,scope:'bounded-orchestration',assumptions:[
    'The unchanged provisioning policy, Android IME adapter and appearance Activity execute on the host JVM. Welcome has three bound read-only observer calls; the real private controller, generation checks, timeout runnable, role callback and completion callback execute.',
-   'Android UI, RoleManager, settings, policy, IME and wallpaper services are explicit synthetic ports. These serialized callbacks prove source decisions under controlled port responses, not Android permission enforcement, cross-process settings atomicity, device lifecycle delivery, wallpaper rendering or AOSP image boot.',
+   'Android UI, RoleManager, settings, policy, IME and wallpaper services are explicit synthetic ports. The fixture exposes no fresh telephony feature and exercises HOME provisioning only. These serialized callbacks prove source decisions under controlled port responses, not Android permission enforcement, cross-process settings atomicity, device lifecycle delivery, wallpaper rendering or AOSP image boot.',
    'The finite model treats failed keyboard presets as an unfinished presets phase; only keyboard and completion are projected after that source recovery path. Retry from failed presets and partial wallpaper success followed by palette failure require separate models/platform checks. Automatic fresh-setup palette is distinct from the explicit post-update appearance action.',
   ]});
  }finally{rmSync(temporary,{recursive:true,force:true});}
