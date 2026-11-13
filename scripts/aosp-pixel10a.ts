@@ -78,20 +78,23 @@ export function pixel10aVendorApi({root = process.cwd(), source}: {root?: string
 }
 
 type Pixel10aCompositionOptions = Omit<Parameters<typeof composePixel10aProduct>[0], 'bootAnimation' | 'vendorApi'> & {
+  bootAnimation: string | null;
   vendorApi: ReturnType<typeof pixel10aVendorApi> | null;
 };
-type Pixel10aProductOptions = Omit<Pixel10aCompositionOptions, 'product' | 'nativeStagingEvidence' | 'vendorApi'> & {
+type Pixel10aProductOptions = Omit<Pixel10aCompositionOptions, 'product' | 'nativeStagingEvidence' | 'bootAnimation' | 'vendorApi'> & {
   root: string;
   apk: string;
   identity: {moduleName: string};
+  bootAnimation?: string | null;
   vendorApi?: Pixel10aCompositionOptions['vendorApi'];
   senseActivation?: SenseImageActivation | null;
 };
-export function writePixel10aProduct({root, output, apk, identity, launcher, sourceEvidence, production = false, vendorApi = null, senseActivation = null}: Pixel10aProductOptions) {
+export function writePixel10aProduct({root, output, apk, identity, launcher, sourceEvidence, production = false, bootAnimation = null, vendorApi = null, senseActivation = null}: Pixel10aProductOptions) {
   const nativeStagingEvidence = JSON.parse(execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--target', 'stallion', '--defer-soong'], {encoding:'utf8'}));
   const product = readPixel10aComposition(root);
+  // A brand boot animation is staged only when the shared composition pins its bytes.
   const compose = composePixel10aProduct as unknown as (options: Pixel10aCompositionOptions) => ReturnType<typeof composePixel10aProduct>;
-  const report = compose({output, product, launcher, sourceEvidence, nativeStagingEvidence, production, vendorApi});
+  const report = compose({output, product, launcher, sourceEvidence, nativeStagingEvidence, production, bootAnimation, vendorApi});
   execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--finalize-soong'], {stdio:'pipe'});
   if (production) {
     const bytes = fs.readFileSync(path.join(root, PIXEL10A_PRODUCT));

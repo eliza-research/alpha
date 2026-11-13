@@ -49,11 +49,12 @@ test("AOSP staging refuses test-mocks and non-distributable inputs before any st
     let out = raw(["--aosp-source", "absent-source", "--apk", flagOn, "--development"]);
     assert.notEqual(out.status, 0);
     assert.match(out.stderr, /Staging requires --target pixel10a or --target cuttlefish/);
-    for (const removed of [["--production"], ["--boot-animation", "x.zip"]]) {
-      out = stage(["--apk", flagOn, ...removed]);
-      assert.notEqual(out.status, 0);
-      assert.match(out.stderr, /Use --target cuttlefish \| --target pixel10a/);
-    }
+    out = stage(["--apk", flagOn, "--production"]);
+    assert.notEqual(out.status, 0);
+    assert.match(out.stderr, /Use --target cuttlefish \| --target pixel10a/);
+    out = stage(["--apk", flagOn, "--development", "--boot-animation", "x.zip"]);
+    assert.notEqual(out.status, 0);
+    assert.match(out.stderr, /--boot-animation belongs to --target pixel10a/);
     out = stage(["--apk", flagOn, "--development"]);
     assert.notEqual(out.status, 0);
     assert.match(out.stderr, /artifacts\/test-mocks\/ builds are never staged/);

@@ -175,12 +175,12 @@ const get = (key: string) => {
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--development") continue;
   if (
-    !["--apk", "--output", "--descriptor", "--apk-manifest", "--aosp-source", "--listener-apk", "--listener-descriptor", "--listener-qualification", "--target", "--factory-image", "--applied-systemui-patch", "--applied-build-patch"].includes(args[i]) ||
+    !["--apk", "--output", "--descriptor", "--apk-manifest", "--aosp-source", "--listener-apk", "--listener-descriptor", "--listener-qualification", "--target", "--factory-image", "--applied-systemui-patch", "--applied-build-patch", "--boot-animation"].includes(args[i]) ||
     !args[i + 1] ||
     args[i + 1].startsWith("--")
   )
     throw new Error(
-      "Use --target cuttlefish | --target pixel10a --factory-image FILE, with --aosp-source PATH --apk FILE --output NEW_DIR [--development] [--descriptor FILE (required without --development)] [--apk-manifest FILE] [--listener-apk FILE [--listener-descriptor FILE] [--listener-qualification FILE]] [--applied-systemui-patch chip|ops|assist|alpha-protected-power ...] [--applied-build-patch soong-memory|alpha-sense-policy ...]",
+      "Use --target cuttlefish | --target pixel10a --factory-image FILE, with --aosp-source PATH --apk FILE --output NEW_DIR [--development] [--descriptor FILE (required without --development)] [--apk-manifest FILE] [--listener-apk FILE [--listener-descriptor FILE] [--listener-qualification FILE]] [--applied-systemui-patch chip|ops|assist|alpha-protected-power ...] [--applied-build-patch soong-memory|alpha-sense-policy ...] [--boot-animation ZIP (pixel10a, when the composition pins one)]",
     );
   if (args[i] === '--applied-systemui-patch') appliedPatchNames.push(args[i + 1]);
   if (args[i] === '--applied-build-patch') appliedBuildNames.push(args[i + 1]);
@@ -195,6 +195,7 @@ const source = get('--aosp-source');
 const factory = get('--factory-image');
 const cuttlefish = cuttlefishOptions({target:get('--target'), source, factory});
 const physical = !cuttlefish && pixel10aOptions({target:get('--target'), source, factory});
+if (get('--boot-animation') && !physical) throw new Error('--boot-animation belongs to --target pixel10a');
 const listenerApk = get('--listener-apk');
 const listenerDescriptor = get('--listener-descriptor');
 const qualificationFile = get('--listener-qualification');
@@ -336,7 +337,7 @@ const provisioningTree = aaptManifestTree(stagedLauncher, {aapt: tool("aapt"), e
 assertImageLauncherManifest(provisioningTree, production);
 if (production) aospTelephonyRoleComponents(provisioningTree, identity.appId);
 if (senseImage) assertSenseLauncher(provisioningTree, identity.appId);
-if (!development || senseImage)
+if (production || senseImage)
   assertProvisioningUpdateChannel(apkUpdateChannelOrLegacy(parseXmlTree(provisioningTree)), reviewedUpdateChannel);
 fs.appendFileSync(path.join(output, "product.mk"), clockProductRequirement);
 // The image system feature Alpha Phone requires, with a system-partition install, before it offers
@@ -356,7 +357,7 @@ writeSecureCameraOverlay(output, cameraSource);
 let senseActivation: SenseImageActivation | null = null;
 if (listenerApk) {
   const certificateSha256 = String(reviewed.certificateSha256 ?? '').toLowerCase();
-  const listener = stageListener({ root: process.cwd(), output, apk: listenerApk, launcherSigner: certificateSha256, appId: identity.appId, descriptorFile: admittedListenerDescriptor, production: !development || senseImage, aapt: tool("aapt"), apksigner: tool("apksigner"), env });
+  const listener = stageListener({ root: process.cwd(), output, apk: listenerApk, launcherSigner: certificateSha256, appId: identity.appId, descriptorFile: admittedListenerDescriptor, production: production || senseImage, aapt: tool("aapt"), apksigner: tool("apksigner"), env });
   if (qualification) {
     if (!senseSdk || !physicalSource || !descriptorDigests) throw Error('Sense activation requires the verified Pixel source, SDK and private descriptors');
     const sepolicySha256 = stageAlphaSensePolicy({root: process.cwd(), output, appId: identity.appId, certificateSha256});
@@ -385,7 +386,7 @@ if (production || senseActivation) {
 }
 if (cuttlefish) writeCuttlefishNatives({root:process.cwd(), output, apk:stagedLauncher, module:identity.moduleName});
 if (physical) {
-  writePixel10aProduct({root:process.cwd(), output, apk:stagedLauncher, identity, launcher:reviewed, sourceEvidence:physicalSource, production, vendorApi, senseActivation});
+  writePixel10aProduct({root:process.cwd(), output, apk:stagedLauncher, identity, launcher:reviewed, sourceEvidence:physicalSource, production, bootAnimation:get('--boot-animation'), vendorApi, senseActivation});
 }
 if (fs.existsSync(destination)) throw Error('Output appeared during staging: ' + destination);
 fs.renameSync(output, destination);
