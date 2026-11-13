@@ -58,7 +58,6 @@ bun run dev:ui
 <tr><td><b>Everyday apps, built in</b></td><td>Inbox (Gmail), Calendar, Browser, Camera, Photos, Maps, Notes and Files, all designed around the agent.</td></tr>
 <tr><td><b>Workflows</b></td><td>Scheduled briefs and routines that run while the phone is on, with approvals and a run history you can inspect.</td></tr>
 <tr><td><b>You approve what matters</b></td><td>The agent shows you what it is about to do and waits for your go-ahead. Full photo access stays a local permission, not a bulk upload.</td></tr>
-<tr><td><b>An app or a whole phone</b></td><td>Install Alpha as a normal app, set it as your launcher, or run the Alpha OS image, which adds Phone, Contacts and SMS.</td></tr>
 </table>
 
 <p align="center">
