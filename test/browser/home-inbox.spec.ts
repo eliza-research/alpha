@@ -152,9 +152,11 @@ test('opening Inbox shows saved mail while the same-owner Home refresh is pendin
  await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeInboxFixture.release)).toBe('function');
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:/Unread, Synthetic sender A.*Synthetic quarterly planning subject/})).toBeVisible();
+ await expect(page.locator('[data-alpha-subview="inbox-list"]').getByRole('status').filter({hasText:'Saved mail · Checking Gmail access…'})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
  await page.evaluate(()=>(window as any).homeInboxFixture.release());
  await expect(page.getByRole('button',{name:/Unread, Synthetic sender A.*Refreshed subject/})).toBeVisible();
+ await expect(page.getByText('Saved mail · Checking Gmail access…',{exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
 });
 
