@@ -87,8 +87,9 @@ public final class LiveCaptureTraces {
    ids.put(new JSONArray().put(number).put(call==null?0:idOf(call.getString("captureId"))));outcomes.put(new JSONArray().put(number).put(outcome(call)));
    var record=records.get(number);var object=captures.get(number);
    boolean stopped=object!=null&&(boolean)Trace.read(Trace.read(object,"resource"),"stopped");
+   boolean releaseFailed=object!=null&&(boolean)Trace.read(Trace.read(object,"resource"),"releaseFailed");
    sources.put(new JSONArray().put(number).put(new JSONObject().put("allocated",record!=null).put("running",record!=null&&record.recording)
-    .put("released",record!=null&&record.released).put("stopped",stopped)));
+    .put("released",record!=null&&record.released).put("stopped",stopped).put("releaseFailed",releaseFailed)));
   }
   int frames=0,ended=0;String endReason="none";
   for(int index=0;index<NoteBridgePorts.events.length();index++){
