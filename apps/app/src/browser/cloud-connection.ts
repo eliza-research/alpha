@@ -8,6 +8,7 @@ import {cloudVoiceLimitOf,type CloudVoiceLimitFacts} from '../runtime/cloud-voic
 const endpoint='/__alpha-browser-cloud';
 const references=new Map<string,string|null>();
 export async function browserCloudCall(data:Record<string,unknown>,signal?:AbortSignal):Promise<Response>{
+ if(!import.meta.env.DEV)throw Error('Cloud browser host unavailable');
  return fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','X-Alpha-Browser-Cloud':'1'},body:JSON.stringify(data),signal:signal?anyAbortSignal([signal,AbortSignal.timeout(120000)]):AbortSignal.timeout(120000),redirect:'error'});
 }
 async function rpc(data:Record<string,unknown>,signal?:AbortSignal){const response=await browserCloudCall(data,signal);if(!response.ok)throw Object.assign(Error('Cloud development connection unavailable.'),{status:response.status});return response.json();}
@@ -55,6 +56,7 @@ export async function browserCloudCredential(environment:string,credentialId:str
  if(credential.credentialId!==credentialId)throw new DOMException('Cloud account changed','AbortError');return credential;
 }
 export async function browserCloudVoice(input:{environment:string;credentialId:string;requestId:string},operation:'stt'|'tts',payload:Blob|string,signal:AbortSignal):Promise<Response>{
+ if(!import.meta.env.DEV)throw Error('Cloud browser host unavailable');
  const credential=await browserCloudCredential(input.environment,input.credentialId,signal);
  const values={operation,environment:input.environment,credentialId:input.credentialId,requestId:input.requestId,credentialReference:credential.credentialReference};let response:Response;
  if(operation==='stt'){

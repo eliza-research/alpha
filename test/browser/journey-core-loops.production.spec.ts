@@ -446,7 +446,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   // An unavailable Agent Calendar must not silently create a local event.
   await page.goto('/');
   await button(page, 'Maps').click();
-  await expect(page.getByRole('region', {name: 'Map', exact: true})).toBeVisible();
+  await expect(page.locator('[data-alpha-map-plane]')).toHaveCount(0);
   await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toBeVisible();
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(page.getByRole('region', {name: 'Maps'})).not.toContainText(/\d+ min|\d km/);
@@ -477,7 +477,7 @@ test('loops D and F in the web build: digests and mail name the missing account 
   await openRetainedDigests(page);
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   await expect(digests).not.toContainText('Choose where your agent runs');
-  await expect(digests).toContainText('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.');
+  await expect(digests).toContainText('Result link is waiting for a verified connection.');
   await expect(digests).not.toContainText(/remote agent/i);
   // None of the development scheduler exists: no snapshot, no schedule review, no "runs while open".
   await expect(digests.getByText('Share a snapshot', { exact: true })).toHaveCount(0);

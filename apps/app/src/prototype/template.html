@@ -1950,7 +1950,8 @@
     </sc-if>
   </sc-if>
   </div>
-  <sc-if value="{{maps.hasNativeMap}}"><div ref="{{maps.mapRef}}" data-alpha-map-plane aria-label="{{maps.mapLabel}}" style="position:absolute;inset:0;z-index:1"></div>
+  <sc-if value="{{maps.hasNativeMap}}"><div ref="{{maps.mapRef}}" data-alpha-map-plane aria-label="{{maps.mapLabel}}" style="position:absolute;inset:0;z-index:1"></div></sc-if>
+  <sc-if value="{{maps.hasCredits}}">
     <div class="alpha-map-credits" style="bottom:{{maps.attributionBottom}}px">
       <sc-if value="{{maps.globalBasemap}}">
         <span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">Data from OpenStreetMap</a><sc-if value="{{maps.cloudCredit}}"><span data-maps-cloud-credit> · {{maps.cloudCredit}}</span></sc-if></span>
@@ -1958,7 +1959,8 @@
       </sc-if>
       <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
       <sc-if value="{{maps.cloudBasemap}}"><span class="alpha-map-credit-links"><strong>Google Maps</strong> · {{maps.mapAttribution}}</span></sc-if>
-      <button class="alpha-map-recenter" aria-label="Recenter" title="My location" onClick="{{maps.recenter}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mapsLoc}}"></path></svg></button>
+      <sc-if value="{{maps.standaloneCredit}}"><span data-maps-cloud-credit>{{maps.cloudCredit}}</span></sc-if>
+      <sc-if value="{{maps.hasNativeMap}}"><button class="alpha-map-recenter" aria-label="Recenter" title="My location" onClick="{{maps.recenter}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mapsLoc}}"></path></svg></button></sc-if>
 
     </div>
   </sc-if>
