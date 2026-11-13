@@ -1043,6 +1043,9 @@ registerView("inbox", {
         inboxUndo(api, msg, snap);
       };
       det = {
+        actionsAvailable: true,
+        closeMenu: function (event) { event.currentTarget.closest("details").removeAttribute("open"); },
+        menuKey: function (event) { if (event.key === "Escape") { var menu = event.currentTarget; menu.open = false; menu.querySelector("summary").focus(); event.stopPropagation(); } },
         noHtml: true, canTrash: true, subj: cur.subj, name: cw.name, ini: cw.ini, body: cur.body, time: cur.time,
         meta: (cur.sent ? "From " : "To ") + (multi ? inboxAcctLabel(ca) : ca.address) + " · " + cur.time,
         hasAtt: !!(cur.atts && cur.atts.length), atts: (cur.atts || []).map(function (a) { return { name: a.name, size: a.size, open: function () { inboxOpenFile(api, a); } }; }),

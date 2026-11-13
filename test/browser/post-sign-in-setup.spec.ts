@@ -187,7 +187,10 @@ test('a signed-in start opens access setup directly, with no Home while the acco
 });
 
 test('a start that has not decided in 60 s shows Home as before, and the sign-in still follows',async({page})=>{
- const host=await hosts(page);host.hold=true;await page.clock.install();
+ const host=await hosts(page);host.hold=true;
+ const time=new Date('2026-10-06T12:00:00Z');await page.clock.install({time});
+ // Count from the mounted guard, not from elapsed module loading on the test host.
+ await page.clock.pauseAt(new Date(time.getTime()+1000));
  await page.goto(origin+'/');
  await expect.poll(()=>!!host.release,{timeout:60_000}).toBe(true);
  await page.clock.fastForward(59_000);
