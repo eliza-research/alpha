@@ -15,11 +15,6 @@
 </p>
 
 <p align="center">
-  <a href="https://alphacompute.ai"><img src="https://img.shields.io/badge/Built%20by-Alpha%20Compute-0000ff?style=for-the-badge" alt="Built by Alpha Compute"></a>
-  <a href="#status"><img src="https://img.shields.io/badge/Status-early%20pilot-orange?style=for-the-badge" alt="Status: early pilot"></a>
-</p>
-
-<p align="center">
   <a href="#quickstart">Quickstart</a> ·
   <a href="#what-you-get">What you get</a> ·
   <a href="#how-it-works">How it works</a> ·
