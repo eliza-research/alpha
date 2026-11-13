@@ -16,6 +16,7 @@ const floorClass = value => value < 705 ? 1 : value === 705 ? 2 : 3;
 export async function checkAppUpdateCandidate(extraSources = []) {
   const sources = [fileURLToPath(import.meta.url), 'scripts/app-update-candidate.ts',
     'scripts/deliver-app-update.ts', 'scripts/update-artifact.ts',
+    'scripts/native-build-inputs.ts', 'scripts/embedding-native-contract.ts',
     'test/fixtures/app-update-candidate.mjs', '.github/workflows/resident-android.yml', ...extraSources];
   const driverHashes = captureInputs(sources), traces = [], cleanups = [];
   try {

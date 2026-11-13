@@ -104,6 +104,8 @@ def campaign(scratch, signing_commit, name, schedule, signing_timeout):
     elif schedule[0][1][0] == "dispatch":
         fixture.producer.write_archive()
         fixture.plan["archiveBytes"] = fixture.producer.archive.stat().st_size
+    native_source_root = (fixture.producer.source_directory.name
+                          if schedule[0][0] == "admitCandidate" else None)
     state = blank()
     trace = {"name": name, "expect": {"s": blank()}, "steps": []}
     plan = copy.deepcopy(fixture.plan)
@@ -187,13 +189,17 @@ def campaign(scratch, signing_commit, name, schedule, signing_timeout):
         args = ["bash", "scripts/ci/verify-cloud-signing-input.sh"]
         if stage_path:
             args.extend(["--stage", str(stage_path)])
-        result = subprocess.run(args, cwd=scratch, capture_output=True, timeout=signing_timeout, env={
+        environment = {
             "PATH": str(scratch / "closed-bin") + os.pathsep + os.environ["PATH"],
             "GITHUB_SHA": signing_commit, "GITHUB_REPOSITORY": repo, "GITHUB_REF": "refs/heads/main",
             "GITHUB_REPOSITORY_ID": str(producer.REPOSITORY_ID),
             "RUNNER_TEMP": str(fixture.directory), "GITHUB_OUTPUT": str(output),
             "SIGNING_PLAN": plan_bytes.decode(), "GH_FIXTURE": str(endpoints_path),
-        })
+        }
+        if native_source_root is not None:
+            environment["ALPHA_NATIVE_SOURCE_ROOT"] = native_source_root
+        result = subprocess.run(args, cwd=scratch, capture_output=True, timeout=signing_timeout,
+                                env=environment)
         exact_plan = "plan_sha256=" + hashlib.sha256(plan_bytes).hexdigest() + "\n"
         if result.returncode:
             assert not output.exists()
@@ -227,7 +233,7 @@ def campaign(scratch, signing_commit, name, schedule, signing_timeout):
                             producer.github_candidate(plan, candidate_metadata(fault).__getitem__)
                         with patch.object(storage, "connection", return_value=(port, {})):
                             storage.download(plan, archive)
-                        bridge.PRODUCER.admit(archive, plan, stage)
+                        bridge.PRODUCER.admit(archive, plan, stage, source_root=native_source_root)
                     except ValueError as error:
                         observation["refusal"] = str(error)
                 staged = {variant: bridge.file_sha(stage / f"{variant}-release-unsigned.apk")
@@ -285,7 +291,8 @@ def campaign(scratch, signing_commit, name, schedule, signing_timeout):
                     with patch.object(storage, "connection", return_value=(port, {})):
                         storage.download(pins, target)
                 try:
-                    bridge.stage(record, reviewed_plan, work, product, fetch_unsigned, fetch_signed)
+                    bridge.stage(record, reviewed_plan, work, product, fetch_unsigned, fetch_signed,
+                                 source_root=native_source_root)
                 except ValueError as error:
                     observation["refusal"] = str(error)
                 staged = {variant: bridge.file_sha(product / f"artifacts/{variant}-release.apk")

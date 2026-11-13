@@ -2882,6 +2882,8 @@
       ],
       "sources": [
         "scripts/app-update-candidate.ts",
+        "scripts/native-build-inputs.ts",
+        "scripts/embedding-native-contract.ts",
         "scripts/deliver-app-update.ts",
         "scripts/update-artifact.ts",
         ".github/workflows/resident-android.yml"
