@@ -18,6 +18,16 @@ export function installChatTools(Component: {prototype: Shell}) {
   prototype.renderVals = function() {
     const output = render.call(this);
     const shell = this;
+    const owner = JSON.stringify(connectionController.getSnapshot().session);
+    if (this.chatToolsOwner !== owner) {
+      this.chatSearchAbort?.abort();
+      clearTimeout(this.chatSearchTimer);
+      this.chatSearchOpen = false;
+      this.chatSearchBusy = false;
+      this.chatSearchResults = [];
+      this.chatToolsOpen = false;
+      this.chatToolsOwner = owner;
+    }
     this.fileAttachments ??= [];
     const closeMenu = () => {shell.chatToolsOpen = false;shell.setState({});};
     const closeSearch = () => {
@@ -42,6 +52,9 @@ export function installChatTools(Component: {prototype: Shell}) {
           accept: CHAT_UPLOAD_ACCEPT.split(',').filter(type => !/^(audio|video)\//.test(type)).join(','),
         }), []);
         if (!files.length || !shell.live || binding() !== owner) return;
+        if (files.some(file => /^(audio|video)\//.test(file.type))) {
+          throw Error('Choose a photo or document.');
+        }
         const result = await intakeAttachmentFiles(files, {
           existingCount: existing.length + (shell.cameraAttachment ? 1 : 0),
         });
