@@ -67,8 +67,7 @@ test('the active folder distinguishes lost storage from denied access and recove
     const fixture = {unavailable:false, denyList:false, requests:0};
     Object.assign(window, {filesReadStatus:fixture});
     BrowserFiles.prototype.storageState = async function () {
-      if (fixture.unavailable) throw Error('Storage state unavailable');
-      return readState.call(this);
+      return fixture.unavailable ? {status:'unavailable', message:'Files closed.'} : readState.call(this);
     };
     BrowserFiles.prototype.storageList = async function (input) {
       return fixture.denyList ? {status:'denied', access:'denied', legacy:true} : readList.call(this, input);
@@ -141,4 +140,34 @@ test('Files explains partial and failed reads while keeping the returned rows', 
   });
   await expect(row).toBeVisible();
   await expect(status(folder, 'Files could not be read.')).toHaveCount(0);
+});
+
+test('an unreadable Trash location cannot make the active list look empty', async ({page}) => {
+  await page.evaluate(async () => {
+    const {BrowserFiles} = await import('/src/browser/files.ts');
+    const readState = BrowserFiles.prototype.storageState;
+    const readTrash = BrowserFiles.prototype.storageTrashList;
+    const fixture = {secondaryReadable:false};
+    Object.assign(window, {filesReadStatus:fixture});
+    BrowserFiles.prototype.storageState = async function () {
+      const state = await readState.call(this);
+      const volumes = Array.isArray(state.volumes) ? state.volumes : [];
+      return {...state, volumes:[...volumes, {id:'secondary', name:'External storage', primary:false}]};
+    };
+    BrowserFiles.prototype.storageTrashList = async function (input?:{volume?:string}) {
+      if (input?.volume === 'secondary') return fixture.secondaryReadable ? {status:'ready', items:[]} : {status:'unavailable'};
+      return readTrash.call(this);
+    };
+  });
+  await openFiles(page);
+  await filesBrowse(page).getByRole('button', {name:'Trash', exact:true}).click();
+  const folder = filesFolder(page);
+  await expect(status(folder, 'Some Trash locations could not be read.')).toBeVisible();
+  await expect(status(folder, 'No files to show')).toHaveCount(0);
+  await page.evaluate(() => {
+    (window as any).filesReadStatus.secondaryReadable = true;
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(status(folder, 'No files to show')).toBeVisible();
+  await expect(status(folder, 'Some Trash locations could not be read.')).toHaveCount(0);
 });
