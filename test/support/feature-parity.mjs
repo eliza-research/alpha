@@ -24,6 +24,8 @@ export const featureParityAllowlist = {
     "capability:sms.send.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts"
   },
   modules: [
+    "apps/app/src/prototype/chat-tools-adapter.ts",
+    "apps/app/src/runtime/conversation-read-path.ts",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
