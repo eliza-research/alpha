@@ -1,8 +1,10 @@
 /// The transcript review of a voice conversation turn (`reviewConversationTurn`) and the review
 /// that a reply's phone action then requires (`conversationReviewRequired`). A finished transcript
 /// is held until the person sends it, possibly edited, or discards it; nothing is sent before
-/// that, and the held review settles once. A reply that needs a phone action reviewed turns the
-/// microphone off: voice does not resume that request, it only closes or starts over.
+/// that, and the held review settles once. A reply that needs a phone action reviewed ends the
+/// turn with the microphone off: voice does not resume that request, its control only closes voice.
+/// A transcript is held and a reply is taken only for a chat that is still current; a reply that
+/// arrives for a chat that is no longer current closes voice.
 module VoiceTurnReview {
   type State = { voice: bool, current: bool, review: str, text: str, outcome: str, sentText: str, settles: int,
     sends: int, reviewRequired: bool, phase: str, restarts: int }
@@ -19,7 +21,7 @@ module VoiceTurnReview {
     s' = { ...s, voice: true, phase: "listening", reviewRequired: false, review: "none", text: "", outcome: "none",
       sentText: "", settles: 0, restarts: s.restarts + 1 } }
   // A transcript is ready and reviewed turns are on: it is shown, editable, and not sent.
-  action transcriptReady = all { s.voice, s.phase == "listening", s.review == "none",
+  action transcriptReady = all { s.voice, s.current, s.phase == "listening", s.review == "none",
     s' = { ...s, review: "held", text: "spoken", outcome: "none", sentText: "", settles: 0, phase: "review" } }
   action edit(text: str): bool = all { s.review == "held", s.current, s' = { ...s, text: text } }
   // Send: only non-empty text from the review the panel was drawn for, while the chat is current.
@@ -33,15 +35,18 @@ module VoiceTurnReview {
     s' = { ...s, review: "none", outcome: "aborted", settles: s.settles + 1, phase: "listening" } }
   action currencyLost = all { s.current, s' = { ...s, current: false } }
   action currencyBack = all { not(s.current), s' = { ...s, current: true } }
-  // The reply to a sent turn. A phone action awaiting review that is not an owner-input pause
-  // stops the microphone for this request.
+  // The reply to a sent turn. A failed turn reports nothing about the reply. A phone action
+  // awaiting review that is not an owner-input pause is an unfinished reply: the turn ends in the
+  // stopped state with the microphone off.
   action replyArrives(reviewRequired: bool, awaitingInput: bool, failed: bool): bool = all { s.voice, s.phase == "thinking",
-    s' = { ...s, reviewRequired: reviewRequired and not(awaitingInput),
-      phase: if (failed) "error" else if (awaitingInput) "awaiting-user-input" else if (reviewRequired) "idle" else "listening" } }
-  // The panel's primary control: a stopped or failed conversation starts over unless a phone
-  // action is waiting for review; then, and in every other phase, it closes voice.
+    val required = reviewRequired and not(awaitingInput) and not(failed)
+    s' = if (not(s.current)) closed(s)
+      else { ...s, reviewRequired: required,
+        phase: if (failed or required) "error" else if (awaitingInput) "awaiting-user-input" else "listening" } }
+  // The panel's primary control: a failed conversation starts over unless a phone action is
+  // waiting for review; then, and in every other phase, it closes voice.
   action recover = all { s.voice, s.current, s.review == "none", s.restarts < 3,
-    s' = if ((s.phase == "error" and not(s.reviewRequired)) or s.phase == "idle")
+    s' = if (s.phase == "error" and not(s.reviewRequired))
         { ...s, phase: "listening", reviewRequired: false, outcome: "none", sentText: "", settles: 0, restarts: s.restarts + 1 }
       else closed(s) }
   action close = all { s.voice, s' = closed(s) }
@@ -59,7 +64,7 @@ module VoiceTurnReview {
   val ReviewSettlesOnce = s.settles <= 1 and (s.review == "held" implies s.settles == 0)
   val HeldReviewNeedsVoice = s.review == "held" implies (s.voice and s.phase == "review" and s.outcome == "none")
   val DiscardClosesVoice = s.outcome == "discarded" implies not(s.voice)
-  val ReviewRequiredStopsListening = (s.reviewRequired and s.voice) implies s.phase.in(Set("idle", "error"))
+  val ReviewRequiredStopsListening = (s.reviewRequired and s.voice) implies s.phase == "error"
   val ClosedVoiceHoldsNothing = not(s.voice) implies (s.review == "none" and s.phase == "idle")
   val SendsNeedReviews = s.sends <= 3 * s.restarts
   val safety = NothingSentWithoutSend and EmptyTextIsNeverSent and ReviewSettlesOnce and HeldReviewNeedsVoice and
@@ -84,8 +89,10 @@ module VoiceTurnReview {
   // The reply needs a phone action reviewed: the panel's control closes voice instead of
   // listening again for that request.
   run reviewRequiredDoesNotResumeTest = init.then(start).then(transcriptReady).then(sendReviewed)
-    .then(replyArrives(true, false, true)).expect(s.reviewRequired and s.phase == "error" and safety)
+    .then(replyArrives(true, false, false)).expect(s.reviewRequired and s.phase == "error" and safety)
     .then(recover).expect(not(s.voice) and s.restarts == 1 and safety)
+  run staleReplyClosesVoiceTest = init.then(start).then(transcriptReady).then(sendReviewed).then(currencyLost)
+    .then(replyArrives(false, false, false)).expect(not(s.voice) and s.outcome == "sent" and s.sends == 1 and safety)
   run failedReplyStartsOverTest = init.then(start).then(transcriptReady).then(sendReviewed)
     .then(replyArrives(false, false, true)).then(recover)
     .expect(s.voice and s.phase == "listening" and s.restarts == 2 and not(s.reviewRequired) and safety)

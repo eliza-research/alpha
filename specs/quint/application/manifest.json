@@ -4722,7 +4722,9 @@
       "failedTimerStopAllowsRetryTest",
       "staleStartAfterCloseTest",
       "lostCaptureReturnsReadyTest",
-      "cancelTranscriptionReopensTest"
+      "cancelTranscriptionClosesTest",
+      "failedTranscriptionRetriesTest",
+      "recordAgainDiscardsClipTest"
     ],
     "invariants": [
       "BusyHasCurrentTask",
@@ -4738,7 +4740,10 @@
       "RetryAfterFailedStopWitness",
       "ReviewWitness",
       "StaleTaskWitness",
-      "ReadyAfterErrorWitness"
+      "ReadyAfterErrorWitness",
+      "StaleStartBlocksEntryWitness",
+      "RecordedAfterFailedTranscriptionWitness",
+      "RecordAgainWitness"
     ],
     "sources": [
       "apps/app/src/prototype/voice-adapter.ts",
@@ -4763,7 +4768,11 @@
       },
       {
         "path": "apps/app/src/prototype/voice-adapter.ts",
-        "name": "reopen"
+        "name": "startTranscription"
+      },
+      {
+        "path": "apps/app/src/prototype/voice-adapter.ts",
+        "name": "cancelChat"
       },
       {
         "path": "apps/app/src/prototype/voice-adapter.ts",
@@ -4783,18 +4792,18 @@
       }
     ],
     "stateMapping": {
-      "stage/generation/busy": "The voice-adapter stage, generation and busy variables",
-      "task/token/staleTask": "The act() task in flight, the generation it captured and a task abandoned by cleanup()",
-      "driver/clip": "The live dictation recording (opening, recording, stopping, clip) and the adapter clip",
-      "draft/applied": "The reviewed transcript and its hand-off to the composer",
+      "stage/generation/busy": "The voice-adapter stage, generation and busy variables while chat Transcribe is the chat destination",
+      "task/token/staleStart/staleTask": "The act() task in flight, the generation it captured, a microphone start abandoned by cleanup() that has not settled, and an abandoned stop or transcription",
+      "driver/clip": "The recording driver (opening, recording, stopping, clip) and the adapter clip",
+      "draft/applied": "The reviewed transcript and its hand-off to the composer draft",
       "stopFailed/refusedAsRecording": "A rejected stop, and a start refused because an earlier recording was never released"
     },
     "abstractions": [
-      "One recorder with four generations; one task in flight per generation and one flag for an abandoned older task.",
-      "The driver state follows the shared live dictation recording that createNativeLiveDictation returns. Clip recorders on other routes share the stage machine only.",
-      "cleanup() cancels the driver recording within the step; the serialized stopping chain and readiness probes are omitted (see VoiceSurfaceRetirement).",
-      "A rejected stop, from the Stop control or the maximum-duration timer, releases the driver recording.",
-      "Playback of the draft, route selection and the voice conversation are outside this model."
+      "Chat Transcribe only, the one route that reaches the recorder stages: one recorder with four generations, one task in flight per generation, and one flag each for an abandoned start and an abandoned stop or transcription.",
+      "A stop that returns a clip, from the Stop control or the maximum-duration event, transcribes it in the same task; the recorded stage is reached only after a failed transcription.",
+      "Transcribe does not open again while an abandoned microphone start has not settled; the retirement panel shown meanwhile and an unconfirmed stop are in VoiceSurfaceRetirement.",
+      "cleanup() cancels the driver recording within the step. A rejected stop, from the Stop control or the maximum-duration timer, releases the driver recording.",
+      "Route selection, on-device speech readiness and its automatic start, playback of the clip, and the voice conversation are outside this model."
     ],
     "sharedSources": [
       "packages/voice/src/live-voice-session.ts",
@@ -7079,7 +7088,8 @@
       "SpentCodeNeverVerified",
       "StepMatchesWork",
       "StoredKeyNeverHidden",
-      "PrefillOnlyOnChooser"
+      "PrefillOnlyOnChooser",
+      "AddressOnlyOnCodeSteps"
     ],
     "witnesses": [
       "SpentCodeWitness",
@@ -7160,12 +7170,14 @@
       "operation": "the work() step in flight: Google wait, code send, resend or verification",
       "attempt/attempts/stale": "attemptId named by the code or verification step and the code step marked stale after expired or attempts-exhausted",
       "commitBoundary/hostCommitted": "googleCancellationSupported and whether the host stored the key before the waiting call answered",
-      "storedKey/adoptedKey/priorKey/adoptedByBack": "the stored Cloud credential, the one the controller adopted, googleSignInPrior and adoption by Back"
+      "storedKey/adoptedKey/priorKey/adoptedByBack": "the stored Cloud credential, the one the controller adopted, googleSignInPrior and adoption by Back",
+      "address": "whether the code or verification step was reached from an address: its view carries the email or phone that a failed check refills on the chooser, and a Google second verification carries none"
     },
     "abstractions": [
       "Four attempts and three stored keys. Email and phone are one address class; readiness, method availability and copy are not modeled.",
       "The host (shared native sign-in client or the development bridge) is a controlled port: its attempt lifetime, cooldown, codes and acknowledgement are IdentitySession and the shared client.",
-      "The required first-run entry page, explicit-entry close and the operation slot queue are separate (ConnectionController). Scenario and simulation evidence only."
+      "The required first-run entry page, explicit-entry close and the operation slot queue are separate (SignInReadinessProbe, ConnectionController). hostBoundary fixes the host kind before the first sign-in.",
+      "Replayed against beginSignIn, signInGoogle, signInEmail, resendSignInCode, verifySignInCode and cancelSignIn sliced from connection-ui.tsx over the real step slot, with the code form's submit guard from cloud-sign-in-ui.tsx; the sign-in host, key store and Cloud are held ports and React is not rendered (test/quint-sign-in-chooser.test.mjs). No native sign-in, browser or device claim."
     ],
     "sharedSources": [
       "packages/auth/src/auth/native-cloud-sign-in.ts"
@@ -7185,7 +7197,10 @@
       "secondReturnReplacesQueuedTest",
       "noticeBeforeStartupTest",
       "staleNoticeDroppedTest",
-      "queuedReturnRunsBeforeNoticeTest"
+      "queuedReturnRunsBeforeNoticeTest",
+      "noticeDuringRebindShownTest",
+      "rebindBehindRebindYieldsToReturnTest",
+      "rebindBehindRebindRunsNextTest"
     ],
     "invariants": [
       "TypeOK",
@@ -7202,7 +7217,8 @@
       "ReplacedReturnWitness",
       "StaleNoticeDroppedWitness",
       "RebindBeforeReturnWitness",
-      "RestartedNoticeWitness"
+      "RestartedNoticeWitness",
+      "ReturnBeforeWantedRebindWitness"
     ],
     "sources": [
       "apps/app/src/runtime/connection-ui.tsx"
@@ -7262,8 +7278,8 @@
     },
     "abstractions": [
       "Three returns, notices and rebinds. A rebind blocked only by a turn in flight, automatic restart, plan re-checks and resident liveness are ResidentLiveness and CloudPlanRecheck.",
-      "A wanted rebind claims the freed slot before the sign-in queue, as the release order does. A key-manager request releases the slot the same way whether it completed or failed.",
-      "Scenario and simulation evidence only; no installed WebView or native event-delivery claim."
+      "A wanted rebind claims the freed slot before the sign-in queue, except when the step that ends is itself a rebind: the queued return or notice then goes first and the wanted rebind runs at the next release. A rebind retires the connection, so a fenced notice queued before it is dropped and one that arrives during it is shown. A key-manager request releases the slot the same way whether it completed or failed.",
+      "Replayed against work, releaseOperation, manageProviderKey, the rebind request and the sign-in return and notice queue sliced from connection-ui.tsx with the shared ResidentRebindQueue and held ports (test/quint-connection-controller.test.mjs). No installed WebView or native event-delivery claim."
     ],
     "sharedSources": [
       "packages/auth/src/auth/cloud-resident-binding.ts"
@@ -7293,7 +7309,8 @@
       "GateHasStep",
       "CompleteAtMostOncePerTap",
       "GrantOnlyFromCloud",
-      "RecordHasCloudState"
+      "RecordHasCloudState",
+      "RetainedReturnHasRecord"
     ],
     "witnesses": [
       "DeferredReturnWitness",
@@ -7355,14 +7372,14 @@
     "stateMapping": {
       "locked/queued/running": "the panel step gate, pendingCallback and the step holding the gate",
       "record/recordExpired": "the stored Pending authorization (waiting, finishing) and its deadline",
-      "retained/unread": "the native delegationCallback URI and the cloudDelegationCallback notification",
+      "retained/unread": "the native delegationCallback URI, released (releaseCallback) when its authorization's record is finished, and the cloudDelegationCallback notification",
       "cloud/grant": "Cloud delegation status and the adopted grant",
       "completes/codeReturns/statusTaps/starts": "complete calls, received codes, Check status taps and started reviews"
     },
     "abstractions": [
       "Two reviews and status checks; one authorization per account scope. Return parameters are validity classes admitted by CallbackLanding and the shared DelegationCallback.",
       "Secure-store compare-exchange succeeds unless the step fails as a whole. Revocations, account scope changes and the grant picker are not modeled.",
-      "Scenario and simulation evidence only; no App Link, browser or Cloud claim."
+      "Replayed against the mounted CloudDelegationPanel (React in jsdom) with Cloud, the native return slot, the secure store and the browser hand-off as held ports, and against delegationCancelStep on every Cancel step (test/quint-delegation-receiver.test.mjs). No App Link, browser or Cloud claim."
     ]
   },
   {
@@ -7525,7 +7542,9 @@
       "refusedNoteDeletedForeverTest",
       "unconfirmedPermanentDeleteKeepsChoiceTest",
       "failedStorageRefusesEraseTest",
-      "busyBlocksSecondActionTest"
+      "busyBlocksSecondActionTest",
+      "emptiedTrashClosesTest",
+      "closedNoteForgetsRefusalTest"
     ],
     "invariants": [
       "SingleMaintenancePass",
@@ -7533,14 +7552,17 @@
       "OneDestructiveAction",
       "FullChoiceHoldsRefusal",
       "ConfirmationNeedsOpenTrash",
-      "PermanentOnlyAfterRefusal"
+      "PermanentOnlyAfterRefusal",
+      "FullChoiceNeedsOpenNote",
+      "IdleEmptyTrashIsClosed"
     ],
     "witnesses": [
       "ForegroundJoinedBackgroundWitness",
       "RefusalPendingWitness",
       "ChoiceDismissedDuringDeleteWitness",
       "RestoreWaitsForMaintenanceWitness",
-      "DeletedForeverWitness"
+      "DeletedForeverWitness",
+      "EmptyTrashStaysOpenWhileBusyWitness"
     ],
     "sources": [
       "apps/app/src/prototype/notes-trash-adapter.ts",
@@ -7605,8 +7627,8 @@
     },
     "abstractions": [
       "One renderer, at most one Trash row counted, three destructive actions and one refused note; a second refusal during a permanent deletion is not modeled. Storage, locks and the voice-recording paths are in NotesLifecycle and PermanentVoiceDeletion.",
-      "The 15-minute timer, startup and resume are one nondeterministic background pass. A render that finds the refused note gone is a separate sweep step. The canonical Notes source, which skips maintenance, is outside this model.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "The 15-minute timer, startup and resume are one nondeterministic background pass. The render that follows every change is part of each step: it forgets a full-Trash choice whose note is no longer open and closes Recently deleted once it is empty and idle. Opening Recently deleted closes the open note. The canonical Notes source, which skips maintenance, is outside this model.",
+      "Trace replay: test/quint-notes-trash-session.test.mjs replays simulator traces step by step against installNotesTrashAdapter installed on a shell class and Notes view the driver owns, with the shared Trash maintenance, actions, schedule and storage reads as ports. background, joinReload and reloadOwed are compared as whether the step re-read Trash and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
     ]
   },
   {
@@ -7795,7 +7817,9 @@
       "SecondRequestRefusedWitness",
       "LeftDuringValidationWitness",
       "ChangedWhileAndroidAsksWitness",
-      "TwoReviewsAppliedWitness"
+      "TwoReviewsAppliedWitness",
+      "DoublePressWitness",
+      "LatePressIgnoredWhileAndroidAsksWitness"
     ],
     "sources": [
       "apps/app/src/prototype/photo-library-adapter.ts"
@@ -7834,13 +7858,13 @@
       "visible/hostReview/epoch/disposed": "The mounted Photos host, its own album or share review, and the adapter epoch bumped on leave and dispose",
       "requests": "Agent change requests waiting for provider validation, with the epoch and revision they captured",
       "review/reviewRevision/reviewEpoch": "The single pending review and the revisions it binds",
-      "confirms/acting/actingRevision": "Owner confirmations being re-validated and the change handed to Android",
+      "confirms/acting/actingRevision/latePresses": "Owner confirmations being re-validated, the change handed to Android, and confirmations whose review was gone when their re-validation returned",
       "dispatched/applied": "Reviews handed to Android and changes Android applied"
     },
     "abstractions": [
-      "One item with three revisions, two concurrent requests, two confirm presses and three visits. Search, inspect, select and view requests are outside this model.",
+      "One item with three revisions, two concurrent requests, two confirm presses and three visits. Search, inspect, select and view requests are outside this model, as is the review ended by hiding the app.",
       "Android re-checks the reviewed revision before applying; its dialog is one settle step.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Trace replay: test/quint-photo-library-agent-review.test.mjs replays simulator traces step by step against createDeviceLibrary with the native library plugin and the main Photos host as ports, every validate and requestChange call answered by a model step. The revision and visit a review binds are compared through what the provider and Android are asked and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
     ]
   },
   {
@@ -8243,7 +8267,9 @@
     "tests": [
       "dragEndsOverButtonTest",
       "tapOpensOnceTest",
-      "homeBarPullsDownToPillTest",
+      "homeBarPulledDownStaysTest",
+      "homeSheetCollapsesToBarTest",
+      "barViewStillDismissesTest",
       "openChatCollapsesToRestTest",
       "toolbarAfterOpenTapTest",
       "dragOverToolbarIsSuppressedTest",
@@ -8255,12 +8281,14 @@
       "OneEffectPerGesture",
       "NoClickThrough",
       "DragMatchesShell",
-      "HomeRest",
+      "HomeKeepsBar",
+      "KeptBarIsHomeBar",
       "GhostInsideWindow",
       "ValidDetent"
     ],
     "witnesses": [
-      "HomePillWitness",
+      "HomeBarKeptWitness",
+      "BarViewPillWitness",
       "SwallowedClickWitness",
       "RememberedHeightWitness",
       "FlickDismissWitness"
@@ -8334,12 +8362,13 @@
       "swallowAge/dragAge": "Date.now() minus shell.swallow and shell.chatDraggedAt against the 350 ms window, in ticks",
       "ghost/ghostLabel": "the compatibility click the platform delivers after pointerup, and the control under the finger",
       "remembered": "shell.chatSheetShare set from a release between the snap zones",
-      "dismissed": "Home's bar pulled down to the pill (chatRelease from the collapsed form, direction down)"
+      "barKept": "the last settled drag began on Home's bar (Drag.home, mode input) and was released downward: chatRelease returns input and the bar stays"
     },
     "abstractions": [
       "Heights are three zones (near the collapsed form, between, near the top) and a flick flag; pixel geometry, release velocity and the paint path are checked by test/chat-release.test.mjs.",
       "The compatibility click arrives inside the 350 ms window or not at all. A deliberate later click is a new gesture.",
-      "The assistant surface, the scrim press lease, composer focus and the dock keyboard watch are not modeled here (KeyboardFocus, ModalScrimOwnership).",
+      "The assistant surface (where a collapse closes the assistant instead of resting on a bar), the scrim press lease, composer focus and the dock keyboard watch are not modeled here (KeyboardFocus, ModalScrimOwnership).",
+      "Home keeps its bar on the modeled paths only: drag and flick release, tap controls, Close without a voice session, the late click and a navigation that takes the destination's rest. A voice session's compact controls, which take the pill's place on any surface while the session lives, a navigation that asks for or carries the pill, developer chat-mode buttons and direct state writes by test fixtures are outside the model.",
       "Model safety checks do not establish implementation refinement or device acceptance."
     ],
     "sharedSources": [
@@ -8701,11 +8730,16 @@
       "acceptedRingBecomesCallTest",
       "declineLogsRingTest",
       "lateConnectIgnoresEndedCallTest",
-      "developmentJumpOrphansCallTest"
+      "developmentJumpOrphansCallTest",
+      "ringHoldsHandoverTest",
+      "staleStartIsDroppedTest",
+      "startReleasesLatchTest",
+      "freshOpenDropsReturnTest"
     ],
     "invariants": [
       "SingleSource",
       "NoPhantomCall",
+      "BootOwned",
       "TimersOwned",
       "ControlsNeedCall",
       "OneRowPerCall",
@@ -8715,7 +8749,10 @@
       "OrphanedLiveWitness",
       "DroppedRingWitness",
       "MinimisedLiveWitness",
-      "ReturnedWitness"
+      "ReturnedWitness",
+      "RingHoldsHandoverWitness",
+      "StaleStartWitness",
+      "HeldBeforeStartWitness"
     ],
     "sources": [
       "apps/app/src/prototype/model.js"
@@ -8747,6 +8784,10 @@
       },
       {
         "path": "apps/app/src/prototype/model.js",
+        "name": "function pnStop"
+      },
+      {
+        "path": "apps/app/src/prototype/model.js",
         "name": "PN.live"
       },
       {
@@ -8760,16 +8801,17 @@
     ],
     "stateMapping": {
       "live/want/callWho": "PN.live, pnWant(st) and st.callWho",
-      "boot/active": "the PN.boot latch with its zero-delay view timer, and whether Phone is the open view",
-      "connected/min/kp/hold/ret": "st.liveAt, st.min, st.kp, st.hold and st.ret",
+      "bootFor/bootTimers/active": "the PN.boot latch, the zero-delay view timers armed for a handed-over call (each bound to the call it was armed for), and whether Phone is the open view",
+      "connected/min/kp/hold/ret/incoming": "st.liveAt, st.min, st.kp, st.hold, st.ret and st.incoming",
       "connectFor/tickFor": "the laterBg connect timer and the everyBg tick, each bound to the call id it was armed for",
       "started/ended/rings/ringRows/accepted/dropped/orphaned": "ghosts counting calls, recents rows and rings, and a view reset under a live module call"
     },
     "abstractions": [
       "Development fixture only: the simulated call exists with ELIZA_DEV_ALLOW_TEST_MOCKS and never places a call. The image Phone view is PhoneRecents.",
-      "Two callees and one caller; mute, speaker, the assistant transcript, screening text and voicemail playback are not modeled.",
-      "View state patches are applied at once; the queued functional updates between pnEnd and pnStart are covered by test/home-views-model.test.mjs.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Two callees; rings and the development jumps use the preset person. Mute, speaker, the assistant transcript, screening text, tabs and voicemail playback are not modeled.",
+      "The view is drawn after every state change while Phone is in front, and the patches one handler queues are applied together.",
+      "test/quint-phone-call.test.mjs replays simulated traces on the Phone fixture taken from model.js (pnStart, pnEnd, pnDecline and the registered view's render, back, onLeave, presets and hang-up) over the shell's own view switching and timer groups, with stand-in people and recents.",
+      "Model safety checks do not establish device acceptance."
     ]
   },
   {
@@ -8790,7 +8832,10 @@
       "failedReadClearsRowsTest",
       "refreshDuringHandoffKeepsDialTest",
       "settledReadAdmitsNoSecondDialTest",
-      "staleHandoffLeavesLaterDialTest"
+      "staleHandoffLeavesLaterDialTest",
+      "typedNumberClearsNoticeTest",
+      "fieldIsLockedWhileBusyTest",
+      "leavingForgetsFieldTest"
     ],
     "invariants": [
       "RowsOnlyWhileShowing",
@@ -8799,14 +8844,17 @@
       "DialingTracksHandoff",
       "OneHandoffPerShowing",
       "PromptOnlyOnRequest",
-      "AccessStateExclusive"
+      "AccessStateExclusive",
+      "FieldOnlyWhileShowing"
     ],
     "witnesses": [
       "RowsWitness",
       "DiscardedResultWitness",
       "AccessNeededWitness",
       "DialNoticeWitness",
-      "ReadDuringHandoffWitness"
+      "ReadDuringHandoffWitness",
+      "TypedDialWitness",
+      "RefusedFieldWitness"
     ],
     "sources": [
       "apps/app/src/prototype/phone-adapter.ts",
@@ -8865,22 +8913,32 @@
       {
         "path": "apps/app/src/runtime/aosp-telephony.ts",
         "name": "normalizePhoneNumber"
+      },
+      {
+        "path": "apps/app/src/prototype/phone-adapter.ts",
+        "name": "nativeOnNumber"
+      },
+      {
+        "path": "apps/app/src/prototype/phone-adapter.ts",
+        "name": "nativeDial"
       }
     ],
     "stateMapping": {
       "mounted/phoneView/hidden/active": "owner, owner.S().view === 'phone', document.hidden and the adapter's active flag",
       "epoch/session/reading/dialing": "the adapter's read epoch, its per-showing dial session, and the read and dial latches whose disjunction is busy()",
-      "rows/needsAccess/notice": "the adapter's calls, needsAccess and notice",
       "access/reads/dials": "the call-log permission the telephony client reports, and status/recentCalls reads and dial handoffs in flight (each dial tagged with the session it started in)",
-      "requests/prompts/discarded/handoffs": "ghosts counting owner-requested reads, system prompts, dropped late results and dial handoffs"
+      "requests/prompts/discarded/handoffs": "ghosts counting owner-requested reads, system prompts, dropped late results and dial handoffs",
+      "rows/needsAccess/notice/number": "the adapter's calls, needsAccess and notice, and whether its number field is empty, holds a number that normalises, or holds one that does not"
     },
     "abstractions": [
       "Each shell update and visibility change runs sync() in the same step as the change it follows.",
       "A read is one settle; its status, access request and recent-calls stages are folded into the outcome. Row contents and number normalisation are not modeled.",
       "refresh stands for the Refresh and Allow controls and for the return-to-app watcher; only the watcher can fire while a latch is held, and the model does not distinguish them.",
       "The adapter exists only on the verified Alpha image; elsewhere it registers nothing.",
-      "Model safety checks do not establish implementation refinement or device acceptance.",
-      "The dial handoff branch after a role-required or permission-required refusal is modeled here. Direct Telecom placement is covered separately by PhoneCalls and the Phone adapter tests."
+      "The dial handoff branch after a role-required or permission-required refusal is modeled here. Direct Telecom placement is covered separately by PhoneCalls and the Phone adapter tests.",
+      "The number field is written through nativeOnNumber only; keypad presses, erase, a prefilled number and the tab switch that also clears the notice are not modeled.",
+      "test/quint-phone-recents.test.mjs replays simulated traces on installPhoneAdapter with a telephony client whose reads and dial handoff settle on model steps and whose placeCall always reports that the dialer role is missing.",
+      "Model safety checks do not establish device acceptance."
     ]
   },
   {
@@ -9210,6 +9268,7 @@
       "discardEndsConversationTest",
       "closingDropsHeldReviewTest",
       "reviewRequiredDoesNotResumeTest",
+      "staleReplyClosesVoiceTest",
       "failedReplyStartsOverTest",
       "ownerInputPauseIsNotAReviewRequirementTest"
     ],
@@ -9271,7 +9330,8 @@
     },
     "abstractions": [
       "One held review at a time; its text is empty, the spoken transcript or an edited one.",
-      "The reply is reduced to whether it requires a phone action review, whether it is an owner-input pause, and whether the turn failed. Reply text, speech and proposals are in VoiceSession, ReadReplyLease and ApprovalRoutes.",
+      "The reply is reduced to whether it requires a phone action review, whether it is an owner-input pause, and whether the turn failed. A reply that requires a review ends the turn in the error phase with the microphone off. Reply text, speech and proposals are in VoiceSession, ReadReplyLease and ApprovalRoutes.",
+      "A transcript is held and a reply is taken only while the chat is current; a reply for a chat that is no longer current closes voice.",
       "Settings, sign-in and connection recovery of the panel's primary control, and the unconfirmed-media latch that hides the review, are outside this model (VoiceSurfaceRetirement).",
       "At most three conversation starts per trace."
     ]
@@ -9600,7 +9660,9 @@
       "backAfterOwnerProbeTest",
       "lateReadinessTest",
       "saveAfterBackTest",
-      "secondProbeRefusedTest"
+      "secondProbeRefusedTest",
+      "firstRunPageKeepsChooserTest",
+      "backCancelsSaveTest"
     ],
     "invariants": [
       "TypeOK",
@@ -9610,7 +9672,8 @@
       "LateOnlyAfterSettledProbe",
       "ClosingNeedsEndedProbe",
       "ChooserNeedsEntry",
-      "AutomaticProbeAfterStartup"
+      "AutomaticProbeAfterStartup",
+      "SavedEndsEntry"
     ],
     "witnesses": [
       "OwnKeysOverProbeWitness",
@@ -9620,7 +9683,8 @@
       "LatchedWithoutChooserWitness",
       "SaveAfterBackStillEnsuresAgentWitness",
       "SaveRefusedBehindNewProbeWitness",
-      "SaveRefusedBehindStepWitness"
+      "SaveRefusedBehindStepWitness",
+      "RefusalBeforeStartupShowsPageWitness"
     ],
     "sources": [
       "apps/app/src/runtime/connection-ui.tsx"
@@ -9673,19 +9737,28 @@
       {
         "path": "apps/app/src/runtime/connection-ui.tsx",
         "name": "ensureResident"
+      },
+      {
+        "path": "apps/app/src/runtime/connection-ui.tsx",
+        "name": "inAppSignInMethods"
+      },
+      {
+        "path": "apps/app/src/runtime/connection-ui.tsx",
+        "name": "productionCloudSignInRequired"
       }
     ],
     "stateMapping": {
-      "operation/readinessOwner/probeAutomatic/probeAbort": "the operation controller, signInReadinessOwner === operation.signal, beginSignIn(automatic) and the reason the probe signal was aborted with",
-      "entry/chooser/closing/startupResolved": "signInEntryPage / explicitSignedOutCloudEntry, state.signIn step choose, cancelSignIn closeExplicitEntry waiting for the probe, state.startupResolved",
-      "latch/probes": "automaticSignInProbe.current and readiness probes started",
-      "late/lateAdopted/lateDropped": "lateMethods delivered after the probe returned, and adoptLate()",
-      "ownKeys/residentStarts/startsAfterTakeover/startsBeforeWaitingSave": "configureLocal waiting for the probe, saving or refused with OWN_KEY_BUSY; ensureResident() after a probe"
+      "host/account/startupResolved": "isAndroid (sign-in required while signed out), the browser resident preview, state.purpose cloud-account opened by the owner, and state.startupResolved; together they give signInEntryPage / explicitSignedOutCloudEntry / productionCloudSignInRequired",
+      "operation/readinessOwner/probeAutomatic": "the operation controller, signInReadinessOwner (the signal of the probe now or last in the slot) and beginSignIn(automatic)",
+      "chooser/latch/probes": "state.signIn step choose, automaticSignInProbe.current and readiness reads started",
+      "late/lateAdopted/lateDropped": "lateMethods delivered after the readiness wait ran out, and adoptLate()",
+      "ownKeys": "configureLocal: its bounded wait after ending a probe, the save holding the slot, OWN_KEY_BUSY on screen, or saved (providerStatus.selected)",
+      "residentStarts/probeEnd/probeEndStarted": "ensureResident() after a probe, how the last probe left the slot (settled, Back, own-keys takeover) and whether the agent was ensured after it"
     },
     "abstractions": [
       "Four probes. Email, phone and Google attempts after the chooser are SignInChooser and IdentitySession; the probe cache and its per-environment coalescing are the shared native sign-in plugin.",
-      "Another step is any holder of the slot; queued sign-in returns and rebinds behind the slot are ConnectionController. The bounded wait for an unwinding probe is a nondeterministic end.",
-      "Scenario and simulation evidence only: beginSignIn, cancelSignIn and configureLocal are methods of the mounted connection controller over module state and have no injectable entry point."
+      "Ending a probe early (Back or an own-keys save) and freeing the slot are one step: inAppSignInMethods races the abort, so the probe unwinds before another event is handled. The agent start after an owner's probe is counted, not held in the slot; another step is any holder of the slot, and queued returns and rebinds are ConnectionController.",
+      "Replayed against beginSignIn, cancelSignIn, configureLocal, work, the entry predicates and the body of the automatic entry's effect sliced from connection-ui.tsx, with the sign-in host and key save as held ports; React does not run, so the trace decides when the effect runs (test/quint-sign-in-readiness-probe.test.mjs). No native readiness, WebView or device claim."
     ]
   },
   {
@@ -10356,7 +10429,7 @@
     "stateMapping": {
       "owner/front/session": "the mounted instance, owner.S().view === 'settings' and connectionController.getCloudClient()?.sessionId",
       "current/issued/reads/limits": "capabilityAbort, the refreshCapabilities calls that started a read, Gmail account requests in flight and their 10 s timers",
-      "gmail": "the authorization line: Not checked, Cloud sign-in required, Checking authorization\u2026, a grant label, Authorization not verified",
+      "gmail": "the authorization line: Not checked, Cloud sign-in required, Checking authorization…, a grant label, Authorization not verified",
       "licenses/fetching/fetches": "the module-level licenses.status and the notice file request",
       "dropped": "ghost: answers that arrived for a superseded read, another instance or another session"
     },
@@ -10439,10 +10512,1142 @@
       "closes/ignored/restores/deferred/restoredOver": "close() calls, Back the modal left alone, focus returns, and ghosts for deferred returns and what held focus before one"
     },
     "abstractions": [
-      "One modal with an opening control supplied by returnFocus. Tab wrapping inside the modal, the sheet drag and the inert holds on background siblings (InertHold) are not modeled.",
+      "One modal with an opening control supplied by returnFocus. Tab wrapping, Escape and the sheet drag are InlineModalGestures; the inert holds on background siblings are InertHold.",
       "Where focus goes when a native dialog closes is the browser's: back to the modal under it, or nowhere.",
       "Sub-view focus memory (subview-accessibility.ts) stays with ListFocus and ScreenFocusOwnership.",
       "Model safety checks do not establish implementation refinement or device acceptance."
     ]
+  },
+  {
+    "path": "specs/quint/application/SpeechRouteHold.qnt",
+    "module": "SpeechRouteHold",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "briefHoldLapsesTest",
+      "accountRefusalHoldsLongerTest",
+      "rateLimitHoldsForStatedWaitTest",
+      "otherAccountIsNotHeldTest",
+      "ownFailureChangesNothingTest",
+      "signInFallsBackWithoutHoldTest",
+      "signedOutFailureRecordsNoHoldTest",
+      "clearedHoldReturnsToNetworkTest",
+      "ownKeyIgnoresCloudLimitTest"
+    ],
+    "invariants": [
+      "RouteIsCurrent",
+      "NoAccountIsDevice",
+      "HeldAccountIsDevice",
+      "DeviceHasReason",
+      "OwnKeyIgnoresCloudLimit",
+      "HoldIsBounded",
+      "FallbackNeedsNetworkFailure"
+    ],
+    "witnesses": [
+      "HoldLapsedWitness",
+      "OtherAccountNotHeldWitness",
+      "CappedWaitWitness",
+      "SignInFallsBackWithoutHoldWitness",
+      "OwnKeyHeldWitness",
+      "ChangedKeyNotHeldWitness"
+    ],
+    "sources": [
+      "apps/app/src/runtime/voice-selection.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/runtime/voice-selection.ts",
+        "name": "speechRoute"
+      },
+      {
+        "path": "apps/app/src/runtime/voice-selection.ts",
+        "name": "noteNetworkSpeechFailure"
+      },
+      {
+        "path": "apps/app/src/runtime/voice-selection.ts",
+        "name": "networkSpeechFailureHoldMs"
+      },
+      {
+        "path": "apps/app/src/runtime/voice-selection.ts",
+        "name": "clearNetworkSpeechHold"
+      },
+      {
+        "path": "apps/app/src/runtime/voice-selection.ts",
+        "name": "networkSpeechKey"
+      },
+      {
+        "path": "apps/app/src/runtime/voice-selection.ts",
+        "name": "networkSpeechHold"
+      },
+      {
+        "path": "apps/app/src/runtime/voice-selection.ts",
+        "name": "cloudSpeechLimited"
+      }
+    ],
+    "stateMapping": {
+      "account": "networkSpeechKey(): the Cloud credential, or the own-key provider's speech key and its revision; none when signed out or when own keys have no speech key",
+      "limited": "cloudSpeechLimited(): a stored Cloud plan or rate limit still in force",
+      "now/holdKey/holdUntil": "The clock passed to each call, in minutes, and networkSpeechHold",
+      "route": "What speechRoute() returns",
+      "lastKind/fell/failures": "The last failure passed to noteNetworkSpeechFailure, what it returned, and how many were passed"
+    },
+    "abstractions": [
+      "Two Cloud accounts, two revisions of an own speech key, own keys without a speech key, and signed out. One hold at a time, as in the module.",
+      "Time is in minutes: a brief hold is one, an account refusal ten, a rate limit its stated wait up to sixty. Sub-minute waits and the rounding of a stated wait to whole seconds are outside this model.",
+      "A stored Cloud limit is one flag; when it lapses (its reset, its stated wait, the untimed rate-limit minute) is decided by cloudSpeechLimited and is outside this model.",
+      "A failure is one of eight kinds. The error codes behind each kind are listed in the correspondence replay; the browser's offline flag is outside this model.",
+      "The fallback the voice conversation makes with the result (localVoiceFallback), the recorder's route shape (selectVoiceRoute) and test-mocks builds are outside this model."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserPageEgress.qnt",
+    "module": "BrowserPageEgress",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "shareWaitsForMenuTest",
+      "navigationDuringDelayRefusesTest",
+      "hiddenDuringDelayRefusesTest",
+      "unloadedPageRefusesEveryEgressTest",
+      "insecurePageIsNotBookmarkedTest",
+      "privateTabEgressTest",
+      "copyLinkNeedsShownPageTest",
+      "insecurePageFailureIsExplainedTest",
+      "failedShareIsReportedTest"
+    ],
+    "invariants": [
+      "TypeOK",
+      "ShareBoundToItsRequest",
+      "PrivateTabStaysOutOfHistory",
+      "BookmarkNeedsSecurePage",
+      "EmailNeedsCommittedPage",
+      "ShareNeedsCommittedPage",
+      "CopyNeedsCommittedPage",
+      "CopiedNoticeNeedsCopy"
+    ],
+    "witnesses": [
+      "SharedWitness",
+      "PageChangedBeforeShareWitness",
+      "PageMovedUnderShareSheetWitness",
+      "PrivatePageBookmarkedWitness",
+      "PrivatePageEmailedWitness",
+      "PrivatePageCopiedWitness",
+      "InsecurePageFailedWitness"
+    ],
+    "sources": [
+      "apps/app/src/prototype/browser-adapter.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "sharePage"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "sharePageEmail"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "copyPageLink"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "saveBookmark"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "toggleMark"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "sharing"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "tabs.revision"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "The page changed before sharing. Try again."
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "HTTPS only"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "Link copied"
+      }
+    ],
+    "stateMapping": {
+      "priv/page/secure/revision": "whether the selected tab is private, what its page is doing (loading, committed, failed), whether its address is HTTPS, and the shared tab session's document revision",
+      "share/captured/sent/nativeShares": "the one share-sheet request: waiting for the menu to close, then held by the native sheet for the revision it was made for",
+      "emails/copies/bookmarkWrites/marked": "email drafts opened with the page address, clipboard writes, bookmark writes and the saved mark",
+      "visited": "the page entered browsing history; only a normal tab's committed page does",
+      "loadNotice/changedNotice/emailNotice/bookmarkNotice/failureNotice/copyNotice/copiedNotice/clipboardNotice/insecureNotice": "the messages shown for each refusal, the copy confirmation, a share sheet that could not open and a failed page without HTTPS"
+    },
+    "abstractions": [
+      "One tab is selected throughout; it loads one HTTPS and one plain-HTTP address. Revisions are bounded at 5 and each kind of egress at 3.",
+      "The clipboard answers a copy before anything else happens; the source checks the page again after that answer. The bookmark store applies a write at once (BookmarksHydration models its queue and hydration).",
+      "On the web build a page that can only be opened externally may also be bookmarked; the model covers the native build.",
+      "PrivatePageBookmarkedWitness, PrivatePageEmailedWitness and PrivatePageCopiedWitness record current behavior: a private page's address can be bookmarked, put in an email draft and copied by the user's own action without a further confirmation. PageMovedUnderShareSheetWitness records that a page may navigate while the native sheet is open.",
+      "test/quint-browser-page-egress.test.mjs replays this model's scenario, witness and random traces against the installed Browser adapter's rendered Share, Share by email, Copy link and Bookmark controls over the shared tab session in a jsdom document, with a controlled native plugin, clipboard and menu-close delay, and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance."
+    ],
+    "sharedSources": [
+      "plugins/plugin-native-browser-surface/src/tab-host.ts"
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserViewLayers.qnt",
+    "module": "BrowserViewLayers",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "backClosesLayersInOrderTest",
+      "newTabAtLimitTest",
+      "closingSelectedCardSelectsFirstTest",
+      "popupClosesLayersTest",
+      "menuEndsEditingTest",
+      "bareBackIsUnhandledTest"
+    ],
+    "invariants": [
+      "TypeOK",
+      "TabsBounded",
+      "SelectedIsOpen",
+      "PagesBelongToOpenTabs",
+      "MenuClosedWhileEditing",
+      "BackClosesLayersFirst",
+      "UnhandledBackHasNoHistory",
+      "LimitNoticeNeedsFullSwitcher"
+    ],
+    "witnesses": [
+      "HistoryBackWitness",
+      "UnhandledBackWitness",
+      "LimitNoticeWitness",
+      "MenuOverLibraryWitness",
+      "FindBarOffTabWitness"
+    ],
+    "sources": [
+      "apps/app/src/prototype/browser-adapter.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "definition.back"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "definition.render"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "openNew"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "toggleMenu"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "openTabs"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "openLib"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "startEdit"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "onAddrKey"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "tabCards"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "tabOpened"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "fullscreen"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "MAX_TABS"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "Tab limit"
+      }
+    ],
+    "stateMapping": {
+      "tabs/cur/used": "renderer tab rows in switcher order, the selected tab and the count of tab identities handed out",
+      "loaded/backable": "tabs showing a committed page and those whose native page history can go back",
+      "editing/tabsOpen/menu/lib/findTab": "the covering layers: address editing, the tab switcher, the menu, the library list and the tab the find bar was opened on",
+      "limitNotice": "the tab-limit message",
+      "lastBack": "which layer the latest Back press closed, or that it went to page history or was left to the shell"
+    },
+    "abstractions": [
+      "The open-tab limit is the source's 8; tab identities are integers bounded at 12 and never reused. Private tabs, restored tabs and tab creation in flight are BrowserTabLifecycle's.",
+      "A submitted address loads and commits in one step. The native host clearing a search on navigation or tab change is FindInPage's; here the find bar stays recorded until it is closed.",
+      "The share layer of the Back order is never opened by the installed view (Share goes to the system sheet), so it is not modeled.",
+      "MenuOverLibraryWitness and FindBarOffTabWitness record current behavior: the menu button opens the menu over an open library or switcher, and the find bar stays recorded for a tab that is no longer selected so the next Back press closes it.",
+      "test/quint-browser-view-layers.test.mjs replays this model's scenario, witness and random traces against the installed Browser adapter's rendered controls, its Back handler and its native pop-up and fullscreen listeners in a jsdom document with a controlled native plugin, and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance."
+    ],
+    "sharedSources": [
+      "plugins/plugin-native-browser-surface/src/tab-host.ts",
+      "plugins/plugin-native-browser-surface/src/browsing-session.ts"
+    ]
+  },
+  {
+    "path": "specs/quint/application/PasswordEntryDraft.qnt",
+    "module": "PasswordEntryDraft",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "expiryDropsTypedPasswordTest",
+      "newEntryNeedsDetailsAndPasswordTest",
+      "refusedSaveKeepsTypedPasswordTest",
+      "leavingFormDuringSaveStillListsItTest",
+      "deleteNeedsSecondTapTest",
+      "answerAfterReturnIsNotReadBackTest",
+      "hidingForgetsFormTest",
+      "lockedSaveAnswerDropsPasswordTest"
+    ],
+    "invariants": [
+      "TypeOK",
+      "TypedSecretNeedsUnlockedForm",
+      "UnlockedNeedsShownPages",
+      "OpenOnlyWhileShownOnPages",
+      "FormNeedsOpenPages",
+      "DroppedIsNotHeld",
+      "GeneratedHoldsNoTypedSecret",
+      "DeleteConfirmationNeedsUnlockedEdit",
+      "RemoveWasConfirmed",
+      "ShownTaskIsPending",
+      "ListFollowsVault"
+    ],
+    "witnesses": [
+      "KeptFormAfterExpiryWitness",
+      "SavedAfterLeavingFormWitness",
+      "RefusedSaveKeepsSecretWitness",
+      "SaveInFlightWhileHiddenWitness"
+    ],
+    "sources": [
+      "apps/app/src/passwords/password-manager.ts",
+      "apps/app/src/prototype/settings-adapter.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "openEntry"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "save"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "passwordEntryPage"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "passwordManagerGroups"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "expired"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "locked"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "clearSecrets"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "leavePasswordEntry"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "leavePasswordManager"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "passwordDropped"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "confirmDelete"
+      },
+      {
+        "path": "apps/app/src/passwords/password-manager.ts",
+        "name": "run"
+      },
+      {
+        "path": "apps/app/src/prototype/settings-adapter.ts",
+        "name": "leavePasswordManager"
+      }
+    ],
+    "stateMapping": {
+      "onPages/active/foreground/unlocked": "Settings is on a password page, the pages are open, the app is shown, and the page holds an unlocked listing",
+      "draft/details/typed/dropped/generate/confirmDelete/error": "the New or Edit form in module memory: a name with a website, a typed password, one dropped by an unlock expiry, a generated password chosen, Delete tapped once, and the shown error",
+      "busy/pending/stale": "the vault task the page shows as running, the task the vault has not answered, and whether that task belongs to a visit that ended",
+      "sent": "what the latest save carried: a typed, generated or unchanged password for a new or existing entry",
+      "stored/listed/behind": "entries in the vault, entries in the listing the page holds, and a vault change by an answer for an ended visit that the listing has not read"
+    },
+    "abstractions": [
+      "One saved entry at the start and at most three; entries are counted, not identified. The form's name and website are one flag; the username, site list edits and generated length are not modeled.",
+      "Unlock, Lock and a listing read answer in one step; a save or remove answers later, accepted, refused or as locked. No task starts while an earlier answer is outstanding. Show, copy, import, export and the damaged-vault reset are not modeled (CredentialVault and CredentialVaultReadback cover the reset and the listing-read fence).",
+      "The end of the unlock window in the page and in the vault is one action.",
+      "answerAfterReturnIsNotReadBackTest records current behavior: a save accepted after its pages were left and opened again is not read back, so the unlocked list misses it until the next read.",
+      "test/quint-password-entry-draft.test.mjs replays this model's scenario, witness and random traces against the real password-manager module (passwordManagerGroups, passwordEntryPage, the lifecycle and leave functions) over the shared passwords client in a jsdom document, with a controlled vault bridge, unlock-window timer and Settings stand-in, and compares the observed state after every step; form fields are compared only while the form is shown. That is bounded evidence within the stated ports and does not establish device acceptance."
+    ],
+    "sharedSources": [
+      "plugins/plugin-native-passwords/src/client.ts",
+      "plugins/plugin-native-passwords/src/bindings.ts",
+      "plugins/plugin-native-passwords/src/definitions.ts"
+    ]
+  },
+  {
+    "path": "specs/quint/application/CalendarEditorDraft.qnt",
+    "module": "CalendarEditorDraft",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "restoredEditsSaveTest",
+      "restoreThenSaveTest",
+      "staleEditsRefusedTest",
+      "discardReturnsToEventTest",
+      "failedDiscardKeepsEditsTest",
+      "failedEventSaveKeepsEditsTest",
+      "unclearedEditsLatchTest",
+      "latchedEditorTakesNoEditsTest",
+      "closedDuringSaveTest",
+      "tooLargeBlocksSaveTest",
+      "tooLargeCannotSaveTest",
+      "conflictNeedsChoiceTest",
+      "conflictBlocksSaveTest",
+      "retryOffersTypedTextTest"
+    ],
+    "invariants": [
+      "TypeOK",
+      "PublishedMatchesState",
+      "NoStaleSave",
+      "SaveWaitsForReview",
+      "OneSave",
+      "LatchFollowsSave",
+      "OfferedHasText",
+      "NoTextNoShape",
+      "StaleEditsAreRetained",
+      "SavedThenClearedOrKept"
+    ],
+    "witnesses": [
+      "OfferedWitness",
+      "StaleRefusedWitness",
+      "LatchWitness",
+      "ClosedDuringSaveKeepsEditsWitness",
+      "ConflictWitness",
+      "OwnEditsOfferedWitness",
+      "SavedWitness"
+    ],
+    "sources": [
+      "apps/app/src/browser/calendar-editor-draft.ts",
+      "apps/app/src/browser/calendar-editor.ts",
+      "apps/app/src/browser/review.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "calendarEditorDraft"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "readCalendarEditorDraft"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "beforeSave"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "committed"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "settled"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "publish"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "capture"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "offered"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "invalid"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "These edits belong to an older event revision"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "Restore saved editor"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "Replace saved editor"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "Discard saved editor"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor-draft.ts",
+        "name": "Retry editor storage"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor.ts",
+        "name": "editCalendarEvent"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor.ts",
+        "name": "beforeSave"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor.ts",
+        "name": "committed"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-editor.ts",
+        "name": "calendarEditorDraft"
+      }
+    ],
+    "stateMapping": {
+      "alive/opened/offered/invalid/saving/latch": "The closure flags alive, opened, offered, invalid, saving and saved of calendarEditorDraft",
+      "conflict/error": "controller.state.conflict and controller.state.error of the draft controller",
+      "text/revision/shape": "The retained text the editor holds, the event revision its edits carry, and which fields that text holds",
+      "form": "The fields the editor shows: the event's own, a stored copy's or ones typed here",
+      "stored/synced/savedCopy": "The stored draft copy, whether it equals the editor's text, and the copy a conflict offers",
+      "stage": "The awaited controller.open, retry, consume or event commit",
+      "inert/disabled/canRestore/canReplace/canDiscard/canRetry": "form.inert, save.disabled and the hidden state of the four draft buttons as publish() last set them",
+      "saves/saveResult": "Event commits that resolved, and how the last Save event press ended",
+      "staleSave/unreviewedSave": "History of an event commit started from older-revision edits or while the retained edits were unreviewed"
+    },
+    "abstractions": [
+      "One event with two revisions: the one being edited and an older one. Retained copies are classed by the revision they carry; field contents are not modeled.",
+      "The draft controller is an input: it answers the open, the retry and the clear, and reports a conflict or a storage error. Its own storage protocol is the shared durable draft controller's.",
+      "The Replace and Discard reviews are answered in the same step they open; a review left open while the controller reports is not modeled.",
+      "Editor storage recovery, the size and shape limits of readCalendarEditorDraft beyond too-large fields, and date validation of the event save are not modeled.",
+      "This is the browser Calendar's modal editor; the prototype Calendar's retained forms are modeled separately."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CalendarLinkedLocalPort.qnt",
+    "module": "CalendarLinkedLocalPort",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "readThenApplyTest",
+      "staleUpdateRefusedTest",
+      "pendingDeletionBlocksTest",
+      "deleteIsStagedTest",
+      "deleteByAnotherOwnerRefusedTest",
+      "replacedSourceAbortsTest",
+      "unboundBeforeStartTest",
+      "unboundAfterWriteTest",
+      "editAfterWriteTest",
+      "lossyProviderEventRefusedTest",
+      "absentDeleteTest"
+    ],
+    "invariants": [
+      "TypeOK",
+      "NoStaleWrite",
+      "WritesAreFenced",
+      "PendingDeletionHolds",
+      "OneCall",
+      "NoticesFollowCompletion",
+      "WritesAreCounted",
+      "KnownWasRead"
+    ],
+    "witnesses": [
+      "AppliedWitness",
+      "StagedWitness",
+      "StaleRefusedWitness",
+      "PendingBlockedWitness",
+      "SourceReplacedWitness",
+      "WrittenThenAbortedWitness",
+      "AbsentDeleteWitness"
+    ],
+    "sources": [
+      "apps/app/src/browser/calendar-linked-local.ts",
+      "apps/app/src/browser/calendar-store.ts",
+      "apps/app/src/browser/calendar-deletions.ts",
+      "apps/app/src/browser/calendar-records.ts",
+      "apps/app/src/runtime/deletion-owner.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "browserCalendarSyncPort"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "applyProviderEvent"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "expectedRevision"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "sourceRevision"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "Calendar sync source changed"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "Deletion pending"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "The local event changed before sync could apply."
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "The local event or owner changed before deletion."
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "alpha:calendar-document-changed"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "alpha:deletions-changed"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "browserDeletionOwnerCurrent"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-linked-local.ts",
+        "name": "stageCalendarDeletion"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-store.ts",
+        "name": "calendarDocument"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-store.ts",
+        "name": "guardPendingCalendarChanges"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-deletions.ts",
+        "name": "calendarDeletionPending"
+      },
+      {
+        "path": "apps/app/src/browser/calendar-deletions.ts",
+        "name": "stageCalendarDeletion"
+      },
+      {
+        "path": "apps/app/src/runtime/deletion-owner.ts",
+        "name": "browserDeletionOwnerCurrent"
+      }
+    ],
+    "stateMapping": {
+      "bound/sourceSame": "current() of the controller's binding, and the stored sourceRevision compared with the one the port was created for",
+      "exists/revision/pending": "The event row in the stored calendar document, its revision, and calendarDeletionPending for it",
+      "known/expected": "The revision the controller last received from get or applyProviderEvent, and the expectedRevision of the running call",
+      "op/phase/result/wrote": "The running get, applyProviderEvent or delete: before the document step, or after it with only the closing check left; what the document step did and the revision it stored",
+      "ownerCurrent": "browserDeletionOwnerCurrent for the owner captured when delete started",
+      "outcome": "The call's result or the error it threw",
+      "documentNotices/deletionNotices": "alpha:calendar-document-changed and alpha:deletions-changed events dispatched by the port",
+      "finished/writes": "Calls that returned a result, and document edits by the port that changed the stored calendar",
+      "staleWrite/unboundWrite/heldWrite/lateAbort": "History of a stored write over another revision, for an ended binding or replaced source, over an unresolved deletion, and of a write whose call then threw"
+    },
+    "abstractions": [
+      "One stored event and one call at a time; the sync controller serializes its port calls. Revisions are counted; the stored ones are opaque strings.",
+      "A provider event is valid or not; the checks behind that (title, dates, whole all-day dates, time zone) are one input. A stored event that needs recovery before syncing is not modeled.",
+      "Recurring series, attendees and the fields an update carries are not modeled; a deletion is staged for the event with the owner's Undo window and is undone or finished by the owner's steps.",
+      "The step weights its choices so sampled walks complete calls; every action stays enabled in every state its guard allows.",
+      "CalendarLinkedSync (services) models the shared sync controller and assumes this port's contract."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ReminderReopen.qnt",
+    "module": "ReminderReopen",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "reopenedTest",
+      "declinedReviewTest",
+      "timePassedDuringReviewTest",
+      "retryReadsBackTest",
+      "otherModeWaitsTest",
+      "movedScheduleWaitsTest",
+      "lostAnswerFoundByReceiptTest",
+      "lostAnswerFoundByRefreshTest",
+      "failedReadbackTest",
+      "completedAgainBeforeReadbackTest",
+      "leftBeforeSendTest",
+      "changedReminderNotJournaledTest",
+      "staleBlocksReopenTest",
+      "reopenedThenCompletedAgainTest"
+    ],
+    "invariants": [
+      "TypeOK",
+      "RecordBeforeOperate",
+      "OneOperatePerRecord",
+      "OnlyOwnRecordSent",
+      "MutexHeld",
+      "UnconfirmedKeepsRecord",
+      "ReadbackAfterAcknowledge",
+      "AppliedHasRecord",
+      "FreshBeforeReopen",
+      "OnlyCompletedReopened",
+      "ReviewedBeforeWrite",
+      "ShownOpenIsOpen",
+      "NoRecordIsFresh",
+      "OwnHasRecord"
+    ],
+    "witnesses": [
+      "ReopenedWitness",
+      "TimePassedWitness",
+      "UnconfirmedRecordWitness",
+      "ReadBackOnlyWitness",
+      "MovedScheduleWitness",
+      "OtherModeWitness",
+      "LeftAfterRetainWitness",
+      "ChangedWitness",
+      "AppliedAwaitingRefreshWitness",
+      "UnreadWitness",
+      "CompletedAgainWitness"
+    ],
+    "sources": [
+      "apps/app/src/prototype/reminder-adapter.ts",
+      "apps/app/src/runtime/reminder-deletions.ts",
+      "apps/app/src/runtime/reminder-journal-store.ts",
+      "apps/app/src/prototype/calendar-confirmation.ts"
+    ],
+    "sharedSources": [
+      "plugins/plugin-assistant/src/services/device-actions/reminder-journal.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "reminderReopen"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "reminderReopenTomorrow"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "reminderReopenable"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "reopenSchedule"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "Time passed"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "renderedDecisionTarget"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "requireFresh"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "stillSelected"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "Another action on this revision is unconfirmed"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "Mismatch"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "reminderOperationReceipt"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "operateReminder"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "selectedReminder"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "reminderSaving"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "acknowledgeReminderDeletion"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "discardUndispatchedReminderDeletion"
+      },
+      {
+        "path": "apps/app/src/prototype/reminder-adapter.ts",
+        "name": "confirmCalendarAction"
+      },
+      {
+        "path": "apps/app/src/runtime/reminder-deletions.ts",
+        "name": "retainReminderDeletion"
+      },
+      {
+        "path": "apps/app/src/runtime/reminder-deletions.ts",
+        "name": "acknowledgeReminderDeletion"
+      },
+      {
+        "path": "apps/app/src/runtime/reminder-deletions.ts",
+        "name": "reconcileReminderDeletions"
+      },
+      {
+        "path": "apps/app/src/runtime/reminder-journal-store.ts",
+        "name": "compareExchange"
+      },
+      {
+        "path": "apps/app/src/prototype/calendar-confirmation.ts",
+        "name": "confirmCalendarAction"
+      }
+    ],
+    "stateMapping": {
+      "stale/selected/completed": "reminderStale or reminderRefreshFailed, the open detail of this reminder with no form over it, and the reminderStatus that detail shows",
+      "nativeCompleted/revisionCurrent": "The status native holds, and renderedDecisionTarget compared with selectedReminder",
+      "saving/stage/mode": "reminderSaving and the awaited journal read, selectedReminder, record write, operateReminder, reminderOperationReceipt or listReminders read back of reopen",
+      "journal/journalFresh/own/applied": "The pending reminder_update journaled for the rendered target by its mode, whether a press now computes the same operation, whether this handler created it, and whether native holds its receipt",
+      "starts/retains/operates/outcome": "Admitted reopens, journal records written, operateReminder calls and the reported result",
+      "operateWithoutRecord/startedStale/startedOpen/startedUnreviewed": "History of an operateReminder without its record, and of a reopen admitted on stale reminders, for a reminder shown as open, or without an approved time still ahead"
+    },
+    "abstractions": [
+      "One completed one-off reminder and the revision its detail shows. Completing it again is one step that shows the new completed revision; the completion itself is ReminderDecision.",
+      "The review is answered in the step that opens it; the clock may pass the reviewed time during it. A local time skipped by a time-zone change is not modeled.",
+      "The reopen schedule depends on the time of the press; time moving is one step after which a press computes a different operation from a journaled one.",
+      "The binding hash, the record write and the outcome validation of the shared journal are one retained step; a full or unreadable journal is not modeled.",
+      "Native applies or ignores an update atomically and keeps a receipt for every applied one; that contract is assumed. A change elsewhere keeps the reminder completed."
+    ]
+  },
+  {
+    "path": "specs/quint/application/MapsAgentSurfaceAdmission.qnt",
+    "module": "MapsAgentSurfaceAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "opensMapsOverHomeTest",
+      "neverOpensOverAnotherAppTest",
+      "blockedScreenRefusesWithoutOpeningTest",
+      "lockDuringWaitRefusesTest",
+      "timeLimitRefusesAndMapsStillOpensTest",
+      "userNavigationReplacesTheOpenTest",
+      "disposedAdapterAnswersNoTest",
+      "overlappingRequestsShareTheCommitTest"
+    ],
+    "invariants": [
+      "TypeOK",
+      "OpensOnlyOverUnblockedHome",
+      "AdmittedOnlyWithMapsShown",
+      "OneOpenPerRequest",
+      "RequestsInOrder",
+      "LateOpenFollowsOpen",
+      "PendingOpenOverHome"
+    ],
+    "witnesses": [
+      "AdmittedAfterOpenWitness",
+      "AdmittedWithoutOpenWitness",
+      "RefusedAfterOpenWitness",
+      "MapsOpensAfterRefusalWitness",
+      "TwoRequestsShareOneCommitWitness"
+    ],
+    "sources": [
+      "apps/app/src/prototype/maps-adapter.ts",
+      "apps/app/src/maps/screen.ts",
+      "apps/app/src/maps/agent-navigation.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "showable"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "screen.surface"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "shell!.openView('maps')"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "surface.snapshot"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "pageSuspended"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "assistantSurface"
+      }
+    ],
+    "stateMapping": {
+      "view/pendingOpen": "the launcher state's view and an openView('maps') the shell has not committed",
+      "blocks/disposed": "what showable() refuses: a screen other than home, secure, shade, pageSuspended, the assistant surface, the connection sheet, a hidden document, a shell that is not live; and the adapter's disposed flag",
+      "requests/begun": "each call of the present check the adapter hands screen.surface: still awaiting the commit or the two-second limit, answered true or answered false, and whether it asked the shell to open Maps",
+      "opens/admissions/lateOpens": "what the launcher looked like at each openView call and each true answer, and opens that committed with no request waiting"
+    },
+    "abstractions": [
+      "Three requests, three views (Home, Maps, one other app) and eight independent blocks. What the agent does with the answer is in MapsNavigation and MapsRerouteOwnership.",
+      "A commit applies a pending open and runs every setState callback in one step, as one shell render does. The two-second limit is an action that can fire at any time before the commit.",
+      "An admitted request also needs the Maps state to exist; the replay asserts it at every admission and the model does not carry it.",
+      "A request refused by its time limit leaves its open pending, so Maps can still come to the front afterwards (MapsOpensAfterRefusalWitness). The agent was told the phone could not show Maps.",
+      "Blocks and disposal are drawn less often so sampled traces reach admissions."
+    ],
+    "sharedSources": [
+      "plugins/plugin-maps/src/client/maps-screen.ts",
+      "plugins/plugin-maps/src/client/agent-navigation.ts"
+    ]
+  },
+  {
+    "path": "specs/quint/application/MapsNotificationOpen.qnt",
+    "module": "MapsNotificationOpen",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "coldTapWaitsForSafeScreenTest",
+      "coldTapOpensOnceTest",
+      "unsafeScreenKeepsTapUntilHomeTest",
+      "homeDuringReadPreventsOpenTest",
+      "disposalDuringReadPreventsOpenTest",
+      "failedReadIsOwedAgainTest",
+      "tapDuringReadIsReadAgainTest",
+      "replyOnUnsafeScreenDropsTapTest"
+    ],
+    "invariants": [
+      "TypeOK",
+      "OpensNeedTaps",
+      "ReadsAreOwed",
+      "HeldTapIsOwed",
+      "AnswerNeedsRead",
+      "DisposedOwesNothing"
+    ],
+    "witnesses": [
+      "ColdTapOpensWitness",
+      "StaleReadWitness",
+      "RetryOpensWitness",
+      "ChainedReadOpensWitness",
+      "DroppedTapWitness",
+      "TwoOpensWitness"
+    ],
+    "sources": [
+      "apps/app/src/runtime/maps-notification-open.ts",
+      "apps/app/src/prototype/maps-adapter.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/runtime/maps-notification-open.ts",
+        "name": "createMapsNotificationOpen"
+      },
+      {
+        "path": "apps/app/src/runtime/maps-notification-open.ts",
+        "name": "requested"
+      },
+      {
+        "path": "apps/app/src/runtime/maps-notification-open.ts",
+        "name": "checking"
+      },
+      {
+        "path": "apps/app/src/runtime/maps-notification-open.ts",
+        "name": "epoch"
+      },
+      {
+        "path": "apps/app/src/runtime/maps-notification-open.ts",
+        "name": "revision"
+      },
+      {
+        "path": "apps/app/src/runtime/maps-notification-open.ts",
+        "name": "port.consume"
+      },
+      {
+        "path": "apps/app/src/runtime/maps-notification-open.ts",
+        "name": "port.clear"
+      },
+      {
+        "path": "apps/app/src/runtime/maps-notification-open.ts",
+        "name": "port.open"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "notificationOpen.flush"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "notificationOpen.request"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "notificationOpen.cancel"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "consumeNavigationOpen"
+      },
+      {
+        "path": "apps/app/src/prototype/maps-adapter.ts",
+        "name": "clearNavigationOpen"
+      }
+    ],
+    "stateMapping": {
+      "pending": "the native one-use navigation-open record that consumeNavigationOpen reads and clearNavigationOpen drops",
+      "ready": "the adapter's ready port: native platform, live shell, visible page, home screen, no secure screen, shade, assistant surface or connection sheet",
+      "requested/checking/epoch/revision/captured/attempt/disposed": "the latch's variables of the same names; captured and attempt are the epoch and revision one flush() read under",
+      "read/found": "whether the native side has answered the bridge read in flight and whether it held a tap",
+      "taps/cancels/reads/chained/failures/opened/dropped": "alpha:maps-open events and cold-start taps, launcher-home events, consume calls, consume calls made from another read's settlement, rejected consume calls, open calls, and current replies that found a tap but did not open"
+    },
+    "abstractions": [
+      "Three taps, two Home presses, two failed reads. clear() takes effect at once; a failed bridge call fails before the native side read the record.",
+      "The native record's expiry and its capture from the launch intent are in the Java request object and its host test; this model starts at the record.",
+      "ConsumedTapOpensDesired is outside safety: a reply that finds a tap after the launcher stopped being able to show Maps consumes it and nothing opens Maps later. replyOnUnsafeScreenDropsTapTest and DroppedTapWitness replay it.",
+      "The replay compares the native record, the read in flight and the counters; requested, epoch and revision are private and observed through the reads and opens they cause.",
+      "Home and disposal are drawn less often so sampled traces reach opens."
+    ]
+  },
+  {
+    "path": "specs/quint/application/InlineModalGestures.qnt",
+    "module": "InlineModalGestures",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "tabWrapsAtBothEndsTest",
+      "emptyDialogKeepsFocusTest",
+      "tabReturnsFromAssistantTest",
+      "lostControlBringsFocusBackTest",
+      "farPullDismissesSheetTest",
+      "shortPullSpringsBackTest",
+      "sidewaysMoveAbandonsDragTest",
+      "onlyTheGripDragsTest",
+      "dialogAboveOwnsEscapeAndDragTest",
+      "unmountReturnsFocusTest"
+    ],
+    "invariants": [
+      "DragNeedsSheet",
+      "DisplacedNeedsDrag",
+      "FocusNamesAControl",
+      "TabStaysInside",
+      "AboveOwnsFocus",
+      "NoCloseUnderDialog"
+    ],
+    "witnesses": [
+      "DragDismissWitness",
+      "ShortPullStaysWitness",
+      "WrapWitness",
+      "SuppressedDismissWitness",
+      "ReentryWitness",
+      "RestsOnBodyWitness",
+      "ReturnsToAssistantWitness"
+    ],
+    "sources": [
+      "apps/app/src/runtime/inline-modal.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "createInlineModal"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "ownsFocus"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "controls"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "const key"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "contain"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "isSheet"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "pointerDown"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "pointerMove"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "pointerUp"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "resetDrag"
+      },
+      {
+        "path": "apps/app/src/runtime/inline-modal.ts",
+        "name": "displaced"
+      }
+    ],
+    "stateMapping": {
+      "mounted/sheet/top": "the container given to ref, isSheet as decided at mount, and no other dialog[open] above the modal (ownsFocus)",
+      "controls/focus/resume/opener": "the dialog's focusable controls in order, document.activeElement (a control, the dialog, the assistant layers, the body or the dialog above), the focus a dialog above took over, and the element focused when the modal mounted",
+      "drag/pull/displaced": "the captured pointer's drag record, its distance against the 72 px dismiss distance, and the dialog's translate style",
+      "closes/lastClose/lastKey": "close() calls, whether Escape or a released pull made the last one, and the last key handled",
+      "wraps/suppressed/kept/reentries/closedUnder": "ghosts counting wrapped Tab presses, far pulls released under another dialog, short pulls released, focus brought back after its control went away, and a close made under another dialog"
+    },
+    "abstractions": [
+      "One modal that leaves the assistant usable (coverAssistant off) with at most three controls; the last control is the one that leaves and a new one arrives at the end.",
+      "A Tab the modal does not handle moves focus by one control, and a closing dialog above hands focus back to what held it; both are the browser's and are supplied as such.",
+      "Pointer positions are three places (the grip area, a control, below the grip area) and four moves (up, short, far, sideways). The pointer id, the primary-button check and scroll prevention are not modeled.",
+      "The focus return after unmount is the immediate case only: the opener is still present. The bounded wait for a missing opener, Back and the inert holds are InlineModalFocus and InertHold.",
+      "test/quint-inline-modal-gestures.test.mjs replays simulated traces and the drag scenarios on createInlineModal in a jsdom document with layout, inert, computed style and pointer capture supplied by the test. It is not a browser or device check."
+    ],
+    "bounds": {
+      "maxSamples": 2000,
+      "maxSteps": 60,
+      "seed": "1"
+    }
   }
 ]

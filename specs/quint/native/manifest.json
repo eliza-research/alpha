@@ -4606,6 +4606,151 @@
         "Up to three unread threads, missed calls and new voicemails; row content and ordering are presentation.",
         "Source loading and items cleared elsewhere are nondeterministic inputs."
       ]
+    },
+    {
+      "path": "specs/quint/native/WakeListenerStop.qnt",
+      "module": "WakeListenerStop",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "confirmedStopClearsLatchTest",
+        "lateReplyDoesNotClearLatchTest",
+        "openMicrophoneIsNotAStopTest",
+        "missingPortLatchesTest",
+        "lastFinishedRequestDecidesTest",
+        "admittedRequestLeavesLatchTest",
+        "offAndroidRequestCallsNothingTest"
+      ],
+      "invariants": [
+        "LatchIsLastVerdict",
+        "ConfirmedOnlyByAnswerOrSkip",
+        "SkippedReportsTrue",
+        "PortCallsBounded"
+      ],
+      "witnesses": [
+        "LateStopKeepsWarningWitness",
+        "ConfirmedStopClearsWarningWitness",
+        "OverlappingRequestsDisagreeWitness",
+        "MissingPortWitness",
+        "SkippedRequestKeepsWarningWitness"
+      ],
+      "sources": [
+        "apps/app/src/runtime/always-on-listener.ts"
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-system/src/sense.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/runtime/always-on-listener.ts",
+          "name": "stopWakeListenerForChatOnly"
+        },
+        {
+          "path": "apps/app/src/runtime/always-on-listener.ts",
+          "name": "wakeListeningStopUnconfirmed"
+        },
+        {
+          "path": "apps/app/src/runtime/always-on-listener.ts",
+          "name": "wakeStopUnconfirmed"
+        },
+        {
+          "path": "apps/app/src/runtime/always-on-listener.ts",
+          "name": "admitImageSense"
+        },
+        {
+          "path": "apps/app/src/runtime/always-on-listener.ts",
+          "name": "imageSenseAvailable"
+        },
+        {
+          "path": "apps/app/src/runtime/always-on-listener.ts",
+          "name": "nativeListener"
+        },
+        {
+          "path": "apps/app/src/runtime/always-on-listener.ts",
+          "name": "stopSenseListenerForChatOnly"
+        }
+      ],
+      "stateMapping": {
+        "latch": "wakeStopUnconfirmed, read through wakeListeningStopUnconfirmed",
+        "admitted": "admittedImageSense, set by admitImageSense",
+        "calls": "each stopWakeListenerForChatOnly promise: not yet made, pending, or settled with the value it returned; the model also records why it settled",
+        "portCalls": "turnOff calls that reached the ElizaSense plugin",
+        "lastVerdict/lateReplies": "ghosts: the verdict of the stop that last wrote the latch, and proofs of a stop that arrived after their request's deadline"
+      },
+      "abstractions": [
+        "Two overlapping requests and six port calls. The app makes one request at startup; overlap is modelled because the exported function does not prevent it.",
+        "The five-second deadline and the reading of a reply belong to the shared stopSenseListenerForChatOnly. The model takes them as outcomes (an answer in one of five reply classes, a failed call, the deadline, a reply after the deadline); the replay in specs/quint/refinement/native/wake-listener-stop.mjs bundles the prepared shared source, so those outcomes are the shared code's own.",
+        "Off Android and an admitted image listener are one skipped outcome that reports true and leaves the latch. A warning latched before the image admitted its listener therefore stays for the session (SkippedRequestKeepsWarningWitness).",
+        "The startup toast, the voice settings row and whether the Android listener really stopped capturing are outside this model; a confirmed stop is the native port's status, not device evidence."
+      ]
+    },
+    {
+      "path": "specs/quint/native/DeletionNoticeFence.qnt",
+      "module": "DeletionNoticeFence",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "quietUntilARowIsKnownTest",
+        "oldReadCannotReviveWarningsTest",
+        "lateUndoCannotClearNewSessionTest",
+        "onlyConfirmedUndoRetiresRowTest",
+        "dismissalRetiresRowAndFailureIsReportedTest"
+      ],
+      "invariants": [
+        "KnownIsCurrent",
+        "GenerationFollowsOwner",
+        "FailuresSurfaceOnlyForKnownRows",
+        "KnownFailuresAreNotHidden",
+        "CallsAreAdmittedOnce"
+      ],
+      "witnesses": [
+        "StaleReadIgnoredAfterReturnWitness",
+        "KnownFailureSurfacedWitness",
+        "StaleUndoKeepsRowWitness",
+        "UnconfirmedUndoKeepsRowWitness",
+        "QuietAfterDismissWitness"
+      ],
+      "sources": [
+        "apps/app/src/runtime/deletions.ts"
+      ],
+      "sharedSources": [
+        "packages/contracts/src/deletion-window.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/runtime/deletions.ts",
+          "name": "createDeletionNoticePolicy"
+        },
+        {
+          "path": "apps/app/src/runtime/deletions.ts",
+          "name": "pendingDeletionNotices"
+        },
+        {
+          "path": "apps/app/src/runtime/deletions.ts",
+          "name": "undoConfirmed"
+        },
+        {
+          "path": "apps/app/src/runtime/deletions.ts",
+          "name": "generation"
+        },
+        {
+          "path": "apps/app/src/runtime/deletions.ts",
+          "name": "known"
+        }
+      ],
+      "stateMapping": {
+        "owner/generation": "The identity the policy last read and its generation counter, advanced on every observed owner change",
+        "known/knownGeneration": "The pending deletion rows the current generation was last shown, and the generation that was shown them",
+        "calls": "Two concurrent bridge calls (status read, Undo, dismissal) with the generation each was admitted under and how the policy let it end",
+        "staleEffects/surfacedUnknown/hiddenKnown": "Model bookkeeping: answers that arrived for an earlier generation, and the two failure-reporting errors the invariants exclude"
+      },
+      "abstractions": [
+        "Two owners alternating over at most three changes, two rows and two concurrent bridge calls. Rows outside the notice phases are filtered by the shared deletion-window contract and are not counted as known.",
+        "The shared notice component that polls, shows the rows and reports action errors is outside this model, as are the native journal and the Undo window itself (DeletionJournal).",
+        "Trace replay: test/quint-deletion-notice-fence.test.mjs replays simulator traces step by step against createDeletionNoticePolicy with the native deletions bridge and the owner identity as ports. The known set and generation are private; the outcome of every call and whether a failing status read is surfaced are compared and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
+      ]
     }
   ]
 }

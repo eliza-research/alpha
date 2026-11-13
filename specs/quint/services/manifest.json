@@ -495,14 +495,18 @@
         "version/reviewedVersion/phase": "Exact modern manual submission protocol. Unknown result, missing run, resend review, confirmed reread and version refusal are separate transitions.",
         "queued/sourceCurrent/enabled/mocks": "The development queue can retain disabled or superseded jobs until a foreground tick. Dispatch requires matching enabled definition and source.",
         "intentSaved/submission/admittedSubmission/executions": "Durable original identity and at most one server admission. A missing lookup may race late acceptance of the original request.",
-        "runOwner/runEpoch/receiptVisible": "Current owner and view lifetime gate publication and cancellation. Switching owners retires UI observation without canceling the server run.",
+        "runOwner/runEpoch/receiptVisible": "The signed-in account and view lifetime gate publication, approval decisions and the owner's own cancellation (visibleRuns, runHidden, and clear() on an account or connection change). A switch retires observation at once and waits for nothing.",
         "approval/requestDigest/reviewedDigest/effects": "One reviewed supported approval and effect.",
-        "cancelRequested/outcome": "Receipt-bound explicit cancellation and independent remote termination."
+        "cancelRequested/outcome": "Receipt-bound explicit cancellation and independent remote termination.",
+        "recorded/cancelClaimed/switchCancels": "The saved run-account record (workflowRunAccounts.record), its saved claim (claim) and the one cancellation cancelOtherAccountRuns sends with the existing cancel request."
       },
       "abstractions": [
         "One reviewed submission and one effect, with up to two version changes. The manual path assumes manualSubmissionProtocol=1; legacy unfenced server admission and activation are outside this contract.",
         "The browser fixture queue is distinct from production scheduled workflow execution. WorkflowEngineAdmission and WorkflowScheduleTasks own production engine and schedule boundaries.",
-        "Model observations abstract one current owner/epoch and one durable identity. A receipt is visible only to its current owner. The retained identity monitor represents prior durable admission even after a normal source acknowledgement."
+        "Model observations abstract one current owner/epoch and one durable identity; owner stands for the signed-in account. A receipt is visible only to its current owner. The retained identity monitor represents prior durable admission even after a normal source acknowledgement.",
+        "The agent authenticates the connection, not the account. cancelOtherAccountRun happens only while the connection that started the run is current; through another connection nothing is sent and the step does not occur. The run then reports its own outcome.",
+        "Only a run this phone started with an account signed in, and saw unfinished, is recorded. Runs started with nobody signed in or by the agent's schedule belong to no account and are not hidden. Dropping the record once its own account reads the run finished is not modeled, so the model may send a cancellation the phone would skip; the agent ignores it for a finished run.",
+        "The record is a bounded local list; eviction of old entries is not modeled."
       ],
       "path": "specs/quint/services/WorkflowExecution.qnt",
       "module": "WorkflowExecution",
@@ -518,7 +522,14 @@
         "ownerSwitchDoesNotCancelRunTest",
         "denialAndCancelTest",
         "triggerDisableTest",
-        "changedDefinitionCannotDispatchQueuedJobTest"
+        "changedDefinitionCannotDispatchQueuedJobTest",
+        "accountSwitchCancelsOnceTest",
+        "otherAccountCannotDecideTest",
+        "otherAccountCannotCancelByHandTest",
+        "ownAccountRunNotCancelledTest",
+        "lostSwitchCancelTest",
+        "lostSwitchCancelKeepsSwitchingTest",
+        "acceptedAfterSwitchCancelledTest"
       ],
       "invariants": [
         "AtMostOneExecution",
@@ -528,13 +539,22 @@
         "ReceiptBelongsToCurrentOwner",
         "AbandonedWasNeverAdmitted",
         "FixtureQueueRequiresMocks",
+        "RecordedRunWasAdmitted",
+        "SwitchCancelAtMostOnce",
+        "SwitchCancelNeedsRecordedRun",
         "TypeOK"
       ],
       "bounds": {
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "witnesses": [
+        "SwitchCancelledWitness",
+        "LostSwitchCancelWitness",
+        "OtherAccountPendingApprovalWitness",
+        "ReturnedAccountSeesRunWitness"
+      ]
     },
     {
       "sources": [
@@ -3417,7 +3437,9 @@
         "planEndedRemovesGraceTest",
         "pastEndGivesNoGraceTest",
         "rejectedSignInForgetsGraceTest",
-        "redeemedEndPrecedesRecordTest"
+        "redeemedEndPrecedesRecordTest",
+        "refreshRewritesRecordTest",
+        "signOutRemovesRecordTest"
       ],
       "invariants": [
         "TypeOK",
@@ -3435,7 +3457,9 @@
         "OtherAccountRecordWitness",
         "OldRecordUnbindsWitness",
         "BillingOutageAdmitsWitness",
-        "RedeemedEndPastWitness"
+        "RedeemedEndPastWitness",
+        "RefreshRewroteRecordWitness",
+        "SignOutRemovedRecordWitness"
       ],
       "sources": [
         "apps/app/src/runtime/connection-ui.tsx",
@@ -3481,6 +3505,14 @@
         {
           "path": "apps/app/src/runtime/subscription-entitlement.ts",
           "name": "forgetPlan"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "cloudSignOut"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "onView"
         }
       ],
       "stateMapping": {
@@ -3492,7 +3524,8 @@
       "abstractions": [
         "Two credentials; record age is fresh or old and a plan end is none, ahead or past. The seven-day window and the record parser are the shared controller.",
         "Admission reasons follow the shared CloudResidentBindingController; Alpha owns the plan-end choice, the record store, forgetting the record on a refused sign-in or ended plan, and the outcome mapping.",
-        "Entitlement verification, the background refresher timers and provider binding are separate. Scenario and simulation evidence only."
+        "Entitlement verification, the refresher's timers and provider binding are separate. A background refresh that verifies the plan rewrites the record from the end held in memory; signing out removes the record.",
+        "Replayed through admitCloudResident, the shared controller, the redeem step and the background refresher (specs/quint/refinement/services/plan-admission-grace.mjs, test/quint-plan-admission-grace.test.mjs): nine named scenarios including refreshRewritesRecordTest. signOutRemovesRecordTest is scenario and simulation evidence only; cloudSignOut is not driven."
       ],
       "sharedSources": [
         "packages/auth/src/auth/cloud-resident-binding.ts"
@@ -4246,6 +4279,8 @@
         "retainedBlocksAnotherChangeTest",
         "appliedCopyCannotApplyAgainTest",
         "ongoingRunBlocksRemovalTest",
+        "unseenRunRefusedByAgentTest",
+        "restartNeedsOpenWorkflowTest",
         "abortBeforeDispatchReleasesTest"
       ],
       "invariants": [
@@ -4259,6 +4294,8 @@
         "ResendNeedsOffer",
         "ReviewNeedsUnlocked",
         "UnknownReviewIsReview",
+        "ReviewNeedsOpenWorkflow",
+        "KnownRunsWereRead",
         "BusyStage"
       ],
       "witnesses": [
@@ -4268,6 +4305,7 @@
         "NeverSentResentAppliedWitness",
         "RefusedResendRetainedWitness",
         "InterruptedReviewWitness",
+        "UnseenRunRefusedWitness",
         "RemovedThenRestoredWitness"
       ],
       "sources": [
@@ -4348,22 +4386,24 @@
       "stateMapping": {
         "removed/version": "the agent's workflow: removed or present, and its version",
         "knownRemoved/knownVersion": "the workflow detail this phone last read",
-        "ongoing/interrupted": "runs in the history: one still running, one interrupted with an unknown outcome; the agent refuses a change while either exists",
+        "ongoing/interrupted": "runs on the agent: one still running, one interrupted with an unknown outcome; the agent refuses a change while either exists",
         "review/unknownReview": "the first tap of a removal or restore, and of cancelling interrupted runs",
         "intent/intentVersion/intentRemove": "the retained lifecycle request with the version and operation it names",
         "offer/resendReview/checked": "the agent's answer that it holds no receipt for the retained request on the version still current (unsentLifecycle), the first tap of sending it again (reviewLifecycleResend), and whether the receipt was read since the app started or the request was last sent",
         "busy/stage/reply": "the workflow operation in progress, how far it got (first send or resend), and the answer waiting for it",
         "wire/wireId/wireVersion/wireRemove": "copies of the newest request on the network, with the request, version and operation they name",
         "receipts": "the requests the agent applied and keeps a receipt for, by mutation identity",
-        "seen/sent/resends/admissions/applications": "whether this phone learned of the applied change, sends and reviewed resends per request (two stands for more), and totals"
+        "seen/sent/resends/admissions/applications": "whether this phone learned of the applied change, sends and reviewed resends per request (two stands for more), and totals",
+        "opened/knownOngoing/knownInterrupted": "whether the workflow is open on this phone, and the run history it last read: on opening, after a refusal and after a cancellation. The tap guards use this reading, not the agent's runs"
       },
       "abstractions": [
-        "One workflow, three versions and three lifecycle requests. Name and description edits follow the same record, reconcile and release steps under their own key, without a resend, and are not modeled separately.",
+        "One workflow, three versions and three lifecycle requests. Name and description edits are modeled in WorkflowMetadataEdit.",
         "The agent applies a request once per mutation identity and only for the version it names, and refuses it while a run is unfinished; a change from elsewhere moves the version on. Whether an applied removal moves the version is not assumed, so a repeat is answered from the receipt alone.",
         "At most two copies of one request are in flight; a third send stands for the loss of one. Requests of an earlier change still in flight when a new one is sent are dropped: they name an older version or already have a receipt.",
         "The resend reads the receipt before posting and again after a refusal; both reads are folded into the resend and refusal steps.",
         "Pending trigger cleanup, which blocks a restore, and agents without reviewed removal are not modeled.",
-        "An account change resets the view; the retained request belongs to its account and is not modeled across accounts."
+        "An account change resets the view; the retained request belongs to its account and is not modeled across accounts.",
+        "The run history on screen is at most one run. A run that starts after the workflow was opened is unknown to the phone until the next read; the agent's refusal is what stops a change sent meanwhile."
       ],
       "sharedSources": [
         "packages/contracts/src/workflow-client.ts",
@@ -4507,9 +4547,18 @@
         "handoffDiscardedByNewerActionTest",
         "handoffAppliedOnceTest",
         "hiddenGuidanceNeedsScreenOffSessionTest",
-        "pendingFixEndsGuidanceTest",
-        "chosenOriginLeavesLocationBusyTest",
-        "lateFixReplacesSearchAndTypedOriginTest"
+        "reservedSessionKeepsHiddenGuidanceTest",
+        "typedCoordinatesPlanWithoutSearchTest",
+        "savedDestinationRetiresEarlierRouteTest",
+        "resultPickNeedsAnsweredSearchTest",
+        "endKeepsRouteSheetTest",
+        "leavingKeepsPlaceRouteAndGuidanceTest",
+        "hiddenPageKeepsRouteSheetTest",
+        "grantedDirectionsLocateTest",
+        "startEndsPendingFixTest",
+        "chosenOriginEndsLocationRequestTest",
+        "submittedSearchEndsLocationRequestTest",
+        "lateFixReplacesUnsubmittedChoiceTest"
       ],
       "invariants": [
         "TypeOK",
@@ -4519,6 +4568,10 @@
         "ReadyRouteNeedsOrigin",
         "ScreenOffNeedsGuidance",
         "HiddenGuidanceHasScreenOffSession",
+        "LocatingMatchesWatch",
+        "FixKeepsSubmittedSearch",
+        "QuietPageHoldsNoLocationRequest",
+        "ResultsNeedSearch",
         "HandoffNeedsQuery",
         "HandoffAppliedOncePerRequest"
       ],
@@ -4526,14 +4579,21 @@
         "GuidanceModeWitness",
         "OriginPickWitness",
         "HiddenGuidanceWitness",
+        "HiddenGuidanceOnReservedSessionWitness",
+        "SavedDestinationRouteWitness",
         "HandoffAppliedWitness",
-        "CurrentLocationPlaceWitness"
+        "CurrentLocationPlaceWitness",
+        "HiddenRouteSheetWitness",
+        "GrantedDirectionsLocateWitness"
       ],
       "sources": [
         "apps/app/src/prototype/maps-adapter.ts",
         "apps/app/src/maps/screen.ts",
         "apps/app/src/maps/state.ts",
-        "apps/app/src/maps/device-navigation.ts"
+        "apps/app/src/maps/device-navigation.ts",
+        "apps/app/src/maps/background-navigation.ts",
+        "apps/app/src/maps/saved-places.ts",
+        "apps/app/src/maps/native-location.ts"
       ],
       "symbols": [
         {
@@ -4558,6 +4618,10 @@
         },
         {
           "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "screen.leaveView"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
           "name": "screen.back"
         },
         {
@@ -4565,28 +4629,38 @@
           "name": "view.mode"
         },
         {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "locationPermissionGranted"
+        },
+        {
           "path": "apps/app/src/maps/state.ts",
           "name": "MapsController"
         }
       ],
       "stateMapping": {
-        "searching/hasQuery/selected/directions/originMode/navigating": "MapsScreenController flags behind MapsScreenView.mode, mapped to the template's base, results, place, dir, origin and nav",
+        "searching/hasQuery/selected/directions/originMode/navigating": "MapsScreenController flags behind MapsScreenView.mode, mapped to the template's base, results, place, dir, origin and nav; selected distinguishes a provider place, a saved place and the located position",
+        "results": "MapsController search phase ready: the rows a result pick needs",
         "locating/watch": "MapsScreenController.locating and the controller's one-fix NativeMapsLocation watch",
-        "originText/origin/routeReady": "MapsScreenController.originText, MapsController origin and a ready route",
-        "screenOff/hidden": "BackgroundNavigation.active and document visibility as seen by screen.hidden",
+        "originText/origin/routeReady": "MapsScreenController.originText (empty, a typed name, coordinates, a chosen candidate's name or \"Your location\"), MapsController origin and a ready route",
+        "screenOff/hidden": "BackgroundNavigation.active() without and with the screen's confirmed session, and document visibility as seen by screen.hidden",
+        "lastChoice": "history only: the destination's most recent explicit choice, for the property outside safety",
         "handoffQuery/handoffPending/requests/handoffs": "the Maps view's one-use query, the adapter's pendingHandoff and the searches screen.handoff ran"
       },
       "abstractions": [
-        "One destination and one origin candidate. Search results, saved places, place detail, travel modes, route choices, sharing and the map plane are not modeled.",
-        "Typed origin coordinates and a chosen origin candidate are one action: both set the controller's origin and stop its location watch.",
-        "A location-permission prompt that keeps a hidden Maps screen is not modeled; guidance ends by End, Back, leaving, hiding without the screen-off session, or a new controller origin.",
+        "One provider place, one saved place and one origin candidate. Place detail, travel modes, route choices, renaming, sharing, recentering, the map plane and the installed maps app hand-off are not modeled.",
+        "openDirections is the route sheet opened without the location permission, or with a starting point typed before the permission read settles; openGrantedDirections is the granted read, which asks for one fix when the starting point is empty and no route exists.",
+        "leave is another launcher view taking the screen with Maps coming straight back: settled places, the route sheet and guidance are kept, a pending location request and any request in flight are not. Guidance away from Maps is in MapsNavigationGuidanceReadback.",
+        "A hidden page keeps guidance only while its screen-off session is reserved or running; otherwise guidance ends and the route sheet stays. A full release happens for a cross-app search and when the session ends or is refused on a hidden page. A location-permission prompt that keeps a hidden Maps screen is in NavigationProgress and NativeMapsLocation.",
+        "Enter on the located position's text, the fifteen-second location time limit, reroutes and arrival are not modeled. The route request is one outcome action; leaving and hiding abort it and the replay plans again before settling one.",
         "The hand-off microtask is an action that can be delayed. Every newer explicit action discards the pending hand-off, so a delayed one finds nothing to run.",
-        "LocatingHasWatchDesired, LateFixKeepsSearchDesired and LateFixKeepsTypedOriginDesired are outside safety: the screen clears its busy flag only on a settled fix, an agent request or release. chosenOriginLeavesLocationBusyTest and lateFixReplacesSearchAndTypedOriginTest replay them."
+        "LateFixKeepsNewerChoiceDesired is outside safety: typing a search or picking a saved place does not end a pending location request, so its fix replaces that choice. lateFixReplacesUnsubmittedChoiceTest replays it."
       ],
       "sharedSources": [
         "plugins/plugin-maps/src/client/maps-screen.ts",
         "plugins/plugin-maps/src/client/state.ts",
-        "plugins/plugin-maps/src/client/device-navigation.ts"
+        "plugins/plugin-maps/src/client/device-navigation.ts",
+        "plugins/plugin-maps/src/client/background-navigation.ts",
+        "plugins/plugin-maps/src/client/saved-places.ts"
       ]
     },
     {
@@ -5264,6 +5338,107 @@
       },
       "temporal": [
         "CheckedTemporal"
+      ]
+    },
+    {
+      "path": "specs/quint/services/WorkflowMetadataEdit.qnt",
+      "module": "WorkflowMetadataEdit",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "savedNameTest",
+        "lostReplyReconciledTest",
+        "changedVersionReleasesTest",
+        "refusedEditReleasesTest",
+        "neverSentStaysLockedTest",
+        "retainedBlocksSaveTest",
+        "leaveBeforeDispatchReleasesTest",
+        "leaveAfterDispatchRetainsTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "AppliedOncePerEdit",
+        "ReleasedRequestCannotApply",
+        "UnseenChangeStaysRetained",
+        "BusyHoldsEntry",
+        "EditorIsOfReadVersion",
+        "OneCopyPerEdit",
+        "NameIsAnAppliedChange"
+      ],
+      "witnesses": [
+        "AppliedUnconfirmedWitness",
+        "LateRequestReleasedWitness",
+        "NeverSentStaysLockedWitness",
+        "RenamedTwiceWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/workflow-adapter.ts",
+        "apps/app/src/runtime/workflow-protocol.ts",
+        "apps/app/src/runtime/workflow-intents.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "metadataKey"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "metadataLocked"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "saveMetadata"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "cancelEdit"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "reconcileMetadata"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "beforeDispatch"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "WorkflowMetadataRejected"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "WorkflowMetadataRejected"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-intents.ts",
+          "name": "WorkflowIntentStore"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-intents.ts",
+          "name": "workflowIntentKey"
+        }
+      ],
+      "stateMapping": {
+        "version/name": "the agent's workflow: its version and the change that last named it",
+        "knownVersion/knownName/opened": "the workflow detail this phone last read, and whether the workflow is open",
+        "editor/editorVersion": "the name and description editor and the version it was opened on",
+        "intent/intentVersion": "the retained metadata request (metadataKey) with the version it names; the journal keeps the identity of the change, not its text",
+        "busy/stage/reply": "the workflow operation in progress, whether the request has been sent, and the answer waiting for it",
+        "wire/wireId/wireVersion": "the newest request on the network, with the change and version it names",
+        "receipts": "the changes the agent applied and keeps a receipt for, by mutation identity",
+        "seen/checked/sent/admissions/applications": "whether this phone learned of the applied change, whether its receipt was read since the app started, sends of the newest change, and totals"
+      },
+      "abstractions": [
+        "One workflow and three edits. Name and description change together; the name stands for both.",
+        "The agent applies a change once per mutation identity and only for the version it names, and each applied change moves the version on. A change from elsewhere also moves it.",
+        "One copy of a change is in flight at most: nothing resends a metadata change. A request of an earlier change still in flight names an older version or has its receipt and is dropped.",
+        "Leaving the editor before the journal write refuses the write; the model records and releases the entry in one step with the same end state.",
+        "Agents without metadata editing, length limits on the fields, and workflows edited through typed authoring (WorkflowAuthoring) are not modeled. A retained change belongs to its account and is not modeled across accounts."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/workflow-client.ts",
+        "packages/contracts/src/workflow-intents.ts"
       ]
     }
   ]
