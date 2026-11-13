@@ -335,6 +335,7 @@ export const featureParityAllowlist = {
     "apps/app/src/prototype/canonical-notes-editor.ts",
     "apps/app/src/prototype/canonical-notes-ui.ts",
     "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
+    "apps/app/src/prototype/chat-tools-adapter.ts",
     "apps/app/src/prototype/clock-adapter.ts",
     "apps/app/src/prototype/contacts-adapter.ts",
     "apps/app/src/prototype/content-links.tsx",
@@ -460,6 +461,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/cloud-voice-limit.ts",
     "apps/app/src/runtime/cloud-voice.ts",
     "apps/app/src/runtime/connection-ui.tsx",
+    "apps/app/src/runtime/conversation-read-path.ts",
     "apps/app/src/runtime/conversation-selection.ts",
     "apps/app/src/runtime/crash-log.ts",
     "apps/app/src/runtime/deletion-owner.ts",
@@ -594,5 +596,6 @@ export const featureParityAllowlist = {
     "apps/app/src/startup-permission-flow.ts",
     "apps/app/src/startup-permission-progress.ts",
     "apps/app/src/startup-permissions.tsx",
+
   ]
 };
