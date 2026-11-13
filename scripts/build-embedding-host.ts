@@ -69,7 +69,9 @@ export async function preparePortableNativeInputs(root:string) {
   if(fs.existsSync(alternates)){command('git',['repack','-a','-d'],source);fs.rmSync(alternates);}
   if(spawnSync('git',['-C',source,'cat-file','-e',`${pin}^{commit}`],{stdio:'ignore'}).status!==0)command('git',['fetch','--no-tags',path.join(root,'vendor/eliza'),pin],source);
   command('git',['checkout','--detach',pin],source);
-  command('git',['submodule','update','--init','--recursive','--reference',path.join(root,'vendor/eliza',enginePath),enginePath],source);
+  const reference=path.join(root,'vendor/eliza',enginePath);
+  const referenceHead=fs.existsSync(path.join(reference,'.git'))?spawnSync('git',['-C',reference,'rev-parse','HEAD'],{encoding:'utf8'}):null;
+  command('git',['submodule','update','--init','--recursive',...(referenceHead?.status===0&&referenceHead.stdout.trim()===recipe.engineCommit?['--reference',reference]:[]),enginePath],source);
   if(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:source,encoding:'utf8'}).trim())throw Error('Cached native producer source has tracked modifications');
   const fork=path.join(source,'plugins/plugin-local-inference/native/llama.cpp');
   const engineAlternates=execFileSync('git',['-C',fork,'rev-parse','--path-format=absolute','--git-path','objects/info/alternates'],{encoding:'utf8'}).trim();

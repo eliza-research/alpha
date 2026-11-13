@@ -82,6 +82,7 @@ export function validateNativeBuildReceipt(root:string,receipt:NativeBuildReceip
   const producers=embeddingProducerInputPaths.map(name=>({path:name,sha256:bytesDigest(source(name))}));
   if(JSON.stringify(receipt.embedding.inputs)!==JSON.stringify(inputs)||JSON.stringify(receipt.embedding.producerInputs)!==JSON.stringify(producers)||JSON.stringify(receipt.embedding.jniBinding)!==JSON.stringify(binding))throw Error('Native JNI producer inputs changed');
   if(receipt.embedding.abi!=='arm64-v8a'||receipt.embedding.jniIdentityRelocated!==true)throw Error('Native JNI ABI or relocation changed');
+  if(JSON.stringify(receipt.embedding.model)!==JSON.stringify(json(root,'android/embedding-host/qualified-host.json').model))throw Error('Native embedding model admission changed');
   const abis=receipt.voice.abis,libraries=receipt.embedding.libraries;
   if(!Array.isArray(abis)||abis.map((row:any)=>row.abi).join()!=='arm64-v8a,x86_64'||!Array.isArray(libraries)||libraries.map((row:any)=>row.name).sort().join()!=='libc++_shared.so,libelizainference.so,libelizavoicejni.so')throw Error('Native library inventory changed');
   for(const abi of abis)if(abi.alignment16KiB!==true||abi.abiVersion<17||abi.libraries.map((row:any)=>row.name).join()!=='libelizainference.so,libc++_shared.so')throw Error('Native voice ABI changed');
