@@ -498,7 +498,10 @@
         "runOwner/runEpoch/receiptVisible": "The signed-in account and view lifetime gate publication, approval decisions and the owner's own cancellation (visibleRuns, runHidden, and clear() on an account or connection change). A switch retires observation at once and waits for nothing.",
         "approval/requestDigest/reviewedDigest/effects": "One reviewed supported approval and effect.",
         "cancelRequested/outcome": "Receipt-bound explicit cancellation and independent remote termination.",
-        "recorded/cancelClaimed/switchCancels": "The saved run-account record (workflowRunAccounts.record), its saved claim (claim) and the one cancellation cancelOtherAccountRuns sends with the existing cancel request."
+        "recorded/cancelClaimed/switchCancels": "The accepted run-account record, its durable claim, and the one best-effort cancellation request. Claim write refusal sends nothing.",
+        "ownershipPending/recorded/sourceAcknowledged": "A durable pending workflow/request ownership reservation before dispatch, its promotion to the accepted run identity, and acknowledgment of the separate account-bearing submission intent only after promotion succeeds.",
+        "storageReadable/storageWritable/ownershipRefused/ownershipChurn": "Controlled ownership-store read outcomes and admission of writes under the shared named Web Lock, refused reservation or promotion, and unrelated unfinished records that must preserve earlier ownership.",
+        "claimUnconfirmed": "A saved cancellation claim whose readback failed: no request is returned to its caller, and its durable claim prevents a retry."
       },
       "abstractions": [
         "One reviewed submission and one effect, with up to two version changes. The manual path assumes manualSubmissionProtocol=1; legacy unfenced server admission and activation are outside this contract.",
@@ -506,7 +509,11 @@
         "Model observations abstract one current owner/epoch and one durable identity; owner stands for the signed-in account. A receipt is visible only to its current owner. The retained identity monitor represents prior durable admission even after a normal source acknowledgement.",
         "The agent authenticates the connection, not the account. cancelOtherAccountRun happens only while the connection that started the run is current; through another connection nothing is sent and the step does not occur. The run then reports its own outcome.",
         "Only a run this phone started with an account signed in, and saw unfinished, is recorded. Runs started with nobody signed in or by the agent's schedule belong to no account and are not hidden. Dropping the record once its own account reads the run finished is not modeled, so the model may send a cancellation the phone would skip; the agent ignores it for a finished run.",
-        "The record is a bounded local list; eviction of old entries is not modeled."
+        "Ownership reservation succeeds before dispatch. A failed accepted-run promotion retains the pending workflow fence and leaves the separate intent unacknowledged; recovery promotes it before acknowledgment. Read refusal suspends ownership admission, and a claim needs a successful write. Physical storage durability and concurrent processes remain separate.",
+        "Other unfinished ownership records never evict the represented reservation or accepted run. One abstract churn step is replayed with 201 other actual records; the model still has one represented run and retains its 1000-sample/60-step/seed123 bounds.",
+        "The source-bound ownership component replay observes pending/accepted records, storage refusal, applied-but-unconfirmed promotion and claim writes, restart, durable claims and retention. Two document contexts share a controlled named Web Locks broker and interleave competing reservation and claim attempts. Agent acceptance and caller acknowledgment are held boundaries; mounted adapter regressions independently check dispatch and acknowledgment ordering.",
+        "A promotion write whose readback fails can already have replaced the pending reservation, while the separate intent stays unacknowledged. A claim write whose readback fails can be durable while no cancellation request leaves; the at-most-once contract permits this safe zero-request outcome and never retries it.",
+        "Mutating ownership operations serialize through one named Web Lock. Absent or refused lock admission is represented by storageWritable=false; actual browser lock delivery and physical storage durability remain separate."
       ],
       "path": "specs/quint/services/WorkflowExecution.qnt",
       "module": "WorkflowExecution",
@@ -529,7 +536,17 @@
         "ownAccountRunNotCancelledTest",
         "lostSwitchCancelTest",
         "lostSwitchCancelKeepsSwitchingTest",
-        "acceptedAfterSwitchCancelledTest"
+        "acceptedAfterSwitchCancelledTest",
+        "refusedReservationNeverDispatchesTest",
+        "unreadableOwnershipNeverDispatchesTest",
+        "acceptedPromotionFailureKeepsFenceTest",
+        "unreadableReceiptStaysSuspendedTest",
+        "unreadableOwnershipBlocksReceiptTest",
+        "refusedCancelClaimNeverSendsTest",
+        "refusedCancelClaimIsDisabledTest",
+        "unrelatedRecordsKeepOwnershipTest",
+        "acceptedPromotionReadbackFailureTest",
+        "claimReadbackFailureNeverRetriesTest"
       ],
       "invariants": [
         "AtMostOneExecution",
@@ -542,7 +559,12 @@
         "RecordedRunWasAdmitted",
         "SwitchCancelAtMostOnce",
         "SwitchCancelNeedsRecordedRun",
-        "TypeOK"
+        "TypeOK",
+        "DispatchedRunKeepsOwnership",
+        "AcknowledgedOwnershipWasPromoted",
+        "VisibleReceiptHasReadableOwnership",
+        "SavedClaimHasOutcome",
+        "UnconfirmedClaimNeverSends"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -553,7 +575,13 @@
         "SwitchCancelledWitness",
         "LostSwitchCancelWitness",
         "OtherAccountPendingApprovalWitness",
-        "ReturnedAccountSeesRunWitness"
+        "ReturnedAccountSeesRunWitness",
+        "ReservationRefusedWitness",
+        "AcceptedPendingOwnershipWitness",
+        "PromotionRecoveredWitness",
+        "OwnershipSurvivesChurnWitness",
+        "UnconfirmedPromotionWitness",
+        "UnconfirmedClaimWitness"
       ]
     },
     {
