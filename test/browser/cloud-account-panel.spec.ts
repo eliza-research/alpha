@@ -30,7 +30,12 @@ async function fixture(page:Page){
    if(path==='/api/auth/cli-session')return {status:200,data:{sessionId:login,expiresAt:new Date(Date.now()+60000).toISOString()}};
    if(path==='/api/auth/cli-session/'+login)return {status:200,data:{status:'authenticated',token:'synthetic-account-token',expiresAt:new Date(Date.now()+600000).toISOString()}};
    if(input.headers.Authorization!=='Bearer synthetic-account-token')throw Error('Unverified fixture account');
-   if(path==='/api/v1/user')return {status:200,data:{success:true,data:{id:f.user,email:f.email}}};
+   if(path==='/api/v1/user')return f.failAccountRead?{status:503,data:{error:'Synthetic account read failure'}}:{status:200,data:{success:true,data:{id:f.user,email:f.email}}};
+   if(path==='/api/v1/subscription/redeem'){
+    f.redemptions=(f.redemptions??0)+1;
+    await new Promise<void>(resolve=>{f.releaseRedeem=resolve;});
+    return {status:200,data:{success:true,replayed:false,grant:{planKey:'plus',startsAt:new Date().toISOString(),endsAt:new Date(Date.now()+86400000).toISOString(),paidPlanTakesPrecedence:false}}};
+   }
    if(path.includes('/google/')&&path.endsWith('/accounts'))return {status:200,data:{success:true,data:[]}};
    throw Error('Unexpected Cloud fixture request: '+path);
   }};
@@ -60,3 +65,41 @@ test('Settings Account opens focused sign-in and restores keyboard focus',async(
 });
 
 test.beforeEach(async({page})=>seedCompletedAccessSetup(page));
+
+
+test('Home closes Account and Google panels while retaining the account and conversation',async({page})=>{
+ await fixture(page);await retainedAgent(page);await openInbox(page);
+ await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');void connectionController.signInBrowser();});
+ await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().cloudAccount?.email)).toBe('verified-owner@example.invalid');
+ const read=()=>page.evaluate(async()=>{const c=(await import('/src/runtime/connection-ui.tsx')).connectionController;return {session:c.getSnapshot().session,history:c.getSnapshot().history,account:c.getSnapshot().cloudAccount,selection:localStorage.getItem('alpha.connection.selection.v1'),sends:(window as any).accountPanelFixture.agentSends};});
+ const before=await read();
+ await page.evaluate(async()=>{(await import('/src/runtime/connection-ui.tsx')).connectionController.openPlan();});
+ await expect(membershipSheet(page)).toBeVisible();
+ await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+ await expect(membershipSheet(page)).toHaveCount(0);await expect(page.locator('html')).toHaveAttribute('data-active-view','home');expect(await read()).toEqual(before);
+ await page.evaluate(async()=>{(await import('/src/runtime/connection-ui.tsx')).connectionController.openPlan();});
+ await membershipSheet(page).getByRole('button',{name:'Google & email',exact:true}).click();
+ const google=page.getByRole('dialog',{name:'Google accounts',exact:true});await expect(google).toBeVisible();
+ await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+ await expect(google).toHaveCount(0);await expect(membershipSheet(page)).toHaveCount(0);await expect(page.locator('html')).toHaveAttribute('data-active-view','home');expect(await read()).toEqual(before);
+});
+
+for(const failAccountRead of [false,true])test(`Home stays visible when an already submitted redemption ${failAccountRead?'cannot refresh the account':'finishes'}`,async({page})=>{
+ await fixture(page);await retainedAgent(page);await openInbox(page);
+ await page.evaluate(async()=>{void (await import('/src/runtime/connection-ui.tsx')).connectionController.signInBrowser();});
+ await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().cloudAccount?.email)).toBe('verified-owner@example.invalid');
+ await page.evaluate(async()=>{
+  const controller=(await import('/src/runtime/connection-ui.tsx')).connectionController;
+  controller.openPlan();
+  void controller.residentRedeem('AAAAAAAAAAAAAAAA').then(result=>{(window as any).redemptionFinished=result;});
+ });
+ await expect.poll(()=>page.evaluate(()=>typeof (window as any).accountPanelFixture.releaseRedeem)).toBe('function');
+ await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+ await expect(membershipSheet(page)).toHaveCount(0);
+ await page.evaluate(fail=>{(window as any).accountPanelFixture.failAccountRead=fail;(window as any).accountPanelFixture.releaseRedeem();},failAccountRead);
+ await expect.poll(()=>page.evaluate(()=>(window as any).redemptionFinished)).toBe(true);
+ await expect(membershipSheet(page)).toHaveCount(0);
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
+ expect(await page.evaluate(()=>(window as any).accountPanelFixture.redemptions)).toBe(1);
+ expect(await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().cloudAccount?.email)).toBe('verified-owner@example.invalid');
+});
