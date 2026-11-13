@@ -190,6 +190,10 @@ function pnClock(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) 
 function pnCallId(pid, num) { var d = pnDigits(num); return pid || (d ? "#" + d : null); }
 function pnWant(st) { return pnCallId(st.call, st.num); }
 
+/* Stopping the view's timers cancels an armed call start with them, so the latch that says a
+   start is armed is released too: the next render arms a handed-over call again. */
+function pnStop(api) { api.stop(); PN.boot = null; }
+
 function pnStart(api, pid, num, opt) {
   opt = opt || {};
   var id = pnCallId(pid, num);
@@ -199,7 +203,7 @@ function pnStart(api, pid, num, opt) {
   /* pnEnd's patch is queued, not applied yet: the ended call's return target is not read back below */
   var replaced = !!PN.live;
   if (replaced) pnEnd(api, { quiet: true });
-  api.stop(); api.stopBg();
+  pnStop(api); api.stopBg();
   PN.live = id;
   var now = Date.now();
   api.set({ call: pid || null, num: pid ? "" : pnFmt(num), callWho: id, callAt: now, liveAt: opt.live ? now : null, dir: opt.dir || "out",
@@ -260,7 +264,7 @@ registerView("phone", {
   back: function (st, api) {
     if (st.incoming) { if (st.rs) api.set({ rs: false }); return true; }
     if (pnWant(st) && !st.min) { if (st.kp) api.set({ kp: false }); else api.set({ min: true }); return true; }
-    if (st.vmOpen) { if (st.playing) api.stop(); api.set({ vmOpen: null, playing: null, vpos: 0 }); return true; }
+    if (st.vmOpen) { if (st.playing) pnStop(api); api.set({ vmOpen: null, playing: null, vpos: 0 }); return true; }
     return false;
   },
   /* calls and ringing keep going in the background: status-bar chip returns here */
@@ -340,7 +344,7 @@ registerView("phone", {
     var tabs = tabDefs.map(function (d) {
       var on = tab === d[0];
       return { d: d[1], label: d[2], on: on, dot: d[0] === "voicemail" && unheard > 0 && !on, css: on ? "background:var(--fg);color:var(--bg)" : "color:var(--fg)",
-        pick: function () { api.stop(); api.set({ tab: d[0], vmOpen: null, playing: null, vpos: 0 }); } };
+        pick: function () { pnStop(api); api.set({ tab: d[0], vmOpen: null, playing: null, vpos: 0 }); } };
     });
 
     /* recents */
@@ -380,15 +384,15 @@ registerView("phone", {
         ini: pnIni(p), who: p ? p.name : (v.label || v.num), time: pnRel(pnAt(v, now), now), dur: pnClock(v.dur), text: v.text,
         unheard: !v.heard, open: open, closed: !open, bgCss: open ? "background:var(--s2)" : "", avBg: open ? "var(--s3)" : "var(--s2)", textColor: open ? "var(--fg)" : "var(--mut)", nameCss: v.heard ? "" : "font-weight: 700",
         textCss: open ? "" : "display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden",
-        toggle: function () { var s = api.get("phone"); if (s.playing) api.stop(); api.set({ vmOpen: open ? null : v.id, playing: null, vpos: 0, vms: s.vms.map(function (x) { return x.id === v.id ? Object.assign({}, x, { heard: true }) : x; }) }); },
+        toggle: function () { var s = api.get("phone"); if (s.playing) pnStop(api); api.set({ vmOpen: open ? null : v.id, playing: null, vpos: 0, vms: s.vms.map(function (x) { return x.id === v.id ? Object.assign({}, x, { heard: true }) : x; }) }); },
         playD: playing ? IC.pause : IC.play, playLabel: playing ? "Pause" : "Play",
         prog: Math.round(pos * 1000) / 10, posT: pnClock(pos * v.dur),
         play: function () {
           var s = api.get("phone");
-          if (s.playing === v.id) { api.stop(); api.set({ playing: null }); return; }
-          api.stop();
+          if (s.playing === v.id) { pnStop(api); api.set({ playing: null }); return; }
+          pnStop(api);
           api.set({ playing: v.id, vpos: (s.vpos || 0) >= 0.99 ? 0 : (s.vpos || 0) });
-          api.every(function () { var s2 = api.get("phone"); if (s2.playing !== v.id) return; var np = (s2.vpos || 0) + 0.25 / v.dur; if (np >= 1) { api.stop(); api.set({ playing: null, vpos: 1 }); } else api.set({ vpos: np }); }, 250);
+          api.every(function () { var s2 = api.get("phone"); if (s2.playing !== v.id) return; var np = (s2.vpos || 0) + 0.25 / v.dur; if (np >= 1) { pnStop(api); api.set({ playing: null, vpos: 1 }); } else api.set({ vpos: np }); }, 250);
         },
         call: callFrom(v.pid, v.num),
         msgLabel: "Message " + (p ? p.name : v.label || v.num), hasMsg: !!p, hasAdd: !p,
@@ -396,7 +400,7 @@ registerView("phone", {
         add: function () { var nm = String(v.label || "").split(" "); api.open("contacts", { add: { first: v.label ? v.label : "", phone: v.num } }); },
         msg: function () { if (p) api.open("messages", { thread: p.id }); },
         del: function () {
-          var s = api.get("phone"); api.stop();
+          var s = api.get("phone"); pnStop(api);
           api.set({ vms: s.vms.filter(function (x) { return x.id !== v.id; }), vmOpen: null, playing: null, vpos: 0 });
           var restore = function () {
             var l = (api.get("phone").vms || []).slice();

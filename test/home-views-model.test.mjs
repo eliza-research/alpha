@@ -47,7 +47,7 @@ function queued(key, initial, others = {}) {
   return {api, log, state: () => state, flush: () => { while (pending.length) state = {...state, ...pending.shift()}; }};
 }
 
-const PHONE = ['pnScript', 'pnDigits', 'pnFmt', 'pnCallId', 'pnWant', 'pnStart', 'pnEnd'];
+const PHONE = ['pnScript', 'pnDigits', 'pnFmt', 'pnCallId', 'pnWant', 'pnStop', 'pnStart', 'pnEnd'];
 const phone = () => load(PHONE, {PN: {live: null, boot: null, lastTab: 'recents'}, PN_SCRIPT: {}});
 
 test('a number without a digit names no call: nothing starts and no call screen is asked for', () => {

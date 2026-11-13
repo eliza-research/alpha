@@ -10,7 +10,7 @@ const region = source.slice(source.indexOf('// chat-release:begin'), source.inde
 assert.ok(region.length > 200, 'chat-release region is present');
 const m = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(region, { mode: 'strip' })).toString('base64'));
 
-const release = (height, options = {}) => m.chatRelease({ mode: 'sheet', direction: 'down', height, floor: 90, full: 915, flick: false, ...options });
+const release = (height, options = {}) => m.chatRelease({ mode: 'sheet', direction: 'down', height, floor: 90, full: 915, flick: false, home: false, ...options });
 
 test('an open sheet rests where it is released, in either direction', () => {
   for (const direction of ['up', 'down']) for (const height of [211, 400, 794])
@@ -36,6 +36,23 @@ test('from the collapsed form a pull up opens and a pull down dismisses', () => 
   assert.deepEqual(release(400, { ...input, flick: true }), { chat: 'sheet' });
   assert.deepEqual(release(850, input), { chat: 'full' });
   assert.deepEqual(release(0, { mode: 'input', direction: 'down' }), { chat: 'hidden' });
+});
+
+test('Home keeps its bar: no release there settles on the pill', () => {
+  const home = { home: true };
+  assert.deepEqual(release(0, { ...home, mode: 'input', direction: 'down' }), { chat: 'input' }, 'a pull down on the bar');
+  assert.deepEqual(release(0, { ...home, mode: 'input', direction: 'down', flick: true }), { chat: 'input' }, 'a flick down on the bar');
+  assert.deepEqual(release(400, { ...home, flick: true }), { chat: 'input' }, 'a flick down on the sheet');
+  assert.deepEqual(release(210, home), { chat: 'input' }, 'a sheet released near the bar');
+  // Every mode, direction, zone and speed, on a roomy and a short screen.
+  for (const full of [915, 300]) for (const mode of ['hidden', 'input', 'sheet', 'full']) for (const direction of ['up', 'down'])
+    for (const flick of [false, true]) for (let height = 0; height <= full; height += 5) {
+      const on = release(height, { ...home, mode, direction, flick, full }), off = release(height, { mode, direction, flick, full });
+      assert.notEqual(on.chat, 'hidden', `${mode} ${direction} ${height}`);
+      // Home differs from other views only where they would hide.
+      assert.deepEqual(on, off.chat === 'hidden' ? { chat: 'input' } : off);
+      assert.notEqual(off.chat, 'input', 'only Home settles on the bar');
+    }
 });
 
 test('on a short screen the zones shrink and still leave room to rest', () => {

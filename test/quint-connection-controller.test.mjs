@@ -45,9 +45,9 @@ function create() {
     operation: null, sending: null, epoch: 1, active: null, planRecheck: null, signInReadinessOwner: null, providerStatusGeneration: 0,
     residentStartInBackground: false, residentStartFailure: 'The agent could not start.', testMocksEnabled: false, residentAlwaysPresent: true, returned: [],
     state: {open: false, signIn: null, message: '', error: '', busy: false, startupResolved: false},
-    // Only showSignInIncomplete writes the sign-in view together with one of the two notices; a rebind
-    // that keeps an error on screen writes the error alone.
-    update(patch) { if ('signIn' in patch && (patch.error === RESTARTED || patch.error === UNVERIFIED)) notices++; Object.assign(box.state, patch); },
+    // Only showSignInIncomplete opens the dialog with one of the two notices and an empty message; a
+    // rebind that keeps an error on screen writes the error alone.
+    update(patch) { if (patch.open === true && patch.message === '' && (patch.error === RESTARTED || patch.error === UNVERIFIED)) notices++; Object.assign(box.state, patch); },
     // One held port: the step, sign-in return, rebind or key request that owns the slot waits on it.
     hold(kind) { assert.equal(held, null, 'one step holds the slot'); return new Promise(resolve => { held = {kind, resolve}; }); },
     signInFailureMessage: value => `failure:${value}`, errorMessage: error => String(error?.message ?? error), errorKindOf: () => undefined,
