@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 import {checkNativeGmailBackground} from '../specs/quint/refinement/native/gmail-background.mjs';
 
-test('native Gmail worker refines selected scheduling, cursor and retirement boundaries', async () => {
+test('native Gmail worker refines selected scheduling, cursor and retirement boundaries', {timeout:scaledTimeout(600000)}, async () => {
   const {receipt}=await checkNativeGmailBackground();
   assert.equal(receipt.passed,true);
   assert.equal(receipt.traces,31);
