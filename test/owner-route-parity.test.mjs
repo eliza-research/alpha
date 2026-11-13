@@ -1,3 +1,4 @@
+import {nativeAgentGate} from './fixtures/native-agent-gate.mjs';
 // Owner-bound renderer routes from the Alpha product table. The real Android request gate is compiled from
 // AlphaLocalAgentPlugin.java with OwnerRoutes.java and run on the host JVM over a broad case table next to the
 // renderer interpreter (owner-route-policy.ts): both must claim and admit the same requests, and exactly what the
@@ -184,7 +185,7 @@ function nativeGate(config,cases){
  const plugin=readFileSync(nativeSource('AlphaLocalAgentPlugin.java'),'utf8'),request=plugin.slice(plugin.indexOf('@PluginMethod public void request(PluginCall call) {'));
  const load=request.match(/\n  (OwnerRoutes routes;\n  try\{routes=OwnerRoutes\.shipped\(getContext\(\)\.getAssets\(\)::open\);\}catch\(IllegalStateException unavailable\)\{logRequestFailure\("other",method,0,"route-table"\);call\.reject\("Unsupported local agent request\."\);return;\}\n  String group=routes\.group\(path\);)\n/)[1]
   .replace('getContext().getAssets()::open','CONFIG').replace('call.reject("Unsupported local agent request.");return;','return true;');
- const gate=request.match(/\n  if\((.*)\)\{\n   logRequestFailure\(group==null\?\"other\":group,method,0,\"gate\"\);\n   call\.reject\("Unsupported local agent request\."\);return;/)[1];
+ const gate=nativeAgentGate(plugin);
  const directory=mkdtempSync(join(tmpdir(),'alpha-owner-routes-')),harness=join(directory,'OwnerRouteHarness.java');
  try{
   writeFileSync(harness,`package ai.elizaresearch.alphaphone;
@@ -193,7 +194,8 @@ public final class OwnerRouteHarness{
  static final OwnerRoutes.Assets CONFIG=name->new java.io.FileInputStream(config+name);
  static void logRequestFailure(String category,String method,int status,String reason){}
  static String text(String v){return "-".equals(v)?null:new String(java.util.Base64.getDecoder().decode(v),java.nio.charset.StandardCharsets.UTF_8);}
- static boolean refused(String path,String method,String body,String expectedOwner){${load}return ${gate};}
+ ${gate.helpers}
+ static boolean refused(String path,String method,String body,String expectedOwner){${load}${gate.declarations}return ${gate.condition};}
  static char unknown(Runnable use){try{use.run();return 'A';}catch(IllegalArgumentException refused){return 'U';}}
  public static void main(String[] args)throws java.io.IOException{
   config=args[0];

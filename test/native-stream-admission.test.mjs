@@ -1,3 +1,4 @@
+import {nativeAgentGate} from './fixtures/native-agent-gate.mjs';
 // Compile the actual bridge method. Only its Capacitor/transport ports are finite fixtures;
 // the admission gate, stream accounting and worker handoff are production source.
 import test from 'node:test';
@@ -24,6 +25,7 @@ class ElizaAgentService {static class LocalStreamHandle {void cancel(){}}static 
 public class StreamAdmissionTest {
  final Object lifecycleLock=new Object();final Map<String,ElizaAgentService.LocalStreamHandle> streams=new HashMap<>();final Map<String,Runnable> streamInvalidators=new HashMap<>();final List<Runnable> queued=new ArrayList<>();final Executor workers=queued::add;String ownerIdentity="owner";
  static class Superseded extends Exception {}long admittedEpoch(){return 1;}void requireCurrent(long epoch){}String enroll(long epoch){return "fixture";}void clearEnrollment(){}void notifyListeners(String name,JSObject data){}
+ ${nativeAgentGate(source).helpers}
  ${source.slice(start,end)}
  static PluginCall call(String id){PluginCall c=new PluginCall();c.values.put("streamId",id);c.values.put("ownerId","owner");c.values.put("path","/api/conversations/room/messages/stream");c.values.put("body","{}");return c;}
  static void check(boolean value,String message){if(!value)throw new AssertionError(message);}
