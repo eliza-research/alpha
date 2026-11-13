@@ -10,7 +10,7 @@ import {pathToFileURL} from 'node:url';
 import {tsImport} from './support/ts-import.mjs';
 const BASE=resolve(import.meta.dirname,'..');
 const temp=await mkdtemp(join(tmpdir(),'alpha-required-onboarding-')),bridge=pathToFileURL(join(temp,'bridge.mjs')).href,connection=pathToFileURL(join(temp,'connection.mjs')).href,style=pathToFileURL(join(temp,'style.mjs')).href;
-await writeFile(new URL(bridge),`export const Capacitor={getPlatform:()=>globalThis.requiredPlatform||'web'};export function registerPlugin(name){return new Proxy({},{get:(_,method)=>(...args)=>globalThis.requiredPorts[name][method](...args)});}`);
+await writeFile(new URL(bridge),`export const Capacitor={getPlatform:()=>globalThis.requiredPlatform||'web',get PluginHeaders(){return globalThis.requiredHeaders;}};export function registerPlugin(name){return new Proxy({},{get:(_,method)=>(...args)=>globalThis.requiredPorts[name][method](...args)});}`);
 await writeFile(new URL(connection),`export const connectionController={subscribe:()=>()=>{},getSnapshot:()=>globalThis.requiredConnection};const listeners=new Set();globalThis.requiredGoogleListeners=listeners;export const googleConnectionController={subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getSnapshot:()=>globalThis.requiredGoogle===true};`);await writeFile(new URL(style),'export{}');
 const hooks=registerHooks({resolve(name,ctx,next){if(name==='@capacitor/core'||name==='./platform-plugins')return {url:bridge,shortCircuit:true};if(/(?:^|\/)(?:google-)?connection-ui(?:\.tsx?)?(?:\?.*)?$/.test(name))return {url:connection,shortCircuit:true};if(name.split('?')[0].endsWith('.css'))return {url:style,shortCircuit:true};return next(name,ctx);}});
 const options={parentURL:import.meta.url,tsconfig:join(BASE,'tsconfig.json')};
@@ -242,4 +242,16 @@ test('appResumed and visibilitychange together re-read access once each and neve
  const f=await fixture(t,{native:true,deferStatus:true,durable:{version:3,status:'pending',step:1}});assert.equal(f.heading(),'Microphone');const before=f.progress();
  f.state.notifications=false;f.state.microphone=false;await f.resume();assert.equal(f.held.length,14);
  await f.settle(f.held.splice(0));assert.equal(f.heading(),'Microphone');assert(f.button('Settings'));assert.deepEqual(f.progress(),before);assert.equal(f.calls.length,0);
+});
+const imageHeaders=[{name:'AlphaTelephony',methods:[{name:'imageCapability'}]}];
+test('Alpha image: access granted at first boot needs no tap and requests nothing',async t=>{
+ globalThis.requiredHeaders=imageHeaders;t.after(()=>{delete globalThis.requiredHeaders;});
+ const f=await fixture(t,{native:true});let homes=0;window.addEventListener('launcher-home',()=>homes++);
+ assert.equal(f.heading(),'All set');assert.equal(document.querySelector('.alpha-permission-rows'),null);assert.equal(f.calls.length,0);
+ assert.deepEqual(f.progress(),{version:4,status:'completed',step:7});await f.click('Done');assert.equal(document.querySelector('dialog'),null);assert.equal(homes,1);
+});
+test('Alpha image: a row that is off still stops and asks; the rows before it pass',async t=>{
+ globalThis.requiredHeaders=imageHeaders;t.after(()=>{delete globalThis.requiredHeaders;});
+ const f=await fixture(t,{native:true,deniedLocation:true});
+ assert.equal(f.heading(),'Location');assert(f.button('Settings'));assert.equal(f.calls.length,0);assert.equal(f.progress().step,3);
 });

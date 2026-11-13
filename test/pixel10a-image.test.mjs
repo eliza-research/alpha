@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {verifyPixel10aImage, verifiedBootProblem, main} from '../scripts/verify-pixel10a-image.ts';
 const pkg='ai.alphacompute.alphaphone';
-const expected={packageName:pkg,apkSha256:'a'.repeat(64),certificateSha256:'b'.repeat(64),fingerprint:'Alpha/alpha_stallion_phone/stallion:17/test:user/release-keys',apkPath:'/product/app/AlphaPhone/AlphaPhone.apk'};
+const expected={packageName:pkg,apkSha256:'a'.repeat(64),certificateSha256:'b'.repeat(64),fingerprint:'Alpha/alpha_stallion_phone/stallion:17/test:user/release-keys',apkPath:'/product/app/AlphaPhone/AlphaPhone.apk',defaultPermissions:['android.permission.RECORD_AUDIO','android.permission.CAMERA']};
 // Self-contained so the same responder also serves as a fake adb executable for the CLI test.
 function respond(s,expected,bootState){
  const pkg=expected.packageName;
@@ -26,6 +26,7 @@ function respond(s,expected,bootState){
  if(s.includes('pm list packages')&&s.endsWith('com.android.launcher3'))return 'package:com.android.launcher3';
  if(s.includes('pm list packages')&&s.endsWith('com.android.deskclock'))return 'package:com.android.deskclock';
  if(s.includes('query-activities')&&s.endsWith('com.android.deskclock'))return 'com.android.deskclock/.HandleApiCalls';
+ if(s===`shell dumpsys package ${pkg}`)return 'Packages:\n    User 0: ceDataInode=1 installed=true\n      runtime permissions:\n'+expected.defaultPermissions.map(name=>'        '+name+': granted=true, flags=[ GRANTED_BY_DEFAULT]').join('\n')+'\n    User 10: installed=true\n';
  if(s==='shell dumpsys webviewupdate')return 'Current WebView package (name, version): (com.android.webview, 145.0.1)';
  throw Error('Unexpected command '+s);
 }
