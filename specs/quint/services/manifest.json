@@ -1856,6 +1856,7 @@
   {
     "path": "specs/quint/services/TaskSchedulerRuntime.qnt",
     "module": "TaskSchedulerRuntime",
+    "verifyBackend": "tlc-bounded",
     "init": "init",
     "step": "step",
     "invariant": "safety",
