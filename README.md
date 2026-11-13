@@ -103,14 +103,15 @@ bun run android:verify
 ```
 
 The first command lists anything that is missing. The second prepares the agent
-and builds the APKs into `artifacts/`. The third checks their contents and
-signatures.
+and builds the debug APK and its instrumentation APK into `artifacts/`; add
+`-- --release` (`bun run android:build:local -- --release`) to build the release
+APK too, as CI does. The third checks their contents and signatures.
 
 The first build downloads the pinned models and toolchain inputs, builds the
 native voice and embedding libraries, and caches the verified outputs. Later
 builds reuse that cache after checking its source recipe and file hashes.
 There is one launcher product/flavor with the resident runtime and on-device
-voice in every APK. The build keeps debug, release and instrumentation artifacts
+voice in every APK. A release build keeps debug, release and instrumentation artifacts
 separate; only the launcher release is a distribution APK. Setup, signing and emulator testing are covered in the
 [developer guide](docs/development.md#android-builds).
 

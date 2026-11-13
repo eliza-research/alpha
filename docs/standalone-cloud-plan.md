@@ -48,7 +48,7 @@ deployment-config object.
 3. **Credentialed CORS and CSRF are static**: `cloud-shared` `cors/first-party-origin.ts` and
    `auth/browser-origin-policy.ts`. A new product's web origin is not first-party for cookie
    flows. Bearer-key calls from the phone are unaffected.
-4. **Pages callbacks**: `packages/cloud/scripts/pages-native-auth-callbacks.ts:46-58` rejects
+4. **Pages callbacks** (this path no longer exists at the current SDK pin): `packages/cloud/scripts/pages-native-auth-callbacks.ts:46-58` rejects
    any native callback whose origin is not an Eliza contract origin; the Pages project name is
    fixed.
 5. **No factory.** `createApp()` takes only a request path. Configuration is ambient: 307

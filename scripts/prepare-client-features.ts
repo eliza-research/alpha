@@ -50,6 +50,8 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/contracts/src/browser-request-grounding.ts',
   // Generated IANA TLD data imported by browser-request-grounding; this leaf has no imports.
   'packages/contracts/src/iana-tlds.ts',
+  // Import-free leaf of browser-request-grounding.
+  'packages/contracts/src/strip-trailing-punctuation.ts',
   'packages/contracts/src/stated-clock-time.ts',
   'packages/contracts/src/phone-dial.ts',
   'packages/contracts/src/device-action-execution.ts',

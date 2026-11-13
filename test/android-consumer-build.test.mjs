@@ -12,11 +12,11 @@ import {SIGNING_ENV, buildEnv, consumerBuildOptions, parseBuildArgs} from '../sc
 
 const SIGNING = Object.fromEntries(SIGNING_ENV.map(name => [name, `value-of-${name}`]));
 
-function build(t, {environment = {}, signed = false} = {}) {
+function build(t, {environment = {}, signed = false, release = true} = {}) {
  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-consumer-build-'));
  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
  const env = buildEnv({PATH: process.env.PATH, ...environment});
- const consumer = consumerBuildOptions(env, root);
+ const consumer = consumerBuildOptions(env, root, undefined, {release});
  const calls = [], seen = [];
  const outputs = path.join(root, 'android/app/build/outputs');
  const write = (relative, value) => {
@@ -49,7 +49,7 @@ function build(t, {environment = {}, signed = false} = {}) {
 
 const gradleCalls = calls => calls.filter(call => call.command === './gradlew');
 
-test('a build assembles the launcher APKs and instrumentation, lints and verifies them flag-off', t => {
+test('a release build assembles the launcher APKs and instrumentation, lints and verifies them flag-off', t => {
  const f = build(t, {environment: {ELIZA_DEV_ALLOW_TEST_MOCKS: '1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: '1'}});
  const [gradle] = gradleCalls(f.calls);
  assert.equal(gradleCalls(f.calls).length, 1);
@@ -69,8 +69,25 @@ test('a build assembles the launcher APKs and instrumentation, lints and verifie
  const {createdAt, ...record} = f.seen[0].record;
  assert.ok(!Number.isNaN(Date.parse(createdAt)));
  const updateChannel={kind:'public',manifestUrlSha256:createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
- assert.deepEqual(record, {testMocks: false, runtimeProfile: 'native', updateChannel, mapsProvider: 'cloud', signingRequested: false, versionOverride: {code: null, name: null}});
+ assert.deepEqual(record, {testMocks: false, release: true, runtimeProfile: 'native', updateChannel, mapsProvider: 'cloud', signingRequested: false, versionOverride: {code: null, name: null}});
  assert.deepEqual(f.result.files.map(file => path.basename(file)), ['launcher-debug.apk', 'launcher-release-unsigned.apk']);
+});
+
+test('a local build assembles only the debug APK and its instrumentation and records release:false', t => {
+ assert.deepEqual(parseBuildArgs([]), {release: false});
+ assert.deepEqual(parseBuildArgs(['--release']), {release: true});
+ assert.throws(() => parseBuildArgs(['--release', '--release']), /Unknown option/);
+ assert.throws(() => parseBuildArgs(['--debug']), /Unknown option/);
+ const f = build(t, {release: false});
+ assert.deepEqual(gradleCalls(f.calls).map(call => call.args), [['--no-daemon', ':app:assembleLauncherDebug', ':app:assembleLauncherDebugAndroidTest', ':app:lint']]);
+ assert.deepEqual(fs.readdirSync(f.output).sort(), ['apk-manifest.json', 'build-config.json', 'instrumentation', 'launcher-debug.apk']);
+ assert.deepEqual(f.seen[0].apks, ['launcher-debug.apk']);
+ assert.equal(f.seen[0].record.release, false);
+ assert.deepEqual(f.result.files.map(file => path.basename(file)), ['launcher-debug.apk']);
+ // Upstream refuses to archive a debug-only build.
+ const {release, ...options} = consumerBuildOptions(buildEnv({}), f.root, undefined, {release: false});
+ assert.equal(release, false);
+ assert.throws(() => buildAndroidConsumer({...options, release, archive: {name: 'local'}, run: () => {}}), /debug-only Android build cannot be archived/);
 });
 
 test('a version override reaches the build record', t => {

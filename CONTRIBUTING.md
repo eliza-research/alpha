@@ -17,7 +17,8 @@ Read [README.md](README.md), [docs/development.md](docs/development.md) and [AGE
 ## Android packaging
 
 Alpha has one launcher product/flavor. Every APK packages the resident runtime,
-on-device voice and local embeddings. Run `bun run android:build:local` and
+on-device voice and local embeddings. Run `bun run android:build:local` (debug and
+instrumentation APKs; add `-- --release` for the release APK, as CI does) and
 `bun run android:verify`; retain debug, release and instrumentation evidence
 separately. Browser test mocks do not define another APK lane.
 
