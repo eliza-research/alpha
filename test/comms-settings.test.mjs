@@ -77,7 +77,8 @@ test('a listener status read never discards or replaces a Pause or Turn off resu
  const source=read('apps/app/src/prototype/settings-adapter.ts');
  const action=source.slice(source.indexOf('async function listenerAction('),source.indexOf('const changed ='));
  assert.match(action,/if \(!listenerReads\.beginAction\(\)\) return;/);
- assert.match(action,/if \(owner !== instance\) return;\s+listener = next;/,'the action result is applied whatever was refreshed meanwhile');
+ assert.match(action,/if \(owner !== instance\) return;\s+listenerStopUnconfirmed = !next.available;\s+if \(next.available\) listener = next;/,'only a confirmed action replaces the prior status');
+ assert.match(source,/const recovery = listenerStopUnconfirmed \? \[micMayBeOn\(\)\] : \[\];\s+if \(!imageSenseAvailable\(\)\) return recovery;/);
  assert.match(action,/finally \{ listenerReads\.endAction\(\);/);
  assert.match(source,/if \(!imageSenseAvailable\(\)\) return;\s+const read = listenerReads\.beginRead\(\);\s+if \(read === null\) return;\s+const status = await listenerStatus\(\);\s+if \(owner === instance && capabilityAbort === abort && listenerReads\.readApplies\(read\)\) listener = status;/);
 });

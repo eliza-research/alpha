@@ -18,7 +18,7 @@ for(const coverage of ['unavailable','non-google'] as const)test(`legacy Maps co
   ]}));
   w.Capacitor.PluginHeaders.push({name:'ElizaSense',methods:[{name:'turnOff',rtype:'promise'},{name:'status',rtype:'promise'}]});
   w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
-   if(plugin==='ElizaSense')return {available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false};
+   if(plugin==='ElizaSense')return {available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false,...(method==='turnOff'?{saved:true}:{})};
    if(plugin==='AlphaConnection'&&method==='request'&&new URL(input.url).pathname.startsWith('/api/v1/maps/')){
     const path=new URL(input.url).pathname;
     if(path.endsWith('/capabilities'))return coverage==='unavailable'

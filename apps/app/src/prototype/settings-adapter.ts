@@ -485,6 +485,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   // The AOSP image's always-on listener (#424): status, Pause and Turn off only. Turning listening on
   // or resuming happens in the listener's own consent screen, never here.
   let listener: ListenerStatus = { available: false };
+  let listenerStopUnconfirmed = false;
   const listenerReads = listenerReadGate();
   // Set when the app resumed behind another view; Settings reads the device when it is next shown.
   let resumedUnread = false;
@@ -495,10 +496,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     try {
       const next = await (action === 'pause' ? pauseListener() : turnOffListener());
       if (owner !== instance) return;
-      listener = next;
-      if (!next.available) api.toast('Not responding · Use notification');
-      else if (next.microphoneOpen) api.toast('Microphone is still open · Use notification');
-      else if (next.listening) api.toast('Still listening · Use notification');
+      listenerStopUnconfirmed = !next.available;
+      if (next.available) listener = next;
+      else api.toast('Stop not confirmed · Use notification');
     } finally { listenerReads.endAction(); if (owner === instance) changed(); }
   }
   const changed = () => owner?.vset('settings', { capabilityReadAt: Date.now() });
@@ -842,15 +842,17 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     ];
     const action = (label: string, go: () => void, id = label): Bag => ({ id, kNav:true, label, lbl:label, chev:true, noAB:true, go });
     const listenerRows = (): Bag[] => {
-      if (!imageSenseAvailable()) return [];
+      const recovery = listenerStopUnconfirmed ? [micMayBeOn()] : [];
+      if (!imageSenseAvailable()) return recovery;
       const settings = () => void openListenerSettings().then(opened => { if (!opened) api.toast('Unavailable'); });
       const settingsRow = {...action('Listening settings', settings), hasExt:true, chev:false};
-      if (!listener.available) return [settingsRow];
+      if (!listener.available) return [...recovery, settingsRow];
       const status = listener;
       const on = status.microphoneOpen || status.listening || (!!status.consented && status.state !== 'OFF');
       const label = status.state === 'OFF' && (status.microphoneOpen || status.listening) ? 'Microphone still open' : status.label;
       // One Listening switch: off goes through the listener; on (and resume) only in its own consent screen.
       return [
+        ...recovery,
         {kTog:true, label:'Listening', aria:'Listening', hasSub:true, sub:listenerReads.busy()?'':label, on, track:on?'background:var(--acc)':'background:var(--line)', kx:on?20:0, dis:listenerReads.busy(), toggle:()=>on?void listenerAction(api, 'turnOff'):settings()},
         ...(status.listening || status.microphoneOpen ? [{...action('Pause', () => void listenerAction(api, 'pause')), lbl:'Pause listening', busy:listenerReads.busy(), hasSpin:listenerReads.busy()}] : []),
         settingsRow,

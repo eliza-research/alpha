@@ -55,7 +55,7 @@ async function fixture(page:Page, signedOut=false, freshAccess=false,nativeEmail
     throw Error('Unexpected synthetic sign-in method');
    }
    if(plugin==='AlphaHostedResults'&&method==='disableBackground')return {};
-   if(plugin==='ElizaSense')return {available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false};
+   if(plugin==='ElizaSense')return {available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false,...(method==='turnOff'?{saved:true}:{})};
    if(plugin!=='Agent')return base(plugin,method,input);
    // The agent restart after a provider change: held, or refused, when a test asks.
    if(method==='start'&&f.startHold){f.starting=true;await new Promise<void>(resolve=>f.startRelease=resolve);f.starting=false;}
