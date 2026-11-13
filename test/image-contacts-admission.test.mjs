@@ -49,5 +49,6 @@ test('admitting Contacts never navigates', () => {
 test('the Android resume path applies admission through this rule', () => {
   const main = readFileSync('apps/app/src/main.tsx', 'utf8');
   assert.match(main, /applyImageContacts\(\s*image\?\.aospImage\s*===\s*true\s*&&\s*image\.contacts\s*===\s*true,\s*ORDER,\s*shell,\s*admitImageContacts\s*\)/);
+  assert.match(main, /addEventListener\('visibilitychange',\s*\(\)\s*=>\s*\{\s*if\s*\(!document\.hidden\)\s*void refreshImage\(\)/);
   assert.equal(main.match(/admitImageContacts\(/g), null);
 });

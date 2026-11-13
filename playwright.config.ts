@@ -3,9 +3,11 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import { defineConfig, devices } from '@playwright/test';
 import { storageSpecPattern } from './scripts/storage-specs.ts';
+import { scaledTimeout } from './specs/quint/refinement/timeouts.mjs';
 const port=Number(process.env.ALPHA_BROWSER_TEST_PORT||5317);
 const productionPort=port+1;
 const productionOutput=`test-results/production-web-${productionPort}`;
+const webServerTimeout=scaledTimeout(180_000);
 // The production lane runs production-surface.spec.ts and every <name>.production.spec.ts.
 const productionSpec=/(production-surface|\.production)\.spec\.ts$/;
 // Live specs need a running local agent and real providers; only the live project runs them
@@ -36,14 +38,14 @@ if(needsDevelopment)process.env.ELIZA_DEV_ALLOW_TEST_MOCKS='1';
 const browserTestCloudProfile=join(tmpdir(),`alpha-browser-cloud-test-${randomUUID()}`);
 const development={
   // The development server explicitly opts into test mocks, fixtures and device controls.
-  command: `bun run dev:ui -- --port ${port} --strictPort`, url: `http://127.0.0.1:${port}`, reuseExistingServer: false, timeout: 180_000,
+  command: `bun run dev:ui -- --port ${port} --strictPort`, url: `http://127.0.0.1:${port}`, reuseExistingServer: false, timeout: webServerTimeout,
   env: { ELIZA_DEV_ALLOW_TEST_MOCKS: '1', ALPHA_BROWSER_CLOUD_PROFILE: browserTestCloudProfile },
 };
 const production={
   // A flag-off production build served by vite preview: no mocks, fixtures or developer surfaces.
   // It is written outside web-dist so it never replaces a release or test-mocks build.
   command: `bun run upstream:prepare-client && bunx --bun vite build --outDir ../../${productionOutput} && bun scripts/audit-production-bundle.ts ${productionOutput} && bunx --bun vite preview --outDir ../../${productionOutput} --host 127.0.0.1 --port ${productionPort} --strictPort`,
-  url: `http://127.0.0.1:${productionPort}`, reuseExistingServer: false, timeout: 180_000,
+  url: `http://127.0.0.1:${productionPort}`, reuseExistingServer: false, timeout: webServerTimeout,
   env: { ELIZA_DEV_ALLOW_TEST_MOCKS: '', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: '', VITE_LOCAL_AGENT: '' },
 };
 

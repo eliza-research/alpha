@@ -48,7 +48,7 @@ finalising a PR and say so in its description. CI runs them with the formal mode
 `develop` is promoted to `main`.
 
 On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) lengthens refinement
-subprocess deadlines so slow but live checkers are not reported as failures; CI uses 1.
+and LemmaScript subprocess deadlines and Playwright server startup. CI uses 1.
 
 ## Development
 
