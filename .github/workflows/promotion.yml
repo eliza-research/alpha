@@ -21,9 +21,13 @@ concurrency:
   cancel-in-progress: true
 jobs:
   symbolic:
-    name: Bounded symbolic safety
+    name: Bounded symbolic safety (${{ matrix.family }})
     runs-on: ubuntu-24.04
     timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        family: ${{ fromJSON(inputs.models && '["selected"]' || '["application","services","native","legacy"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,19 +44,81 @@ jobs:
       - name: Bounded symbolic safety and additional proof inits
         env:
           MODELS: ${{ inputs.models }}
-        run: bun scripts/check-quint.ts verify --steps=6 ${MODELS:+--models=$MODELS}
+          MODEL_FAMILY: ${{ matrix.family }}
+        run: |
+          if [ -z "$MODELS" ]; then
+            MODELS="$(bun -e '
+              import fs from "node:fs";
+              const family = process.env.MODEL_FAMILY;
+              if (!["application", "services", "native", "legacy"].includes(family))
+                throw Error("Unknown safety model family");
+              const models = JSON.parse(fs.readFileSync("specs/quint/" + family + "/manifest.json", "utf8"));
+              if (!Array.isArray(models) || models.length === 0)
+                throw Error("Safety model family must not be empty");
+              const names = models.map(model => model.module);
+              if (names.some(name => typeof name !== "string" || !/^[A-Za-z][A-Za-z0-9_]*$/.test(name)))
+                throw Error("Safety model family contains an invalid module");
+              process.stdout.write(names.join(","));
+            ')"
+            test -n "$MODELS"
+          fi
+          bun scripts/check-quint.ts verify --steps=6 ${MODELS:+--models=$MODELS}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: quint-symbolic-${{ matrix.family }}
+          path: test-results/quint/
+  comparison:
+    name: Historical comparisons and counterexamples
+    if: ${{ !inputs.models }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: bun run upstream:prepare-client
       # Every declared comparison and expected counterexample runs on promotion.
       - name: Expected counterexamples and current-design comparisons
-        if: ${{ !inputs.models }}
         run: bun scripts/check-quint.ts compare
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: quint-comparison
+          path: test-results/quint/
+  temporal:
+    name: Fairness-guarded temporal properties
+    if: ${{ !inputs.models }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: bun run upstream:prepare-client
       # Every declared temporal property runs on promotion.
       - name: Fairness-guarded temporal properties
-        if: ${{ !inputs.models }}
         run: bun scripts/check-quint.ts temporal
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: quint-symbolic
+          name: quint-temporal
           path: test-results/quint/
   conformance:
     name: ${{ matrix.name }}
