@@ -6,6 +6,7 @@ import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {nativeSource,fixture,runJvm,root,javaBinary,jvmTimeout,upstreamConnection} from './fixtures/jvm-tools.mjs';
 import {exactUpdateMembers} from '../specs/quint/refinement/native/update-barrier.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 // One-tap app update, native side (AlphaDevicePlugin). The download admission and the update flow run on the
 // host JVM from the plugin's own source; the rest are source checks (class S) of Android wiring that only a
@@ -43,7 +44,7 @@ test('the update flow runs one attempt per process, fences a session Android sti
   writeFileSync(members,exactUpdateMembers(plugin)
    .replace(deadline,deadline.replace('final ',''))
    .replace(offerDeadline,offerDeadline.replace('final ','')));
-  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')).filter(file=>!file.endsWith('/ConnectionTransport.java')),upstreamConnection('ConnectionTransport.java'),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{json:true,timeout:240000,args:[keyStore]});
+  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')).filter(file=>!file.endsWith('/ConnectionTransport.java')),upstreamConnection('ConnectionTransport.java'),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{json:true,timeout:scaledTimeout(240000),args:[keyStore]});
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
   assert.match(result,/PASS fresh HTTPS offer rejects cached withdrawal, change and transport failure before one current commit/);
   assert.match(result,/PASS final offer deadline bounds held network stages and leaves manual recovery available/);
