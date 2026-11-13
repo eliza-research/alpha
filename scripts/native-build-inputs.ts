@@ -6,6 +6,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {execFileSync,spawn,spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {embeddingAbiLibraries,embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,verifyNativeSymbols} from './embedding-native-contract.ts';
+import {ANDROID_ABIS} from './android-abis.ts';
 
 export const NATIVE_BUILD_RECEIPT = '.eliza/native-inputs/receipt.json';
 export const NATIVE_BUILD_REQUIREMENTS = 'android/embedding-host/native-requirements.txt';
@@ -86,7 +87,7 @@ export function assertNativeOutputPath(root:string,relative:string) {
 /** Clear only the generated voice bundle and the staged native libraries. */
 export function clearStagedNativeInputs(root:string) {
   const voice='.eliza/paradee-voice';
-  const libraries=['arm64-v8a','x86_64'].flatMap(abi=>['libelizainference.so','libelizavoicejni.so','libc++_shared.so'].map(name=>`android/app/src/main/jniLibs/${abi}/${name}`));
+  const libraries=ANDROID_ABIS.flatMap(abi=>['libelizainference.so','libelizavoicejni.so','libc++_shared.so'].map(name=>`android/app/src/main/jniLibs/${abi}/${name}`));
   // Check every target before removing anything: an ABI directory may redirect
   // a library path even when the common jniLibs parent is a real directory.
   for(const relative of [voice,...libraries])assertNativeOutputPath(root,relative);
@@ -122,7 +123,7 @@ export function validateNativeBuildReceipt(root:string,receipt:NativeBuildReceip
   if(receipt.embedding.abi!=='arm64-v8a'||receipt.embedding.jniIdentityRelocated!==true)throw Error('Native JNI ABI or relocation changed');
   if(JSON.stringify(receipt.embedding.model)!==JSON.stringify(recipe.embeddingModel))throw Error('Native embedding model admission changed');
   const abis=receipt.voice.abis,libraries=receipt.embedding.libraries;
-  if(!Array.isArray(abis)||abis.map((row:any)=>row.abi).join()!=='arm64-v8a,x86_64'||!Array.isArray(libraries)||libraries.map((row:any)=>row.name).sort().join()!=='libc++_shared.so,libelizainference.so,libelizavoicejni.so')throw Error('Native library inventory changed');
+  if(!Array.isArray(abis)||abis.map((row:any)=>row.abi).join()!==ANDROID_ABIS.join()||!Array.isArray(libraries)||libraries.map((row:any)=>row.name).sort().join()!=='libc++_shared.so,libelizainference.so,libelizavoicejni.so')throw Error('Native library inventory changed');
   for(const abi of abis)if(abi.alignment16KiB!==true||abi.abiVersion<17||abi.libraries.map((row:any)=>row.name).join()!=='libelizainference.so,libc++_shared.so')throw Error('Native voice ABI changed');
   const additional=receipt.embedding.additionalAbis;
   if(!Array.isArray(additional)||additional.length!==1||additional[0]?.abi!=='x86_64'||!Array.isArray(additional[0].libraries))throw Error('Native embedding ABI inventory is incomplete');

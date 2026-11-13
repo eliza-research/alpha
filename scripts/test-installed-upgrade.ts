@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
-import {createHash} from 'node:crypto';
+import {sha256File} from './sha256.ts';
+import {isAndroidAbi} from './android-abis.ts';
 import {verifyPinnedUpstream} from './pinned-upstream-source.ts';
 import {fixtureCommandError, type IsolatedAndroidTest, type IsolatedUserState} from './native-test-fixture.ts';
 
@@ -48,12 +49,11 @@ export async function testInstalledUpgrade(kind: string,options=process.argv.sli
  const {acquireDeviceLease}=await import('../vendor/eliza/packages/app/scripts/lib/device-lease.ts');
  const {requireInstrumentationSuccess}=await import('./instrumentation-result.ts');
  const {admitApks}=await import('./android-instrumentation.ts');
- const sha=(file: string)=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
  const prefix=`ALPHA_${kind.toUpperCase()}`,root=process.env[`${prefix}_TEST_ROOT`]??repository;
  const baseline=process.env[`${prefix}_BASELINE_DIR`],serial=process.env[`${prefix}_TEST_SERIAL`],avd=process.env[`${prefix}_TEST_AVD`],abi=process.env[`${prefix}_TEST_ABI`];
  assert.ok(baseline&&path.isAbsolute(baseline),'Provide an absolute baseline directory');
  assert.ok(serial&&/^emulator-\d+$/.test(serial),'Explicit emulator serial required');assert.ok(avd&&/^[A-Za-z0-9_.-]+$/.test(avd),'Explicit owned AVD name required');
- assert.ok(abi==='arm64-v8a'||abi==='x86_64','Explicit owned fixture ABI required');
+ assert.ok(isAndroidAbi(abi),'Explicit owned fixture ABI required');
  const sdk=process.env.ANDROID_HOME??process.env.ANDROID_SDK_ROOT;
  assert.ok(sdk&&path.isAbsolute(sdk),'Provide absolute ANDROID_HOME or ANDROID_SDK_ROOT');
  const adb=path.join(sdk,'platform-tools/adb'),aapt=path.join(sdk,'build-tools/36.0.0/aapt');
@@ -88,10 +88,10 @@ export async function testInstalledUpgrade(kind: string,options=process.argv.sli
    const log=(name: string,value: unknown)=>fs.writeFileSync(path.join(directory,name),typeof value==='string'?value:JSON.stringify(value,null,2)+'\n');
    const routes=()=>call('shell','dumpsys','activity','intents').split(/\r?\n/).map(line=>line.trim()).filter(line=>line.startsWith('requestIntent=')&&line.includes('cmp='+pkg+'/')&&/dat=alpha-reminder-tap:|dat=alpha-reminder:[^ /]+\//.test(line)).sort();
    // Companion classes run against the installed candidate pair only, one exact method each.
-   const installedSha=(name: string,user: number)=>{const lines=call('shell','pm','path','--user',String(user),name).split(/\r?\n/);assert.equal(lines.length,1,'Expected one installed APK');assert.match(lines[0],/^package:\/[^\r\n]+\.apk$/);const local=path.join(directory,`${name}-companion.apk`);try{call('pull',lines[0].slice(8),local);return sha(local);}finally{fs.rmSync(local,{force:true});}};
+   const installedSha=(name: string,user: number)=>{const lines=call('shell','pm','path','--user',String(user),name).split(/\r?\n/);assert.equal(lines.length,1,'Expected one installed APK');assert.match(lines[0],/^package:\/[^\r\n]+\.apk$/);const local=path.join(directory,`${name}-companion.apk`);try{call('pull',lines[0].slice(8),local);return sha256File(local);}finally{fs.rmSync(local,{force:true});}};
    const companion=(label: string,user: number,cls: string,method: string,args: string[])=>{
     phase=`companion:${label}`;
-    assert.equal(sha(candidateApp.file),candidateApp.sha256,'Candidate app changed after admission');assert.equal(sha(candidateTest),candidatePair.sha256,'Candidate test APK changed after admission');
+    assert.equal(sha256File(candidateApp.file),candidateApp.sha256,'Candidate app changed after admission');assert.equal(sha256File(candidateTest),candidatePair.sha256,'Candidate test APK changed after admission');
     assert.equal(installedSha(pkg,user),candidateApp.sha256,'Installed app is not the admitted candidate');assert.equal(installedSha(testPkg,user),candidatePair.sha256,'Installed test APK is not the admitted candidate pair');
     let raw;try{raw=call('shell','am','instrument','-r','--user',String(user),'-w',...args,'-e','class',`${cls}#${method}`,`${testPkg}/androidx.test.runner.AndroidJUnitRunner`);}catch(error){log(`${label}.log`,`${fixtureCommandError(error).stdout??''}\n${fixtureCommandError(error).stderr??''}`);throw error;}
     log(`${label}.log`,raw);const result=requireInstrumentationSuccess(raw,[cls]);assert.deepEqual(result.cases,[`${cls}#${method}`],'Requested companion method missing');assert.equal(result.totalTests,1);

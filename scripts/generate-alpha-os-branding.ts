@@ -2,7 +2,7 @@
 /** Render Alpha's existing vector identity; no upstream source or phone mutation. */
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import {sha256File as hash} from './sha256.ts';
 import {createRequire} from 'node:module';
 import {pathToFileURL} from 'node:url';
 
@@ -34,12 +34,11 @@ const osRoot=process.env.ALPHA_OS_SOURCE_ROOT;
 if(!osRoot)throw Error('Set ALPHA_OS_SOURCE_ROOT to the pinned elizaOS/os checkout.');
 const toolLock: {files: Record<string, string>}=JSON.parse(fs.readFileSync(path.join(root,'android/aosp/branding/tools.lock.json'),'utf8'));
 for(const [relative,expected] of Object.entries(toolLock.files)){
- const actual=crypto.createHash('sha256').update(fs.readFileSync(path.join(osRoot,relative))).digest('hex');
+ const actual=hash(path.join(osRoot,relative));
  if(actual!==expected)throw Error('Branding tool differs from reviewed OS input: '+relative);
 }
 const {buildBootAnimationZip}: {buildBootAnimationZip(options: {framesDir: string; outPath: string}): unknown}=await import(pathToFileURL(path.join(osRoot,'scripts/distro-android/build-bootanimation.mjs')).href);
 buildBootAnimationZip({framesDir:output,outPath:path.join(output,'bootanimation.zip')});
-const hash=(p: string)=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const report={schema:1,sourceLogo:'apps/app/public/logo-mark.svg',sourceLogoSha256:hash(logo),width,height,fps:30,accent:'#0000FF',wallpaperBackground:'#050505',bootAnimationSha256:hash(path.join(output,'bootanimation.zip')),wallpaperSha256:hash(path.join(output,'default_wallpaper.png')),firmwareSplashModified:false,imageBuilt:false,deviceVerified:false};
 fs.writeFileSync(path.join(output,'branding-assets.json'),JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify(report,null,2));

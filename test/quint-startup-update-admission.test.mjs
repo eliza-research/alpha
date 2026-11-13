@@ -132,7 +132,8 @@ function fixture(name, code) {
 async function checkStartupUpdateAdmission() {
   const sources = [fileURLToPath(import.meta.url), 'apps/app/src/main.tsx', 'vendor/eliza/' + shared, effective, projection,
     'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java',
-    'upstream.lock.json', 'scripts/prepare-client-features.ts', 'scripts/pinned-upstream-source.ts'];
+    'upstream.lock.json', 'scripts/prepare-client-features.ts', 'scripts/pinned-upstream-source.ts',
+    'scripts/upstream-pin.ts', 'scripts/sha256.ts'];
   captureSources([...sources, modelPath]);
   checkClientFeatures();
   const gate = read(effective);

@@ -2,7 +2,7 @@
 /** Disposable emulator probe of the actual PackageInstaller callback and receipt across a process kill. */
 import assert from 'node:assert/strict';
 import {execFileSync, type SpawnSyncReturns} from 'node:child_process';
-import {createHash} from 'node:crypto';
+import {sha256File as sha} from './sha256.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,7 +28,6 @@ const start=(phase:string)=>adb('shell','am','start','--user','0','-W','-n',acti
 const work=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-ota-confirmation-'));
 const main='android/app/src/main/java/ai/alphacompute/alphaphone/';
 const sources=[main+'AlphaUpdateStatusReceiver.java',main+'UpdateConfirmationReceipt.java','test/fixtures/update-confirmation-android/ContinuationActivity.java','vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'];
-const sha=(file:string)=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const record:Record<string,unknown>={scope:'API platform fixture with production callback receiver, confirmation receipt and pause journal',outcome:'failed',serial,api,sources:Object.fromEntries(sources.map(file=>[file,sha(path.join(root,file))]))};
 let installed=false;
 try{

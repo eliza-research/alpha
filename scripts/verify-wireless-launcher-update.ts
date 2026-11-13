@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /** Record an operator-run wireless launcher replacement using read-only ADB commands. */
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import {lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
@@ -22,10 +22,9 @@ type Distribution = 'sideload' | 'image-preinstalled';
 const HEX = /^[a-f0-9]{64}$/;
 const GIT_COMMIT = /^[a-f0-9]{40}$/;
 const isSha256 = (value: unknown) => typeof value === 'string' && HEX.test(value);
-const EMPTY_SHA256 = createHash('sha256').digest('hex');
+const EMPTY_SHA256 = sha256('');
 const SCHEMA = 'alpha-wireless-launcher-readback/v2';
 const HOME = 'android.intent.category.HOME';
-const sha256 = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
 
 function inspectReadbackApk(apk: ReturnType<typeof admitUnitApk>, descriptor: ReturnType<typeof readReleaseSigner>) {
   const {versionCode} = apk;

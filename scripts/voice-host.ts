@@ -1,4 +1,4 @@
-import {selectedAndroidAbis, abiArguments, type AndroidAbi} from './android-abis.ts';
+import {ANDROID_ABIS, selectedAndroidAbis, abiArguments, type AndroidAbi} from './android-abis.ts';
 /**
  * On-device voice host record (android/voice-host/qualified-voice-host.json, schema 2).
  *
@@ -20,7 +20,6 @@ export const VOICE_ASR_SLOT = 'android/paradee-voice/asr-inputs.json';
 export const VOICE_ASSET_ROOT = PARADEE_NATIVE;
 export const VOICE_BUNDLE_FORMAT = 'eliza-paradee-voice-v2';
 export const VOICE_BUNDLE_ASSETS = 'assets/paradee-voice/v1';
-export const VOICE_ABIS = Object.freeze(['arm64-v8a', 'x86_64']);
 export const VOICE_LIBRARIES = Object.freeze(['libelizainference.so', 'libc++_shared.so']);
 export const VOICE_ROLES = Object.freeze(['tts-model', 'g2p-lexicon', 'g2p-data', 'asr-model', 'asr-mmproj', 'vad-model', 'notice']);
 /** Roles a packaged bundle must carry: speech output, G2P and an ASR model (the slot record decides the rest). */
@@ -86,7 +85,7 @@ export function voiceHostProblems(value: unknown, label = VOICE_HOST_MANIFEST): 
     if (asrRows.map(model => model.role).sort().join() !== [...backendRoles].sort().join()) at('models', `ASR rows must be exactly ${backendRoles.join(' and ')} for the ${backend} backend`);
     if (JSON.stringify(record.asrSlot?.paths) !== JSON.stringify(asrRows.map(model => model.path))) at('asrSlot.paths', 'must list the ASR rows in order');
   }
-  if (!Array.isArray(record.abis) || record.abis.map(row => row?.abi).join() !== VOICE_ABIS.join()) at('abis', `must record ${VOICE_ABIS.join(' and ')}`);
+  if (!Array.isArray(record.abis) || record.abis.map(row => row?.abi).join() !== ANDROID_ABIS.join()) at('abis', `must record ${ANDROID_ABIS.join(' and ')}`);
   for (const [index, row] of (Array.isArray(record.abis) ? record.abis : []).entries()) {
     if (!Array.isArray(row?.libraries) || row.libraries.map(lib => lib?.name).join() !== VOICE_LIBRARIES.join()) { at(`abis[${index}].libraries`, `must list ${VOICE_LIBRARIES.join(', ')}`); continue; }
     for (const [n, lib] of row.libraries.entries()) if (!isSha(lib.sha256) || !isBytes(lib.bytes)) at(`abis[${index}].libraries[${n}]`, 'needs a lowercase SHA-256 and positive bytes');

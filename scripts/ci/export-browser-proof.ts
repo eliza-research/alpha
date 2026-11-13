@@ -1,4 +1,4 @@
-import {createHash} from 'node:crypto';
+import {sha256 as hash} from '../sha256.ts';
 import {execFileSync} from 'node:child_process';
 import {mkdirSync,lstatSync,readdirSync,realpathSync,writeFileSync,existsSync,openSync,closeSync,fstatSync,readSync,constants} from 'node:fs';
 import {resolve,join,dirname,relative,isAbsolute,basename} from 'node:path';
@@ -7,7 +7,6 @@ import {resolve,join,dirname,relative,isAbsolute,basename} from 'node:path';
 const mode=process.argv[2],root=resolve(process.cwd());
 if(mode !== 'renderer' && mode !== 'worker')throw Error('Choose renderer or worker');
 if(realpathSync(root)!==root)throw Error('Workspace must be canonical');
-const hash=(b: string | NodeJS.ArrayBufferView)=>createHash('sha256').update(b).digest('hex');
 const git=(...args: string[])=>execFileSync('git',['--no-replace-objects','-c','core.hooksPath=/dev/null','-c','core.fsmonitor=false',...args],{encoding:'utf8',env:{...process.env,GIT_NO_LAZY_FETCH:'1',GIT_OPTIONAL_LOCKS:'0'}}).trim();
 function checked(path: string,missing=false){
  const absolute=resolve(path),rel=relative(root,absolute);

@@ -1,13 +1,12 @@
 import type { Plugin } from 'vite';
 import path from 'node:path';
 import { realpathSync,readFileSync,readdirSync } from 'node:fs';
-import {createHash} from 'node:crypto';
+import {sha256File} from './sha256.ts';
 /** Prototype adapters patch class methods during bootstrap; replay once per content edit. */
 export function browserFullReload():Plugin {
  const fingerprints=new Map<string,string>();
  const sharedRoot=path.resolve(import.meta.dirname,'../.eliza/client-features');
- const fingerprint=(file:string)=>createHash('sha256').update(readFileSync(file)).digest('hex');
- const snapshot=(directory:string)=>{for(const entry of readdirSync(directory,{withFileTypes:true})){const file=path.join(directory,entry.name);if(entry.isDirectory())snapshot(file);else if(entry.isFile())fingerprints.set(file,fingerprint(file));}};
+ const snapshot=(directory:string)=>{for(const entry of readdirSync(directory,{withFileTypes:true})){const file=path.join(directory,entry.name);if(entry.isDirectory())snapshot(file);else if(entry.isFile())fingerprints.set(file,sha256File(file));}};
  return {name:'alpha-browser-full-reload',enforce:'pre',config(){
    // Native macOS notifications can miss edits and Git's atomic replacements.
    // Polling also lets Vite invalidate its module graph before the reload hook.
@@ -28,7 +27,7 @@ export function browserFullReload():Plugin {
    // Let Vite handle truly new modules. A create notice for a known path is
    // an atomic replacement and must share the normal content-based deduplication.
    if(context.type==='create'&&previous===undefined)return;
-   const current=fingerprint(file);if(previous===current)return [];fingerprints.set(file,current);
+   const current=sha256File(file);if(previous===current)return [];fingerprints.set(file,current);
    if(context.type==='create')this.environment.moduleGraph.onFileChange(context.file);
    if(!relative.endsWith('.css')){context.server.ws.send({type:'full-reload',path:'*'});return [];}
  }};

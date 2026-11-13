@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import {isBuiltin} from 'node:module';
 import {coreStateBuildPlugin,coreStateBuildRecord,coreStateRequiredTargets} from './core-state-patch.ts';
 
@@ -29,7 +29,7 @@ const result=await Bun.build({
   builder.onLoad({filter:/.*/,namespace:'file'},args=>{
    const input=path.resolve(args.path);
    if(!fs.lstatSync(input).isFile())throw Error('Native Google build input is not regular');
-   const bytes=fs.readFileSync(input),digest=createHash('sha256').update(bytes).digest('hex');
+   const bytes=fs.readFileSync(input),digest=sha256(bytes);
    const previous=consumed.get(input);
    if(previous!==undefined&&previous!==digest)throw Error('Native Google build input changed while compiling');
    consumed.set(input,digest);
@@ -57,6 +57,6 @@ if(graph.size!==consumed.size||!graph.has('scripts/native-google-product-host.ts
 const inputs=Object.fromEntries([...graph].map(([name,row])=>[name,row.input]));
 const inputHashes=Object.fromEntries([...graph].map(([name,row])=>[name,row.digest]));
 const coreState=coreStateBuildRecord(root,core.transforms,coreStateRequiredTargets(Object.keys(inputs)));
-const outputSha256=createHash('sha256').update(Buffer.from(await output.arrayBuffer())).digest('hex');
+const outputSha256=sha256(Buffer.from(await output.arrayBuffer()));
 await Bun.write(file,output);
 fs.writeFileSync(metadataFile,JSON.stringify({...result.metafile,inputs,inputHashes,outputSha256,coreState},null,2)+'\n');

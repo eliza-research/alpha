@@ -21,6 +21,7 @@ import {fileURLToPath} from 'node:url';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.ts';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.ts';
 import {readNativeBuildReceipt} from './native-build-inputs.ts';
+import {readUpstreamPin} from './upstream-pin.ts';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
@@ -112,7 +113,7 @@ export function mainPinProblem(root: string, pin: string, {notes = []}: PinOptio
 /** The preflight: the pinned checkout and the on-device voice outputs. */
 export function checkoutProblems(root: string, {voiceHost = verifyVoiceHost, notes = []}: VoiceOptions & PinOptions = {}) {
   const problems: string[] = [];
-  const pin = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit;
+  const pin = readUpstreamPin(root).commit;
   const head = readHead(path.join(root, 'vendor/eliza'));
   if (head !== pin)
     problems.push(`vendor/eliza is ${head ? `at ${head}` : 'not checked out'}; upstream.lock.json pins ${pin}. Run: git submodule update --init vendor/eliza`);
@@ -157,7 +158,7 @@ const readJson = (root: string, rel: string) => JSON.parse(fs.readFileSync(path.
 export function strictBuildInputs(root: string, preparedSource: string | null, {env = process.env, voiceHost = verifyVoiceHost, workerDirectory}: InputReportOptions = {}) {
   const rows: InputReportRow[] = [];
   const add = (input: string, ok: boolean, suppliedBy: InputReportRow["suppliedBy"], detail: string, action: string) => rows.push({input, state: ok ? 'ready' : 'missing', suppliedBy, detail, action: ok ? null : action});
-  const pin = readJson(root, 'upstream.lock.json').commit;
+  const pin = readUpstreamPin(root).commit;
   const head = readHead(path.join(root, 'vendor/eliza'));
   // The checkout must match the lock, and the lock must not pin an upstream older than main's.
   const notes: string[] = [];
@@ -237,7 +238,7 @@ async function main() {
     return;
   }
   const notes: string[] = [];
-  const pin=readJson(root,'upstream.lock.json').commit;
+  const pin=readUpstreamPin(root).commit;
   // Refuse an old or unknown source pin before acquiring or compiling its native inputs.
   if(readHead(path.join(root,'vendor/eliza'))===pin&&!mainPinProblem(root,pin)) {
     const {preparePortableNativeInputs}=await import('./build-embedding-host.ts');

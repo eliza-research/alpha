@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import {preparedSourceEnv,sourceDirectory,workerArtifactDirectory} from './local-agent-source.ts';
-import {verifyWorkerArtifact,workerHash} from './workflow-worker-artifact.ts';
+import {verifyWorkerArtifact} from './workflow-worker-artifact.ts';
+import {sha256 as workerHash} from './sha256.ts';
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';

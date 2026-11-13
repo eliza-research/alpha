@@ -3,13 +3,14 @@
  * This does not sign, reserve release versions, or publish an update.
  */
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';
+import {sha256 as hash} from './sha256.ts';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {publicObject} from './deliver-app-update.ts';
 import {updateArtifactDigest} from './update-artifact.ts';
+import {readUpstreamPin} from './upstream-pin.ts';
 import {NATIVE_BUILD_RECEIPT, readNativeBuildReceipt, verifyNativeBuildFiles, type NativeBuildReceipt} from './native-build-inputs.ts';
 import {
   APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY as REPOSITORY, APP_UPDATE_REPOSITORY_ID as REPOSITORY_ID,
@@ -42,7 +43,6 @@ const WORKFLOW = '.github/workflows/resident-android.yml';
 const WORKFLOW_ID = 373209004;
 const MAX_CODE = 2100000000;
 const NATIVE_INPUT_RECEIPT = 'native-input-admission.json';
-const hash = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
 const readJson = <T>(file: string): T => JSON.parse(fs.readFileSync(file, 'utf8')) as T;
 function code(value: number) {
   assert.ok(Number.isSafeInteger(value) && value > 0 && value <= MAX_CODE, 'Invalid Android versionCode');
@@ -61,7 +61,7 @@ function identity(root: string, env: NodeJS.ProcessEnv) {
   }
   const git = (args: string[]) => execFileSync('git', args, {cwd: root, encoding: 'utf8'}).trim();
   assert.equal(git(['rev-parse', 'HEAD']), env.GITHUB_SHA, 'Candidate source changed');
-  const sdkCommit = readJson<{commit: string}>(path.join(root, 'upstream.lock.json')).commit;
+  const sdkCommit = readUpstreamPin(root).commit;
   assert.match(sdkCommit || '', /^[0-9a-f]{40}$/);
   assert.equal(git(['-C', 'vendor/eliza', 'rev-parse', 'HEAD']), sdkCommit, 'Candidate SDK changed');
   return {sourceCommit: env.GITHUB_SHA, sdkCommit, workflow: env.GITHUB_WORKFLOW_REF, workflowId: WORKFLOW_ID,

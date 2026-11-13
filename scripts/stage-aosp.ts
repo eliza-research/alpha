@@ -6,7 +6,7 @@ import fs from "node:fs";
 import { writeAospCapabilityOverlay } from "./aosp-capability-overlay.ts";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import {sha256, sha256File} from "./sha256.ts";
 import { fileURLToPath } from "node:url";
 import { androidEnv, tool } from "./toolchain.ts";
 import { verifySecureCameraSource, writeSecureCameraOverlay, assertNoAlphaLockScreenSurface } from "./aosp-secure-camera-contract.ts";
@@ -235,7 +235,7 @@ if (!apk)
     ? "Development staging: supply --apk PATH to a flag-off debug launcher APK."
     : "Production staging: supply --apk PATH to the signed launcher release APK that verify-apks recorded as distributable.");
 const identity = JSON.parse(fs.readFileSync("app.config.json", "utf8"));
-const hash = createHash("sha256").update(fs.readFileSync(apk)).digest("hex");
+const hash = sha256File(apk);
 const manifestFile = get('--apk-manifest') || 'artifacts/apk-manifest.json';
 const reviewedUpdateChannel = admitApk({
   apk,
@@ -308,8 +308,8 @@ if (qualification && listenerDescriptor) {
   const listenerDescriptorBytes = fs.readFileSync(listenerDescriptor);
   fs.writeFileSync(admittedListenerDescriptor, listenerDescriptorBytes, {flag:'wx', mode:0o600});
   descriptorDigests = {
-    launcherDescriptorSha256: createHash('sha256').update(reviewedBytes).digest('hex'),
-    listenerDescriptorSha256: createHash('sha256').update(listenerDescriptorBytes).digest('hex'),
+    launcherDescriptorSha256: sha256(reviewedBytes),
+    listenerDescriptorSha256: sha256(listenerDescriptorBytes),
   };
 }
 execFileSync(
@@ -363,7 +363,7 @@ if (listenerApk) {
     const sepolicySha256 = stageAlphaSensePolicy({root: process.cwd(), output, appId: identity.appId, certificateSha256});
     const launcherSha256 = senseLauncherDigest(stagedLauncher, hash);
     admitApk({apk:stagedLauncher, hash:launcherSha256, development:false, manifestFile, platformCertificateSha256});
-    const listenerSha256 = createHash('sha256').update(fs.readFileSync(path.join(output, 'listener', `${listener.moduleName}.apk`))).digest('hex');
+    const listenerSha256 = sha256File(path.join(output, 'listener', `${listener.moduleName}.apk`));
     assertSenseQualification(qualification, {appId: identity.appId, launcherSha256, listenerSha256,
       ...descriptorDigests, certificateSha256, sourceLockSha256: physicalSource.sourceLockSha256,
       sdkCommit:senseSdk.commit, sepolicySha256, patches: appliedPatches});

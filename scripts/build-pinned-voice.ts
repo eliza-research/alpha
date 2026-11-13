@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /** Invoke the unmodified pinned builder, attesting only a fresh output from clean source. */
 import fs from 'node:fs';
-import {createHash} from 'node:crypto';
+import {sha256File} from './sha256.ts';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -48,9 +48,7 @@ export function buildPinnedVoice(root: string, args: string[], {
     let file = output;
     for (const part of row.path.split('/')) {file = path.join(file, part);if (fs.lstatSync(file).isSymbolicLink()) throw Error('Voice build file must not traverse a symbolic link');}
     if (!fs.statSync(file).isFile() || fs.statSync(file).size !== row.bytes) throw Error('Voice build artifact size differs from its record');
-    const hash = createHash('sha256'), fd = fs.openSync(file, 'r'), buffer = Buffer.alloc(1024 * 1024);
-    try {let bytes;while ((bytes = fs.readSync(fd, buffer, 0, buffer.length, null)) > 0) hash.update(buffer.subarray(0, bytes));} finally {fs.closeSync(fd);}
-    if (hash.digest('hex') !== row.sha256) throw Error('Voice build artifact hash differs from its record');
+    if (sha256File(file) !== row.sha256) throw Error('Voice build artifact hash differs from its record');
   }
   fs.writeFileSync(recordPath, JSON.stringify({...record, ...before}, null, 2) + '\n');
   return before;

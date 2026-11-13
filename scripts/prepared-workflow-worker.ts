@@ -2,7 +2,8 @@ import {existsSync,lstatSync,readFileSync} from 'node:fs';
 import {resolve,join,relative,dirname,isAbsolute} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {sourceDirectory,assertWorkerOutputSeparation} from './local-agent-source.ts';
-import {verifyWorkerArtifact,workerHash} from './workflow-worker-artifact.ts';
+import {verifyWorkerArtifact} from './workflow-worker-artifact.ts';
+import {sha256 as workerHash} from './sha256.ts';
 
 function preparedWorkerIdentity(source: string) {
  return {

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import crypto from 'node:crypto';
+import {sha256File as digest} from '../sha256.ts';
 import {execFileSync,spawn,type ChildProcess} from 'node:child_process';
 import {androidEnv} from '../toolchain.ts';
 const [mode,appApk,testApk,output='test-results/maps-native-recovery']=process.argv.slice(2),serial=process.env.ANDROID_SERIAL;
@@ -9,7 +9,6 @@ if(!['permission','outage'].includes(mode)||!appApk||!testApk||!serial||!/^emula
 const env=androidEnv(),adb=path.join(env.ANDROID_HOME,'platform-tools/adb'),app='ai.alphacompute.alphaphone';
 const run=(...args: string[])=>execFileSync(adb,['-s',serial,...args],{env,encoding:'utf8',timeout:20000,stdio:['ignore','pipe','pipe']});
 const local=(file: string,args: string[])=>execFileSync(file,args,{encoding:'utf8',timeout:5000});
-const digest=(p: string)=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const evidence: {mode?: string; scope: string; serial: string; appSha256: string; testSha256: string; phases: string[]; passed: boolean; error?: string; restoreError?: string}={mode,scope:'Actual Android permission UI or controlled owned loopback gateway timeout; synthetic emulator coordinates only',serial,appSha256:digest(appApk),testSha256:digest(testApk),phases:[],passed:false};
 let gateway: number | undefined;
 if(mode==='outage'){

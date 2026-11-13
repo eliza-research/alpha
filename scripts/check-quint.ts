@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { availableParallelism, tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
-import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, registeredQuintModelNames, repositoryRoot, runQuintChecker, sha256, type BoundedTlcEvidence, type CheckerResult, type QuintModel } from './quint-lib.ts';
+import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, registeredQuintModelNames, repositoryRoot, runQuintChecker, type BoundedTlcEvidence, type CheckerResult, type QuintModel } from './quint-lib.ts';
+import { sha256 } from './sha256.ts';
 
 const args = process.argv.slice(2);
 const commands = ['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal', 'compare'] as const;
@@ -50,7 +51,7 @@ if (command === 'temporal' && !models.some(model => model.temporal?.length)) thr
 if (command === 'compare' && !models.some(model => model.currentChecks?.length || model.currentTemporalChecks?.length || model.expectedViolations?.length)) throw Error('Selected models declare no current-design comparisons');
 const cli = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
 const version = readJson<{version: string}>(join(repositoryRoot, 'node_modules/@informalsystems/quint/package.json')).version;
-const inputPaths = [...new Set(['bun.lock', 'scripts/check-quint.ts', 'scripts/quint-lib.ts', 'specs/quint/tlc.json',
+const inputPaths = [...new Set(['bun.lock', 'scripts/check-quint.ts', 'scripts/quint-lib.ts', 'scripts/sha256.ts', 'scripts/upstream-pin.ts', 'specs/quint/tlc.json',
   ...allModels.map(model => model.path),
   ...['application', 'services', 'native', 'legacy'].map(family => `specs/quint/${family}/manifest.json`),
   ...allModels.flatMap(model => model.sources || [])])];

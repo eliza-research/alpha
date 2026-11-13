@@ -20,7 +20,7 @@ const generatedDirectory = 'android/app/build/generated/local-agent';
 const {residentHost} = JSON.parse(fs.readFileSync(join(root, descriptor), 'utf8'));
 const sources = [...RESIDENT_HOST_CLASSES, ...residentHost.classes].map(name => `${residentDirectory}/${name}.java`)
   .concat(residentHost.helpers);
-const productFiles = [stageScript, 'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', descriptor, config];
+const productFiles = [stageScript, 'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', 'scripts/upstream-pin.ts', descriptor, config];
 
 export const residentJavaStageInputs = [lock, ...productFiles, ...[...sdkScripts, ...sources].map(file => sdkPrefix+file)];
 

@@ -5,7 +5,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import {sha256File} from './sha256.ts';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {archiveWebPayload} from './apk.ts';
@@ -59,7 +59,7 @@ const after=snapshot();
 fs.writeFileSync(path.join(destination,'inputs-after.json'),JSON.stringify(after,null,2));
 assert.equal(after.digest,before.digest,'Build inputs changed; do not qualify this archive');
 const manifest: Record<string, string>={};
-function retain(source: string,name: string){const target=path.join(destination,name);fs.copyFileSync(source,target,fs.constants.COPYFILE_EXCL);manifest[name]=crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex');}
+function retain(source: string,name: string){const target=path.join(destination,name);fs.copyFileSync(source,target,fs.constants.COPYFILE_EXCL);manifest[name]=sha256File(target);}
 // Retain exactly the build verify-apks checked, with its flag state.
 const verification: {testMocks: boolean; runtimeProfile?: string; updateChannel: unknown; results: {file: string; sha256: string}[]}=JSON.parse(fs.readFileSync(path.join(sourceDir,'apk-manifest.json'),'utf8'));
 assert.equal(verification.testMocks,false,'Archive expects a flag-off build');
@@ -83,7 +83,7 @@ const mapping=path.join(sourceDir,'mapping',`${variant}-release-mapping.txt`);
 if(fs.existsSync(mapping)){
  const target=path.join(destination,`${variant}-release-mapping.txt`);
  fs.copyFileSync(mapping,target,fs.constants.COPYFILE_EXCL);
- mappings[`${variant}-release-mapping.txt`]=crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex');
+ mappings[`${variant}-release-mapping.txt`]=sha256File(target);
 }
 fs.writeFileSync(path.join(destination,'release-mappings.json'),JSON.stringify(mappings,null,2)+'\n',{flag:'wx'});
 fs.copyFileSync(path.join(sourceDir,'apk-manifest.json'),path.join(destination,'apk-verification.json'),fs.constants.COPYFILE_EXCL);

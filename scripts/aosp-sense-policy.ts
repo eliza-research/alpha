@@ -1,11 +1,11 @@
-import { createHash, X509Certificate } from 'node:crypto';
+import { X509Certificate } from 'node:crypto';
+import {sha256} from './sha256.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const policySource = 'android/aosp/branding/sense-policy';
 const publicCertificate = 'android/signing/public/alphaphone_app.x509.pem';
 const launcherPackage = 'ai.alphacompute.alphaphone';
-const sha256 = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
 
 interface AlphaSensePolicyOptions {
   root: string;

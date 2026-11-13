@@ -3,7 +3,7 @@
  * facts after rotation; neither is accepted from apk-manifest.json alone. */
 import {execFileSync, type ExecFileSyncOptionsWithStringEncoding} from 'node:child_process';
 import type {ReleaseSigner} from './build-android.ts';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -57,7 +57,7 @@ interface ArchiveFacts {
 export function admitPublicUpdateChannel(xml: string, publicUrl: string) {
   requireValue(typeof publicUrl === 'string' && publicUrl.length > 0, 'the configured public manifest URL is required');
   const channel = apkUpdateChannel(parseXmlTree(xml));
-  requireValue(channel.manifestUrlSha256 === createHash('sha256').update(publicUrl).digest('hex'),
+  requireValue(channel.manifestUrlSha256 === sha256(publicUrl),
     'compiled channel is not the configured public update channel');
   return channel;
 }

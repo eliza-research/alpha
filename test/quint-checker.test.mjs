@@ -8,7 +8,8 @@ import { createServer } from 'node:net';
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
+import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
+import { sha256 } from '../scripts/sha256.ts';
 import { scaledTimeout } from '../specs/quint/refinement/timeouts.mjs';
 
 test('all registered scenarios need an actual successful execution record', () => {
@@ -115,7 +116,7 @@ test('bounded TLC CLI includes the boundary, retains selected init and rejects t
   await new Promise(resolve => listener.close(resolve));
   try {
     for (const path of [...sourceRoots, 'scripts']) mkdirSync(join(root, path), {recursive: true});
-    for (const name of ['check-quint.ts', 'quint-lib.ts']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    for (const name of ['check-quint.ts', 'quint-lib.ts', 'sha256.ts', 'upstream-pin.ts']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     symlinkSync(join(repositoryRoot, 'node_modules'), join(root, 'node_modules'), 'dir');
     write('upstream.lock.json', JSON.stringify({commit: 'fixture'}));
     write('bun.lock', '{}');
@@ -250,7 +251,7 @@ test('runner records backend routing, unexpected exceptions and unfinished resul
   };
   try {
     for (const path of [...sourceRoots, 'scripts']) mkdirSync(join(root, path), { recursive: true });
-    const runnerModules = ['check-quint.ts', 'quint-lib.ts', 'core-state-patch.ts', 'build-policy-source.ts'];
+    const runnerModules = ['check-quint.ts', 'quint-lib.ts', 'sha256.ts', 'upstream-pin.ts', 'core-state-patch.ts', 'build-policy-source.ts'];
     for (const name of runnerModules) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     const fixtureSources = [...runtimeScriptPaths, ...runtimeAssetPaths];
     for (const path of fixtureSources) if (!runnerModules.some(name => path === `scripts/${name}`)) write(path, '');

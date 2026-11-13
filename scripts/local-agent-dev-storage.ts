@@ -3,7 +3,8 @@ import {isReminderCreate,validateReminderCreate,validateReminderCreateResult} fr
 import {validateReminderOperation,validateReminderResult} from '../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
 import {mkdirSync,readFileSync,writeFileSync,renameSync,existsSync,chmodSync} from 'node:fs';
 import {join} from 'node:path';
-import {createHash,randomUUID} from 'node:crypto';
+import {randomUUID} from 'node:crypto';
+import {sha256} from './sha256.ts';
 // Development only. Synchronous atomic mutations serialize all browser tabs in
 // the owning Vite process. Production uses the native journal and Keystore.
 export function localAgentStorage(directory:string,input:any):unknown {
@@ -15,7 +16,7 @@ export function localAgentStorage(directory:string,input:any):unknown {
  const draftOperation=operation==='draftRead'||operation==='draftCompareExchange';
  const slot=operation==='read'||operation==='write'||draftOperation||digestOperation?input.slot:`journal:${input.scope}`;
  if(typeof slot!=='string'||!(digestOperation?/^(?:renderer-)?hosted-digests:v1:[a-f0-9]{64}(?::[A-Za-z0-9][A-Za-z0-9_-]{0,127})?$/:draftOperation?/^workflow-draft:v1:[a-f0-9]{64}$/:/^(device|journal):[a-f0-9]{64}$/).test(slot))throw Error('Invalid local storage scope');
- const file=join(directory,createHash('sha256').update(slot).digest('hex')+'.json');
+ const file=join(directory,sha256(slot)+'.json');
  const saved=existsSync(file)?JSON.parse(readFileSync(file,'utf8')):null;
  const write=(value:unknown)=>{const bytes=JSON.stringify(value);if(Buffer.byteLength(bytes)>2*1024*1024)throw Error('Local storage limit');const temporary=file+'.'+randomUUID();writeFileSync(temporary,bytes,{mode:0o600,flag:'wx'});renameSync(temporary,file);};
  if(digestOperation){
@@ -61,7 +62,7 @@ export function localAgentStorage(directory:string,input:any):unknown {
  if(operation==='recoverNotification'){
   if(JSON.stringify(previous)!==JSON.stringify(input.expectedEntry))throw Error('Notification journal changed. Refresh history.');
   if(previous.phase==='terminal'&&previous.status!=='unknown')return {entry:previous};
-  const effect=previous.record.operation,hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  const effect=previous.record.operation,hash=(value:unknown)=>sha256(JSON.stringify(value));
   if(!previous.attemptId||previous.phase!=='applying'&&!(previous.phase==='terminal'&&previous.status==='unknown')||effect?.type!=='post_notification'||!previous.record.workflow)throw Error('Notification recovery requires an admitted workflow attempt');
   const binding=hash([input.scope,previous.record.ownerId,previous.record.agentId,previous.record.sessionId,previous.record.origin,previous.record.installationId,previous.record.enrollmentId,input.proposalId,previous.record.digest,previous.operationId]);
   if(binding!==input.bindingHash||hash(effect)!==previous.operationHash)throw Error('Notification recovery binding changed');
@@ -72,7 +73,7 @@ export function localAgentStorage(directory:string,input:any):unknown {
   if(JSON.stringify(previous)!==JSON.stringify(input.expectedEntry))throw Error('Deletion journal changed. Refresh history.');
   if(previous.phase==='terminal'&&previous.status!=='unknown')return {entry:previous};
   const effect=previous.record.operation,recovery=input.recovery;
-  if(!previous.attemptId||previous.phase!=='applying'&&previous.status!=='unknown'||!['calendar_delete','reminder_cancel'].includes(effect?.type)||createHash('sha256').update(JSON.stringify(effect)).digest('hex')!==previous.operationHash)throw Error('Deletion recovery requires the exact admitted operation.');
+  if(!previous.attemptId||previous.phase!=='applying'&&previous.status!=='unknown'||!['calendar_delete','reminder_cancel'].includes(effect?.type)||sha256(JSON.stringify(effect))!==previous.operationHash)throw Error('Deletion recovery requires the exact admitted operation.');
   if(!recovery||!['succeeded','failed'].includes(recovery.status)||typeof recovery.summary!=='string'||recovery.summary.length>2000||recovery.result?.operationId!==previous.operationId)throw Error('Deletion receipt unavailable.');
   if(recovery.status==='succeeded'){if(effect.type==='calendar_delete')validateCalendarResult(validateCalendarOperation(effect),recovery.result.calendarResult);else validateReminderResult(validateReminderOperation(effect),recovery.result.reminderResult);}
   else if(Object.keys(recovery.result).length!==1)throw Error('Cancelled deletion cannot report a write.');
@@ -82,7 +83,7 @@ export function localAgentStorage(directory:string,input:any):unknown {
   if(JSON.stringify(previous)!==JSON.stringify(input.expectedEntry))throw Error('Reminder journal changed. Refresh history.');
   if(previous.phase==='terminal'&&previous.status!=='unknown')return {entry:previous};
   if(!previous.attemptId||previous.phase!=='applying'&&previous.status!=='unknown')throw Error('Reminder recovery requires an admitted attempt');
-  const effect=isReminderCreate(previous.record.operation)?validateReminderCreate(previous.record.operation):validateReminderOperation(previous.record.operation),hash=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  const effect=isReminderCreate(previous.record.operation)?validateReminderCreate(previous.record.operation):validateReminderOperation(previous.record.operation),hash=(value:unknown)=>sha256(JSON.stringify(value));
   const binding=hash([input.scope,previous.record.ownerId,previous.record.agentId,previous.record.sessionId,previous.record.origin,previous.record.installationId,previous.record.enrollmentId,input.proposalId,previous.record.digest,previous.operationId]);
   if(binding!==input.bindingHash||hash(effect)!==previous.operationHash)throw Error('Reminder recovery binding changed');
   const reminderResult=isReminderCreate(effect)?validateReminderCreateResult(effect,input.reminderResult,previous.operationId):validateReminderResult(effect,input.reminderResult);

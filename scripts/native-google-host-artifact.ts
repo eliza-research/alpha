@@ -5,7 +5,8 @@ import {isDeepStrictEqual} from 'node:util';
 import {prepareClientFeatures} from './prepare-client-features.ts';
 import {sourceDirectory,verifySource} from './local-agent-source.ts';
 import {CORE_STATE_INPUTS,verifyCoreStateBuildRecord,coreStateRequiredTargets,type coreStateBuildRecord} from './core-state-patch.ts';
-import {workerHash as hash} from './workflow-worker-artifact.ts';
+import {sha256 as hash} from './sha256.ts';
+import {readUpstreamPin} from './upstream-pin.ts';
 
 const moduleName='google-host.mjs';
 const digestPattern=/^[a-f0-9]{64}$/;
@@ -65,7 +66,7 @@ function fixedInputHashes(root: string,sdk: string){
  const names=new Set([...CORE_STATE_INPUTS,'package.json','tsconfig.json','vendor/eliza/tsconfig.json',
   path.relative(root,path.join(sdk,'tsconfig.json')),'scripts/build-native-google-host.ts','scripts/local-agent-source.ts',
   'upstream.lock.json','scripts/native-google-host-artifact.ts','scripts/prepare-client-features.ts',
-  'scripts/upstream-native-source.ts',raw,effective,stamp]);
+  'scripts/upstream-native-source.ts','scripts/upstream-pin.ts','scripts/sha256.ts',raw,effective,stamp]);
  return Object.fromEntries([...names].sort().map(name=>{
   if(!safe(name))throw Error('Native Google build input escaped product source');
   return [name,hash(regularFile(path.join(root,name)).bytes)];
@@ -121,7 +122,7 @@ export function addNativeGoogleHostArtifact(root: string, directory: string) {
  prepareClientFeatures({root});
  const bun=process.env.ALPHA_BUN||(process.versions.bun?process.execPath:'bun');
  if(execFileSync(bun,['--version'],{encoding:'utf8'}).trim()!=='1.4.2')throw Error('Native Google host requires pinned Bun1.4.2');
- const sdk=sourceDirectory(root),pin=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;
+ const sdk=sourceDirectory(root),pin=readUpstreamPin(root).commit;
  verifySource(sdk,pin);
  const fixed=fixedInputHashes(root,sdk);
  const previous={

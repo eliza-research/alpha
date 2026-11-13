@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash} from 'node:crypto';
+import {sha256 as digest} from './sha256.ts';
 import {fileURLToPath} from 'node:url';
 import {verifyDeviceSource} from '../vendor/eliza/packages/os/scripts/android/verify-device-source.mjs';
 import {soongAppNativePatch} from '../vendor/eliza/packages/os/scripts/android/soong-app-native.mjs';
@@ -8,7 +8,6 @@ import {loadProfile, verifyProfileSource} from '../vendor/eliza/packages/os/scri
 
 export const defaultLockPath = fileURLToPath(new URL('../vendor/eliza/packages/os/android/sources/pixel10a-stallion.json', import.meta.url));
 const profileLockPath = fileURLToPath(new URL('../vendor/eliza/packages/os/android/aosp.lock.json', import.meta.url));
-const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
 /** Alpha adapter for upstream's shared Pixel 10a source admission. Fixture locks may
  * be supplied explicitly; production defaults authenticate the shared profile and inventory. */

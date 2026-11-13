@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { upstreamNativeSource, sha as hash } from './upstream-native-source.ts';
+import { upstreamNativeSource } from './upstream-native-source.ts';
+import { sha256 as hash } from './sha256.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

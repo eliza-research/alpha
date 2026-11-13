@@ -14,6 +14,7 @@ import {nativeCacheRoot,nativeCacheDirectory,nativeRecipe,nativeRecipeDigest,NAT
 import {stageVoiceModels} from './android-stage-voice-models.ts';
 import {voiceHostProblems} from './voice-host.ts';
 import {embeddingAbiLibraries} from './embedding-native-contract.ts';
+import {ANDROID_ABIS} from './android-abis.ts';
 
 export const QUALIFIED_HOST = 'android/embedding-host/qualified-host.json';
 export const BUILD_TOOLCHAIN = 'android/embedding-host/build-toolchain.json';
@@ -140,7 +141,7 @@ export async function preparePortableNativeInputs(root:string) {
       if(!fs.existsSync(shared)||fileDigest(shared)!==model.sha256){fs.mkdirSync(path.dirname(shared),{recursive:true});const pending=`${shared}.${randomUUID()}.partial`;fs.copyFileSync(file,pending);fs.renameSync(pending,shared);}
     }
     const preparations=[];
-    for(const abi of ['arm64-v8a','x86_64']) {
+    for(const abi of ANDROID_ABIS) {
     const embeddingOutput=path.join(cache,'embedding',abi);
     const preparedFile=path.join(embeddingOutput,'PREPARATION.json');
     if(fs.existsSync(preparedFile)&&readJson<{built:boolean}>(preparedFile).built!==true)fs.rmSync(embeddingOutput,{recursive:true,force:true});

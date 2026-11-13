@@ -1,7 +1,8 @@
 /** Stage the product-owned OTA enrollment. Never installs, reboots or marks a device qualified. */
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash, X509Certificate} from 'node:crypto';
+import {X509Certificate} from 'node:crypto';
+import {sha256 as sha} from './sha256.ts';
 import {admitSystemUpdater} from '../vendor/eliza/packages/os/scripts/android/system-updater-staging.mjs';
 
 interface PilotEnrollment {
@@ -17,7 +18,6 @@ for(let i=0;i<args.length;i++){
  const arg=args[i];if(!allowed.has(arg)||Object.hasOwn(options,arg))throw Error('Unknown or repeated enrollment option');
  options[arg]=arg==='--execute'?true:args[++i];
 }
-const sha=(data:string|Uint8Array)=>createHash('sha256').update(data).digest('hex');
 const require=(condition:unknown,message:string)=>{if(!condition)throw Error(message);};
 const file=(relative:string)=>path.join(root,relative);
 const profileBytes=fs.readFileSync(file('android/aosp/pilot-system-update-enrollment.json'));

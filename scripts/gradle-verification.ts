@@ -16,7 +16,7 @@ import {HOST_DESCRIPTOR, readHostDescriptor, type HostReference} from './android
  * before committing it: a new entry is a new trusted artifact.
  */
 import {execFileSync} from 'node:child_process';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -252,7 +252,7 @@ async function recordOtherHostAapt2(root: string) {
       const url = `${GOOGLE_MAVEN}/com/android/tools/build/aapt2/${component.version}/${artifact}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-      const digest = createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex');
+      const digest = sha256(Buffer.from(await response.arrayBuffer()));
       text = addArtifact(text, component, artifact, digest, AAPT2_ORIGIN);
       console.log(`Recorded ${artifact} sha256 ${digest} from ${url}`);
     }

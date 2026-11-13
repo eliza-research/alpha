@@ -1,8 +1,9 @@
-import { createHash } from 'node:crypto';
+import {sha256} from './sha256.ts';
 import { createRequire } from 'node:module';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readUpstreamPin } from './upstream-pin.ts';
 
 export const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 export const quintRoot = join(repositoryRoot, 'specs/quint');
@@ -30,7 +31,7 @@ export const runtimeScriptPaths = ['scripts/stage-alpha-os-branding.py', 'script
   'scripts/android-host.ts', 'scripts/android-gzip-assets.ts', 'scripts/stage-aosp.ts',
   'scripts/audit-production-bundle.ts', 'scripts/generate-licenses.ts',
   'scripts/cloud-deployment.ts', 'scripts/cloud-deployment-policy.ts', 'scripts/native-view-policy.ts',
-  'scripts/with-test-mocks.ts', 'scripts/child-command.ts', 'scripts/regular-files.ts', 'capacitor.config.ts', 'vite.config.ts',
+  'scripts/with-test-mocks.ts', 'scripts/child-command.ts', 'scripts/regular-files.ts', 'scripts/sha256.ts', 'scripts/upstream-pin.ts', 'capacitor.config.ts', 'vite.config.ts',
   'scripts/apk.ts', 'scripts/source-snapshot.ts', 'scripts/verify-apks.ts', 'scripts/verify-packaged-runtime.py',
   'scripts/provision-unit.ts', 'scripts/publish-update-manifest.ts', 'scripts/deliver-app-update.ts',
   'scripts/update-apk-admission.ts', 'scripts/update-artifact.ts', 'scripts/owner/InspectUpdateApk.java',
@@ -80,7 +81,6 @@ export interface QuintModel extends ModelDefinition {
   family: ModelFamily;
   sources: string[];
 }
-interface UpstreamPin { commit: string; appSource?: unknown }
 export interface CheckerResult {
   status: number | null;
   signal: NodeJS.Signals | null;
@@ -112,10 +112,9 @@ export function filesWithin(directory: string, accept: (path: string) => boolean
 }
 
 export const relativePath = (path: string) => relative(repositoryRoot, path).split('\\').join('/');
-export const sha256 = (bytes: string | NodeJS.ArrayBufferView) => createHash('sha256').update(bytes).digest('hex');
 /** Discover the shared source consumed by this product from its authenticated inputs. */
 export function sharedSourcePaths() {
-  const pin = readJson<UpstreamPin>(join(repositoryRoot, 'upstream.lock.json'));
+  const pin = readUpstreamPin(repositoryRoot);
   // Minimal checker fixtures have no product source descriptor.
   if (!pin.appSource) return [];
   const client = readJson<{baseCommit: string; sourceFiles: Record<string, string>}>(join(repositoryRoot, '.eliza/client-features/.source.json'));

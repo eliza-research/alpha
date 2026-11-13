@@ -42,7 +42,7 @@ async function checkNativeGoogleHostArtifact(extraSources = []) {
     fileURLToPath(import.meta.url), probe, 'specs/quint/refinement/timeouts.mjs', 'test/fixtures/native-google-host-builder-port.mjs', 'test/fixtures/core-state-root.mjs',
     'scripts/native-google-host-artifact.ts', 'scripts/build-native-google-host.ts', 'scripts/workflow-worker-artifact.ts',
     'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', 'scripts/prepare-client-features.ts',
-    'scripts/upstream-native-source.ts', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
+    'scripts/upstream-native-source.ts', 'scripts/upstream-pin.ts', 'scripts/sha256.ts', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
     'package.json', 'tsconfig.json', 'upstream.lock.json', 'vendor/eliza/tsconfig.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',

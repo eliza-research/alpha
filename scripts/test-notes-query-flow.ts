@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,readFileSync,writeFileSync,existsSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {createHash} from 'node:crypto';
+import {sha256} from './sha256.ts';
 import {DocumentNotesStore,NotesDocumentConflict} from '../.eliza/client-features/plugins/plugin-notes/src/client/notes-document-store.ts';
 import {executeNotesQuery} from '../apps/app/src/prototype/notes-query-executor.ts';
 import {shareable} from '../apps/app/src/prototype/notes-query-review.ts';
@@ -10,7 +10,7 @@ import {DeviceActions} from '../apps/app/src/runtime/device-actions.ts';
 const directory=mkdtempSync(join(tmpdir(),'alpha-notes-query-')),signal=()=>new AbortController().signal;
 try{
  const make=async(name:string,records:any[])=>{
-  const file=join(directory,name+'.json');const snapshot=()=>{if(!existsSync(file))return null;const raw=readFileSync(file,'utf8');return {raw,revision:createHash('sha256').update(raw).digest('hex')};};
+  const file=join(directory,name+'.json');const snapshot=()=>{if(!existsSync(file))return null;const raw=readFileSync(file,'utf8');return {raw,revision:sha256(raw)};};
   const port={initialize:async(create:any)=>{if(!existsSync(file))writeFileSync(file,create(null,null));return snapshot()!;},read:async()=>snapshot(),compareExchange:async(expected:any,raw:string)=>{if(snapshot()?.revision!==expected.revision)throw new NotesDocumentConflict('Changed');writeFileSync(file,raw);return snapshot()!;}};
   return {file,port,store:await DocumentNotesStore.open(port,records)};
  };

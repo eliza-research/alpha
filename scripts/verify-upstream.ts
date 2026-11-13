@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { createHash } from "node:crypto";
+import {sha256File} from "./sha256.ts";
 import { execFileSync } from "node:child_process";
 import {
 	assessDevelopReachability,
@@ -8,17 +8,18 @@ import {
 	REACHABILITY_RECORD,
 	verifyPinnedUpstream,
 } from "./pinned-upstream-source.ts";
+import { readUpstreamPin } from "./upstream-pin.ts";
 
 const argv = process.argv.slice(2);
 // --reachability-only reports the recorded develop compare without re-authenticating vendor bytes.
 const reachabilityOnly = argv.includes("--reachability-only");
 const { commit } = reachabilityOnly
-	? JSON.parse(fs.readFileSync("upstream.lock.json", "utf8"))
+	? readUpstreamPin(process.cwd())
 	: verifyPinnedUpstream(process.cwd());
 
 if (!reachabilityOnly && argv.includes("--record-reachability")) {
 	// Explicit, networked refresh of the recorded compare. CI never runs this.
-	const lock = JSON.parse(fs.readFileSync("upstream.lock.json", "utf8"));
+	const lock = readUpstreamPin(process.cwd());
 	const repository = new URL(lock.url).pathname.replace(/^\//, "").replace(/\.git$/, "");
 	const api = (route: string, jq: string) =>
 		execFileSync("gh", ["api", route, "--jq", jq], { encoding: "utf8", timeout: 120_000 }).trim();
@@ -50,7 +51,7 @@ const stampFile = "android/app/src/main/assets/agent/alpha-source.json";
 if (!reachabilityOnly && fs.existsSync(stampFile)) {
 	const stamp = JSON.parse(fs.readFileSync(stampFile, "utf8"));
 	const hash = (file: string) =>
-		createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+		sha256File(file);
 	if (
 		stamp.base !== commit ||
 		!Array.isArray(stamp.patches) ||

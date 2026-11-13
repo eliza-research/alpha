@@ -33,7 +33,8 @@
  * Without --write it prints the planned changes and writes nothing. It never records lastRelease
  * (that follows the first signed release, H-10) and never reads or writes key material.
  */
-import { X509Certificate, createHash } from "node:crypto";
+import { X509Certificate } from "node:crypto";
+import {sha256} from "./sha256.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -73,7 +74,6 @@ export const ENROLLMENT = Object.freeze<Enrollment[]>([
   { file: CHANNEL, field: ["avbPublicKeySha256"], key: "avb", digest: "avbPublicKeySha256" },
 ]);
 
-const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 export const normalizeDigest = (value: unknown) => String(value ?? "").replace(/:/g, "").toLowerCase();
 const readJson = <T>(root: string, file: string): T => JSON.parse(fs.readFileSync(path.join(root, file), "utf8"));
 const isRecord = (value: unknown): value is ReleaseRecord => value !== null && typeof value === "object";

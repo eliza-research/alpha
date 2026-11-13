@@ -34,7 +34,7 @@
  * Its unsigned input, public lineage, SDK verifier and signed output are checked independently.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import {sha256File} from "./sha256.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -209,12 +209,6 @@ function parseArgs(argv: readonly string[]) {
 
 const verifier = fileURLToPath(new URL("./owner/VerifyApkRotation.java", import.meta.url));
 
-async function fileDigest(file: string) {
-  const hash = createHash("sha256");
-  for await (const bytes of fs.createReadStream(file)) hash.update(bytes);
-  return hash.digest("hex");
-}
-
 export async function approvedSigningRotation(signerRecord: SignerRecord, lineage: string, targets: readonly {input: string}[], { allowSubset = false } = {}) {
   const record = signerRecord.apkSigningRotation;
   const unsigned = record?.unsignedApkSHA256;
@@ -234,13 +228,13 @@ export async function approvedSigningRotation(signerRecord: SignerRecord, lineag
   }
   const file = fs.lstatSync(lineage, { throwIfNoEntry: false });
   if (!file?.isFile() || file.size < 1 || file.size > 65536 ||
-      await fileDigest(lineage) !== record.lineageSha256)
+      sha256File(lineage) !== record.lineageSha256)
     throw new Error("Public rotation lineage differs from the reviewed digest");
   const allowed = new Set(Object.values(unsigned));
   if (!targets.length || targets.length > Object.keys(unsigned).length || (!allowSubset && targets.length !== Object.keys(unsigned).length))
     throw new Error("Unsigned APK is outside the reviewed rotation scope");
   for (const target of targets) {
-    if (!fs.lstatSync(target.input).isFile() || !allowed.delete(await fileDigest(target.input)))
+    if (!fs.lstatSync(target.input).isFile() || !allowed.delete(sha256File(target.input)))
       throw new Error("Unsigned APK is outside the reviewed rotation scope");
   }
   return record;
@@ -248,8 +242,8 @@ export async function approvedSigningRotation(signerRecord: SignerRecord, lineag
 
 async function reviewedRotationTool(apksigner: string, rotation: SigningRotation, toolEnv: NodeJS.ProcessEnv) {
   const jar = path.join(path.dirname(apksigner), "lib", "apksigner.jar");
-  if (!toolEnv.JAVA_HOME || await fileDigest(apksigner) !== rotation.apksignerSha256 ||
-      await fileDigest(jar) !== rotation.verifierJarSha256)
+  if (!toolEnv.JAVA_HOME || sha256File(apksigner) !== rotation.apksignerSha256 ||
+      sha256File(jar) !== rotation.verifierJarSha256)
     throw new Error("APK rotation signer or verifier differs from the reviewed tool");
   return {jar, javaHome: toolEnv.JAVA_HOME};
 }
@@ -257,7 +251,7 @@ async function reviewedRotationTool(apksigner: string, rotation: SigningRotation
 async function verifySignedRotation(file: string, lineage: string, rotation: SigningRotation, signer: string,
   {jar, javaHome}: Awaited<ReturnType<typeof reviewedRotationTool>>, toolEnv: NodeJS.ProcessEnv) {
   const result = JSON.parse(execFileSync(path.join(javaHome, "bin", "java"), [
-    "-cp", jar, verifier, "--signed-output", file, lineage, await fileDigest(file),
+    "-cp", jar, verifier, "--signed-output", file, lineage, sha256File(file),
     rotation.lineageSha256, rotation.previousSignerSha256, signer, PRESERVING_PILOT_PACKAGE, "29", "37",
     ...(rotation.preserveSignaturePermissions ? ["--preserve-signature-permissions"] : []),
   ], { env: { PATH: toolEnv.PATH, JAVA_HOME: toolEnv.JAVA_HOME }, encoding: "utf8", timeout: 120_000 }));
