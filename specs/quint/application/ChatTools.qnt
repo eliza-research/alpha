@@ -9,9 +9,9 @@ module ChatTools {
   action finishPicker(ok:bool): bool = all {s.picker,s'={...s,picker:false,attached:s.attached or (ok and current)}}
   action openSearch = all {not(s.picker),s'={...s,search:true,results:false}}
   action query = all {s.search,not(s.pending),s'={...s,pending:true,held:s.generation,results:false}}
-  action reply = all {s.pending,s'={...s,pending:false,results:s.search and current}}
+  action reply = s'={...s,pending:false,results:s.pending and s.search and current}
   action closeSearch = s'={...s,search:false,pending:false,results:false}
-  action retire = all {s.generation<3,s'={...s,generation:s.generation+1,attached:false,results:false,search:false}}
+  action retire = all {s.generation<3,s'={...s,generation:s.generation+1,attached:false,results:false,search:false,pending:false}}
   action step = any {chooseFile,finishPicker(true),finishPicker(false),openSearch,query,reply,closeSearch,retire,s'=s}
   val safety = s.results implies (s.search and current)
   run pickerRetiredTest = init.then(chooseFile).then(retire).then(finishPicker(true)).expect(not(s.attached) and safety)
