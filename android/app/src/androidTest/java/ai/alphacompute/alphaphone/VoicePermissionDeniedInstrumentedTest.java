@@ -47,41 +47,33 @@ public final class VoicePermissionDeniedInstrumentedTest {
   org.junit.Assume.assumeTrue("Run after revoking RECORD_AUDIO (see class documentation)","1".equals(InstrumentationRegistry.getArguments().getString("voicePermissionDenied")));
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   assertEquals("RECORD_AUDIO must be revoked before this instrumentation starts",PackageManager.PERMISSION_DENIED,context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO));
-  // A build without test mocks records only through Eliza Cloud voice, which needs a signed-in account.
+  // Alpha records only through Eliza Cloud voice, which needs a signed-in account.
   // The closed synthetic Cloud transport of the Inbox fixture (test APK only, no network) supplies one;
   // the production sign-in control, recorder and native microphone path are unchanged.
-  boolean cloudOnly=!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS;
   androidx.test.runner.MonitoringInstrumentation runner=(androidx.test.runner.MonitoringInstrumentation)InstrumentationRegistry.getInstrumentation();
-  if(cloudOnly){
-   InboxFixtureScope.phase="prepare";InboxFixtureScope.runId=java.util.UUID.randomUUID().toString();
-   runner.interceptActivityUsing(new androidx.test.runner.intercepting.InterceptingActivityFactory(){
-    @Override public boolean shouldIntercept(ClassLoader loader,String name,android.content.Intent intent){return name.equals(MainActivity.class.getName());}
-    @Override public android.app.Activity create(ClassLoader loader,String name,android.content.Intent intent){return new InboxFixtureActivity();}
-   });
-  }
+  InboxFixtureScope.phase="prepare";InboxFixtureScope.runId=java.util.UUID.randomUUID().toString();
+  runner.interceptActivityUsing(new androidx.test.runner.intercepting.InterceptingActivityFactory(){
+   @Override public boolean shouldIntercept(ClassLoader loader,String name,android.content.Intent intent){return name.equals(MainActivity.class.getName());}
+   @Override public android.app.Activity create(ClassLoader loader,String name,android.content.Intent intent){return new InboxFixtureActivity();}
+  });
   try{
    BoundedActivityScenario.main(()->context.startActivity(new android.content.Intent(context,MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK|android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)));
    until("window.Capacitor?.Plugins?.AlphaVoiceCloud&&document.querySelector('.os')",60000);
-   if(!cloudOnly)AppNavigation.liveMode();eval(AppNavigation.request("Notes"));until(AppNavigation.selected("Notes"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);
+   eval(AppNavigation.request("Notes"));until(AppNavigation.selected("Notes"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);
    click("Record and transcribe");
-   if(cloudOnly){
-    // Signed out: the recorder asks for Eliza Cloud and offers no recording, so the microphone is never requested.
-    until(button("Connect Eliza Cloud"),20000);
-    for(String absent:new String[]{"Start recording","Record without transcription"})assertEquals("Signed-out recorder offers no "+absent,"false",eval("Boolean("+button(absent)+")"));
-    assertTrue("No permission prompt while signed out",appFocused());
-    // A signed-out production build shows the required sign-in page itself; fill it in place.
-    until(AppNavigation.SIGN_IN_PAGE_READY,20000);eval(InboxFixtureSignIn.DRIVE_EMAIL);
-    until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')",20000);eval(InboxFixtureSignIn.DRIVE_CODE);
-    // Signed in: the required page goes away and the recorder offers recording instead of Eliza Cloud.
-    until("!document.querySelector('.alpha-auth-page')",30000);
-    eval(AppNavigation.request("Home"));until(AppNavigation.selected("Home"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);
-    eval(AppNavigation.request("Notes"));until(AppNavigation.selected("Notes"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);
-    click("Record and transcribe");until(button("Start recording"),20000);
-    assertEquals("Signed-in recorder no longer asks for Eliza Cloud","false",eval("Boolean("+button("Connect Eliza Cloud")+")"));
-   }else{
-    // Recording without transcription needs no speech models; it still needs the microphone.
-    click("Record without transcription");
-   }
+   // Signed out: the recorder asks for Eliza Cloud and offers no recording, so the microphone is never requested.
+   until(button("Connect Eliza Cloud"),20000);
+   for(String absent:new String[]{"Start recording","Record without transcription"})assertEquals("Signed-out recorder offers no "+absent,"false",eval("Boolean("+button(absent)+")"));
+   assertTrue("No permission prompt while signed out",appFocused());
+   // A signed-out production build shows the required sign-in page itself; fill it in place.
+   until(AppNavigation.SIGN_IN_PAGE_READY,20000);eval(InboxFixtureSignIn.DRIVE_EMAIL);
+   until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')",20000);eval(InboxFixtureSignIn.DRIVE_CODE);
+   // Signed in: the required page goes away and the recorder offers recording instead of Eliza Cloud.
+   until("!document.querySelector('.alpha-auth-page')",30000);
+   eval(AppNavigation.request("Home"));until(AppNavigation.selected("Home"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);
+   eval(AppNavigation.request("Notes"));until(AppNavigation.selected("Notes"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);
+   click("Record and transcribe");until(button("Start recording"),20000);
+   assertEquals("Signed-in recorder no longer asks for Eliza Cloud","false",eval("Boolean("+button("Connect Eliza Cloud")+")"));
    click("Start recording");
    long end=SystemClock.elapsedRealtime()+20000;boolean dismissed=false;String denied="document.querySelector('[data-alpha-subview=\"notes-recording\"]')?.dataset.voiceState==='denied'";
    while(SystemClock.elapsedRealtime()<end&&!"true".equals(eval("Boolean("+denied+")"))){
@@ -116,16 +108,14 @@ public final class VoicePermissionDeniedInstrumentedTest {
    // Leave no draft behind for the next phase or user.
    eval("(()=>{const e=("+AppNavigation.composer()+");if(!e)return;Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,'');e.dispatchEvent(new Event('input',{bubbles:true}));})()");
    assertEquals("Typing must not grant the permission",PackageManager.PERMISSION_DENIED,context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO));
-   if(cloudOnly)assertEquals("The synthetic transport accepted no write",0,InboxFixtureConnection.rejectedWrites);
+   assertEquals("The synthetic transport accepted no write",0,InboxFixtureConnection.rejectedWrites);
   }finally{
    try{
-    if(cloudOnly){
-     // Remove the synthetic sign-in; only the fixture's own token may be removed.
-     AlphaCredentialStore store=new AlphaCredentialStore(context);String saved=store.readCredentialSlot("cloud:production");
-     if(saved!=null){assertTrue("Only the fixture credential is removed",saved.contains(InboxFixtureConnection.token()));store.removeCredentialSlot("cloud:production");}
-    }
+    // Remove the synthetic sign-in; only the fixture's own token may be removed.
+    AlphaCredentialStore store=new AlphaCredentialStore(context);String saved=store.readCredentialSlot("cloud:production");
+    if(saved!=null){assertTrue("Only the fixture credential is removed",saved.contains(InboxFixtureConnection.token()));store.removeCredentialSlot("cloud:production");}
     MainActivity live=activity();if(live!=null)BoundedActivityScenario.main(live::finish);
-   }finally{if(cloudOnly)runner.useDefaultInterceptingActivityFactory();}
+   }finally{runner.useDefaultInterceptingActivityFactory();}
   }
  }
 }

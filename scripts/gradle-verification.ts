@@ -269,7 +269,7 @@ export function parseVerificationArgs(args: readonly string[]) {
 async function write(root: string) {
   const {androidEnv} = await import('./toolchain.ts');
   const env: NodeJS.ProcessEnv = {...androidEnv()};
-  for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS']) delete env[name];
+  delete env.ELIZA_DEV_ALLOW_TEST_MOCKS;
   execFileSync(process.execPath, [path.join(root, 'scripts/android-build-preflight.ts')], {cwd: root, stdio: 'inherit', env});
   execFileSync(process.execPath, [path.join(root, 'scripts/android-host.ts')], {cwd: root, stdio: 'inherit', env});
   execFileSync('bun', ['run', 'android:sync'], {cwd: root, stdio: 'inherit', env});

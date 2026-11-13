@@ -161,7 +161,7 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   // Added by the round-2 integration (PR 388); no recorded run.
   AssistantResidentReuse: { note: "synthetic runtime observation, enrollment and streams; not evidence that a live resident stream survives" },
   LauncherApps: { note: "upstream SystemLauncherApps through Alpha's identity; resolves against this image's package manager only; two methods skip when the image has no other launchable app" },
-  NotesDocument: { note: "Production migration refusal and unchanged Notes. Restart phase requires the explicit notes development campaign." },
+  NotesDocument: { note: "Production import/export refusal and unchanged Notes." },
   NotesStorageDurability: { args: { notesStorage: "1" } },
   CloudDeploymentStorage: {},
   CloudSignInAuthorization: { note: "Actual native Authorize/Cancel gate with an isolated plugin and no session; not live authentication or remote key issuance" },
@@ -174,7 +174,7 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   BrowserReadingNavigation: { args: { browserIsolatedReading: "1" }, note: "one method per provider: the stale-document method needs isolated-world injection; without it only the reading-unavailable method runs and the other is listed as skipped (INSTRUMENTATION_STATUS browserReadingProvider says which)" },
   InboxOperationJournal: { args: { inboxOperationNative: "1" } },
   MailAttachment: { args: { mailAttachmentNative: "1" } },
-  SystemShade: { note: "homeAsksAndroidForItsShadeOnTheLauncherOnly skips on a signed-out build. Launcher Home asks Android for its shade (EXPAND_STATUS_BAR) (#416, #417). Not AOSP-image or device acceptance" },
+  SystemShade: { note: "Launcher Home asks Android for its shade (EXPAND_STATUS_BAR) (#416, #417). Not AOSP-image or device acceptance" },
   CameraScan: {},
   CameraLatency: { args: { cameraLatency: "1" }, note: "cold/warm first frame (PreviewView STREAMING, also traced as alpha.camera.firstFrame) and shutter-to-thumbnail, reported as cameraLatency.* status; -e cameraLatencyAssert 1 fails on a missed Pixel 10a target; emulator numbers are not device evidence" },
   StorageLegacyAccess: { note: "API 29: legacy storage in effect, both storage permissions granted by the test, one uniquely named Download/ folder created and removed; API 30+: all-files access unchanged" },
@@ -265,7 +265,7 @@ export const CAMPAIGN_RUNNERS = [
   "scripts/test-browser-storage-format.ts",
 ];
 
-const MOCK_BUILD_ONLY = "asserts or assumes BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS (mock mode, loopback HTTP fixtures or Home without an account), which no APK build sets; other live sources still reference the class";
+const SIGNED_IN_ONLY = "its views need a phone its owner signed in to Eliza Cloud (P-43's required sign-in covers them otherwise); tests never sign in, so no runner reaches them. AccessibilityLifecycle uses AccessibilityViews' helpers";
 const CALENDAR_CAMPAIGN = "ran only in the Calendar regression campaign, which installed the test-mocks pair to get past the required sign-in";
 const NO_HOSTED_SUPERVISOR = "ran only under the resident-android.yml emulator supervisors (scripts/ci/resident-native.py and pending-recovery-ui.py), which installed the test-mocks archive in an owned secondary user; the class keeps its own argument gate, and running it on the launcher debug APK needs a runner that provides that orchestration";
 
@@ -293,29 +293,19 @@ export const NOT_RUN_BY_A_RUNNER = {
   ReminderTiming: NO_HOSTED_SUPERVISOR,
   ResidentStreamTransport: NO_HOSTED_SUPERVISOR,
   ResidentWorkflowCrash: NO_HOSTED_SUPERVISOR,
-  WorkflowNoticeProcessDeath: NO_HOSTED_SUPERVISOR,
-  WorkflowNoticeTap: NO_HOSTED_SUPERVISOR,
-  AccessibilityViews: MOCK_BUILD_ONLY,
-  AccessibilityHomeRole: MOCK_BUILD_ONLY,
-  BrowserIsolatedReading: MOCK_BUILD_ONLY,
-  BrowserWebFeatures: MOCK_BUILD_ONLY,
-  IsolatedPdf: MOCK_BUILD_ONLY,
+  AccessibilityViews: SIGNED_IN_ONLY,
+  AccessibilityHomeRole: SIGNED_IN_ONLY,
   PasswordBrowserFill: "drives the Browser view on an emulator (it asserts ro.kernel.qemu), and on a signed-out emulator build P-43's required sign-in covers the views; tests never sign in, so no APK reaches it",
   PosterCalendarJourney: "J01 drives the removed Camera Scan mode (decision C1); Choose image remains in the composed Camera tools, but this old mode-based journey needs a rewrite to the agent scan path before any runner takes it again",
   LocalServerSocketRelease: "platform probe for an upstream resident defect (upstream defect 4): it measures Android, not Alpha, and is run by hand when that defect is revisited",
   ResetExternalFixture: "requires an external host controller, disposable non-owner user, synthetic device credential and separate companion/media sentinels; reset kills instrumentation, so phases cannot run as a single generic campaign",
-  AllViewAgentContext: "needs a real local agent with inference and a forwarding observer on the host (agentContext=true); its runner was removed with the smoke suites in 49b1bf4c",
-  CombinedAgent: "needs the combined host runtime with a provider key at 10.0.2.2:47859 (scripts/start-combined-agent.ts); no Android runner starts or pairs it",
-  CombinedAgentRestart: "same combined host runtime, in prepare/verify/cleanup phases around a host restart; compiled, never executed",
   ContactsFlow: "@Ignore: Contacts is deferred from the MVP and the campaign mutates the ContactsProvider",
-  DeviceAction: "needs the device-action backend host and adb reverse (deviceActions=true); its runner was removed in 49b1bf4c",
   LiveAgent: "needs a running loopback host with a real provider key, adb reverse and a provisioned bearer (liveAgent=true)",
   PairedMaps: "needs a real paired host and an external Maps fixture (pairedMaps=1); no runner pairs one",
   PairedReminder: "needs a real paired host (pairedReminder=1); no runner pairs one",
   PhotosFixtureRecovery: "operator tool that inventories or deletes stranded test-owned media (alphaPhotoRecovery=inventory|delete); never part of a campaign",
   VideoCopyClosedFailureReview: "native-only preservation operator for one existing closed failed copy; requires the exact operation, reviewed record SHA, owner UID and explicit main-process lifecycle approval. Never a generic or bulk campaign; the signed entry is admitted separately after fixture qualification",
-  PublicCloudTransportProbe: "probes the public Eliza Cloud endpoint with an owned account (publicCloudProbe=1, ownedCloudRead=1); a human sign-in step",
-  RemoteAgent: "needs the real local Eliza app host at 10.0.2.2:47839 and a pairing-code file (localRemote=true); its runner was removed in 49b1bf4c",
+  PublicCloudTransportProbe: "reads the public Eliza Cloud identity and balance with an owned account (ownedCloudRead=1); a human sign-in step",
   ResidentModelResponseContractTest: "plain contract test without the InstrumentedTest suffix; it runs under --all or by its full dotted name and needs no registry entry",
   SpeechPipelineTrace: "diagnostic acquisition for the on-device speech failure, explicitly not acceptance evidence",
   VoiceFloatPathDiagnostic: "root-cause diagnostic for the on-device speech round trip, explicitly not acceptance evidence",

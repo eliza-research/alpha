@@ -91,7 +91,6 @@ public final class InboxDraftInstrumentedTest {
    js("localStorage.setItem("+JSONObject.quote(SELECTION)+",JSON.stringify({kind:'none'}));localStorage.removeItem("+JSONObject.quote(SERVICE)+")");reload();
    // Exercise the production sign-in page with a closed test-APK transport: signed out, a flag-off
    // build opens it by itself (P-43). A developer-only environment selector is not part of this UI contract.
-   assertFalse("The required sign-in page needs a flag-off build",BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
    until(AppNavigation.SIGN_IN_PAGE_READY);js(InboxFixtureSignIn.DRIVE_EMAIL);
    until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')");js(InboxFixtureSignIn.DRIVE_CODE);
    until("!document.querySelector('.alpha-auth-page')");

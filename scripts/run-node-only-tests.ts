@@ -16,9 +16,8 @@ const MINIMUM_MAJOR = 24;
 
 /** `bun run` puts a `node` that is Bun first on PATH; find one that is Node. */
 export function realNode(): string | undefined {
-  const candidates = [process.env.ALPHA_NODE, ...(process.env.PATH ?? '').split(delimiter).map(directory => join(directory, 'node'))];
-  for (const candidate of candidates) {
-    if (!candidate || !existsSync(candidate)) continue;
+  for (const candidate of (process.env.PATH ?? '').split(delimiter).map(directory => join(directory, 'node'))) {
+    if (!existsSync(candidate)) continue;
     const probe = spawnSync(candidate, ['-p', 'process.versions.bun ? "" : process.versions.node'], { encoding: 'utf8', timeout: scaledTimeout(5000) });
     const version = probe.status === 0 ? probe.stdout.trim() : '';
     if (version && Number(version.split('.')[0]) >= MINIMUM_MAJOR) return candidate;
@@ -29,7 +28,7 @@ export function realNode(): string | undefined {
 if (import.meta.main) {
   const node = realNode();
   if (!node) {
-    console.error(`No Node.js ${MINIMUM_MAJOR}+ on PATH (or ALPHA_NODE). These tests need it; nothing was run:\n  ${NODE_ONLY_TESTS.join('\n  ')}`);
+    console.error(`No Node.js ${MINIMUM_MAJOR}+ on PATH. These tests need it; nothing was run:\n  ${NODE_ONLY_TESTS.join('\n  ')}`);
     process.exit(1);
   }
   const result = spawnSync(node, ['--test', `--test-timeout=${scaledTimeout(600000)}`, ...process.argv.slice(2), ...NODE_ONLY_TESTS],

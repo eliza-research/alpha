@@ -55,7 +55,7 @@ public class AlphaImageCapabilities {
  static boolean defaultAppEnabled(android.content.Context context,String role){throw new AssertionError("role outside fixture");}
 }`,
     'ai/alphacompute/alphaphone/BuildConfig.java':`package ai.alphacompute.alphaphone;
-public class BuildConfig {static final boolean IS_LAUNCHER=false;static final String VERSION_NAME="fixture";}`,
+public class BuildConfig {static final String VERSION_NAME="fixture";}`,
     'ai/alphacompute/alphaphone/AlphaAssistActivity.java':`package ai.alphacompute.alphaphone;
 public class AlphaAssistActivity {static final String EXTRA_ASSISTANT="fixture.assist";}`,
     'android/Manifest.java':`package android;

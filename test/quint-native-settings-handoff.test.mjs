@@ -6,7 +6,7 @@ import {checkNativeSettingsHandoff} from '../specs/quint/refinement/native/setti
 test('partial source contract: native Settings handoff and fallback refine authenticated product source', async () => {
   const {receipt}=await checkNativeSettingsHandoff();
   assert.equal(receipt.passed,true);
-  assert.equal(receipt.traces,9);
-  assert.equal(receipt.observedFields.length,7);
+  assert.equal(receipt.traces,6);
+  assert.equal(receipt.observedFields.length,6);
   assert.equal(verifyRefinementReceiptInputs(receipt),true);
 });

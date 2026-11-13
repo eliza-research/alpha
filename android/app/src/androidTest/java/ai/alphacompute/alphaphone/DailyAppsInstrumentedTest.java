@@ -219,11 +219,11 @@ public class DailyAppsInstrumentedTest {
    assertTrue("Durable notification tap signals pending delivery", opened);
    // A fresh install still shows the first-run sign-in panel. The product keeps the tap while that
    // panel is open and opens the reminder when the owner answers it; it must not open underneath.
-   // A signed-out production build (no ELIZA_DEV_ALLOW_TEST_MOCKS) instead opens P-43's required
-   // sign-in page by itself; it has no close control and this test never signs in.
+   // A signed-out build instead opens P-43's required sign-in page by itself; it has no close
+   // control and this test never signs in.
    String detail = "document.documentElement.dataset.activeView==='calendar' && [...document.querySelectorAll('[data-screen] h1')].some(h=>h.textContent==="+JSONObject.quote("Device flow test " + id)+") && !!document.querySelector('button[aria-label=\"Edit event\"]')";
    String closable = "[...document.querySelectorAll('.alpha-connection-scrim button')].find(e=>e.getAttribute('aria-label')==="+JSONObject.quote(AppNavigation.CLOSE_CONNECTION)+"&&!e.disabled)";
-   boolean mandatorySignIn = !BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS && new AlphaCredentialStore(context).readCredentialSlot("cloud:production") == null;
+   boolean mandatorySignIn = new AlphaCredentialStore(context).readCredentialSlot("cloud:production") == null;
    if (mandatorySignIn) uiWait(scenario, AppNavigation.SIGN_IN_PAGE_READY);
    else if ("true".equals(evaluate(scenario, "!!document.querySelector('.alpha-connection-scrim')"))) {
     SystemClock.sleep(1500);
@@ -291,8 +291,7 @@ public class DailyAppsInstrumentedTest {
 
  /** Root Back at Home follows whether Alpha is HOME now, not how the task started: this explicit
   * start is a standard task either way. While Alpha holds the HOME role Back stays on Home; a
-  * launcher install that is not HOME moves its task back and keeps the live instance; the
-  * standalone app finishes. */
+  * launcher install that is not HOME moves its task back and keeps the live instance. */
  @Test public void rootBackStaysWhileHomeAndOtherwiseLeavesAlpha() throws Exception {
   try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(MainActivity.class)) {
    ready(scenario);
@@ -312,14 +311,11 @@ public class DailyAppsInstrumentedTest {
     SystemClock.sleep(300);
     assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, scenario.getState());
     assertEquals("true",evaluate(scenario,"Boolean(document.querySelector('[data-screen]'))"));
-   } else if (BuildConfig.IS_LAUNCHER) {
+   } else {
     for (int i = 0; i < 50 && scenario.getState() != androidx.lifecycle.Lifecycle.State.CREATED; i++) SystemClock.sleep(100);
     assertEquals("A launcher install that is not HOME moves its task back", androidx.lifecycle.Lifecycle.State.CREATED, scenario.getState());
     SystemClock.sleep(300);
     assertEquals("and keeps the live instance", androidx.lifecycle.Lifecycle.State.CREATED, scenario.getState());
-   } else {
-    for (int i = 0; i < 50 && scenario.getState() != androidx.lifecycle.Lifecycle.State.DESTROYED; i++) SystemClock.sleep(100);
-    assertEquals(androidx.lifecycle.Lifecycle.State.DESTROYED, scenario.getState());
    }
   }
  }

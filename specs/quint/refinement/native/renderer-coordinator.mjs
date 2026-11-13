@@ -5,7 +5,7 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {mainActivityPlatform,navigationRequestSource,navigationActionSource} from './main-activity-platform.mjs';
 
 export const rendererCoordinatorScenarios = [
-  'home-escape', 'home-reload', 'standard-backoff', 'standalone', 'assistant',
+  'home-escape', 'home-reload', 'standard-backoff', 'assistant',
   'foreign-duplicate', 'closed-callback', 'clock-window', 'focus-and-intent',
   'no-webview', 'settings-failure', 'handoff-home', 'handoff-standard',
   'handoff-marker', 'handoff-unacknowledged', 'handoff-start-failure',

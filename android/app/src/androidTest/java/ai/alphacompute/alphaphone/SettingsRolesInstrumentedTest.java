@@ -122,7 +122,6 @@ public final class SettingsRolesInstrumentedTest {
  }
 
  @Test public void homeRequestDeclineAndAcceptMatchRoleHolders()throws Exception{
-  Assume.assumeTrue("Only the launcher variant declares HOME",BuildConfig.IS_LAUNCHER);
   String previous=shell("cmd role get-role-holders --user 0 "+HOME);
   shell("cmd role remove-role-holder --user 0 "+HOME+" "+context.getPackageName());
   assertFalse("Fixture starts without the HOME role",holdsHome());

@@ -79,20 +79,6 @@ public class BrowserFlowInstrumentedTest {
   if(view instanceof android.widget.TextView && view.isShown() && text.contentEquals(((android.widget.TextView)view).getText()))return true;
   if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int i=0;i<group.getChildCount();i++)if(containsNativeText(group.getChildAt(i),text))return true;}return false;
  }
- /** Deliver a late Chromium chooser callback to the real installed client.
-  * Positive picker selection below still uses actual native touch and SAF. */
- private void deniedChooserCallback(WebView web)throws Exception{
-  AtomicBoolean called=new AtomicBoolean();
-  WebViewTestDriver.withActivity(MainActivity.class,main->{
-   android.webkit.WebChromeClient.FileChooserParams params=new android.webkit.WebChromeClient.FileChooserParams(){
-    public int getMode(){return MODE_OPEN;}public String[] getAcceptTypes(){return new String[]{"text/plain"};}
-    public boolean isCaptureEnabled(){return false;}public CharSequence getTitle(){return "Disposable late chooser fixture";}
-    public String getFilenameHint(){return null;}public android.content.Intent createIntent(){return new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).setType("text/plain");}
-   };
-   assertTrue("Native client handles rejected callback",web.getWebChromeClient().onShowFileChooser(web,value->{assertNull("Late chooser cannot return selected data",value);called.set(true);},params));
-   assertTrue("Inactive chooser is rejected immediately",called.get());
-  });
- }
  /** The tab the native host presents. Only a presented tab may hold an autofill session, so a
   * renderer that withdraws its page while stopped ends the session a provider's unlock screen needs. */
  private String presentedTab()throws Exception{
@@ -102,116 +88,6 @@ public class BrowserFlowInstrumentedTest {
    java.lang.reflect.Field field=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("presentedId");field.setAccessible(true);id.set((String)field.get(plugin));
   }catch(ReflectiveOperationException error){throw new AssertionError(error);}});
   return id.get();
- }
- private void chooserInactiveBoundaries()throws Exception{
-  AtomicReference<WebView> target=new AtomicReference<>();
-  WebViewTestDriver.withActivity(MainActivity.class,main->{List<WebView> children=new ArrayList<>();collect(main.getWindow().getDecorView(),children,main.getBridge().getWebView());for(WebView web:children)if(web.isShown()){target.set(web);break;}});
-  assertNotNull("Actual loaded child page",target.get());
-  host(AppNavigation.request("Notes"));until(AppNavigation.selected("Notes"));until("window.__alphaTestNavigation?.status==='complete'");
-  AtomicBoolean hidden=new AtomicBoolean();for(int i=0;i<100&&!hidden.get();i++){WebViewTestDriver.withActivity(MainActivity.class,a->hidden.set(!target.get().isShown()));if(!hidden.get())SystemClock.sleep(100);}assertTrue("Browser surface actually hidden",hidden.get());deniedChooserCallback(target.get());
-  host(AppNavigation.request("Browser"));until(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();
-  String presented=null;for(int i=0;i<100&&presented==null;i++){presented=presentedTab();if(presented==null)SystemClock.sleep(100);}assertNotNull("Browser tab presented before leaving",presented);
-  WebViewTestDriver.withActivity(MainActivity.class,a->a.startActivity(new android.content.Intent(android.provider.Settings.ACTION_SETTINGS)));
-  try{
-   AtomicBoolean paused=new AtomicBoolean();for(int i=0;i<100&&!paused.get();i++){
-    new Handler(Looper.getMainLooper()).post(()->{for(Stage stage:new Stage[]{Stage.PAUSED,Stage.STOPPED})for(Activity activity:ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(stage))if(activity.getClass()==MainActivity.class)paused.set(true);});SystemClock.sleep(100);
-   }assertTrue("Real external Settings Activity paused browser host",paused.get());deniedChooserCallback(target.get());
-   // A full-screen Activity stops the host and hides its document. The renderer's update ticks and
-   // visibility change must leave the selected tab presented (the native pause already hid it).
-   AtomicBoolean stopped=new AtomicBoolean();for(int i=0;i<100&&!stopped.get();i++){
-    new Handler(Looper.getMainLooper()).post(()->{for(Activity activity:ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.STOPPED))if(activity.getClass()==MainActivity.class)stopped.set(true);});SystemClock.sleep(100);
-   }assertTrue("Settings Activity stopped browser host",stopped.get());
-   SystemClock.sleep(1000);assertEquals("Stopped host keeps the selected tab, and its autofill session, presented",presented,presentedTab());
-  }finally{WebViewTestDriver.pressBack();}
-  boolean returned=false;for(int i=0;i<150;i++){if("true".equals(child("document.title==='Upload fixture' && document.querySelector('input').files.length===0"))){returned=true;break;}SystemClock.sleep(100);}assertTrue("Returning restores the same untouched page",returned);
- }
- private void tapChildInput()throws Exception{
-  org.json.JSONArray bounds=new org.json.JSONArray(child("(()=>{const r=document.querySelector('input[type=file]').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2,innerWidth]})()"));
-  float[] point=new float[2];AtomicBoolean found=new AtomicBoolean();
-  WebViewTestDriver.withActivity(MainActivity.class,main->{List<WebView> children=new ArrayList<>();collect(main.getWindow().getDecorView(),children,main.getBridge().getWebView());for(WebView web:children)if(web.isShown()){
-   int[] location=new int[2];web.getLocationOnScreen(location);float scale=(float)(web.getWidth()/bounds.optDouble(2));point[0]=location[0]+(float)bounds.optDouble(0)*scale;point[1]=location[1]+(float)bounds.optDouble(1)*scale;found.set(true);break;
-  }});assertTrue("Visible native browser input",found.get());long now=SystemClock.uptimeMillis();
-  android.app.Instrumentation instrumentation=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation();
-  for(int action:new int[]{MotionEvent.ACTION_DOWN,MotionEvent.ACTION_UP}){MotionEvent event=MotionEvent.obtain(now,SystemClock.uptimeMillis(),action,point[0],point[1],0);event.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);instrumentation.sendPointerSync(event);event.recycle();}
- }
- private void nativeText(String text)throws Exception{
-  AtomicBoolean found=new AtomicBoolean();for(int i=0;i<150;i++){WebViewTestDriver.withActivity(MainActivity.class,a->found.set(containsNativeText(a.getWindow().getDecorView(),text)));if(found.get())return;SystemClock.sleep(100);}fail("Missing visible browser state: "+text+"; "+diagnostics());
- }
- @Test public void selectedDocumentUploadsExactBytesWithoutAppBridge()throws Exception{
-  org.junit.Assume.assumeTrue("Loopback HTTP fixtures require a -PELIZA_DEV_ALLOW_TEST_MOCKS=1 debug build", BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
-  String token=UUID.randomUUID().toString(),name="alpha-upload-"+token+".txt",body="Synthetic selected browser upload "+token;
-  android.content.ContentResolver resolver=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().getTargetContext().getContentResolver();
-  SelectedDocumentInstrumentedTest picker=new SelectedDocumentInstrumentedTest();android.net.Uri uri=picker.fixture(resolver,name,body);
-  java.net.ServerSocket server=new java.net.ServerSocket(0,8,java.net.InetAddress.getByName("127.0.0.1"));
-  AtomicReference<String> uploaded=new AtomicReference<>();CountDownLatch received=new CountDownLatch(1);ExecutorService worker=Executors.newSingleThreadExecutor();
-  worker.submit(()->{while(!server.isClosed()){try(java.net.Socket socket=server.accept()){
-   socket.setSoTimeout(10000);java.io.BufferedReader input=new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream(),java.nio.charset.StandardCharsets.UTF_8));
-   String first=input.readLine(),line;int length=0;while((line=input.readLine())!=null&&!line.isEmpty())if(line.toLowerCase(Locale.ROOT).startsWith("content-length:"))length=Integer.parseInt(line.substring(15).trim());
-   boolean upload=first!=null&&first.startsWith("POST /upload ");
-   if(upload){if(length>4096)throw new java.io.IOException();StringBuilder bytes=new StringBuilder();for(int i=0;i<length;i++){int c=input.read();if(c<0)throw new java.io.IOException();bytes.append((char)c);}uploaded.set(bytes.toString());received.countDown();}
-   String html=upload?"ok":"<!doctype html><title>Upload fixture</title><input type=file accept='text/plain' onchange=\"fetch('/upload',{method:'POST',body:this.files[0]}).then(()=>document.title='Uploaded')\"><p>Choose a disposable test file.</p>";
-   byte[] response=html.getBytes(java.nio.charset.StandardCharsets.UTF_8);socket.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "+response.length+"\r\nConnection: close\r\n\r\n").getBytes(java.nio.charset.StandardCharsets.US_ASCII));socket.getOutputStream().write(response);socket.getOutputStream().flush();
-  }catch(Exception error){if(server.isClosed())return;}}});
-  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   AppNavigation.liveMode();host(AppNavigation.request("Browser"));until(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();address("http://127.0.0.1:"+server.getLocalPort()+"/");
-   boolean ready=false;for(int i=0;i<150;i++){if("true".equals(child("document.title==='Upload fixture' && !!document.querySelector('input')"))){ready=true;break;}SystemClock.sleep(100);}if(!ready)fail("Upload fixture document missing; "+diagnostics());
-   assertNull("Page cannot upload before explicit selection",uploaded.get());
-   assertEquals("No native bridge in upload destination","true",child("typeof Capacitor==='undefined'"));
-   chooserInactiveBoundaries();assertNull("Rejected inactive callbacks never upload",uploaded.get());
-   tapChildInput();
-   boolean pickerVisible=false;for(int i=0;i<150;i++){android.view.accessibility.AccessibilityNodeInfo root=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().getUiAutomation().getRootInActiveWindow();if(root!=null&&String.valueOf(root.getPackageName()).contains("documentsui")){pickerVisible=true;break;}SystemClock.sleep(100);}assertTrue("System file picker must actually appear",pickerVisible);
-   WebViewTestDriver.cancelDocumentPicker();
-   boolean cancelled=false;for(int i=0;i<150;i++){if("true".equals(child("document.title==='Upload fixture' && document.querySelector('input').files.length===0"))){cancelled=true;break;}SystemClock.sleep(100);}assertTrue("Cancelling preserves the page without selecting a file",cancelled);assertNull(uploaded.get());
-   tapChildInput();picker.selectDocument(name);
-   assertTrue("Actual web request carries selected bytes",received.await(20,TimeUnit.SECONDS));assertEquals(body,uploaded.get());
-  }finally{server.close();worker.shutdownNow();resolver.delete(uri,null,null);}
- }
- @Test public void stalledPageCanBeStoppedAndReloaded()throws Exception{
-  org.junit.Assume.assumeTrue("Loopback HTTP fixtures require a -PELIZA_DEV_ALLOW_TEST_MOCKS=1 debug build", BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
-  // Actual loopback HTTP connection, permitted only by the existing debug
-  // network policy. Hold the response until the user stops the navigation.
-  java.net.ServerSocket server=new java.net.ServerSocket(0,8,java.net.InetAddress.getByName("127.0.0.1"));
-  ExecutorService workers=Executors.newCachedThreadPool();CountDownLatch release=new CountDownLatch(1);
-  workers.submit(()->{while(!server.isClosed()){try{java.net.Socket socket=server.accept();workers.submit(()->{try(socket){
-   socket.setSoTimeout(5000);java.io.BufferedReader reader=new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
-   String line;while((line=reader.readLine())!=null&&!line.isEmpty()){}
-   if(!release.await(45,TimeUnit.SECONDS))return;
-   byte[] body="<!doctype html><title>Recovered page</title><p>Controlled browser reload succeeded.</p>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
-   socket.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "+body.length+"\r\nConnection: close\r\n\r\n").getBytes(java.nio.charset.StandardCharsets.US_ASCII));socket.getOutputStream().write(body);socket.getOutputStream().flush();
-  }catch(Exception expectedOnCancellation){}});}catch(java.io.IOException stopped){break;}}});
-  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   until("document.documentElement.dataset.activeView");host(AppNavigation.request("Browser"));until(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();
-   address("http://127.0.0.1:"+server.getLocalPort()+"/slow");nativeText("Loading website…");
-   click("Menu");click("Stop loading");nativeText("Loading stopped. Reload from the menu to try again.");
-   assertEquals("Cancelled page has no secure indicator","false",host("!!document.querySelector('[role=img][aria-label=\"Secure connection\"]')"));
-   release.countDown();click("Menu");click("Reload page");
-   boolean recovered=false;for(int i=0;i<150;i++){if("true".equals(child("document.title==='Recovered page' && document.body.innerText.includes('reload succeeded')"))){recovered=true;break;}SystemClock.sleep(100);}
-   assertTrue("Reload presents actual response bytes after cancellation",recovered);
-   assertEquals("HTTP fixture never has a secure indicator","false",host("!!document.querySelector('[role=img][aria-label=\"Secure connection\"]')"));
-  }finally{release.countDown();server.close();workers.shutdownNow();}
- }
- @Test public void httpErrorDocumentRetainsItsRetryLink()throws Exception{
-  org.junit.Assume.assumeTrue("Loopback HTTP fixtures require a -PELIZA_DEV_ALLOW_TEST_MOCKS=1 debug build", BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
-  java.net.ServerSocket server=new java.net.ServerSocket(0,8,java.net.InetAddress.getByName("127.0.0.1"));
-  ExecutorService worker=Executors.newSingleThreadExecutor();
-  worker.submit(()->{while(!server.isClosed()){try(java.net.Socket socket=server.accept()){
-   socket.setSoTimeout(5000);java.io.BufferedReader reader=new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
-   String request=reader.readLine(),line;while((line=reader.readLine())!=null&&!line.isEmpty()){}
-   boolean retry=request!=null&&request.startsWith("GET /retry ");
-   byte[] body=(retry?"<!doctype html><title>Retried</title><p>Retry destination reached.</p>":"<!doctype html><title>Unavailable</title><p>Website temporarily unavailable.</p><a href='/retry'>Try again</a>").getBytes(java.nio.charset.StandardCharsets.UTF_8);
-   socket.getOutputStream().write(("HTTP/1.1 "+(retry?"200 OK":"503 Service Unavailable")+"\r\nContent-Type: text/html\r\nContent-Length: "+body.length+"\r\nConnection: close\r\n\r\n").getBytes(java.nio.charset.StandardCharsets.US_ASCII));socket.getOutputStream().write(body);socket.getOutputStream().flush();
-  }catch(java.io.IOException stopped){if(server.isClosed())break;}}});
-  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   until("document.documentElement.dataset.activeView");host(AppNavigation.request("Browser"));until(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();
-   address("http://127.0.0.1:"+server.getLocalPort()+"/unavailable");
-   boolean visible=false;for(int i=0;i<150;i++){if("true".equals(child("document.title==='Unavailable' && !!document.querySelector('a[href=\"/retry\"]')"))){visible=true;break;}SystemClock.sleep(100);}
-   if(!visible)fail("HTTP 503 preserves the actual website document; "+diagnostics());
-   assertEquals("Error document has no native bridge","true",child("typeof Capacitor==='undefined' && typeof androidBridge==='undefined'"));
-   child("document.querySelector('a').click();true");
-   boolean retried=false;for(int i=0;i<150;i++){if("true".equals(child("document.title==='Retried' && location.pathname==='/retry'"))){retried=true;break;}SystemClock.sleep(100);}
-   assertTrue("Website retry link reaches its actual destination",retried);
-   click("Menu");until("!document.querySelector('button[aria-label=\"Stop loading\"]')");
-  }finally{server.close();worker.shutdownNow();}
  }
  @Test public void realHttpsHistoryMenuSharedNormalStorageAndPrivateTabIsolation()throws Exception{
   String token=UUID.randomUUID().toString(),one="?alpha_flow="+token+"-one",two="?alpha_flow="+token+"-two";

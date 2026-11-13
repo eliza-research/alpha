@@ -55,9 +55,6 @@
     native <methods>;
 }
 
-# Developer hooks are absent from release; registration is reflective and only
-# attempted when BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS is true (debug + flag).
-
 # WebView JavaScript interfaces.
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;

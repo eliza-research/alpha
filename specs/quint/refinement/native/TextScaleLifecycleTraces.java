@@ -25,7 +25,6 @@ public final class TextScaleLifecycleTraces {
  String outcome="none";
 
  TextScaleLifecycleTraces(String name,int stored)throws Exception{
-  BuildConfig.IS_LAUNCHER=false;
   Context.appearance.visible=stored;Context.appearance.durable=stored;
   trace=new Trace(name,observe());trace.value.put("init",Trace.action("initWith",stored));
  }
@@ -179,6 +178,10 @@ public final class TextScaleLifecycleTraces {
   var f=new TextScaleLifecycleTraces(name,name.equals("invalid-installed")?151:0);
   switch(name){
    case "two-views-config-and-resume":
+    // The launcher hands a second start to the live instance. Two live MainActivity instances
+    // remain only after that hand-off has been seen to miss (MainActivity.handOffUnreliable).
+    var unreliable=MainActivity.class.getDeclaredField("handOffUnreliable");
+    unreliable.setAccessible(true);unreliable.set(null,true);
     f.create(1,true,"normal");f.create(2,true,"large");f.request(1,125,"int");
     f.configure(2,"larger");f.deliver("saved");f.resume(2);
     f.systemFont(1,"large");f.resume(1);

@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {dirname, join} from 'node:path';
+import {delimiter, dirname, join} from 'node:path';
 import {repositoryRoot} from '../scripts/quint-lib.ts';
 import {realNode} from '../scripts/run-node-only-tests.ts';
 
@@ -32,9 +32,10 @@ if(process.argv.includes('check')){
  console.log('Dafny program verifier finished with '+(process.env.LEMMA_FIXTURE_EMPTY==='1'?'0':'1')+' verified, 0 errors');
 }`);
     write('bin/dafny', '#!/bin/sh\nprintf "%s\\n" "${LEMMA_FIXTURE_VERSION:-4.11.0}"\n', 0o755);
+    mkdirSync(join(root, 'node-path')); symlinkSync(node, join(root, 'node-path/node'));
     const run = env => {
       const result = spawnSync(process.execPath, ['scripts/check-lemma.ts'], {cwd: root,
-        env: {...process.env, PATH: join(root, 'bin'), ALPHA_NODE: node, LEMMA_REQUIRE_BACKEND: '0', ...env}, encoding: 'utf8'});
+        env: {...process.env, PATH: [join(root, 'bin'), join(root, 'node-path')].join(delimiter), LEMMA_REQUIRE_BACKEND: '0', ...env}, encoding: 'utf8'});
       return {result, receipt: JSON.parse(readFileSync(join(root, 'test-results/lemma/check.json'), 'utf8'))};
     };
     let check = run({}); assert.equal(check.result.status, 0, check.result.stderr); assert.equal(check.receipt.passed, true); assert.equal(check.receipt.verifiedConditions, 1);

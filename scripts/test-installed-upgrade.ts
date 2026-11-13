@@ -50,7 +50,7 @@ export async function testInstalledUpgrade(kind: string,options=process.argv.sli
  const {requireInstrumentationSuccess}=await import('./instrumentation-result.ts');
  const {admitApks}=await import('./android-instrumentation.ts');
  const prefix=`ALPHA_${kind.toUpperCase()}`,root=process.env[`${prefix}_TEST_ROOT`]??repository;
- const baseline=process.env[`${prefix}_BASELINE_DIR`],serial=process.env[`${prefix}_TEST_SERIAL`],avd=process.env[`${prefix}_TEST_AVD`],abi=process.env[`${prefix}_TEST_ABI`];
+ const baseline=process.env[`${prefix}_BASELINE_DIR`],serial=process.env[`${prefix}_TEST_SERIAL`],avd=process.env.ALPHA_TEST_AVD,abi=process.env.ALPHA_TEST_ABI;
  assert.ok(baseline&&path.isAbsolute(baseline),'Provide an absolute baseline directory');
  assert.ok(serial&&/^emulator-\d+$/.test(serial),'Explicit emulator serial required');assert.ok(avd&&/^[A-Za-z0-9_.-]+$/.test(avd),'Explicit owned AVD name required');
  assert.ok(isAndroidAbi(abi),'Explicit owned fixture ABI required');

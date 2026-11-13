@@ -73,15 +73,8 @@ public final class ReminderTapProcessDeathInstrumentedTest {
    JSONObject recovered=new ReminderTestAccess.Taps(context).pending();assertEquals(token,recovered.getString("token"));assertTrue(recovered.getBoolean("retained"));assertTrue(ReminderTestAccess.Taps.same(captured.getJSONObject("target"),recovered.getJSONObject("target")));
    assertEquals(committed,storage.readCredentialSlot(ReminderTestAccess.Taps.SLOT));
    assertEquals(original.getPostTime(),notice(manager,id).getPostTime());
-   // Test-mocks builds: complete the real fresh-user recovery journey through the visible chooser
-   // (one user action, not another notification intent or direct route injection). Flag-off builds
-   // open no chooser at start (decision P-43: the resident starts by itself), so the captured route
-   // must open the reminder with no user action at all.
-   if(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS){
-    android.view.accessibility.AccessibilityNodeInfo close=awaitVisible(AppNavigation.CLOSE_CONNECTION);
-    assertTrue(close.isEnabled());assertTrue(close.isClickable());
-    assertTrue(close.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK));
-   }
+   // No chooser opens at start (decision P-43: the resident starts by itself), so the captured
+   // route must open the reminder with no user action at all.
    awaitVisible("Retained reminder tap");awaitVisible("Complete reminder occurrence");
    long consumedEnd=SystemClock.elapsedRealtime()+10000;boolean consumed=false;
    do{JSONObject rows=new JSONObject(storage.readCredentialSlot(ReminderTestAccess.Taps.SLOT));consumed="consumed".equals(rows.getJSONObject(token).getString("state"));if(!consumed)SystemClock.sleep(50);}while(!consumed&&SystemClock.elapsedRealtime()<consumedEnd);

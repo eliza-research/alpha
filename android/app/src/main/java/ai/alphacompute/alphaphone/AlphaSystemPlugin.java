@@ -42,13 +42,13 @@ public final class AlphaSystemPlugin extends ai.eliza.plugins.system.SystemPlugi
  @Override protected boolean isRoleEnabled(String role){return AlphaImageCapabilities.roleEnabled(role);}
  /** The dial hand-off exists only on an admitted image: the HOME role keeps a
   * path to the stock dialer and emergency calls (P-36). */
- @Override protected boolean isDefaultAppEnabled(String role){return BuildConfig.IS_LAUNCHER&&AlphaImageCapabilities.defaultAppEnabled(getContext(),role);}
- @Override protected boolean isLauncherBuild(){return BuildConfig.IS_LAUNCHER;}
+ @Override protected boolean isDefaultAppEnabled(String role){return AlphaImageCapabilities.defaultAppEnabled(getContext(),role);}
+ @Override protected boolean isLauncherBuild(){return true;}
  @Override protected String buildVersion(){return BuildConfig.VERSION_NAME;}
  /** ACTION_ASSIST, or AlphaAssistActivity's own marker extra. */
  @Override protected boolean isAssistantLaunch(Intent intent){return super.isAssistantLaunch(intent)||(intent!=null&&intent.getBooleanExtra(AlphaAssistActivity.EXTRA_ASSISTANT,false));}
  /** The launcher drives Android's shade (#416, #417). */
- @Override protected boolean canExpandNotificationShade(){return BuildConfig.IS_LAUNCHER;}
+ @Override protected boolean canExpandNotificationShade(){return true;}
  /** Android's App info for exactly one listed launcher entry, in its profile (the Apps drawer's
   * long-press menu). Only Settings opens; nothing about the app changes. App info needs only the
   * package in that profile: a disabled app, or one in a paused or locked work profile, still opens

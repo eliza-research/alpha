@@ -79,7 +79,6 @@ jobs:
       - name: Build the launcher APKs
         env:
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
-          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           # A clean release R8 pass exhausted the default 2 GiB heap on this runner.
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: bun run android:build:local

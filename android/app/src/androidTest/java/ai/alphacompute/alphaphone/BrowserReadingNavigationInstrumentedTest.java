@@ -86,7 +86,7 @@ public final class BrowserReadingNavigationInstrumentedTest {
      assertEquals("Extraction is refused at once, without running any script","REFUSED",extracted.get());
      // The native review of this loaded, non-sensitive HTTPS document: refused as unavailable, nothing shown.
      // The shared reviewed reading (plugin-native-browser-surface); reviewQuestion is package-private there.
-     BrowserReviewedReading reading=new BrowserReviewedReading(web.getContext() instanceof android.app.Activity?(android.app.Activity)web.getContext():null,id->{},BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
+     BrowserReviewedReading reading=new BrowserReviewedReading(web.getContext() instanceof android.app.Activity?(android.app.Activity)web.getContext():null,id->{},false);
      java.lang.reflect.Method review=BrowserReviewedReading.class.getDeclaredMethod("reviewQuestion",com.getcapacitor.PluginCall.class,WebView.class,BrowserReadingWorld.class,java.util.function.BooleanSupplier.class);review.setAccessible(true);
      review.invoke(reading,call,web,world,(java.util.function.BooleanSupplier)()->true);
      java.lang.reflect.Field dialog=BrowserReviewedReading.class.getDeclaredField("dialog");dialog.setAccessible(true);assertNull("No review dialog is shown",dialog.get(reading));

@@ -15,7 +15,7 @@ public final class StartupReadinessInstrumentedTest {
    try(StartupDocumentProbe probe=new StartupDocumentProbe()){
     probe.expectNavigation();
     WebViewTestDriver.withActivity(MainActivity.class,a->a.getBridge().getWebView().reload());
-    assertEquals("live",probe.awaitReady(true));
+    assertEquals("live",probe.awaitReady());
    }
    assertEquals("true",WebViewTestDriver.evaluate("document.readyState==='complete'&&Boolean(document.documentElement.dataset.activeView)"));
   }

@@ -41,7 +41,6 @@ public class LauncherHomeInstrumentedTest {
  private static final Pattern TOP = Pattern.compile("(?:topResumedActivity|mResumedActivity)[=:][^\\n]*?\\s([A-Za-z0-9_.]+)/");
 
  private static void assumeAlphaIsHome() {
-  Assume.assumeTrue("HOME qualification exists only in the launcher variant", BuildConfig.IS_LAUNCHER);
   // RoleManager, not the HOME resolver: package visibility hides the stock launcher from Alpha, so
   // the resolver names Alpha even while the stock launcher holds the role (ChatContinuityInstrumentedTest.alphaIsHome).
   Assume.assumeTrue("Alpha must already be the selected HOME app; this test never changes roles",

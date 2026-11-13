@@ -183,7 +183,7 @@ public final class AssistantEntryTraces {
  }
 
  private static boolean imageFacts() {
-  return BuildConfig.IS_LAUNCHER && !BuildConfig.DEBUG && !BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS
+  return !BuildConfig.DEBUG
    && Context.hostSystem && Context.provisioned && Context.packages.feature && Context.control
    && Context.packages.companionEnabled && Context.packages.companionSystem
    && Context.packages.companionPath && Context.packages.hotword;
@@ -191,9 +191,7 @@ public final class AssistantEntryTraces {
 
  private static void denyImageFact(String fact) throws Exception {
   switch(fact) {
-   case "launcher" -> BuildConfig.IS_LAUNCHER=false;
    case "debug" -> BuildConfig.DEBUG=true;
-   case "mocks" -> BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS=true;
    case "host-system" -> Context.hostSystem=false;
    case "provisioned" -> Context.provisioned=false;
    case "feature" -> Context.packages.feature=false;
@@ -353,7 +351,6 @@ public final class AssistantEntryTraces {
  public static void main(String[] args) throws Exception {
   String name = args[0];
   int sdk = Integer.parseInt(args[1]);
-  BuildConfig.IS_LAUNCHER = true;
   Build.VERSION.SDK_INT = sdk;
   new SenseListenerClient(Context.APP).admitOwner(() -> AlphaCredentialStore.account);
   trace = new Trace(name, observe());

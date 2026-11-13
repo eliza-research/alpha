@@ -133,7 +133,7 @@ public class ApplicationInfo {
     put('ai/alphacompute/alphaphone/BuildConfig.java',`package ai.alphacompute.alphaphone;
 public class BuildConfig {
  public static final String APPLICATION_ID="fixture.alpha";
- public static boolean IS_LAUNCHER=true,DEBUG=false,ELIZA_DEV_ALLOW_TEST_MOCKS=false;
+ public static boolean DEBUG=false;
 }`);
     // Only the nominal interface is needed here; preserve its exact pinned declaration.
     const configuration=readFileSync(join(root,imageAdmissionSource),'utf8');

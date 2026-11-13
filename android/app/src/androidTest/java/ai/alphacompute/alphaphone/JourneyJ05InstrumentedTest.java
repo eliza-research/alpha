@@ -28,7 +28,6 @@ import org.junit.Test;
 public final class JourneyJ05InstrumentedTest {
  @Test public void pageQuestionReachesSendAndItsSourceNoteReopensThePage() throws Exception {
   Assume.assumeTrue("Explicit J05 journey campaign", "1".equals(InstrumentationRegistry.getArguments().getString("journeyJ05")));
-  Assume.assumeTrue("J05 runs on the flag-off pair: a test-mocks build has a mock connection", !BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   BrowserPageQuestionInstrumentedTest.assumeIsolatedReading();
   AppNavigation.assumeNoRequiredSignIn("J05 (page question to note)");
   BrowserPageQuestionInstrumentedTest steps = new BrowserPageQuestionInstrumentedTest();

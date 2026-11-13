@@ -62,7 +62,6 @@ jobs:
         timeout-minutes: 180
         env:
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
-          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: bun run android:build:local
       - name: Anchor the exact build manifest

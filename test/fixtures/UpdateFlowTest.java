@@ -138,7 +138,7 @@ public final class UpdateFlowTest {
  }
  private static PackageInfo archive(String packageName,long versionCode){
   PackageInfo info=new PackageInfo();info.packageName=packageName;info.versionCode=versionCode;
-  info.requestedPermissions=BuildConfig.IS_LAUNCHER?new String[]{"android.permission.INTERNET","android.permission.READ_CONTACTS"}:new String[]{"android.permission.INTERNET"};
+  info.requestedPermissions=new String[]{"android.permission.INTERNET","android.permission.READ_CONTACTS"};
   Signature signer=new Signature(new byte[]{7});
   info.signingInfo=new SigningInfo(new Signature[]{signer},new Signature[]{signer});
   return info;
@@ -1663,26 +1663,21 @@ public final class UpdateFlowTest {
   check(stays.activity.started.equals(List.of(answer)),"which hears Android's own status");
  }
  private static void onlyTheInstalledFlavorAndLineageReachAndroid(File cache)throws Exception{
-  for(boolean launcher:new boolean[]{true,false}){
-   Context context=installing(cache);
-   BuildConfig.IS_LAUNCHER=launcher;
-   context.packages.archive=archive(context.getPackageName(),8);
-   context.packages.archive.requestedPermissions=launcher?new String[]{"android.permission.INTERNET"}:
-     new String[]{"android.permission.INTERNET","android.permission.READ_CONTACTS"};
-   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
-   AlphaLocalAgentPlugin.stops=0;
-   check(tap(owner).rejected.get()==1&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0,
-     "the opposite flavor is refused before staging or stopping the resident");
-   context.packages.archive=archive(context.getPackageName(),8);
-   Signature original=new Signature(new byte[]{7}),other=new Signature(new byte[]{8});
-   context.packages.archive.signingInfo=new SigningInfo(new Signature[]{other},new Signature[]{other});
-   check(tap(owner).rejected.get()==1&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0,
-     "a different signing lineage is refused before staging or stopping the resident");
-   context.packages.archive.signingInfo=new SigningInfo(new Signature[]{other},new Signature[]{original,other});
-   check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,
-     "a same-flavor successor with the original signing root reaches Android once");
-  }
-  BuildConfig.IS_LAUNCHER=true;
+  Context context=installing(cache);
+  context.packages.archive=archive(context.getPackageName(),8);
+  context.packages.archive.requestedPermissions=new String[]{"android.permission.INTERNET"};
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  AlphaLocalAgentPlugin.stops=0;
+  check(tap(owner).rejected.get()==1&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0,
+    "an archive without the launcher marker is refused before staging or stopping the resident");
+  context.packages.archive=archive(context.getPackageName(),8);
+  Signature original=new Signature(new byte[]{7}),other=new Signature(new byte[]{8});
+  context.packages.archive.signingInfo=new SigningInfo(new Signature[]{other},new Signature[]{other});
+  check(tap(owner).rejected.get()==1&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0,
+    "a different signing lineage is refused before staging or stopping the resident");
+  context.packages.archive.signingInfo=new SigningInfo(new Signature[]{other},new Signature[]{original,other});
+  check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,
+    "a launcher successor with the original signing root reaches Android once");
  }
  private static void everyFailureSettlesQuietly(File cache)throws Exception{
   Context binder=installing(cache);
@@ -1720,52 +1715,46 @@ public final class UpdateFlowTest {
   Intent intent=plugin.activity.started.get(0);
   check(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES.equals(intent.getAction()),"the Android install-source page opens");
   check(("package:"+plugin.getContext().getPackageName()).equals(intent.getDataString()),"only Alpha's package is selected");
-  check(intent.getFlags()==(BuildConfig.IS_LAUNCHER?Intent.FLAG_ACTIVITY_NEW_TASK:0),"the shared launcher handoff preserves its task behavior");
+  check(intent.getFlags()==Intent.FLAG_ACTIVITY_NEW_TASK,"the shared launcher handoff opens its own task");
  }
  private static void explicitUpdatePermissionOpensBeforeAnyOffer(File cache)throws Exception{
-  boolean originalLauncher=BuildConfig.IS_LAUNCHER;
-  try{
-   for(boolean launcher:new boolean[]{true,false}){
-    BuildConfig.IS_LAUNCHER=launcher;
-    Context context=installing(cache);
-    Build.VERSION.SDK_INT=31;
-    context.packages.installsAllowed=false;
-    AlphaDevicePlugin plugin=bridge(context,Lifecycle.State.RESUMED);
-    connections.clear();AlphaLocalAgentPlugin.stops=0;
-    int manifestReads=syntheticManifestRequests.get();
-    PluginCall request=new PluginCall(new JSObject());
-    plugin.openUpdatePermissionSettings(request);request.awaitAnswer();
-    check(request.resolved.get()==1&&request.rejected.get()==0&&"opened".equals(request.result.optString("status")),"the handoff reports only that Android Settings opened");
-    assertInstallSourcePage(plugin);
-    check("permission-required".equals(AlphaDevicePlugin.automaticUpdateStatus(context)),"opening the page does not grant consent");
-    check(syntheticManifestRequests.get()==manifestReads&&connections.isEmpty()&&!download(context).exists(),"permission setup never checks the feed or downloads an APK");
-    check(context.packages.installer.internals.isEmpty()&&plugin.events.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&AlphaDevicePlugin.UpdatePause.store().read()==null,"permission setup never stages an install or pauses the resident");
-   }
-   Context older=installing(cache);
-   Build.VERSION.SDK_INT=30;
-   older.packages.installsAllowed=false;
-   AlphaDevicePlugin olderBridge=bridge(older,Lifecycle.State.RESUMED);
-   PluginCall unsupported=new PluginCall(new JSObject());
-   olderBridge.openUpdatePermissionSettings(unsupported);unsupported.awaitAnswer();
-   check(unsupported.resolved.get()==1&&"unsupported".equals(unsupported.result.optString("status"))&&olderBridge.activity.started.isEmpty(),"API 30 does not open automatic update setup");
-   PluginCall manual=tap(olderBridge);
-   check(manual.resolved.get()==1&&manual.result==null,"the manual handoff still resolves without a setup result");
-   assertInstallSourcePage(olderBridge);
+  Context context=installing(cache);
+  Build.VERSION.SDK_INT=31;
+  context.packages.installsAllowed=false;
+  AlphaDevicePlugin permission=bridge(context,Lifecycle.State.RESUMED);
+  connections.clear();AlphaLocalAgentPlugin.stops=0;
+  int manifestReads=syntheticManifestRequests.get();
+  PluginCall request=new PluginCall(new JSObject());
+  permission.openUpdatePermissionSettings(request);request.awaitAnswer();
+  check(request.resolved.get()==1&&request.rejected.get()==0&&"opened".equals(request.result.optString("status")),"the handoff reports only that Android Settings opened");
+  assertInstallSourcePage(permission);
+  check("permission-required".equals(AlphaDevicePlugin.automaticUpdateStatus(context)),"opening the page does not grant consent");
+  check(syntheticManifestRequests.get()==manifestReads&&connections.isEmpty()&&!download(context).exists(),"permission setup never checks the feed or downloads an APK");
+  check(context.packages.installer.internals.isEmpty()&&permission.events.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&AlphaDevicePlugin.UpdatePause.store().read()==null,"permission setup never stages an install or pauses the resident");
+  Context older=installing(cache);
+  Build.VERSION.SDK_INT=30;
+  older.packages.installsAllowed=false;
+  AlphaDevicePlugin olderBridge=bridge(older,Lifecycle.State.RESUMED);
+  PluginCall unsupported=new PluginCall(new JSObject());
+  olderBridge.openUpdatePermissionSettings(unsupported);unsupported.awaitAnswer();
+  check(unsupported.resolved.get()==1&&"unsupported".equals(unsupported.result.optString("status"))&&olderBridge.activity.started.isEmpty(),"API 30 does not open automatic update setup");
+  PluginCall manual=tap(olderBridge);
+  check(manual.resolved.get()==1&&manual.result==null,"the manual handoff still resolves without a setup result");
+  assertInstallSourcePage(olderBridge);
 
-   Context unavailable=installing(cache);
-   AlphaDevicePlugin plugin=bridge(unavailable,Lifecycle.State.RESUMED);
-   plugin.activity.refuseStart=new SecurityException("settings unavailable");
-   PluginCall refused=new PluginCall(new JSObject());
-   plugin.openUpdatePermissionSettings(refused);refused.awaitAnswer();
-   check(refused.resolved.get()==0&&refused.rejected.get()==1&&plugin.activity.started.isEmpty(),"Android's refusal is reported as a rejection");
+  Context unavailable=installing(cache);
+  AlphaDevicePlugin plugin=bridge(unavailable,Lifecycle.State.RESUMED);
+  plugin.activity.refuseStart=new SecurityException("settings unavailable");
+  PluginCall refused=new PluginCall(new JSObject());
+  plugin.openUpdatePermissionSettings(refused);refused.awaitAnswer();
+  check(refused.resolved.get()==0&&refused.rejected.get()==1&&plugin.activity.started.isEmpty(),"Android's refusal is reported as a rejection");
 
-   plugin.activity.deferUiWork=true;
-   PluginCall retired=new PluginCall(new JSObject());
-   plugin.openUpdatePermissionSettings(retired);
-   plugin.activity.destroyed=true;
-   plugin.activity.queuedUiWork.remove().run();retired.awaitAnswer();
-   check(retired.resolved.get()==0&&retired.rejected.get()==1&&plugin.activity.started.isEmpty(),"a retired activity cannot open Settings from queued work");
-  }finally{BuildConfig.IS_LAUNCHER=originalLauncher;}
+  plugin.activity.deferUiWork=true;
+  PluginCall retired=new PluginCall(new JSObject());
+  plugin.openUpdatePermissionSettings(retired);
+  plugin.activity.destroyed=true;
+  plugin.activity.queuedUiWork.remove().run();retired.awaitAnswer();
+  check(retired.resolved.get()==0&&retired.rejected.get()==1&&plugin.activity.started.isEmpty(),"a retired activity cannot open Settings from queued work");
   System.out.println("PASS explicit update permission opens only Alpha Android settings before an offer");
  }
  private static void appSignerIsTheOriginalCertificateOfOneSigner(File cache)throws Exception{
@@ -1951,7 +1940,7 @@ public final class UpdateFlowTest {
  }
  private static org.json.JSONObject manifestOffer(PluginCall offer)throws Exception{
   return new org.json.JSONObject().put("schema","alpha-update/v1")
-   .put("variant",BuildConfig.IS_LAUNCHER?"launcher":"standalone").put("signerSha256",sha256(new byte[]{7}))
+   .put("variant","launcher").put("signerSha256",sha256(new byte[]{7}))
    .put("apkUrl",offer.getString("apkUrl")).put("sha256",offer.getString("sha256"))
    .put("sizeBytes",offer.getData().optLong("sizeBytes")).put("versionCode",offer.getData().optLong("versionCode"));
  }

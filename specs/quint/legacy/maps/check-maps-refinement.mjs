@@ -392,7 +392,7 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
     modelPath, fileURLToPath(import.meta.url), 'test/browser/helpers/page-modules.ts', ...extraSources,
   ])];
   const driverHashes = captureInputs(sources), loaded = new Set();
-  const flags = ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS'];
+  const flags = ['ELIZA_DEV_ALLOW_TEST_MOCKS'];
   const previous = flags.map(name => process.env[name]);
   let server, browser;
   try {

@@ -30,7 +30,7 @@ import {localDraftRow} from './inbox-draft-navigation';
 //
 // After a provider-confirmed send the local copies of exactly that draft (open composer, retained
 // unsaved copy, saved local draft) are removed, so the sent email is not offered again. Unknown and
-// failed outcomes keep every copy. Identity and edit cases: scripts/test-inbox-sent-cleanup.ts.
+// failed outcomes keep every copy.
 import {test, expect, type Page} from '@playwright/test';
 import {guardCalendarFixture} from './calendar-draft-readiness';
 import {returnToApps} from './app-navigation';

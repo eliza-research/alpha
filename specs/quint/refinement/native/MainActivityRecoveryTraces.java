@@ -146,15 +146,14 @@ public final class MainActivityRecoveryTraces {
   static Intent homeIntent() {
     return new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
   }
-  static void initial(String name, boolean home, boolean launcher, boolean assistant, boolean bridge)
+  static void initial(String name, boolean home, boolean assistant, boolean bridge)
       throws Exception {
     trace = new Trace(name, budgetState());
     trace.value.put("sourceObservations", raw).put("portEvents", MainActivityPorts.events);
-    BuildConfig.IS_LAUNCHER = launcher;
     assistantSurface = assistant;
     MainActivityPorts.bridgeAvailable = bridge;
     owner = create(7, home ? homeIntent() : new Intent("icon"), assistant);
-    if (launcher && !assistant)
+    if (!assistant)
       trace.step("activityReady", observe(), home, bridge);
     else
       trace.step("untrackedActivityReady", observe(), bridge);
@@ -210,9 +209,8 @@ public final class MainActivityRecoveryTraces {
     replace(home);
   }
   static void recoveryScenario(String name) throws Exception {
-    boolean home = !name.startsWith("standard"), launcher = !name.equals("standalone"),
-            assistant = name.equals("assistant");
-    initial(name, home, launcher, assistant, !name.equals("no-webview"));
+    boolean home = !name.startsWith("standard"), assistant = name.equals("assistant");
+    initial(name, home, assistant, !name.equals("no-webview"));
     if (name.startsWith("settings-fallback-")) {
       MainActivityPorts.settings = name.endsWith("default")
           ? Set.of(RendererRecoveryBudget.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,
@@ -283,8 +281,8 @@ public final class MainActivityRecoveryTraces {
       trace.step("resumeOwner", observe());
       trace.stutter("focus, HOME and page callbacks preserve recovery state", observe());
     } else {
-      exhaust(home && launcher && !assistant);
-      if (home && launcher && !assistant) {
+      exhaust(home && !assistant);
+      if (home && !assistant) {
         List<String> expected = new ArrayList<>(List.of("Reload"));
         if (MainActivityPorts.settings.contains(RendererRecoveryBudget.ACTION_SETTINGS))
           expected.add("Open Android Settings");
@@ -317,7 +315,7 @@ public final class MainActivityRecoveryTraces {
     }
   }
   static void handoffScenario(String name) throws Exception {
-    initial(name, name.equals("handoff-home"), true, false, true);
+    initial(name, name.equals("handoff-home"), false, true);
     if (name.equals("handoff-standard"))
       MainActivityPorts.tasks.add(new android.app.ActivityManager.AppTask(7));
     if (name.equals("handoff-start-failure"))
@@ -359,7 +357,7 @@ public final class MainActivityRecoveryTraces {
     }
   }
   static void homeTaskRestoration() throws Exception {
-    initial("home-task-restoration", true, true, false, true);
+    initial("home-task-restoration", true, false, true);
     exhaust(true);
     MainActivity home = owner;
     MainActivity marker = create(8, new Intent("front").putExtra("alpha.frontStart", (String)staticField("FRONT_START_TOKEN")), false);
@@ -382,7 +380,7 @@ public final class MainActivityRecoveryTraces {
     check(owner.content instanceof LinearLayout, "Recreated HOME task lost its native escape path");
   }
   static void oldTeardown() throws Exception {
-    initial("old-teardown", true, true, false, true);
+    initial("old-teardown", true, false, true);
     MainActivity old = owner;
     replace(true);
     old.finish();
@@ -393,7 +391,7 @@ public final class MainActivityRecoveryTraces {
     replace(true);
   }
   static void finishedTaskReuse() throws Exception {
-    initial("finished-task-reuse", true, true, false, true);
+    initial("finished-task-reuse", true, false, true);
     owner.finish();
     owner.onDestroy();
     trace.step("destroyActivity", observe(), true);

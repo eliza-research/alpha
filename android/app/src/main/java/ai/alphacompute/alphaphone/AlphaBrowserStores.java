@@ -37,7 +37,6 @@ final class AlphaBrowserStores {
   .hostScheme("alphaphone")
   // The integrated vault's per-field and top-level origin extras for engine-bound login fields.
   .autofillExtras(new BrowserAutofillExtras(PasswordAutofillPolicy.FIELD_ORIGIN,PasswordFormPolicy.TOP_ORIGIN_EXTRA))
-  .allowLoopback(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)
   .debugLogging(BuildConfig.DEBUG)
   .logTag("AlphaBrowser")
   .build();

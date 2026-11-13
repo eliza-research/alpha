@@ -33,11 +33,11 @@ public class ShellInstrumentedTest {
    org.json.JSONArray values = new org.json.JSONArray(payload);
    assertTrue("Installed apps are discoverable", values.getJSONObject(0).getJSONArray("apps").length()>0);
    assertEquals("ai.alphacompute.alphaphone",values.getJSONObject(1).getString("packageName"));
-   assertEquals(BuildConfig.IS_LAUNCHER,values.getJSONObject(2).getBoolean("launcher"));
+   assertTrue("The launcher build",values.getJSONObject(2).getBoolean("launcher"));
    assertFalse("Setup must not claim a connected agent",evaluate(scenario,"document.body.innerText").contains("Agent connected"));
    Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage("ai.alphacompute.alphaphone");
    boolean qualifies = InstrumentationRegistry.getInstrumentation().getTargetContext().getPackageManager().queryIntentActivities(home,0).size()>0;
-   assertEquals("HOME qualification follows variant",BuildConfig.IS_LAUNCHER,qualifies);
+   assertTrue("The launcher declares HOME",qualifies);
   }
  }
  @Test public void signedInComposerAndNativeAppHandoffWork() throws Exception {
