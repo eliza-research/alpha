@@ -41,6 +41,11 @@ Manifest invariant names must resolve to top-level values or imported instances.
 `additionalProofInit` runs an extra one-transition simulation and symbolic check
 when its corresponding command is selected. `bounds.maxVerifyDepth` sets the
 default symbolic depth for that model; explicit `--steps` overrides it.
+`verifyBackend: "tlc-bounded"` selects exhaustive safety checking through that
+transition bound. BrowserSession uses it with its unchanged six-transition default.
+The checker appends a depth counter to the translated model, checks every state
+at depths zero through the bound, and records the scope, depth and translation
+hashes. It does not establish safety beyond that bound.
 
 Model checking is separate and needs JDK 21 in this repository. Quint fetches its
 pinned Apalache 0.62.4 distribution when needed. The CLI also uses that
@@ -72,8 +77,10 @@ checking remains serial within one server endpoint.
 and 120 for the default gate. The checker saves parameters, model hashes,
 complete checker output, exit status and evidence class under
 `test-results/quint/` by default. Temporal/compare commands reject a selection
-that has no corresponding checks. TLC exploration ignores the symbolic
+that has no corresponding checks. Full `tlc` exploration ignores the symbolic
 transition bound and may take substantially longer on large finite models.
+`tlc-bounded` is restricted to safety verification; temporal and comparison
+commands retain full `tlc` exploration.
 
 ## Source changes and review
 
@@ -85,7 +92,7 @@ behavior stays pinned by `upstream.lock.json`; the vendor checkout is immutable.
 ## Interpretation of results
 
 Safety scenarios and random simulation are sampled evidence. Apalache results
-cover the recorded transition bound. TLC results cover the finite abstraction
+cover the recorded transition bound, as do `tlc-bounded` results. Full `tlc` results cover the finite abstraction
 and fairness assumptions supplied to that invocation. Temporal action
 properties use equivalent persistent transition monitors where the checker
 requires state predicates. The original action relations remain in the
