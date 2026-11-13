@@ -4,6 +4,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {sha256File} from './sha256.ts';
+import {isAndroidAbi} from './android-abis.ts';
 import {verifyPinnedUpstream} from './pinned-upstream-source.ts';
 import {fixtureCommandError, type IsolatedAndroidTest, type IsolatedUserState} from './native-test-fixture.ts';
 
@@ -52,7 +53,7 @@ export async function testInstalledUpgrade(kind: string,options=process.argv.sli
  const baseline=process.env[`${prefix}_BASELINE_DIR`],serial=process.env[`${prefix}_TEST_SERIAL`],avd=process.env[`${prefix}_TEST_AVD`],abi=process.env[`${prefix}_TEST_ABI`];
  assert.ok(baseline&&path.isAbsolute(baseline),'Provide an absolute baseline directory');
  assert.ok(serial&&/^emulator-\d+$/.test(serial),'Explicit emulator serial required');assert.ok(avd&&/^[A-Za-z0-9_.-]+$/.test(avd),'Explicit owned AVD name required');
- assert.ok(abi==='arm64-v8a'||abi==='x86_64','Explicit owned fixture ABI required');
+ assert.ok(isAndroidAbi(abi),'Explicit owned fixture ABI required');
  const sdk=process.env.ANDROID_HOME??process.env.ANDROID_SDK_ROOT;
  assert.ok(sdk&&path.isAbsolute(sdk),'Provide absolute ANDROID_HOME or ANDROID_SDK_ROOT');
  const adb=path.join(sdk,'platform-tools/adb'),aapt=path.join(sdk,'build-tools/36.0.0/aapt');

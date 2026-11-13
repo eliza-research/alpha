@@ -29,6 +29,8 @@
 // platform output timestamp. A candidate with an ineligible row (counted in ineligibleRows) fails the
 // whole document rather than becoming diagnostic. Turns that waited for a response that never came
 // (abandoned, no-response) fail the reliability check.
+import {isAndroidAbi} from './android-abis.ts';
+
 export const nativeTimingFormat = 'alpha-native-voice-timing-v3';
 export const marks = Object.freeze(['last-user-audio', 'endpoint', 'asr-final', 'request', 'first-token', 'tts-start', 'tts-ready', 'first-pcm', 'audible-playback']);
 /** Stages a passed trial needs before it can be acceptance evidence: one linked turn end to end. */
@@ -80,7 +82,7 @@ export function rejection(value: unknown) {
   const id = row.identity;
   if (!id || typeof id !== 'object' || identityKeys.some(key => !label(id[key]))) return 'identity';
   if (!commit.test(id.sourceCommit) || typeof id.sourceDirty !== 'boolean' || !sha256.test(id.engineSha256) || !sha256.test(id.modelSha256)) return 'identity hashes';
-  if (!['arm64-v8a', 'x86_64'].includes(id.abi) || !['device', 'emulator'].includes(id.environment)) return 'identity abi/environment';
+  if (!isAndroidAbi(id.abi) || !['device', 'emulator'].includes(id.environment)) return 'identity abi/environment';
   if (row.thermal !== undefined && !thermalStates.includes(row.thermal)) return 'thermal';
   if (!row.marks || typeof row.marks !== 'object' || Array.isArray(row.marks)) return 'marks';
   if (Object.entries(row.marks).some(([key, value]) => !marks.includes(key) || !finite(value))) return 'marks';
