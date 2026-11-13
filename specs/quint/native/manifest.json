@@ -1570,11 +1570,13 @@
       "invariants": [
         "PacketAgreement",
         "TerminalBuffersCleared",
+        "SourceCloseControlsAttachment",
         "Bounded"
       ],
       "abstractions": [
         "Forty input windows with distinct constant PCM markers, threshold-partitioned VAD outputs, and one/four partial reads.",
-        "Output packets and cleanup flags are observed from the real capture loop. Internal VAD/buffering state is a pure fold of its observed input history."
+        "Output packets and cleanup flags are observed from the real capture loop. Internal VAD/buffering state is a pure fold of its observed input history.",
+        "Worker completion always clears terminal buffers. A failed source close retains its attached owner and does not confirm physical microphone release."
       ]
     },
     {
