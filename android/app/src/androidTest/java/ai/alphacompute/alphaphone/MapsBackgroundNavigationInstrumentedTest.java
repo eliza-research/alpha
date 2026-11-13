@@ -13,8 +13,9 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
 /**
- * Screen-off navigation through AlphaNavigationService, driven by scripts/maps/test-native-navigation.ts
- * (simulator GPS through the actual Android location provider, explicit argument mapsBackground=1).
+ * Screen-off navigation through AlphaNavigationService (simulator GPS through the actual Android
+ * location provider, explicit argument mapsBackground=1). Its runner was removed with the native
+ * regional transport; scripts/android-instrumentation.ts lists it under NOT_RUN_BY_A_RUNNER.
  * Proves guidance keeps updating with the screen off and that the notification's Stop ends the
  * session exactly once, delivered to the bridge that started it even after a second Maps bridge
  * opened and closed. It is emulator evidence, not physical-device or road-safety acceptance.

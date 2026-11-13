@@ -82,6 +82,9 @@ export const DENYLIST = Object.freeze([
   // (cli-session, the hosted cli-login page and its browser waiting copy) are test-mocks only.
   'Browser sign-in (diagnostic)',
   ...RETIRED_SIGN_IN_HAND_OFF_TEXT,
+  // Upstream test sign-in (elizaOS/eliza#39519 moved it out of shipped code): the Playwright auth
+  // marker cookie, its synthetic user, the test session route and the local test account button.
+  'eliza-test-auth', 'local-live-test-user@agent.local', '/api/test/auth/session', 'Continue with local test account',
   'Browser calendar (development)',
   // The read-only OS update-channel check is registered off; its About row is development only.
   'Update channel (development)',

@@ -17,10 +17,6 @@ export function navigationServicePlatform(){
    public static class VERSION {public static final int SDK_INT=36;}
    public static class VERSION_CODES {public static final int Q=29;}
   }`,
-  'android/util/Base64.java':`package android.util;public class Base64 {
-   public static final int NO_WRAP=2;
-   public static String encodeToString(byte[] value,int flags){throw new AssertionError("Unexpected regional transport");}
-  }`,
   'android/net/Uri.java':`package android.net;public record Uri(String value) {
    public static Uri parse(String value){return new Uri(value);}
   }`,

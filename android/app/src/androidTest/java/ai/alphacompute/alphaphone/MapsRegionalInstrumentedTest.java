@@ -23,16 +23,6 @@ public final class MapsRegionalInstrumentedTest {
   android.graphics.Bitmap screenshot=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();assertNotNull("Actual screen screenshot",screenshot);
   try(java.io.FileOutputStream output=new java.io.FileOutputStream(new java.io.File(InstrumentationRegistry.getInstrumentation().getTargetContext().getFilesDir(),file))){assertTrue("Screenshot saved",screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,output));}finally{screenshot.recycle();}
  }
- @Test public void nativeRegionalTransportCapabilitiesAndTile()throws Exception{
-  org.junit.Assume.assumeTrue("Configured regional backend only", "1".equals(InstrumentationRegistry.getArguments().getString("mapsRegional")));
-  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   AppNavigation.liveMode();
-   js("(()=>{window.__regionalProbe={done:false};const p=window.Capacitor.Plugins.AlphaMapsTransport;p.request({path:'/capabilities',requestId:'probe_capabilities'}).then(r=>{const m=JSON.parse(atob(r.data));return p.request({path:'/tiles/14/8530/5974.pbf',requestId:'probe_tile'}).then(t=>{window.__regionalProbe={done:true,status:r.status,provider:m.providerId,tileStatus:t.status,tileBytes:atob(t.data).length,gzip:atob(t.data).startsWith(String.fromCharCode(31,139))};});}).catch(e=>{window.__regionalProbe={done:true,error:String(e.message).slice(0,160)};});return true;})()");
-   waitFor("window.__regionalProbe?.done");String result=js("JSON.stringify(window.__regionalProbe)");
-   assertEquals("Actual native transport proof: "+result,"true",js("window.__regionalProbe.status===200 && window.__regionalProbe.provider==='alpha-osm-monaco' && window.__regionalProbe.tileStatus===200 && window.__regionalProbe.tileBytes>0 && window.__regionalProbe.gzip===false"));
-   js("delete window.__regionalProbe");
-  }
- }
  @Test public void realRegionalTilesSearchRoutesAndOutsideCoverage()throws Exception{
   org.junit.Assume.assumeTrue("Configured regional backend only", "1".equals(InstrumentationRegistry.getArguments().getString("mapsRegional")));
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
@@ -127,28 +117,4 @@ public final class MapsRegionalInstrumentedTest {
    js(AppNavigation.request("Notes"));waitFor(AppNavigation.selected("Notes"));watches(0);
   }
  }
- @Test public void configuredGatewayFailureRecoversOnlyAfterExplicitRetry()throws Exception{
-  org.junit.Assume.assumeTrue("Owned gateway interruption fixture only", "1".equals(InstrumentationRegistry.getArguments().getString("mapsOutage")));
-  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   AppNavigation.liveMode();navigationPhase("capabilities-stop");js(AppNavigation.request("Maps"));waitFor(AppNavigation.selected("Maps"));
-   waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Submit a search to retry')");
-   assertEquals("No invented map while provider is unreachable","false",js("!!document.querySelector('[data-alpha-map-plane] canvas')"));
-   navigationPhase("capabilities-restore");input("Search places","Casino de Monte Carlo");
-   String result="[...document.querySelectorAll('[data-alpha-maps-root] button')].find(e=>e.textContent.trim().startsWith('Casino de Monte Carlo'))";waitFor(result);js("("+result+").click()");
-   click("Directions");input("Starting point","43.7384, 7.4246");waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
-   navigationPhase("route-stop");
-   long failureStarted=SystemClock.elapsedRealtime();
-   js("(()=>{window.__regionalOutageProbe={settled:0,rejected:0};const p=window.Capacitor.Plugins.AlphaMapsTransport;for(let i=0;i<6;i++)p.request({path:'/tiles/14/8530/5974.pbf',requestId:'outage_'+crypto.randomUUID()}).then(()=>{window.__regionalOutageProbe.settled++;},()=>{window.__regionalOutageProbe.settled++;window.__regionalOutageProbe.rejected++;});})()");
-   input("Starting point","43.7385, 7.4246");
-   waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Regional Maps is unavailable')");
-   waitFor("window.__regionalOutageProbe?.settled===6 && window.__regionalOutageProbe.rejected===6");
-   assertTrue("Native deadlines include queue time and settle within20seconds",SystemClock.elapsedRealtime()-failureStarted<20000);
-   js("delete window.__regionalOutageProbe");
-   assertEquals("Failed request removes stale route","false",js("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')"));
-   navigationPhase("route-restore");input("Starting point","43.7384, 7.4246");
-   waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
-   js(AppNavigation.request("Notes"));waitFor(AppNavigation.selected("Notes"));watches(0);
-  }
- }
-
 }
