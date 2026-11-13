@@ -39,7 +39,10 @@ export const {useLayoutEffect,useSyncExternalStore}=React;`;
     external:['react/jsx-runtime'], define:{'import.meta.env':'undefined'},
     plugins:[{name:'coordinator-observation-ports',setup(plugin) {
       plugin.onLoad({filter:/startup-permissions\.tsx$/}, args => {
-        const source=readFileSync(args.path,'utf8');
+        let source=readFileSync(args.path,'utf8');
+        const automatic="if (advanceGranted && !actionPending.current) advance('continued');";
+        assert.equal(source.split(automatic).length,2,'Automatic permission advancement changed');
+        source=source.replace(automatic,`if (advanceGranted && !actionPending.current) { globalThis.${fixtureKey}.automaticAdvances++; advance('continued'); }`);
         const needle='const ticket = sequence.current, credentialId = connection.cloudAccount?.credentialId;';
         const allow=source.indexOf('async function allow() {');
         const at=source.indexOf(needle,allow);
@@ -101,7 +104,7 @@ async function fixture(component, options = {}) {
   const state = {notifications:true,microphone:'granted',camera:'granted',location:'granted',calendar:'granted',photos:'selected',files:'granted',...options.permissions};
   const calls = [], held = new Map(), resumes = new Set(), inFlight = new Map();
   let instance = 0;
-  const runtime = {platform:options.native===false?'web':'android',hooks:{states:[],refs:[]},pauseInvalidation:false,deferredEffects:[],
+  const runtime = {automaticAdvances:0,platform:options.native===false?'web':'android',hooks:{states:[],refs:[]},pauseInvalidation:false,deferredEffects:[],
     connection:observable({cloudAccount:options.signedOut?null:{credentialId:'owner-a',environment:'production'},open:false}),
     google:observable(false),ports:{},captured:null,flows:new Map(),
     observeFlow(key,inspect){this.flows.set(key,{ticket:this.captured?.ticket,inspect});}};
@@ -186,7 +189,7 @@ async function fixture(component, options = {}) {
       calls:structuredClone(calls),homes,dismissal,
     };
   }
-  return {state,calls,snapshot,
+  return {state,calls,snapshot,automaticAdvances:()=>runtime.automaticAdvances,
     async click(label){await React.act(async()=>{const button=[...document.querySelectorAll('button')].find(node=>node.textContent===label);assert(button,`Missing ${label}; ${document.body.textContent}`);button.click();});},
     hold(key){let release,reject;const promise=new Promise((yes,no)=>{release=yes;reject=no;});held.set(key,{promise,release,reject});},
     async release(key,reject=false){await React.act(async()=>reject?held.get(key).reject(Error('Injected rejected callback')):held.get(key).release());},
@@ -305,13 +308,16 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   async function scenario(name,options,work) {
     if(scenarioFilter && !scenarioFilter.test(name))return;
     const f=await fixture(component,options),checkpoints=[];
+    let recordedAutomatic=0;
     const initial=f.snapshot();
     const trace={name,init:action(options.native===false?'browserInit':'init'),expect:{'s.pending':-1},steps:[]};
     const record=(label,actions=null)=>{
       const observation=f.snapshot(),expected=modelObservation(observation);
       const mapped=typeof actions==='function'?actions(observation):actions;
       checkpoints.push({label,observation,modelObservation:expected});
-      trace.steps.push({label,action:mapped,expect:expected});
+      const automatic=Array.from({length:f.automaticAdvances()-recordedAutomatic},()=>action('autoAdvance'));
+      recordedAutomatic=f.automaticAdvances();
+      trace.steps.push({label,action:automatic.length?[...(Array.isArray(mapped)?mapped:mapped?[mapped]:[]),...automatic]:mapped,expect:expected});
       return observation;
     };
     const saved=options.progress;
@@ -325,18 +331,17 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   await scenario('mounted-before-sign-in',{signedOut:true},async(f,record)=>{
     assert.equal(f.snapshot().ui.visible,false);
     await f.connection('owner-a',true);record('caller enables setup',action('signIn'));
-    await f.click('Continue');record('first permission continued',advance);
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
   });
   await scenario('all-seven-ready-normal-completion-and-remount',{},async(f,record)=>{
-    for(const key of permissionKeys){assert.equal(f.snapshot().ui.heading,key[0].toUpperCase()+key.slice(1));
-      await f.click('Continue');record(`continued ${key}`,advance);}
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
+    assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
     assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
     await f.click('Go to Alpha');record('completed session',action('finish'));
     await f.remount();record('completed installation remount',restart);
   });
-  await scenario('partial-remount-does-not-reopen-earlier-reviewed-steps',{},async(f,record)=>{
-    await f.click('Continue');record('microphone step',advance);
-    await f.click('Continue');record('camera step',advance);
+  await scenario('partial-remount-does-not-reopen-earlier-reviewed-steps',{permissions:{camera:'denied'}},async(f,record)=>{
+    assert.equal(f.snapshot().component.progress.step,2);
     await f.remount();record('partial remount',restart);
     f.state.notifications=false;await f.remount();record('earlier permission revoked',restart);
     assert.equal(f.snapshot().component.progress.step,2);
@@ -382,7 +387,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
     await f.connection(null,false);record('signed out',action('signOut'));
     f.state.notifications=true;await f.release('notifications');record('old callback',action('staleResult',0));
     await f.connection('owner-b',true);record('signed in with fresh permission readback',observation=>[action('signIn'),...statuses(observation)]);
-    await f.click('Continue');record('new owner check',advance);
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
   });
   for(const rejects of [false,true])await scenario(`deferred-effect-disabled-${rejects?'rejection':'completion'}`,{permissions:{notifications:false}},async(f,record)=>{
     f.hold('notifications');await f.click('Allow');record('held',[action('begin'),action('request')]);
@@ -402,13 +407,12 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
     await f.remount();record('new instance',restart);
     f.state.notifications=true;await f.release('notifications');record('old instance completion',action('retiredResult'));
   });
-  for(const mode of ['writeFailure','dropWrite'])await scenario(`progress-${mode}`,{[mode]:true},async(f,record)=>{
-    await f.click('Continue');record('session advances despite failed persistence',advance);
-    assert.equal(f.snapshot().component.progress.step,1);
+  for(const mode of ['writeFailure','dropWrite'])await scenario(`progress-${mode}`,{[mode]:true,permissions:{camera:'denied'}},async(f,record)=>{
+    assert.equal(f.snapshot().component.progress.step,2);
     assert.equal(f.snapshot().durable.effectiveProgress.step,0);
     await f.remount();record('remount resumes durable position',restart);
     f.recoverStorage();record('storage recovers',action('storageRecovers'));
-    await f.click('Continue');record('fresh step is persisted',advance);
+    f.state.camera='granted';await f.resume();record('fresh step is persisted',statuses);
   });
   await scenario('denied-request-remount-settings-and-grant',{permissions:{notifications:false}},async(f,record)=>{
     await f.click('Allow');record('denied',[action('begin'),action('request'),action('result',false)]);
@@ -416,7 +420,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
     await f.click('Open Android settings');record('settings readback',[action('begin'),action('result',false)]);
     f.state.notifications=true;await f.click('Open Android settings');record('granted readback',advance);
   });
-  await scenario('required-flow-dismissal-is-blocked',{},async(f,record)=>{
+  await scenario('required-flow-dismissal-is-blocked',{permissions:{notifications:false}},async(f,record)=>{
     await f.dismiss();record('cancel and back',action('blockedDismiss'));
     assert.equal(f.snapshot().ui.heading,'Notifications');
     assert.deepEqual(f.snapshot().dismissal,{cancelPrevented:true,backPrevented:true});
@@ -433,10 +437,10 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
     await f.click('Go to Alpha');record('new account acknowledged',action('finish'));
     await f.remount();record('account-created status on remount',restart);
   });
-  await scenario('last-step-write-failure-remains-usable',{},async(f,record)=>{
-    for(const key of permissionKeys.slice(0,-1)){await f.click('Continue');record(`continued ${key}`,advance);}
+  await scenario('last-step-write-failure-remains-usable',{permissions:{files:'denied'}},async(f,record)=>{
+    assert.equal(f.snapshot().ui.heading,'Files');
     f.failStorage();record('storage fails before final step',action('storageFails'));
-    await f.click('Continue');record('ready with failed completion write',advance);
+    f.state.files='granted';await f.resume();record('ready with failed completion write',statuses);
     await f.click('Go to Alpha');record('session finishes',action('finish'));
     await f.remount();record('durable last step is resumed',restart);
   });
@@ -499,7 +503,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   await scenario('direct-provider-setup-without-cloud-account',{signedOut:true},async(f,record)=>{
     await f.auth();record('direct provider setup revision',action('authSetup',false));
     await f.connection(null,true);record('caller enables direct provider',action('directEnabled'));
-    await f.click('Continue');record('local permission step proceeds',advance);
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
   });
   await scenario('same-credential-environment-change-fences-callback',{permissions:{notifications:false}},async(f,record)=>{
     f.hold('notifications');await f.click('Allow');record('production request held',[action('begin'),action('request')]);
@@ -539,6 +543,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   if(!checkModel)return {scenarios,traces,sourceHashes:component.driverHashes};
   const receipt=await checkTraces({model:'PermissionChoices',id:'PermissionChoicesCoordinator',batchSize:8,sources:component.sources,
     driverHashes:component.driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+      'A read-only observer counts automatic granted-step advances and replays each through the existing progression transition.',
       'Actual React component, staged shared permission-flow implementation and progress helpers execute in JSDOM.',
       'Seven native bridges and four browser permission APIs are controlled ports. No device permission or real provider action occurs.',
       'Hook observers forward every call to React. Read-only compile-time observers capture the component local ticket/key/state and the shared flow pending ownership, without changing guards or return values.',

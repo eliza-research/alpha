@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readdirSync} from 'node:fs';
+import {readdirSync,readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
@@ -38,6 +38,12 @@ export const {useLayoutEffect,useSyncExternalStore}=React;`;
     bundle:true,write:false,format:'cjs',platform:'node',metafile:true,
     external:['react/jsx-runtime'], define:{'import.meta.env':'undefined'},
     plugins:[{name:'coordinator-observation-ports',setup(plugin) {
+      plugin.onLoad({filter:/startup-permissions\.tsx$/}, args => {
+        const source=readFileSync(args.path,'utf8');
+        const needle="if (advanceGranted && !actionPending.current) advance('continued');";
+        assert.equal(source.split(needle).length,2,'Automatic permission advancement changed');
+        return {contents:source.replace(needle,`if (advanceGranted && !actionPending.current) { globalThis.${fixtureKey}.automaticAdvances++; advance('continued'); }`),loader:'tsx'};
+      });
       plugin.onResolve({filter:/^react$/}, () => ({path:'react',namespace:'coordinator'}));
       plugin.onResolve({filter:/^@capacitor\/core$|^\.\/platform-plugins$|(?:^|\/)(?:google-)?connection-ui(?:\.tsx?)?$/}, () => ({path:'ports',namespace:'coordinator'}));
       plugin.onResolve({filter:/\.css$/}, () => ({path:'style',namespace:'coordinator'}));
@@ -81,7 +87,7 @@ async function fixture(component, options = {}) {
   const state = {notifications:true,microphone:'granted',camera:'granted',location:'granted',calendar:'granted',photos:'selected',files:'granted',...options.permissions};
   const calls = [], held = new Map(), resumes = new Set(), inFlight = new Map();
   let instance = 0, ticket = 0;
-  const runtime = {platform:'android',hooks:{states:[],refs:[]},pauseInvalidation:false,deferredEffects:[],
+  const runtime = {automaticAdvances:0,platform:'android',hooks:{states:[],refs:[]},pauseInvalidation:false,deferredEffects:[],
     connection:observable({cloudAccount:options.signedOut?null:{credentialId:'owner-a',environment:'production'},open:false}),
     google:observable(false),ports:{}};
   globalThis[fixtureKey]=runtime;
@@ -142,7 +148,7 @@ async function fixture(component, options = {}) {
       calls:structuredClone(calls),homes,dismissal,
     };
   }
-  return {state,calls,snapshot,
+  return {state,calls,snapshot,automaticAdvances:()=>runtime.automaticAdvances,
     async click(label){await React.act(async()=>{const button=[...document.querySelectorAll('button')].find(node=>node.textContent===label);assert(button,`Missing ${label}; ${document.body.textContent}`);if(!button.disabled && label!=='Done'&&label!=='Go to Alpha')ticket=runtime.hooks.refs[7]?.current;button.click();});},
     hold(key){let release,reject;const promise=new Promise((yes,no)=>{release=yes;reject=no;});held.set(key,{promise,release,reject});},
     async release(key,reject=false){await React.act(async()=>reject?held.get(key).reject(Error('Injected rejected callback')):held.get(key).release());},
@@ -221,13 +227,16 @@ export async function runStartupPermissionsCoordinatorRefinement() {
   const component=await compileComponent(),scenarios=[],traces=[];
   async function scenario(name,options,work) {
     const f=await fixture(component,options),checkpoints=[];
+    let recordedAutomatic=0;
     const initial=f.snapshot();
     const trace={name,init:action('init'),expect:{'s.pending':-1},steps:[]};
     const record=(label,actions=null)=>{
       const observation=f.snapshot(),expected=modelObservation(observation);
       const mapped=typeof actions==='function'?actions(observation):actions;
       checkpoints.push({label,observation,modelObservation:expected});
-      trace.steps.push({label,action:mapped,expect:expected});
+      const automatic=Array.from({length:f.automaticAdvances()-recordedAutomatic},()=>action('advance'));
+      recordedAutomatic=f.automaticAdvances();
+      trace.steps.push({label,action:automatic.length?[...(Array.isArray(mapped)?mapped:mapped?[mapped]:[]),...automatic]:mapped,expect:expected});
       return observation;
     };
     record('mounted signed-in coordinator',[...(options.progress?.status==='completed'?[action('restoreCompleted',options.progress.step)]:[]),
@@ -238,23 +247,18 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     assert.equal(f.snapshot().ui.visible,false);
     await f.connection('owner-a',true);
     record('signed-in-caller-enables-setup',action('signIn'));
-    await f.click('Continue');
-    record('signed-in-continue',advance);
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
   });
   await scenario('all-seven-ready-normal-completion-and-remount',{},async(f,record)=>{
-    for(const key of permissionKeys){assert.equal(f.snapshot().ui.heading,key[0].toUpperCase()+key.slice(1));
-    await f.click('Continue');
-    record(`continued-${key}`,advance);}
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
+    assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
     await f.click('Go to Alpha');
     record('completed',action('finish'));
     await f.remount();
     record('completed-remount',restart);
   });
-  await scenario('partial-remount-retains-progress-after-earlier-revocation',{},async(f,record)=>{
-    await f.click('Continue');
-    record('microphone-step',advance);
-    await f.click('Continue');
-    record('camera-step',advance);
+  await scenario('partial-remount-retains-progress-after-earlier-revocation',{permissions:{camera:'denied'}},async(f,record)=>{
+    assert.equal(f.snapshot().component.progress.step,2);
     await f.remount();
     record('partial-remount',restart);
     f.state.notifications=false;
@@ -361,8 +365,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     record('old-result',action('staleResult',0));
     await f.connection('owner-b',true);
     record('signed-in',observation=>[action('signIn'),...statuses(observation)]);
-    await f.click('Continue');
-    record('new-owner-check',advance);
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
   });
   for(const rejects of [false,true])await scenario(`deferred-effect-disabled-${rejects?'rejection':'completion'}`,{permissions:{notifications:false}},async(f,record)=>{
     f.hold('notifications');
@@ -396,13 +399,12 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     await f.release('notifications');
     record('old-component-completed',action('retiredResult'));
   });
-  for(const mode of ['writeFailure','dropWrite'])await scenario(`progress-${mode}`,{[mode]:true},async(f,record)=>{
-    await f.click('Continue');
-    record('advance-retained-for-this-session',advance);
+  for(const mode of ['writeFailure','dropWrite'])await scenario(`progress-${mode}`,{[mode]:true,permissions:{camera:'denied'}},async(f,record)=>{
+    assert.equal(f.snapshot().component.progress.step,2);
     f.recoverStorage();
     record('storage-recovered',action('storageRecovers'));
-    await f.click('Continue');
-    record('next-choice-after-recovery',advance);
+    f.state.camera='granted';await f.resume();
+    record('next-choice-after-recovery',statuses);
     await f.remount();
     record('recovered-remount',restart);
   });
@@ -418,8 +420,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     record('granted-readback',advance);
   });
   await scenario('revocation-after-completion-does-not-rewrite-reviewed-choices',{},async(f,record)=>{
-    for(const key of permissionKeys){await f.click('Continue');
-    record(`continued-${key}`,advance);}
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
     f.state.camera='denied';
     await f.resume();
     record('revoked-platform-state',statuses);
@@ -428,7 +429,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
     assert.equal(f.snapshot().component.states.camera,'settings');
   });
-  await scenario('required-flow-dismissal-is-blocked',{},async(f,record)=>{
+  await scenario('required-flow-dismissal-is-blocked',{permissions:{notifications:false}},async(f,record)=>{
     assert(![...document.querySelectorAll('button')].some(button=>/Skip|Not now/.test(button.textContent)));
     await f.dismiss();
     record('cancel-and-back',action('blockedDismiss'));
@@ -446,7 +447,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     record('completed-installation-returned-home',action('finish'));
   });
   await scenario('ready-acknowledgement-does-not-need-another-write',{},async(f,record)=>{
-    for(const key of permissionKeys){await f.click('Continue');record(`continued-${key}`,advance);}
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
     f.failStorage();
     record('storage-unavailable',action('storageFails'));
     await f.click('Go to Alpha');
@@ -454,19 +455,20 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
     assert.equal(f.snapshot().component.progressError,false);
   });
-  await scenario('last-choice-write-failure-retains-session-and-restarts-at-files',{},async(f,record)=>{
-    for(const key of permissionKeys.slice(0,-1)){await f.click('Continue');record(`continued-${key}`,advance);}
+  await scenario('last-choice-write-failure-retains-session-and-restarts-at-files',{permissions:{files:'denied'}},async(f,record)=>{
+    assert.equal(f.snapshot().ui.heading,'Files');
     f.failStorage();
     record('storage-unavailable-at-files',action('storageFails'));
-    await f.click('Continue');
-    record('ready-with-undurable-completion',advance);
+    f.state.files='granted';await f.resume();
+    record('ready-with-undurable-completion',statuses);
     assert.equal(f.snapshot().component.progressError,true);
     assert.equal(f.snapshot().durable.effectiveProgress.status,'pending');
     await f.click('Go to Alpha');
     record('acknowledged-for-this-session',action('finish'));
     await f.remount();
     record('restart-reviews-unsaved-choice',restart);
-    assert.equal(f.snapshot().ui.heading,'Files');
+    assert.equal(f.snapshot().ui.heading,'Setup finished');
+    assert.equal(f.snapshot().durable.effectiveProgress.step,6);
   });
   await scenario('completed-setup-review-preserves-marker-with-blocked-storage',{progress:{version:4,status:'completed',step:7}},async(f,record)=>{
     f.failStorage();
@@ -480,6 +482,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
   });
   const receipt=await checkTraces({model:'PermissionWalkthrough',id:'PermissionWalkthroughCoordinator',sources:component.sources,
     driverHashes:component.driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+      'A read-only observer counts automatic granted-step advances and replays each through the existing progression transition.',
       'Actual React component, progress storage helpers and permission-flow implementation execute in JSDOM.',
       'Seven native permission bridges and connection subscriptions are controlled ports. No device permission or provider action occurs.',
       'React state and ref observations are captured by hook wrappers forwarding every call to the real React runtime.',
