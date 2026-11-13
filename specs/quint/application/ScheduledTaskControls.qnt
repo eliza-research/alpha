@@ -49,7 +49,9 @@ module ScheduledTaskControls {
   }
 
   val busy = s.visible and s.pending.owner == s.owner
-  val locked = s.detail and ownerHasIntent(s)
+  // The current mutation owns its journaled intent while busy. The separate lock
+  // is exposed only after it settles without confirming that retained request.
+  val locked = s.detail and ownerHasIntent(s) and not(busy)
   val reviewVerb = s.review.verb
   val clockEditable = s.detail and s.kind == "preset"
   val menu = if (s.detail and not(s.editing) and reviewVerb == "") menuFor(s.shownStatus) else List()
@@ -138,7 +140,8 @@ module ScheduledTaskControls {
 
   run editReviewBindsExactRequestTest = initFor("preset", "scheduled").then(open).then(pick("edit"))
     .then(enter("  New instructions.  ", "09:30")).then(save).expect(s.sends == List())
-    .then(confirm).expect(s.pending.request.cron == "30 9 * * 1" and s.pending.request.text == EditedText and safety)
+    .then(confirm).expect(s.pending.request.cron == "30 9 * * 1" and s.pending.request.text == EditedText
+      and s.intents.contains(s.pending) and busy and not(locked) and menuDisabled and safety)
     .then(answer("exact")).expect(s.storedCron == "30 9 * * 1" and s.intents == Set() and safety)
   run mismatchedFireRemainsLockedTest = initFor("preset", "scheduled").then(open).then(pick("fire"))
     .then(confirm).then(answer("wrong-id")).expect(locked and s.message == "unknown" and safety)
