@@ -1,16 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {sha256 as hash} from './sha256.ts';
+import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import type mobileBuildPolicy from './upstream-mobile-build.ts';
 import {parseBuildPolicy} from './build-policy-source.ts';
-import {readUpstreamPin} from './upstream-pin.ts';
 
 import {coreStateBuildRecord,CORE_STATE_TARGET,NOTES_STATE_TARGETS,TURN_STATE_TARGET,ROOM_QUEUE_TARGET,EMBEDDING_STATE_TARGET,NAMED_EMBEDDING_TARGETS,PLUGIN_CONNECTOR_TARGET} from './core-state-patch.ts';
 
 export const MOBILE_BUILD_RECEIPT='alpha-mobile-build.json';
 export const MOBILE_UUID_POLICY='scripts/upstream-mobile-build.ts';
 export const MOBILE_BUILD_INPUTS=['scripts/build-mobile-agent.ts','scripts/mobile-uuid-adapter.ts','scripts/mobile-bundle-smoke.ts','scripts/build-policy-source.ts'];
+const hash=(bytes: string | NodeJS.ArrayBufferView)=>createHash('sha256').update(bytes).digest('hex');
 const json=(file: string)=>JSON.parse(fs.readFileSync(file,'utf8'));
 const safe=(name: unknown): name is string=>typeof name==='string'&&!path.isAbsolute(name)&&name.split('/').every(part=>part&&part!=='.'&&part!=='..');
 function readRegular(root: string,name: string){
@@ -36,7 +36,7 @@ export function uuidCommonJsBridge(contents: string, indexPath: string){
 export function mobileBuildInputs(root: string, source: string){
  root=path.resolve(root);source=path.resolve(source);
  const policyBytes=readRegular(root,MOBILE_UUID_POLICY),policy=parseBuildPolicy(policyBytes) as typeof mobileBuildPolicy;
- const pin=readUpstreamPin(root).commit;
+ const pin=json(path.join(root,'upstream.lock.json')).commit;
  if(policy.schema!==1||policy.baseCommit!==pin||policy.package?.name!=='uuid'||policy.package.version!=='14.0.2'||policy.package.root!=='node_modules/.bun/uuid@14.0.2/node_modules/uuid')throw Error('Unreviewed mobile UUID build policy');
  if(policy.bun?.version!=='1.4.2'||!policy.bun.revision||policy.builder?.path!=='packages/agent/scripts/build-mobile-bundle.ts')throw Error('Unreviewed mobile UUID producer');
  if(json(path.join(source,'.alpha-runtime-source.json')).base!==pin)throw Error('Mobile UUID producer source differs from reviewed pin');
