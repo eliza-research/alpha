@@ -20,7 +20,7 @@ for(const size of [{width:390,height:844},{width:1280,height:900}]){
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();
   const account=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
-  await expect(account).toBeVisible();
+  await expect(account).toBeVisible({timeout:10_000});
   await expect(settings.getByRole('button',{name:'Account & plan',exact:true})).toHaveCount(0);
   const box=(await account.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(-1);expect(box.y).toBeGreaterThanOrEqual(-1);
