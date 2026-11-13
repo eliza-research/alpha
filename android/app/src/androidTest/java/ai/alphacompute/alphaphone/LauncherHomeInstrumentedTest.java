@@ -254,7 +254,7 @@ public class LauncherHomeInstrumentedTest {
 
  /** A lost renderer while Alpha is HOME: the recreated activity is the only MainActivity, and the
   * HOME key still lands on Alpha Home in that instance (RendererRecoveryInstrumentedTest covers
-  * both variants without the role). */
+  * the launcher without the role). */
  @Test public void killedRendererWhileHomeRecoversOneMainActivityAndHomeStillReturns() throws Exception {
   assumeAlphaIsHome();
   Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
