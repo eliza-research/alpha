@@ -51,7 +51,7 @@ retain distinct provenance; neither is carrier, provider or device acceptance.
 
 ## Application and services
 
-These 59 owners retain existing member-level behavior checks. Individual owners for previously
+These 60 owners retain existing member-level behavior checks. Individual owners for previously
 aggregate-only contracts relocate the same checks; they do not introduce new source slicing.
 Where an owner contains a focused canary as well as a model-trace campaign, its original assertion
 sets and source boundaries remain distinct. The owner and its retained receipt identify the actual
@@ -95,6 +95,7 @@ models, recorded actions and controlled ports.
 - [quint-plan-admission-grace.test.mjs](../../test/quint-plan-admission-grace.test.mjs)
 - [quint-previous-notes-availability.test.mjs](../../test/quint-previous-notes-availability.test.mjs)
 - [quint-previous-notes-source-opening.test.mjs](../../test/quint-previous-notes-source-opening.test.mjs)
+- [quint-protected-app-update-promotion-contract.test.mjs](../../test/quint-protected-app-update-promotion-contract.test.mjs)
 - [quint-prototype-surfaces-source-contracts.test.mjs](../../test/quint-prototype-surfaces-source-contracts.test.mjs)
 - [quint-quiet-voice-retry.test.mjs](../../test/quint-quiet-voice-retry.test.mjs)
 - [quint-reminder-open-intent.test.mjs](../../test/quint-reminder-open-intent.test.mjs)
