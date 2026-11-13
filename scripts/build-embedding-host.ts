@@ -120,7 +120,7 @@ export async function preparePortableNativeInputs(root:string) {
     const {assertAndroidVoiceLibrary}=createRequire(import.meta.url)('../vendor/eliza/packages/app/scripts/build-helpers/verify-fused-symbols.ts');
     // The upstream builder verifies each download, converted GGUF and native ABI/symbol contract.
     // It runs in an isolated source checkout; it never writes into vendor/eliza.
-    command(env.ALPHA_NODE||'node',[path.join(source,'packages/app/scripts/paradee-voice/build-native.ts'),'--workspace',path.join(cache,'workspace'),'--out',voiceOutput,'--model-cache',path.join(cacheRoot,'models'),'--python',python],source,env);
+    command('node',[path.join(source,'packages/app/scripts/paradee-voice/build-native.ts'),'--workspace',path.join(cache,'workspace'),'--out',voiceOutput,'--model-cache',path.join(cacheRoot,'models'),'--python',python],source,env);
     const nativeTools=ndkTools(ndk),host=readJson<any>(path.join(root,'android/voice-host/qualified-voice-host.json'));
     const abis=host.abis.map((abi:any)=>({abi:abi.abi,release:abi.release,alignment16KiB:true,abiVersion:assertAndroidVoiceLibrary({lib:path.join(voiceOutput,'jniLibs',abi.abi,'libelizainference.so'),objdump:path.join(nativeTools,'bin/llvm-objdump'),nm:path.join(nativeTools,'bin/llvm-nm')}).abiVersion,componentBuild:`Portable source build from SDK ${pin}, engine ${recipe.engineCommit}, recipe ${nativeRecipeDigest(recipe)}. Integrity only; no device qualification.`,libraries:abi.libraries.map((library:any)=> {
       const output=path.join(voiceOutput,'jniLibs',abi.abi,library.name);
@@ -145,7 +145,7 @@ export async function preparePortableNativeInputs(root:string) {
     const embeddingOutput=path.join(cache,'embedding',abi);
     const preparedFile=path.join(embeddingOutput,'PREPARATION.json');
     if(fs.existsSync(preparedFile)&&readJson<{built:boolean}>(preparedFile).built!==true)fs.rmSync(embeddingOutput,{recursive:true,force:true});
-    if(!fs.existsSync(path.join(embeddingOutput,'PREPARATION.json')))command(env.ALPHA_NODE||'node',[path.join(root,'scripts/prepare-embedding-host.ts'),'--fork',fork,'--output',embeddingOutput,'--abi',abi,'--engine',path.join(voiceOutput,'jniLibs',abi),'--build','--remap-build-path'],root,env);
+    if(!fs.existsSync(path.join(embeddingOutput,'PREPARATION.json')))command('node',[path.join(root,'scripts/prepare-embedding-host.ts'),'--fork',fork,'--output',embeddingOutput,'--abi',abi,'--engine',path.join(voiceOutput,'jniLibs',abi),'--build','--remap-build-path'],root,env);
     const preparation=readJson<any>(path.join(embeddingOutput,'PREPARATION.json'));
     if(!preparation.built||preparation.abi!==abi)throw Error('Native JNI preparation did not complete for '+abi);
     preparations.push(preparation);

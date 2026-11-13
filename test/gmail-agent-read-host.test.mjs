@@ -7,11 +7,14 @@ import {tmpdir} from 'node:os';
 import {createHash,randomUUID} from 'node:crypto';
 const {createGmailAgentReadHost:createReadHost}=await import('../scripts/gmail-agent-read-host.ts');
 const createGmailAgentReadHost=(profile,access=()=>({gmailChanges:true,calendarEdits:true}))=>createReadHost(profile,access);
-const {cloudStorageNamespace}=await import('../apps/app/src/runtime/cloud-deployment.generated.ts');
+const {cloudStorageNamespace,productionCloud}=await import('../apps/app/src/runtime/cloud-deployment.generated.ts');
+const {createBrowserCloudDevHandler}=await import('../scripts/browser-cloud-dev-bridge.ts');
+const {createManagedGoogleAgentHost}=await import('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/index.ts');
 const owner='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222',grant='33333333-3333-4333-8333-333333333333';
 const account={configured:true,connected:true,reason:'connected',connectionId:grant,grantedCapabilities:['google.gmail.triage']};
 const message={externalId:'mail1',threadId:'thread1',subject:'A &amp; B',from:'Sender',to:[],snippet:'Hello',receivedAt:'2026-10-15T00:00:00Z',isUnread:true};
-async function fixture(){
+/** `calendarReadTiming` builds the same shared host with upstream's read-timing diagnostic on, which Alpha's host leaves off. */
+async function fixture({calendarReadTiming=false}={}){
  const profile=await mkdtemp(join(tmpdir(),'alpha-gmail-reader-'));
  const scoped=join(profile,cloudStorageNamespace.replaceAll(':','-'));await mkdir(scoped,{mode:0o700});
  const credential={credentialReference:'browser-cloud-reference:44444444-4444-4444-8444-444444444444',credentialId:grant,userId:owner,organizationId:org,token:'synthetic-only'};
@@ -43,7 +46,7 @@ async function fixture(){
   if(u.pathname.endsWith('/read')){await afterRead();return Response.json({message:{...message,metadata:{historyId:'h1'}},bodyText:body});}
   throw Error('Unexpected route');
  };
- let reader;try{reader=createGmailAgentReadHost(profile);}finally{globalThis.fetch=original;}
+ let reader;try{reader=calendarReadTiming?createManagedGoogleAgentHost(createBrowserCloudDevHandler({profile}),{apiOrigin:productionCloud.api,access:()=>({gmailChanges:true,calendarEdits:true}),gmailReadBodyMaxCharacters:32_000,calendarReadTiming:true}):createGmailAgentReadHost(profile);}finally{globalThis.fetch=original;}
  return {reader,calls,credential,save,sends,setAccounts:fn=>accounts=fn,setAfterRead:fn=>afterRead=fn,setPages:fn=>pages=fn,setCalendars:fn=>calendars=fn,setRoute:fn=>route=fn,setBody:value=>body=value,setBeforeOwner:fn=>beforeOwner=fn,setFeedStatus:status=>feedStatus=status,loseDispatch:()=>{loseDispatch=true;},close:()=>rm(profile,{recursive:true,force:true})};
 }
 const sendAccount={...account,grantedCapabilities:['google.gmail.triage','google.gmail.send']};
@@ -243,11 +246,10 @@ test('Changing the Cloud credential drops every lookup of the old one',async()=>
 });
 
 test('Concurrent Calendar reads share one lookup, and a joiner reads for itself when the leader ends',async()=>{
- const timing=process.env.ALPHA_CALENDAR_READ_TIMING,info=console.info;let joined=0,f,release;
- process.env.ALPHA_CALENDAR_READ_TIMING='1';
+ const info=console.info;let joined=0,f,release;
  console.info=(label,value,...rest)=>{if(label==='[alpha-calendar-read-timing]'){const event=JSON.parse(value);if(event.routeBucket==='owner-cache'&&event.cacheHit==='in-flight')joined++;}else info(label,value,...rest);};
  try{
-  f=await fixture();f.setAccounts(()=>[calendarAccount]);
+  f=await fixture({calendarReadTiming:true});f.setAccounts(()=>[calendarAccount]);
   // Starting two methods together does not ensure overlap: their credential-file reads can arrive after the
   // first lookup finishes, and source lists deliberately never reuse a completed lookup. Hold the response
   // until the diagnostic from the actual shared lookup proves the second caller joined it.
@@ -264,7 +266,7 @@ test('Concurrent Calendar reads share one lookup, and a joiner reads for itself 
   f.setBeforeOwner(async()=>{});controller.abort();release();
   const [ended,alive]=await Promise.allSettled([leader,joiner]);
   assert.equal(ended.status,'rejected');assert.equal(alive.status,'fulfilled');assert.equal(alive.value.length,1);
- }finally{release?.();console.info=info;if(timing===undefined)delete process.env.ALPHA_CALENDAR_READ_TIMING;else process.env.ALPHA_CALENDAR_READ_TIMING=timing;await f?.close();}
+ }finally{release?.();console.info=info;await f?.close();}
 });
 
 test('A refused feed drops the shared lookups',async()=>{
