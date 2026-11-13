@@ -14,8 +14,10 @@ changes upstream and consume a reviewed commit; never edit the vendor checkout.
 ## Setup
 
 Use Bun 1.4.2 (`packageManager` in `package.json`) and JDK 21. The pinned upstream
-source prepares and builds on Bun. Node.js 24+ is needed only for LemmaScript and the
-Node-only host tests (`bun run test:node`).
+source prepares and builds on Bun. Node.js 24+ is needed for LemmaScript and the
+Node-only host tests (`bun run test:node`). The production browser test preview
+also uses genuine Node; its CI job pins Node 26.13.0. Bundle preparation and building
+continue to use Bun.
 Canonical host-test commands automatically cache a hash-pinned Bun 1.4.4 test process on
 Linux and macOS. This avoids the older test runner's synchronous-child/GC bug. It does not
 replace Bun 1.4.2 on `PATH`: `ALPHA_BUN` continues to identify the 1.4.2 SDK, bytecode and
