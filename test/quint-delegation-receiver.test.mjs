@@ -1,12 +1,18 @@
-// DelegationReceiver traces replayed against the shipped Cancel decision (`delegationCancelStep`)
-// with Cloud's state as the port. Every Cancel step of every trace is decided by the real
-// function and its effect compared with the model. The panel's callback, start and status steps
-// are React state and are covered by test/cloud-delegation-callback.test.mjs, not by this replay.
-import test from 'node:test';
+// DelegationReceiver traces replayed against the shipped Cloud delegation panel. Every trace is
+// run against the mounted CloudDelegationPanel (React in jsdom): Start, the native return and its
+// one-step gate, Check status and Cancel, with Cloud, the native return slot, the secure store and
+// the browser hand-off as held ports. The Cancel decision (`delegationCancelStep`) is also checked
+// on its own against every Cancel step and its full table.
+import {after, test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, rmSync} from 'node:fs';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import React, {act} from 'react';
+import {JSDOM} from 'jsdom';
+import {build} from 'esbuild';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
-import {modelTraces, repositoryRoot} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
+import {modelTraces, replayTraces, repositoryRoot} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
 
 const MODEL = {path: 'specs/quint/application/DelegationReceiver.qnt', module: 'DelegationReceiver'};
 const model = readFileSync(`${repositoryRoot}${MODEL.path}`, 'utf8');
@@ -55,4 +61,118 @@ test('the Cancel decision follows DelegationReceiver on every Cancel step of its
   // The whole decision table, including the combinations the panel never asks about.
   assert.deepEqual(['waiting', 'finishing'].flatMap(phase => [null, 'settled', 'finishing', 'waiting'].map(status => delegationCancelStep(phase, status))),
     ['cancel', 'cancel', 'cancel', 'cancel', 'read-status', 'done', 'done', 'cancel']);
+});
+
+// The panel with its native plugin, secure store and browser hand-off replaced by the fixture on globalThis.
+// The bundle sits inside the repository so that its React import resolves to the app's own copy.
+mkdirSync(join(repositoryRoot, 'test-results'), {recursive: true});
+const temp = mkdtempSync(join(repositoryRoot, 'test-results/quint-delegation-receiver-')), bundle = join(temp, 'panel.mjs');
+after(() => rmSync(temp, {recursive: true, force: true}));
+await build({entryPoints: [join(repositoryRoot, 'apps/app/src/runtime/cloud-delegation-ui.tsx')], bundle: true, platform: 'node', format: 'esm', outfile: bundle,
+  external: ['react', 'react/jsx-runtime', '@capacitor/core'], logLevel: 'silent', plugins: [{name: 'delegation-ports', setup(builder) {
+    builder.onResolve({filter: /platform-plugins$|native-connection$/}, args => ({path: args.path, namespace: 'ports'}));
+    builder.onLoad({filter: /.*/, namespace: 'ports'}, args => ({contents: args.path.endsWith('platform-plugins')
+      ? 'export const registerPlugin=()=>new Proxy({},{get:(_,key)=>globalThis.__delegationReplay.native[key]});'
+      : 'export const secureConnectionStore=new Proxy({},{get:(_,key)=>globalThis.__delegationReplay.store[key]});export const openConnectionBrowser=(...args)=>globalThis.__delegationReplay.browser(...args);'}));
+  }}]});
+
+const SLOT = 'cloud-delegation:v1:email', OTHER = 'o'.repeat(43), MINUTE = 60000;
+const flush = () => act(async () => { for (let turn = 0; turn < 12; turn++) await new Promise(resolve => setTimeout(resolve, 0)); });
+// The gate's deferred-read flag and the announcement not yet read are refs inside the panel; they
+// show only through the step that runs next. The deadline is compared while an authorization is stored.
+const project = s => ({locked: s.locked, running: s.running, record: s.record, recordExpired: s.record !== 'none' && s.recordExpired, retained: s.retained,
+  cloud: s.cloud, grant: s.grant, completes: s.completes, codeReturns: s.codeReturns, statusTaps: s.statusTaps, starts: s.starts});
+
+async function create() {
+  const realNow = Date.now;
+  let now = realNow(), cloud = 'none', cloudAfter = 'waiting', native = null, connected = 0, completes = 0, codeReturns = 0, statusTaps = 0, starts = 0;
+  let held = null, gate = null, mounted = false;
+  Date.now = () => now;
+  const slots = new Map(), listeners = [];
+  const hold = kind => new Promise((resolve, reject) => { assert.equal(held, null, 'one step holds the gate'); held = {kind, resolve, reject}; });
+  const stateOf = index => String(index).padStart(43, 's');
+  const ports = globalThis.__delegationReplay = {
+    native: {
+      addListener: async (name, listener) => { listeners.push(listener); return {remove() {}}; },
+      // After the panel has mounted, every read of the retained return is one held step.
+      async readDelegationCallback() { if (mounted) await hold('callback'); return {callback: native}; },
+      async clearDelegationCallback({state}) { if (native?.state === state) native = null; },
+    },
+    store: {
+      read: async slot => slots.get(slot) ?? null,
+      async compareExchange(slot, expected, next) {
+        if (JSON.stringify(slots.get(slot) ?? null) !== JSON.stringify(expected)) return {status: 'conflict'};
+        if (next?.phase === 'finishing' && expected?.phase === 'waiting') codeReturns++;
+        if (next) slots.set(slot, next); else slots.delete(slot);
+        return {status: 'saved'};
+      },
+    },
+    browser: () => hold('start'),
+  };
+  const client = {async delegation(kind, input) {
+    if (kind === 'revocations') return {grants: []};
+    // The first Cloud request of a Check status or Cancel step is the held one.
+    if (gate) { const step = gate; gate = null; await hold(step); }
+    if (kind === 'start') { starts++; cloud = 'waiting'; return {authUrl: `https://cloud.example/app-auth/authorize?state=${stateOf(starts)}`, expiresAt: new Date(now + 10 * MINUTE).toISOString()}; }
+    if (kind === 'status') return {status: cloud, ...(cloud === 'complete' ? {grantId: 'grant'} : {})};
+    if (kind === 'complete') { completes++; cloud = cloudAfter; return {}; }
+    if (kind === 'cancel') { cloud = 'failed'; return {}; }
+    throw Error(`unexpected ${kind}`);
+  }};
+  const dom = new JSDOM('<div id="root"></div>', {url: 'http://localhost/'}), saved = {};
+  for (const key of ['window', 'document', 'HTMLElement', 'IS_REACT_ACT_ENVIRONMENT']) {
+    saved[key] = Object.getOwnPropertyDescriptor(globalThis, key);
+    Object.defineProperty(globalThis, key, {configurable: true, writable: true, value: key === 'IS_REACT_ACT_ENVIRONMENT' ? true : dom.window[key]});
+  }
+  const {CloudDelegationPanel} = await import(pathToFileURL(bundle).href), {createRoot} = await import('react-dom/client');
+  const root = createRoot(document.getElementById('root'));
+  await act(async () => root.render(React.createElement(CloudDelegationPanel, {client, scope: 'email', signal: new AbortController().signal, current: () => true, onConnected() { connected++; }})));
+  await flush();
+  mounted = true;
+  // A control by its accessible name: the label where it has one, else its text.
+  const named = item => item.getAttribute('aria-label') ?? item.textContent.trim();
+  const button = label => { const found = [...document.querySelectorAll('button')].find(item => named(item) === label); assert.ok(found, label); return found; };
+  const click = async label => { await act(async () => button(label).click()); await flush(); };
+  const record = () => slots.get(SLOT) ?? null;
+  const ends = async (failed, after) => { const step = held; held = null; cloudAfter = after ?? cloudAfter; if (failed) step.reject(Error('unreachable')); else step.resolve(); await flush(); };
+  return {
+    startAuthorization: () => click('Continue'),
+    startEnds: () => ends(false),
+    async nativeReturn(kind) {
+      const state = kind === 'other' ? OTHER : record().state;
+      native = kind === 'code' || kind === 'other' ? {state, code: 'code'} : kind === 'error' ? {state, error: 'access_denied'} : {state};
+      await act(async () => { for (const listener of listeners) listener(); });
+      await flush();
+    },
+    callbackEnds: (failed, after) => ends(failed, after),
+    async checkStatus() { gate = 'status'; statusTaps++; await click('Refresh authorization status'); },
+    statusEnds: (failed, after) => ends(failed, after),
+    async cancelTap() { gate = 'cancel'; await click('Cancel authorization'); },
+    cancelEnds: failed => ends(failed),
+    cloudFinishes(complete) { cloud = complete ? 'complete' : 'failed'; },
+    deadlinePasses() { now += 20 * MINUTE; },
+    observe() {
+      const stored = record(), control = [...document.querySelectorAll('button')].find(item => ['Continue', 'Refresh authorization status'].includes(named(item)));
+      assert.equal(!!stored, named(control) === 'Refresh authorization status', 'the panel shows the stored authorization');
+      return {locked: control.disabled, running: held?.kind ?? 'none', record: stored?.phase ?? 'none', recordExpired: !!stored && Date.parse(stored.expiresAt) <= now,
+        retained: !native ? 'none' : native.state === OTHER ? 'other' : native.error ? 'error' : native.code ? 'code' : 'empty',
+        cloud, grant: connected > 0, completes, codeReturns, statusTaps, starts};
+    },
+    async close() {
+      await act(async () => root.unmount());
+      dom.window.close(); Date.now = realNow; delete globalThis.__delegationReplay;
+      for (const [key, value] of Object.entries(saved)) { if (value) Object.defineProperty(globalThis, key, value); else delete globalThis[key]; }
+    },
+  };
+}
+
+test('the mounted delegation panel follows DelegationReceiver scenarios, witnesses and random walks', {timeout: 480000}, async () => {
+  const traces = modelTraces({...MODEL, scenarios: SCENARIOS, witnesses: WITNESSES, random: 60, steps: 30});
+  const receipt = await replayTraces(traces, create, {project});
+  assert.equal(receipt.traces, SCENARIOS.length + WITNESSES.length + 60);
+  // The comparison is live: a model in which a return deferred behind Start was dropped is refused.
+  const dropped = state => state.running === 'callback' ? {...project(state), running: 'none', locked: false} : project(state);
+  await assert.rejects(replayTraces(traces.filter(trace => trace.name === 'returnDuringStartTest'), create, {project: dropped}), /returnDuringStartTest step/);
+  for (const action of ['startAuthorization', 'startEnds', 'nativeReturn', 'callbackEnds', 'checkStatus', 'statusEnds', 'cancelTap', 'cancelEnds', 'cloudFinishes', 'deadlinePasses'])
+    assert.ok(receipt.actions[action] > 0, action);
 });

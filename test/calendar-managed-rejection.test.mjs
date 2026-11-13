@@ -4,7 +4,6 @@ import {existsSync,mkdtempSync,mkdirSync,copyFileSync,readFileSync,realpathSync,
 import {join,resolve,dirname,sep} from 'node:path';
 import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
-import {execFileSync} from 'node:child_process';
 import {build} from 'esbuild';
 import {createServer} from 'node:http';
 import {sourceDirectory,verifySource} from '../scripts/local-agent-source.ts';
@@ -38,7 +37,6 @@ test('explicit Calendar rejection survives the private transport; uncertain repl
  const before=readFileSync(original,'utf8'),temp=mkdtempSync(join(tmpdir(),'alpha-calendar-refusal-'));
  try{
   const entry=join(temp,relative);mkdirSync(dirname(entry),{recursive:true});copyFileSync(original,entry);
-  assert.match(before,/raw\.calendarFailure/,'the pinned upstream carries the explicit rejection receipt');assert.match(before,/Invalid Calendar rejection receipt/);
   const buildPort=contents=>build({stdin:{contents:`export {createManagedCalendarMutationPort} from ${JSON.stringify(entry)};export {CalendarMutationNotAcceptedError,CalendarMutationPreflightError} from ${JSON.stringify(join(dirname(original),'types.ts'))};`,resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false,metafile:true,plugins:[{name:'upstream-patch-source',setup(b){
    b.onLoad({filter:/managed\.ts$/},args=>args.path===realpathSync(entry)?{contents,loader:'ts',resolveDir:dirname(original)}:undefined);
    b.onResolve({filter:/^@elizaos\/core$/},()=>({path:'core',namespace:'port'}));

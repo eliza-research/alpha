@@ -1,9 +1,4 @@
-// Settings → Password manager (password-manager.ts) against a recording vault bridge in Node.
-// No Keystore, WebView or Settings template is involved: this proves the renderer's draft,
-// lock and message handling, not a device unlock.
-import {stripTypeScriptTypes} from './support/strip-types.mjs';
-import test, {mock} from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {pathToFileURL} from 'node:url';
-const stubs={
+import test, {mock} from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';const stubs={
  '@capacitor/core':'export const Capacitor={isNativePlatform:()=>false,isPluginAvailable:()=>false};',
  '../platform-plugins':'export function registerPlugin(){return {};}',
  '../build-flags':'export const devSurfacesEnabled=true,testMocksEnabled=false;',
@@ -132,6 +127,18 @@ test('a completed removal cannot navigate or refresh after leaving Passwords',as
  assert.equal(t.pm.passwordManagerHoldsEntries(),false);
 });
 
+test('a save that completes after its form was left is read back into the open list',async()=>{
+ const t=await mount();await t.openShop();const held=t.hold('save');
+ t.type('Password','typed-then-left');
+ t.find(t.rows(t.entryPage().groups),'Save').go();await held.waiting;
+ t.entryPage().back();assert.equal(t.entryPage(),null,'the form is closed while the vault still holds the save');
+ const pages=t.pages.length,listReads=t.calls.filter(([method])=>method==='list').length;
+ held.release();await settle();
+ assert.equal(t.calls.filter(([method])=>method==='list').length,listReads+1,'the unlocked list is read again');
+ assert.equal(t.pages.length,pages,'a form that is already closed is not navigated away from again');
+ assert.equal(t.pm.passwordManagerHoldsEntries(),true);
+});
+
 test('leaving during reset authentication never calls reset from the retired page',async()=>{
  const t=await mount({damaged:true});t.manager();await settle();await t.press(t.manager(),'Unlock');
  await t.press(t.manager(),'Reset vault');
@@ -167,18 +174,4 @@ test('a refused reset authentication needs a fresh review',async()=>{
  await t.press(t.manager(),'Confirm reset');
  assert.ok(t.manager().some(row=>row.label==='Reset vault'));
  assert.equal(t.calls.filter(([method])=>method==='reset').length,0);
-});
-
-
-test('the outer Settings Back handler retires the password draft before routing to the unlocked list',async()=>{
- const t=await mount();await t.openShop();t.type('Password','unsaved-synthetic-password');
- const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
- const code=source.slice(source.indexOf('  const settingsBack = definition.back;'),source.indexOf('  definition.render = (state: Bag, api: Bag) => {',source.indexOf('  const settingsBack = definition.back;')));
- const definition={back:()=>{throw Error('The inner Back handler is bypassed by this parent route');}};
- const install=new Function('definition','leavePasswordEntry','leavePasswordManager','PASSWORD_PAGES','categoryNames','let activeSettingsCategory=null;'+stripTypeScriptTypes(code,{mode:'strip'}));
- install(definition,t.pm.leavePasswordEntry,t.pm.leavePasswordManager,['password-provider','password-entry'],{});
- const pages=[];assert.equal(definition.back({page:'password-entry'}, {set:next=>pages.push(next.page)}),true);
- assert.deepEqual(pages,['password-provider']);assert.equal(t.entryPage(),null);
- assert.ok(t.manager().some(row=>row.label==='Shop'),'the list remains unlocked');
- assert.equal(t.calls.filter(([method])=>method==='save').length,0);
 });

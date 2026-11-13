@@ -3,7 +3,7 @@
   "purpose": "preserving-pilot-qualification",
   "product": "alpha_stallion_phone",
   "device": "stallion",
-  "manifestUrl": "https://github.com/alphacompute/alphaphone/releases/download/os-pilot/alpha-os-update.json",
+  "manifestUrl": "https://github.com/eliza-research/alphaphone/releases/download/os-pilot/alpha-os-update.json",
   "hosts": [
     "github.com",
     "release-assets.githubusercontent.com",

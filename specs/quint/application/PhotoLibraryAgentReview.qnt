@@ -9,7 +9,7 @@ module PhotoLibraryAgentReview {
     requests: int -> Request, review: int, reviewRevision: int, reviewEpoch: int, serial: int,
     confirms: int -> Confirm, acting: int, actingRevision: int,
     dispatched: List[int], applied: List[int],
-    refusedBusy: int, refusedLeft: int, staleClosed: int, androidStale: int
+    refusedBusy: int, refusedLeft: int, staleClosed: int, androidStale: int, latePresses: int
   }
   var s: State
   pure val Slots = Set(1, 2)
@@ -20,7 +20,7 @@ module PhotoLibraryAgentReview {
     visible: true, hostReview: false, epoch: 0, disposed: false, revision: 0,
     requests: Slots.mapBy(_ => idle), review: 0, reviewRevision: 0, reviewEpoch: 0, serial: 0,
     confirms: Slots.mapBy(_ => unpressed), acting: 0, actingRevision: 0,
-    dispatched: [], applied: [], refusedBusy: 0, refusedLeft: 0, staleClosed: 0, androidStale: 0
+    dispatched: [], applied: [], refusedBusy: 0, refusedLeft: 0, staleClosed: 0, androidStale: 0, latePresses: 0
   }
   val reviewBusy = s.acting != 0 or s.review != 0 or s.hostReview
   /// An approved change request names the revision the assistant read. It is admitted only over
@@ -51,7 +51,7 @@ module PhotoLibraryAgentReview {
     Slots.contains(slot), s.confirms.get(slot).pending,
     val pressed = s.confirms.get(slot)
     val settled = { ...s, confirms: s.confirms.set(slot, unpressed) }
-    s' = if (s.review != pressed.review) settled
+    s' = if (s.review != pressed.review) { ...settled, latePresses: bump(s.latePresses) }
       else if (s.reviewRevision != s.revision) { ...settled, review: 0, staleClosed: bump(s.staleClosed) }
       else { ...settled, review: 0, acting: pressed.review, actingRevision: s.reviewRevision,
         dispatched: s.dispatched.append(pressed.review) }
@@ -92,6 +92,8 @@ module PhotoLibraryAgentReview {
   val LeftDuringValidationWitness = s.refusedLeft > 0 and s.visible and not(s.disposed)
   val ChangedWhileAndroidAsksWitness = s.acting != 0 and s.actingRevision != s.revision
   val TwoReviewsAppliedWitness = s.applied.length() == 2
+  val DoublePressWitness = s.confirms.get(1).pending and s.confirms.get(2).pending
+  val LatePressIgnoredWhileAndroidAsksWitness = s.latePresses > 0 and s.acting != 0 and s.dispatched.length() == 1
   run doubleConfirmDispatchesOnceTest = init.then(request(1, 0)).then(validated(1))
     .expect(s.review == 1 and safety).then(confirmPress(1)).then(confirmPress(2)).then(confirmValidated(1))
     .then(confirmValidated(2)).expect(s.dispatched == [1] and s.acting == 1 and s.review == 0 and safety)

@@ -235,37 +235,6 @@ export async function buildWorkflowArtifact({sourceRoot,outputDir,sourceIdentity
   assert.equal(read(path.join(source, 'builds')), 'x');
 });
 
-test('android:build:local builds the workflow worker before staging and stages before the strict build', () => {
-  // The chain once stopped in agent:stage-android because nothing had built the worker artifact
-  // that staging verifies first. Each step consumes the previous step's output, so order matters.
-  const scripts = JSON.parse(read('package.json')).scripts;
-  const chain = scripts['android:build:local'].split('&&').map(step => step.trim());
-  assert.deepEqual(chain, [
-    'bun scripts/android-build-preflight.ts --before-prepare',
-    // Before the long preparation: it either has the reviewed libraries, reproduces them, or
-    // stops in under a second naming the person who must supply them.
-    'bun run agent:build-embedding-host',
-    'bun run agent:prepare',
-    'bun run agent:build-workflow-worker',
-    'bun run agent:stage-android',
-    // The shipped notices must list the staged runtime, or verify-apks records the releases
-    // distributable:false ("notices lack the packaged runtime"). It rewrites the tracked
-    // notices in the working tree for this build; that change is not committed.
-    'bun run licenses:packaged-runtime',
-    'bun run android:build',
-  ]);
-  assert.equal(scripts['licenses:packaged-runtime'], 'bun scripts/generate-licenses.ts --packaged-runtime');
-  for (const step of chain.slice(1)) assert.ok(scripts[step.replace('bun run ', '')], step);
-  // The chain ends in the strict build: no developer override may be baked into it.
-  assert.doesNotMatch(scripts['android:build:local'], /--allow-unpackaged-runtime|--allow-unqualified-runtime|--test-mocks|--skip-instrumentation/);
-  assert.equal(scripts['android:build'], 'bun scripts/build-android.ts');
-  assert.equal(scripts['agent:build-embedding-host'], 'bun scripts/build-embedding-host.ts', 'no option in the chain');
-  // Staging itself refuses a missing or foreign worker artifact before the long mobile bundle build.
-  const stage = read('scripts/stage-local-agent-runtime.ts');
-  assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') > 0);
-  assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') < stage.indexOf("'scripts/build-mobile-agent.ts'"));
-});
-
 test('preflight names missing embedding build inputs', t => {
   // Gradle's :app:verifyEmbeddingHost failed a fully prepared and staged checkout 18 seconds into
   // the first assemble task: the reviewed libraries are ignored by Git and staged from a receipt.

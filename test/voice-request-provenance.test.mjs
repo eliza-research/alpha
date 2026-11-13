@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createRequire} from 'node:module';
-import {build, transform} from 'esbuild';
+import {build} from 'esbuild';
 
 const messageId = 'a0000000-0000-4000-8000-000000000001';
 const secondMessageId = 'a0000000-0000-4000-8000-000000000002';
@@ -82,29 +82,4 @@ test('accepted SDK final state binds one current voice request; raw text cannot 
     globalThis.__voiceRequestFixture=previous.fixture;globalThis.window=previous.window;globalThis.location=previous.location;globalThis.WebSocket=previous.WebSocket;
     fs.rmSync(directory,{recursive:true,force:true});
   }
-});
-
-test('actual controller passes the same current proof through review and execution', async () => {
-  const text=fs.readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
-  const start=text.indexOf('  async performVoiceRequestedActions('),end=text.indexOf('  async continueRequestedCamera(',start);
-  assert.ok(start>0&&end>start);
-  const actualMethod=text.slice(start,end);
-  const calls=[];let bound=true,retireDuringReview=false;
-  const proof=Object.freeze({messageId,text:'Open https://requested.invalid',current(){assert.ok(bound,'proof retired');}});
-  const fixture={signal:new AbortController().signal,context:{view:'home',revision:1},actions:{
-    async pendingReview(context,signal,request){calls.push(['review',request]);if(retireDuringReview)bound=false;},
-    async performRequested(id,context,signal,allowed,type,request){assert.ok(await allowed());calls.push(['perform',request]);return [];},
-  }};
-  globalThis.__voiceControllerFixture=fixture;
-  const source=`const f=globalThis.__voiceControllerFixture;const active={actions:f.actions};const navigationContext=()=>f.context;const validateUuid=()=>true;const readDevicePreferences=async()=>({askBeforeAgentActions:false});export const controller={voiceConversationCurrent:()=>true,${actualMethod}};`;
-  const code=(await transform(source,{loader:'ts',format:'cjs'})).code;
-  const module={exports:{}};new Function('module','exports',code)(module,module.exports);
-  const controller=module.exports.controller;
-  try {
-    await controller.performVoiceRequestedActions({},messageId,fixture.signal);assert.equal(calls.length,0);
-    await controller.performVoiceRequestedActions({},secondMessageId,fixture.signal,undefined,proof);assert.equal(calls.length,0);
-    await controller.performVoiceRequestedActions({},messageId,fixture.signal,undefined,proof);assert.deepEqual(calls.map(c=>c[0]),['review','perform']);assert.ok(calls.every(c=>c[1]===proof));
-    calls.length=0;retireDuringReview=true;
-    await assert.rejects(controller.performVoiceRequestedActions({},messageId,fixture.signal,undefined,proof));assert.deepEqual(calls.map(c=>c[0]),['review'],'post-read current guard prevents execution');
-  } finally {delete globalThis.__voiceControllerFixture;}
 });

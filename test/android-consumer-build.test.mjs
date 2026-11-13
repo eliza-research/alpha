@@ -1,4 +1,4 @@
-// Alpha's four distribution APKs are built by the pinned upstream consumer build orchestration
+// Alpha's launcher APKs are built by the pinned upstream consumer build orchestration
 // (AP-02). These checks run that orchestration with Alpha's options and a stand-in for Gradle
 // and the verifier; they assemble no APK and are not APK, emulator or device evidence.
 import test from 'node:test';
@@ -12,12 +12,11 @@ import {SIGNING_ENV, buildEnv, consumerBuildOptions, parseBuildArgs} from '../sc
 
 const SIGNING = Object.fromEntries(SIGNING_ENV.map(name => [name, `value-of-${name}`]));
 
-function build(t, argv, {environment = {}, signed = false} = {}) {
+function build(t, {environment = {}, signed = false} = {}) {
  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-consumer-build-'));
  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
- const options = parseBuildArgs(argv);
- const env = buildEnv({PATH: process.env.PATH, ...environment}, options);
- const consumer = consumerBuildOptions(options, env, root);
+ const env = buildEnv({PATH: process.env.PATH, ...environment});
+ const consumer = consumerBuildOptions(env, root);
  const calls = [], seen = [];
  const outputs = path.join(root, 'android/app/build/outputs');
  const write = (relative, value) => {
@@ -27,7 +26,7 @@ function build(t, argv, {environment = {}, signed = false} = {}) {
  const run = (command, args, opts) => {
   calls.push({command, args, cwd: opts.cwd, env: opts.env});
   if (command === './gradlew') for (const task of args) {
-   const match = /^:app:assemble(Standalone|Launcher)(Debug|Release|DebugAndroidTest)$/.exec(task);
+   const match = /^:app:assemble(Launcher)(Debug|Release|DebugAndroidTest)$/.exec(task);
    if (!match) continue;
    const variant = match[1].toLowerCase();
    if (match[2] === 'Debug') write(`apk/${variant}/debug/app-${variant}-debug.apk`, `${variant}:debug`);
@@ -50,70 +49,41 @@ function build(t, argv, {environment = {}, signed = false} = {}) {
 
 const gradleCalls = calls => calls.filter(call => call.command === './gradlew');
 
-test('a distribution build assembles the four APKs and instrumentation, lints and verifies them flag-off', t => {
- const f = build(t, []);
+test('a build assembles the launcher APKs and instrumentation, lints and verifies them flag-off', t => {
+ const f = build(t, {environment: {ELIZA_DEV_ALLOW_TEST_MOCKS: '1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: '1'}});
  const [gradle] = gradleCalls(f.calls);
  assert.equal(gradleCalls(f.calls).length, 1);
  assert.equal(gradle.cwd, path.join(f.root, 'android'));
  assert.equal(gradle.env.ELIZA_DEV_ALLOW_TEST_MOCKS, undefined);
- assert.deepEqual(gradle.args, ['--no-daemon', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0', '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=0',
-  ':app:assembleStandaloneDebug', ':app:assembleLauncherDebug', ':app:assembleStandaloneRelease', ':app:assembleLauncherRelease',
-  ':app:assembleStandaloneDebugAndroidTest', ':app:assembleLauncherDebugAndroidTest', ':app:lint']);
+ assert.equal(gradle.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS, undefined);
+ assert.deepEqual(gradle.args, ['--no-daemon', ':app:assembleLauncherDebug', ':app:assembleLauncherRelease', ':app:assembleLauncherDebugAndroidTest', ':app:lint']);
  assert.equal(f.output, path.join(f.root, 'artifacts'));
  assert.deepEqual(fs.readdirSync(f.output).sort(), ['apk-manifest.json', 'build-config.json', 'instrumentation', 'launcher-debug.apk',
-  'launcher-release-unsigned.apk', 'mapping', 'standalone-debug.apk', 'standalone-release-unsigned.apk']);
- assert.deepEqual(fs.readdirSync(path.join(f.output, 'instrumentation')).sort(), ['launcher-androidTest.apk', 'standalone-androidTest.apk']);
- assert.deepEqual(fs.readdirSync(path.join(f.output, 'mapping')).sort(), ['launcher-release-mapping.txt', 'standalone-release-mapping.txt']);
- // The verifier ran once, after this build's four APKs and its record were in place.
+  'launcher-release-unsigned.apk', 'mapping']);
+ assert.deepEqual(fs.readdirSync(path.join(f.output, 'instrumentation')).sort(), ['launcher-androidTest.apk']);
+ assert.deepEqual(fs.readdirSync(path.join(f.output, 'mapping')).sort(), ['launcher-release-mapping.txt']);
+ // The verifier ran once, after this build's APKs and its record were in place.
  assert.deepEqual(f.calls.filter(call => call.command === 'bun').map(call => call.args), [['scripts/verify-apks.ts']]);
  assert.equal(f.seen.length, 1);
- assert.deepEqual(f.seen[0].apks, ['launcher-debug.apk', 'launcher-release-unsigned.apk', 'standalone-debug.apk', 'standalone-release-unsigned.apk']);
+ assert.deepEqual(f.seen[0].apks, ['launcher-debug.apk', 'launcher-release-unsigned.apk']);
  const {createdAt, ...record} = f.seen[0].record;
  assert.ok(!Number.isNaN(Date.parse(createdAt)));
  const updateChannel={kind:'public',manifestUrlSha256:createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
  assert.deepEqual(record, {testMocks: false, runtimeProfile: 'native', updateChannel, mapsProvider: 'cloud', signingRequested: false, versionOverride: {code: null, name: null}});
- assert.deepEqual(f.result.files.map(file => path.basename(file)), ['standalone-debug.apk', 'standalone-release-unsigned.apk', 'launcher-debug.apk', 'launcher-release-unsigned.apk']);
+ assert.deepEqual(f.result.files.map(file => path.basename(file)), ['launcher-debug.apk', 'launcher-release-unsigned.apk']);
 });
 
-test('a test-mocks build keeps its instrumentation beside its APKs, skips lint and is verified as test mocks', t => {
- const f = build(t, ['--test-mocks']);
- const [gradle] = gradleCalls(f.calls);
- assert.equal(gradle.env.ELIZA_DEV_ALLOW_TEST_MOCKS, '1');
- assert.ok(gradle.args.includes('-PELIZA_DEV_ALLOW_TEST_MOCKS=1'));
- assert.ok(!gradle.args.includes(':app:lint'));
- assert.equal(f.output, path.join(f.root, 'artifacts/test-mocks'));
- assert.deepEqual(fs.readdirSync(f.output).filter(name => name.endsWith('-androidTest.apk')).sort(), ['launcher-androidTest.apk', 'standalone-androidTest.apk']);
- assert.equal(fs.existsSync(path.join(f.output, 'instrumentation')), false);
- assert.deepEqual(f.calls.filter(call => call.command === 'bun').map(call => call.args), [['scripts/verify-apks.ts', '--test-mocks']]);
- assert.equal(f.seen[0].record.testMocks, true);
- assert.equal(f.seen[0].record.mapsProvider, 'cloud');
- const regional = build(t, ['--test-mocks'], {environment: {VITE_MAPS_BASE_URL: 'http://127.0.0.1:8787'}});
- assert.equal(regional.seen[0].record.mapsProvider, 'regional-gateway');
-});
-
-test('the one-profile distribution, unpackaged and skipped-instrumentation builds carry their selection to Gradle, the record and the verifier', t => {
- const cloud = build(t, [], {environment: {VITE_MAPS_BASE_URL: 'https://maps.example.test', ELIZAOS_VERSION_CODE: '41', ELIZAOS_VERSION_NAME: '1.4.1'}});
- assert.deepEqual(gradleCalls(cloud.calls)[0].args.slice(0, 3), ['--no-daemon', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0', '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=0']);
- assert.deepEqual(cloud.calls.filter(call => call.command === 'bun').map(call => call.args), [['scripts/verify-apks.ts']]);
- assert.equal(cloud.seen[0].record.runtimeProfile, 'native');assert.equal('localEmbeddings' in cloud.seen[0].record, false);
- // The regional gateway variable is read only by test-mocks renderers.
- assert.equal(cloud.seen[0].record.mapsProvider, 'cloud');
- assert.deepEqual(cloud.seen[0].record.versionOverride, {code: '41', name: '1.4.1'});
- const developer = build(t, ['--allow-unpackaged-runtime', '--skip-instrumentation']);
- const args = gradleCalls(developer.calls)[0].args;
- assert.ok(args.includes('-PELIZA_ALLOW_UNPACKAGED_RUNTIME=1'));
- assert.equal(args.some(task => task.endsWith('AndroidTest')), false);
- assert.equal(fs.existsSync(path.join(developer.output, 'instrumentation')), false);
- assert.deepEqual(developer.calls.filter(call => call.command === 'bun').map(call => call.args), [['scripts/verify-apks.ts', '--allow-unpackaged-runtime']]);
+test('a version override reaches the build record', t => {
+ const f = build(t, {environment: {ELIZAOS_VERSION_CODE: '41', ELIZAOS_VERSION_NAME: '1.4.1'}});
+ assert.deepEqual(f.seen[0].record.versionOverride, {code: '41', name: '1.4.1'});
 });
 
 test('release signing names come from the host descriptor: a signed release keeps its name, an unsigned one with every name set fails', t => {
- const signed = build(t, [], {environment: SIGNING, signed: true});
- assert.ok(fs.existsSync(path.join(signed.output, 'standalone-release.apk')));
+ const signed = build(t, {environment: SIGNING, signed: true});
  assert.ok(fs.existsSync(path.join(signed.output, 'launcher-release.apk')));
  assert.equal(signed.seen[0].record.signingRequested, true);
  // Only names reach the record and Gradle arguments; values stay in the environment.
  assert.equal(JSON.stringify(signed.seen[0].record).includes('value-of-'), false);
  assert.equal(gradleCalls(signed.calls)[0].args.some(arg => arg.includes('value-of-')), false);
- assert.throws(() => build(t, [], {environment: SIGNING, signed: false}), new RegExp(`${SIGNING_ENV.join(', ')} are set but Gradle produced an unsigned standalone release`));
+ assert.throws(() => build(t, {environment: SIGNING, signed: false}), new RegExp(`${SIGNING_ENV.join(', ')} are set but Gradle produced an unsigned launcher release`));
 });

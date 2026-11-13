@@ -14,8 +14,8 @@ module ChatDock {
     ghost: bool, ghostLabel: str,
     // Effects of the current gesture: detent changes and voice starts, late clicks included.
     effects: int, clickThrough: bool, ignored: int,
-    // Home's bar was pulled down to the pill.
-    dismissed: bool
+    // The last settled drag pulled Home's bar down, and the bar stayed.
+    barKept: bool
   }
   var s: State
 
@@ -30,14 +30,16 @@ module ChatDock {
   pure val NoDrag: Drag = { active: false, mode: "", view: "", moved: false, tap: "none" }
 
   pure def rest(view: str): str = if (view == PillView) "hidden" else "input"
-  /// Where a released chat goes; the bool is whether the released height is remembered.
-  pure def release(mode: str, direction: str, zone: str, flick: bool): (str, bool) =
+  /// Where a released chat goes; the bool is whether the released height is remembered. Home
+  /// always keeps its bar: every collapse there settles on the input bar, never on the pill.
+  pure def release(mode: str, direction: str, zone: str, flick: bool, home: bool): (str, bool) =
+    val collapse = if (home) "input" else "hidden"
     if (mode == "sheet" or mode == "full")
-      if (flick) (if (direction == "up") "full" else "hidden", false)
-      else if (zone == "floor") ("hidden", false)
+      if (flick) (if (direction == "up") "full" else collapse, false)
+      else if (zone == "floor") (collapse, false)
       else if (zone == "top") ("full", false)
       else ("sheet", true)
-    else if (direction == "down") ("hidden", false)
+    else if (direction == "down") (collapse, false)
     else if (zone == "top") ("full", false)
     else ("sheet", not(flick) and zone != "floor")
   pure def swallowed(v: State): bool = v.swallowAge < Window
@@ -50,12 +52,10 @@ module ChatDock {
     else v
   pure def changed(before: State, after: State): int =
     if (before.chat != after.chat or before.voice != after.voice) 1 else 0
-  pure def settled(v: State): State =
-    { ...v, dismissed: v.dismissed and v.view == "" and v.chat == "hidden" }
 
   action init = s' = { view: "", chat: "input", voice: false, drag: NoDrag, remembered: false,
     swallowAge: Window, dragAge: Window, ghost: false, ghostLabel: "none", effects: 0,
-    clickThrough: false, ignored: 0, dismissed: false }
+    clickThrough: false, ignored: 0, barKept: false }
 
   /// A fresh press is a deliberate action: it lifts the suppression left by the last gesture.
   action down(label: str): bool = all { not(s.drag.active), not(s.voice), label.in(Handles),
@@ -63,23 +63,23 @@ module ChatDock {
     label == "open" or label == "talk" implies s.chat == "hidden" or s.chat == "input",
     label == "resize" implies s.chat == "sheet",
     s' = { ...s, drag: { active: true, mode: s.chat, view: s.view, moved: false, tap: label },
-      swallowAge: Window, ghost: false, ghostLabel: "none", effects: 0 } }
+      swallowAge: Window, ghost: false, ghostLabel: "none", effects: 0, barKept: false } }
   action move = all { s.drag.active, s' = { ...s, drag: { ...s.drag, moved: true } } }
   /// Release without movement runs the pressed control once and stamps the suppression window.
   action tap = all { s.drag.active, not(s.drag.moved),
-    val acted = settled(activate({ ...s, drag: NoDrag }, s.drag.tap))
+    val acted = activate({ ...s, drag: NoDrag }, s.drag.tap)
     s' = if (s.drag.tap == "none") { ...acted, ghost: false }
       else { ...acted, swallowAge: 0, ghost: true, ghostLabel: s.drag.tap, effects: s.effects + changed(s, acted) } }
   /// A moved drag settles in one detent. An open chat collapses to its surface's rest; only the
-  /// bar itself is dismissed to the pill.
+  /// bar itself is dismissed to the pill, and Home's bar is not: pulled down, it stays.
   action settle(direction: str, zone: str, flick: bool, over: str): bool = all {
     s.drag.active, s.drag.moved, direction.in(Set("up", "down")), zone.in(Set("floor", "middle", "top")),
     over.in(Controls),
     val collapsed = s.drag.mode == "input" or s.drag.mode == "hidden"
-    val target = release(s.drag.mode, direction, zone, flick)
+    val target = release(s.drag.mode, direction, zone, flick, s.view == "")
     val chat = if (target._1 == "hidden" and not(collapsed)) rest(s.view) else target._1
     val after = { ...s, drag: NoDrag, chat: chat, remembered: s.remembered or target._2,
-      dismissed: chat == "hidden" and s.view == "" and (s.dismissed or s.drag.mode == "input") }
+      barKept: s.view == "" and s.drag.mode == "input" and direction == "down" }
     s' = { ...after, swallowAge: 0, dragAge: 0, ghost: over != "none", ghostLabel: over,
       effects: s.effects + changed(s, after) } }
   /// Too little travel, a resize, blur, a hidden page or a shell change under the finger ends
@@ -89,17 +89,19 @@ module ChatDock {
   /// The platform's click for the finished gesture, delivered inside the window.
   action lateClick = all { s.ghost, not(s.drag.active), swallowed(s),
     val passes = s.ghostLabel == "toolbar" and s.dragAge >= Window
-    val acted = settled(activate(s, s.ghostLabel))
+    val acted = activate(s, s.ghostLabel)
     s' = if (passes) { ...acted, ghost: false, effects: s.effects + changed(s, acted), clickThrough: changed(s, acted) > 0 }
       else { ...s, ghost: false, ignored: if (s.ignored < 3) s.ignored + 1 else 3 } }
   /// A keyboard activation or a deliberate tap on the toolbar size button after the window.
   action sizeButton = all { not(s.drag.active), not(s.ghost), s.chat == "sheet" or s.chat == "full",
     s' = { ...activate(s, "toolbar"), effects: 1 } }
+  /// Closing retires a held drag; a moved one still suppresses its click.
   action closeChat = all { not(s.ghost), s.chat == "sheet" or s.chat == "full",
-    s' = settled({ ...s, drag: NoDrag, chat: rest(s.view), effects: 1 }) }
+    s' = { ...s, drag: NoDrag, chat: rest(s.view), effects: 1,
+      swallowAge: if (s.drag.moved) 0 else s.swallowAge, dragAge: if (s.drag.moved) 0 else s.dragAge } }
   /// Navigation and voice change the shell under a held finger: the drag is retired.
   action navigate(view: str): bool = all { view.in(Surfaces), view != s.view,
-    s' = { ...s, view: view, chat: rest(view), dismissed: false,
+    s' = { ...s, view: view, chat: rest(view), barKept: false,
       drag: NoDrag, swallowAge: if (s.drag.moved) 0 else s.swallowAge, dragAge: if (s.drag.moved) 0 else s.dragAge } }
   action voiceEnds = all { s.voice, s' = { ...s, voice: false } }
   action tick = s' = { ...s, swallowAge: if (s.swallowAge < Window) s.swallowAge + 1 else Window,
@@ -120,15 +122,18 @@ module ChatDock {
   val NoClickThrough = not(s.clickThrough)
   /// A held drag was started in the detent, surface and voice state the shell still shows.
   val DragMatchesShell = s.drag.active implies s.drag.mode == s.chat and s.drag.view == s.view and not(s.voice)
-  /// Home rests on its bar; it shows the pill only after the bar was pulled down.
-  val HomeRest = s.view == "" and s.chat == "hidden" implies s.dismissed
+  /// Home always keeps its chat bar: while Home is shown the bar is never hidden to the pill.
+  val HomeKeepsBar = s.view == "" implies s.chat != "hidden"
+  /// A downward pull on Home's bar leaves Home on that bar.
+  val KeptBarIsHomeBar = s.barKept implies s.view == "" and s.chat == "input"
   /// A pending click is always inside the suppression window of the gesture that owes it.
   val GhostInsideWindow = s.ghost implies swallowed(s) or s.drag.active
-  val ValidDetent = s.chat.in(Modes) and (s.dismissed implies s.view == "" and s.chat == "hidden")
-  val safety = OneEffectPerGesture and NoClickThrough and DragMatchesShell and HomeRest and
-    GhostInsideWindow and ValidDetent
+  val ValidDetent = s.chat.in(Modes)
+  val safety = OneEffectPerGesture and NoClickThrough and DragMatchesShell and HomeKeepsBar and
+    KeptBarIsHomeBar and GhostInsideWindow and ValidDetent
 
-  val HomePillWitness = s.view == "" and s.chat == "hidden"
+  val HomeBarKeptWitness = s.barKept and s.swallowAge == 0
+  val BarViewPillWitness = s.view == BarView and s.chat == "hidden"
   val SwallowedClickWitness = s.ignored > 0
   val RememberedHeightWitness = s.remembered and s.chat == "sheet"
   val FlickDismissWitness = s.view == PillView and s.chat == "hidden" and s.swallowAge == 0 and s.effects == 1
@@ -139,8 +144,23 @@ module ChatDock {
     .then(lateClick).expect(s.chat == "sheet" and not(s.voice) and s.ignored == 1 and safety)
   run tapOpensOnceTest = init.then(down("open")).then(tap).expect(s.chat == "sheet" and s.effects == 1)
     .then(lateClick).expect(s.chat == "sheet" and s.effects == 1 and safety)
-  run homeBarPullsDownToPillTest = init.then(down("none")).then(move).then(settle("down", "floor", false, "none"))
-    .expect(s.view == "" and s.chat == "hidden" and s.dismissed and safety)
+  // Home's bar pulled or flicked down stays the bar, and the gesture changes nothing.
+  run homeBarPulledDownStaysTest = init.then(down("none")).then(move).then(settle("down", "floor", false, "none"))
+    .expect(s.view == "" and s.chat == "input" and s.barKept and s.effects == 0 and safety)
+    .then(down("none")).then(move).then(settle("down", "floor", true, "none"))
+    .expect(s.view == "" and s.chat == "input" and s.barKept and safety)
+  // Home's open sheet flicked down, or closed, lands on the bar.
+  run homeSheetCollapsesToBarTest = init.then(down("open")).then(tap).then(tick).then(tick)
+    .then(down("none")).then(move).then(settle("down", "middle", true, "none"))
+    .expect(s.view == "" and s.chat == "input" and safety)
+    .then(tick).then(tick).then(down("open")).then(tap).then(tick).then(tick).then(closeChat)
+    .expect(s.view == "" and s.chat == "input" and safety)
+  // Off Home the bar still dismisses to the pill, and the pill's Type control brings it back.
+  run barViewStillDismissesTest = init.then(navigate(BarView)).then(down("none")).then(move)
+    .then(settle("down", "floor", false, "none"))
+    .expect(s.view == BarView and s.chat == "hidden" and not(s.barKept) and safety)
+    .then(tick).then(tick).then(down("type")).then(tap).expect(s.chat == "input" and safety)
+    .then(navigate("")).expect(s.chat == "input" and safety)
   run openChatCollapsesToRestTest = init.then(down("open")).then(tap).then(tick).then(tick)
     .then(down("none")).then(move).then(settle("down", "floor", true, "none"))
     .expect(s.chat == "input" and safety)

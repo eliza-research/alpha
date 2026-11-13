@@ -2,7 +2,7 @@
 /**
  * Write the one-tap update manifest from a verified release.
  *
- *   bun scripts/publish-update-manifest.ts --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]
+ *   bun scripts/publish-update-manifest.ts --variant launcher [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]
  *
  * Phones install whatever alpha-update-stable.json names, so it is written only for a release row of
  * the verify-apks manifest that is distributable, signed and signed by android/release-signer.json, and
@@ -25,7 +25,7 @@ import type { ApkVariant } from "./apk.ts";
 export { MANIFEST_NAME };
 // parseUpdateManifest's UPDATE_MAX_BYTES: phones silently drop a manifest naming a larger APK.
 const UPDATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
-const USAGE = "Usage: bun scripts/publish-update-manifest.ts --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]";
+const USAGE = "Usage: bun scripts/publish-update-manifest.ts --variant launcher [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]";
 
 function parseArgs(argv: readonly string[]) {
   const options: {variant: string | null; apkManifest: string; outDir: string; notes: string | null} = {
@@ -37,7 +37,7 @@ function parseArgs(argv: readonly string[]) {
     if (!key || argv[i + 1] === undefined || argv[i + 1].startsWith("--")) return null;
     options[key] = argv[++i];
   }
-  if (options.variant !== "launcher" && options.variant !== "standalone") return null;
+  if (options.variant !== "launcher") return null;
   const variant: ApkVariant = options.variant;
   return { ...options, variant };
 }

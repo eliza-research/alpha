@@ -9,7 +9,7 @@
  * (installed on the pilot units or otherwise distributed), never before: the recorded release itself
  * is refused by provisioning and verify-apks from then on.
  *
- * Both release rows of the verify-apks manifest (standalone and launcher) must still be admissible
+ * The launcher release row of the verify-apks manifest must still be admissible
  * against the committed descriptor exactly as provisioning admits them (scripts/provision-unit.ts
  * admitUnitApk: the APK file matches its row, signed by the recorded certificate, an advancing
  * versionCode, flag-off, packaged runtime, qualified speech, no unresolved blocker), and both must
@@ -23,7 +23,6 @@ import { RELEASE_SIGNER_FILE, readReleaseSigner } from "./build-android.ts";
 import { admitUnitApk, readUnitApkManifest } from "./provision-unit.ts";
 import type {ReleaseSigner} from "./build-android.ts";
 
-export const VARIANTS = Object.freeze(["standalone", "launcher"] as const);
 const USAGE = "Usage: bun scripts/record-release.ts --apk-manifest FILE [--date YYYY-MM-DD] [--write]";
 
 /** A real YYYY-MM-DD day: Date.parse alone rolls 2026-02-30 over to March 2. */
@@ -52,18 +51,12 @@ function parseArgs(argv: readonly string[]) {
  */
 export function releaseToRecord(manifestFile: string, descriptor: ReleaseSigner) {
   const problems: string[] = [];
-  const admitted: ReturnType<typeof admitUnitApk>[] = [];
   let manifest: ReturnType<typeof readUnitApkManifest>;
   try { manifest = readUnitApkManifest(manifestFile); }
   catch (error) { return {release: null, problems: [error instanceof Error ? error.message : String(error)]}; }
-  for (const variant of VARIANTS) {
-    try { admitted.push(admitUnitApk(manifestFile, { variant, build: "release" }, { descriptor, manifest })); }
-    catch (error) { problems.push(`${variant}: ${error instanceof Error ? error.message : String(error)}`); }
-  }
-  if (problems.length) return { release: null, problems };
-  const [first, second] = admitted;
-  if (first.versionCode !== second.versionCode || first.versionName !== second.versionName)
-    problems.push(`the standalone (${first.versionName} ${first.versionCode}) and launcher (${second.versionName} ${second.versionCode}) releases are different versions`);
+  let first: ReturnType<typeof admitUnitApk>;
+  try { first = admitUnitApk(manifestFile, { variant: "launcher", build: "release" }, { descriptor, manifest }); }
+  catch (error) { return { release: null, problems: [`launcher: ${error instanceof Error ? error.message : String(error)}`] }; }
   if (first.versionCode === null || !Number.isInteger(first.versionCode) || first.versionCode < 1) problems.push(`versionCode ${JSON.stringify(first.versionCode)} is not a positive integer`);
   if (typeof first.versionName !== "string" || !first.versionName.trim()) problems.push("the release has no versionName");
   return problems.length || first.versionCode === null || first.versionName === null ? { release: null, problems } : { release: { versionCode: first.versionCode, versionName: first.versionName }, problems };

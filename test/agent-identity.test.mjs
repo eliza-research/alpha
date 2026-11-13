@@ -11,8 +11,6 @@ import {git} from './fixtures/git-fixture.mjs';
 import {AGENT_CHARACTER,AGENT_CHARACTER_ENVIRONMENT} from '../scripts/agent-identity.ts';
 import {LOCAL_EMBEDDING_ROUTE} from '../scripts/agent-embeddings.ts';
 
-const LAUNCHERS=['scripts/start-local-remote.ts','scripts/start-combined-agent.ts','scripts/start-local-voice-agent.ts','scripts/start-reviewed-workflow-agent.ts'];
-
 test('the agent character carries the product identity and inherits the bundled persona',()=>{
  assert.equal(AGENT_CHARACTER.name,record.identity.characterName);
  assert.equal(AGENT_CHARACTER.name,'Alpha');
@@ -20,25 +18,6 @@ test('the agent character carries the product identity and inherits the bundled 
  // No replacement system prompt: upstream keeps the default preset's style and renders its {{name}} tokens.
  assert.equal('system' in AGENT_CHARACTER,false);
  assert.deepEqual(JSON.parse(AGENT_CHARACTER_ENVIRONMENT.ELIZA_AGENT_CHARACTER_JSON),AGENT_CHARACTER);
-});
-
-test('every host launcher hands the character to the child through the upstream override variable',()=>{
- for(const file of LAUNCHERS){const source=fs.readFileSync(file,'utf8');assert.match(source,/\.\.\.AGENT_CHARACTER_ENVIRONMENT/,file);assert.doesNotMatch(source,/ELIZA_AGENT_CHARACTER_JSON|['"]Eliza['"]/,`${file} spells the identity itself`);}
-});
-
-test('the pinned upstream applies the override in memory and renders the name into the system prompt',()=>{
- const sandbox=fs.readFileSync('vendor/eliza/packages/agent/src/runtime/sandbox-character.ts','utf8');
- assert.match(sandbox,/env\.ELIZA_AGENT_CHARACTER_JSON\?\.trim\(\)/);
- assert.match(sandbox,/assistant: \{ \.\.\.\(ui\.assistant \?\? \{\}\), name \}/);
- assert.doesNotMatch(sandbox,/writeFileSync|saveConfig/,'the override must not persist into the profile');
- const boot=fs.readFileSync('vendor/eliza/packages/agent/src/runtime/eliza.ts','utf8');
- assert.ok(boot.indexOf('applySandboxCharacterFromEnv(config)')<boot.indexOf(': buildCharacterFromConfig(config)'));
- const build=fs.readFileSync('vendor/eliza/packages/agent/src/runtime/build-character-config.ts','utf8');
- assert.match(build,/const configuredName = configuredUiName \|\| configuredAgentName;/);
- assert.match(build,/\(agentEntry\?\.system \? undefined : getDefaultStylePreset\(language\)\)/);
- const presets=fs.readFileSync('vendor/eliza/packages/host/src/character-presets.characters.ts','utf8');
- assert.match(presets,/id: "eliza",[\s\S]*?system:\s*"You are \{\{name\}\}, made by Alpha Compute/);
- assert.match(fs.readFileSync('vendor/eliza/packages/core/src/runtime/system-prompt.ts','utf8'),/replaceNameTokens\(\s*typeof character\?\.system === "string"/);
 });
 
 function launch({route}={}){

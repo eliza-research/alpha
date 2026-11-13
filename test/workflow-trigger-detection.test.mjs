@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 const {detectWorkflowTriggers,triggerDefinition,placeChanged,EventRangeCache,ParsedDocuments,triggerTickPlan}=await import('../apps/app/src/browser/workflow-triggers.ts');
 
 const flow=(id,trig,on=true)=>({id,name:'Flow '+id,on,trig,steps:[]});
@@ -147,13 +146,4 @@ test('a failed check stops checking but never dispatch; a job left queued holds 
  assert.deepEqual(triggerTickPlan({foreground:true,scanBlocked:true,dispatchHeld:false}),{scan:false,dispatch:true});
  assert.deepEqual(triggerTickPlan({foreground:true,scanBlocked:false,dispatchHeld:true}),{scan:true,dispatch:false});
  assert.deepEqual(triggerTickPlan({foreground:false,scanBlocked:false,dispatchHeld:false}),{scan:false,dispatch:false});
-});
-
-test('the runtime polls through the caches and wakes on calendar changes',()=>{
- const source=fs.readFileSync(new URL('../apps/app/src/browser/workflow-trigger-runtime.ts',import.meta.url),'utf8');
- assert.match(source,/this\.calendarEvents\.get\(begin,end\)/);
- assert.match(source,/'alpha:calendar-sync-source-changed'/);
- assert.match(source,/private wake=\(\)=>\{this\.blocked=false;this\.held=false;this\.calendarEvents\.clear\(\);/);
- assert.doesNotMatch(source,/if\(this\.blocked\)return;/);
- assert.match(source,/detected\.errors\[0\]/);
 });

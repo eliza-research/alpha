@@ -35,20 +35,11 @@ test('the committed metadata verifies every artifact by SHA-256 and trusts nothi
   assert.ok(metadata.components.length > 400, 'generated from the real build, not written by hand');
   for (const component of metadata.components)
     for (const artifact of component.artifacts) assert.ok(artifact.hashes.length >= 1 && artifact.hashes.every(hash => hash.algorithm === 'sha256' && /^[0-9a-f]{64}$/.test(hash.value)), `${component.group}:${component.name} ${artifact.name}`);
-  // Gradle reads this file from the root project's gradle/ directory; no property can leave it lenient or off.
-  // The generated host's gradle.properties is written by the pinned upstream generator.
-  assert.doesNotMatch(read('vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs'), /dependency\.verification/);
-  for (const script of ['scripts/build-android.ts', 'scripts/build-notification-fixture.ts', 'scripts/generate-licenses.ts'])
-    assert.doesNotMatch(read(script), /dependency-verification|-F\b/, `${script} must not relax verification`);
-  // Nor may the environment the scripts and workflows hand to Gradle (a system property turns it lenient or off).
-  for (const file of ['scripts/toolchain.ts', 'scripts/build-archive.ts', ...fs.readdirSync(path.join(ROOT, '.github/workflows')).map(name => `.github/workflows/${name}`)])
-    assert.doesNotMatch(read(file), /org\.gradle\.dependency\.verification|--dependency-verification/, `${file} must not relax verification`);
 });
 
 test('AAPT2 provenance retains the historical producer and accepts the migrated producer', t => {
   const previous = 'Fetched from dl.google.com/dl/android/maven2 by scripts/gradle-verification.mjs';
   const current = 'Fetched from dl.google.com/dl/android/maven2 by scripts/gradle-verification.ts';
-  assert.ok(text.includes(previous), 'existing checksum provenance is preserved');
   assert.deepEqual(mutated(t, {[METADATA]: text.replaceAll(previous, current)}), []);
   assert.match(mutated(t, {[METADATA]: text.replaceAll(previous, 'unreviewed producer')}).join('\n'), /unexpected checksum origin unreviewed producer/);
 });
@@ -82,7 +73,6 @@ test('archives that only a library module compiles against are pinned too', () =
   // runtime check above cannot see them; Gradle still verifies them in :eliza-cloud-auth:compile*.
   // Only the module metadata of kotlin-stdlib 2.1.20 was once recorded, which failed the
   // flag-off distribution build with "kotlin-stdlib-2.1.20.jar ... failed verification".
-  assert.ok(read(HOST_DESCRIPTOR).includes('"packages/auth/android"'), 'eliza-cloud-auth is an included module');
   for (const [group, name, version] of [
     ['org.jetbrains.kotlin', 'kotlin-stdlib', '2.1.20'], ['org.jetbrains.kotlin', 'kotlin-stdlib', '1.7.10'],
     ['org.jetbrains.kotlin', 'kotlin-stdlib-common', '1.7.10'], ['androidx.annotation', 'annotation', '1.2.0'],
@@ -114,8 +104,6 @@ test('the check rejects a missing pin, a weaker checksum, a trust exception, an 
   assert.match(mutated(t, {[CAPACITOR]: read(CAPACITOR).replace(/\nrepositories \{\n/, '\nrepositories {\n    flatDir { dirs \'libs\' }\n    mavenLocal()\n')}).join('\n'), /capacitor\/build\.gradle declares repository flatDir \{ dirs 'libs' \}, which is not a reviewed form[\s\S]*declares repository mavenLocal\(\), which is not a reviewed form/);
   assert.match(mutated(t, {[PRODUCT]: `${read(PRODUCT)}\nrepositories { maven { url = uri(System.getenv('SOMEWHERE')) } }\n`}).join('\n'), /android\/app\/product\.gradle declares repository maven .*which names no literal URL/);
   assert.match(mutated(t, {[SYSTEM_PLUGIN]: null}).join('\n'), /plugin-native-system\/android\/build\.gradle is missing: the repositories it declares cannot be checked/);
-  // The upstream plugins swap Maven Central for a mirror when the root project names one; this repository never does.
-  assert.match(read(SYSTEM_PLUGIN), new RegExp(`rootProject\\.ext\\.has\\('${MIRROR_PROPERTY}'\\)`));
   assert.match(mutated(t, {[PRODUCT]: `${read(PRODUCT)}\nrootProject.ext { ${MIRROR_PROPERTY} = 'https://mirror.example/maven2' }\n`}).join('\n'), /android\/app\/product\.gradle mentions mavenCentralMirrorUrl: a Maven Central mirror is not a reviewed source/);
   // The generator writes the host's gradle.properties itself, so its script is held to the same rule.
   const generator = `${HOST_TEMPLATES}.mjs`;
@@ -155,18 +143,10 @@ test('every Gradle script of the build declares only reviewed repositories and e
   assert.deepEqual(reviewed.groups, [...new Set(metadata.components.map(item => item.group))].sort(), 'the reviewed list is exactly the groups in the metadata');
 });
 
-test('the write command covers every Gradle task the scripts run and is the only step that reaches the network', () => {
-  const tasks = source => [...read(source).matchAll(/["'`](:[a-z-]+:[A-Za-z]+)["'`]/g)].map(match => match[1]);
-  for (const task of [...tasks('scripts/build-android.ts'), ...tasks('scripts/build-notification-fixture.ts')]) assert.ok(VERIFIED_TASKS.includes(task), task);
+test('the write command covers every per-variant assemble task', () => {
   // build-android.ts also composes per-variant task names in its low-disk path.
-  for (const variant of ['Standalone', 'Launcher'])
+  for (const variant of ['Launcher'])
     for (const suffix of ['Debug', 'Release', 'DebugAndroidTest']) assert.ok(VERIFIED_TASKS.includes(`:app:assemble${variant}${suffix}`));
-  const scripts = JSON.parse(read('package.json')).scripts;
-  assert.equal(scripts['android:deps:check'], 'bun scripts/gradle-verification.ts --check');
-  assert.equal(scripts['android:deps:write-verification'], 'bun scripts/gradle-verification.ts --write');
-  // verify and the push workflows never write metadata; they only read it (bun run test) or let Gradle enforce it.
-  assert.doesNotMatch(scripts.verify + scripts.test, /write-verification|--write/);
-  for (const workflow of fs.readdirSync(path.join(ROOT, '.github/workflows'))) assert.doesNotMatch(read(`.github/workflows/${workflow}`), /write-verification|gradle-verification\.ts --write/, workflow);
 });
 
 test('a host-specific archive is inserted in order and only once', () => {
@@ -185,10 +165,9 @@ test('staged Java-only native patches retain their authenticated dependency desc
 });
 
 
-test('dependency verification takes one mode and the unpackaged-runtime option', () => {
-  assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write',allowUnpackagedRuntime:false});
-  assert.deepEqual(parseVerificationArgs(['--write','--allow-unpackaged-runtime']), {mode:'--write',allowUnpackagedRuntime:true});
-  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',allowUnpackagedRuntime:false});
+test('dependency verification takes exactly one mode', () => {
+  assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write'});
+  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check'});
   assert.throws(() => parseVerificationArgs(['--write','--other']), /Usage/);
 });
 

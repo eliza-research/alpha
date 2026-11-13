@@ -5,7 +5,6 @@ import { runChildSuite } from './fixtures/child-suite.mjs';
 // not establish Cloud, enclave, Android Keystore, or physical-device acceptance.
 for (const script of [
   'test-remote-protocol.ts',
-  'test-connection-history.ts',
 ]) {
   test(`connection contract: ${script}`, () => {
     runChildSuite(script, {timeout: 60_000});

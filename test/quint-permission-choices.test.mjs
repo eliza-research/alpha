@@ -8,7 +8,7 @@ test('actual permission coordinator traces refine the bounded walkthrough model'
   assert.equal(result.receipt.passed, true);
   assert.equal(result.receipt.inputsUnchanged, true);
   assert.equal(result.receipt.driverInputsBound, true);
-  assert.equal(result.receipt.observedFields.length, 40);
+  assert.equal(result.receipt.observedFields.length, 41);
   for (const name of ['credential-change-held-completion', 'credential-change-held-rejection',
     'stale-completion-keeps-newer-busy', 'stale-rejection-keeps-newer-busy',
     'same-turn-owner-completion', 'same-turn-owner-rejection',
@@ -18,7 +18,11 @@ test('actual permission coordinator traces refine the bounded walkthrough model'
     'cancelled-flow-can-recheck-before-old-native-return', 'closing-review-retires-held-request',
     'same-turn-setup-revision-fences-completion', 'browser-four-ready-completion-and-remount',
     'native-location-and-photo-disclosures', 'signed-out-explicit-reopen',
-    'direct-provider-setup-without-cloud-account', 'same-credential-environment-change-fences-callback']) {
+    'direct-provider-setup-without-cloud-account', 'same-credential-environment-change-fences-callback',
+    'image-all-ready-completes-without-prompts', 'browser-image-header-does-not-auto-continue', 'image-denied-row-stops-auto-continuation',
+    'image-unknown-read-stops-without-a-grant', 'image-checking-timeout-offers-skip-and-retires-late-read',
+    'image-owner-suspension-defers-ready-rows', 'image-overlays-defer-ready-rows',
+    'image-failed-progress-reloads-from-durable-marker', 'image-settings-review-keeps-every-row-explicit']) {
     assert(result.scenarios.some(scenario => scenario.name === name), name);
   }
   assert(result.obligations.length > 0);

@@ -80,6 +80,9 @@ public class LiveCaptureController {
  public void pause(java.util.Collection<LiveCaptureAdmission.Ticket> waiting){if(!waiting.isEmpty())throw new AssertionError("Unexercised live permission reservation");}
  public void shutdown(){}
  public void interrupt(String reason){}
+ // This port cannot acquire a live capture: reserve/start/capture all fail below.
+ // Only the no-live-owner drain is represented; real release is checked by NativeLiveCapture.
+ public void interruptAndDrain(String reason,Runnable drained,Runnable refused){interrupt(reason);drained.run();}
  public void onWorker(Runnable work,Runnable refused){throw new AssertionError("Unexercised live capture");}
  public LiveCaptureAdmission.Ticket reserve(String id,long epoch){throw new AssertionError("Unexercised live admission");}
  public boolean current(LiveCaptureAdmission.Ticket ticket){throw new AssertionError("Unexercised live admission");}

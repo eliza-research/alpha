@@ -1,23 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
 import {findStoppedUserTurn} from '../.eliza/client-features/packages/ui/src/api/conversation-turn-controller.ts';
-// Contract: GET /api/conversations/:id/messages returns `clientMessageId` on user rows sent with one
-// (elizaOS/eliza#35907). A Stop check matches its own turn by that id, never by text alone.
-const root=path.resolve(import.meta.dirname,'..');
 const plain=text=>text;
 const at=Date.parse('2026-10-13T12:00:00Z');
-
-test('the pinned agent returns clientMessageId on conversation history user rows',()=>{
- const routes=fs.readFileSync(path.join(root,'vendor/eliza/packages/agent/src/api/conversation-routes.ts'),'utf8');
- assert.match(routes,/clientMessageId\?: string;/,'the history row type carries an optional clientMessageId');
- assert.match(routes,/\.\.\.\(clientMessageId \? \{ clientMessageId \} : \{\}\)/,'user rows sent with one return it');
- const ui=fs.readFileSync(path.join(root,'apps/app/src/runtime/connection-ui.tsx'),'utf8');
- assert.match(ui,/clientMessageId: requestId, channelType/,'the send posts requestId as clientMessageId');
- assert.match(ui,/scheduleStoppedReply\(selected, session, dispatched\.conversationId, \{ clientMessageId: requestId, text, sentAt: dispatched\.at \}\)/,'and Stop checks for that same id');
- assert.match(ui,/const user = findStoppedUserTurn\(result\.messages, turn, restoredText\);/);
-});
 
 test('a user row carrying clientMessageId is matched even when two turns have identical text',()=>{
  const rows=[

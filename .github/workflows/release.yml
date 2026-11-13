@@ -1,0 +1,532 @@
+name: Release
+run-name: Release ${{ inputs.operation }} on ${{ inputs.workflow_commit }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: signing-proof, sign or publish
+        required: true
+        type: choice
+        options:
+          - signing-proof
+          - sign
+          - publish
+      workflow_commit:
+        description: Exact reviewed workflow commit on Alpha main
+        required: true
+        type: string
+      plan:
+        description: "sign: reviewed producer and private delivery plan as JSON; publish: reviewed alpha-qualified-app-update/v1 JSON (no credentials)"
+        required: false
+        type: string
+      fixture_generator_sha256:
+        description: "signing-proof: SHA-256 of the reviewed code-free fixture generator"
+        required: false
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: ${{ inputs.operation == 'publish' && 'alpha-app-stable-publication' || 'release-signing' }}
+  cancel-in-progress: false
+
+jobs:
+  signing-proof:
+    if: github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.operation == 'signing-proof' && inputs.workflow_commit == github.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install Android signing tools
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: platforms;android-36 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - name: Generate and verify the closed APK fixtures
+        env:
+          WORKFLOW_COMMIT: ${{ inputs.workflow_commit }}
+          FIXTURE_GENERATOR_SHA256: ${{ inputs.fixture_generator_sha256 }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$WORKFLOW_COMMIT" = "$GITHUB_SHA"
+          test "$WORKFLOW_COMMIT" = "$(git rev-parse HEAD)"
+          [[ "$FIXTURE_GENERATOR_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          printf '%s  scripts/ci/build-app-signing-fixtures.py\n' "$FIXTURE_GENERATOR_SHA256" | sha256sum --check --strict
+          bun -e 'if (!/^[0-9a-f]{64}$/.test(require("./android/release-signer.json").signerSha256)) process.exit(1)'
+          python3 scripts/ci/build-app-signing-fixtures.py "$ANDROID_HOME" artifacts
+          sha256sum artifacts/launcher-release-unsigned.apk > artifacts/unsigned-fixtures.sha256
+      - name: Sign the launcher fixture using the protected app keystore
+        env:
+          ALPHA_APP_RELEASE_KEYSTORE_B64: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_B64 }}
+          ALPHA_APP_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          ulimit -c 0
+          sha256sum --check --strict artifacts/unsigned-fixtures.sha256
+          test "$(stat -f -c %T /dev/shm)" = tmpfs
+          key_directory=$(mktemp -d /dev/shm/alpha-app-signing.XXXXXX)
+          trap 'rm -rf -- "$key_directory"' EXIT
+          trap 'exit 1' HUP INT TERM
+          keystore="$key_directory/app.p12"
+          printf '%s' "$ALPHA_APP_RELEASE_KEYSTORE_B64" | base64 --decode > "$keystore"
+          unset ALPHA_APP_RELEASE_KEYSTORE_B64
+          expected=$(bun -p 'require("./android/release-signer.json").signerSha256')
+          actual=$(keytool -exportcert -storetype PKCS12 -keystore "$keystore" -alias alpha-release \
+            -storepass:env ALPHA_APP_RELEASE_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)
+          test "$actual" = "$expected"
+          for variant in launcher; do
+            bun scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release \
+              --apk "artifacts/$variant-release-unsigned.apk" --out "artifacts/$variant-release.apk"
+          done
+      - name: Record fixture signing proof without exporting APKs
+        env:
+          FIXTURE_GENERATOR_SHA256: ${{ inputs.fixture_generator_sha256 }}
+        run: |
+          bun - <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { createReadStream, readFileSync, statSync, writeFileSync } from 'node:fs';
+          const read = file => JSON.parse(readFileSync(file, 'utf8'));
+          const packages = read('artifacts/fixture-packages.json');
+          const unsigned = Object.fromEntries(readFileSync('artifacts/unsigned-fixtures.sha256', 'utf8').trim().split('\n')
+            .map(line => line.split('  ').reverse()));
+          const artifacts = [];
+          for (const variant of ['launcher']) {
+            const file = `artifacts/${variant}-release.apk`;
+            const hash = createHash('sha256');
+            for await (const bytes of createReadStream(file)) hash.update(bytes);
+            artifacts.push({ variant, packageName: packages[variant],
+              unsignedSha256: unsigned[`artifacts/${variant}-release-unsigned.apk`],
+              signedSha256: hash.digest('hex'), sizeBytes: statSync(file).size });
+          }
+          const result = {
+            evidence: 'closed-app-signing-fixtures',
+            alphaCommit: process.env.GITHUB_SHA,
+            sdkCommit: read('upstream.lock.json').commit,
+            fixtureGeneratorSha256: process.env.FIXTURE_GENERATOR_SHA256,
+            signerSha256: read('android/release-signer.json').signerSha256,
+            artifacts,
+            applicationApksSigned: false,
+            distributionQualified: false,
+            signedApksExported: false,
+          };
+          writeFileSync('artifacts/app-signing-proof.json', JSON.stringify(result, null, 2) + '\n');
+          NODE
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-signing-proof
+          if-no-files-found: error
+          path: artifacts/app-signing-proof.json
+
+  admit-signing:
+    if: github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.operation == 'sign' && inputs.workflow_commit == github.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      plan_sha256: ${{ steps.verify.outputs.plan_sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ fromJSON(inputs.plan).producerKind == 'github-main-candidate' }}
+        with:
+          ref: ${{ fromJSON(inputs.plan).alphaCommit }}
+          fetch-depth: 0
+          submodules: true
+          path: qualified-producer
+          persist-credentials: false
+      - name: Admit only the reviewed native producer archive
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNING_PLAN: ${{ inputs.plan }}
+        run: bash scripts/ci/verify-cloud-signing-input.sh
+
+  sign:
+    needs: admit-signing
+    if: needs.admit-signing.result == 'success' && needs.admit-signing.outputs.plan_sha256 != '' && inputs.operation == 'sign' && inputs.workflow_commit == github.sha
+    runs-on: ubuntu-24.04
+    environment: release
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ fromJSON(inputs.plan).alphaCommit }}
+          submodules: true
+          path: qualified-producer
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: platforms;android-36 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - name: Authenticate private artifact transport
+        if: ${{ fromJSON(inputs.plan).privateStorage != null }}
+        id: private_storage_auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: alpha-aosp-lab-20261024
+          workload_identity_provider: projects/484320254111/locations/global/workloadIdentityPools/alpha-github-release/providers/github
+          service_account: alpha-release-artifacts@alpha-aosp-lab-20261024.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_lifetime: 3600s
+          access_token_scopes: https://www.googleapis.com/auth/devstorage.read_write
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Reverify and stage the admitted APKs and delivery recipient
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNING_PLAN: ${{ inputs.plan }}
+          EXPECTED_PLAN: ${{ needs.admit-signing.outputs.plan_sha256 }}
+          RECIPIENT_PUBLIC_CERTIFICATE: ${{ vars.ALPHA_SIGNED_APK_RECIPIENT_CERT_PEM }}
+          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ steps.private_storage_auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(printf '%s' "$SIGNING_PLAN" | sha256sum | cut -d ' ' -f 1)" = "$EXPECTED_PLAN"
+          work=$(mktemp -d "$RUNNER_TEMP/alpha-protected-signing.XXXXXX")
+          printf '%s' "$SIGNING_PLAN" > "$work/pins.json"
+          if jq -e '.privateStorage != null' "$work/pins.json" >/dev/null; then
+            python3 -B scripts/ci/private-apk-storage.py validate "$work/pins.json"
+          else
+            jq -e '
+              .encryptedArtifactApproved == true and
+              (.recipientCertificateSHA256 | type == "string" and test("^[0-9a-f]{64}$"))
+            ' "$work/pins.json" >/dev/null
+            printf '%s\n' "$RECIPIENT_PUBLIC_CERTIFICATE" > "$work/recipient.pem"
+            actual_recipient=$(openssl x509 -in "$work/recipient.pem" -outform DER | sha256sum | cut -d ' ' -f 1)
+            test "$actual_recipient" = "$(jq -r .recipientCertificateSHA256 "$work/pins.json")"
+            openssl x509 -in "$work/recipient.pem" -noout -checkend 0
+          fi
+          bash scripts/ci/verify-cloud-signing-input.sh --stage "$work/unsigned"
+          for variant in launcher; do
+            "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$work/unsigned/$variant-release-unsigned.apk"
+          done
+          test "$(git -C qualified-producer rev-parse HEAD)" = "$(jq -r .alphaCommit "$work/pins.json")"
+          unset ALPHA_PRIVATE_STORAGE_TOKEN GH_TOKEN RECIPIENT_PUBLIC_CERTIFICATE
+          ALPHA_ADMITTED_APK_DIR="$work/unsigned" bun - <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { execFileSync } from 'node:child_process';
+          import { pathToFileURL } from 'node:url';
+          const sourceRoot = path.resolve('qualified-producer');
+          const { manifestFacts, parseXmlTree } = await import(pathToFileURL(path.join(sourceRoot, 'scripts/apk.ts')).href);
+          const { apkUpdateChannel, validateUpdateChannel } = await import(pathToFileURL(path.join(sourceRoot, 'scripts/update-channel.ts')).href);
+          const directory = process.env.ALPHA_ADMITTED_APK_DIR;
+          const plan = JSON.parse(fs.readFileSync(path.join(directory, '..', 'pins.json'), 'utf8'));
+          const expectedPackage = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'app.config.json'), 'utf8')).appId;
+          const channel = validateUpdateChannel(plan.updateChannel);
+          const aapt = path.join(process.env.ANDROID_HOME, 'build-tools', '36.0.0', 'aapt');
+          for (const variant of ['launcher']) {
+            const apk = path.join(directory, variant + '-release-unsigned.apk');
+            const badging = execFileSync(aapt, ['dump', 'badging', apk], { encoding: 'utf8' });
+            const xml = execFileSync(aapt, ['dump', 'xmltree', apk, 'AndroidManifest.xml'], { encoding: 'utf8' });
+            const facts = manifestFacts(xml, badging);
+            const compiledChannel = apkUpdateChannel(parseXmlTree(xml));
+            if (compiledChannel.kind !== channel.kind || compiledChannel.manifestUrlSha256 !== channel.manifestUrlSha256)
+              throw new Error('The ' + variant + ' APK compiled update channel differs from the reviewed signing plan');
+            if (facts.packageName !== expectedPackage || facts.versionCode !== plan.versionCode ||
+                xml.includes('android.intent.category.HOME') !== (variant === 'launcher'))
+              throw new Error('The ' + variant + ' APK manifest differs from the reviewed release plan');
+          }
+          NODE
+          if jq -e '.rotation != null' "$work/pins.json" >/dev/null; then
+            jq -e '
+              (.rotation.lineageBase64 | type == "string" and length > 0 and length <= 90000) and
+              (.rotation.lineageSHA256 | type == "string" and test("^[0-9a-f]{64}$"))
+            ' "$work/pins.json" >/dev/null
+            jq -r .rotation.lineageBase64 "$work/pins.json" | base64 --decode > "$work/rotation.lineage"
+            export ALPHA_ROTATION_WORK="$work"
+            bun - <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { approvedSigningRotation } from './scripts/sign-release-apks.ts';
+          const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
+          const work = process.env.ALPHA_ROTATION_WORK;
+          const plan = read(path.join(work, 'pins.json'));
+          const descriptor = read('android/release-signer.json');
+          const lineage = path.join(work, 'rotation.lineage');
+          const variants = ['launcher'];
+          const targets = variants.map(variant => ({input: path.join(work, 'unsigned', variant + '-release-unsigned.apk')}));
+          const approval = await approvedSigningRotation(descriptor, lineage, targets);
+          if (approval.lineageSha256 !== plan.rotation.lineageSHA256 || approval.versionCode !== plan.versionCode ||
+              variants.some(v => approval.unsignedApkSHA256[v] !== plan.unsignedApkSHA256[v]))
+            throw new Error('Rotation record differs from the admitted release plan');
+          const buildTools = path.join(process.env.ANDROID_HOME, 'build-tools/36.0.0');
+          const digest = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          const jar = path.join(buildTools, 'lib/apksigner.jar');
+          if (digest(path.join(buildTools, 'apksigner')) !== approval.apksignerSha256 ||
+              digest(jar) !== approval.verifierJarSha256) throw new Error('Rotation tool differs from reviewed pins');
+          execFileSync(path.join(process.env.JAVA_HOME, 'bin/java'), [
+            '-cp', jar, 'scripts/owner/VerifyApkRotation.java', '--reviewed-lineage', lineage,
+            approval.lineageSha256, approval.previousSignerSha256, descriptor.signerSha256,
+            ...(approval.preserveSignaturePermissions ? ["--preserve-signature-permissions"] : []),
+          ], { stdio: 'inherit', env: { PATH: process.env.PATH, JAVA_HOME: process.env.JAVA_HOME } });
+          NODE
+          fi
+          echo "ALPHA_PROTECTED_WORK=$work" >> "$GITHUB_ENV"
+      - name: Sign exact APKs with the protected app signer
+        env:
+          ALPHA_APP_RELEASE_KEYSTORE_B64: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_B64 }}
+          ALPHA_APP_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          ulimit -c 0
+          for variant in launcher; do
+            digest=$(jq -r --arg variant "$variant" '.unsignedApkSHA256[$variant]' "$ALPHA_PROTECTED_WORK/pins.json")
+            printf '%s  %s\n' "$digest" "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk" | sha256sum --check --strict
+          done
+          test "$(stat -f -c %T /dev/shm)" = tmpfs
+          key_directory=$(mktemp -d /dev/shm/alpha-app-signing.XXXXXX)
+          trap 'rm -rf -- "$key_directory"' EXIT
+          trap 'exit 1' HUP INT TERM
+          keystore="$key_directory/app.p12"
+          printf '%s' "$ALPHA_APP_RELEASE_KEYSTORE_B64" | base64 --decode > "$keystore"
+          unset ALPHA_APP_RELEASE_KEYSTORE_B64
+          expected=$(bun -p 'require("./android/release-signer.json").signerSha256')
+          actual=$(keytool -exportcert -storetype PKCS12 -keystore "$keystore" -alias alpha-release \
+            -storepass:env ALPHA_APP_RELEASE_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)
+          test "$actual" = "$expected"
+          mkdir -m 700 "$ALPHA_PROTECTED_WORK/signed"
+          rotation=()
+          if [[ -f "$ALPHA_PROTECTED_WORK/rotation.lineage" ]]; then
+            rotation=(--rotation-lineage "$ALPHA_PROTECTED_WORK/rotation.lineage")
+          fi
+          for variant in launcher; do
+            bun scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release "${rotation[@]}" \
+              --apk "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk" \
+              --out "$ALPHA_PROTECTED_WORK/signed/$variant-release.apk"
+          done
+      - name: Verify signed outputs and deliver privately
+        env:
+          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ steps.private_storage_auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$ALPHA_PROTECTED_WORK"
+          expected=$(bun -p 'require("./android/release-signer.json").signerSha256')
+          for variant in launcher; do
+            apk="$work/signed/$variant-release.apk"
+            "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"
+            result=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs \
+              --min-sdk-version 29 --max-sdk-version 37 "$apk")
+            actual=$(printf '%s\n' "$result" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            test "$actual" = "$expected"
+            test "$(printf '%s\n' "$result" | grep -cE '^Signer #[0-9]+ certificate SHA-256 digest: ')" -eq 1
+          done
+          (cd "$work/signed" && sha256sum launcher-release.apk > signed.sha256)
+          cp "$work/pins.json" "$work/signed/signing-plan.json"
+          printf '%s\n' "$expected" > "$work/signed/production-signer.sha256"
+          rotation=()
+          if [[ -f "$work/rotation.lineage" ]]; then
+            cp "$work/rotation.lineage" "$work/signed/rotation.lineage"
+            rotation=(rotation.lineage)
+          fi
+          tar -C "$work/signed" -cf "$work/bundle.tar" launcher-release.apk \
+            signed.sha256 signing-plan.json production-signer.sha256 "${rotation[@]}"
+          mkdir -m 700 "$work/delivery"
+          if jq -e '.privateStorage != null' "$work/pins.json" >/dev/null; then
+            python3 -B scripts/ci/private-apk-storage.py upload "$work/pins.json" "$work/bundle.tar" > "$work/delivery/private-storage-receipt.json"
+          else
+            python3 -B scripts/ci/seal-signed-apks.py "$work/bundle.tar" \
+              "$(sha256sum "$work/bundle.tar" | cut -d ' ' -f 1)" "$work/recipient.pem" \
+              "$(jq -r .recipientCertificateSHA256 "$work/pins.json")" "$work/delivery/signed-apks.cms" \
+              > "$work/delivery/envelope.json"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: private-cloud-apk-delivery-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            ${{ env.ALPHA_PROTECTED_WORK }}/delivery/signed-apks.cms
+            ${{ env.ALPHA_PROTECTED_WORK }}/delivery/envelope.json
+            ${{ env.ALPHA_PROTECTED_WORK }}/delivery/private-storage-receipt.json
+
+  admit-publication:
+    if: github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.operation == 'publish' && inputs.workflow_commit == github.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      qualification_sha256: ${{ steps.admit.outputs.qualification_sha256 }}
+      source_commit: ${{ steps.admit.outputs.source_commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Admit reviewed record and exact signing-run receipt without private access
+        id: admit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALIFICATION: ${{ inputs.plan }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$QUALIFICATION" > "$RUNNER_TEMP/qualification.json"
+          unset QUALIFICATION
+          python3 -B scripts/ci/qualified-app-update.py "$RUNNER_TEMP/qualification.json" \
+            --workflow-commit "$GITHUB_SHA" --work "$RUNNER_TEMP/qualification-admission"
+
+  publish:
+    needs: admit-publication
+    if: needs.admit-publication.result == 'success' && needs.admit-publication.outputs.qualification_sha256 != '' && inputs.operation == 'publish' && inputs.workflow_commit == github.sha
+    environment: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit-publication.outputs.source_commit }}
+          submodules: true
+          path: qualified-product
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: platforms;android-36 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - name: Authenticate private artifact transport
+        id: private_storage_auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: alpha-aosp-lab-20261024
+          workload_identity_provider: projects/484320254111/locations/global/workloadIdentityPools/alpha-github-release/providers/github
+          service_account: alpha-release-artifacts@alpha-aosp-lab-20261024.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_lifetime: 3600s
+          access_token_scopes: https://www.googleapis.com/auth/devstorage.read_write
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Re-admit and restore the exact producer and signed private object
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALIFICATION: ${{ inputs.plan }}
+          EXPECTED_QUALIFICATION: ${{ needs.admit-publication.outputs.qualification_sha256 }}
+          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ steps.private_storage_auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          test "$(printf '%s' "$QUALIFICATION" | sha256sum | cut -d ' ' -f 1)" = "$EXPECTED_QUALIFICATION"
+          printf '%s' "$QUALIFICATION" > "$RUNNER_TEMP/qualification.json"
+          unset QUALIFICATION
+          python3 -B scripts/ci/qualified-app-update.py "$RUNNER_TEMP/qualification.json" \
+            --workflow-commit "$GITHUB_SHA" --work "$RUNNER_TEMP/qualified-stage" \
+            --product "$GITHUB_WORKSPACE/qualified-product"
+          # Publication uses the same reviewed signing policy as the protected release.
+          # It can postdate the unsigned producer when an installed app rotates keys.
+          cp android/release-signer.json qualified-product/android/release-signer.json
+      - name: Install locked verifier dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Install the product's locked verifier dependencies without lifecycle scripts
+        working-directory: qualified-product
+        run: |
+          test -f bun.lock
+          bun install --frozen-lockfile --ignore-scripts
+      - name: Project the exact product's reviewed client sources
+        working-directory: qualified-product
+        run: bun run upstream:prepare-client
+      - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
+        working-directory: qualified-product
+        run: |
+          set -euo pipefail
+          test "$(jq -er '.runtimeProfile' "$RUNNER_TEMP/qualified-stage/qualification-summary.json")" = native
+          bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+      - name: Require the qualified launcher release row before publication
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          evidence = Path(os.environ['RUNNER_TEMP']) / 'qualified-stage'
+          summary = json.loads((evidence / 'qualification-summary.json').read_text())
+          manifest_bytes = Path('qualified-product/artifacts/apk-manifest.json').read_bytes()
+          manifest = json.loads(manifest_bytes)
+          assert manifest['testMocks'] is False and manifest['runtimeProfile'] == summary['runtimeProfile'] == 'native' and 'localEmbeddings' not in manifest
+          assert manifest['updateChannel']['kind'] == 'public'
+          rows = [row for row in manifest['results'] if row['mode'] == 'release']
+          assert len(rows) == 1 and {row['variant'] for row in rows} == {'launcher'}
+          for row in rows:
+              assert row['distributable'] is True and row['versionCode'] == summary['versionCode']
+              assert row['packageName'] == 'ai.alphacompute.alphaphone'
+              assert row['sha256'] == summary['signedApkSHA256'][row['variant']]
+              assert row['cloudVoice']['evidenceSha256'] == summary['voiceEvidenceSHA256']
+          with (evidence / 'apk-manifest.json').open('xb') as receipt:
+              receipt.write(manifest_bytes)
+          PY
+      - name: Publish launcher APK first and anonymously verify the stable pointer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: qualified-product
+        run: bun scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: qualified-launcher-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/qualified-stage/qualification-summary.json
+            ${{ runner.temp }}/qualified-stage/apk-manifest.json
+            qualified-product/artifacts/app-update-delivery.json

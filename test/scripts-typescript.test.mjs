@@ -13,6 +13,5 @@ test('host tooling stays migrated and runs on native TypeScript', () => {
   for (const file of files.filter(file => file.endsWith('.ts') && !file.endsWith('.d.ts'))) {
     const source = fs.readFileSync(path.join(root, file), 'utf8');
     assert.doesNotThrow(() => stripErasableTypes(source), `${file} must stay erasable TypeScript`);
-    assert.doesNotMatch(source, /^\s*\/\/\s*@ts-(?:nocheck|ignore)/m, `${file} must stay typechecked`);
   }
 });

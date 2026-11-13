@@ -109,14 +109,13 @@ test('the inputs report marks the pinned checkout missing for an older pin', t =
 
 test('the preflight entry point exits 2 for an older pin', t => {
   const f = fixture(t, {pin: 'B', mainPin: 'C'});
-  for (const file of ['android-build-preflight.ts', 'voice-host.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'mobile-uuid-adapter.ts', 'android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'toolchain.ts', 'copy-file-clone.ts', 'core-state-patch.ts', 'build-policy-source.ts']) {
+  for (const file of ['android-build-preflight.ts', 'voice-host.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'native-build-inputs.ts', 'android-stage-voice-models.ts', 'mobile-uuid-adapter.ts', 'android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'toolchain.ts', 'copy-file-clone.ts', 'core-state-patch.ts', 'build-policy-source.ts']) {
     fs.mkdirSync(path.join(f.root, 'scripts'), {recursive: true});
     fs.copyFileSync(path.join(ROOT, 'scripts', file), path.join(f.root, 'scripts', file));
   }
-  // The unpackaged developer lane may omit the on-device voice outputs, so only the pin is in question here.
   fs.mkdirSync(path.join(f.root, 'android/voice-host'), {recursive: true});
   fs.copyFileSync(path.join(ROOT, 'android/voice-host/qualified-voice-host.json'), path.join(f.root, 'android/voice-host/qualified-voice-host.json'));
-  const run = () => spawnSync(process.execPath, ['scripts/android-build-preflight.ts', '--before-prepare', '--allow-unpackaged-runtime'], {cwd: f.root, encoding: 'utf8'});
+  const run = () => spawnSync(process.execPath, ['scripts/android-build-preflight.ts'], {cwd: f.root, encoding: 'utf8'});
   const result = run();
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stderr, /Android build prerequisites are missing:\n  - upstream\.lock\.json pins .* older than or diverged/);

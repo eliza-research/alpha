@@ -1,7 +1,8 @@
 # Alpha Phone — working PRD
 
-Version: 0.6, 2026-11-10. Product scope incorporates the owner's 32 answers,
-October 29 amendments (P-57 to P-76), and November 10 P-60 routing amendment.
+Version: 0.7, 2026-11-13. Product scope incorporates the owner's 32 answers,
+October 29 amendments (P-57 to P-76), November 10 P-60 routing amendment,
+and the November 13 decision to ship one launcher APK.
 This is a requirements document, not acceptance evidence.
 
 ## Outcome
@@ -16,7 +17,7 @@ Keep prototype styling and identity separate from real data/capability claims.
 1. Unlock the actual OS, open Alpha/installed apps and retain task context.
 2. Start the local agent; sign in only for managed services. No hosted-agent pairing.
 3. Dictate into an editable draft, or enter an interruptible voice conversation (Cloud speech when signed in to Cloud or a Cartesia key is installed; local speech otherwise and as the fallback, P-60).
-4. Use Gmail in either distribution and Phone/Contacts/SMS only on the AOSP image.
+4. Use Gmail in the launcher APK and Phone/Contacts/SMS only on the AOSP image.
 5. Query the full permitted photo library and control Maps through agent tools.
 6. Inspect and approve effects, recover from interruption and reset local Alpha data.
 
@@ -25,7 +26,7 @@ Keep prototype styling and identity separate from real data/capability claims.
 | ID | Requirement | Priority / acceptance |
 | --- | --- | --- |
 | AP-01 | Distinct branded Home, library and assistant with independent identity | P0; real navigation, app discovery, one Android shade and launcher Home swipe |
-| AP-02 | Standalone and launcher packaging under `ai.alphacompute.alphaphone`; Alpha AOSP capability distinct from flavor | P0; four APKs, offline shell, stock settings/recovery and no AOSP-only tools in standalone |
+| AP-02 | One launcher product/flavor under `ai.alphacompute.alphaphone`, with the resident runtime and on-device voice always packaged; Alpha AOSP capability distinct from the APK | P0; one release APK, separate debug/instrumentation artifacts, offline shell, stock settings/recovery and no AOSP-only tools on stock Android |
 | AP-03 | Owner-bound Eliza Cloud service sign-in and subscription entitlement | P0; local-only agent, no provisioning/pairing, expiry/revoke/isolation and no per-turn billing network hop; catalog v1 and its per-minute limits (P-62); "Membership & credits" off the resident agent (P-59) |
 | AP-04 | Resident orchestration, state, tool approvals and powered-on scheduling | P0; hosted text inference disclosed, no hosted agent, missed occurrences after a 30-minute window (P-75) and no duplicate effects |
 | AP-05 | Compact/full assistant, keyboard, navigation and responsive continuity | P0; drafts, focus, scroll and tasks survive layout and lifecycle changes |
@@ -36,7 +37,7 @@ Keep prototype styling and identity separate from real data/capability claims.
 | AP-10 | Browser, camera, full permitted Photos, Cloud Maps on Google Maps Platform (P-64), Notes and Files | P1; normal third-party cookies allowed, ephemeral private tabs, eligible autofill, native secure camera, agent Maps controls with Google attribution and caching terms (P-64), local speech always available (P-60), canonical Notes records (P-59) with three-day Trash; no app-data import/export |
 | AP-11 | Resident workflows, approvals and run history | P1; bounded permissions, durable receipts, missed recovery, owner-return notices and no powered-off execution |
 | AP-12 | Settings, subscriptions, permissions, runtime speech route and availability (P-60), system shade and reset | P0; truthful state, responsive controls, no backup/import/export, confirmed private-data reset |
-| AP-13 | Wallet | Deferred: removed from MVP; views, native adapters and agent actions remain disabled in both distributions |
+| AP-13 | Wallet | Deferred: removed from MVP; views, native adapters and agent actions remain disabled on stock Android and the Alpha image |
 | AP-14 | Pixel 10a Android 17 image, signing, listening and unattended update/recovery (P-75) | Release gate; exact input/signer lock; release keys as GitHub Actions secrets for a CI signing job, certificates for Alpha Compute, first versionName 0.1.0 (P-58); Cuttlefish boot and physical hardware/OTA/user qualification separate; unlocked pilot units are not production-representative (P-70); Shaw release owner |
 | AP-15 | Accessibility and resilience across intentional responsive layouts | P0; large text, TalkBack, keyboard, rotation, process death, permission loss, offline and repeated HOME |
 

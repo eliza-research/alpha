@@ -4,10 +4,13 @@
 /// because the workflow has moved to another version, which the agent refuses. A retained change
 /// the agent holds no receipt for, on a workflow that keeps that version, may never have arrived:
 /// the owner can send that same request again, and the agent applies one request at most once.
+/// The phone acts on the workflow and the run history as it last read them: a run that started
+/// since is found by the agent, which refuses the change.
 module WorkflowLifecycleChange {
   type Lifecycle = {
     removed: bool, version: int, knownRemoved: bool, knownVersion: int,
-    ongoing: bool, interrupted: bool, review: bool, unknownReview: bool,
+    ongoing: bool, interrupted: bool, opened: bool, knownOngoing: bool, knownInterrupted: bool,
+    review: bool, unknownReview: bool,
     intent: bool, intentVersion: int, intentRemove: bool, busy: bool, stage: str,
     offer: bool, resendReview: bool, checked: bool,
     wire: int, wireId: int, wireVersion: int, wireRemove: bool, reply: str,
@@ -16,7 +19,8 @@ module WorkflowLifecycleChange {
   var s: Lifecycle
   action init = s' = {
     removed: false, version: 0, knownRemoved: false, knownVersion: 0,
-    ongoing: false, interrupted: false, review: false, unknownReview: false,
+    ongoing: false, interrupted: false, opened: true, knownOngoing: false, knownInterrupted: false,
+    review: false, unknownReview: false,
     intent: false, intentVersion: 0, intentRemove: false, busy: false, stage: "idle",
     offer: false, resendReview: false, checked: false,
     wire: 0, wireId: 0, wireVersion: 0, wireRemove: false, reply: "none",
@@ -25,16 +29,19 @@ module WorkflowLifecycleChange {
   pure def appliedThis(v: Lifecycle): bool = v.receipts.contains(v.admissions)
   pure def more(n: int): int = if (n < 2) n + 1 else 2
   pure def reread(v: Lifecycle): Lifecycle = { ...v, knownRemoved: v.removed, knownVersion: v.version }
+  /// The run history is read when the workflow is opened, after a refusal and after a cancellation.
+  pure def rereadRuns(v: Lifecycle): Lifecycle = { ...v, knownOngoing: v.ongoing, knownInterrupted: v.interrupted }
   pure def settled(v: Lifecycle): Lifecycle = { ...v, busy: false, stage: "idle", reply: "none" }
   pure def released(v: Lifecycle): Lifecycle =
     { ...reread(settled(v)), intent: false, offer: false, resendReview: false }
   /// The agent refuses a change while a run is unfinished, and one named against another version.
   pure def refusedNow(v: Lifecycle): bool = v.version != v.wireVersion or v.ongoing or v.interrupted
   /// The first tap shows the review. The second records the change and starts sending it.
-  /// Interrupted runs are reviewed and cancelled first; an ongoing run blocks the change.
+  /// Interrupted runs in the history on screen are reviewed and cancelled first; an ongoing run
+  /// there blocks the change.
   action lifecycleTap = all {
-    not(s.busy), not(s.intent), not(s.ongoing), s.admissions < 3,
-    if (s.interrupted)
+    s.opened, not(s.busy), not(s.intent), not(s.knownOngoing), s.admissions < 3,
+    if (s.knownInterrupted)
       if (not(s.unknownReview)) s' = { ...s, unknownReview: true, review: true }
       else s' = { ...s, unknownReview: false, review: false, busy: true, stage: "cancelling" }
     else if (not(s.review)) s' = { ...s, review: true }
@@ -44,7 +51,7 @@ module WorkflowLifecycleChange {
   }
   action cancelReply(stopped: bool): bool = all {
     s.busy, s.stage == "cancelling",
-    s' = { ...settled(s), interrupted: not(stopped) }
+    s' = rereadRuns(reread({ ...settled(s), interrupted: not(stopped) }))
   }
   /// A request of an earlier change still in flight names an older version or already has its
   /// receipt and can only be refused or answered, so the model keeps the newest request alone.
@@ -56,7 +63,7 @@ module WorkflowLifecycleChange {
   /// Leaving before the request is sent is a known non-change.
   action abortBeforeDispatch = all {
     s.busy, s.stage == "admitted",
-    s' = { ...settled(s), intent: false }
+    s' = { ...settled(s), intent: false, opened: false }
   }
   /// The agent applies a request once, for the version it names, and keeps its receipt.
   action serverApply = all {
@@ -88,10 +95,10 @@ module WorkflowLifecycleChange {
   /// sent again.
   action rejectedReply = all {
     s.busy, s.stage == "sent", s.reply == "rejected",
-    if (s.resends == 0) s' = released(s)
+    if (s.resends == 0) s' = rereadRuns(released(s))
     else if (appliedThis(s)) s' = { ...released(s), seen: true }
-    else if (s.version != s.intentVersion) s' = released(s)
-    else s' = { ...reread(settled(s)), offer: true }
+    else if (s.version != s.intentVersion) s' = rereadRuns(released(s))
+    else s' = { ...rereadRuns(reread(settled(s))), offer: true }
   }
   /// No answer arrived, or the app was hidden before one could.
   action unknownReply = all { s.busy, s.stage == "sent", s' = settled(s) }
@@ -101,8 +108,8 @@ module WorkflowLifecycleChange {
   /// request is offered for sending again.
   action refresh = all {
     not(s.busy),
-    val read = { ...reread(s), review: false, unknownReview: false, resendReview: false,
-      offer: false, checked: true }
+    val read = { ...rereadRuns(reread(s)), opened: true, review: false, unknownReview: false,
+      resendReview: false, offer: false, checked: true }
     if (not(s.intent)) s' = read
     else if (appliedThis(s)) s' = { ...read, intent: false, seen: true }
     else if (s.version != s.intentVersion) s' = { ...read, intent: false }
@@ -125,7 +132,7 @@ module WorkflowLifecycleChange {
       sent: more(s.sent), resends: more(s.resends), reply: "none" }
   }
   /// Leaving before the resend goes out keeps the entry: an earlier copy may have been sent.
-  action abortResend = all { s.busy, s.stage == "resending", s' = settled(s) }
+  action abortResend = all { s.busy, s.stage == "resending", s' = { ...settled(s), opened: false } }
   /// The workflow changes on the agent from elsewhere.
   action remoteEdit = all { s.version < 2, s' = { ...s, version: s.version + 1 } }
   /// A run with an unknown outcome blocks new runs until it is cancelled.
@@ -142,7 +149,7 @@ module WorkflowLifecycleChange {
   /// The app stops. What it knew about receipts is gone; the journal entry is not.
   action restart = all {
     s.busy or s.intent or s.review or s.checked,
-    s' = { ...settled(s), review: false, unknownReview: false,
+    s' = { ...settled(s), opened: false, review: false, unknownReview: false,
       offer: false, resendReview: false, checked: false }
   }
   action step = any {
@@ -163,6 +170,10 @@ module WorkflowLifecycleChange {
   val ResendNeedsOffer = s.resendReview implies s.offer and not(s.busy)
   val ReviewNeedsUnlocked = s.review implies not(s.intent) and not(s.busy)
   val UnknownReviewIsReview = s.unknownReview implies s.review and s.interrupted
+  /// Reviews and offers belong to a workflow that is open, and an interrupted run on screen is
+  /// one the agent still holds: only its confirmed cancellation clears it, and that is read back.
+  val ReviewNeedsOpenWorkflow = s.review or s.resendReview or s.offer implies s.opened
+  val KnownRunsWereRead = (s.knownInterrupted implies s.interrupted) and not(s.knownOngoing and s.knownInterrupted)
   val BusyStage = s.busy == (s.stage != "idle")
   val TypeOK = s.stage.in(Set("idle", "admitted", "sent", "resending", "cancelling"))
     and s.reply.in(Set("none", "ok", "rejected")) and s.version.in(0.to(2))
@@ -171,7 +182,7 @@ module WorkflowLifecycleChange {
   val safety = TypeOK and EverySendIsFirstOrReviewed and AppliedOncePerIntent
     and ReleasedRequestCannotApply and UnseenChangeStaysRetained and CheckedRetainedIsOffered
     and OfferIsForRetainedVersion and ResendNeedsOffer and ReviewNeedsUnlocked
-    and UnknownReviewIsReview and BusyStage
+    and UnknownReviewIsReview and ReviewNeedsOpenWorkflow and KnownRunsWereRead and BusyStage
   val AppliedUnconfirmedWitness = s.intent and appliedThis(s) and not(s.seen) and not(s.busy)
   val LateRequestReleasedWitness = s.wire > 0 and not(s.intent)
   /// The app stopped between the record and the send. The entry is retained until it is read.
@@ -180,6 +191,7 @@ module WorkflowLifecycleChange {
     and s.applications == 1
   val RefusedResendRetainedWitness = s.intent and s.offer and s.resends >= 1 and not(s.busy)
   val InterruptedReviewWitness = s.unknownReview and s.interrupted
+  val UnseenRunRefusedWitness = s.ongoing and not(s.knownOngoing) and s.reply == "rejected" and s.resends == 0
   val RemovedThenRestoredWitness = s.applications == 2 and not(s.removed) and not(s.intent)
   run reviewedRemovalTest = init.then(lifecycleTap).expect(s.review and not(s.intent))
     .then(lifecycleTap).then(dispatch).then(serverApply).then(successReply)
@@ -216,7 +228,7 @@ module WorkflowLifecycleChange {
   run refusedResendStaysRetainedTest = init.then(lifecycleTap).then(lifecycleTap)
     .then(dispatch).then(unknownReply).then(refresh).then(runStarts)
     .then(resendTap).then(resendTap).then(resendDispatch).then(serverReject).then(rejectedReply)
-    .expect(s.intent and s.offer and s.wire == 1 and safety)
+    .expect(s.intent and s.offer and s.wire == 1 and s.knownOngoing and safety)
     .then(runFinishes).then(serverApply)
     .expect(s.removed and s.intent and safety)
     .then(refresh).expect(not(s.intent) and s.seen and s.knownRemoved and safety)
@@ -240,7 +252,7 @@ module WorkflowLifecycleChange {
   run refusedChangeReleasesTest = init.then(lifecycleTap).then(lifecycleTap).then(remoteEdit)
     .then(dispatch).then(serverReject).then(rejectedReply)
     .expect(not(s.intent) and s.knownVersion == 1 and not(s.removed) and safety)
-  run interruptedRunsAreCancelledFirstTest = init.then(runStarts).then(runInterrupted)
+  run interruptedRunsAreCancelledFirstTest = init.then(runStarts).then(runInterrupted).then(refresh)
     .then(lifecycleTap).expect(s.unknownReview and not(s.intent) and safety)
     .then(lifecycleTap).then(cancelReply(true)).expect(not(s.interrupted) and not(s.intent) and safety)
     .then(lifecycleTap).then(lifecycleTap).expect(s.intent and s.stage == "admitted" and safety)
@@ -256,7 +268,16 @@ module WorkflowLifecycleChange {
     .then(dispatch).then(unknownReply).then(refresh).then(resendTap).then(resendTap)
     .then(resendDispatch).then(serverApply).expect(s.wire == 1 and safety)
     .then(serverApply.fail())
-  run ongoingRunBlocksRemovalTest = init.then(runStarts).expect(safety)
+  run ongoingRunBlocksRemovalTest = init.then(runStarts).then(refresh).expect(s.knownOngoing and safety)
+    .then(lifecycleTap.fail())
+  /// A run starts after the workflow was opened. The removal is reviewed, recorded and sent
+  /// against the history on screen; the agent refuses it and the phone then reads the run.
+  run unseenRunRefusedByAgentTest = init.then(runStarts).then(lifecycleTap).then(lifecycleTap)
+    .then(dispatch).then(serverReject).then(rejectedReply)
+    .expect(not(s.intent) and not(s.removed) and s.knownOngoing and s.applications == 0 and safety)
+    .then(lifecycleTap.fail())
+  /// After the app stops nothing can be changed until the workflow is opened again.
+  run restartNeedsOpenWorkflowTest = init.then(lifecycleTap).then(restart).expect(not(s.opened) and safety)
     .then(lifecycleTap.fail())
   run abortBeforeDispatchReleasesTest = init.then(lifecycleTap).then(lifecycleTap)
     .then(abortBeforeDispatch).expect(not(s.intent) and s.sent == 0 and s.wire == 0 and safety)

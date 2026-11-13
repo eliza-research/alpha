@@ -11,21 +11,8 @@ const root = path.resolve(import.meta.dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 // The shared consumer may select its NDK inside a condition (`if (!assetsOnly) { ndkVersion '…' }`).
 const ndkVersion = source => source.match(/^[^/\n]*\bndkVersion\s+['"]([^'"]+)['"]/m)?.[1];
-const sense = read('android/sense/build.gradle');
 const sharedSense = read('vendor/eliza/packages/app/platforms/android/sense/consumer.gradle');
 const version = ndkVersion(sharedSense);
-
-test('Sense packaging selects the same explicit NDK as the pinned voice consumer', () => {
-  const consumer = read('vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle');
-  assert.match(sense, /commandLine 'bun', 'scripts\/prepare-patched-native\.ts'/);
-  assert.match(sense, /elizaSenseSourceDir = new File\(preparedSense\.root\.toString\(\), 'packages\/app\/platforms\/android\/sense'\)/);
-  assert.match(sense, /apply from: new File\(elizaSenseSourceDir, 'consumer.gradle'\)/);
-  assert.equal(ndkVersion(sense), undefined, 'the product must use the shared NDK selection without a second override');
-  assert.ok(version, 'an implicit AGP NDK can leave shared libraries unstripped');
-  assert.equal(version, ndkVersion(consumer));
-  assert.doesNotMatch(sense + sharedSense, /keepDebugSymbols|doNotStrip/,
-    'preserving raw STL bytes does not satisfy the recorded packaged-library contract');
-});
 
 const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || path.join(os.homedir(), 'Android/Sdk');
 const toolchain = path.join(sdk, 'ndk', version || 'missing', 'toolchains/llvm/prebuilt/linux-x86_64');

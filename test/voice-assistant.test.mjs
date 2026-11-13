@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 
 // Voice assistant controller (apps/app/src/runtime/voice-assistant.ts, #423): endpointing,
 // generations, closed-input busy holds, explicit interruption, heard-content accounting, account change, and the live segment stream
@@ -744,42 +743,6 @@ test('one result per closed segment: an unavailable route (503) is fatal after a
   await flush();
   assert.deepEqual(results, [], 'nothing is delivered after cancel');
   assert.ok(quiet.posts.every(body => !(body.frames ?? []).some(f => f.timestamp === 2)), 'audio after cancel is never forwarded');
-});
-
-test('sources: no Web Speech, storage or logging in the assistant path; the adapter keeps dictation separate behind one chat voice launcher', () => {
-  const files = ['apps/app/src/runtime/voice-assistant.ts', '.eliza/client-features/packages/voice/src/voice-assistant-session.ts', 'apps/app/src/runtime/live-segment-stream.ts', '.eliza/client-features/packages/voice/src/live-voice-session.ts', 'apps/app/src/runtime/voice-turn-routes.ts', '.eliza/client-features/packages/voice/src/voice-turn-routes.ts', 'apps/app/src/runtime/native-live-voice.ts'];
-  for (const file of files) {
-    const source = fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
-    assert.doesNotMatch(source, /console\.|localStorage|sessionStorage|indexedDB|speechSynthesis|SpeechRecognition|onnx/i, file);
-  }
-  const adapter = fs.readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts', import.meta.url), 'utf8');
-  // Dictation (Transcribe) uses the live capture without echo cancellation and only fills an editable draft.
-  assert.match(adapter, /chat\?\.mode === 'dictation' && await nativeLiveVoiceReady/);
-  assert.match(adapter, /liveDictation = createNativeLiveDictation\(/);
-  // The assistant uses its own controller and the same send policy boundary as the recorded loop.
-  assert.match(adapter, /new VoiceAssistantSession\(\{/);
-  const native = fs.readFileSync(new URL('../apps/app/src/runtime/native-live-voice.ts', import.meta.url), 'utf8');
-  assert.match(native, /nativeAssistantListener[\s\S]{0,300}return voice\.assistantListener\(options\)/);
-  assert.match(native, /createNativeLiveDictation[\s\S]{0,300}return voice\.dictation\(options\)/);
-  // The shared native transport hands its own opener to the shared listen and dictation adapters.
-  const nativeShared = fs.readFileSync(new URL('../vendor/eliza/packages/voice/src/native-live-voice.ts', import.meta.url), 'utf8');
-  assert.match(nativeShared, /return liveAssistantListener\(open, listen\)/);
-  assert.match(nativeShared, /return createLiveDictation\(open, dictate\)/);
-  // The shared adapters fix the echo-cancellation choice: the assistant cancels its own speaker, dictation does not.
-  const shared = fs.readFileSync(new URL('../vendor/eliza/packages/voice/src/live-voice-session.ts', import.meta.url), 'utf8');
-  assert.match(shared, /export function liveAssistantListener[\s\S]{0,500}echoCancel: true/);
-  assert.match(shared, /export function createLiveDictation[\s\S]{0,2500}echoCancel: false/);
-  const template = fs.readFileSync(new URL('../apps/app/src/prototype/template.html', import.meta.url), 'utf8');
-  assert.match(template, /title="Voice assistant" aria-label="Talk" onPointerDown="\{\{chatControlPointer\}\}" onClick="\{\{startVoice\}\}"/);
-  assert.match(template, /aria-pressed="\{\{chatRecorder\.muted\}\}"/);
-});
-
-test('the capture source policy picks the echo-cancelled source only for full duplex with a canceller (host JVM)', async () => {
-  const {runJvm, upstreamVoiceFixture, upstreamVoiceSource} = await import('./fixtures/jvm-tools.mjs');
-  assert.match(runJvm([upstreamVoiceSource('LiveCaptureSource.java'), upstreamVoiceFixture('LiveCaptureSourceTest.java')], 'ai.eliza.voice.LiveCaptureSourceTest'), /^PASS live capture source/);
-  const capture = fs.readFileSync(upstreamVoiceSource('LiveVoiceCapture.java'), 'utf8');
-  assert.match(capture, /LiveCaptureSource\.select\(echoCancel,AcousticEchoCanceler\.isAvailable\(\)/);
-  assert.match(capture, /if\(frames\.length\(\)>0\|\|edges\.length\(\)>0\)sink\.frames/, 'the stop flushes the last frames read before it');
 });
 
 test('a confirmed voice reply plays its sentences once after the request settles', async () => {

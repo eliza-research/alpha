@@ -1,24 +1,26 @@
 #!/usr/bin/env bun
 /**
- * Fail fast, before web sync and Gradle, when an Android build input is missing.
+ * Prepare the source-bound native inputs, then fail before the long runtime preparation,
+ * web sync and Gradle when the pinned checkout or on-device voice outputs are unavailable.
+ * The normal build produces the native inputs automatically; only release signing needs
+ * human-supplied custody. Input readiness does not establish device qualification.
  *
- *   bun scripts/android-build-preflight.ts [--before-prepare] [--allow-unpackaged-runtime] [--test-mocks]
+ *   bun scripts/android-build-preflight.ts
  *   bun scripts/android-build-preflight.ts --report     (bun run android:build:inputs)
  *
- * build-android.ts runs the full check. `--before-prepare` checks only inputs that
- * android:build:local does not produce (the pinned checkout and the on-device voice outputs), so
- * that chain stops before the long runtime preparation instead of after it.
- * `--report` lists every input of the strict distribution build with its state and whether a
+ * android:build:local runs it first and build-android.ts runs it again for a plain
+ * `bun run android:build`. Everything the chain produces is verified where it is used: staging,
+ * the Gradle verify tasks and verify-apks.
+ * `--report` lists every input of the build with its state and whether a
  * script or a person supplies it. It reads files only, builds nothing and always exits 0.
  */
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {verifyEmbeddingHost} from './stage-embedding-host.ts';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.ts';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.ts';
-import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter.ts';
+import {readNativeBuildReceipt} from './native-build-inputs.ts';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
@@ -26,20 +28,12 @@ const FULL_CHAIN = 'bun run android:build:local';
 const VOICE_GUIDE = 'README.md';
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
-type VoiceHostVerifier = (root: string, options: {allowAbsentRuntime: boolean}) => {qualified: boolean};
-type EmbeddingHostVerifier = (root: string, options: {allowAbsentRuntime: boolean}) => unknown;
+type VoiceHostVerifier = (root: string) => {qualified: boolean};
 interface PinOptions {
   notes?: string[];
 }
 interface VoiceOptions {
-  allowUnpackagedRuntime?: boolean;
   voiceHost?: VoiceHostVerifier;
-}
-interface RuntimeOptions {
-  allowUnpackagedRuntime?: boolean;
-  testMocks?: boolean;
-  embeddingHost?: EmbeddingHostVerifier;
-  googleHost?: (root: string, preparedSource: string) => unknown;
 }
 interface InputReportOptions {
   env?: NodeJS.ProcessEnv;
@@ -115,8 +109,8 @@ export function mainPinProblem(root: string, pin: string, {notes = []}: PinOptio
   }
 }
 
-/** Inputs no preparation step produces: the pinned checkout and the on-device voice outputs. */
-export function checkoutProblems(root: string, {voiceHost = verifyVoiceHost, allowUnpackagedRuntime = false, notes = []}: VoiceOptions & PinOptions = {}) {
+/** The preflight: the pinned checkout and the on-device voice outputs. */
+export function checkoutProblems(root: string, {voiceHost = verifyVoiceHost, notes = []}: VoiceOptions & PinOptions = {}) {
   const problems: string[] = [];
   const pin = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit;
   const head = readHead(path.join(root, 'vendor/eliza'));
@@ -126,87 +120,25 @@ export function checkoutProblems(root: string, {voiceHost = verifyVoiceHost, all
     const older = mainPinProblem(root, pin, {notes});
     if (older) problems.push(older);
   }
-  problems.push(...voiceHostProblems(root, {voiceHost, allowUnpackagedRuntime}));
+  problems.push(...voiceHostProblems(root, {voiceHost}));
   return problems;
 }
 
 /**
  * The on-device voice outputs (libelizainference with the shared paradee-voice library: Paradee TTS,
- * misaki G2P, the ASR slot pair, Silero VAD) in .eliza/paradee-voice/native. A distribution build
- * needs them (speech is on-device only); the explicit unpackaged developer lane may omit them, and
- * local speech then reports unavailable. Staged outputs must match
+ * misaki G2P, the ASR slot pair, Silero VAD) in .eliza/paradee-voice/native. Every build packages
+ * them. Staged outputs must match
  * android/voice-host/qualified-voice-host.json byte for byte (Gradle :app:verifyVoiceHost).
  */
 export function voiceHostProblems(root: string, options: VoiceOptions = {}): string[] {
   return assessVoiceHost(root, options).problems;
 }
 
-function assessVoiceHost(root: string, {allowUnpackagedRuntime = false, voiceHost = verifyVoiceHost}: VoiceOptions) {
+function assessVoiceHost(root: string, {voiceHost = verifyVoiceHost}: VoiceOptions) {
   try {
-    return {status: voiceHost(root, {allowAbsentRuntime: allowUnpackagedRuntime}), problems: []};
+    return {status: voiceHost(root), problems: []};
   } catch (error) {
-    return {status: null, problems: [`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (${message(error)}; Gradle :app:verifyVoiceHost rejects the build). ${FULL_CHAIN} does not produce them: stage them with bun scripts/android-stage-voice-models.ts --from <directory of the recorded voice outputs and models> (see ${VOICE_GUIDE}).`]};
-  }
-}
-
-/**
- * Prepared runtime inputs. `preparedSource` is the resolved prepared runtime
- * directory (sourceDirectory()). Distribution builds also need the staged runtime.
- */
-export function preparedRuntimeProblems(root: string, preparedSource: string, {allowUnpackagedRuntime = false, testMocks = false, embeddingHost = verifyEmbeddingHost, googleHost = verifyStagedGoogleHost}: RuntimeOptions = {}): string[] {
-  const stamp = path.join(preparedSource, '.alpha-runtime-source.json');
-  if (!fs.existsSync(stamp))
-    return [`Prepared runtime source ${path.relative(root, preparedSource)} is missing (Gradle :app:stageLocalAgentSources reads it). Run: ${FULL_CHAIN} for distributable APKs, or bun run agent:prepare before bun run android:build -- --allow-unpackaged-runtime for developer APKs.`];
-  // Gradle's :app:verifyEmbeddingHost runs for every build. Only the explicit unpackaged
-  // developer build may omit the host, and only when no resident payload is staged at all.
-  const embedding = embeddingHostProblems(root, {allowUnpackagedRuntime, embeddingHost});
-  if (allowUnpackagedRuntime || testMocks) return embedding;
-  const staged = path.join(root, 'android/app/src/main/assets/agent/alpha-source.json');
-  const worker = path.join(root, 'android/app/src/main/assets/agent/workflow-worker/manifest.json');
-  if (!fs.existsSync(staged) || !fs.existsSync(worker))
-    return [`The resident runtime is not staged, so release APKs would not be distributable. Run: bun run agent:build-workflow-worker && bun run agent:stage-android (or ${FULL_CHAIN}), or pass -- --allow-unpackaged-runtime for non-distributable developer APKs.`, ...embedding];
-  if (fs.readFileSync(staged, 'utf8') !== fs.readFileSync(stamp, 'utf8'))
-    return [`The staged resident runtime was built from a different prepared source than ${path.relative(root, preparedSource)}. Run: bun run agent:build-workflow-worker && bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
-  // agent:stage-android writes the profile marker; a payload staged for the removed Cloud
-  // profile omitted the local embedding model and is refused.
-  const marker = path.join(path.dirname(staged), 'alpha-runtime-profile.json');
-  let profile: {version?: unknown; runtimeProfile?: unknown} | null = null;
-  try { profile = JSON.parse(fs.readFileSync(marker, 'utf8')); } catch {}
-  if (JSON.stringify(profile) !== JSON.stringify({version: 1, runtimeProfile: 'native'}))
-    return [`The staged resident runtime is not the native profile (${path.relative(root, marker)} ${profile ? `names ${JSON.stringify(profile.runtimeProfile)}` : 'is missing or unreadable'}). Run: bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
-  if(fs.existsSync(path.join(root,MOBILE_UUID_POLICY))){
-    try{verifyMobileBuildReceipt(root,preparedSource,path.dirname(staged));}
-    catch(error){return [`The staged resident build producer is not admitted (${message(error)}). Run: bun run agent:stage-android.`,...embedding];}
-  }
-  // The in-process Google host is built from product sources the upstream stamp does not cover.
-  try { googleHost(root, preparedSource); }
-  catch (error) { return [`The staged native Google host is not current (${message(error)}; Gradle :app:verifyNativeGoogleHost rejects the build). Run: bun run agent:build-workflow-worker && bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding]; }
-  return embedding;
-}
-
-/** Runs scripts/runtime-profile.ts --verify-native, the same check Gradle runs. */
-function verifyStagedGoogleHost(root: string, preparedSource: string) {
-  try {
-    execFileSync(process.execPath, [path.join(root, 'scripts/runtime-profile.ts'), '--verify-native'], {cwd: root, env: {...process.env, ALPHA_LOCAL_AGENT_SOURCE_DIR: preparedSource}, stdio: ['ignore', 'pipe', 'pipe']});
-  } catch (error) {
-    throw new Error(String(error instanceof Error && 'stderr' in error ? error.stderr ?? '' : '').match(/^Error: (.*)$/m)?.[1] ?? message(error));
-  }
-}
-
-/**
- * The reviewed ARM64 embedding host (android/embedding-host/qualified-host.json). Its libraries
- * are staged byte for byte: by `bun run agent:build-embedding-host` when a rebuild reproduces
- * them, or by staging a verified build receipt.
- */
-export function embeddingHostProblems(root: string, {allowUnpackagedRuntime = false, embeddingHost = verifyEmbeddingHost}: Pick<RuntimeOptions, "allowUnpackagedRuntime" | "embeddingHost"> = {}): string[] {
-  try {
-    embeddingHost(root, {allowAbsentRuntime: allowUnpackagedRuntime});
-    return [];
-  } catch (error) {
-    const partial = allowUnpackagedRuntime
-      ? ' An unpackaged developer build must have no resident payload at all: remove android/app/src/main/assets/agent, android/app/src/main/jniLibs and .eliza/paradee-voice/native (its staged voice outputs keep :app:verifyParadeeAppLinkage checking jniLibs), or stage the host.'
-      : '';
-    return [`The qualified embedding host is not staged (${message(error)}; Gradle :app:verifyEmbeddingHost rejects the build). bun run agent:build-embedding-host (a step of ${FULL_CHAIN}) stages the libraries only when it can reproduce the reviewed bytes, and says so when it cannot. ${partial}`];
+    return {status: null, problems: [`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (${message(error)}; Gradle :app:verifyVoiceHost rejects the build). ${FULL_CHAIN} produces them automatically from pinned public source and model inputs; run bun run agent:build-embedding-host to prepare the native cache.`]};
   }
 }
 
@@ -218,8 +150,7 @@ const SIGNING_ENV = ['ELIZAOS_KEYSTORE_PATH', 'ELIZAOS_KEYSTORE_PASSWORD', 'ELIZ
 const readJson = (root: string, rel: string) => JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
 
 /**
- * Every input of the strict distribution build (`bun run android:build:local` with no override),
- * in the order the chain needs it. `suppliedBy` is 'script' when a committed command produces the
+ * Every input of the build (`bun run android:build:local`), in the order the chain needs it. `suppliedBy` is 'script' when a committed command produces the
  * input from pinned source and 'person' when no script may. `preparedSource` is null while the
  * pinned checkout is absent (its location cannot be resolved then).
  */
@@ -235,17 +166,20 @@ export function strictBuildInputs(root: string, preparedSource: string | null, {
     [`vendor/eliza ${head ? `at ${head}` : 'not checked out'}; pin ${pin}`, ...(older ? [older] : notes)].join('; '),
     older ? 'Rebase on origin/main (or fetch vendor/eliza), then git submodule update --init vendor/eliza' : 'git submodule update --init vendor/eliza');
 
-  // Every distribution build packages on-device speech and the embedding host.
+  // Every build packages on-device speech and the embedding host.
   {
     const {status: voiceStatus, problems: voice} = assessVoiceHost(root, {voiceHost});
-    add('on-device voice outputs', voice.length === 0, 'person',
+    add('on-device voice outputs', voice.length === 0, 'script',
       voice.length ? voice[0] : `staged outputs match ${VOICE_HOST_MANIFEST}`,
-      `Needs a person to supply the recorded voice outputs and models: bun scripts/android-stage-voice-models.ts --from <directory> (see ${VOICE_GUIDE}).`);
+      'bun run agent:build-embedding-host (downloads pinned public sources, builds and caches voice and embedding inputs)');
 
   }
 
   {
-    const host = readJson(root, QUALIFIED_HOST), toolchain = readJson(root, BUILD_TOOLCHAIN);
+    let host;
+    try{host=readNativeBuildReceipt(root)?.embedding;}catch{/* A stale generated receipt is a missing input, not a broken report. */}
+    host??=readJson(root,QUALIFIED_HOST);
+    const toolchain = readJson(root, BUILD_TOOLCHAIN);
     const libraries = stagedLibraries(root, host);
     const hostState = embeddingHostState(host, toolchain, libraries);
     add('embedding host libraries', hostState.ready, hostState.suppliedBy,
@@ -283,17 +217,17 @@ export function formatReport(rows: readonly InputReportRow[]) {
   const lines = rows.map(row => `${row.state === 'ready' ? '[ready]  ' : row.suppliedBy === 'person' ? '[PERSON] ' : '[script] '}${row.input}: ${row.detail}${row.action ? `\n          -> ${row.action}` : ''}`);
   const open = rows.filter(row => row.state !== 'ready');
   const person = open.filter(row => row.suppliedBy === 'person'), script = open.filter(row => row.suppliedBy === 'script');
-  lines.push('', open.length === 0 ? 'Every strict-build input is present. This is an input check, not a build or a distributable APK.'
+  lines.push('', open.length === 0 ? 'Every build input is present. This is an input check, not a build or a distributable APK.'
     : `${script.length} input(s) a script can produce: ${script.map(row => row.input).join(', ') || 'none'}.\n${person.length} input(s) only a person can supply: ${person.map(row => row.input).join(', ') || 'none'}.`);
   if (person.some(row => row.input === 'release signer')) lines.push('An unset release signer does not stop the build: verify-apks records its releases distributable:false and names them.');
-  if (person.some(row => row.input === 'on-device voice outputs')) lines.push('Missing or changed voice outputs stop Gradle :app:verifyVoiceHost in a distribution build.');
+  if (open.some(row => row.input === 'on-device voice outputs')) lines.push('Missing or changed voice outputs stop Gradle :app:verifyVoiceHost.');
   return lines.join('\n');
 }
 
 async function main() {
   const args = process.argv.slice(2);
   for (const arg of args)
-    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report'].includes(arg)) throw new Error(`Unknown option ${arg}`);
+    if (arg !== '--report') throw new Error(`Unknown option ${arg}`);
   const root = path.resolve(import.meta.dirname, '..');
   if (args.includes('--report')) {
     // The source guard imports the pinned checkout; without it the prepared path is unknown.
@@ -303,16 +237,14 @@ async function main() {
     return;
   }
   const notes: string[] = [];
-  let problems = checkoutProblems(root,{allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime'),notes});
-  for (const note of notes) console.error(`Note: ${note}`);
-  if (!problems.length && !args.includes('--before-prepare')) {
-    // The source guard imports the pinned checkout, so load it only once that is verified.
-    const {sourceDirectory} = await import('./local-agent-source.ts');
-    problems = [...preparedRuntimeProblems(root, sourceDirectory(root), {
-      allowUnpackagedRuntime: args.includes('--allow-unpackaged-runtime'),
-      testMocks: args.includes('--test-mocks'),
-    })];
+  const pin=readJson(root,'upstream.lock.json').commit;
+  // Refuse an old or unknown source pin before acquiring or compiling its native inputs.
+  if(readHead(path.join(root,'vendor/eliza'))===pin&&!mainPinProblem(root,pin)) {
+    const {preparePortableNativeInputs}=await import('./build-embedding-host.ts');
+    await preparePortableNativeInputs(root);
   }
+  const problems = checkoutProblems(root,{notes});
+  for (const note of notes) console.error(`Note: ${note}`);
   if (problems.length) {
     console.error(formatProblems(problems));
     process.exit(2);

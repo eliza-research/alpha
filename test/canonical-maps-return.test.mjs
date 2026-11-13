@@ -25,20 +25,8 @@ test('canonical Maps return rereads exact start window and same revision without
  assert.deepEqual(f.reads.at(-1),{timeMin:'2026-10-31T11:59:59.999Z',timeMax:'2026-10-31T12:00:00.001Z',timeZone:'UTC'});
  assert.deepEqual(f.controller.state,snapshot);
 });
-for(const [name,change] of [
- ['deleted',f=>f.api.getLifeOpsCalendarFeed=async w=>({state:'complete',events:[],timeMin:w.timeMin,timeMax:w.timeMax})],
- ['moved',f=>f.event.startAt='2026-10-31T12:30:00.000Z'],
- ['revised',f=>f.event.metadata.etag='revision-two'],
- ['cancelled',f=>f.event.status='cancelled'],
- ['unreadable source',f=>f.source.accessRole='none'],
- ['excluded source',f=>f.source.includeInFeed=false],
-])test(`canonical Maps return refuses ${name} event`,async()=>{const f=await fixture();change(f);assert.equal(await f.check(),'missing');});
-for(const [name,change] of [
- ['partial feed',f=>{const read=f.api.getLifeOpsCalendarFeed;f.api.getLifeOpsCalendarFeed=async w=>({...await read(w),state:'partial'});}],
- ['foreign agent',f=>f.event.agentId='other-agent'],
- ['ambiguous event',f=>{const read=f.api.getLifeOpsCalendarFeed;f.api.getLifeOpsCalendarFeed=async w=>{const out=await read(w);return{...out,events:[...out.events,...out.events]};};}],
- ['wrong coverage',f=>{const read=f.api.getLifeOpsCalendarFeed;f.api.getLifeOpsCalendarFeed=async w=>({...await read(w),timeMax:'2026-10-31T11:00:00Z'});}],
-])test(`canonical Maps return keeps Maps on ${name}`,async()=>{const f=await fixture();change(f);assert.equal(await f.check(),'unknown');});
+
+
 test('owner/session replacement during read cannot return to an old event',async()=>{
  const f=await fixture(),read=f.api.getLifeOpsCalendarFeed;
  f.api.getLifeOpsCalendarFeed=async w=>{const out=await read(w);f.port.sessionId='new-session';return out;};

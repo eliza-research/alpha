@@ -16,7 +16,11 @@ const scenarios={
  pastEndGivesNoGraceTest:[['signIn',1],['verified','active','future'],['endPasses'],['admitOffline']],
  rejectedSignInForgetsGraceTest:[['signIn',1],['verified','active','future'],['signInRejected'],['admitOffline']],
  redeemedEndPrecedesRecordTest:[['signIn',1],['verified','active','none'],['redeem','future'],['endPasses'],['verified','active','none']],
+ refreshRewritesRecordTest:[['signIn',1],['verified','active','future'],['windowPasses'],['refreshVerified','active','none'],['endPasses'],['refreshVerified','active','none']],
 };
+// Plan ends that outlast the seven-day record window and pass while the rewritten record is still
+// recent, where the scenario ages the record before the end.
+const endBoundaries={refreshRewritesRecordTest:[8,12]};
 
 export function assertAdmissionEffects(fixture){
  for(const {record,at} of fixture.writes)if(record)assert.ok(record.endsAt===null||record.endsAt>at,'Never store a plan end already past');
@@ -44,13 +48,14 @@ export async function checkPlanAdmissionGrace(extraSources=[]){
    else if(name==='endPasses')f.endPasses();
    else if(name==='windowPasses')f.windowPasses();
    else if(name==='refreshFailed')await f.refreshFailed();
+   else if(name==='refreshVerified')await f.refreshVerified(args[0],args[1]);
    else throw Error(name);
    assertAdmissionEffects(f);const expect=f.observe();observations.push(expect);
    trace.steps.push({label:name+' through actual admission ports',action:action(name,...args),expect});
   }
   // Each named scenario uses its original transition sequence. Two physical end boundaries
   // and both account labels supply additional bounded walks without inventing independent clocks.
-  for(const [name,commands] of Object.entries(scenarios))for(const endDays of [1/24,3]){
+  for(const [name,commands] of Object.entries(scenarios))for(const endDays of endBoundaries[name]??[1/24,3]){
    const f=planAdmissionFixture(implementation,{endDays}),trace={name:`${name}: ${endDays} day end`,expect:f.observe(),steps:[]};
    try{for(const command of commands)await execute(f,trace,command);traces.push(trace);}finally{f.close();}
   }
@@ -64,6 +69,11 @@ export async function checkPlanAdmissionGrace(extraSources=[]){
     await execute(f,trace,['refreshFailed']);
     await execute(f,trace,['admitBillingOutage']);await execute(f,trace,['admitOffline']);traces.push(trace);
    }finally{f.close();}
+  }
+  // The refresher of a plan admitted from its record during a billing outage verifies it again.
+  {
+   const f=planAdmissionFixture(implementation),trace={name:'refresh verifies a plan admitted during a billing outage',expect:f.observe(),steps:[]};
+   try{for(const command of [['signIn',1],['verified','active','none'],['admitBillingOutage'],['refreshVerified','active','future']])await execute(f,trace,command);traces.push(trace);}finally{f.close();}
   }
   // Hold a real plan read while the closed credential store changes. The controller's actual
   // post-read credential fence must refuse the old result without minting a new admission record.
@@ -90,6 +100,7 @@ export async function checkPlanAdmissionGrace(extraSources=[]){
    OldRecordUnbindsWitness:value=>value['s.record'].age==='old'&&value['s.binding']==='unbound'&&value['s.notice']==='offline',
    BillingOutageAdmitsWitness:value=>value['s.binding']==='cloud'&&value['s.admittedBy']==='grace',
    RedeemedEndPastWitness:value=>value['s.redeemedEnd']==='past'&&value['s.binding']==='cloud',
+   RefreshRewroteRecordWitness:value=>value['s.writes']>1&&value['s.admittedBy']==='grace'&&value['s.record'].age==='fresh',
   };
   for(const [name,holds] of Object.entries(witnesses))assert.ok(observations.some(holds),`Actual source reached ${name}`);
   const f=planAdmissionFixture(implementation);f.signIn(1);await f.admit('active','future');
@@ -99,9 +110,9 @@ export async function checkPlanAdmissionGrace(extraSources=[]){
   const receipt=await checkTraces({model:'PlanAdmissionGrace',sources,driverHashes,generatedSources:[compiled],traces,scope:'bounded-orchestration',assumptions:[
    'The unchanged shared CloudResidentBindingController and entitlement/outcome implementation execute with exact Alpha admission, plan-window, record parsing/storage, retirement and redeem functions. Closed Cloud/secure-storage ports contain synthetic identities and plans only.',
    'All nine state fields are observations of actual controller returns, JSON record writes, Alpha state, redeemed end and independent counters. Binding is the admission decision target; no provider apply or inference dispatch is claimed. Notice symbols classify the observed admission reason/view, not literal UI copy.',
-   'The eight named transition sequences run at two physical end boundaries. Twelve bounded walks and one held-read replacement schedule use a single real fixture clock. Arbitrary independent model age/end transitions, full sign-in/out, bind/apply failure and native credential storage are not observed.',
-   'The writes field counts verified admission record writes, while lastWrittenEnd also observes the actual redeem writes, matching the model distinction. Source sign-out clears its record whereas the model preserves one; that stronger source transition is explicitly excluded from this projection.',
+   'The nine named transition sequences run at two physical end boundaries. Twelve bounded walks, one refresh after a billing-outage admission and one held-read replacement schedule use a single real fixture clock. Arbitrary independent model age/end transitions, full sign-in/out, bind/apply failure and native credential storage are not observed.',
+   'The writes field counts verified admission record writes, while lastWrittenEnd also observes the actual redeem writes, matching the model distinction. Sign-out, which clears the record in the source and in the model, is not driven: signOutRemovesRecordTest has no trace here.',
   ]});
-  return {receipt,coverage:{namedScenarios:8,witnesses:Object.keys(witnesses),canaries:['wrong-credential-observation','past-end-write']},obligations:[{model:'PlanAdmissionGrace',obligation:'Unobserved sign-out, binding effects and arbitrary clock schedules',reason:'This bounded admission-decision projection excludes the source-different signOut transition, sign-in UI orchestration, arbitrary combinations of model time dimensions, native bind/apply effects, signed-token cryptography and real Cloud/Keystore persistence. It does not establish full implementation refinement.'}]};
+  return {receipt,coverage:{namedScenarios:Object.keys(scenarios).length,witnesses:Object.keys(witnesses),canaries:['wrong-credential-observation','past-end-write']},obligations:[{model:'PlanAdmissionGrace',obligation:'Unobserved sign-out, binding effects and arbitrary clock schedules',reason:'This bounded admission-decision projection excludes the signOut transition, sign-in UI orchestration, arbitrary combinations of model time dimensions, native bind/apply effects, signed-token cryptography and real Cloud/Keystore persistence. It does not establish full implementation refinement.'}]};
  }finally{rmSync(temporary,{recursive:true,force:true});}
 }

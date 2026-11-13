@@ -19,7 +19,7 @@ if output.exists():
     raise SystemExit("Preserve existing scan evidence")
 manifest = json.loads((archive / "apk-manifest.json").read_text())
 inputs = json.loads((archive / "inputs-before.json").read_text())["files"]
-prefixes = ["android/app/src/androidTest/java/", "android/app/src/testMocks/androidTest/java/"]
+prefixes = ["android/app/src/androidTest/java/"]
 descriptors = [
     ("L" + name[len(prefix):-5] + ";").encode()
     for prefix in prefixes
@@ -41,7 +41,7 @@ debug_classes = ["DevelopmentAgentPlugin", "DevelopmentVoiceCapture", "Synthetic
 debug_class_packages = (b"Lai/alphacompute/alphaphone/",)
 results = []
 for name in sorted(manifest):
-    if not re.fullmatch(r"(?:standalone|launcher)-(?:debug|release|release-unsigned)\.apk", name):
+    if not re.fullmatch(r"launcher-(?:debug|release|release-unsigned)\.apk", name):
         continue
     apk = archive / name
     raw = apk.read_bytes()
@@ -58,9 +58,8 @@ for name in sorted(manifest):
         value: any(prefix + value.encode() + b";" in dex for prefix in debug_class_packages)
         for value in debug_classes
     }
-    # Release never carries developer hooks. Debug carries all of them only when built with
-    # -PELIZA_DEV_ALLOW_TEST_MOCKS=1 (src/testMocks); a flag-off debug carries none.
-    hooks_consistent = not any(presence.values()) if release else len(set(presence.values())) == 1
+    # No APK carries developer hooks.
+    hooks_consistent = not any(presence.values())
     passed = secret_absent and (not release or test_absent) and hooks_consistent
     results.append({"apk": name, "sha256": digest, "archiveHashMatched": True,
                     "providerSecretAbsent": secret_absent, "androidTestClassesAbsent": test_absent,
@@ -70,6 +69,6 @@ report = {"inspectedAt": datetime.now(timezone.utc).isoformat(),
           "testClassDescriptorCount": len(descriptors), "results": results}
 with output.open("x") as stream:
     json.dump(report, stream, indent=2)
-if len(results) != 4 or not all(item["passed"] for item in results):
+if len(results) != 2 or not all(item["passed"] for item in results):
     raise SystemExit("Static packaging scan failed; inspect boolean evidence")
-print("PASS: four archived APKs, static secret and distribution boundaries")
+print("PASS: two archived APKs, static secret and distribution boundaries")

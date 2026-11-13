@@ -64,18 +64,12 @@ jobs:
     env:
       # One runtime profile: every build packages local speech and embeddings; speech is routed at run time.
       ALPHA_APP_UPDATE_CANDIDATE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '0' }}
-      ELIZA_ANDROID_BUN_TARGET: linux-musl
-      ELIZA_ANDROID_TARGET_ABIS: arm64-v8a,x86_64
       ELIZA_BUN_CHANNEL: stable
       ELIZAOS_VERSION_CODE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_version_code || '' }}
       ANDROID_NDK: /usr/local/lib/android/sdk/ndk/28.2.13676358
       ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
       ANDROID_NDK_ROOT: /usr/local/lib/android/sdk/ndk/28.2.13676358
       ANDROID_NDK_LATEST_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
-    outputs:
-      artifact_id: ${{ steps.apks.outputs.artifact-id }}
-      source_sha: ${{ github.sha }}
-      manifest_sha256: ${{ steps.freeze.outputs.sha256 }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -86,12 +80,6 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: Check the automatic native input manifest and artifact availability
-        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
-        timeout-minutes: 3
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 -B scripts/ci/hosted-native-inputs.py --check-remote
       # Install the selected toolchain before capacity provisioning authenticates it.
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -182,10 +170,6 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
-      - name: Check embedding artifact contract
-        run: |
-          python3 test/embedding-artifact-inputs.test.py
-          python3 -B test/hosted-native-inputs.test.py
       - name: Validate dispatched build version
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -213,26 +197,45 @@ jobs:
                   limits[file] = path.read_text().strip()
           Path('test-results/resident-ci/host-resources.json').write_text(json.dumps({'hostMemoryBytes': os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE'), 'cpuCount': os.cpu_count(), 'kernelMemoryLimits': limits, 'phaseEntryGiB': 10, 'phaseStopGiB': 4, 'PGIDRSSCap': None, 'phaseLogByteCap': None, 'nodeHeapMiB': 4096, 'turboConcurrency': 1}, indent=2) + '\n')
           PYCODE
-          echo "ALPHA_LOCAL_AGENT_SOURCE_DIR=$GITHUB_WORKSPACE/artifacts/resident-ci-92fc" >> "$GITHUB_ENV"
-          echo "ALPHA_WORKFLOW_WORKER_OUTPUT=$GITHUB_WORKSPACE/artifacts/worker-ci-92fc" >> "$GITHUB_ENV"
-      - name: Acquire exact native inputs for the automatic candidate
-        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
-        timeout-minutes: 12
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci/resident-phase.py --name native-input-download --seconds 600 python3 -B scripts/ci/hosted-native-inputs.py --acquire
-      - name: Stage the admitted voice and embedding inputs
-        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
-        run: |
-          bun scripts/android-stage-voice-models.ts --from test-results/resident-ci-native-inputs/voice
-          bun scripts/build-embedding-host.ts --from test-results/resident-ci-native-inputs/embedding
-          bun scripts/voice-host.ts --verify
+          {
+            echo "ALPHA_LOCAL_AGENT_SOURCE_DIR=$GITHUB_WORKSPACE/artifacts/resident-ci-92fc"
+            echo "ALPHA_WORKFLOW_WORKER_OUTPUT=$GITHUB_WORKSPACE/artifacts/worker-ci-92fc"
+            echo "XDG_CACHE_HOME=$RUNNER_TEMP/alpha-cache"
+          } >> "$GITHUB_ENV"
       - name: Qualify supervisor on real Linux processes
         timeout-minutes: 10
         run: |
           python3 scripts/ci/test-resident-phase.py
-          python3 test/resident-crash-diagnostic.test.py
       - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 bun install --frozen-lockfile
+      - name: Check embedding artifact contract
+        run: |
+          python3 test/embedding-artifact-inputs.test.py
+          bun test --timeout=120000 test/native-build-inputs.test.mjs
+      - name: Resolve the current native build recipe
+        id: native-recipe
+        run: |
+          echo "sha256=$(bun -e 'import {nativeRecipe,nativeRecipeDigest} from "./scripts/native-build-inputs.ts"; process.stdout.write(nativeRecipeDigest(nativeRecipe(process.cwd())))')" >> "$GITHUB_OUTPUT"
+      - name: Cache verified native source and model inputs
+        id: native-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ env.XDG_CACHE_HOME }}/alpha/native-inputs
+          key: alpha-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-recipe.outputs.sha256 }}
+          # Other recipes may supply shared models; their output receipts still
+          # require the current source recipe and exact byte validation.
+          restore-keys: |
+            alpha-native-${{ runner.os }}-${{ runner.arch }}-
+      - name: Build and stage native voice and embeddings from verified inputs
+        timeout-minutes: 95
+        run: |
+          python3 scripts/ci/resident-phase.py --name native-input-build --seconds 5400 bun run agent:build-embedding-host
+          bun scripts/voice-host.ts --verify
+      - name: Retain verified native build cache
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ env.XDG_CACHE_HOME }}/alpha/native-inputs
+          key: alpha-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-recipe.outputs.sha256 }}
       - name: Admit the automatic candidate version against the public inventory
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
@@ -253,14 +256,9 @@ jobs:
                 test/embedding-host-admission.test.mjs \
                 test/upstream-reachability.test.mjs \
                 test/voice-host-record.test.mjs \
-                test/cloud-voice-profile.test.mjs \
-                test/private-preview-cartesia-route.test.mjs
+                test/cloud-voice-profile.test.mjs
             '
       - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
-      # Noncandidate diagnostics retain their existing absent-input check.
-      - name: Verify the diagnostic on-device voice host record
-        if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'
-        run: bun scripts/voice-host.ts --verify --allow-absent
       - name: Prepare and qualify fresh resident source with normal hooks
         env:
           RUN_TURBO_CONCURRENCY: "1"
@@ -312,9 +310,7 @@ jobs:
           RUN_TURBO_CONCURRENCY: "1"
         run: |
           python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 bun run agent:stage-android
-          if [ "$ALPHA_APP_UPDATE_CANDIDATE" = "1" ]; then
-            bun scripts/stage-embedding-host.ts --verify
-          fi
+          bun scripts/stage-embedding-host.ts --verify
           python3 scripts/ci/resident-phase.py --name mobile-bundle --seconds 300 bun run agent:test-mobile-workflow-bundle
           # Fresh native artifacts and the runtime pin are inputs to shipped notices.
           python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 bun scripts/generate-licenses.ts --packaged-runtime
@@ -339,7 +335,7 @@ jobs:
           build_config = (root / 'artifacts/build-config.json').read_bytes()
           build = json.loads(build_config)
           channel = build['updateChannel']
-          assert channel['kind'] == 'public', 'Private QA artifacts require private delivery, not this hosted archive'
+          assert channel['kind'] == 'public', 'The hosted archive must record the public update channel'
           assert (
               build['testMocks'] is False
               and build['runtimeProfile'] == 'native'
@@ -355,7 +351,7 @@ jobs:
                   and record['updateChannel'] == channel
               ), 'Producer configuration differs from the distribution archive'
           releases = [row for row in verified['results'] if row['mode'] == 'release']
-          assert len(releases) == 2 and {row['variant'] for row in releases} == {'launcher', 'standalone'}, 'Distribution archive must contain both release variants'
+          assert len(releases) == 1 and releases[0]['variant'] == 'launcher', 'Distribution archive must contain the launcher release'
           archived_apks = json.loads((archive / 'apk-manifest.json').read_text())
           for row in releases:
               name = f"{row['variant']}-release-unsigned.apk"
@@ -376,6 +372,7 @@ jobs:
               ('android/app/src/main/assets/agent', 'android/app/src/main/assets/agent'),
               ('android/app/src/main/jniLibs', 'android/app/src/main/jniLibs'),
               (generated_manifest, 'native-source-manifest.json'),
+              ('.eliza/native-inputs/receipt.json', 'native-build-receipt.json'),
               (str(Path(os.environ['ALPHA_LOCAL_AGENT_SOURCE_DIR']) / '.alpha-runtime-source.json'), 'prepared-source-stamp.json'),
               (str(Path(os.environ['ALPHA_WORKFLOW_WORKER_OUTPUT']) / 'manifest.json'), 'worker-manifest.json'),
           ]
@@ -409,21 +406,14 @@ jobs:
           assert files['native-source-manifest.json']['sha256'] == snapshot['files'][generated_manifest], 'Captured native source manifest differs from the distribution inputs'
           (out / 'manifest.json').write_text(json.dumps({'source': os.environ['GITHUB_SHA'], 'runtimeProfile': 'native', 'updateChannel': channel, 'versionCode': version, 'bytes': total, 'files': files}, indent=2) + '\n')
           PYCODE
-      - name: Archive the isolated test-mocks build
-        env:
-          RUN_TURBO_CONCURRENCY: "1"
-        run: |
-          # The native suites need the private peer fixture, a debug-only test hook
-          # that exists only in the separate, never-distributable test-mocks build.
-          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 bun scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
       - name: Bind the unsigned native candidate to the genuine distribution archive
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp test-results/resident-ci-native-inputs/admission.json test-results/resident-ci-distribution/native-input-admission.json
+          cp .eliza/native-inputs/receipt.json test-results/resident-ci-distribution/native-input-admission.json
           bun scripts/app-update-candidate.ts receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
-      - name: Retain the unsigned native update candidate separately from test mocks
+      - name: Retain the unsigned native update candidate
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         id: native-candidate
@@ -439,22 +429,6 @@ jobs:
           ALPHA_CANDIDATE_ARTIFACT_ID: ${{ steps.native-candidate.outputs.artifact-id }}
           ALPHA_CANDIDATE_ARTIFACT_SHA256: ${{ steps.native-candidate.outputs.artifact-digest }}
         run: bun scripts/app-update-candidate.ts archive-size test-results/resident-ci/native-candidate-artifact.json test-results/resident-ci-distribution
-      - name: Build and anchor private endpoint helper
-        run: python3 scripts/ci/build-private-peer.py
-      - name: Preserve native generated provenance
-        run: cp android/app/build/generated/local-agent/source-manifest.json test-results/resident-ci-archive/native-generated-source-manifest.json
-      - name: Anchor exact archive manifest
-        id: freeze
-        run: echo "sha256=$(sha256sum test-results/resident-ci-archive/apk-manifest.json | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-      # build-archive.ts retains each release R8 mapping (<variant>-release-mapping.txt,
-      # hashed in release-mappings.json) beside the APKs, so both archives carry them.
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        id: apks
-        with:
-          name: resident-archive-${{ github.sha }}-${{ github.run_id }}
-          path: test-results/resident-ci-archive/
-          retention-days: 3
-          if-no-files-found: error
       # Preserve the dispatched artifact name for existing reviewed signing plans.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name == 'workflow_dispatch'
@@ -473,172 +447,3 @@ jobs:
             test-results/resident-ci/
             test-results/resident-ci-distribution/
             android/app/build/reports/
-  native:
-    needs: build
-    if: (github.event_name != 'workflow_dispatch' || inputs.operation == 'build' || inputs.operation == '')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 100
-    env:
-      ALPHA_RESIDENT_MANIFEST_SHA256: ${{ needs.build.outputs.manifest_sha256 }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.build.outputs.source_sha }}
-          submodules: true
-      # Fresh native job has its own stock hosted image; build-job cleanup does
-      # not carry over. Provision before tools, artifacts or the AVD are created.
-      - name: Provision native capacity on the disposable hosted runner
-        run: |
-          test "$GITHUB_ACTIONS" = "true"
-          test "$RUNNER_ENVIRONMENT" = "github-hosted"
-          # Fixed unused language installations only; preserve every Android SDK,
-          # source checkout, dependency cache and downloaded build artifact.
-          for unused in /usr/share/dotnet /usr/local/.ghcup /usr/local/swift /usr/share/swift /opt/ghc /usr/local/share/powershell /opt/hostedtoolcache/CodeQL; do
-            test ! -L "$unused"
-            if [ -e "$unused" ]; then
-              test -d "$unused"
-              test "$(realpath "$unused")" = "$unused"
-            fi
-          done
-          python3 -c 'import shutil; print("nativeFreshCapacityBeforeBytes="+str(shutil.disk_usage(".").free))'
-          for unused in /usr/share/dotnet /usr/local/.ghcup /usr/local/swift /usr/share/swift /opt/ghc /usr/local/share/powershell /opt/hostedtoolcache/CodeQL; do
-            if [ -e "$unused" ]; then
-              sudo du -sh "$unused"
-              sudo rm -rf -- "$unused"
-            fi
-          done
-          python3 -c 'import shutil; free=shutil.disk_usage(".").free; print("nativeFreshCapacityAfterBytes="+str(free)); assert free >= 24*1024**3, "Fresh native runner needs 24GiB before SDK, archive and AVD provisioning"'
-          # Existing 10GiB admission and 4GiB runtime floor remain unchanged.
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
-        with:
-          packages: platform-tools build-tools;36.0.0
-          log-accepted-android-sdk-licenses: false
-      - name: Install exact APK inspection tools
-        run: sdkmanager "build-tools;36.0.0"
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          artifact-ids: ${{ needs.build.outputs.artifact_id }}
-          path: test-results/resident-ci-archive
-          merge-multiple: true
-      - name: Require fresh capacity and KVM
-        run: |
-          python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 10*1024**3'
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-        with:
-          api-level: 35
-          target: default
-          arch: x86_64
-          profile: pixel_7
-          ram-size: 4096M
-          disk-size: 4096M
-          emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
-          disable-animations: true
-          script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 bun scripts/prepare-ci-emulator.ts
-            ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name native --seconds 5400 python3 scripts/ci/resident-native.py
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          retention-days: 3
-          name: resident-native-evidence-${{ github.run_id }}
-          path: |
-            test-results/resident-ci-supervisor/
-            test-results/resident-ci/
-            test-results/resident-ci-native/
-
-  recovery-ui:
-    needs: build
-    if: (github.event_name != 'workflow_dispatch' || inputs.operation == 'build' || inputs.operation == '')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 55
-    env:
-      ALPHA_RESIDENT_MANIFEST_SHA256: ${{ needs.build.outputs.manifest_sha256 }}
-      ALPHA_RECOVERY_SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.build.outputs.source_sha }}
-          submodules: true
-      # Fresh native job has its own stock hosted image; build-job cleanup does
-      # not carry over. Provision before tools, artifacts or the AVD are created.
-      - name: Provision native capacity on the disposable hosted runner
-        run: |
-          test "$GITHUB_ACTIONS" = "true"
-          test "$RUNNER_ENVIRONMENT" = "github-hosted"
-          # Fixed unused language installations only; preserve every Android SDK,
-          # source checkout, dependency cache and downloaded build artifact.
-          for unused in /usr/share/dotnet /usr/local/.ghcup /usr/local/swift /usr/share/swift /opt/ghc /usr/local/share/powershell /opt/hostedtoolcache/CodeQL; do
-            test ! -L "$unused"
-            if [ -e "$unused" ]; then
-              test -d "$unused"
-              test "$(realpath "$unused")" = "$unused"
-            fi
-          done
-          python3 -c 'import shutil; print("nativeFreshCapacityBeforeBytes="+str(shutil.disk_usage(".").free))'
-          for unused in /usr/share/dotnet /usr/local/.ghcup /usr/local/swift /usr/share/swift /opt/ghc /usr/local/share/powershell /opt/hostedtoolcache/CodeQL; do
-            if [ -e "$unused" ]; then
-              sudo du -sh "$unused"
-              sudo rm -rf -- "$unused"
-            fi
-          done
-          python3 -c 'import shutil; free=shutil.disk_usage(".").free; print("nativeFreshCapacityAfterBytes="+str(free)); assert free >= 24*1024**3, "Fresh native runner needs 24GiB before SDK, archive and AVD provisioning"'
-          # Existing 10GiB admission and 4GiB runtime floor remain unchanged.
-      - name: Qualify owned secondary recovery guards
-        run: |
-          python3 scripts/ci/test-recovery-ui-guard.py
-          python3 scripts/ci/test-pending-recovery-phases.py
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
-        with:
-          packages: platform-tools build-tools;36.0.0
-          log-accepted-android-sdk-licenses: false
-      - name: Install exact APK inspection tools
-        run: sdkmanager "build-tools;36.0.0"
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          artifact-ids: ${{ needs.build.outputs.artifact_id }}
-          path: test-results/resident-ci-archive
-          merge-multiple: true
-      - name: Require fresh capacity and KVM
-        run: |
-          python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 10*1024**3'
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-        with:
-          api-level: 35
-          target: default
-          arch: x86_64
-          profile: pixel_7
-          disk-size: 4096M
-          emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
-          disable-animations: true
-          script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 bun scripts/prepare-ci-emulator.ts
-            ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name pending-recovery-ui --seconds 2400 python3 scripts/ci/pending-recovery-ui.py
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          retention-days: 3
-          name: pending-recovery-ui-evidence-${{ github.run_id }}
-          path: |
-            test-results/resident-ci-supervisor/
-            test-results/resident-ci/
-            test-results/pending-recovery-ui-native/

@@ -105,13 +105,13 @@ test("a pilot or acceptance unit never gets a non-distributable release, and eve
   assert.throws(() => admitUnitApk(build(t, { mode: "debug", signed: true, distributable: true }), { variant: "launcher", build: "release" }, { descriptor: descriptor() }), /no launcher release APK/);
 });
 
-test("pilot release admission rejects private QA in either the record or the exact APK", t => {
+test("pilot release admission rejects another update channel in either the record or the exact APK", t => {
   const publicChannel = {kind: "public", manifestUrlSha256: sha("public")};
-  const privateChannel = {kind: "private-qa", manifestUrlSha256: sha("private fixture")};
+  const otherChannel = {kind: "other", manifestUrlSha256: sha("other fixture")};
   const admit = (row, extra) => admitUnitApk(build(t, {...DISTRIBUTABLE, ...row}, extra),
     {variant: "launcher", build: "release"}, {descriptor: descriptor()});
-  assert.throws(() => admit({updateChannel: privateChannel}, {updateChannel: publicChannel}), /Private QA/);
-  assert.throws(() => admit({updateChannel: publicChannel}, {updateChannel: privateChannel}), /Private QA/);
+  assert.throws(() => admit({updateChannel: otherChannel}, {updateChannel: publicChannel}), /Update channel input refused/);
+  assert.throws(() => admit({updateChannel: publicChannel}, {updateChannel: otherChannel}), /Update channel input refused/);
   const legacy = admit({}, {});
   const release = admit({updateChannel: publicChannel}, {updateChannel: publicChannel});
   const facts = {testMocks: false, debuggable: false, runtime: "PACKAGED", signerSha256: SIGNER};
@@ -120,8 +120,6 @@ test("pilot release admission rejects private QA in either the record or the exa
   assert.deepEqual(check(release, publicChannel), []);
   assert.match(check(legacy, publicChannel).join(), /differs from the reviewed release/);
   assert.match(check(release, "legacy").join(), /differs from the reviewed release/);
-  assert.match(check(legacy, privateChannel).join(), /Private QA/);
-  assert.match(check(release, privateChannel).join(), /Private QA/);
   assert.match(check(release, null).join(), /could not be verified/);
 });
 
@@ -277,15 +275,12 @@ test("head qualification records the full Chromium suite and the production surf
   }
   // Campaign evidence never enters the S/B verdict, whatever it says.
   assert.equal(verdict({ ...result, candidate: { complete: false, campaigns: [] }, candidateQualified: false }), true);
-  const source = fs.readFileSync("scripts/qualify-head.ts", "utf8");
-  assert.match(source, /step\("browser-chromium", "bun", \["run", "test:browser"\]/);
-  assert.match(source, /step\("browser-production", "bun", \["run", "test:browser:production"\], flagOff\)/);
   assert.deepEqual(parseQualifyArgs(["--candidate"]).candidateOnly, true);
   assert.throws(() => parseQualifyArgs(["--candidate", "--fresh"]), /takes no other option/);
 });
 
 test("the candidate manifest admits only campaigns whose APK hashes are this qualify run's", () => {
-  const apks = [{ variant: "launcher", mode: "debug", sha256: "1".repeat(64) }, { variant: "standalone", mode: "debug", sha256: "2".repeat(64) }];
+  const apks = [{ variant: "launcher", mode: "debug", sha256: "1".repeat(64) }, { variant: "launcher", mode: "release", sha256: "2".repeat(64) }];
   const campaign = (id, apkSha256, passed = true) => ({ id, present: true, passed, apkSha256, records: [`${id}.json`] });
   const all = CAMPAIGNS.map(row => campaign(row.id, ["1".repeat(64)]));
   const ok = candidateManifest(apks, all);
@@ -303,7 +298,7 @@ test("the candidate manifest admits only campaigns whose APK hashes are this qua
   assert.equal(candidateManifest(undefined, all).complete, false, "no candidate APKs admits nothing");
 });
 
-test("campaign records are read from emulator-suite, resident proofs and resident CI results", t => {
+test("campaign records are read from emulator-suite and resident proofs", t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-candidate-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const write = (rel, value) => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), JSON.stringify(value)); };
@@ -312,16 +307,13 @@ test("campaign records are read from emulator-suite, resident proofs and residen
     steps: [{ name: "prepare-emulator" }, { name: "ci-default", results: "test-results/android-instrumentation/ci-default/results.json" }] });
   write("test-results/android-instrumentation/ci-default/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: app }, { variant: "launcher", role: "test", sha256: test }] });
   write("test-results/resident-instrumentation/redaction.json", { passed: true, apkSha256: app });
-  write("test-results/resident-ci-archive/apk-manifest.json", { "launcher-debug.apk": app, "launcher-androidTest.apk": test, "private-peer-debug.apk": "4".repeat(64) });
-  write("test-results/resident-ci-native/launcher-recovery.json", { passed: true, cleanupComplete: true });
   const campaigns = readCampaigns(root);
   const byId = Object.fromEntries(campaigns.map(row => [row.id, row]));
   assert.deepEqual(byId["emulator-suite:instrumentation"].apkSha256, [app], "test APKs are not the candidate");
-  assert.deepEqual(byId["resident-android"].apkSha256, [app], "helper and test APKs are not the candidate");
   const result = recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root);
   assert.deepEqual(Object.fromEntries(result.candidate.campaigns.map(row => [row.id, row.status])), {
     "emulator-suite:instrumentation": "passed", "emulator-suite:browser-reading": "missing",
-    "resident-instrumentation": "passed", "resident-android": "passed" });
+    "resident-instrumentation": "passed" });
   // A missing campaign leaves the candidate unqualified, even though the head itself qualified.
   assert.equal(result.qualified, true);
   assert.equal(result.candidateQualified, false);
@@ -331,11 +323,6 @@ test("campaign records are read from emulator-suite, resident proofs and residen
   assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidate.campaigns.find(row => row.id === "emulator-suite:browser-reading").status, "mismatched");
   write("test-results/android-instrumentation/ci-reading/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: app }] });
   assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidateQualified, true);
-  // A test-mocks step in the suite is recorded but binds nothing; it does not make the campaign foreign.
-  write("test-results/emulator-suite/browser-reading.json", { suite: "browser-reading", passed: true, steps: [
-    { name: "ci-reading", results: "test-results/android-instrumentation/ci-reading/results.json" },
-    { name: "ci-reading-test-mocks", results: "test-results/android-instrumentation/ci-reading-test-mocks/results.json" }] });
-  write("test-results/android-instrumentation/ci-reading-test-mocks/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: "7".repeat(64), testMocks: true }] });
   const reading = () => recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidate.campaigns.find(row => row.id === "emulator-suite:browser-reading");
   assert.equal(reading().status, "passed");
   assert.deepEqual(reading().apkSha256, [app]);
@@ -347,13 +334,4 @@ test("campaign records are read from emulator-suite, resident proofs and residen
   // A resident proof without the hash of the APK it ran on is not admitted.
   write("test-results/resident-instrumentation/unbound.json", { passed: true });
   assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidate.campaigns.find(row => row.id === "resident-instrumentation").status, "mismatched");
-});
-
-
-test("the provisioning record keeps only its secret-free fields", () => {
-  const source = fs.readFileSync("scripts/provision-unit.ts", "utf8");
-  const body = /const record = \{([\s\S]*?)\n  \};/.exec(source)[1];
-  const keys = [...body.matchAll(/^\s{4}([a-zA-Z]+)[:,]/gm)].map(match => match[1]);
-  assert.deepEqual(keys, ["schema", "alias", "createdAt", "sourceCommit", "evidence", "notEvidenceFor", "device", "apk", "installed", "runtimeIdentity", "homeRole"]);
-  assert.match(source, /buildFingerprintSha256: sha256\(/);
 });

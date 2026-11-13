@@ -4,9 +4,11 @@ import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {createLocalAgentDevHandler} from '../../scripts/local-agent-dev-bridge';
+import {scaledTimeout} from '../../specs/quint/refinement/timeouts.mjs';
 
 // Closed fixture: the real development bridge and renderer against a fake paired agent whose Cloud
 // read-aloud body the test releases chunk by chunk. No Cloud account, provider or audio device.
+test.beforeEach(({},info)=>info.setTimeout(scaledTimeout(30_000)));
 const owner='11111111-1111-4111-8111-111111111111',paired='closed-owner-session';
 // MPEG-1 Layer III, 32 kbit/s, 32 kHz, mono: 144-byte frames, each 36 ms of silence.
 function mp3(frames:number){const out=new Uint8Array(frames*144);for(let i=0;i<frames;i++)out.set([0xff,0xfb,0x18,0xc0],i*144);return out;}

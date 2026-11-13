@@ -6,28 +6,9 @@ import path from 'node:path';
 import {tsImport} from './support/ts-import.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
-import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 const sharedDirectory='plugins/plugin-assistant/src/services/device-actions';
-const vendor=path.join(root,'vendor/eliza');
 const features=path.join(root,'.eliza/client-features');
-const vendorReady=fs.existsSync(path.join(vendor,sharedDirectory,'action.ts'));
 const featuresReady=fs.existsSync(path.join(features,sharedDirectory,'files-browser-contract.ts'));
-
-test('the pinned Files contract gates the schema, registration and reviewed operations', {skip:!vendorReady&&'vendor/eliza not checked out'}, ()=>{
-  const source=upstreamNativeSource(root);
-  const read=name=>{
-    const target=sharedDirectory+'/'+name;
-    return source.read(target).get(target).bytes.toString('utf8');
-  };
-  assert.match(read('action.ts'),/\.\.\.FILES_OPERATION_SCHEMAS,/);
-  assert.match(read('action.ts'),/capabilities\?\.includes\(FILES_CAPABILITY\)/);
-  assert.match(read('contract.ts'),/if \(isFilesOperation\(\{ type \}\)\)\s+return capabilities\?\.includes\(FILES_CAPABILITY\) === true;/);
-  assert.match(read('service.ts'),/\.\.\.FILES_OPERATION_TYPES,/);
-  assert.match(read('service.ts'),/NOTES_SEARCH_CAPABILITY,\s+CALENDAR_AVAILABILITY_CAPABILITY,\s+FILES_CAPABILITY,/);
-  const routePath='packages/agent/src/api/device-action-routes.ts';
-  const route=source.read(routePath).get(routePath).bytes.toString('utf8');
-  assert.equal((route.match(/CALENDAR_AVAILABILITY_CAPABILITY,\s+FILES_CAPABILITY,/g)||[]).length,2);
-});
 
 test('the shipped coordinator and Files view agree on approved operations', {skip:!featuresReady&&'prepared client features are missing'}, async()=>{
  const moduleAt=name=>tsImport(path.join(features,sharedDirectory,name),import.meta.url);

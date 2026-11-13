@@ -81,7 +81,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  async function keyFor(c:Credential){if(c.token)return c.token;if(!c.credentialFile||!c.credentialSha256)throw Error('Cloud credential unavailable');const token=(await privateFile(c.credentialFile)).trim();if(createHash('sha256').update(token).digest('hex')!==c.credentialSha256)throw Error('Cloud credential changed');return token;}
  async function admitted(env:Environment,reference:unknown,id?:unknown){const c=(await load())[env];if(!c)throw refusal(401,'credentials-missing');if(c.credentialReference!==reference||id!==undefined&&c.credentialId!==id)throw refusal(409,'account-changed');if(c.expiresAt!==undefined&&c.expiresAt<=Date.now())throw refusal(401,'expired');return c;}
  async function current(env:Environment,c:Credential,signal:AbortSignal){signal.throwIfAborted();await admitted(env,c.credentialReference,c.credentialId);await keyFor(c);signal.throwIfAborted();}
- function retire(env:Environment){for(const row of active.values())if(row.environment===env)row.controller.abort(new DOMException('Cloud account changed','AbortError'));for(const [id,login]of pending)if(login.environment===env)pending.delete(id);for(const [ref,claim]of claims)if(claim.environment===env)claims.delete(ref);}
+ function retire(env:Environment){if(googleCommitted?.environment===env)googleCommitted=undefined;for(const row of active.values())if(row.environment===env)row.controller.abort(new DOMException('Cloud account changed','AbortError'));for(const [id,login]of pending)if(login.environment===env)pending.delete(id);for(const [ref,claim]of claims)if(claim.environment===env)claims.delete(ref);}
  async function canonical(env:Environment,route:string,signal:AbortSignal,init:RequestInit={},credential?:Credential){const headers=new Headers(init.headers);headers.set('Accept','application/json');headers.set('User-Agent','AlphaPhone-Browser-Cloud/1');if(credential)headers.set('Authorization','Bearer '+await keyFor(credential));const result=await fetchCloud(authorities[env]+route,{...init,headers,redirect:'error',signal});signal.throwIfAborted();return result;}
  // Browser-host sign-in: email stays in app; Google uses canonical hosted OAuth, not Android App Links. The same Steward and mobile App Auth contracts as AlphaCloudSignInPlugin; the Steward
  // session, PKCE material and the minted key stay in this process and the private profile file.
@@ -141,7 +141,14 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
      }return {status:response.status,data:result};}
  type GoogleAttempt={id:string;environment:Environment;controller:AbortController;state:string;verifier:string;previousReference:string|null;expiresAt:number;busy:boolean;phase:'preparing'|'committing'|'committed'|'failed';returned?:{code:string}|{error:string};mfa?:{type:string;challengeId:string;failed:number};outcome?:{status:'authenticated';environment:Environment;expiresAt:number;accountCreated:boolean|null;attemptId:string;credentialId:string}};
  let googleAttempt:GoogleAttempt|null=null;
+ let googleCommitted:GoogleAttempt['outcome'];
  async function cancelGoogleAttempt(expectedId?:string){
+  // The committed poll may still be travelling to the renderer when Cancel arrives.
+  // Retain only its non-secret outcome, never the verifier or the authorization code.
+  if(expectedId!==undefined&&googleCommitted?.attemptId===expectedId){
+   if(googleCommitted.expiresAt>Date.now())return googleCommitted;
+   googleCommitted=undefined;
+  }
   const attempt=googleAttempt;if(!attempt||expectedId!==undefined&&attempt.id!==expectedId)return {};
   // Once rename is dispatched, cancellation cannot truthfully promise the old account.
   // Wait for its serialized outcome instead of aborting and misreporting a committed login.
@@ -175,6 +182,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   });
   // Do not recheck an aborted request after the durable commit: report what committed.
   if(googleAttempt===attempt)googleAttempt=null;
+  googleCommitted=attempt.outcome;
   return attempt.outcome!;
  }
 

@@ -6,7 +6,6 @@ const source=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/scan-pdf.
  .replace("'../platform-plugins'",JSON.stringify(url('export const registerPlugin=()=>({exportPdf:input=>globalThis.scanPdfTest.exportPdf(input)});')))
  .replace("'./files-index'",JSON.stringify(index))
  .replace("'../daily'",JSON.stringify(url('export const DailyApps={forgetSelected:input=>globalThis.scanPdfTest.forget(input)};')));
-const {filesIndex,RECENT_LIMIT}=await import(index);
 const {exportScanPdf,scanPdfFailure,scanPdfRetryable,ScanPdfExportError,systemPickerActive}=await import(url(source));
 const bytes=new TextEncoder().encode('%PDF-1.7 test');
 
@@ -24,22 +23,7 @@ test('only a failed or unknown export call is unconfirmed and locks retry',async
  assert.ok(error instanceof ScanPdfExportError);assert.equal(picker,true,'review dialogs stay open while the system picker covers the page');assert.equal(systemPickerActive(),false);
  const failure=scanPdfFailure(error);assert.equal(failure.retry,false);assert.match(failure.message,/[Uu]nconfirmed/);
 });
-test('an export that pushes a picked document out of Recent releases that document\'s grant',async()=>{
- const forgotten=[];globalThis.scanPdfTest={create:async()=>bytes,exportPdf:async()=>({status:'exported',message:'saved'}),forget:async input=>{forgotten.push(input.selectionId);}};
- for(let i=0;i<RECENT_LIMIT;i++)filesIndex.record({kind:'selected',name:'picked.txt',mimeType:'text/plain',selectionId:'s'+i});
- await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan one');
- assert.deepEqual(forgotten,['s0'],'the evicted row gave up its grant');assert.equal(filesIndex.has('s0'),false);assert.equal(filesIndex.list().length,RECENT_LIMIT);
- // The open document is still in use: its grant stays until it closes.
- filesIndex.setOpen('s1');await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan two');
- assert.deepEqual(forgotten,['s0']);assert.equal(filesIndex.has('s1'),false);filesIndex.setOpen(null);
- // Exporting under a listed name refreshes that row and pushes nothing out.
- await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan two');assert.deepEqual(forgotten,['s0']);
- // An export that wrote nothing is not listed, so nothing is released; a failed release does not fail the export.
- globalThis.scanPdfTest.exportPdf=async()=>({status:'failed',message:'no'});await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan three');
- assert.deepEqual(forgotten,['s0']);assert.equal(filesIndex.has('s2'),true);
- Object.assign(globalThis.scanPdfTest,{exportPdf:async()=>({status:'requested',message:'chooser'}),forget:async input=>{forgotten.push(input.selectionId);throw Error('bridge lost');}});
- assert.equal((await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan three')).status,'requested');assert.deepEqual(forgotten,['s0','s2']);
-});
+
 test('resolved provider outcomes decide retry by what they confirm',()=>{
  for(const status of ['cancelled','failed','unavailable','too-large'])assert.equal(scanPdfRetryable(status),true,status);
  for(const status of ['exported','requested','unverified','unknown'])assert.equal(scanPdfRetryable(status),false,status);
