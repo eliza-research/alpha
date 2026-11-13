@@ -16,6 +16,23 @@ const floorClass = value => value < 705 ? 1 : value === 705 ? 2 : 3;
 export async function checkAppUpdateCandidate(extraSources = []) {
   const sources = [fileURLToPath(import.meta.url), 'scripts/app-update-candidate.ts',
     'scripts/deliver-app-update.ts', 'scripts/update-artifact.ts',
+    // Freeze the producer recipe inputs too; synthetic archive bytes do not qualify their implementations.
+    'android/embedding-host/build-toolchain.json',
+    'android/embedding-host/native-requirements.txt',
+    'android/embedding-host/bootstrap-requirements.txt',
+    'android/paradee-voice/asr-inputs.json',
+    'scripts/build-embedding-host.ts',
+    'scripts/prepare-embedding-host.ts',
+    'scripts/embedding-native-contract.ts',
+    'scripts/embedding-build-remap.ts',
+    'scripts/native-build-inputs.ts',
+    'scripts/android-stage-voice-models.ts',
+    'scripts/local-agent-source.ts',
+    'scripts/voice-host.ts',
+    'scripts/paradee-runtime.ts',
+    'scripts/android-abis.ts',
+    'scripts/copy-file-clone.ts',
+    'scripts/stage-embedding-host.ts',
     'test/fixtures/app-update-candidate.mjs', '.github/workflows/resident-android.yml', ...extraSources];
   const driverHashes = captureInputs(sources), traces = [], cleanups = [];
   try {

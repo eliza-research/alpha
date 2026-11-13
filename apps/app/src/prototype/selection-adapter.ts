@@ -15,14 +15,6 @@ import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 type Bag = Record<string, any>;
 type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number; mediaFailed?:boolean };
 
-async function readFilesListing<T extends {status:string;message?:string}>(reply:Promise<T>) {
-  const result=await reply;
-  // The shared view handles denied access and navigation away from a missing folder.
-  // Other read failures go through its existing persistent error state.
-  if(!['ready','denied','missing'].includes(result.status))throw Error(result.message||'Files could not be read.');
-  return result;
-}
-
 function previewMedia(result:NativeResult) {
   const native=Capacitor.isNativePlatform(),uri=result.uri,mime=result.mimeType||'';
   if(!uri||!(native?uri.startsWith('content://'):uri.startsWith('blob:')))return undefined;
@@ -161,6 +153,9 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       }
       if (st.open !== marker || !current) return data;
       const selected = current;
+      // Text loading refreshes preview fields without changing the selected file.
+      const sameSelection=()=>current?.result===selected.result
+        &&current?.epoch===selected.epoch&&current?.pdf===selected.pdf;
       const name = selected.result.name || 'Selected document';
       const mime = selected.result.mimeType || 'application/octet-stream';
       const uri = selected.result.uri;
@@ -168,7 +163,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       const close = () => { clear(); api.set({ open: null }); };
       const forget = () => { clear(true); api.set({ open: null }); };
       const canAsk=selected.result.status==='selected'&&(!!selected.text?.trim()||!!image||!!selected.pdf?.image);
-      const questionCurrent=()=>current===selected&&api.isActive()&&api.get(module).open===marker&&!document.hidden;
+      const questionCurrent=()=>sameSelection()&&api.isActive()&&api.get(module).open===marker&&!document.hidden;
       const ask=()=>{
         if(!canAsk||!questionCurrent())return;
         closeQuestion?.();
@@ -178,7 +173,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
         closeQuestion?.();
         closeQuestion=reviewFileEmail({
           read:async()=>{const file=await sourceFiles.readSelected({selectionId:selected.result.selectionId!});if(file.name!==name||file.mimeType!==mime)throw Error('Selected file changed. Select it again.');return file;},
-          current:()=>current===selected&&api.isActive()&&api.get(module).open===marker&&!renameBusy,
+          current:()=>sameSelection()&&api.isActive()&&api.get(module).open===marker&&!renameBusy,
           target:()=>views.inbox.fileEmailTarget(),insert:(file,token)=>views.inbox.attachReviewedFile(file,token),
           inserted:()=>api.open('inbox'),
         });
@@ -192,12 +187,12 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
         for (let i = 0; i < rows.length; i += 8) pages.push({ first: true, rest: false, heading: i ? name + ' (continued)' : name, rows: rows.slice(i, i + 8), lines: [], num: '' });
         data.isPreview = true;
         data.pv = {
-          needsReselect:selected.result.status === 'renamed-reselect', reselect:async()=>{try{const result=await DailyApps.perform({action:'files'});if(current===selected&&result.status==='selected')await accept('files',result,api);}catch{api.toast('Picker failed');}},
+          needsReselect:selected.result.status === 'renamed-reselect', reselect:async()=>{try{const result=await DailyApps.perform({action:'files'});if(sameSelection()&&result.status==='selected')await accept('files',result,api);}catch{api.toast('Picker failed');}},
           canEmail:typeof views.inbox.fileEmailTarget==='function'&&selected.result.status==='selected'&&['text/plain','application/pdf','image/png','image/jpeg','image/webp'].includes(mime),email,
           name, nativeSelectionId:selected.result.selectionId, base: name, ext: '', canForget:true, forget, meta: mime + ' · selected on this device', d: '',
           isPages: !!selected.pdf||rows.length>0, pages: selected.pdf ? [] : pages, isPdf: !!selected.pdf, pdfImage: selected.pdf?.image || '', pdfLabel: selected.pdf ? 'Page ' + (selected.pdf.page+1) + ' of ' + selected.pdf.count : '', pdfPrevious: () => selected.pdf && selected.pdf.page > 0 ? pdfPage(selected.pdf.page-1,api) : undefined, pdfNext: () => selected.pdf && selected.pdf.page+1 < selected.pdf.count ? pdfPage(selected.pdf.page+1,api) : undefined, pdfHasPrevious: !!selected.pdf && selected.pdf.page > 0, pdfHasNext: !!selected.pdf && selected.pdf.page+1 < selected.pdf.count, paper: '#FFFFFF', isPhoto: false,
           mediaImage:media?.kind==='image',mediaVideo:media?.kind==='video',mediaAudio:media?.kind==='audio',mediaUrl:media?.url,mediaRef,
-          mediaError:()=>{if(current!==selected)return;current={...selected,mediaFailed:true,status:'Preview unavailable for this file.'};refresh();},
+          mediaError:()=>{if(!sameSelection()||!current)return;current={...current,mediaFailed:true,status:'Preview unavailable for this file.'};refresh();},
           previewStatus:!media&&!selected.pdf&&selected.text===undefined?selected.status:'',
           canOpenElsewhere:selected.result.status==='selected'&&!!selected.result.selectionId,
           openElsewhereLabel:Capacitor.isNativePlatform()?'Open in Android':'Download file',openElsewhere:()=>void open(api,selected,!Capacitor.isNativePlatform()),
@@ -248,13 +243,8 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       current = { ...current, text: undefined, status: 'Unreadable' }; refresh();
     }
   }
-  const storage=registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles');
-  const observedReads:Partial<FilesStoragePort<NativeResult>>={
-    storageList(input){return readFilesListing(storage.storageList(input));},
-    storageCategory(input){return input.countOnly?storage.storageCategory(input):readFilesListing(storage.storageCategory(input));},
-  };
   Component.prototype.filesAgent=installFilesBrowserAdapter(views.files as Parameters<typeof installFilesBrowserAdapter>[0],accept,clear,{
-    storage:new Proxy(storage,{get:(target,key)=>Object.hasOwn(observedReads,key)?Reflect.get(observedReads,key):Reflect.get(target,key)}),
+    storage:registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles'),
     createInlineModal,
     menuFocus:()=>document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="Files options"]'),
     forgetSelected:selectionId=>DailyApps.forgetSelected({selectionId}),
@@ -264,10 +254,6 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;
     const storageAccessible=!out.browse?.denied&&!out.browse?.unavailable;
     out.filterVisible=!!out.chip&&storageAccessible;
-    if(out.fd?.empty&&!storageAccessible){
-      out.fd.empty=false;
-      out.nativeTreeStatus||='Files could not be read.';
-    }
     if(out.toolbar?.ready&&!out.toolbar.canCreate){const create=out.toolbar.newFolder;out.toolbar.canCreate=true;out.toolbar.newFolder=()=>{out.browse.allFiles();create();};}
     if(out.fd?.menuRows){
       const modes=[{mode:'name',icon:'type',up:'Name A–Z',down:'Name Z–A'},{mode:'date',icon:'calendar',up:'Newest first',down:'Oldest first'},{mode:'size',icon:'hard-drive',up:'Largest first',down:'Smallest first'}];

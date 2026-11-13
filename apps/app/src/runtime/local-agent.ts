@@ -150,7 +150,7 @@ function subscribeBrowserConversationEvents(bridge:LocalAgentBridge,ownerId:stri
       if(retired){next.close();return;}
       const previous=current,gap=!previous||previous.readyState!==WebSocket.OPEN;current=next;pending=undefined;backoff=1000;
       const socket=next;
-      socket.onmessage=event=>{if(retired||current!==socket||typeof event.data!=='string'||event.data.length>2*1048576)return;let value;try{value=JSON.parse(event.data);}catch{return;}if(value&&typeof value==='object'&&!Array.isArray(value)&&value.type==='proactive-message')listener(value);};
+      socket.onmessage=event=>{if(retired||current!==socket||typeof event.data!=='string'||event.data.length>2*1048576)return;let value;try{value=JSON.parse(event.data);}catch{return;}if(value&&typeof value==='object'&&!Array.isArray(value)&&(value.type==='proactive-message'||value.type==='conversation-updated'))listener(value);};
       socket.onclose=event=>{if(retired||current!==socket)return;current=undefined;if(event.code===1008){onState('unavailable',false);stop();return;}failed();};
       socket.onerror=()=>{if(!retired&&current===socket)socket.close();};
       previous?.close();onState('connected',gap);schedule(expiresAt-Date.now()-10000);

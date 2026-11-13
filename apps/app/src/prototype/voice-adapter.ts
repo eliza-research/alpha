@@ -26,7 +26,7 @@ import { registerPlugin } from '../platform-plugins';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { createOnDeviceVoice } from '../runtime/local-voice';
 import { screenConversationSpeech } from '../runtime/local-speech-text';
-import { voiceFailure, transcriptProvenance, deniedSettingsChoice, DENIED_SETTINGS_LABEL, type VoiceFailure, type TranscriptProvenance } from '../runtime/voice-states';
+import { voiceFailure, transcriptProvenance, deniedSettingsChoice, DENIED_SETTINGS_LABEL, MEDIA_UNCONFIRMED_NOTICE, speechCleanupNotice, type VoiceFailure, type TranscriptProvenance } from '../runtime/voice-states';
 import { createPairedVoice } from '../runtime/paired-voice';
 import { createCloudVoice, cloudVoiceFailure, cloudVoiceServiceLimit, createCloudStreamingSpeech, nativeCloudStreamingAvailable, type VoiceRecordingStopped } from '../runtime/cloud-voice';
 import { speakCloudSpeechChunks } from '../../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts';
@@ -170,7 +170,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       stopSaved();
       if (!(error instanceof Error && error.name==='AbortError')) {
         const missing=error instanceof Error && error.message==='Recording not found.';
-        savedPlaybackError={audioId:note.audio.audioId,message:missing?'Audio is missing on this device.':'Couldn’t play audio. Tap Play to retry.'};
+        savedPlaybackError={audioId:note.audio.audioId,message:mediaUnconfirmed?MEDIA_UNCONFIRMED_NOTICE:missing?'Audio is missing on this device.':'Couldn’t play audio. Tap Play to retry.'};
       }
       refresh();
     }
@@ -236,9 +236,6 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   // A recorded-clip (batch) conversation turn: its path is recorded as live mode 'batch' with no
   // partials, so timing and the diagnostics export tell it from the live assistant ('stream').
   const batchRecordingEnded=(id:string|undefined)=>{if(!id||timedRecording===id)return;recordingEnded(id,'conversation');recordLiveVoiceTiming({mode:'batch',partials:0});};
-  // Said by every entry that is refused because a microphone or playback stop was never confirmed.
-  const MEDIA_UNCONFIRMED_NOTICE='Voice unconfirmed · restart app';
-  // Said once per page session: the half-duplex loop cannot hear the user while a reply plays.
   let mediaUnconfirmed:unknown;
   let retirement:{shell:any;phase:'stopping'|'error';returnChat:string;view:string|null;binding:string;panelChat:string;promise:Promise<void>;approval?:AbortController;proposalId?:string}|undefined;
   const refresh = () => chatDestination ? chatDestination.shell.setState({}) : api?.setView('notes', { nativeVoiceRevision: Date.now() });
@@ -443,7 +440,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     playback = controller; playing = true; error = ''; refresh();
     const pending=notesSpeech=onDeviceReady&&onDeviceVoice?onDeviceVoice.speak(draft,controller.signal,undefined,true):speaker.speak(draft, controller.signal);
     try { await pending; }
-    catch (failure) { if((failure as {code?:string})?.code==='speech-cleanup-unconfirmed'){mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});}if (token === generation && !controller.signal.aborted) error = (cloudMode && cloudVoiceFailure(failure)) || 'Playback failed'; }
+    catch (failure) { if((failure as {code?:string})?.code==='speech-cleanup-unconfirmed'){mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});}if (token === generation && !controller.signal.aborted) error = speechCleanupNotice(failure) || (cloudMode && cloudVoiceFailure(failure)) || 'Playback failed'; }
     finally { if(notesSpeech===pending)notesSpeech=undefined;if (token === generation) { playback = undefined; playing = false; refresh(); } }
   }
   const composerBinding = () => JSON.stringify([
@@ -900,10 +897,17 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     return conversationVoice?.resume({pause,reply:{requestId:reply.requestId,conversationId:reply.conversationId,userMessageId:reply.inReplyTo,assistantMessageId:reply.messageId,text:reply.text,complete:true}})??false;
   };
   Component.prototype.prepareDeviceReadReview=async function(proposalId:string,digest:string|undefined,signal:AbortSignal){
-    signal.throwIfAborted();if(stage!=='closed'&&!chatDestination)throw Error('Finish or discard the Notes recording before reviewing this request.');
+    signal.throwIfAborted();if(mediaUnconfirmed)throw Error(MEDIA_UNCONFIRMED_NOTICE);
+    if(stage!=='closed'&&!chatDestination)throw Error('Finish or discard the Notes recording before reviewing this request.');
     const binding=composerBinding(),pause=conversationState.awaitingUserInput;
     if(chatDestination?.shell===this&&!(conversationState.phase==='awaiting-user-input'&&pause?.proposalId===proposalId&&pause.digest===digest&&chatCurrent()))cleanup();
-    const reading=stopLocalSpeechPlayback();stopSaved();await Promise.all([stopping,Promise.resolve(reading)]);signal.throwIfAborted();
+    const reading=stopLocalSpeechPlayback();stopSaved();
+    try { await Promise.all([stopping,Promise.resolve(reading)]); }
+    catch (failure) {
+      if (mediaUnconfirmed || speechCleanupNotice(failure)) throw Error(MEDIA_UNCONFIRMED_NOTICE, {cause: failure});
+      throw failure;
+    }
+    signal.throwIfAborted();
     if(this.live===false||document.hidden||connectionController.getSnapshot().open||composerBinding()!==binding)throw Error('The Notes review changed.');
   };
   Component.prototype.retireReadReplyVoice=function(proposalId:string){if(chatDestination?.shell===this&&conversationState.awaitingUserInput?.proposalId===proposalId)cleanup();};
@@ -944,7 +948,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const settings=phase==='error'&&conversationDenied&&Capacitor.isNativePlatform();
     const recover=()=>{if(!owned()||mediaUnconfirmed)return;if(settings){void appSettings.openSettings({page:'privacy'}).catch(()=>chat?.shell.toast('Allow mic in Settings'));return;}if(cloudConnectRequired){cleanup();connectionController.openCloudAccount();}else if(!connectionController.getSnapshot().session){cleanup();connectionController.open();}else if((phase==='error'&&!conversationReviewRequired)||phase==='idle'){quietRetries=0;void beginConversation();}else cancelChat(false,true);};
     const unavailable=phase==='error'&&(conversationState.error as {code?:unknown})?.code==='voice-http-503';
-    const visibleError=unavailable?'Voice unavailable':error;
+    const visibleError=mediaUnconfirmed?MEDIA_UNCONFIRMED_NOTICE:unavailable?'Voice unavailable':error;
     const awaiting=phase==='awaiting-user-input'||conversationReviewRequired;
     const progressText=!awaiting&&!error&&(phase==='thinking'||phase==='speaking')?(conversationState.progressText||''):'';
     const reviewing=conversationReview,reviewOwned=()=>owned()&&conversationReview===reviewing;
@@ -956,7 +960,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     // Voice assistant: the capture is held while Alpha replies and Stop speaking interrupts the reply; Mute turns the microphone off.
     const assistant=conversationLive&&conversationVoice===conversationLive?conversationLive:undefined;
     if(assistant)messages.speaking='Alpha is speaking.';
-    if(assistant&&assistantState.muted)messages.listening='Microphone off.';
+    if(assistant?assistantState.muted:direct?.microphoneMuted)messages.listening='Microphone off.';
     const held=assistantState.inputHeld===true&&!assistant?.muted;
     const assistantControls=assistant&&phase!=='error'?{canMute:phase!=='awaiting-user-input',muteAutomatically:held,muted:assistant.muted||held?'true':'false',muteLabel:held?'Microphone paused while Alpha responds':assistant.muted?'Unmute microphone':'Mute microphone',toggleMute:()=>{if(owned()){liveCapture?.release();void assistant.setMuted(!assistant.muted).finally(refresh);}},canInterrupt:phase==='speaking',interrupt:()=>{if(owned()&&assistant.interruptSpeech())refresh();}}:{};
     const extra=assistant?assistantControls:direct?{canMute:true,muteAutomatically:direct.microphoneAutomaticallyMuted,muteLabel:direct.microphoneAutomaticallyMuted?'Microphone paused while Alpha responds':direct.microphoneMuted?'Unmute microphone':'Mute microphone',muted:direct.microphoneMuted||direct.microphoneAutomaticallyMuted?'true':'false',toggleMute:()=>{if(owned()){direct.setMicrophoneMuted(!direct.microphoneMuted);refresh();}},needsPlaybackUnlock:direct.needsPlaybackUnlock,unlockPlayback:()=>{if(owned())void direct.unlockPlayback().then(refresh).catch(failure=>{error=failure instanceof Error?failure.message:'Playback could not unlock.';refresh();});}}:{};

@@ -14,7 +14,7 @@
  * vendor/eliza/packages/os/scripts/android/decrypt-release-keys.ts, or is held in an HSM or managed
  * key service that exposes PKCS#11 (decision P-16). Build without the ELIZAOS_KEYSTORE_* variables
  * (ELIZAOS_VERSION_CODE and ELIZAOS_VERSION_NAME still set), then run this. By default it signs
- * artifacts/standalone-release-unsigned.apk and artifacts/launcher-release-unsigned.apk into
+ * artifacts/launcher-release-unsigned.apk into
  * <variant>-release.apk, removes the unsigned files (verify-apks admits exactly one release name per
  * variant), and re-runs scripts/verify-apks.ts (with the runtime profile artifacts/build-config.json
  * records) and the SBOM so apk-manifest.json records the signed bytes. `--apk`/`--out` signs one other APK the same way, for example the preprocessed Sense
@@ -42,7 +42,7 @@ import { fileURLToPath } from "node:url";
 export const DEFAULT_KEY_NAME = "alphaphone_app";
 export const PIN_ENV = "ELIZAOS_PKCS11_PIN";
 export const KEYSTORE_PASSWORD_ENV = "ALPHA_APP_RELEASE_KEYSTORE_PASSWORD";
-export const VARIANTS = Object.freeze(["standalone", "launcher"]);
+export const VARIANTS = Object.freeze(["launcher"]);
 /**
  * JDK 9+ keeps sun.security.pkcs11 unexported, so apksigner cannot construct SunPKCS11 from
  * --provider-class without this export. apksigner's launcher script forwards "-J<x>" to java as
@@ -154,7 +154,7 @@ export function toolMessage({ stderr, stdout, error }: {stderr?: string; stdout?
   return lines.slice(-3).join(" ") || "no output";
 }
 
-/** The APKs to sign: the two unsigned releases in the artifacts directory, or one explicit pair. */
+/** The APKs to sign: the unsigned launcher release in the artifacts directory, or one explicit pair. */
 export function signingTargets({ artifacts = "artifacts", apk, out }: {artifacts?: string; apk?: string; out?: string}): SigningTarget[] {
   if (apk || out) {
     if (!apk || !out) throw new Error("--apk and --out go together");
@@ -165,7 +165,7 @@ export function signingTargets({ artifacts = "artifacts", apk, out }: {artifacts
   return VARIANTS.map(variant => {
     const input = path.join(artifacts, `${variant}-release-unsigned.apk`), output = path.join(artifacts, `${variant}-release.apk`);
     if (fs.existsSync(output)) throw new Error(`${output} already exists: that release is already signed (Gradle signing or an earlier run)`);
-    if (!fs.existsSync(input)) throw new Error(`${input} is missing; build the releases without ELIZAOS_KEYSTORE_* first (bun run android:build:local)`);
+    if (!fs.existsSync(input)) throw new Error(`${input} is missing; build the release without ELIZAOS_KEYSTORE_* first (bun run android:build:local)`);
     return { input, output, removeInput: true };
   });
 }
@@ -225,7 +225,7 @@ export async function approvedSigningRotation(signerRecord: SignerRecord, lineag
       !Number.isSafeInteger(record.versionCode) ||
       !Number.isSafeInteger(record.fromVersionCode) || record.fromVersionCode < 1 ||
       record.versionCode <= Math.max(record.fromVersionCode, lastReleaseVersion) ||
-      !unsigned || Object.keys(unsigned).sort().join() !== "launcher,standalone" ||
+      !unsigned || Object.keys(unsigned).sort().join() !== "launcher" ||
       [record.previousSignerSha256, record.lineageSha256, record.apksignerSha256, record.verifierJarSha256, ...Object.values(unsigned)]
         .some(value => typeof value !== "string" || !HEX.test(value)) ||
       record.previousSignerSha256 === signerRecord.signerSha256) {
@@ -236,6 +236,7 @@ export async function approvedSigningRotation(signerRecord: SignerRecord, lineag
       await fileDigest(lineage) !== record.lineageSha256)
     throw new Error("Public rotation lineage differs from the reviewed digest");
   const allowed = new Set(Object.values(unsigned));
+  if (targets.length !== VARIANTS.length) throw new Error("Unsigned APK is outside the reviewed rotation scope");
   for (const target of targets) {
     if (!fs.lstatSync(target.input).isFile() || !allowed.delete(await fileDigest(target.input)))
       throw new Error("Unsigned APK is outside the reviewed rotation scope");

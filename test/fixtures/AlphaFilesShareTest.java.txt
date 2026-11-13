@@ -1,0 +1,94 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+
+public class AlphaFilesShareTest {
+ private static final class JSArray {
+  final List<String> values;
+  JSArray(List<String> values){this.values=values;}
+  int length(){return values.size();}
+  String optString(int index,String fallback){return values.get(index);}
+ }
+ private static final class PluginCall {
+  final List<String> paths;
+  JSObject result;
+  PluginCall(List<String> paths){this.paths=paths;}
+  JSArray getArray(String key){return new JSArray(paths);}
+ }
+ private static final class JSObject {
+  final String status,message;
+  int count;
+  JSObject(String status,String message){this.status=status;this.message=message;}
+  void put(String key,int value){if(!"count".equals(key))throw new AssertionError(key);count=value;}
+ }
+ private static final class StorageBrowser {
+  final Path root;
+  StorageBrowser(Path root){this.root=root;}
+  File resolve(String path,boolean allowRoot){return root.resolve(path).toFile();}
+  static String mime(String name){return "text/plain";}
+ }
+ private static final class Uri {}
+ private static final class Intent {
+  static final String ACTION_SEND="send",ACTION_SEND_MULTIPLE="multiple",EXTRA_STREAM="stream";
+  static final int FLAG_GRANT_READ_URI_PERMISSION=1;
+  final String action;
+  ClipData clip;
+  int streams;
+  Intent(String action){this.action=action;}
+  Intent setType(String type){return this;}
+  Intent addFlags(int flags){return this;}
+  void putExtra(String key,Uri uri){streams=1;}
+  void putParcelableArrayListExtra(String key,ArrayList<Uri> uris){streams=uris.size();}
+  void setClipData(ClipData clip){this.clip=clip;}
+  static Intent createChooser(Intent send,String label){return send;}
+ }
+ private static final class ClipData {
+  private static final class Item {Item(Uri uri){}}
+  int count=1;
+  static ClipData newRawUri(String label,Uri uri){return new ClipData();}
+  void addItem(Item item){count++;}
+ }
+ private final StorageBrowser browser;
+ private int grants,choosers;
+ AlphaFilesShareTest(Path root){browser=new StorageBrowser(root);}
+ private static JSObject result(String status,String message){return new JSObject(status,message);}
+ private interface StorageWork {JSObject run(StorageBrowser browser)throws Exception;}
+ private void storage(PluginCall call,StorageWork work){
+  try{call.result=work.run(browser);}
+  catch(IllegalArgumentException invalid){call.result=result("invalid","Invalid name or path.");}
+  catch(FileNotFoundException missing){call.result=result("missing","This item is no longer there.");}
+  catch(Exception error){throw new AssertionError(error);}
+ }
+ private Uri contentUri(File file){grants++;return new Uri();}
+ private boolean startOnUi(Intent intent){
+  choosers++;
+  if(intent.clip==null||intent.clip.count!=grants||intent.streams!=grants||!(grants==1?Intent.ACTION_SEND:Intent.ACTION_SEND_MULTIPLE).equals(intent.action))
+   throw new AssertionError("Share must name the exact admitted selection");
+  return true;
+ }
+ /* production strings */
+ /* production share */
+
+ public static void main(String[] args)throws Exception{
+  Path root=Files.createTempDirectory("alpha-share-files-");
+  try {
+   List<String> paths=new ArrayList<>();
+   int count="101 files".equals(args[0])?101:"100 files".equals(args[0])?100:1;
+   for(int i=0;i<count;i++){String name="item-"+i+".txt";Files.writeString(root.resolve(name),"fixture");paths.add(name);}
+   if("mixed directory".equals(args[0])){Files.createDirectory(root.resolve("folder"));paths.add("folder");}
+   if("missing file".equals(args[0]))paths.add("missing.txt");
+   if("duplicate file".equals(args[0]))paths.add(paths.get(0));
+   AlphaFilesShareTest fixture=new AlphaFilesShareTest(root);
+   PluginCall call=new PluginCall(paths);
+   fixture.storageShare(call);
+   JSObject result=call.result;
+   System.out.println(result.status+"|"+result.message+"|"+fixture.grants+"|"+fixture.choosers+"|"+result.count);
+  } finally {
+   try(java.util.stream.Stream<Path> entries=Files.walk(root)){
+    for(Path entry:entries.sorted(Comparator.reverseOrder()).toArray(Path[]::new))Files.delete(entry);
+   }
+  }
+ }
+}

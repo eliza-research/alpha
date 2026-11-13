@@ -43,7 +43,7 @@
     "agent:stage-android": "bun scripts/stage-local-agent-runtime.ts",
     "agent:build-embedding-host": "bun scripts/build-embedding-host.ts",
     "android:build:inputs": "bun scripts/android-build-preflight.ts --report",
-    "android:build:local": "bun scripts/android-build-preflight.ts --before-prepare && bun run agent:build-embedding-host && bun run agent:prepare && bun run agent:build-workflow-worker && bun run agent:stage-android && bun run licenses:packaged-runtime && bun run android:build",
+    "android:build:local": "bun scripts/android-build-preflight.ts && bun run agent:build-embedding-host && bun run agent:prepare && bun run agent:build-workflow-worker && bun run agent:stage-android && bun run licenses:packaged-runtime && bun run android:build",
     "android:deps:check": "bun scripts/gradle-verification.ts --check",
     "android:deps:write-verification": "bun scripts/gradle-verification.ts --write",
     "licenses:packaged-runtime": "bun scripts/generate-licenses.ts --packaged-runtime",

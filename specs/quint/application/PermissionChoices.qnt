@@ -6,7 +6,7 @@ module PermissionChoices {
   pure val MaxGeneration = 12
   pure val LocationDescriptions = Set("", "Approximate location allowed", "Precise location allowed", "Not allowed")
   pure val PhotoDescriptions = Set("", "All photos and videos allowed", "Selected photos and videos only", "Limited photo or video access allowed", "Not allowed")
-  type State = { native: bool, signedIn: bool, enabled: bool, connectionOpen: bool, googleOpen: bool, setupReady: bool, accountCreated: bool,
+  type State = { native: bool, image: bool, signedIn: bool, enabled: bool, connectionOpen: bool, googleOpen: bool, setupReady: bool, accountCreated: bool,
     active: bool, ready: bool, reopened: bool, review: bool, progress: int, choices: List[str],
     savedProgress: int, savedChoices: List[str], savedHasChoices: bool, completed: bool, legacyCompleted: bool,
     states: int -> str, attempted: Set[int], requests: int -> int, pending: int, generation: int,
@@ -16,14 +16,20 @@ module PermissionChoices {
   val count = if (s.native) 7 else 4
   val Keys = 0.to(count - 1)
   val selected = if (s.target >= 0) s.target else if (s.progress >= 0) s.progress else 0
-  val visible = (s.active or s.ready) and (s.enabled or s.reopened) and not(s.connectionOpen or s.googleOpen)
+  pure def selectedOf(v: State): int = if (v.target >= 0) v.target else if (v.progress >= 0) v.progress else 0
+  pure def shownOf(v: State): bool = (v.active or v.ready) and (v.enabled or v.reopened) and not(v.connectionOpen or v.googleOpen)
+  pure def automaticOf(v: State): bool = v.image and v.active and not(v.ready) and v.target < 0 and not(v.review)
+    and (v.states.get(selectedOf(v)) == "ready" or (v.states.get(selectedOf(v)) == "checking" and not(v.canSkip)))
+  val shown = shownOf(s)
+  val automatic = automaticOf(s)
+  val visible = shown and not(automatic)
   val busy = s.pending >= 0
   val shownPermission = if (visible and not(s.ready)) selected else -1
   val buttonDisabled = visible and (busy or (not(s.ready) and s.states.get(selected) == "checking"))
   val phase = if (not(visible)) "hidden" else if (s.ready) "ready" else "permissions"
   pure def continuedChoices(step: int): List[str] = AllKeys.fold(List(), (items, key) =>
     if (key < step) items.append("continued") else items)
-  pure def initial(native: bool): State = { native: native, signedIn: false, enabled: false,
+  pure def initial(native: bool): State = { native: native, image: false, signedIn: false, enabled: false,
     connectionOpen: false, googleOpen: false, setupReady: false, accountCreated: false, active: true, ready: false, reopened: false, review: false,
     progress: 0, choices: List(), savedProgress: 0, savedChoices: List(), savedHasChoices: false,
     completed: false, legacyCompleted: false, states: AllKeys.mapBy(_ => "checking"),
@@ -32,6 +38,13 @@ module PermissionChoices {
     canSkip: false, checkNotice: "", pendingChoice: "", dismissed: false, homeRequests: 0, locationDescription: "", photoDescription: "" }
   action init = s' = initial(true)
   action browserInit = s' = initial(false)
+  action imageInit = s' = { ...initial(true), image: true }
+  /// Select the immutable platform profile before mounting. Named scenarios keep their exact
+  /// initializers; sampled safety now exercises ordinary Android, image and browser profiles.
+  action profileInit = {
+    nondet profile = Set("native", "image", "browser").oneOf()
+    s' = { ...initial(profile != "browser"), image: profile == "image" }
+  }
   pure def wrote(before: State, step: int, choices: List[str]): State = {
     val skipped = choices.foldl(false, (found, choice) => found or choice == "skipped")
     val saved = before.writeWorks and not(before.review)
@@ -51,7 +64,7 @@ module PermissionChoices {
   pure def mounted(before: State, signedIn: bool, isEnabled: bool): State = {
     val current = { ...before, signedIn: signedIn, enabled: isEnabled, generation: before.generation + 1,
       pending: -1, canSkip: false, checkNotice: "" }
-    if (current.active and isEnabled and current.target < 0 and current.progress >= 0)
+    if (current.active and shownOf(current) and not(automaticOf(current)) and current.target < 0 and current.progress >= 0)
       wrote(current, current.progress, current.choices) else current
   }
   action mountSignedOut = all { s.generation == 0, s' = mounted(s, false, false) }
@@ -100,11 +113,17 @@ module PermissionChoices {
       s' = if (state == "ready" and s.target < 0) advanced(current, s.pendingChoice) else current
     } }
   action result(granted: bool): bool = resultState(if (granted) "ready" else "settings")
+  /// The verified image's already-ready row advances without requesting access. A checking,
+  /// denied or unknown row cannot take this action, and Settings review remains explicit.
+  action imageContinue = all { shown, automatic, not(busy), s.states.get(selected) == "ready",
+    s' = advanced(s, "continued") }
   action staleResult(key: int): bool = all { Keys.contains(key), s.operations.get(key) >= 0,
     s.operations.get(key) != s.generation, s' = { ...s, operations: s.operations.set(key, -1),
       flowTickets: if (s.flowTickets.get(key) == s.operations.get(key)) s.flowTickets.set(key, -1) else s.flowTickets } }
   action retiredResult = s' = s
-  action skipAvailable = all { visible, not(s.ready), s' = { ...s, canSkip: true } }
+  /// The recovery timer also runs behind the image's hidden initial check. When it expires,
+  /// Checking is shown with Skip; an unknown read is never treated as a grant.
+  action skipAvailable = all { shown, not(s.ready), s' = { ...s, canSkip: true } }
   action skip = all { visible, s.canSkip, s.generation < MaxGeneration, {
     val retired = { ...s, generation: s.generation + 1, pending: -1, canSkip: false, checkNotice: "", flowTickets: s.flowTickets.set(selected, -1) }
     s' = if (s.target >= 0) { ...retired, active: false } else advanced(retired, "skipped")
@@ -154,7 +173,7 @@ module PermissionChoices {
     nondet photos = PhotoDescriptions.oneOf()
     any { mountSignedOut, signIn, directEnabled, signOut, ownerChange, suspend, resume, authSetup(created),
       overlays(false, false), overlays(true, false), overlays(false, true), platformState(key, state), platformDetails(location, photos),
-      begin, request, skipPending, resultState(state), staleResult(key), retiredResult,
+      begin, request, skipPending, resultState(state), imageContinue, staleResult(key), retiredResult,
       skipAvailable, skip, finish, reopen, openTarget(key), closeTarget, closeReview,
       storageFails, storageRecovers, progressWriteFailed, restart, blockedDismiss } }
   val OnePromptPerPermission = AllKeys.forall(key => s.requests.get(key) <= 1)
@@ -165,6 +184,7 @@ module PermissionChoices {
     and Keys.contains(s.pending) and s.ticket == s.generation and s.flowTickets.get(s.pending) == s.ticket
   val DurableCompletion = s.completed implies (s.savedProgress == count or (s.legacyCompleted and Set(4, 5, 6).contains(s.savedProgress)))
   val InactiveKeysChecking = AllKeys.exclude(Keys).forall(key => s.states.get(key) == "checking")
+  val ImageProfileIsNative = s.image implies s.native
   val DescriptionDomains = LocationDescriptions.contains(s.locationDescription) and PhotoDescriptions.contains(s.photoDescription)
   val TypeOK = 0.to(MaxGeneration).contains(s.generation) and 0.to(MaxGeneration).contains(s.ticket)
     and 0.to(count).contains(s.savedProgress) and s.homeRequests >= 0
@@ -177,7 +197,10 @@ module PermissionChoices {
     and (s.savedHasChoices implies s.savedChoices.length() == s.savedProgress)
     and (not(s.savedHasChoices) implies s.savedChoices.length() == 0)
     and Set("", "off", "unconfirmed").contains(s.checkNotice) and Set("", "allowed", "continued").contains(s.pendingChoice)
-  val safety = TypeOK and DescriptionDomains and OnePromptPerPermission and OrderedWalkthrough and CurrentOperation and DurableCompletion and InactiveKeysChecking
+  val safety = TypeOK and DescriptionDomains and OnePromptPerPermission and OrderedWalkthrough and CurrentOperation and DurableCompletion and InactiveKeysChecking and ImageProfileIsNative
+  val ImageContinuedWitness = s.image and not(s.review) and s.progress > 0
+    and s.choices.foldl(false, (found, choice) => found or choice == "continued")
+  val ImageCheckingRecoveryWitness = s.image and visible and s.canSkip and s.states.get(selected) == "checking"
   run sevenPermissionProgressTest = init.then(signIn).then(platformStatus(0, true)).then(begin).then(result(true))
     .then(platformStatus(1, true)).then(begin).then(result(true))
     .then(platformStatus(2, true)).then(begin).then(result(true))
@@ -222,5 +245,50 @@ module PermissionChoices {
   run directProviderProgressTest = init.then(mountSignedOut).then(authSetup(false)).then(directEnabled)
     .then(platformStatus(0, true)).then(begin).then(result(true))
     .expect(not(s.signedIn) and s.enabled and s.progress == 1 and safety)
+
+  run imageAlreadyGrantedCompletesTest = imageInit.then(signIn)
+    .then(platformStatus(0, true)).then(imageContinue)
+    .then(platformStatus(1, true)).then(imageContinue)
+    .then(platformStatus(2, true)).then(imageContinue)
+    .then(platformStatus(3, true)).then(imageContinue)
+    .then(platformStatus(4, true)).then(imageContinue)
+    .then(platformStatus(5, true)).then(imageContinue)
+    .then(platformStatus(6, true)).then(imageContinue)
+    .expect(s.ready and s.completed and s.savedProgress == 7 and s.homeRequests == 0
+      and AllKeys.forall(key => s.requests.get(key) == 0) and safety)
+    .then(finish).expect(not(visible) and s.homeRequests == 1 and safety)
+  run imageCheckingNeverGrantsTest = imageInit.then(signIn)
+    .expect(shown and automatic and not(visible) and s.progress == 0 and not(s.completed) and safety)
+    .then(imageContinue.fail())
+  run imageCheckingOffersRecoveryTest = imageInit.then(signIn).then(skipAvailable)
+    .expect(visible and s.canSkip and buttonDisabled and s.progress == 0 and not(s.completed) and safety)
+    .then(skip).expect(s.progress == 1 and s.choices == List("skipped") and not(s.completed) and safety)
+  run imageDeniedStopsTest = imageInit.then(signIn)
+    .then(platformStatus(0, true)).then(imageContinue)
+    .then(platformStatus(1, true)).then(imageContinue)
+    .then(platformStatus(2, true)).then(imageContinue)
+    .then(platformState(3, "settings"))
+    .expect(visible and shownPermission == 3 and s.progress == 3 and not(s.completed) and safety)
+    .then(imageContinue.fail())
+  run imageUnknownStopsTest = imageInit.then(signIn).then(platformState(0, "unavailable"))
+    .expect(visible and s.progress == 0 and not(s.completed) and safety).then(imageContinue.fail())
+  run imageOverlaySuspendsContinuationTest = imageInit.then(signIn).then(overlays(true, false))
+    .then(platformStatus(0, true)).expect(not(shown or visible) and s.progress == 0 and safety)
+    .then(imageContinue.fail())
+  run imageOwnerAndOverlayReturnTest = imageInit.then(signIn).then(signOut).then(platformStatus(0, true))
+    .expect(not(shown) and s.progress == 0 and safety).then(signIn).then(imageContinue)
+    .then(overlays(false, true)).then(platformStatus(1, true)).expect(not(shown) and s.progress == 1 and safety)
+    .then(overlays(false, false)).then(imageContinue).expect(s.progress == 2 and safety)
+  run imageFailedProgressReloadsTest = imageInit.then(storageFails).then(signIn)
+    .expect(not(s.progressError) and not(visible) and safety)
+    .then(platformStatus(0, true)).then(imageContinue)
+    .expect(s.progress == 1 and s.savedProgress == 0 and s.progressError and safety)
+    .then(restart).expect(s.progress == 0 and not(s.progressError) and not(visible) and safety)
+  run imageSettingsReviewIsExplicitTest = imageAlreadyGrantedCompletesTest.then(reopen)
+    .expect(s.review and visible and not(automatic) and s.savedProgress == 7 and safety)
+    .then(begin).then(result(true)).expect(s.progress == 1 and s.completed and s.savedProgress == 7 and safety)
+    .then(closeReview).expect(not(visible) and s.completed and safety)
+  run imageTargetReviewNeverContinuesTest = imageAlreadyGrantedCompletesTest.then(openTarget(2))
+    .expect(visible and s.review and s.target == 2 and safety).then(imageContinue.fail())
 
 }

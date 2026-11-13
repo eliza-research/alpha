@@ -141,6 +141,8 @@ export function clampSheetHeight(rounded: number, full: number, half: number): n
  * Where a released chat goes. An open chat stays at the released height unless it is near the
  * collapsed form or the top; a flick jumps. From the collapsed form a pull down dismisses, and a
  * pull up opens at the released height, or at the remembered one (no height) if it is still low.
+ * Home always keeps its bar: there every collapse, and a pull down on the bar itself, settles on
+ * the input bar and never on the pill.
  */
 type ReleaseOptions = {
 	mode: Mode;
@@ -149,33 +151,41 @@ type ReleaseOptions = {
 	floor: number;
 	full: number;
 	flick: boolean;
+	/** Home is shown, with its own chat bar. */
+	home: boolean;
 };
-export function chatRelease(options: ReleaseOptions): { chat: "hidden" | "sheet" | "full"; height?: number } {
+export function chatRelease(options: ReleaseOptions): { chat: "hidden" | "input" | "sheet" | "full"; height?: number } {
 	//@ verify
 	//@ requires options.floor <= options.full
-	//@ ensures \result.chat === "hidden" || \result.chat === "sheet" || \result.chat === "full"
-	//@ ensures (options.mode === "input" || options.mode === "hidden") && options.direction === "down" ==> \result.chat === "hidden"
+	//@ ensures \result.chat === "hidden" || \result.chat === "input" || \result.chat === "sheet" || \result.chat === "full"
+	//@ ensures options.home ==> \result.chat !== "hidden"
+	//@ ensures \result.chat === "input" ==> options.home
+	//@ ensures (options.mode === "input" || options.mode === "hidden") && options.direction === "down" && !options.home ==> \result.chat === "hidden"
+	//@ ensures (options.mode === "input" || options.mode === "hidden") && options.direction === "down" && options.home ==> \result.chat === "input"
 	//@ ensures (options.mode === "input" || options.mode === "hidden") && options.direction === "up" ==> \result.chat !== "hidden"
 	//@ ensures (options.mode === "sheet" || options.mode === "full") && options.flick && options.direction === "up" ==> \result.chat === "full"
-	//@ ensures (options.mode === "sheet" || options.mode === "full") && options.flick && options.direction === "down" ==> \result.chat === "hidden"
+	//@ ensures (options.mode === "sheet" || options.mode === "full") && options.flick && options.direction === "down" && !options.home ==> \result.chat === "hidden"
+	//@ ensures (options.mode === "sheet" || options.mode === "full") && options.flick && options.direction === "down" && options.home ==> \result.chat === "input"
 	//@ ensures \result.height !== undefined ==> \result.chat === "sheet" && \result.height === options.height
 	//@ ensures \result.height !== undefined ==> options.floor < options.height && options.height < options.full
 	//@ ensures \result.height !== undefined ==> options.height > options.floor + 120 || options.height > options.floor + (options.full - options.floor) / 3
 	//@ ensures \result.height !== undefined ==> options.height < options.full - 120 || options.height < options.full - (options.full - options.floor) / 3
 	//@ ensures (options.mode === "sheet" || options.mode === "full") && !options.flick && options.height > options.floor + 120 && options.height < options.full - 120 ==> \result.chat === "sheet" && \result.height !== undefined
 	//@ ensures (options.mode === "input" || options.mode === "hidden") && options.direction === "up" && !options.flick && options.height > options.floor + 120 && options.height < options.full - 120 ==> \result.chat === "sheet" && \result.height !== undefined
-	const { mode, direction, height, floor, full, flick } = options;
+	const { mode, direction, height, floor, full, flick, home } = options;
+	// The form a collapse settles in: Home's bar stays, any other surface may go to the pill.
+	const collapsed = home ? "input" : "hidden";
 	// The snap zone is the smaller of CHAT_SNAP_ZONE and a third of the travel.
 	const third = (full - floor) / 3,
 		roomy = CHAT_SNAP_ZONE < third;
 	const nearTop = roomy ? height >= full - CHAT_SNAP_ZONE : height >= full - third,
 		nearFloor = roomy ? height <= floor + CHAT_SNAP_ZONE : height <= floor + third;
 	if (mode === "sheet" || mode === "full") {
-		if (flick) return { chat: direction === "up" ? "full" : "hidden" };
-		if (nearFloor) return { chat: "hidden" };
+		if (flick) return { chat: direction === "up" ? "full" : collapsed };
+		if (nearFloor) return { chat: collapsed };
 		return nearTop ? { chat: "full" } : { chat: "sheet", height };
 	}
-	if (direction === "down") return { chat: "hidden" };
+	if (direction === "down") return { chat: collapsed };
 	if (nearTop) return { chat: "full" };
 	return flick || nearFloor ? { chat: "sheet" } : { chat: "sheet", height };
 }
@@ -186,6 +196,8 @@ type Drag = {
 	mode: Mode;
 	view: unknown;
 	screen: unknown;
+	/** The drag began on Home, whose bar stays in place when pulled down. */
+	home: boolean;
 	offset: number;
 	y: number;
 	scale: number;
@@ -279,7 +291,8 @@ function revealWhileResizing(shell: Shell, scale: number) {
 function dockStyle(d: Drag): Record<string, string> {
 	const still = { transition: "none", animation: "none" };
 	// Pulling the bar down dismisses it to the pill: the bar follows the finger out.
-	if (d.mode === "input" && d.height === 0) {
+	// Home's bar is never dismissed, so it stays where it rests.
+	if (d.mode === "input" && d.height === 0 && !d.home) {
 		const down = -d.offset / d.scale;
 		return {
 			...still,
@@ -587,6 +600,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			floor: d.floor,
 			full: d.full,
 			flick: !!d.flick,
+			home: d.home,
 		});
 		if (next.height !== undefined)
 			this.chatSheetShare = next.height / Math.max(1, d.full);
@@ -594,7 +608,8 @@ export function installChatOverlayMotion(Component: Shell) {
 		this.swallow = Date.now();
 		this.chatSettledByDrag = true;
 		if (this.props.assistantSurface && !this.S().view && next.chat === "hidden") return this.closeAssistant();
-		// An open chat collapses to its resting form; only the bar itself dismisses to the pill.
+		// An open chat collapses to its resting form; only the bar itself dismisses to the pill,
+		// and never on Home.
 		this.setState({
 			chat: next.chat === "hidden" && !collapsed ? this.rest() : next.chat,
 		});
@@ -766,6 +781,8 @@ export function installChatOverlayMotion(Component: Shell) {
 					mode,
 					view: shell.S().view,
 					screen: shell.S().screen,
+					// The assistant surface has no Home bar: its conversation closes instead.
+					home: !shell.S().view && !shell.props.assistantSurface,
 					offset: 0,
 					y: event.clientY,
 					scale: g.scale || 1,

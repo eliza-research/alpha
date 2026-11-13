@@ -33,21 +33,23 @@ module PlanAdmissionGrace {
   def lastKnownEnd: str =
     if (s.redeemedEnd != "unset") s.redeemedEnd
     else if (recent(s.record, s.credential) and s.record.endsAt != "none") s.record.endsAt else s.memoryEndsAt
+  /// A new sign-in detaches the account before it and clears its plan notice.
   action signIn(credential: int): bool = all {
     credential.in(Set(1, 2)), credential != s.credential,
     s' = { ...s, credential: credential, memoryEndsAt: "none", redeemedEnd: "unset", binding: "none", admittedBy: "none", notice: "none" }
   }
+  /// Signing out removes the stored record with the sign-in.
   action signOut = all {
     s.credential != 0,
-    s' = { ...s, credential: 0, memoryEndsAt: "none", redeemedEnd: "unset", binding: "unbound", admittedBy: "none", notice: "sign-in" }
+    s' = { ...s, credential: 0, record: NO_RECORD, memoryEndsAt: "none", redeemedEnd: "unset", binding: "unbound", admittedBy: "none", notice: "none" }
   }
-  /// No stored sign-in, or a newer credential replaced the one being admitted: nothing is bound
-  /// and the record is left to the newer sign-in.
-  action admitWithoutAccount = s' = { ...s, binding: "unbound", admittedBy: "none", notice: "sign-in", memoryEndsAt: "none" }
-  /// Cloud refused this sign-in, at admission or on a background refresh: its offline grace ends.
+  /// The admission finds no stored sign-in: nothing is bound, the attached account is detached
+  /// (with the end a redeemed code reported for it) and the record is left as it was.
+  action admitWithoutAccount = s' = { ...s, binding: "unbound", admittedBy: "none", notice: "sign-in", memoryEndsAt: "none", redeemedEnd: "unset" }
+  /// Cloud refused this sign-in at admission: its offline grace ends and its account is detached.
   action signInRejected = all {
     s.credential != 0,
-    s' = { ...s, record: NO_RECORD, binding: "unbound", admittedBy: "none", notice: "sign-in", memoryEndsAt: "none" }
+    s' = { ...s, record: NO_RECORD, binding: "unbound", admittedBy: "none", notice: "sign-in", memoryEndsAt: "none", redeemedEnd: "unset" }
   }
   /// A redeemed code reports the grant's end for this sign-in and updates its stored record.
   action redeem(end: str): bool = all {
@@ -72,14 +74,26 @@ module PlanAdmissionGrace {
       notice: if (admitted) "none" else "needs-plan",
       memoryEndsAt: if (admitted) planWindowEnd("unavailable", "none", lastKnownEnd) else "none" }
   }
-  /// Cloud verified an admitting plan (at admission or on a background refresh): the record is
+  /// Cloud verified an admitting plan at admission: the record is
   /// rewritten for this sign-in with a plan end that is still ahead, or none.
   action verified(kind: str, reported: str): bool = all {
     s.credential != 0, s.writes < 4, kind.in(Set("active", "credits")), reported.in(Set("none", "future")),
+    // Credits carry no signed plan, so Cloud reports no end with them.
+    kind == "credits" implies reported == "none",
     val end = planWindowEnd(kind, reported, lastKnownEnd)
     s' = { ...s, record: { present: true, credential: s.credential, age: "fresh", endsAt: end },
       memoryEndsAt: end, binding: "cloud", admittedBy: "verified", notice: "none",
       lastWrittenEnd: end, writes: s.writes + 1 }
+  }
+  /// A background refresh of the bound plan verified it again. It knows only the end held in
+  /// memory: the record is rewritten with the end Cloud reported, else that one unless it has passed.
+  action refreshVerified(kind: str, reported: str): bool = all {
+    s.binding == "cloud", s.writes < 4, kind.in(Set("active", "credits")), reported.in(Set("none", "future")),
+    // Credits carry no signed plan, so Cloud reports no end with them.
+    kind == "credits" implies reported == "none",
+    val end = planWindowEnd(kind, reported, s.memoryEndsAt)
+    s' = { ...s, record: { present: true, credential: s.credential, age: "fresh", endsAt: end },
+      memoryEndsAt: end, lastWrittenEnd: end, writes: s.writes + 1 }
   }
   /// A background refresh that failed leaves the record as it was.
   action refreshFailed = all { s.binding == "cloud", s' = s }
@@ -96,11 +110,15 @@ module PlanAdmissionGrace {
       memoryEndsAt: if (s.memoryEndsAt == "future") "past" else s.memoryEndsAt,
       redeemedEnd: if (s.redeemedEnd == "future") "past" else s.redeemedEnd }
   }
-  action step = any {
-    signIn(1), signIn(2), signOut, admitWithoutAccount, signInRejected, redeem("none"), redeem("future"),
-    admitOffline, admitBillingOutage,
-    verified("active", "none"), verified("active", "future"), verified("credits", "none"),
-    refreshFailed, planEnded, windowPasses, endPasses, s' = s
+  action step = {
+    nondet credential = Set(1, 2).oneOf()
+    nondet end = Set("none", "future").oneOf()
+    nondet kind = Set("active", "credits").oneOf()
+    any {
+      signIn(credential), signOut, admitWithoutAccount, signInRejected, redeem(end),
+      admitOffline, admitBillingOutage, verified(kind, end), refreshVerified(kind, end),
+      refreshFailed, planEnded, windowPasses, endPasses, s' = s
+    }
   }
   /// A record is never written with a plan end that has already passed.
   val EndsAtNotPast = s.lastWrittenEnd != "past"
@@ -130,6 +148,19 @@ module PlanAdmissionGrace {
 
   /// A renewal checked after the old plan end has passed stores no past end, so the next outage
   /// still keeps the binding.
+  val RefreshRewroteRecordWitness = s.writes > 1 and s.admittedBy == "grace" and s.record.age == "fresh"
+  val SignOutRemovedRecordWitness = s.credential == 0 and not(s.record.present) and s.writes > 0
+
+  /// A background refresh after a billing-outage admission rewrites the record, and drops an end
+  /// that has passed in memory.
+  run refreshRewritesRecordTest = init.then(signIn(1)).then(verified("active", "future")).then(windowPasses)
+    .then(refreshVerified("active", "none")).expect(s.record.age == "fresh" and s.record.endsAt == "future" and s.writes == 2 and safety)
+    .then(endPasses).then(refreshVerified("active", "none"))
+    .expect(s.record.endsAt == "none" and s.memoryEndsAt == "none" and s.lastWrittenEnd == "none" and safety)
+  /// Signing out removes the record, so signing in again has no offline grace.
+  run signOutRemovesRecordTest = init.then(signIn(1)).then(verified("credits", "none")).then(signOut)
+    .expect(SignOutRemovedRecordWitness and safety)
+    .then(signIn(1)).then(admitOffline).expect(s.binding == "unbound" and safety)
   run renewalAfterPastEndTest = init.then(signIn(1)).then(verified("active", "future")).then(endPasses)
     .expect(PastEndInMemoryWitness and s.record.endsAt == "past")
     .then(verified("active", "none"))

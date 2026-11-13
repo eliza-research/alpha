@@ -10,7 +10,7 @@ import tempfile
 import zipfile
 
 
-VARIANTS = ("standalone", "launcher")
+VARIANTS = ("launcher",)
 
 
 def build_fixtures(sdk, output):

@@ -23,7 +23,7 @@ interface UpdateApk {
   file: string;
   sha256: string;
   build: 'debug' | 'release';
-  variant: 'launcher' | 'standalone';
+  variant: 'launcher';
   versionCode: number;
   updateChannel: UpdateChannel | null;
 }
@@ -53,13 +53,11 @@ interface ArchiveFacts {
   xml: string;
 }
 
-/** Public distribution must inspect the compiled channel, not a release row's
- * claim. In particular a private QA APK must never become a public baseline. */
+/** Public distribution must inspect the compiled channel, not a release row's claim. */
 export function admitPublicUpdateChannel(xml: string, publicUrl: string) {
   requireValue(typeof publicUrl === 'string' && publicUrl.length > 0, 'the configured public manifest URL is required');
   const channel = apkUpdateChannel(parseXmlTree(xml));
-  requireValue(channel.kind === 'public' && channel.manifestUrlSha256 ===
-    createHash('sha256').update(publicUrl).digest('hex'),
+  requireValue(channel.manifestUrlSha256 === createHash('sha256').update(publicUrl).digest('hex'),
     'compiled channel is not the configured public update channel');
   return channel;
 }
@@ -67,7 +65,7 @@ export function admitPublicUpdateChannel(xml: string, publicUrl: string) {
 /** Only policy over independently inspected facts; fixtures exercise refusals
  * without pretending their JSON is native signing evidence. */
 export function admitUpdateApkIdentity(apk: Pick<UpdateApk, 'build' | 'variant' | 'versionCode'>, descriptor: UpdateSigner | undefined, archive: ArchiveFacts, signing: UpdateSigning) {
-  requireValue(apk.build === 'release' && ['launcher','standalone'].includes(apk.variant), 'a release distribution is required');
+  requireValue(apk.build === 'release' && apk.variant === 'launcher', 'a release distribution is required');
   requireValue(descriptor && HEX.test(descriptor.signerSha256 ?? ''), 'an enrolled release signer is required');
   requireValue(signing?.verified === true && HEX.test(signing.activeSignerSha256 ?? '') && HEX.test(signing.signerRootSha256 ?? ''), 'verified signer and family are required');
   requireValue(signing.activeSignerSha256 === descriptor.signerSha256, 'active signer differs from the enrolled release signer');

@@ -1,213 +1,193 @@
 #!/usr/bin/env bun
 /**
- * Reproduce and stage the ARM64 embedding host from pinned source.
- * --from <directory> stages the exact reviewed libraries supplied by a host.
- * Staging requires exact native library hashes and matching source/JNI inputs.
+ * Automatically build, cache and stage voice and embedding inputs from pinned source.
+ * Generated receipts preserve output hashes and the original producer identity.
  */
 import {execFileSync, spawnSync} from 'node:child_process';
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import type { EmbeddingManifest, PreparedEmbeddingLibrary } from "./stage-embedding-host.ts";
-import {embeddingLibrarySource,verifyEmbeddingEngine,verifyEmbeddingInputs} from './stage-embedding-host.ts';
+import {createRequire} from 'node:module';
+import type {EmbeddingManifest} from "./stage-embedding-host.ts";
+import {nativeCacheRoot,nativeCacheDirectory,nativeRecipe,nativeRecipeDigest,NATIVE_BUILD_RECEIPT,NATIVE_BUILD_REQUIREMENTS,NATIVE_PYTHON,fileDigest,verifyNativeBuildFiles,verifyNativeBuildLibraries,validateNativeBuildReceipt,nativeOutputInventory,writeNativeBuildReceipt,assertNativeOutputPath,withNativeCacheLock,nativeAndroidSdk,prepareNativeSource,clearStagedNativeInputs,type NativeBuildReceipt} from './native-build-inputs.ts';
+import {stageVoiceModels} from './android-stage-voice-models.ts';
+import {voiceHostProblems} from './voice-host.ts';
+import {embeddingAbiLibraries} from './embedding-native-contract.ts';
 
 export const QUALIFIED_HOST = 'android/embedding-host/qualified-host.json';
 export const BUILD_TOOLCHAIN = 'android/embedding-host/build-toolchain.json';
 export const WORKSPACE = '.eliza/embedding-host';
 
-type LibraryManifest = Pick<EmbeddingManifest, 'abi' | 'libraries'>;
-type Toolchain = { ndk: string; cmake: string; engineRepository: string; remapBuildPath: boolean; remapBuildPathEvidence: string };
-type BuildOptions = { remap: boolean };
-type LibraryDigest = { sha256: string; bytes: number };
-type Comparison = { name: string; expected: LibraryDigest } & (
-  { reproduced: false; reason: string; actual?: undefined; file?: undefined }
-  | { reproduced: boolean; actual: LibraryDigest; file: string; reason?: undefined }
-);
-const sha256 = (file: string) => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-const readJson = <T>(file: string): T => JSON.parse(fs.readFileSync(file, 'utf8'));
-const jniDirectory = (root: string, abi: string) => path.join(root, 'android/app/src/main/jniLibs', abi);
+type LibraryManifest = Pick<EmbeddingManifest, 'abi' | 'libraries' | 'additionalAbis'>;
+type Toolchain = {ndk:string;cmake:string;engineRepository:string;remapBuildPath:boolean};
+const readJson = <T>(file:string):T => JSON.parse(fs.readFileSync(file,'utf8'));
 
-/** State of each reviewed library in jniLibs: 'staged', 'missing' or 'different'. */
-export function stagedLibraries(root: string, manifest: LibraryManifest = readJson(path.join(root, QUALIFIED_HOST))) {
-  return manifest.libraries.map(row => {
-    const file = path.join(jniDirectory(root, manifest.abi), row.name);
-    let state = 'missing';
-    if (fs.existsSync(file))
-      state = !fs.lstatSync(file).isSymbolicLink() && fs.statSync(file).size === row.bytes && sha256(file) === row.sha256 ? 'staged' : 'different';
-    return {name: row.name, state, file};
-  });
+/** Report staged library integrity; the generated producer receipt supplies current output hashes. */
+export function stagedLibraries(root:string,manifest:LibraryManifest=readJson(path.join(root,QUALIFIED_HOST))) {
+  return embeddingAbiLibraries(manifest).flatMap(abi=>abi.libraries.map(row=>{
+    const file=path.join(root,'android/app/src/main/jniLibs',abi.abi,row.name);
+    const state=!fs.existsSync(file)?'missing':!fs.lstatSync(file).isSymbolicLink()&&fs.statSync(file).size===row.bytes&&fileDigest(file)===row.sha256?'staged':'different';
+    return {abi:abi.abi,name:row.name,state,file};
+  }));
 }
-
-/** Compare built files with the reviewed manifest. `built` maps library name to a file path. */
-export function compareWithQualified(manifest: LibraryManifest, built: Record<string, string | undefined>): Comparison[] {
-  return manifest.libraries.map(row => {
-    const file = built[row.name];
-    if (!file || !fs.existsSync(file)) return {name: row.name, reproduced: false, reason: 'not built', expected: {sha256: row.sha256, bytes: row.bytes}};
-    const actual = {sha256: sha256(file), bytes: fs.statSync(file).size};
-    return {name: row.name, reproduced: actual.sha256 === row.sha256 && actual.bytes === row.bytes, expected: {sha256: row.sha256, bytes: row.bytes}, actual, file};
-  });
+export function embeddingHostState(_manifest:LibraryManifest,_toolchain:Toolchain,staged:ReturnType<typeof stagedLibraries>) {
+  return {ready:staged.every(row=>row.state==='staged'),suppliedBy:'script' as const,reason:null};
 }
-
-/** Copy reproduced libraries into jniLibs. Refuses unless every library is the reviewed bytes. */
-export function stageReproduced(root: string, manifest: LibraryManifest, comparison: Comparison[]) {
-  if (comparison.length !== manifest.libraries.length || comparison.some(row => !row.reproduced))
-    throw new Error('Refusing to stage: the rebuilt embedding host is not the reviewed bytes');
-  const current = stagedLibraries(root, manifest);
-  const different = current.find(row => row.state === 'different');
-  if (different)
-    throw new Error(`A different ${different.name} is already staged; review ownership before replacing it`);
-  fs.mkdirSync(jniDirectory(root, manifest.abi), {recursive: true});
-  for (const row of comparison) {
-    const target = path.join(jniDirectory(root, manifest.abi), row.name);
-    if (!row.file) throw new Error(`Missing rebuilt file for ${row.name}`);
-    if (!fs.existsSync(target)) fs.copyFileSync(row.file, target, fs.constants.COPYFILE_EXCL);
-    if (sha256(target) !== row.expected.sha256) throw new Error(`Staged ${row.name} changed while copying`);
-  }
-}
-
-export function describeDifference(comparison: Comparison[]) {
-  return comparison.filter(row => !row.reproduced).map(row => row.actual
-    ? `${row.name}: built ${row.actual.bytes} bytes sha256 ${row.actual.sha256}, reviewed ${row.expected.bytes} bytes sha256 ${row.expected.sha256}`
-    : `${row.name}: ${row.reason}, reviewed ${row.expected.bytes} bytes sha256 ${row.expected.sha256}`);
-}
-
-/** Admit reviewed producer bytes without modifying the committed record. */
-function stageFrom(root: string, directory: string) {
-  const manifest = readJson<EmbeddingManifest>(path.join(root, QUALIFIED_HOST));
-  verifyEmbeddingInputs(root, manifest, {requireProducerInputs:true});
-  verifyEmbeddingEngine(root, manifest);
-  const libraries = Object.fromEntries(manifest.libraries.map(row =>
-    [row.name, embeddingLibrarySource({path:row.name},directory)]));
-  stageReproduced(root, manifest, compareWithQualified(manifest, libraries));
-  console.log('Reviewed ARM64 embedding host libraries staged; committed admission record preserved.');
-}
-
-/** Whether every expected library is staged. Missing libraries are reproducible build inputs. */
-export function embeddingHostState(_manifest: LibraryManifest, _toolchain: Toolchain, staged: ReturnType<typeof stagedLibraries>) {
-  return {ready: staged.every(row => row.state === 'staged'), suppliedBy: 'script' as const, reason: null};
-}
-
-export class Stop extends Error {
-  readonly code: number;
-  constructor(code: number, message: string) { super(message); this.code = code; }
-}
-
+export class Stop extends Error {readonly code:number;constructor(code:number,message:string){super(message);this.code=code;}}
 function resolveSdk() {
-  const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT
-    || [path.join(process.env.HOME || '', 'Library/Android/sdk'), path.join(process.env.HOME || '', 'Android/Sdk')].find(candidate => fs.existsSync(path.join(candidate, 'ndk')));
-  if (!sdk || !fs.existsSync(sdk)) throw new Stop(2, 'Set ANDROID_HOME to an Android SDK that has the NDK installed.');
-  return sdk;
+  return nativeAndroidSdk();
+}
+export function nativeModelEnvironment(platform:NodeJS.Platform=process.platform,arch:string=process.arch) {
+  // NumPy's x86-v4 vector log1p changes the fp32 Delibes warp constants by 1.53e-5.
+  // The verified x86-v2 path reproduces the pinned GGUF without weakening any check.
+  return platform==='linux'&&arch==='x64'?{NPY_DISABLE_CPU_FEATURES:'X86_V4 AVX512_ICL AVX512_SPR'}:{};
+}
+function ndkTools(ndk:string) {
+  const prebuilt=path.join(ndk,'toolchains/llvm/prebuilt'),host=fs.readdirSync(prebuilt).find(name=>fs.existsSync(path.join(prebuilt,name,'bin/llvm-strip')));
+  if(!host)throw new Stop(2,'Pinned NDK host tools are missing');
+  return path.join(prebuilt,host);
 }
 
-function ndkTools(ndk: string) {
-  const prebuilt = path.join(ndk, 'toolchains/llvm/prebuilt');
-  const host = fs.existsSync(prebuilt) ? fs.readdirSync(prebuilt).find(name => fs.existsSync(path.join(prebuilt, name, 'bin/llvm-strip'))) : null;
-  if (!host) throw new Stop(2, `NDK tools not found under ${prebuilt}`);
-  return path.join(prebuilt, host);
-}
-
-/** The reviewed libc++_shared.so identifies the NDK release: refuse another before a long compile. */
-function checkNdk(ndk: string, manifest: LibraryManifest, scratch: string) {
-  const row = manifest.libraries.find(item => item.name === 'libc++_shared.so');
-  if (!row) throw new Stop(2, 'The reviewed embedding host is missing libc++_shared.so.');
-  const tools = ndkTools(ndk);
-  const source = path.join(tools, 'sysroot/usr/lib/aarch64-linux-android/libc++_shared.so');
-  const stripped = path.join(scratch, 'ndk-check-libc++_shared.so');
-  fs.mkdirSync(scratch, {recursive: true});
-  execFileSync(path.join(tools, 'bin/llvm-strip'), ['--strip-unneeded', source, '-o', stripped]);
-  const actual = sha256(stripped);
-  fs.rmSync(stripped);
-  if (actual !== row.sha256)
-    throw new Stop(2, `NDK at ${ndk} does not produce the reviewed libc++_shared.so (${actual} instead of ${row.sha256}).`);
-}
-
-function fetchEngine(engine: string, toolchain: Toolchain, forkPin: string) {
-  const git = (...args: string[]) => execFileSync('git', ['-C', engine, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit']}).trim();
-  if (!fs.existsSync(path.join(engine, '.git'))) {
-    fs.mkdirSync(engine, {recursive: true});
-    console.log(`Fetching engine source ${toolchain.engineRepository} at ${forkPin}`);
-    git('init', '--quiet');
-    git('fetch', '--quiet', '--depth=1', toolchain.engineRepository, forkPin);
-    git('checkout', '--quiet', '--detach', 'FETCH_HEAD');
-    git('submodule', 'update', '--init', '--recursive', '--depth', '1');
+/** The normal build acquires public source/model inputs and caches its own exact output receipts. */
+export async function preparePortableNativeInputs(root:string) {
+  const recipe=nativeRecipe(root),cache=nativeCacheDirectory(root),cacheRoot=nativeCacheRoot();
+  const pin=readJson<{commit:string}>(path.join(root,'upstream.lock.json')).commit;
+  const command=(file:string,args:string[],cwd=root,env:NodeJS.ProcessEnv=process.env)=>execFileSync(file,args,{cwd,env,stdio:'inherit'});
+  const productReceipt=path.join(root,NATIVE_BUILD_RECEIPT);
+  if(fs.existsSync(productReceipt)) {
+    try {const receipt=verifyNativeBuildFiles(root);verifyNativeBuildLibraries(root,receipt);console.log('Verified cached native inputs for the current source recipe.');return;}
+    catch { /* Owned generated output is refreshed below; tracked records and vendor remain untouched. */ }
   }
-  if (git('rev-parse', 'HEAD') !== forkPin || git('status', '--porcelain'))
-    throw new Stop(2, `Engine source ${engine} is not a clean checkout of ${forkPin}; remove it and rerun.`);
-}
-
-function compile(root: string, manifest: EmbeddingManifest, toolchain: Toolchain, output: string, {remap}: BuildOptions) {
-  // Source admission: the pinned checkout still carries exactly the reviewed native inputs.
-  try { verifyEmbeddingInputs(root, manifest); }
-  catch (error) { throw new Stop(3, `The pinned checkout does not carry the reviewed embedding host inputs (${error instanceof Error ? error.message : String(error)}).`); }
-  const sdk = resolveSdk();
-  const ndk = path.join(sdk, 'ndk', toolchain.ndk);
-  if (!fs.existsSync(path.join(ndk, 'build/cmake/android.toolchain.cmake')))
-    throw new Stop(2, `Android NDK ${toolchain.ndk} is required (${BUILD_TOOLCHAIN}) and is not installed under ${path.join(sdk, 'ndk')}. Install it with: sdkmanager "ndk;${toolchain.ndk}"`);
-  if (spawnSync('ninja', ['--version'], {stdio: 'ignore'}).status !== 0) throw new Stop(2, 'ninja is required on PATH to build the embedding host.');
-  const cmake = spawnSync('cmake', ['--version'], {encoding: 'utf8'});
-  const cmakeVersion = /cmake version (\S+)/.exec(cmake.stdout ?? '')?.[1];
-  // The speech runtime showed that a different CMake release changes native bytes; hold it fixed here too.
-  if (cmakeVersion !== toolchain.cmake) throw new Stop(2, `CMake ${toolchain.cmake} is required on PATH (${BUILD_TOOLCHAIN}); found ${cmakeVersion ?? 'none'}. Install it with: python3 -m pip install cmake==${toolchain.cmake}`);
-  const workspace = path.join(root, WORKSPACE);
-  checkNdk(ndk, manifest, workspace);
-  const engine = path.join(workspace, `engine-${manifest.forkPin}`);
-  fetchEngine(engine, toolchain, manifest.forkPin);
-  const receiptFile = path.join(output, 'PREPARATION.json');
-  const existingReceipt = fs.existsSync(receiptFile) ? readJson<{ built: boolean; buildPathRemapped: boolean }>(receiptFile) : null;
-  if (fs.existsSync(output) && !(existingReceipt?.built === true && existingReceipt.buildPathRemapped === remap))
-    throw new Stop(2, `${path.relative(root, output)} holds an incomplete or differently configured build. Remove it and rerun.`);
-  if (!fs.existsSync(output)) {
-    console.log(`Building the embedding host with NDK ${toolchain.ndk} (about ten minutes; needs 6 GiB free)`);
-    execFileSync(process.execPath, [path.join(root, 'scripts/prepare-embedding-host.ts'), '--fork', engine, '--output', output, '--abi', manifest.abi, '--build', ...(remap ? ['--remap-build-path'] : [])],
-      {cwd: root, stdio: ['ignore', 'inherit', 'inherit'], env: {...process.env, ANDROID_HOME: sdk, ELIZA_NDK_VERSION: toolchain.ndk}});
-  } else console.log(`Reusing the build in ${path.relative(root, output)}`);
-  const receipt = readJson<{ pin: string; forkPin: string; libraries?: PreparedEmbeddingLibrary[] }>(receiptFile);
-  const comparison = compareWithQualified(manifest, Object.fromEntries((receipt.libraries || []).map(row => [path.basename(row.path), row.path])));
-  const reproduced = comparison.every(row => row.reproduced);
-  fs.writeFileSync(path.join(output, 'COMPARISON.json'), JSON.stringify({pin: receipt.pin, forkPin: receipt.forkPin, ndk: toolchain.ndk, buildPathRemapped: remap, reproduced, staged: false, libraries: comparison}, null, 2) + '\n');
-  return {receiptFile, comparison, reproduced};
-}
-
-/** `build` is the compile step; tests replace it, the command line never does. */
-export function run(root: string, {from, build = compile}: {from?: string; build?: typeof compile} = {}) {
-  if (from !== undefined) {
-    stageFrom(root, path.resolve(from));
-    return 0;
+  assertNativeOutputPath(cacheRoot,path.relative(cacheRoot,cache).split(path.sep).join('/'));
+  await withNativeCacheLock(cache,async(assertHeld)=>{
+  const sdk=resolveSdk(),toolchain=recipe.toolchain as Toolchain,ndk=path.join(sdk,'ndk',toolchain.ndk);
+  if(!fs.existsSync(path.join(ndk,'source.properties')))command('sdkmanager',[`ndk;${toolchain.ndk}`]);
+  const enginePath='plugins/plugin-local-inference/native/llama.cpp';
+  command('git',['submodule','update','--init','--depth','1',enginePath],path.join(root,'vendor/eliza'));
+  const voiceOutput=path.join(cache,'voice'),cacheOutput=path.join(cache,'output'),builtReceipt=path.join(cacheOutput,NATIVE_BUILD_RECEIPT);
+  let receipt:NativeBuildReceipt|undefined;
+  if(fs.existsSync(builtReceipt)) {
+    const existing=readJson<NativeBuildReceipt>(builtReceipt);
+    if(existing.recipeSha256===nativeRecipeDigest(recipe)&&JSON.stringify(existing.recipe)===JSON.stringify(recipe)) {
+      if(spawnSync('git',['-C',path.join(root,'vendor/eliza'),'cat-file','-e',`${existing.producer?.sdkCommit}^{commit}`],{stdio:'ignore'}).status!==0){
+        if(!/^[a-f0-9]{40}$/.test(existing.producer?.sdkCommit))throw Error('Native producer commit is invalid');
+        command('git',['fetch','--no-tags','--depth','1',readJson<{url:string}>(path.join(root,'upstream.lock.json')).url,existing.producer.sdkCommit],path.join(root,'vendor/eliza'));
+      }
+      validateNativeBuildReceipt(root,existing,{currentConsumer:false});
+      verifyNativeBuildFiles(cacheOutput,existing);verifyNativeBuildLibraries(cacheOutput,existing);
+      receipt=existing;
+    }
   }
-  const manifest = readJson<EmbeddingManifest>(path.join(root, QUALIFIED_HOST));
-  const toolchain = readJson<Toolchain>(path.join(root, BUILD_TOOLCHAIN));
-  const workspace = path.join(root, WORKSPACE);
-  const staged = stagedLibraries(root, manifest);
-  const host = embeddingHostState(manifest, toolchain, staged);
-  if (host.ready) {
-    console.log('Reviewed ARM64 embedding host libraries are staged (bytes match android/embedding-host/qualified-host.json).');
-    return 0;
+  if(!receipt) {
+  // Source-only SDK changes reuse the same compiled native inputs without changing their producer receipt.
+  const source=path.join(cache,'source');
+  prepareNativeSource(path.join(root,'vendor/eliza'),source,pin);
+  const reference=path.join(root,'vendor/eliza',enginePath);
+  const referenceHead=fs.existsSync(path.join(reference,'.git'))?spawnSync('git',['-C',reference,'rev-parse','HEAD'],{encoding:'utf8'}):null;
+  const referenceShallow=referenceHead?.status===0?spawnSync('git',['-C',reference,'rev-parse','--is-shallow-repository'],{encoding:'utf8'}):null;
+  // Git cannot borrow objects from a shallow reference; fresh CI checkouts use one.
+  const useReference=referenceHead?.status===0&&referenceHead.stdout.trim()===recipe.engineCommit&&referenceShallow?.status===0&&referenceShallow.stdout.trim()==='false';
+  command('git',['submodule','update','--init','--recursive',...(useReference?['--reference',reference]:[]),enginePath],source);
+  if(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:source,encoding:'utf8'}).trim())throw Error('Cached native producer source has tracked modifications');
+  const fork=path.join(source,'plugins/plugin-local-inference/native/llama.cpp');
+  const engineAlternates=execFileSync('git',['-C',fork,'rev-parse','--path-format=absolute','--git-path','objects/info/alternates'],{encoding:'utf8'}).trim();
+  if(fs.existsSync(engineAlternates)){command('git',['repack','-a','-d'],fork);fs.rmSync(engineAlternates);}
+
+  // Python and build tools live in this cache, never in a user/global environment.
+  let uv='uv';
+  if(spawnSync(uv,['--version'],{stdio:'ignore'}).status!==0) {
+    const bootstrap=path.join(cache,'bootstrap');
+    command('python3',['-m','pip','install','--require-hashes','--no-deps','--target',bootstrap,'-r',path.join(root,'android/embedding-host/bootstrap-requirements.txt')]);
+    uv=path.join(bootstrap,'bin','uv');
   }
-  const different = staged.filter(row => row.state === 'different');
-  if (different.length)
-    throw new Stop(2, `Staged ${different.map(row => row.name).join(', ')} in android/app/src/main/jniLibs/${manifest.abi} is not the reviewed bytes. Review where it came from and remove it; this step never replaces a staged library.`);
-  const output = path.join(workspace, `build-${manifest.forkPin}`);
-  // The reviewed bytes of a reproducible manifest were built with the remap, so the rebuild is too.
-  const {comparison, reproduced} = build(root, manifest, toolchain, output, {remap: true});
-  if (!reproduced)
-    throw new Stop(3, `The rebuilt embedding host is not the reviewed bytes and was not staged:\n${describeDifference(comparison).map(line => `  - ${line}`).join('\n')}\nRebuilt files and COMPARISON.json are in ${path.relative(root, output)}.`);
-  stageReproduced(root, manifest, comparison);
-  fs.writeFileSync(path.join(output, 'COMPARISON.json'), fs.readFileSync(path.join(output, 'COMPARISON.json'), 'utf8').replace('"staged": false', '"staged": true'));
-  console.log('Rebuilt embedding host reproduces the reviewed bytes; staged. No device execution is claimed.');
-  return 0;
+  command(uv,['python','install',NATIVE_PYTHON]);
+  const venv=path.join(cache,'python'),python=path.join(venv,'bin','python'),location=path.join(venv,'native-location');
+  if(fs.existsSync(venv)&&(!fs.existsSync(location)||fs.readFileSync(location,'utf8')!==venv||!fs.existsSync(python)))fs.rmSync(venv,{recursive:true,force:true});
+  if(!fs.existsSync(python)){command(uv,['venv','--python',NATIVE_PYTHON,venv]);fs.writeFileSync(location,venv);}
+  const requirements=path.join(root,NATIVE_BUILD_REQUIREMENTS),requirementsStamp=path.join(venv,'requirements.sha256');
+  if(!fs.existsSync(requirementsStamp)||fs.readFileSync(requirementsStamp,'utf8')!==fileDigest(requirements)) {
+    const platformIndex=process.platform==='linux'?['--extra-index-url','https://download.pytorch.org/whl/cpu','--index-strategy','unsafe-best-match']:[];
+    command(uv,['pip','install','--python',python,'--require-hashes',...platformIndex,'-r',requirements]);
+    fs.writeFileSync(requirementsStamp,fileDigest(requirements));
+  }
+  if([source,cache,sdk].some(file=>/[\s=\0]/.test(file)))throw Error('Native compiler path remapping requires build/cache/SDK paths without whitespace');
+  const remap=['#',`+-ffile-prefix-map=${source}=/alpha-native-source`,`+-ffile-prefix-map=${cache}=/alpha-native-build`,`+-ffile-prefix-map=${cacheRoot}=/alpha-native-cache`,`+-ffile-prefix-map=${sdk}=/android-sdk`].join(' ');
+  const {preparedSourceEnv}=await import('./local-agent-source.ts');
+  const nativeEnv=preparedSourceEnv(process.env);
+  const env:NodeJS.ProcessEnv={...nativeEnv,...nativeModelEnvironment(),PATH:`${path.join(venv,'bin')}${path.delimiter}${nativeEnv.PATH}`,ANDROID_HOME:sdk,ANDROID_SDK_ROOT:sdk,ELIZA_NDK_VERSION:toolchain.ndk,CMAKE_BUILD_PARALLEL_LEVEL:'2',PYTHONPATH:path.join(fork,'gguf-py'),CCC_OVERRIDE_OPTIONS:remap};
+    const {assertAndroidVoiceLibrary}=createRequire(import.meta.url)('../vendor/eliza/packages/app/scripts/build-helpers/verify-fused-symbols.ts');
+    // The upstream builder verifies each download, converted GGUF and native ABI/symbol contract.
+    // It runs in an isolated source checkout; it never writes into vendor/eliza.
+    command(env.ALPHA_NODE||'node',[path.join(source,'packages/app/scripts/paradee-voice/build-native.ts'),'--workspace',path.join(cache,'workspace'),'--out',voiceOutput,'--model-cache',path.join(cacheRoot,'models'),'--python',python],source,env);
+    const nativeTools=ndkTools(ndk),host=readJson<any>(path.join(root,'android/voice-host/qualified-voice-host.json'));
+    const abis=host.abis.map((abi:any)=>({abi:abi.abi,release:abi.release,alignment16KiB:true,abiVersion:assertAndroidVoiceLibrary({lib:path.join(voiceOutput,'jniLibs',abi.abi,'libelizainference.so'),objdump:path.join(nativeTools,'bin/llvm-objdump'),nm:path.join(nativeTools,'bin/llvm-nm')}).abiVersion,componentBuild:`Portable source build from SDK ${pin}, engine ${recipe.engineCommit}, recipe ${nativeRecipeDigest(recipe)}. Integrity only; no device qualification.`,libraries:abi.libraries.map((library:any)=> {
+      const output=path.join(voiceOutput,'jniLibs',abi.abi,library.name);
+      if(library.name==='libc++_shared.so') {
+        const triple=abi.abi==='arm64-v8a'?'aarch64':'x86_64';
+        command(path.join(nativeTools,'bin/llvm-strip'),['--strip-unneeded',path.join(nativeTools,`sysroot/usr/lib/${triple}-linux-android/libc++_shared.so`),'-o',output],root,env);
+      }
+      return {name:library.name,bytes:fs.statSync(output).size,sha256:fileDigest(output)};
+    })}));
+    const voice={...host,description:'Portable source-built voice inputs. Exact bytes are recorded by this build; device and user qualification remain separate.',pin,forkPin:recipe.engineCommit,abis,qualified:false,evidence:{deviceExecuted:false,emulatorDeviceExecuted:false,userAccepted:false}};
+    const voiceProblems=voiceHostProblems(voice);
+    if(voiceProblems.length)throw Error(voiceProblems.join('\n'));
+    // Every non-native byte remains pinned independently of the build output receipt.
+    for(const model of voice.models) {
+      const file=path.join(voiceOutput,'assets/paradee-voice/v1',model.path);
+      if(!fs.existsSync(file)||fs.statSync(file).size!==model.bytes||fileDigest(file)!==model.sha256)throw Error(`Native producer model differs: ${model.path}`);
+      const shared=path.join(cacheRoot,'models',model.path);
+      if(!fs.existsSync(shared)||fileDigest(shared)!==model.sha256){fs.mkdirSync(path.dirname(shared),{recursive:true});const pending=`${shared}.${randomUUID()}.partial`;fs.copyFileSync(file,pending);fs.renameSync(pending,shared);}
+    }
+    const preparations=[];
+    for(const abi of ['arm64-v8a','x86_64']) {
+    const embeddingOutput=path.join(cache,'embedding',abi);
+    const preparedFile=path.join(embeddingOutput,'PREPARATION.json');
+    if(fs.existsSync(preparedFile)&&readJson<{built:boolean}>(preparedFile).built!==true)fs.rmSync(embeddingOutput,{recursive:true,force:true});
+    if(!fs.existsSync(path.join(embeddingOutput,'PREPARATION.json')))command(env.ALPHA_NODE||'node',[path.join(root,'scripts/prepare-embedding-host.ts'),'--fork',fork,'--output',embeddingOutput,'--abi',abi,'--engine',path.join(voiceOutput,'jniLibs',abi),'--build','--remap-build-path'],root,env);
+    const preparation=readJson<any>(path.join(embeddingOutput,'PREPARATION.json'));
+    if(!preparation.built||preparation.abi!==abi)throw Error('Native JNI preparation did not complete for '+abi);
+    preparations.push(preparation);
+    }
+    const preparation=preparations[0];
+    for(const other of preparations.slice(1))for(const field of ['pin','forkPin','identity','inputs','producerInputs','jniBinding'])if(JSON.stringify(other[field])!==JSON.stringify(preparation[field]))throw Error('Native JNI ABI producer inputs differ');
+    const libraries=preparation.libraries.map((row:any)=>({name:path.basename(row.path),sha256:row.sha256,bytes:row.bytes,alignment16KiB:row.alignment16KiB}));
+    const additionalAbis=preparations.slice(1).map(other=>({abi:other.abi,libraries:other.libraries.map((row:any)=>({name:path.basename(row.path),sha256:row.sha256,bytes:row.bytes,alignment16KiB:row.alignment16KiB}))}));
+    const original=readJson<any>(path.join(root,QUALIFIED_HOST));
+    const embedding={pin,forkPin:recipe.engineCommit,identity:recipe.identity,abi:'arm64-v8a',model:original.model,libraries,additionalAbis,jniIdentityRelocated:true,inputs:preparation.inputs,producerInputs:preparation.producerInputs,jniBinding:preparation.jniBinding};
+    receipt={schema:'alpha-native-build/v1',recipeSha256:nativeRecipeDigest(recipe),recipe,consumerSdkCommit:pin,producer:{sdkCommit:pin,platform:process.platform,arch:process.arch,ndk:toolchain.ndk,cmake:toolchain.cmake,python:NATIVE_PYTHON},voice,embedding,files:[],qualification:{deviceExecuted:false,userAccepted:false}};
+    fs.rmSync(cacheOutput,{recursive:true,force:true});
+    const inputs='vendor/eliza/plugins/plugin-local-inference/native/android/inputs.json';
+    fs.mkdirSync(path.dirname(path.join(cacheOutput,inputs)),{recursive:true});fs.copyFileSync(path.join(root,inputs),path.join(cacheOutput,inputs));
+    stageVoiceModels(cacheOutput,{from:[voiceOutput],record:voice});
+    for(const prepared of preparations)for(const library of prepared.libraries){if(fs.statSync(library.path).size!==library.bytes||fileDigest(library.path)!==library.sha256)throw Error('Built embedding library changed');fs.copyFileSync(library.path,path.join(cacheOutput,'android/app/src/main/jniLibs',prepared.abi,path.basename(library.path)));}
+    receipt.files=[...nativeOutputInventory(receipt).keys()].sort().map(file=>({path:file,bytes:fs.statSync(path.join(cacheOutput,file)).size,sha256:fileDigest(path.join(cacheOutput,file))}));
+    validateNativeBuildReceipt(root,receipt);verifyNativeBuildFiles(cacheOutput,receipt);verifyNativeBuildLibraries(cacheOutput,receipt);assertHeld();writeNativeBuildReceipt(cacheOutput,receipt);
+  }
+  // Owned generated directories may be replaced after a recipe changes. Never modify vendor or committed admission data.
+  assertHeld();
+  clearStagedNativeInputs(root);
+  stageVoiceModels(root,{from:[path.join(cacheOutput,'.eliza/paradee-voice/native'),path.join(cacheOutput,'android/app/src/main')],record:{...receipt.voice,pin} as Parameters<typeof stageVoiceModels>[1]['record']});
+  for(const abi of embeddingAbiLibraries<any>(receipt.embedding as any))for(const library of abi.libraries) {
+    const source=path.join(cacheOutput,'android/app/src/main/jniLibs',abi.abi,library.name);
+    const target=path.join(root,'android/app/src/main/jniLibs',abi.abi,library.name);
+    if(fs.existsSync(target)&&fileDigest(target)!==library.sha256)throw Error('Voice and embedding producer libraries differ');
+    fs.copyFileSync(source,target);
+  }
+  receipt=structuredClone(receipt);receipt.consumerSdkCommit=pin;
+  receipt.files=[...nativeOutputInventory(receipt).keys()].sort().map(file=>({path:file,bytes:fs.statSync(path.join(root,file)).size,sha256:fileDigest(path.join(root,file))}));
+  validateNativeBuildReceipt(root,receipt);verifyNativeBuildFiles(root,receipt);verifyNativeBuildLibraries(root,receipt);assertHeld();writeNativeBuildReceipt(root,receipt);
+  verifyNativeBuildFiles(root);
+  console.log('Built and staged source-bound native voice and embedding inputs; no device qualification claimed.');
+  });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const root = path.resolve(import.meta.dirname, '..');
-  const from = args.length === 2 && args[0] === '--from' && !args[1].startsWith('--') ? args[1] : undefined;
-  if (from === undefined && args.length) {
-    console.error('Usage: bun scripts/build-embedding-host.ts [--from <directory>]');
-    process.exit(2);
-  }
+  if(args.length)throw Error('Usage: bun scripts/build-embedding-host.ts');
   try {
-    process.exitCode = run(root, {from});
+    await preparePortableNativeInputs(root);
   } catch (error) {
     if (!(error instanceof Stop)) throw error;
     console.error(error.message);

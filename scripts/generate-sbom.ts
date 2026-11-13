@@ -20,7 +20,7 @@
  *   - android/voice-host/qualified-voice-host.json: SHA-256 and size of each recorded
  *     libelizainference engine library per ABI and of every voice bundle file (Paradee GGUF, misaki
  *     lexicon, eSpeak NG data, the ASR slot pair, Silero VAD, notices).
- *   - android/embedding-host/qualified-host.json: SHA-256 of the reviewed ARM64 embedding host
+ *   - native build receipt: SHA-256 of the reviewed per-ABI embedding host
  *     libraries and the pinned embedding model.
  *   - upstream.lock.json: the pinned elizaOS commit.
  * Licences (decision P-09): every component carries `alphaphone:licence-expression` (the declared
@@ -48,6 +48,8 @@ import {METADATA as GRADLE_METADATA, coordinateChecksum, parseVerificationMetada
 import {classifyLicence, orderFlags} from './licence-policy.ts';
 import {LOCKFILE, readBunLock} from './bun-lock.ts';
 import {verifyEmbeddingInputs} from './stage-embedding-host.ts';
+import {readNativeBuildReceipt,NATIVE_BUILD_RECEIPT} from './native-build-inputs.ts';
+import {embeddingAbiLibraries} from './embedding-native-contract.ts';
 
 export const LICENCE_NOT_RECORDED = 'not recorded in this inventory';
 
@@ -88,6 +90,7 @@ interface EmbeddingRecord {
   requalification?: {required: boolean};
   model: {path: string; dimensions: number; sha256: string};
   libraries: {name: string; sha256: string; bytes: number}[];
+  additionalAbis?: {abi:string;libraries:{name:string;sha256:string;bytes:number}[]}[];
 }
 interface ApkManifest {
   testMocks: boolean;
@@ -175,8 +178,7 @@ function gradleComponents(root: string): Component[] {
 
 /**
  * The reviewed embedding host: pins only. Whether the libraries are staged is not this document's
- * claim, and an APK built without the resident runtime (--allow-unpackaged-runtime) contains none
- * of them; each APK row says which it is (`resident-runtime`).
+ * claim; each APK row says whether it packages them (`resident-runtime`).
  */
 const WITH_RESIDENT_RUNTIME = 'apk (only one that packages the resident runtime)';
 const SUPERSEDED_EMBEDDING_MODEL = 'legacy source record; superseded inputs; not current packaged bytes';
@@ -187,18 +189,19 @@ function embeddingInputsCurrent(root: string, record: EmbeddingRecord | null) {
 }
 function embeddingHostComponents(root: string): Component[] {
   if (!exists(root, EMBEDDING_HOST)) return [];
-  const host: EmbeddingRecord = readJson(root, EMBEDDING_HOST);
-  const hostScope = exists(root, 'vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle') ? 'legacy qualification record; incompatible with current Paradee engine; not current packaged bytes' : WITH_RESIDENT_RUNTIME;
+  const generated=readNativeBuildReceipt(root);
+  const host: EmbeddingRecord = generated?.embedding as EmbeddingRecord ?? readJson(root, EMBEDDING_HOST);
+  const hostScope = generated ? WITH_RESIDENT_RUNTIME : exists(root, 'vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle') ? 'legacy qualification record; incompatible with current Paradee engine; not current packaged bytes' : WITH_RESIDENT_RUNTIME;
   const modelScope = host.requalification?.required === true
     ? 'legacy qualification record; requalification pending; not current packaged bytes'
     : embeddingInputsCurrent(root, host) ? WITH_RESIDENT_RUNTIME : SUPERSEDED_EMBEDDING_MODEL;
-  const source = `${EMBEDDING_HOST} (elizaOS ${host.pin}, engine ${host.forkPin})`;
+  const source = `${generated?NATIVE_BUILD_RECEIPT:EMBEDDING_HOST} (elizaOS ${host.pin}, engine ${host.forkPin})`;
   return [
-    ...host.libraries.map(library => ({
-      type: 'library' as const, 'bom-ref': `embedding-host:${host.abi}/${library.name}`, name: `${library.name} (${host.abi})`, version: library.name === 'libc++_shared.so' ? 'Android NDK C++ runtime' : `engine ${host.forkPin}`,
+    ...embeddingAbiLibraries(host).flatMap(abi=>abi.libraries.map(library => ({
+      type: 'library' as const, 'bom-ref': `embedding-host:${abi.abi}/${library.name}`, name: `${library.name} (${abi.abi})`, version: library.name === 'libc++_shared.so' ? 'Android NDK C++ runtime' : `engine ${host.forkPin}`,
       hashes: [{alg: 'SHA-256', content: library.sha256}], licenses: library.name === 'libc++_shared.so' ? licenses('Apache-2.0 WITH LLVM-exception') : undefined,
-      properties: [property('ships-in', hostScope), property('abi', host.abi), property('bytes', library.bytes), property('source', source)],
-    })),
+      properties: [property('ships-in', hostScope), property('abi', abi.abi), property('bytes', library.bytes), property('source', source)],
+    }))),
     {type: 'machine-learning-model' as const, 'bom-ref': `embedding-model:${path.basename(host.model.path)}`, name: path.basename(host.model.path), version: `${host.model.dimensions} dimensions`,
       hashes: [{alg: 'SHA-256', content: host.model.sha256}],
       properties: [property('ships-in', modelScope), property('source', `${EMBEDDING_HOST} (staged to ${host.model.path})`)]},
@@ -221,7 +224,7 @@ function walkFiles(directory: string, base = directory, out: string[] = []): str
 function residentRuntimeComponents(root: string): Component[] {
   if (!packagedRuntimePresent(root)) throw new Error('--packaged-runtime: no resident runtime is staged. Run: bun run agent:build-workflow-worker && bun run agent:stage-android');
   const out: Component[] = [];
-  const record: EmbeddingRecord | null = exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null;
+  const record: EmbeddingRecord | null = readNativeBuildReceipt(root)?.embedding as EmbeddingRecord ?? (exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null);
   // Only current source inputs make the recorded hashes authoritative. A superseded record
   // stays in the source inventory while staged candidates are enumerated by their actual bytes.
   const embedding = embeddingInputsCurrent(root, record) ? record : null;
@@ -231,7 +234,7 @@ function residentRuntimeComponents(root: string): Component[] {
       const bytes = fs.readFileSync(path.join(root, file));
       const digest = sha256(bytes);
       // Already listed from its committed pin; a staged file that differs from the pin is an error, not a second entry.
-      const pinned = embedding && (file === embedding.model.path ? embedding.model : base === JNI_LIBS && rel.startsWith(`${embedding.abi}/`) ? embedding.libraries.find(library => `${embedding.abi}/${library.name}` === rel) : null);
+      const pinned = embedding && (file === embedding.model.path ? embedding.model : base === JNI_LIBS ? embeddingAbiLibraries(embedding).flatMap(abi=>abi.libraries.map(library=>({abi:abi.abi,library}))).find(row=>`${row.abi}/${row.library.name}`===rel)?.library : null);
       if (pinned) { if (pinned.sha256 !== digest) throw new Error(`${file} is staged but is not the bytes pinned in ${EMBEDDING_HOST}`); continue; }
       out.push({type: 'file', 'bom-ref': `resident-runtime:${file}`, name: file, hashes: [{alg: 'SHA-256', content: digest}],
         properties: [property('ships-in', 'apk'), property('bytes', bytes.length), property('kind', `staged resident runtime ${kind}`), property('source', 'staged by bun run agent:stage-android from the prepared pinned source')]});
@@ -275,7 +278,7 @@ function apkComponents(root: string, directory: string): Component[] {
 /** The libelizainference voice host: its recorded engine libraries per ABI and every bundle file it pins. */
 function voiceHostComponents(root: string): Component[] {
   if (!exists(root, VOICE_HOST)) return [];
-  const record = readJson(root, VOICE_HOST);
+  const record = readNativeBuildReceipt(root)?.voice ?? readJson(root, VOICE_HOST);
   const problems = voiceHostProblems(record);
   if (problems.length) throw new Error(problems.join('\n'));
   const out: Component[] = [];

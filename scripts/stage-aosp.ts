@@ -31,6 +31,31 @@ export const PRODUCT_DESCRIPTOR = "android/aosp/product.json";
  * with an allow-list naming exactly this; every other privileged permission stays refused.
  */
 export const LAUNCHER_PRIVILEGED_PERMISSIONS = ["android.permission.READ_PRIVILEGED_PHONE_STATE"];
+/**
+ * Runtime permissions the image grants the preinstalled launcher on first boot, so a fresh phone
+ * shows no Android permission dialogs for them: every step of the startup access walkthrough
+ * (apps/app/src/startup-permission-flow.ts) plus Contacts and phone state for the image's Phone and
+ * Contacts views. The shared stager writes them as a product default-permissions exception with
+ * fixed="false", so the owner can still revoke each one in Settings. All files access is granted by
+ * AlphaSharedStoragePolicy; SMS and CALL_PHONE come with the SMS and dialer roles; call history
+ * stays behind the owner's own "Allow call history" control.
+ */
+export const LAUNCHER_DEFAULT_PERMISSIONS = [
+  "android.permission.POST_NOTIFICATIONS",
+  "android.permission.RECORD_AUDIO",
+  "android.permission.CAMERA",
+  "android.permission.ACCESS_COARSE_LOCATION",
+  "android.permission.ACCESS_FINE_LOCATION",
+  "android.permission.READ_CALENDAR",
+  "android.permission.WRITE_CALENDAR",
+  "android.permission.READ_MEDIA_IMAGES",
+  "android.permission.READ_MEDIA_VIDEO",
+  "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+  "android.permission.READ_CONTACTS",
+  "android.permission.WRITE_CONTACTS",
+  "android.permission.READ_PHONE_STATE",
+  "android.permission.READ_PHONE_NUMBERS",
+];
 export const SHARED_CUTTLEFISH_LOCK = "vendor/eliza/packages/os/android/aosp.lock.json";
 export const AOSP_TARGETS = CUTTLEFISH_TARGETS;
 type PhysicalSource = Awaited<ReturnType<typeof verifyPixel10aSource>> & {hardwareLayout?: ReturnType<typeof pixel10aSourceLayout>};
@@ -252,6 +277,7 @@ if (!descriptor) {
         packageName: identity.appId,
         apkSha256: hash,
         certificateSha256: signer,
+        defaultPermissions: LAUNCHER_DEFAULT_PERMISSIONS,
         privilegedPermissions: LAUNCHER_PRIVILEGED_PERMISSIONS,
       },
       null,
@@ -266,6 +292,10 @@ const reviewed = JSON.parse(reviewedBytes.toString('utf8'));
 // it alone) or none, in which case Settings → Phone shows no IMEI and links to Android's status screen.
 if (reviewed.privilegedPermissions !== undefined && JSON.stringify(reviewed.privilegedPermissions) !== JSON.stringify(LAUNCHER_PRIVILEGED_PERMISSIONS))
   throw new Error(`Descriptor privilegedPermissions must be exactly ${JSON.stringify(LAUNCHER_PRIVILEGED_PERMISSIONS)} or absent.`);
+// First-boot grants are not optional: an image whose descriptor omits them makes the owner accept
+// each Android permission dialog on a phone whose launcher is the system itself.
+if (JSON.stringify(reviewed.defaultPermissions) !== JSON.stringify(LAUNCHER_DEFAULT_PERMISSIONS))
+  throw new Error(`Descriptor defaultPermissions must be exactly ${JSON.stringify(LAUNCHER_DEFAULT_PERMISSIONS)}.`);
 if (
   reviewed.packageName !== identity.appId ||
   reviewed.moduleName !== identity.moduleName

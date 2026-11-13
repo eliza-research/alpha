@@ -68,15 +68,14 @@ test('the pinned generator accepts the descriptor and owns identity, version and
  assert.deepEqual(profile.signing, {storeFile: 'ELIZAOS_KEYSTORE_PATH', storePassword: 'ELIZAOS_KEYSTORE_PASSWORD', keyAlias: 'ELIZAOS_KEY_ALIAS', keyPassword: 'ELIZAOS_KEY_PASSWORD'});
  assert.deepEqual(profile.versionOverride, {versionCode: 'ELIZAOS_VERSION_CODE', versionName: 'ELIZAOS_VERSION_NAME'});
  assert.deepEqual(profile.manifestPlaceholders, {appOrientation: identity.orientation});
- // The four distribution APKs: standalone and launcher, each debug and release.
- assert.deepEqual(profile.flavors.map(flavor => [flavor.name, flavor.buildConfigFields.find(field => field.name === 'IS_LAUNCHER').value]), [['standalone', 'false'], ['launcher', 'true']]);
- assert.equal(profile.flavors[0].manifest, fs.realpathSync(path.join(root, 'android/app/src/standalone/AndroidManifest.xml')));
+ // One distribution: the launcher, debug and release.
+ assert.deepEqual(profile.flavors.map(flavor => [flavor.name, flavor.buildConfigFields.find(field => field.name === 'IS_LAUNCHER').value]), [['launcher', 'true']]);
+ assert.equal(profile.flavors[0].manifest, fs.realpathSync(path.join(root, 'android/app/src/launcher/AndroidManifest.xml')));
  assert.equal(profile.manifest, fs.realpathSync(path.join(root, 'android/app/src/main/AndroidManifest.xml')));
  assert.equal(profile.releaseMinify, true);
  assert.equal(profile.buildTypes.release.shrinkResources, true);
  assert.deepEqual(profile.buildTypes.release.abiFilters, ['arm64-v8a']);
- // Debug ABIs follow the explicit runtime selection in android/app/product.gradle
- // (ELIZA_ANDROID_TARGET_ABIS / ELIZA_ANDROID_BUN_TARGET), so the descriptor fixes none.
+ // Debug ABIs are fixed in android/app/product.gradle, so the descriptor names none.
  assert.deepEqual(profile.buildTypes.debug.abiFilters, []);
  assert.equal(profile.preserveRuntimeBytes, true, 'packaged resident runtime bytes keep their provenance');
  assert.equal(profile.kotlin, false);
@@ -85,12 +84,9 @@ test('the pinned generator accepts the descriptor and owns identity, version and
  assert.match(fs.readFileSync(path.join(root, 'android/eliza-consumer-host/res/values/eliza_consumer_identity.xml'), 'utf8'), new RegExp(`name="app_name"[^>]*>"${identity.appName}"<`));
 });
 
-test('test mocks reach debug variants only and product admission runs before every build', t => {
+test('no test-mocks source set is attached and product admission runs before every build', t => {
  const {root, staging, profile} = generate(t);
- assert.equal(profile.testMocks.property, 'ELIZA_DEV_ALLOW_TEST_MOCKS');
- assert.equal(profile.testMocks.buildConfigField, 'ELIZA_DEV_ALLOW_TEST_MOCKS');
- assert.deepEqual(Object.keys(profile.testMocks.debug), ['java', 'res', 'manifest']);
- assert.equal(profile.testMocks.debug.manifest, fs.realpathSync(path.join(root, 'android/app/src/testMocks/AndroidManifest.xml')));
+ assert.equal(profile.testMocks, null);
  assert.deepEqual(profile.admission.map(step => [step.name, step.command, step.directory]), [
   ['stageLocalAgentSources', ['bun', 'scripts/stage-local-agent-sources.ts'], fs.realpathSync(root)],
   ['verifyCloudDeployment', ['bun', 'scripts/cloud-deployment.ts', '--check'], fs.realpathSync(root)],
@@ -111,10 +107,10 @@ test('the host links its native-only secure store transitively and keeps fixture
  const {profile, staging} = generate(t);
  const linked = profile.modules.filter(module => module.appDependency).map(module => module.name);
  const separate = profile.modules.filter(module => !module.appDependency).map(module => module.name).sort();
- assert.deepEqual(separate, ['elizaos-capacitor-secure-store-nativeonly', 'notification-fixture', 'private-peer-fixture', 'sense', 'sense-speech', 'video-fixture']);
+ assert.deepEqual(separate, ['elizaos-capacitor-secure-store-nativeonly', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
  // Shared checkouts, node_modules and the authenticated patched staging never receive build outputs.
  assert.deepEqual(profile.modules.filter(module => !module.relocateBuild).map(module => module.name).sort(),
-  ['local-speech', 'notification-fixture', 'private-peer-fixture', 'sense', 'sense-speech', 'video-fixture']);
+  ['local-speech', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
  for (const name of ['capacitor-android', 'local-speech', 'eliza-system', 'eliza-contacts', 'elizaos-capacitor-secure-store']) assert.ok(linked.includes(name), name);
  const messages = profile.modules.find(module => module.name === 'eliza-messages');
  assert.equal(messages.directory, fs.realpathSync(path.join(staging, 'plugins/plugin-native-messages/android')));

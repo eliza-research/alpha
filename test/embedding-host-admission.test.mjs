@@ -6,7 +6,6 @@ import os from 'node:os';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {verifyEmbeddingHost, verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
-import {run as stageEmbedding, stagedLibraries} from '../scripts/build-embedding-host.ts';
 import {embeddingProducerInputPaths,nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.ts';
 const root=path.resolve(import.meta.dirname,'..');
 const git=(directory,...args)=>execFileSync('git',['-C',directory,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
@@ -107,23 +106,6 @@ test('embedding and voice host records that name different arm64 engines are ref
 test('a valid native set does not bypass the pinned local model admission',()=>{
  const f=fixture();try{assert.throws(()=>verifyEmbeddingHost(f.dir),/BGE384 model missing/);const model=path.join(f.dir,qualified.model.path);fs.mkdirSync(path.dirname(model),{recursive:true});fs.writeFileSync(model,'incorrect model');assert.throws(()=>verifyEmbeddingHost(f.dir),/BGE384 model missing or changed/);}finally{f.close();}
 });
-test('supplied embedding bytes stage only against the exact reviewed source and preserve the record',()=>{
- const f=fixture({producerInputs:true});
- try{
-  const supplied=fs.realpathSync(fs.mkdtempSync(path.join(f.dir,'supplied-')));
-  for(const row of stagedLibraries(f.dir))fs.renameSync(row.file,path.join(supplied,row.name));
-  const record=path.join(f.dir,'android/embedding-host/qualified-host.json'),before=fs.readFileSync(record);
-  const jni=path.join(supplied,'libelizavoicejni.so');
-  fs.writeFileSync(jni,'different bytes');
-  assert.throws(()=>stageEmbedding(f.dir,{from:supplied}),/not the reviewed bytes/);
-  assert.ok(stagedLibraries(f.dir).every(row=>row.state==='missing'));
-  fs.writeFileSync(jni,'fixture-libelizavoicejni.so');
-  assert.equal(stageEmbedding(f.dir,{from:supplied}),0);
-  assert.ok(stagedLibraries(f.dir).every(row=>row.state==='staged'));
-  assert.deepEqual(fs.readFileSync(record),before);
- }finally{f.close();}
-});
-
 test('text-only pin change reuses exact reviewed native bytes without relabeling the built pin',()=>{
  const f=fixture();try{
   git(f.vendor,'commit','--allow-empty','-m','Advance runtime without changing native inputs');f.lock(git(f.vendor,'rev-parse','HEAD'));
@@ -163,18 +145,6 @@ test('current-only shallow native inputs admit reviewed bytes without fetching t
   assert.throws(()=>git(f.vendor,'cat-file','-e',qualified.pin));
   assert.doesNotThrow(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}));
  }finally{f.close();}
-});
-
-test('explicit unpackaged builds admit absence, never a partial resident payload or host',()=>{
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-embed-unpackaged-'));
- try{
-  assert.deepEqual(verifyEmbeddingHost(dir,{allowAbsentRuntime:true}),{status:'not-packaged',distributable:false});
-  assert.throws(()=>verifyEmbeddingHost(dir));
-  for(const relative of ['android/app/src/main/assets/agent/alpha-source.json','android/app/src/main/assets/agent/agent-bundle.js','android/app/src/main/assets/agent/workflow-worker/manifest.json','android/app/src/main/jniLibs/arm64-v8a/libelizainference.so','android/app/src/main/jniLibs/x86_64/libelizavoicejni.so']){
-   const file=path.join(dir,relative);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'partial');
-   assert.throws(()=>verifyEmbeddingHost(dir,{allowAbsentRuntime:true}));fs.unlinkSync(file);
-  }
- }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
 test('complete producer closure is required for new embedding-capable admission and preserves the built pin',()=>{

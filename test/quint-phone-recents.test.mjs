@@ -25,7 +25,7 @@ const VALID = '+15555550100', call = {id: '4', number: VALID, cachedName: 'Ada',
 const permissions = access => ({permissions: access === 'unsupported' ? {} : {callLog: access}});
 
 function fixture(initial) {
-  let access = initial.access, field = '', typedOver = false, model = initial, requestReads = 0, accessRequests = 0, handoffs = 0;
+  let access = initial.access, requestReads = 0, accessRequests = 0, handoffs = 0;
   const reads = [], dials = [], listeners = new Set();
   globalThis.document = {hidden: false, addEventListener: (_type, listener) => listeners.add(listener),
     removeEventListener: (_type, listener) => listeners.delete(listener)};
@@ -43,7 +43,7 @@ function fixture(initial) {
   const shell = new Shell();
   shell.componentDidMount();
   const page = () => views.phone.render({}, {});
-  const type = value => { page().nativeOnNumber({target: {value}}); field = value; };
+  const TYPED = {'': '', valid: VALID, invalid: '*#06#'};
   // Each started read and handoff is named by the token the model gave it.
   const adopt = (list, before, after, name) => {
     const fresh = after.filter(item => !before.some(old => JSON.stringify(old) === JSON.stringify(item)));
@@ -55,7 +55,6 @@ function fixture(initial) {
   return {
     async apply(step, before) {
       const {action, picks, state} = step;
-      model = state;
       if (action === 'openPhone') { shell.view = 'phone'; shell.componentDidUpdate(); }
       else if (action === 'leavePhone') { shell.view = null; shell.componentDidUpdate(); }
       else if (action === 'hide' || action === 'show') { document.hidden = action === 'hide'; for (const listener of [...listeners]) listener(); }
@@ -65,36 +64,31 @@ function fixture(initial) {
       else if (action === 'readSettles') {
         const read = take(reads, picks.read);
         if (picks.flag) read.fail(Error('locked')); else read.settle(permissions(access));
-      } else if (action === 'dial') {
-        if (!picks.flag) { if (field !== '') type('*#06#'); page().nativeDial(); }
-        else if (field === VALID) page().nativeDial();
-        else if (page().nativeRows.length) page().nativeRows[0].dial();
-        // Typing clears the notice on screen; the model keeps its last notice until the next one.
-        else { typedOver = before.notice !== ''; type(VALID); page().nativeDial(); }
-      } else if (action === 'dialSettles') take(dials, picks.d).settle({message: HANDOFF});
+      } else if (action === 'typeNumber') page().nativeOnNumber({target: {value: TYPED[picks.value]}});
+      // A recent call's row dials its own number; the Dial control dials what the field holds.
+      else if (action === 'dial') { if (picks.flag) page().nativeRows[0].dial(); else page().nativeDial(); }
+      else if (action === 'dialSettles') take(dials, picks.d).settle({message: HANDOFF});
       else assert.fail(`unmapped action ${action}`);
       await tick();
-      if (!state.active) field = '';
       adopt(reads, before.reads, state.reads, 'reads');
       adopt(dials, before.dials, state.dials, 'handoffs');
       assert.ok(accessRequests <= requestReads, 'access is asked for only inside a read the owner requested');
     },
     observe() {
       const shown = page(), notice = shown.nativeNotice === HANDOFF ? 'handoff' : shown.nativeNotice === INVALID ? 'invalid' : shown.nativeNotice;
-      if (notice !== '' || model.notice === '') typedOver = false;
       return {busy: shown.nativeBusy, rows: shown.nativeRows.length > 0, needsAccess: shown.nativeAccess,
-        notice: typedOver ? model.notice : notice, reads: reads.length, dials: dials.length, handoffs};
+        notice, number: Object.keys(TYPED).find(name => TYPED[name] === shown.nativeNumber), reads: reads.length, dials: dials.length, handoffs};
     },
   };
 }
 
 test('simulated PhoneRecents traces agree with the image Phone adapter after every step', {timeout: 120000}, async () => {
-  const traces = modelTraces({module: 'PhoneRecents', traces: 120, steps: 30});
+  const traces = modelTraces({module: 'PhoneRecents', traces: 300, steps: 40});
   const result = await replay(traces, {
     start: ({state}) => fixture(state),
-    project: s => ({busy: s.reading || s.dialing, rows: s.rows, needsAccess: s.needsAccess, notice: s.notice,
+    project: s => ({busy: s.reading || s.dialing, rows: s.rows, needsAccess: s.needsAccess, notice: s.notice, number: s.number,
       reads: s.reads.length, dials: s.dials.length, handoffs: s.handoffs}),
   });
   assert.deepEqual([...result.exercised].sort(),
-    ['dial', 'dialSettles', 'hide', 'leavePhone', 'openPhone', 'readSettles', 'refresh', 'show', 'systemPrompt', 'unmount']);
+    ['dial', 'dialSettles', 'hide', 'leavePhone', 'openPhone', 'readSettles', 'refresh', 'show', 'systemPrompt', 'typeNumber', 'unmount']);
 });

@@ -145,7 +145,7 @@ test('every Gradle script of the build declares only reviewed repositories and e
 
 test('the write command covers every per-variant assemble task', () => {
   // build-android.ts also composes per-variant task names in its low-disk path.
-  for (const variant of ['Standalone', 'Launcher'])
+  for (const variant of ['Launcher'])
     for (const suffix of ['Debug', 'Release', 'DebugAndroidTest']) assert.ok(VERIFIED_TASKS.includes(`:app:assemble${variant}${suffix}`));
 });
 
@@ -165,10 +165,9 @@ test('staged Java-only native patches retain their authenticated dependency desc
 });
 
 
-test('dependency verification takes one mode and the unpackaged-runtime option', () => {
-  assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write',allowUnpackagedRuntime:false});
-  assert.deepEqual(parseVerificationArgs(['--write','--allow-unpackaged-runtime']), {mode:'--write',allowUnpackagedRuntime:true});
-  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',allowUnpackagedRuntime:false});
+test('dependency verification takes exactly one mode', () => {
+  assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write'});
+  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check'});
   assert.throws(() => parseVerificationArgs(['--write','--other']), /Usage/);
 });
 

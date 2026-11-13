@@ -17,7 +17,7 @@ import static org.junit.Assert.*;
 
 /** Real CalendarProvider creation through the product form, with disposable records. Most methods
  * set the device time zone, which every user shares; the close() restore cannot run if the process
- * dies, so scripts/test-calendar-regression.ts records and restores it around the class. */
+ * dies. */
 @RunWith(AndroidJUnit4.class)
 public class CalendarFlowInstrumentedTest {
  @Before public void gate()throws Exception{

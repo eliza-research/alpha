@@ -25,6 +25,8 @@ SPEC = importlib.util.spec_from_file_location(
 ADMISSION = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ADMISSION)
 
+NATIVE_SOURCE_PATHS = ('packages/app/scripts', 'plugins/plugin-native-inference/src/model-catalog', 'bun.lock', 'package.json', 'packages/agent/package.json', 'packages/app/package.json', 'packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt', 'packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp', 'packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java', 'packages/app/scripts/aosp/compile-libllama-paths.ts', 'packages/app/scripts/aosp/compile-libllama.ts', 'packages/app/scripts/aosp/compile-shim.ts', 'packages/app/scripts/aosp/vulkan-source-contract.ts', 'packages/app/scripts/aosp/zig-toolchain.ts', 'packages/app/scripts/build-helpers/arm64-simd.ts', 'packages/app/scripts/build-helpers/elizavoice-build-flags.ts', 'packages/app/scripts/build-helpers/omnivoice-merged.ts', 'packages/app/scripts/build-helpers/verify-fused-symbols.ts', 'packages/app/scripts/lib/repo-root.ts', 'packages/app/scripts/paradee-voice/build-native.ts', 'packages/app/scripts/stage-elizavoice-lib.ts', 'packages/app/scripts/voice/build-phonon2-gguf.ts', 'plugins/plugin-local-inference/native/android', 'plugins/plugin-native-inference/src/model-catalog/voice-model-versions.json')
+NATIVE_PRODUCT_PATHS = ('android/embedding-host/build-toolchain.json', 'android/embedding-host/native-requirements.txt', 'android/embedding-host/bootstrap-requirements.txt', 'android/paradee-voice/asr-inputs.json', 'scripts/build-embedding-host.ts', 'scripts/prepare-embedding-host.ts', 'scripts/embedding-native-contract.ts', 'scripts/embedding-build-remap.ts', 'scripts/native-build-inputs.ts', 'scripts/android-stage-voice-models.ts', 'scripts/local-agent-source.ts', 'scripts/voice-host.ts', 'scripts/paradee-runtime.ts', 'scripts/android-abis.ts', 'scripts/copy-file-clone.ts', 'scripts/stage-embedding-host.ts')
 
 class CloudSigningInputTest(unittest.TestCase):
     def setUp(self):
@@ -48,7 +50,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 "variant": variant,
                 "mode": "release",
                 "file": f"artifacts/{variant}-release-unsigned.apk",
-                "packageName": ADMISSION.PACKAGE,
+                "packageName": PRODUCER.CANDIDATE_PACKAGE,
                 "versionCode": 44,
                 "sha256": ADMISSION.digest(payload),
                 "signed": False,
@@ -66,18 +68,18 @@ class CloudSigningInputTest(unittest.TestCase):
             })
         self.verification = {
             "upstream": {"commit": self.pin["sdkCommit"]},
-            "runtimeProfile": "cloud",
+            "runtimeProfile": "native",
             "testMocks": False,
             "allowUnpackagedRuntime": False,
             "results": rows,
         }
         self.build = {
-            "runtimeProfile": "cloud",
+            "runtimeProfile": "native",
             "testMocks": False,
             "signingRequested": False,
             "versionOverride": {"code": "44"},
         }
-        self.producer = {"source": self.pin["alphaCommit"], "versionCode": 44, "runtimeProfile": "cloud"}
+        self.producer = {"source": self.pin["alphaCommit"], "versionCode": 44, "runtimeProfile": "native"}
         for record in [self.verification, self.build, self.producer, *rows]:
             record["updateChannel"] = copy.deepcopy(self.pin["updateChannel"])
 
@@ -85,6 +87,8 @@ class CloudSigningInputTest(unittest.TestCase):
         verification = json.dumps(self.verification).encode()
         build = json.dumps(self.build).encode()
         files = {"artifacts/apk-manifest.json": verification, "artifacts/build-config.json": build}
+        if entries_update and "producer-evidence/native-build-receipt.json" in entries_update:
+            files["native-build-receipt.json"] = entries_update["producer-evidence/native-build-receipt.json"]
         self.producer["files"] = {
             name: {"bytes": len(payload), "sha256": ADMISSION.digest(payload)}
             for name, payload in files.items()
@@ -116,14 +120,66 @@ class CloudSigningInputTest(unittest.TestCase):
         self.pin["archiveSHA256"] = ADMISSION.digest(self.archive.read_bytes())
         self.pin["producerManifestSHA256"] = ADMISSION.digest(producer)
 
+    def prepare_native_source(self):
+        if hasattr(self, "native_source"):
+            return
+        self.source_directory = tempfile.TemporaryDirectory(prefix="alpha-reviewed-native-source-")
+        self.addCleanup(self.source_directory.cleanup)
+        root = Path(self.source_directory.name)
+        sdk = root / "vendor/eliza"
+        sdk.mkdir(parents=True)
+        def put(base, name, value):
+            target = base / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(value)
+        def git(base, *args):
+            return subprocess.check_output(["git", "-C", str(base), *args], stderr=subprocess.PIPE).decode().strip()
+        def commit(base):
+            git(base, "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "Synthetic reviewed source")
+            return git(base, "rev-parse", "HEAD")
+        git(sdk, "init", "-q")
+        directories = {"packages/app/scripts", "plugins/plugin-native-inference/src/model-catalog"}
+        for name in NATIVE_SOURCE_PATHS:
+            if name not in directories:
+                put(sdk, name + "/CMakeLists.txt" if name.endswith("/android") else name, b"synthetic upstream source")
+        git(sdk, "add", ".")
+        git(sdk, "update-index", "--add", "--cacheinfo", "160000," + "e" * 40 + ",plugins/plugin-local-inference/native/llama.cpp")
+        sdk_commit = commit(sdk)
+        toolchain = {"ndk": "28.2.13676358", "cmake": "4.0.3"}
+        for name in NATIVE_PRODUCT_PATHS:
+            put(root, name, b"synthetic producer input")
+        put(root, "android/embedding-host/build-toolchain.json", json.dumps(toolchain).encode())
+        put(root, "scripts/native-build-inputs.ts", b"export const NATIVE_PYTHON = '3.12.11';")
+        put(root, "android/embedding-host/qualified-host.json", b'{"model":{"id":"synthetic-embedding-model"}}')
+        put(root, "android/voice-host/qualified-voice-host.json", b'{"models":[],"asrSlot":{}}')
+        put(root, "upstream.lock.json", json.dumps({"commit": sdk_commit}).encode())
+        put(root, "app.config.json", json.dumps({"appId": PRODUCER.CANDIDATE_PACKAGE}).encode())
+        git(root, "init", "-q")
+        git(root, "add", "android", "scripts", "upstream.lock.json", "app.config.json")
+        git(root, "update-index", "--add", "--cacheinfo", "160000," + sdk_commit + ",vendor/eliza")
+        source = commit(root)
+        self.native_source = (source, sdk_commit)
+        self.native_recipe = {
+            "schema": "alpha-native-recipe/v1", "identity": PRODUCER.CANDIDATE_PACKAGE,
+            "embeddingModel": {"id": "synthetic-embedding-model"},
+            "engineCommit": "e" * 40,
+            "sourceTrees": dict(zip(NATIVE_SOURCE_PATHS, git(sdk, "rev-parse", *(sdk_commit + ":" + name for name in NATIVE_SOURCE_PATHS)).splitlines())),
+            "productInputs": {name: ADMISSION.digest((root / name).read_bytes()) for name in NATIVE_PRODUCT_PATHS},
+            "models": [], "asrSlot": {}, "toolchain": toolchain, "python": "3.12.11",
+        }
+        source_env = patch.dict(os.environ, {"ALPHA_NATIVE_SOURCE_ROOT": str(root)})
+        source_env.start()
+        self.addCleanup(source_env.stop)
+
     def write_candidate(self, extra=None, change_receipt=None, change_native=None):
+        self.prepare_native_source()
+        self.pin.update(alphaCommit=self.native_source[0], sdkCommit=self.native_source[1])
+        self.producer["source"] = self.pin["alphaCommit"]
+        self.verification["upstream"]["commit"] = self.pin["sdkCommit"]
         self.pin.pop("privateProducerReceiptSHA256", None)
         self.pin.update(producerKind=PRODUCER.CANDIDATE, producerRunId="171", producerRunAttempt=2, artifactId="202")
-        for record in (self.verification, self.build, self.producer):
-            record["runtimeProfile"] = "native"
         for row in self.verification["results"]:
             if row["mode"] == "release":
-                row["packageName"] = PRODUCER.CANDIDATE_PACKAGE
                 row["distributable"] = False
                 row.setdefault("voiceHost", {"packaged": True, "asr": True, "differences": []})
         debug = {}
@@ -133,18 +189,41 @@ class CloudSigningInputTest(unittest.TestCase):
             debug[name] = (extra or {}).get(name, f"{variant} debug fixture".encode())
             self.verification["results"].append({"variant": variant, "mode": "debug", "sha256": ADMISSION.digest(debug[name])})
         source, sdk = self.pin["alphaCommit"], self.pin["sdkCommit"]
+        recipe = copy.deepcopy(self.native_recipe)
         native = {
-            "schema": "alpha-hosted-native-input-admission/v1", "source": source, "sdkCommit": sdk,
-            "runId": "171", "attempt": "2", "packageName": PRODUCER.CANDIDATE_PACKAGE,
-            "manifestSha256": "a" * 64, "voiceRecordSha256": "b" * 64, "embeddingRecordSha256": "c" * 64,
+            "schema": "alpha-native-build/v1", "consumerSdkCommit": sdk, "recipe": recipe,
+            "recipeSha256": ADMISSION.digest(json.dumps(recipe, separators=(",", ":")).encode()),
+            "producer": {"sdkCommit": sdk, "platform": "linux", "arch": "x64", "ndk": "28.2.13676358",
+                         "cmake": "4.0.3", "python": "3.12.11"},
+            "voice": {"identity": PRODUCER.CANDIDATE_PACKAGE, "pin": sdk, "forkPin": recipe["engineCommit"], "qualified": False,
+                      "models": [], "asrSlot": {}, "abis": [{"abi": abi, "abiVersion": 17, "alignment16KiB": True,
+                        "libraries": [{"name": name, "bytes": 100, "sha256": "a" * 64} for name in
+                                      ("libelizainference.so", "libc++_shared.so")]} for abi in ("arm64-v8a", "x86_64")]},
+            "embedding": {"identity": PRODUCER.CANDIDATE_PACKAGE, "pin": sdk, "forkPin": recipe["engineCommit"],
+                          "abi": "arm64-v8a", "jniIdentityRelocated": True, "model": {"id": "synthetic-embedding-model"},
+                          "libraries": [{"name": name, "bytes": 100, "sha256": "a" * 64, "alignment16KiB": True}
+                                        for name in ("libelizainference.so", "libc++_shared.so", "libelizavoicejni.so")]},
+            "qualification": {"deviceExecuted": False, "userAccepted": False},
+            "files": [{"path": "android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so", "bytes": 100, "sha256": "a" * 64}],
         }
+        native["embedding"]["additionalAbis"] = [{"abi": "x86_64", "libraries": copy.deepcopy(native["embedding"]["libraries"])}]
+        native["files"] = [{"path": name, "bytes": 100, "sha256": "a" * 64} for name in [
+            ".eliza/paradee-voice/native/build-record.json",
+            ".eliza/paradee-voice/native/assets/paradee-voice/v1/manifest.json",
+            ".eliza/paradee-voice/native/jniLibs/arm64-v8a/libelizainference.so",
+            ".eliza/paradee-voice/native/jniLibs/x86_64/libelizainference.so",
+            "android/app/src/main/jniLibs/arm64-v8a/libelizainference.so",
+            "android/app/src/main/jniLibs/arm64-v8a/libc++_shared.so",
+            "android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so",
+            "android/app/src/main/jniLibs/x86_64/libelizainference.so",
+            "android/app/src/main/jniLibs/x86_64/libc++_shared.so",
+            "android/app/src/main/jniLibs/x86_64/libelizavoicejni.so"]]
         if change_native:
             change_native(native)
         native_bytes = json.dumps(native).encode()
-        files = {"upstream.lock.json": "d" * 64, "android/hosted-native-inputs.json": "a" * 64,
-                 "android/voice-host/qualified-voice-host.json": "b" * 64,
-                 "android/embedding-host/qualified-host.json": "c" * 64,
-                 "test-results/resident-ci-native-inputs/admission.json": ADMISSION.digest(native_bytes)}
+        files = {**recipe["productInputs"], "upstream.lock.json": "d" * 64,
+                 ".eliza/native-inputs/receipt.json": ADMISSION.digest(native_bytes),
+                 **{row["path"]: row["sha256"] for row in native["files"]}}
         fingerprint = ADMISSION.digest(json.dumps(files, separators=(",", ":")).encode())
         snapshot = json.dumps({"schemaVersion": 5, "digest": fingerprint, "files": files}).encode()
         apks = {}
@@ -170,6 +249,7 @@ class CloudSigningInputTest(unittest.TestCase):
         raw = json.dumps(receipt).encode()
         self.pin["candidateReceiptSHA256"] = ADMISSION.digest(raw)
         self.write_archive({"app-update-candidate.json": raw, "native-input-admission.json": native_bytes,
+                            "producer-evidence/native-build-receipt.json": native_bytes,
                             "inputs-before.json": snapshot, "inputs-after.json": snapshot, **debug, **(extra or {})},
                            compression=zipfile.ZIP_DEFLATED)
         digest = self.pin["archiveSHA256"]
@@ -337,7 +417,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 if case != "missing-evidence":
                     entries["producer-evidence/" + evidence_name] = evidence.upper() if case == "changed-evidence" else evidence
                 if case == "changed-debug":
-                    entries["standalone-debug.apk"] = entries["standalone-debug.apk"].upper()
+                    entries["launcher-debug.apk"] = entries["launcher-debug.apk"].upper()
                 with zipfile.ZipFile(self.archive, "w", compression=zipfile.ZIP_DEFLATED) as target:
                     for name, data in entries.items():
                         target.writestr(name, data)
@@ -384,11 +464,29 @@ class CloudSigningInputTest(unittest.TestCase):
                 self.write_candidate(change_receipt=lambda receipt: receipt.update({field: value}))
                 with self.assertRaises(ValueError):
                     ADMISSION.admit(self.archive, self.pin)
-        for field, value in (("attempt", "1"), ("packageName", "ai.example.other"), ("voiceRecordSha256", "0" * 64)):
-            with self.subTest(field=field):
-                self.write_candidate(change_native=lambda native: native.update({field: value}))
-                with self.assertRaises(ValueError):
-                    ADMISSION.admit(self.archive, self.pin)
+        changes = [
+            lambda value: value.update(consumerSdkCommit="0" * 40),
+            lambda value: value["producer"].update(sdkCommit="invalid"),
+            lambda value: value["producer"].update(ndk="old"),
+            lambda value: value["recipe"].update(identity="ai.example.other"),
+            lambda value: value["qualification"].update(deviceExecuted=True),
+            lambda value: value["voice"].update(qualified=True),
+            lambda value: value["files"][0].update(path="../escape"),
+            lambda value: value["files"][0].update(sha256="invalid"),
+            lambda value: value.update(recipeSha256="0" * 64),
+            lambda value: value["files"].pop(),
+            lambda value: value["files"].append({"path": "unexpected", "bytes": 1, "sha256": "a" * 64}),
+            lambda value: value["embedding"]["libraries"][0].update(sha256="b" * 64),
+            lambda value: value["embedding"].pop("additionalAbis"),
+            lambda value: value["embedding"]["additionalAbis"][0].update(abi="arm64-v8a"),
+            lambda value: value["embedding"]["additionalAbis"][0]["libraries"].pop(),
+            lambda value: value["embedding"]["additionalAbis"][0]["libraries"][0].update(sha256="b" * 64),
+            lambda value: value["files"].__setitem__(slice(None), [row for row in value["files"] if row["path"] != "android/app/src/main/jniLibs/x86_64/libelizavoicejni.so"]),
+        ]
+        for change in changes:
+            self.write_candidate(change_native=change)
+            with self.assertRaises(ValueError):
+                ADMISSION.admit(self.archive, self.pin)
         for extra in ({"inputs-after.json": b"{}"}, {"private-producer.json": b"{}"},
                       {"launcher-release-unsigned.apk": self.apk_bytes["launcher-release-unsigned.apk"].upper()}):
             self.write_candidate(extra)
@@ -399,11 +497,38 @@ class CloudSigningInputTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "on-device voice with ASR"):
             ADMISSION.admit(self.archive, self.pin)
 
+    def test_native_recipe_cannot_forge_self_consistent_source_or_model_pins(self):
+        def rehash(value):
+            value["recipeSha256"] = ADMISSION.digest(json.dumps(value["recipe"], separators=(",", ":")).encode())
+        def change_tree(value):
+            value["recipe"]["sourceTrees"][NATIVE_SOURCE_PATHS[0]] = "f" * 40
+            rehash(value)
+        def change_input(value):
+            value["recipe"]["productInputs"][NATIVE_PRODUCT_PATHS[0]] = "f" * 64
+            rehash(value)
+        def change_models(value):
+            model = {"path": "forged-model.bin", "bytes": 100, "sha256": "a" * 64}
+            value["recipe"]["models"] = value["voice"]["models"] = [model]
+            value["files"].append({**model, "path": ".eliza/paradee-voice/native/assets/paradee-voice/v1/forged-model.bin"})
+            rehash(value)
+        def change_python(value):
+            value["recipe"]["python"] = value["producer"]["python"] = "0.0.0"
+            rehash(value)
+        def change_embedding_model(value):
+            value["embedding"]["model"] = {"id": "forged-model"}
+        def change_embedding_recipe(value):
+            value["recipe"]["embeddingModel"] = value["embedding"]["model"] = {"id": "forged-model"}
+            rehash(value)
+        for change in (change_tree, change_input, change_models, change_python, change_embedding_model, change_embedding_recipe):
+            with self.subTest(change=change.__name__):
+                self.write_candidate(change_native=change)
+                with self.assertRaisesRegex(ValueError, "reviewed"):
+                    ADMISSION.admit(self.archive, self.pin)
+
     def test_candidate_cannot_claim_other_producer_or_delivery_routes(self):
         self.write_candidate()
         for drift in ({"privateProducerReceiptSHA256": "0" * 64}, {"producerKind": PRODUCER.PRIVATE_RUNNER},
-                      {"producerRunAttempt": "2"}, {"privateStorage": None}, {"encryptedArtifactApproved": True},
-                      {"purpose": "private-update-qa-baseline"}):
+                      {"producerRunAttempt": "2"}, {"privateStorage": None}, {"encryptedArtifactApproved": True}):
             with self.assertRaises(ValueError):
                 ADMISSION.admit(self.archive, {**self.pin, **drift})
 
@@ -426,7 +551,7 @@ class CloudSigningInputTest(unittest.TestCase):
             ADMISSION.admit(self.archive, self.pin, stage)
             self.assertEqual({path.name: path.read_bytes() for path in stage.iterdir()}, self.apk_bytes)
 
-    def test_native_expanded_apk_pairs_are_bounded_independently(self):
+    def test_native_release_and_debug_apks_are_bounded_independently(self):
         ceiling = 12_000
         debug = {f"{variant}-debug.apk": bytes(4_000) for variant in ADMISSION.VARIANTS}
         with patch.object(PRODUCER, "MAX_ARCHIVE_BYTES", ceiling):
@@ -434,13 +559,13 @@ class CloudSigningInputTest(unittest.TestCase):
             self.write_candidate(debug)
             self.assertLess(self.archive.stat().st_size, ceiling)
             ADMISSION.admit(self.archive, self.pin)
-            self.unsigned_pair(6_001)
+            self.unsigned_pair(12_001)
             self.write_candidate(debug)
-            with self.assertRaisesRegex(ValueError, "expanded pair limit"):
+            with self.assertRaisesRegex(ValueError, "oversized archive member"):
                 ADMISSION.admit(self.archive, self.pin)
             self.unsigned_pair(4_000)
-            self.write_candidate({name: bytes(6_001) for name in debug})
-            with self.assertRaisesRegex(ValueError, "expanded pair limit"):
+            self.write_candidate({name: bytes(12_001) for name in debug})
+            with self.assertRaisesRegex(ValueError, "Invalid debug archive member"):
                 ADMISSION.admit(self.archive, self.pin)
 
     def test_admits_both_exact_unsigned_cloud_variants(self):
@@ -458,21 +583,19 @@ class CloudSigningInputTest(unittest.TestCase):
     def test_channel_substitution_is_refused_at_each_evidence_boundary(self):
         for boundary in [self.verification, self.build, self.producer, *self.verification["results"]]:
             original = boundary["updateChannel"]
-            boundary["updateChannel"] = {"kind": "private-qa", "manifestUrlSha256": "d" * 64}
+            boundary["updateChannel"] = {"kind": "public", "manifestUrlSha256": "d" * 64}
             self.write_archive()
             with self.assertRaises(ValueError):
                 ADMISSION.admit(self.archive, self.pin)
             boundary["updateChannel"] = original
 
-    def test_private_channel_needs_its_reviewed_baseline_purpose(self):
-        channel = {"kind": "private-qa", "manifestUrlSha256": "d" * 64}
+    def test_only_the_public_channel_is_admitted(self):
+        channel = {"kind": "other", "manifestUrlSha256": "d" * 64}
         for record in [self.pin, self.verification, self.build, self.producer, *self.verification["results"]]:
             record["updateChannel"] = copy.deepcopy(channel)
         self.write_archive()
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "Invalid reviewed update channel"):
             ADMISSION.admit(self.archive, self.pin)
-        self.pin["purpose"] = "private-update-qa-baseline"
-        self.assertEqual(ADMISSION.admit(self.archive, self.pin)["updateChannel"], channel)
 
     def test_rejects_changed_archive_or_reviewed_pins(self):
         self.write_archive()
@@ -505,11 +628,10 @@ class CloudSigningInputTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not bind artifacts/build-config.json"):
             ADMISSION.admit(self.archive, self.pin)
 
-    def test_rejects_non_cloud_profiles_and_local_embedding_records(self):
-        # This Cloud release requires its own profile and excludes local embedding projection flags.
+    def test_rejects_non_native_profiles_and_local_embedding_records(self):
         for record_name in ("producer", "verification", "build"):
             record = getattr(self, record_name)
-            for field, value in (("runtimeProfile", "native"), ("runtimeProfile", "unknown"), ("localEmbeddings", True), ("localEmbeddings", False)):
+            for field, value in (("runtimeProfile", "cloud"), ("runtimeProfile", "unknown"), ("localEmbeddings", True), ("localEmbeddings", False)):
                 with self.subTest(record=record_name, field=field):
                     old = copy.deepcopy(record)
                     record[field] = value
@@ -534,7 +656,7 @@ class CloudSigningInputTest(unittest.TestCase):
         baseline = copy.deepcopy(row)
         for field, value in (
             ("signed", True), ("signerSha256", "c" * 64), ("debuggable", True),
-            ("testMocks", True), ("home", True), ("launcher", False),
+            ("testMocks", True), ("home", False), ("launcher", False),
             ("webPayload", False), ("runtime", "NOT_PACKAGED"), ("runtimeNotices", False),
             ("bundleAudit", "failed"), ("packageName", "another.product"),
             ("licenceBlockers", ["unreviewed"]),
@@ -572,7 +694,6 @@ class CloudSigningInputTest(unittest.TestCase):
 
 class PrivateProducerSourceReviewTest(unittest.TestCase):
     def test_isolated_source_requires_exact_committed_approval(self):
-        self.assertEqual(ADMISSION.PACKAGE.split("."), ["ai", "elizaresearch", "alphaphone"])
         self.assertEqual(PRODUCER.REPOSITORY, "eliza-research/alpha")
         with tempfile.TemporaryDirectory(prefix="alpha-source-review-") as directory:
             root = Path(directory)

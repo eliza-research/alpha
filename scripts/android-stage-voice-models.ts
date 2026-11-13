@@ -89,9 +89,9 @@ function stageHostLibraries(productRoot: string, rows: readonly HostLibrary[]) {
   // and a retry validates and reuses them before completing the remaining library set.
 }
 
-export function stageVoiceModels(productRoot: string, {from, abis}: {from: readonly string[]; abis?: readonly string[]}) {
+export function stageVoiceModels(productRoot: string, {from, abis, record: supplied}: {from: readonly string[]; abis?: readonly string[]; record?: ReturnType<typeof readVoiceHost>}) {
   productRoot = path.resolve(productRoot);
-  const record = readVoiceHost(productRoot);
+  const record = supplied ?? readVoiceHost(productRoot);
   const selected = selectedAndroidAbis(abis);
   const selectedRows = selected.map(abi => {
     const entry = record.abis.find(row => row.abi === abi);

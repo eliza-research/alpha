@@ -127,6 +127,18 @@ test('a completed removal cannot navigate or refresh after leaving Passwords',as
  assert.equal(t.pm.passwordManagerHoldsEntries(),false);
 });
 
+test('a save that completes after its form was left is read back into the open list',async()=>{
+ const t=await mount();await t.openShop();const held=t.hold('save');
+ t.type('Password','typed-then-left');
+ t.find(t.rows(t.entryPage().groups),'Save').go();await held.waiting;
+ t.entryPage().back();assert.equal(t.entryPage(),null,'the form is closed while the vault still holds the save');
+ const pages=t.pages.length,listReads=t.calls.filter(([method])=>method==='list').length;
+ held.release();await settle();
+ assert.equal(t.calls.filter(([method])=>method==='list').length,listReads+1,'the unlocked list is read again');
+ assert.equal(t.pages.length,pages,'a form that is already closed is not navigated away from again');
+ assert.equal(t.pm.passwordManagerHoldsEntries(),true);
+});
+
 test('leaving during reset authentication never calls reset from the retired page',async()=>{
  const t=await mount({damaged:true});t.manager();await settle();await t.press(t.manager(),'Unlock');
  await t.press(t.manager(),'Reset vault');

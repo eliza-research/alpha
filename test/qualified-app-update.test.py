@@ -50,7 +50,7 @@ class QualifiedUpdateTest(unittest.TestCase):
                    "project": "alpha-aosp-lab-20261024", "instanceId": "8999310923263914877",
                    "alphaCommit": self.plan["alphaCommit"], "sdkCommit": self.plan["sdkCommit"],
                    "versionCode": self.plan["versionCode"], "unsignedApkSHA256": self.plan["unsignedApkSHA256"],
-                   "runtimeProfile": "cloud", "updateChannel": self.plan["updateChannel"],
+                   "runtimeProfile": "native", "updateChannel": self.plan["updateChannel"],
                    "checks": {name: "passed" for name in ("productSourceGuard", "sdkSourceGuard", "normalPreparation",
                                                          "combinedVerification", "apkArchive")}}
         private_bytes = json.dumps(private).encode()
@@ -123,7 +123,8 @@ class QualifiedUpdateTest(unittest.TestCase):
         plan = BRIDGE.preflight(self.record, "f" * 40, work, self.api, self.download)
         BRIDGE.stage(self.record, plan, work, product,
                      lambda _plan, target: shutil.copyfile(self.producer.archive, target),
-                     lambda _plan, _receipt, target: shutil.copyfile(self.signed_tar, target))
+                     lambda _plan, _receipt, target: shutil.copyfile(self.signed_tar, target),
+                     source_root=os.environ.get("ALPHA_NATIVE_SOURCE_ROOT"))
 
     def test_native_exact_debug_and_signed_members_can_exceed_the_cloud_limit(self):
         payload = bytes(4097)
@@ -138,6 +139,15 @@ class QualifiedUpdateTest(unittest.TestCase):
         for mode in ("debug", "release"):
             self.assertEqual((product / f"artifacts/launcher-{mode}.apk").read_bytes(), payload)
 
+    def test_native_stage_restores_the_exact_generated_native_receipt(self):
+        self.use_main_candidate()
+        product = self.directory / "native-receipt-stage"
+        self.stage_fixture(product)
+        with zipfile.ZipFile(self.producer.archive) as archive:
+            expected = archive.read("native-input-admission.json")
+        self.assertEqual((product / ".eliza/native-inputs/receipt.json").read_bytes(), expected)
+        self.assertFalse(json.loads(expected)["qualification"]["deviceExecuted"])
+
     def test_legacy_cloud_signed_member_keeps_its_ceiling(self):
         self.set_signed_launcher(bytes(4097))
         with patch.object(FIXTURES.PRODUCER, "LEGACY_APK_MEMBER_BYTES", 4096):
@@ -150,13 +160,16 @@ class QualifiedUpdateTest(unittest.TestCase):
         if "/compare/" in endpoint:
             source = endpoint.split("/compare/")[1].split("...")[0]
             return {"status": "ahead", "merge_base_commit": {"sha": source}}
+        if endpoint == f"repos/{BRIDGE.REPOSITORY}/actions/workflows/release.yml":
+            return {"id": 500, "path": BRIDGE.SIGNING_WORKFLOW}
         if endpoint.endswith("/actions/runs/100/attempts/1"):
             repository = {"id": BRIDGE.REPOSITORY_ID, "full_name": BRIDGE.REPOSITORY}
-            return {"id": 100, "workflow_id": BRIDGE.SIGNING_WORKFLOW_ID, "status": "completed",
+            return {"id": 100, "workflow_id": 500, "status": "completed",
+                    "display_title": f"Release sign on {self.record['signingWorkflowCommit']}",
                     "conclusion": "success", "event": "workflow_dispatch",
                     "head_sha": self.record["signingWorkflowCommit"], "head_branch": "main", "run_attempt": 1,
                     "repository": repository, "head_repository": repository,
-                    "path": ".github/workflows/release-cloud-app-signing.yml"}
+                    "path": BRIDGE.SIGNING_WORKFLOW}
         if endpoint.endswith("/actions/artifacts/200"):
             return {"id": 200, "expired": False, "workflow_run": {
                         "id": 100, "head_sha": self.record["signingWorkflowCommit"], "head_branch": "main",
@@ -208,7 +221,7 @@ class QualifiedUpdateTest(unittest.TestCase):
         expected = self.prepare_fixture()
         commit = "f" * 40
         endpoints = (
-            "git/ref/heads/main", "actions/artifacts/200", "actions/runs/100/attempts/1",
+            "git/ref/heads/main", "actions/artifacts/200", "actions/workflows/release.yml", "actions/runs/100/attempts/1",
             f"compare/{self.plan['alphaCommit']}...{commit}",
             f"compare/{self.record['signingWorkflowCommit']}...{commit}",
         )
@@ -303,7 +316,7 @@ class QualifiedUpdateTest(unittest.TestCase):
         for variant in BRIDGE.VARIANTS:
             self.assertEqual((product / f"artifacts/{variant}-release.apk").read_bytes(), self.signed_apks[variant])
             self.assertTrue((product / f"artifacts/{variant}-debug.apk").exists())
-        self.assertEqual(json.loads((product / "artifacts/build-config.json").read_text())["runtimeProfile"], "cloud")
+        self.assertEqual(json.loads((product / "artifacts/build-config.json").read_text())["runtimeProfile"], "native")
         self.assertEqual(BRIDGE.sha((work / "cloud-voice.json").read_bytes()), self.record["cloudVoiceEvidenceSHA256"])
 
     def test_voice_receipt_cannot_be_substituted_failed_duplicated_or_carry_content(self):
@@ -316,7 +329,7 @@ class QualifiedUpdateTest(unittest.TestCase):
             elif change == "failed":
                 voice["results"][0]["checks"]["mute"] = False
             elif change == "duplicate":
-                voice["results"][1] = voice["results"][0]
+                voice["results"].append(copy.deepcopy(voice["results"][0]))
             elif change == "wrong-apk":
                 voice["results"][0]["apkSha256"] = "0" * 64
             else:
@@ -330,15 +343,15 @@ class QualifiedUpdateTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 BRIDGE.validate(record)
 
-    def test_cms_private_qa_and_wrong_output_generation_are_not_publication_inputs(self):
-        for change in ("cms", "private", "object", "generation", "extra"):
+    def test_cms_non_public_channel_and_wrong_output_generation_are_not_publication_inputs(self):
+        for change in ("cms", "channel", "object", "generation", "extra"):
             record = copy.deepcopy(self.record)
-            if change in ("cms", "private"):
+            if change in ("cms", "channel"):
                 plan = copy.deepcopy(self.plan)
                 if change == "cms":
                     del plan["privateStorage"]
                 else:
-                    plan["updateChannel"]["kind"] = "private-qa"
+                    plan["updateChannel"]["kind"] = "other"
                 encoded(record, "signingPlan", plan)
             elif change == "object":
                 record["signedBundle"]["object"] += "-different"
@@ -351,7 +364,8 @@ class QualifiedUpdateTest(unittest.TestCase):
 
     def test_wrong_workflow_fork_attempt_artifact_and_main_history_fail_before_private_access(self):
         mutations = [lambda value: value.update(path=".github/workflows/other.yml"),
-                     lambda value: value.update(workflow_id=BRIDGE.SIGNING_WORKFLOW_ID + 1),
+                     lambda value: value.update(workflow_id=501),
+                     lambda value: value.update(display_title=f"Release publish on {self.record['signingWorkflowCommit']}"),
                      lambda value: value.update(run_attempt=2), lambda value: value.update(event="pull_request"),
                      lambda value: value.update(head_branch="feature"),
                      lambda value: value.update(head_repository={**value["head_repository"], "id": 42})]
@@ -363,6 +377,13 @@ class QualifiedUpdateTest(unittest.TestCase):
                 return value
             with self.assertRaises(ValueError):
                 BRIDGE.preflight(self.record, "f" * 40, self.directory / f"wrong-{index}", api, self.download)
+        def moved_workflow(endpoint):
+            value = self.api(endpoint)
+            if endpoint.endswith("/actions/workflows/release.yml"):
+                value["path"] = ".github/workflows/other.yml"
+            return value
+        with self.assertRaisesRegex(ValueError, "Release workflow identity differs"):
+            BRIDGE.preflight(self.record, "f" * 40, self.directory / "moved-workflow", moved_workflow, self.download)
         def wrong_artifact(endpoint):
             value = self.api(endpoint)
             if endpoint.endswith("/actions/artifacts/200"):

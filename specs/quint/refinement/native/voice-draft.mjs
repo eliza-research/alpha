@@ -15,7 +15,7 @@ export const voiceDraftScenarios=['manual','long','cancel','discard-wrong','mic-
  'stale-callback','metrics','external','recreate','empty','oversized','max-bytes','stop-failure','auto-stop-failure','open-failure','invalid-limit','constructor-failure','interrupt-release','interrupt-release-failure'];
 export async function checkVoiceDraft(extraSources=[]) {
  const platform=noteRecordingPlatform(),state=mkdtempSync(join(tmpdir(),'quint-voice-draft-'));
- const compiled=[join(native.root, 'plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java'),directory+'/NoteRecordingPorts.java'];
+ const compiled=[join(native.root, 'plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java'),join(native.root, 'plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java'),directory+'/NoteRecordingPorts.java'];
  const sources=[...compiled,...nativePatchInputs,directory+'/VoiceDraftTraces.java',directory+'/note-recording-platform.mjs',directory+'/Trace.java',directory+'/java.mjs',fileURLToPath(import.meta.url),...extraSources];
  try {
   const driverHashes=captureInputs(sources);

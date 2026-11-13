@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Production policy: HTTPS only, trusting the platform's system CAs. User-added CAs
-     and cleartext are not trusted. Loopback development hosts exist only in the
-     src/testMocks overlay attached when ELIZA_DEV_ALLOW_TEST_MOCKS=1 (debug only). -->
+     and cleartext are not trusted. -->
 <network-security-config>
  <base-config cleartextTrafficPermitted="false">
   <trust-anchors>

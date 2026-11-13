@@ -12,6 +12,7 @@ import urllib.request
 
 ASSET_HOSTS = frozenset(('release-assets.githubusercontent.com', 'objects.githubusercontent.com', 'github.com'))
 MAX_BYTES = 256 * 1024 * 1024
+ARCHES = ('x64', 'aarch64')
 
 class AssetHttpError(RuntimeError):
     def __init__(self, status):
@@ -76,19 +77,13 @@ def download(asset_id, destination, expected, token, opener=None, max_bytes=MAX_
             destination.unlink(missing_ok=True)
         raise
 
-def read_artifacts(source, target="linux-musl"):
+def read_artifacts(source):
     lock = json.loads((source / 'packages/app/scripts/lib/android-bun-artifacts.lock.json').read_text())
-    if target not in ('linux-musl', 'android'):
-        raise ValueError('Unsupported Android Bun target')
-    release = (lock.get('targets', {}).get('android', {}).get('stable', {})
-               if target == 'android' else lock.get('channels', {}).get('stable', {}))
+    release = lock.get('channels', {}).get('stable', {})
     if lock.get('schemaVersion') != 1 or lock.get('repository') != 'oven-sh/bun' or release.get('version') != '1.4.2' or not re.fullmatch('[a-f0-9]{40}', release.get('revision', '')):
         raise ValueError('Invalid stable Bun lock')
     artifacts = release.get('artifacts', {})
-    arches = ('aarch64',) if target == 'android' else ('x64', 'aarch64')
-    if target == 'android' and set(artifacts) != {'aarch64'}:
-        raise ValueError('Android Bun requires exactly the pinned ARM64 artifact')
-    for arch in arches:
+    for arch in ARCHES:
         artifact = artifacts.get(arch, {})
         if type(artifact.get('assetId')) is not int or not 0 < artifact['assetId'] <= 9007199254740991 or any(not re.fullmatch('[a-f0-9]{64}', artifact.get(key, '')) for key in ('archiveSha256', 'binarySha256')):
             raise ValueError('Invalid pinned Bun artifact')
@@ -99,19 +94,15 @@ def main():
     if not token:
         raise ValueError('Missing download-step GitHub token')
     source = Path(os.environ['ALPHA_LOCAL_AGENT_SOURCE_DIR']).resolve(strict=True)
-    target = os.environ.get('ELIZA_ANDROID_BUN_TARGET', 'linux-musl')
-    if target == 'android' and os.environ.get('ELIZA_ANDROID_TARGET_ABIS') != 'arm64-v8a':
-        raise ValueError('Android Bun acquisition requires explicit ARM64-only selection')
-    artifacts = read_artifacts(source, target)
+    artifacts = read_artifacts(source)
     # Fresh per-run directory, outside the runtime source; no unverified cache hits.
     output = Path(os.environ['RUNNER_TEMP']) / 'alpha-pinned-android-bun'
     output.mkdir(mode=0o700, exist_ok=False)
     variables = []
-    for arch in (('aarch64',) if target == 'android' else ('x64', 'aarch64')):
+    for arch in ARCHES:
         artifact = artifacts[arch]
-        archive = output / (f'bun-linux-{arch}-android.zip' if target == 'android' else f'bun-linux-{arch}-musl.zip')
-        download(artifact['assetId'], archive, artifact['archiveSha256'], token,
-                 max_bytes=40 * 1024 * 1024 if target == 'android' else MAX_BYTES)
+        archive = output / f'bun-linux-{arch}-musl.zip'
+        download(artifact['assetId'], archive, artifact['archiveSha256'], token, max_bytes=MAX_BYTES)
         variables.append(f'ELIZA_BUN_{arch.upper()}_FILE={archive}')
         print(f'Verified stable Bun {arch} archive {artifact["archiveSha256"]}')
     with open(os.environ['GITHUB_ENV'], 'a') as env:

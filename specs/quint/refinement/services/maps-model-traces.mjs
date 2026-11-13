@@ -78,7 +78,8 @@ export function modelNames(path) {
 }
 
 /** Which nondeterministic picks each action of `step` receives, by position. */
-export function stepParameters(source) {
+export function stepParameters(text) {
+  const source = text.replace(/\/\/.*$/gm, '');
   const start = source.search(/\baction step\s*=/);
   assert.ok(start >= 0, 'model has no step action');
   const any = source.indexOf('any {', start), end = balanced(source, any + 4);
@@ -114,8 +115,13 @@ export function scenarioActions(source, name, seen = new Set()) {
     if (!next) break;
     const open = index + next[0].length - 1, close = balanced(source, open);
     if (next[1] === 'then') {
-      const {action, args} = callOf(source.slice(open + 1, close));
-      steps.push({action, args: args.map(literal)});
+      const call = source.slice(open + 1, close).trim();
+      // `action.fail()` asserts that the action is disabled; the trace repeats its state.
+      if (/\.fail\(\)$/.test(call)) steps.push({action: null, args: []});
+      else {
+        const {action, args} = callOf(call);
+        steps.push({action, args: args.map(literal)});
+      }
     }
     index = close + 1;
   }
@@ -165,8 +171,10 @@ export function modelTraces({path, module, scenarios = [], witnesses = [], rando
       const actions = scenarioActions(source, name);
       const trace = JSON.parse(readFileSync(join(directory, `scenario-${name}-0.json`), 'utf8'));
       assert.equal(trace.states.length, actions.length + 1, `${name}: one model state per scenario action`);
-      traces.push({name, init: plain(trace.states[0][state]),
-        steps: actions.map((step, index) => ({...step, state: plain(trace.states[index + 1][state])}))});
+      // The state after a disabled action is the state before it.
+      const states = trace.states.map(item => plain(item[state]));
+      states.forEach((item, index) => { if (item === undefined) states[index] = states[index - 1]; });
+      traces.push({name, init: states[0], steps: actions.map((step, index) => ({...step, state: states[index + 1]}))});
     }
     for (const witness of witnesses) {
       const file = join(directory, `witness-${witness}.json`);

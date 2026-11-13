@@ -78,6 +78,9 @@ export function planAdmissionFixture(implementation,{credential=1,endDays=2}={})
   verifiedWrites+=writes.slice(before).filter(write=>write.record).length;
   return admission;
  }
+ async function refresh(){background=true;const refresher=box.entitlementRefresher;assert.ok(refresher);refresher.refreshNow();
+  for(let attempt=0;refresher.controller&&attempt<100;attempt++)await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(refresher.controller,null);background=false;}
  return {box,writes,reads,timers,observe,record,
   effects:()=>({binds,clears,redeemCalls}),
   signIn(next=credential){saved=next;box.detachService();admission=null;lastKind='none';},
@@ -86,9 +89,10 @@ export function planAdmissionFixture(implementation,{credential=1,endDays=2}={})
   windowPasses(){now+=7*DAY+1;},
   endPasses(){const values=[record()?.endsAt,box.state.planEndsAt,redeemed()?.endsAt].filter(value=>typeof value==='number'&&value>now);assert.ok(values.length);now=Math.max(...values)+1;},
   gates(value){identityGate=value.identity;planGate=value.plan;},
-  async refreshFailed(){mode='billing-outage';background=true;const refresher=box.entitlementRefresher;assert.ok(refresher);refresher.refreshNow();
-   for(let attempt=0;refresher.controller&&attempt<100;attempt++)await new Promise(resolve=>setImmediate(resolve));
-   assert.equal(refresher.controller,null);background=false;},
+  async refreshFailed(){mode='billing-outage';await refresh();},
+  // The background refresher of the admitted plan reads Cloud again and finds it verified.
+  async refreshVerified(kind,end){mode=kind;reported=end;const before=writes.length;await refresh();
+   verifiedWrites+=writes.slice(before).filter(write=>write.record).length;},
   close(){box.stopEntitlementRefresh();assert.equal(timers.size,0);},
  };
 }

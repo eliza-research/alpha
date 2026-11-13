@@ -8,9 +8,9 @@
  * callers that explicitly enable it. Saved-note transcription checks the same note/audio owner
  * before every bounded request and before its single save. It never retries a paid request or
  * deletes recording bytes. Only Stop, Discard, low storage or a microphone error end a recording.
- *
- * This module has no imports so its logic runs under `bun test`.
  */
+import { MEDIA_UNCONFIRMED_NOTICE } from '../runtime/voice-states';
+
 export type NoteSegment = { segmentId: string; durationMs: number; text?: string };
 export type NoteRecordingBinding = { ownerDigest: string; folderId: string | null };
 export type NoteRecordingStatus = {
@@ -91,7 +91,7 @@ export function noteRecorderError(reason: string | undefined): string {
   if (reason === 'sign-in') return 'Sign in to transcribe';
   if (reason === 'save') return 'Not saved';
   if (reason === 'owner') return 'Wrong account';
-  if (reason === 'media') return 'Restart needed';
+  if (reason === 'media') return MEDIA_UNCONFIRMED_NOTICE;
   if (reason === 'capture') return 'Mic unavailable';
   return 'The microphone stopped.';
 }
