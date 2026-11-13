@@ -42,10 +42,15 @@ export function verifyFirstBootGrants(run: AdbRead, expected: unknown, user: str
   if (!Array.isArray(defaultPermissions) || !defaultPermissions.length || defaultPermissions.some(name => typeof name !== 'string' || !/^android\.permission\.[A-Z0-9_]+$/.test(name)))
     throw Error('Descriptor names no first-boot runtime grants (defaultPermissions)');
   const dump = run('shell', 'dumpsys', 'package', packageName);
-  // Runtime grants are listed per user; read only the selected user's block.
-  const head = new RegExp(`^\\s*User ${user}:`, 'm').exec(dump);
-  const rest = head ? dump.slice(head.index + head[0].length) : '';
-  const end = rest.search(/^\s*User \d+:/m);
+  // Runtime grants are listed per user under the package's own entry. Earlier sections (for example
+  // "Domain verification status:" for App Links) also carry "User N:" lines, so read the selected
+  // user's block only after the package entry, or after the Packages: header when no entry line is shown.
+  const entry = new RegExp(`^\\s*Package \\[${packageName.replace(/\./g, '\\.')}\\]`, 'm').exec(dump) ?? /^Packages:/m.exec(dump);
+  const section = entry ? dump.slice(entry.index + entry[0].length) : dump;
+  const head = new RegExp(`^\\s*User ${user}:`, 'm').exec(section);
+  const rest = head ? section.slice(head.index + head[0].length) : '';
+  // The block ends at the next user, or at the next top-level section header.
+  const end = rest.search(/^(?:\s*User \d+:|\S)/m);
   const block = end < 0 ? rest : rest.slice(0, end);
   const missing = defaultPermissions.filter(name => !new RegExp(`^\\s*${name.replace(/\./g, '\\.')}: granted=true\\b`, 'm').test(block));
   if (missing.length) throw Error(`First-boot grants missing for the launcher: ${missing.join(', ')}`);
