@@ -2607,6 +2607,7 @@
   {
     "path": "specs/quint/application/AgentCalendarRefresh.qnt",
     "module": "AgentCalendarRefresh",
+    "verifyBackend": "tlc-bounded",
     "init": "init",
     "step": "step",
     "invariant": "safety",
@@ -3621,6 +3622,7 @@
   {
     "path": "specs/quint/application/PreviousNotesSourceOpening.qnt",
     "module": "PreviousNotesSourceOpening",
+    "verifyBackend": "tlc-bounded",
     "init": "init",
     "step": "step",
     "invariant": "safety",
