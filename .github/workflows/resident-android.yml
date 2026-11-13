@@ -163,6 +163,16 @@ jobs:
           grep -Eq '^Pkg.Revision *= *28\.2\.13676358[[:space:]]*$' "$ANDROID_NDK_HOME/source.properties"
           python3 -c 'import shutil; free=shutil.disk_usage(".").free; print("freshCapacityAfterBytes="+str(free)); assert free >= 32*1024**3, "Fresh runner needs at least 32GiB for resident archive headroom"'
           df -h "$GITHUB_WORKSPACE"
+      # Archive host fixtures need genuine Node; native/SDK producers still use Bun.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.0"
+      - name: Capture genuine Node for archive host tests before Bun aliases
+        run: |
+          ALPHA_NODE="$(node -p 'process.versions.bun ? "" : process.execPath')"
+          test -n "$ALPHA_NODE"
+          test "$("$ALPHA_NODE" --version)" = 'v26.13.0'
+          echo "ALPHA_ARCHIVE_HOST_NODE=$ALPHA_NODE" >> "$GITHUB_ENV"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
@@ -196,12 +206,17 @@ jobs:
             echo "ALPHA_LOCAL_AGENT_SOURCE_DIR=$GITHUB_WORKSPACE/artifacts/resident-ci-92fc"
             echo "ALPHA_WORKFLOW_WORKER_OUTPUT=$GITHUB_WORKSPACE/artifacts/worker-ci-92fc"
             echo "XDG_CACHE_HOME=$RUNNER_TEMP/alpha-cache"
+            echo "ALPHA_BUN=$(command -v bun)"
           } >> "$GITHUB_ENV"
       - name: Qualify supervisor on real Linux processes
         timeout-minutes: 10
         run: |
           python3 scripts/ci/test-resident-phase.py
       - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 bun install --frozen-lockfile
+      - name: Prepare archive host-test prerequisites in the selected cache
+        run: |
+          bash scripts/ci/install-playwright-browser.sh chromium
+          bash scripts/ci/prepare-python-host-tests.sh test-results/resident-ci/python-host-tests
       - name: Check embedding artifact contract
         run: |
           python3 test/embedding-artifact-inputs.test.py
@@ -303,6 +318,12 @@ jobs:
       - name: Stage and archive qualified resident runtime
         env:
           RUN_TURBO_CONCURRENCY: "1"
+          ALPHA_NODE: ${{ env.ALPHA_ARCHIVE_HOST_NODE }}
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
+          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
+          ALPHA_CLOUD_COLLECTOR_SOURCE: ${{ env.ALPHA_LOCAL_AGENT_SOURCE_DIR }}
+          # Same qualified R8 heap as the normal Android distribution workflow.
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: |
           python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 bun run agent:stage-android
           bun scripts/stage-embedding-host.ts --verify

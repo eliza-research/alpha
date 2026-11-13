@@ -11,6 +11,24 @@ signal.signal(signal.SIGTERM,interrupted);signal.signal(signal.SIGINT,interrupte
 def group_live(pid):
  try:os.killpg(pid,0);return True
  except ProcessLookupError:return False
+def owned_process_snapshot(pid):
+ # No environment or arguments: retain only bounded identity/progress metadata.
+ probe=subprocess.run(['ps','-axo','pid=,ppid=,pgid=,stat=,etime=,time=,comm='],capture_output=True,text=True,timeout=5,check=True)
+ rows=[]
+ for line in probe.stdout[:1024*1024].splitlines()[:4096]:
+  fields=line.split(None,6)
+  if len(fields)!=7:continue
+  rows.append(dict(zip(('pid','ppid','pgid','state','elapsed','cpu','comm'),[int(value) for value in fields[:3]]+fields[3:])))
+ owned={pid};owned.update(row['pid'] for row in rows if row['pgid']==pid)
+ while True:
+  descendants={row['pid'] for row in rows if row['ppid'] in owned}
+  if descendants<=owned:break
+  owned.update(descendants)
+ snapshot={'rootPid':pid,'scope':'Currently discoverable descendants and original owned process group; no other processes, environment or arguments.',
+  'truncated':len(probe.stdout)>1024*1024 or len(probe.stdout.splitlines())>4096,
+  'processes':[row for row in rows if row['pid'] in owned]}
+ target=out/(a.name+'-owned-processes.json');target.write_text(json.dumps(snapshot,indent=2)+'\n')
+ return str(target)
 state={'command':a.command,'passed':False,'minimumFreeBytes':free(),'deadlineSeconds':a.seconds};start=time.monotonic();child=None
 try:
  with (out/(a.name+'.log')).open('x') as log:
@@ -32,6 +50,9 @@ try:
   state['passed']=True
 finally:
  signal.signal(signal.SIGTERM,signal.SIG_IGN);signal.signal(signal.SIGINT,signal.SIG_IGN)
+ if child and not state['passed']:
+  try:state['ownedProcessSnapshot']=owned_process_snapshot(child.pid)
+  except BaseException as error:state['diagnosticErrorClass']=type(error).__name__
  try:
   if child and group_live(child.pid):
    try:os.killpg(child.pid,signal.SIGTERM)

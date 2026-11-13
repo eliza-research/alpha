@@ -22,7 +22,8 @@ for name, program, expected, interrupt in [
     with tempfile.TemporaryDirectory(prefix='alpha-phase-') as directory:
         child = subprocess.Popen([sys.executable, str(supervisor), '--name', name,
             '--seconds', '2' if name == 'timeout' else '30', sys.executable, '-c', program],
-            cwd=directory, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            cwd=directory, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            env={**os.environ, 'ALPHA_DIAGNOSTIC_SECRET_CANARY': 'snapshot-env-must-not-appear'})
         if interrupt:
             deadline = time.monotonic() + 10
             log = Path(directory) / 'test-results/resident-ci' / (name + '.log')
@@ -41,6 +42,18 @@ for name, program, expected, interrupt in [
             assert 'exited with code 7' in stderr, stderr
         if name in ('timeout', 'interrupt', 'orphan'):
             assert state.get('ownedGroupCleanup') == 'graceful', (name, state)
+        if expected:
+            assert 'ownedProcessSnapshot' not in state
+        else:
+            snapshot = json.loads((Path(directory) / state['ownedProcessSnapshot']).read_text())
+            assert all(program not in row['comm'] for row in snapshot['processes'])
+            assert 'snapshot-env-must-not-appear' not in json.dumps(snapshot)
+            assert snapshot['rootPid'] > 0 and not snapshot['truncated'], snapshot
+            assert all(set(row) == {'pid', 'ppid', 'pgid', 'state', 'elapsed', 'cpu', 'comm'} for row in snapshot['processes']), snapshot
+            assert all(row['pid'] != child.pid for row in snapshot['processes']), 'Supervisor must never enter the owned child snapshot'
+            if name in ('timeout', 'interrupt', 'orphan'):
+                assert snapshot['processes'], (name, snapshot)
+            state['snapshot'] = snapshot
         results.append({'name': name, 'exitCode': child.returncode, 'state': state})
 out = Path('test-results/resident-ci-supervisor')
 out.mkdir(parents=True, exist_ok=True)

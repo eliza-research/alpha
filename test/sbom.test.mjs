@@ -111,12 +111,15 @@ test('Android coordinates, the voice host and the upstream pin match their recor
 
 test('the embedding host is listed from its admitted source record', () => {
   const host = native?.embedding ?? read('android/embedding-host/qualified-host.json');
-  for (const library of host.libraries) {
-    const component = byRef.get(`embedding-host:${host.abi}/${library.name}`);
+  const sourceRecord = native ? '.eliza/native-inputs/receipt.json' : 'android/embedding-host/qualified-host.json';
+  const scope = native ? 'apk (only one that packages the resident runtime)'
+    : 'legacy qualification record; incompatible with current Paradee engine; not current packaged bytes';
+  for (const abi of [host, ...(host.additionalAbis ?? [])]) for (const library of abi.libraries) {
+    const component = byRef.get(`embedding-host:${abi.abi}/${library.name}`);
     assert.deepEqual(component.hashes, [{alg: 'SHA-256', content: library.sha256}]);
     assert.equal(prop(component, 'bytes'), String(library.bytes));
-    assert.ok(prop(component, 'source').includes(`engine ${host.forkPin}`));
-    assert.match(prop(component, 'ships-in'), /legacy qualification record; incompatible with current Paradee engine/);
+    assert.equal(prop(component, 'source'), `${sourceRecord} (elizaOS ${host.pin}, engine ${host.forkPin})`);
+    assert.equal(prop(component, 'ships-in'), scope);
   }
   assert.equal(byRef.get('embedding-model:bge-small-en-v1.5-f16.gguf').hashes[0].content, host.model.sha256);
   let current = false;
