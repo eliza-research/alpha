@@ -303,6 +303,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy,
       nativeLocationState:status.location,nativeMapState:status.map,
       nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,
+      nativeLocationHelp:status.locationHelp,
       nativeLocationSettings:()=>{if(!active())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive())screen.notify('Location settings could not be opened. Check device or browser permissions, or search for a place.');});},
       nativeManualLocation:()=>{if(!active())return;screen.manualLocation();queueMicrotask(()=>{if(active())document.querySelector<HTMLInputElement>('input[aria-label="Search places"]')?.focus();});},
       nativeMapRetry:status.mapRetry,
