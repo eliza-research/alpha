@@ -7206,8 +7206,7 @@
     "abstractions": [
       "Four attempts and three stored keys. Email and phone are one address class; readiness, method availability and copy are not modeled.",
       "The host (shared native sign-in client or the development bridge) is a controlled port: its attempt lifetime, cooldown, codes and acknowledgement are IdentitySession and the shared client.",
-      "The required first-run entry page, explicit-entry close and the operation slot queue are separate (SignInReadinessProbe, ConnectionController). hostBoundary fixes the host kind before the first sign-in.",
-      "Replayed against beginSignIn, signInGoogle, signInEmail, resendSignInCode, verifySignInCode and cancelSignIn sliced from connection-ui.tsx over the real step slot, with the code form's submit guard from cloud-sign-in-ui.tsx; the sign-in host, key store and Cloud are held ports and React is not rendered (test/quint-sign-in-chooser.test.mjs). No native sign-in, browser or device claim."
+      "The required first-run entry page, explicit-entry close and the operation slot queue are separate (SignInReadinessProbe, ConnectionController). hostBoundary fixes the host kind before the first sign-in."
     ],
     "sharedSources": [
       "packages/auth/src/auth/native-cloud-sign-in.ts"
@@ -9785,8 +9784,7 @@
     },
     "abstractions": [
       "Four probes. Email, phone and Google attempts after the chooser are SignInChooser and IdentitySession; the probe cache and its per-environment coalescing are the shared native sign-in plugin.",
-      "Ending a probe early (Back or an own-keys save) and freeing the slot are one step: inAppSignInMethods races the abort, so the probe unwinds before another event is handled. The agent start after an owner's probe is counted, not held in the slot; another step is any holder of the slot, and queued returns and rebinds are ConnectionController.",
-      "Replayed against beginSignIn, cancelSignIn, configureLocal, work, the entry predicates and the body of the automatic entry's effect sliced from connection-ui.tsx, with the sign-in host and key save as held ports; React does not run, so the trace decides when the effect runs (test/quint-sign-in-readiness-probe.test.mjs). No native readiness, WebView or device claim."
+      "Ending a probe early (Back or an own-keys save) and freeing the slot are one step: inAppSignInMethods races the abort, so the probe unwinds before another event is handled. The agent start after an owner's probe is counted, not held in the slot; another step is any holder of the slot, and queued returns and rebinds are ConnectionController."
     ]
   },
   {

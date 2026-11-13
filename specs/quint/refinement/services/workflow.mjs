@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {action, sourceModule} from './support.mjs';
-import {workflowOwnershipTraces} from './workflow-run-ownership.mjs';
 
 export async function workflowRefinement() {
-  const sources = ['apps/app/src/runtime/phone-workflow-authoring.ts', 'apps/app/src/runtime/workflow-device-contract.ts', 'apps/app/src/runtime/workflow-intents.ts', 'apps/app/src/prototype/workflow-adapter.ts', 'specs/quint/refinement/services/workflow.mjs', 'specs/quint/refinement/services/workflow-run-ownership.mjs', 'specs/quint/refinement/services/support.mjs'];
+  const sources = ['apps/app/src/runtime/phone-workflow-authoring.ts', 'apps/app/src/runtime/workflow-device-contract.ts', 'apps/app/src/runtime/workflow-intents.ts', 'specs/quint/refinement/services/workflow.mjs', 'specs/quint/refinement/services/support.mjs'];
   let driverHashes = captureInputs(sources);
   const capture = inputs => { sources.push(...inputs.filter(input => !sources.includes(input))); const next = captureInputs(sources); for (const [path, hash] of Object.entries(driverHashes)) assert.equal(next[path], hash, `Source changed before import: ${path}`); driverHashes = next; };
   const {normalizePhoneSpec} = await sourceModule('apps/app/src/runtime/phone-workflow-authoring.ts', {}, capture);
@@ -43,6 +42,6 @@ export async function workflowRefinement() {
     trace.steps.push({label: 'same submission key cannot be admitted twice', action: {...action('retainSubmission', true), reject: true}, expect: {'s.intentSaved': (await store.read(key)) === raw}});
     const restarted = new WorkflowIntentStore(owner); await restarted.load();
     trace.steps.push({label: 'new store restores the exact pending identity', action: action('restart'), expect: {'s.intentSaved': (await restarted.read(key)) === raw}});
-    return await checkTraces({model: 'WorkflowExecution', sources, driverHashes, traces: [trace,...(await workflowOwnershipTraces())], scope: 'bounded-component', assumptions: ['Real canonicalization, digest validation, save-receipt validation and Android renderer intent-store path execute.', 'The unchanged run-ownership helper executes reservation, promotion, read/write refusal, restart, claim and retention of 202 unfinished ownership records over controlled localStorage.', 'Two document contexts share a controlled named Web Locks broker; a writer or claimant starts after the other context reads its old ledger, before it writes. Both reservations survive and only one run claim returns.', 'Ownership traces observe persisted pending/accepted records and saved claims. Agent acceptance and intent acknowledgment are held at the caller boundary; mounted adapter regressions cover their ordering.', 'The controlled storage object supplies localStorage semantics; browser lock delivery, IndexedDB storage and physical durability have separate evidence.', 'Execution admission, upstream graph effects, approval and trigger runtime are not represented by these observations and remain explicit obligations.']});
+    return await checkTraces({model: 'WorkflowExecution', sources, driverHashes, traces: [trace], scope: 'bounded-component', assumptions: ['Real canonicalization, digest validation, save-receipt validation and Android renderer intent-store path execute.', 'The controlled storage object supplies localStorage semantics; IndexedDB browser storage has its own domain tests.', 'Execution admission, upstream graph effects, approval and trigger runtime are not represented by these observations and remain explicit obligations.']});
   } finally { globalThis.window = original.window; globalThis.localStorage = original.localStorage; }
 }

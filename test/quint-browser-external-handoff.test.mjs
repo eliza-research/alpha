@@ -1,13 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
-import {browserExternalHandoffFixture, browserExternalHandoffSources} from '../../../../test/fixtures/browser-external-handoff.mjs';
-import {captureInputs, checkTraces} from '../check-traces.mjs';
-import {call, checkpoint, trace} from './support.mjs';
+import {browserExternalHandoffFixture, browserExternalHandoffSources} from './fixtures/browser-external-handoff.mjs';
+import {captureInputs, checkTraces} from '../specs/quint/refinement/check-traces.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
+import {call, checkpoint, trace} from '../specs/quint/refinement/application/support.mjs';
 
 const model = 'BrowserExternalHandoff';
 const modelPath = 'specs/quint/application/BrowserExternalHandoff.qnt';
 const fields = fixture => Object.fromEntries(Object.entries(fixture.observe()).map(([key, value]) => [`s.${key}`, value]));
 
-export async function checkBrowserExternalHandoff(extraSources = []) {
+async function checkBrowserExternalHandoff(extraSources = []) {
   const sources = [...new Set([fileURLToPath(import.meta.url), ...browserExternalHandoffSources, ...extraSources])];
   const driverHashes = captureInputs([modelPath, ...sources]);
   const traces = [];
@@ -59,3 +62,9 @@ export async function checkBrowserExternalHandoff(extraSources = []) {
       'Two synthetic tabs, at most three requests, two primary document revisions and one outstanding port. No new request during the final cleanup update; duplicate requests are exercised while approval and dispatch are pending.',
       'The view, visibility, tab selection, disposal and document transition are controlled inputs. DOM review behavior, real native presentation, Android chooser dispatch and activity lifecycle require separate evidence.']});
 }
+
+test('the actual browser external handoff refines BrowserExternalHandoff', {timeout: scaledTimeout(120000)}, async () => {
+  const receipt = await checkBrowserExternalHandoff();
+  assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);
+  assert.equal(receipt.traces, 16);
+});
