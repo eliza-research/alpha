@@ -178,8 +178,7 @@ function gradleComponents(root: string): Component[] {
 
 /**
  * The reviewed embedding host: pins only. Whether the libraries are staged is not this document's
- * claim, and an APK built without the resident runtime (--allow-unpackaged-runtime) contains none
- * of them; each APK row says which it is (`resident-runtime`).
+ * claim; each APK row says whether it packages them (`resident-runtime`).
  */
 const WITH_RESIDENT_RUNTIME = 'apk (only one that packages the resident runtime)';
 const SUPERSEDED_EMBEDDING_MODEL = 'legacy source record; superseded inputs; not current packaged bytes';

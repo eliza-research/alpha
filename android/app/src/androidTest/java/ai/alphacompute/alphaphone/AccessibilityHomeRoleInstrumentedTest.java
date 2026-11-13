@@ -21,7 +21,7 @@ import org.junit.runner.RunWith;
  * scale unchanged. Runs only where Alpha already holds the HOME role; on an owned emulator the
  * runner selects and restores it:
  *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN \
- *     --variants launcher --home-role --classes AccessibilityHomeRole
+ *     --home-role --classes AccessibilityHomeRole
  * Emulator evidence, not boot-time HOME, TalkBack itself or device acceptance.
  */
 @RunWith(AndroidJUnit4.class)

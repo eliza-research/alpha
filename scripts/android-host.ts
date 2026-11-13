@@ -5,7 +5,7 @@
  *
  * android/consumer-host.json is the only authored Gradle setup: identity comes from
  * app.config.json; modules, dependencies, variants, signing and version environment
- * names, test-mocks sources, admission and installed-data compatibility names come
+ * names, admission and installed-data compatibility names come
  * from the descriptor. The generator at the pinned upstream commit owns the Gradle
  * scripts, toolchain, wrapper and variant policy; the generated files are build
  * outputs (git-ignored), regenerated before every Android build. android/app/product.gradle

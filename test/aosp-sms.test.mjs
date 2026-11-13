@@ -243,9 +243,9 @@ test("native boundary: image-only plugin methods, immutable explicit callbacks, 
 
 test("manifests: the SMS result receiver exists only in the launcher flavor, and APK verification checks the SMS permissions", () => {
   // The launcher-only SMS permissions are checked in test/aosp-image-capability.test.mjs.
-  const main = read("android/app/src/main/AndroidManifest.xml"), launcher = read("android/app/src/launcher/AndroidManifest.xml"), standalone = read("android/app/src/standalone/AndroidManifest.xml");
+  const main = read("android/app/src/main/AndroidManifest.xml"), launcher = read("android/app/src/launcher/AndroidManifest.xml");
   assert.match(launcher, /<receiver android:name="\.AlphaSmsSendReceiver" android:exported="false" \/>/, "the receiver takes explicit intents only: no filter, not exported");
-  assert.doesNotMatch(main + standalone, /AlphaSmsSendReceiver/);
+  assert.doesNotMatch(main, /AlphaSmsSendReceiver/);
   assert.match(launcher, /<uses-feature android:name="android\.hardware\.telephony" android:required="false" \/>/, "telephony hardware stays optional");
   assert.match(read("scripts/apk.ts"), /for \(const permission of \['READ_SMS', 'SEND_SMS'\]\)/, "APK verification checks the packaged SMS permissions per flavor");
 });

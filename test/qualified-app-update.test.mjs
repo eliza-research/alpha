@@ -75,9 +75,9 @@ test('publication verifies only a native qualification', t => {
   }
 });
 
-test('publication retains the exact Alpha Compute manifest only after both signed release rows qualify', () => {
+test('publication retains the exact Alpha Compute manifest only after the signed launcher release row qualifies', () => {
   const steps = YAML.parse(fs.readFileSync(RELEASE, 'utf8')).jobs.publish.steps;
-  const gate = steps.find(step => step.name === 'Require both qualified release rows before publication');
+  const gate = steps.find(step => step.name === 'Require the qualified launcher release row before publication');
   const upload = steps.find(step => step.uses?.startsWith('actions/upload-artifact@'));
   assert.ok(gate && upload);
   assert.ok(upload.with.path.split('\n').includes('${{ runner.temp }}/qualified-stage/apk-manifest.json'));
@@ -91,10 +91,10 @@ test('publication retains the exact Alpha Compute manifest only after both signe
     const retained = path.join(staged, 'apk-manifest.json');
     const summary = {
       runtimeProfile: 'native', versionCode: 72, voiceEvidenceSHA256: 'c'.repeat(64),
-      signedApkSHA256: {launcher: 'a'.repeat(64), standalone: 'b'.repeat(64)},
+      signedApkSHA256: {launcher: 'a'.repeat(64)},
     };
     fs.writeFileSync(path.join(staged, 'qualification-summary.json'), JSON.stringify(summary));
-    const rows = ['launcher', 'standalone'].map(variant => ({
+    const rows = ['launcher'].map(variant => ({
       variant, mode: 'release', packageName: 'ai.alphacompute.alphaphone', distributable: true,
       versionCode: summary.versionCode, sha256: summary.signedApkSHA256[variant],
       cloudVoice: {evidenceSha256: summary.voiceEvidenceSHA256},
@@ -103,7 +103,7 @@ test('publication retains the exact Alpha Compute manifest only after both signe
     const run = () => spawnSync('bash', ['-e', '-c', gate.run], {
       cwd: root, env: {...process.env, RUNNER_TEMP: root}, encoding: 'utf8', timeout: 10_000,
     });
-    fs.writeFileSync(input, JSON.stringify({...manifest, results: [rows[0], {...rows[1], sha256: 'd'.repeat(64)}]}));
+    fs.writeFileSync(input, JSON.stringify({...manifest, results: [{...rows[0], sha256: 'd'.repeat(64)}]}));
     const refused = run();
     assert.equal(refused.status, 1);
     assert.equal(fs.existsSync(retained), false);

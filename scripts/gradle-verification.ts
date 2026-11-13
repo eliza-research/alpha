@@ -4,8 +4,7 @@ import {HOST_DESCRIPTOR, readHostDescriptor, type HostReference} from './android
  * Gradle dependency verification metadata (android/gradle/verification-metadata.xml).
  *
  *   bun scripts/gradle-verification.ts --check                 # offline; also run by `bun run test`
- *   bun scripts/gradle-verification.ts --write [--allow-unpackaged-runtime]
- *                                                                # bun run android:deps:write-verification
+ *   bun scripts/gradle-verification.ts --write                 # bun run android:deps:write-verification
  *
  * While the file exists Gradle refuses any plugin or dependency artifact whose SHA-256 is not
  * listed in it, in every build of the generated android/ host: nothing has to opt in and no
@@ -30,10 +29,8 @@ export const CLASSPATH = 'licenses/android-runtime-classpath.json';
  * same runtime classpaths and resolves no artifact, so Gradle verifies nothing in that run.)
  */
 export const VERIFIED_TASKS = [
-  ':app:assembleStandaloneDebug', ':app:assembleLauncherDebug', ':app:assembleStandaloneRelease', ':app:assembleLauncherRelease',
-  ':app:assembleStandaloneDebugAndroidTest', ':app:assembleLauncherDebugAndroidTest', ':app:lint',
+  ':app:assembleLauncherDebug', ':app:assembleLauncherRelease', ':app:assembleLauncherDebugAndroidTest', ':app:lint',
   ':notification-fixture:assembleSelectedDebug', ':notification-fixture:assembleExcludedDebug', ':notification-fixture:lint',
-  ':private-peer-fixture:assembleDebug',
 ];
 /** Named repositories a Gradle script of the build may declare. */
 export const ALLOWED_REPOSITORIES = ['google()', 'mavenCentral()', 'gradlePluginPortal()'];
@@ -264,23 +261,21 @@ async function recordOtherHostAapt2(root: string) {
 
 export function parseVerificationArgs(args: readonly string[]) {
   const mode = args.filter(arg => ['--check', '--write'].includes(arg));
-  if (mode.length !== 1 || args.some(arg => !['--check', '--write', '--allow-unpackaged-runtime'].includes(arg)))
-    throw new Error('Usage: bun scripts/gradle-verification.ts --check | --write [--allow-unpackaged-runtime]');
-  return {mode:mode[0],allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime')};
+  if (mode.length !== 1 || args.length !== 1)
+    throw new Error('Usage: bun scripts/gradle-verification.ts --check | --write');
+  return {mode:mode[0]};
 }
 
-async function write(root: string, {allowUnpackagedRuntime}: ReturnType<typeof parseVerificationArgs>) {
+async function write(root: string) {
   const {androidEnv} = await import('./toolchain.ts');
   const env: NodeJS.ProcessEnv = {...androidEnv()};
   for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS']) delete env[name];
-  const preflight = [path.join(root, 'scripts/android-build-preflight.ts'), ...(allowUnpackagedRuntime ? ['--allow-unpackaged-runtime'] : [])];
-  execFileSync(process.execPath, preflight, {cwd: root, stdio: 'inherit', env});
+  execFileSync(process.execPath, [path.join(root, 'scripts/android-build-preflight.ts')], {cwd: root, stdio: 'inherit', env});
   execFileSync(process.execPath, [path.join(root, 'scripts/android-host.ts')], {cwd: root, stdio: 'inherit', env});
   execFileSync('bun', ['run', 'android:sync'], {cwd: root, stdio: 'inherit', env});
   // No ALPHA_NOTIFICATION_FIXTURE_KEYSTORE here: the fixture then takes the default debug key, and
   // its dependencies resolve exactly as in scripts/build-notification-fixture.ts.
-  execFileSync('./gradlew', ['--no-daemon', '--write-verification-metadata', 'sha256', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0',
-    `-PELIZA_ALLOW_UNPACKAGED_RUNTIME=${allowUnpackagedRuntime ? '1' : '0'}`, ...VERIFIED_TASKS], {cwd: path.join(root, 'android'), stdio: 'inherit', env});
+  execFileSync('./gradlew', ['--no-daemon', '--write-verification-metadata', 'sha256', ...VERIFIED_TASKS], {cwd: path.join(root, 'android'), stdio: 'inherit', env});
   await recordOtherHostAapt2(root);
   const {problems} = checkVerification(root);
   if (problems.length) throw new Error(`Written metadata does not pass --check:\n${problems.map(item => `  - ${item}`).join('\n')}`);
@@ -292,7 +287,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const root = path.resolve(import.meta.dirname, '..');
   let options;
   try {options=parseVerificationArgs(args);}catch(error){console.error(error instanceof Error ? error.message : String(error));process.exit(2);}
-  if (options.mode === '--write') await write(root, options);
+  if (options.mode === '--write') await write(root);
   else {
     const {problems, metadata} = checkVerification(root);
     if (!metadata || problems.length) { console.error(`Gradle dependency verification problems:\n${problems.map(item => `  - ${item}`).join('\n')}`); process.exit(1); }

@@ -417,7 +417,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 if case != "missing-evidence":
                     entries["producer-evidence/" + evidence_name] = evidence.upper() if case == "changed-evidence" else evidence
                 if case == "changed-debug":
-                    entries["standalone-debug.apk"] = entries["standalone-debug.apk"].upper()
+                    entries["launcher-debug.apk"] = entries["launcher-debug.apk"].upper()
                 with zipfile.ZipFile(self.archive, "w", compression=zipfile.ZIP_DEFLATED) as target:
                     for name, data in entries.items():
                         target.writestr(name, data)

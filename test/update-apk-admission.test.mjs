@@ -33,7 +33,7 @@ test('only the exact compiled public channel can be published', () => {
 
 test('a manifest cannot substitute package, version, flavor or signing-family assertions', () => {
   assert.deepEqual(admitUpdateApkIdentity(row,descriptor,archive,signature), {signerRootSha256:active});
-  assert.deepEqual(admitUpdateApkIdentity({...row,variant:'standalone'},descriptor,{...archive,home:false,xml:''},signature), {signerRootSha256:active});
+  assert.throws(()=>admitUpdateApkIdentity({...row,variant:'standalone'},descriptor,{...archive,home:false,xml:''},signature), /a release distribution is required/);
   for (const [name,changedRow,changedArchive,changedSignature] of [
     ['version',{...row,versionCode:46},archive,signature],
     ['flavor',{...row,variant:'standalone'},archive,signature],

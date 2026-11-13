@@ -219,7 +219,7 @@ certificate fingerprints for asset links.
 | Conformance suite | Sign-in (email code, Google), app-auth PKCE, entitlement token and keys, inference, embeddings, STT and TTS, Maps, Google connector, key self-revocation | Against local harness, Alpha staging, Alpha production |
 | Migration test | A fresh database reaches the current schema from the baseline; an existing Eliza database is unaffected | Upstream |
 | App against candidate cloud | Existing flows (`test/cloud-deployment.test.mjs`, sign-in, voice, Maps, Gmail and Calendar suites) pass with the `candidate` row | This repo, test-mocks builds |
-| Production unchanged | `npm run verify`, `scripts/audit-production-bundle.ts`, storage fingerprint equal to the current namespace, both distribution variants built | This repo, every change before cutover |
+| Production unchanged | `npm run verify`, `scripts/audit-production-bundle.ts`, storage fingerprint equal to the current namespace, the launcher release built with the required resident runtime | This repo, every change before cutover |
 | Device | Release-signed APK: App Link verified for the new host, Google native sign-in, resident agent first reply, voice, Maps | Emulator HOME-role test, then real device; neither proves the other |
 | Cutover rehearsal | Upgrade an installed, signed-in build to the cutover build: namespace migration, re-sign-in prompt, old key revoked | Device |
 

@@ -11,7 +11,7 @@ const hash=text=>createHash('sha256').update(text).digest('hex');
 test('builds record the public channel as the digest of the source URL',()=>{
  const record=publicUpdateChannel(publicUrl);
  assert.deepEqual(record,{kind:'public',manifestUrlSha256:hash(publicUrl)});
- const options=consumerBuildOptions({testMocks:false},{},process.cwd(),record);
+ const options=consumerBuildOptions({},process.cwd(),record);
  assert.deepEqual(options.record.metadata.updateChannel,record);
 });
 test('compiled metadata has one channel and digest; substituted or secret-bearing records are rejected',()=>{

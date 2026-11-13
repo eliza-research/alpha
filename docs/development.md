@@ -66,7 +66,7 @@ bun run test:browser:production   # production bundle
 The web build is a development preview and the payload packaged into the APKs.
 Production builds start with live, empty or unconnected states. Mock data,
 fixtures and developer controls require exactly `ELIZA_DEV_ALLOW_TEST_MOCKS=1`.
-`bun run dev`, Playwright and explicit test-mocks builds enable this switch.
+`bun run dev` and Playwright enable this switch; no APK build does.
 Add `?tools=1` to an enabled development server to show developer controls;
 the query cannot enable them in production or on Android.
 
@@ -121,9 +121,11 @@ bun run android:build:local        # prepare, build worker, stage runtime and bu
 bun run android:verify            # inspect APK contents and signatures
 ```
 
-The build produces standalone and launcher, debug and release APKs under
-`artifacts/`. The variants share `ai.alphacompute.alphaphone` and can replace one
-another with an admitted version and signer. The launcher declares HOME.
+There is one launcher product/flavor. The build produces a debug APK and one
+release APK under `artifacts/`, plus an instrumentation APK under
+`artifacts/instrumentation/`. Debug and instrumentation are test/build evidence,
+not additional release distributions. The same launcher APK can be installed on
+stock Android or preinstalled in the Alpha image. It declares HOME.
 Phone, Contacts and SMS/MMS require an admitted AOSP image capability.
 
 Alpha Compute builds use the same ID for the installed package and native
@@ -161,16 +163,7 @@ their own provider is selected, Eliza Cloud speech when signed in to Cloud with
 no plan limit in force, otherwise on-device speech. A Cloud or provider speech
 request that fails before audio plays falls back to on-device speech.
 
-Developer APKs may explicitly omit the runtime:
-
-```sh
-bun run agent:prepare -- --source-only
-bun run android:build -- --allow-unpackaged-runtime
-bun run android:build -- --test-mocks --allow-unpackaged-runtime
-```
-
-Test-mocks APKs go to `artifacts/test-mocks/`. Production Android builds remove
-mock flags from child environments. `scripts/audit-production-bundle.ts` checks
+Android builds remove mock flags from child environments. `scripts/audit-production-bundle.ts` checks
 the web output and APK assets for developer code, fixtures and source maps.
 
 Release signing uses `ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
@@ -243,9 +236,8 @@ discards the cache hint; the durable installer journal still owns recovery.
 Main pushes automatically build unsigned native candidates in the existing
 Resident Android workflow. The separate `app-native-candidate-*` artifact holds
 the genuine distribution archive and `app-update-candidate.json`, which binds
-source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
-in the qualification archive. Each main-push run and its reruns share a group
-keyed by run ID. Builds can complete out of order, so select the successful
+source, SDK, run/attempt, profile, channel and actual APK hashes. Each main-push
+run and its reruns share a group keyed by run ID. Builds can complete out of order, so select the successful
 candidate for the reviewed source commit.
 
 The hosted native build uses the same automatic producer as the local build.
@@ -260,7 +252,7 @@ file inventory. This establishes build custody; it does not establish hardware
 or signed-byte speech qualification.
 
 The existing workflow run number is the candidate versionCode, checked against
-both releases' retained APKs and public pointers, and the committed version floors.
+the active and retired channels' retained APKs and public pointers, and the committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
 migration that exceeds this number stops candidate creation and needs a reviewed
 version migration. Manual builds keep their explicit version input.
@@ -330,17 +322,17 @@ gcloud storage cp "$signed_uri" signed.tar
 ```
 
 Complete Cartesia qualification on each exact signed APK. Record a content-free
-`alpha-cloud-voice-qualification-v1` JSON receipt with two `results` rows. Each
+`alpha-cloud-voice-qualification-v1` JSON receipt with one `results` row. Each
 row names the observed `apkSha256`, `provider` and `outcome`, and records the
 observed booleans in `checks` for `consent`, `session`, `acousticInput`,
 `blueBar`, `transcript`, `audibleSpeakerReply`, `mute`, `unmute` and
 `stopReleased`. Record only the check outcomes and omit transcripts, recordings
-and credentials. The workflow admits passing Cartesia checks for both APKs.
+and credentials. The workflow admits passing Cartesia checks for the exact launcher APK.
 
 Set `publication_commit` to the exact reviewed commit currently on `main`.
 Prepare the qualification using the original plan bytes and the reviewed voice
 receipt. The command checks the official signing attempt and delivery ZIP,
-streams both APKs from the local signed TAR and retains the original evidence bytes.
+streams the launcher APK from the local signed TAR and retains the original evidence bytes.
 
 ```sh
 python3 -B scripts/ci/qualified-app-update.py prepare-qualification \
@@ -357,8 +349,8 @@ receipt expires. The protected job restores the same private mirror and exact
 signed output before publication.
 
 The native route keeps the 1.5 GB limit on the producer ZIP and signed TAR.
-The two unsigned APKs and the two debug APKs each have a separate 1.5 GB
-expanded pair limit. Admission checks exact member lengths against the
+The unsigned release APK and debug APK each have a separate 1.5 GB
+expanded limit. Admission checks exact member lengths against the
 reviewed archives and verifies the APK digests when streaming the bytes.
 
 Release approval, signed-byte voice tests, publication and both sideload and
@@ -436,8 +428,8 @@ The remaining release work is tracked in [native promotion #888](https://github.
 and [wireless launcher acceptance #889](https://github.com/alphacompute/alphaphone/issues/889).
 Complete it in this order:
 
-1. Admit native voice inputs for the exact SDK, then build and sign both
-   distribution variants. Preserve advancing versions and the enrolled signer.
+1. Admit native voice inputs for the exact SDK, then build and sign the
+   launcher release. Preserve advancing versions and the enrolled signer.
    The protected [release custody workflow](../.github/workflows/release-custody-proof.yml)
    exports the verified public certificates and fingerprints under
    `artifacts/release-public-identities/` for enrollment.
@@ -475,17 +467,8 @@ Complete it in this order:
      [Cloud registration #666](https://github.com/alphacompute/alphaphone/issues/666),
      [App Links #670](https://github.com/alphacompute/alphaphone/issues/670).
 
-   For a debug-signed Pixel, use an explicit `--test-mocks` APK on an owned
-   test device and select **Staging** in **Subscription gate QA**. The staging
-   App Links filter is part of that build. Use the staging URL
-   `https://staging.eliza.app/.well-known/assetlinks.json` and pass
-   `--keep-fingerprint <debug-SHA256>` to the asset-link config generator.
-   For native Google sign-in, add the package and that signer's SHA-1 in
-   the staging Steward project. After deploying, run
-   `bun scripts/cloud-readiness.ts probe --environment staging --signer <debug-SHA256>`.
-   The staging phone flow ends at plan admission. For production Cloud acceptance
-   on the Pixel, use the admitted release APK. Android requires a separate device
-   or fresh installation when the installed copy uses an incompatible signer.
+   For production Cloud acceptance on the Pixel, use the admitted release APK.
+   Android requires a separate device or fresh installation when the installed copy uses an incompatible signer.
 3. Qualify the exact signed baseline and establish it on both distribution
    paths before exposing the phones to a newer offer. If using
    `scripts/provision-unit.ts`, provision before recording the baseline's version
@@ -537,7 +520,7 @@ SDK preparation and native receipt admission run again for this pin.
 The native engine gitlink is unchanged. Historical native measurements retain their original
 source attribution. New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
-hardware. Qualify both distribution variants from the exact current inputs
+hardware. Qualify the launcher APK from the exact current inputs
 before distribution or OS enrollment.
 
 The protected [preserving OS OTA signing workflow](../.github/workflows/release-os-ota-signing.yml)

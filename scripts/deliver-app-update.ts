@@ -19,7 +19,7 @@ import {
 
 interface UpdateOffer {
   schema: 'alpha-update/v1';
-  variant: 'launcher' | 'standalone';
+  variant: 'launcher';
   versionCode: number;
   signerSha256: string;
   sha256: string;
@@ -84,7 +84,7 @@ export async function publicObject(url: string, {maxBytes, missing = false, fetc
 
 export function parseOffer(bytes: Buffer): UpdateOffer {
   const value: UpdateOffer = JSON.parse(bytes.toString('utf8'));
-  if (value?.schema !== 'alpha-update/v1' || !['launcher','standalone'].includes(value.variant) ||
+  if (value?.schema !== 'alpha-update/v1' || value.variant !== 'launcher' ||
       !Number.isSafeInteger(value.versionCode) || value.versionCode < 1 || !/^[0-9a-f]{64}$/.test(value.signerSha256 || '') ||
       !/^[0-9a-f]{64}$/.test(value.sha256 || '') || !Number.isSafeInteger(value.sizeBytes) || value.sizeBytes < 1 || value.sizeBytes > 2**31) {
     throw Error('Publication requires a single complete alpha-update/v1 offer; an index needs its own reviewed transition');
@@ -226,13 +226,13 @@ export async function main(argv: string[], {root = process.cwd(), log = console.
   let variant: string | undefined, apkManifest = 'artifacts/apk-manifest.json', notes: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i], value = argv[++i];
-    if (!value || value.startsWith('--')) throw Error('Usage: bun scripts/deliver-app-update.ts --variant launcher|standalone [--apk-manifest FILE] [--notes TEXT]');
+    if (!value || value.startsWith('--')) throw Error('Usage: bun scripts/deliver-app-update.ts --variant launcher [--apk-manifest FILE] [--notes TEXT]');
     if (flag === '--variant') variant = value;
     else if (flag === '--apk-manifest') apkManifest = value;
     else if (flag === '--notes') notes = value;
     else throw Error(`Unknown argument ${flag}`);
   }
-  if (variant !== 'launcher' && variant !== 'standalone') throw Error('--variant launcher|standalone is required');
+  if (variant !== 'launcher') throw Error('--variant launcher is required');
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-app-delivery-'));
   try {
     const args = ['--variant',variant,'--apk-manifest',apkManifest,'--out-dir',directory,...(notes === undefined ? [] : ['--notes',notes])];

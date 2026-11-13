@@ -54,7 +54,6 @@ interface VoiceBundleEntries {
   read(name: string): Buffer;
 }
 interface VoiceVerificationOptions {
-  allowAbsentRuntime?: boolean;
   runtime?: typeof verifyParadeeRuntime;
   abis?: readonly string[];
 }
@@ -215,7 +214,7 @@ function voiceStagingState(root: string) {
   };
   // AGP's ordinary main/build-type/flavor/variant overlays stay active in the
   // Java-only branch too. Check every real src/* directory conservatively,
-  // including release/debug and standalone/launcher combinations.
+  // including release and debug.
   for (const module of ['android/local-speech', 'android/app']) {
     const sourceRoot = `${module}/src`;
     const present = at(sourceRoot);
@@ -247,16 +246,12 @@ function voiceStagingState(root: string) {
 }
 
 /**
- * Build admission. Absent native voice outputs are accepted only for the explicit unpackaged
- * developer lane (`allowAbsentRuntime`); present outputs must be complete and byte-exact against
- * both the shared build record (scripts/paradee-runtime.ts) and this record. Never downloads.
+ * Build admission. Staged outputs must be complete and byte-exact against both the shared build
+ * record (scripts/paradee-runtime.ts) and this record. Never downloads.
  */
-export function verifyVoiceHost(root: string, {allowAbsentRuntime = false, runtime = verifyParadeeRuntime, abis}: VoiceVerificationOptions = {}) {
+export function verifyVoiceHost(root: string, {runtime = verifyParadeeRuntime, abis}: VoiceVerificationOptions = {}) {
   const selected = selectedAndroidAbis(abis);
   const staging = voiceStagingState(root);
-  // Only explicit mode + metadata-proven absence can avoid reading a record.
-  // Present/partial/orphaned output never inherits a stale source admission.
-  if (allowAbsentRuntime === true && staging === 'absent') return {status: 'not-packaged', qualified: false};
   const record = readVoiceHost(root);
   const native = path.join(root, PARADEE_NATIVE);
   if (staging === 'absent') {
@@ -279,7 +274,7 @@ export function verifyVoiceHost(root: string, {allowAbsentRuntime = false, runti
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const {rest: args, abis} = abiArguments(process.argv.slice(2));
-  if (args[0] !== '--verify' || args.slice(1).some(arg => arg !== '--allow-absent')) throw Error('Usage: bun scripts/voice-host.ts --verify [--allow-absent]');
+  if (args.length !== 1 || args[0] !== '--verify') throw Error('Usage: bun scripts/voice-host.ts --verify');
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  console.log(JSON.stringify(verifyVoiceHost(root, {allowAbsentRuntime: args.includes('--allow-absent'), abis})));
+  console.log(JSON.stringify(verifyVoiceHost(root, {abis})));
 }

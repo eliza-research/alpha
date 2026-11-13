@@ -28,7 +28,7 @@ function fixture(t, rows = {}) {
   fs.writeFileSync(path.join(dir, "android/release-signer.json"), JSON.stringify({ ...committed, signerSha256: SIGNER, lastRelease: { versionCode: 1, versionName: "0.1.0", recordedAt: "2026-11-01" } }));
   fs.copyFileSync(path.join(root, "app.config.json"), path.join(dir, "app.config.json"));
   fs.mkdirSync(path.join(dir, "artifacts"));
-  const results = ["standalone", "launcher"].map(variant => {
+  const results = ["launcher"].map(variant => {
     const name = `${variant}-release.apk`;
     fs.writeFileSync(path.join(dir, "artifacts", name), `${variant} bytes`);
     return { variant, file: `artifacts/${name}`, sha256: sha(`${variant} bytes`), versionCode: 2, versionName: "0.1.1", ...DISTRIBUTABLE, ...rows[variant] };

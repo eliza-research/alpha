@@ -166,7 +166,7 @@ gradle.projectsEvaluated {
             json(value); emit('\n')
         }
     }
-    def appJava = app.tasks.named('compileStandaloneReleaseJavaWithJavac', JavaCompile)
+    def appJava = app.tasks.named('compileLauncherReleaseJavaWithJavac', JavaCompile)
     def javaTasks = [appJava,
         gradle.rootProject.project(':eliza-calendar').tasks.named('compileReleaseJavaWithJavac', JavaCompile),
         gradle.rootProject.project(':eliza-action-journal').tasks.named('compileReleaseJavaWithJavac', JavaCompile)]
@@ -174,7 +174,7 @@ gradle.projectsEvaluated {
     def after = [:]
     gradle.taskGraph.whenReady { graph ->
         if (graph.allTasks.size() > 1000) throw new GradleException('Qualification task graph exceeds bound')
-        if (graph.allTasks.any { it.name ==~ /(?i)(assemble.*|install.*|uninstall.*|lint.*|.*AndroidTest|package(Standalone|Launcher)(Debug|Release))/ })
+        if (graph.allTasks.any { it.name ==~ /(?i)(assemble.*|install.*|uninstall.*|lint.*|.*AndroidTest|packageLauncher(Debug|Release))/ })
             throw new GradleException('APK/instrumentation/lint task is outside this qualification')
         write('taskgraph.json', graph.allTasks*.path, 32768)
     }

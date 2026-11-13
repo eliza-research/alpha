@@ -160,53 +160,45 @@ test("no Alpha Java lists or launches apps: installed apps and default hand-offs
   }
 });
 
-test("telephony permissions are launcher-only and neither flavor registers as a carrier voicemail source", () => {
+test("telephony permissions are launcher-only and no manifest registers as a carrier voicemail source", () => {
   const main = read("android/app/src/main/AndroidManifest.xml");
   const launcher = read("android/app/src/launcher/AndroidManifest.xml");
-  const standalone = read("android/app/src/standalone/AndroidManifest.xml");
   const declared = xml => [...xml.matchAll(/<uses-permission android:name="([^"]+)"(?![^>]*tools:node="remove")[^>]*\/>/g)].map(m => m[1]);
   const removed = xml => [...xml.matchAll(/<uses-permission android:name="([^"]+)"[^>]*tools:node="remove"[^>]*\/>/g)].map(m => m[1]);
   for (const permission of ["READ_CONTACTS", "READ_PHONE_STATE"]) {
     assert.ok(!declared(main).includes(`android.permission.${permission}`), `main does not declare ${permission}`);
     assert.ok(declared(launcher).includes(`android.permission.${permission}`), `launcher declares ${permission}`);
-    assert.ok(removed(standalone).includes(`android.permission.${permission}`), `standalone removes ${permission}`);
   }
-  // In-app contact saves exist on the image only (AP-08): the launcher declares the write, main does
-  // not, and the standalone manifest removes it whatever a shared library lists.
+  // In-app contact saves exist on the image only (AP-08): the launcher declares the write, main does not.
   assert.ok(!declared(main).includes("android.permission.WRITE_CONTACTS"), "main does not declare contact writes");
   assert.ok(declared(launcher).includes("android.permission.WRITE_CONTACTS"), "the launcher declares contact writes");
-  assert.ok(removed(standalone).includes("android.permission.WRITE_CONTACTS"), "standalone removes contact writes");
   assert.ok(removed(main).includes("com.android.voicemail.permission.ADD_VOICEMAIL"));
-  for (const xml of [main, launcher, standalone]) {
+  for (const xml of [main, launcher]) {
     assert.ok(!declared(xml).includes("com.android.voicemail.permission.ADD_VOICEMAIL"));
     assert.doesNotMatch(xml, /android\.telephony\.VisualVoicemailService|BIND_VISUAL_VOICEMAIL_SERVICE/);
   }
-  for (const xml of [main, launcher, standalone])
+  for (const xml of [main, launcher])
     for (const permission of ["WRITE_CALL_LOG", "ANSWER_PHONE_CALLS", "MANAGE_OWN_CALLS"])
       assert.ok(!declared(xml).includes(`android.permission.${permission}`), `${permission} is not declared`);
   // Recent calls (AP-08): the launcher reads them on the verified image; no other build declares it.
   assert.ok(declared(launcher).includes("android.permission.READ_CALL_LOG"), "launcher declares READ_CALL_LOG");
   assert.ok(!declared(main).includes("android.permission.READ_CALL_LOG"), "main does not declare READ_CALL_LOG");
-  assert.ok(removed(standalone).includes("android.permission.READ_CALL_LOG"), "standalone removes READ_CALL_LOG");
   const plugin = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java");
   assert.match(plugin, /@Permission\(alias = "callLog", strings = \{ Manifest\.permission\.READ_CALL_LOG \}\)/, "the image plugin declares the optional call-log alias");
   // CALL_PHONE reaches only the dialer-role holder, and only the launcher can be offered that role.
   assert.ok(declared(launcher).includes("android.permission.CALL_PHONE") && !declared(main).includes("android.permission.CALL_PHONE"));
-  assert.ok(removed(standalone).includes("android.permission.CALL_PHONE"), "standalone removes CALL_PHONE from the shared phone module");
   // The ringing-call screen is a full-screen intent, which Android drops without this permission; only the
   // launcher has the dialer role's call service, and only that service posts one.
   assert.ok(declared(launcher).includes("android.permission.USE_FULL_SCREEN_INTENT"), "launcher declares USE_FULL_SCREEN_INTENT for the incoming-call screen");
-  assert.ok(!declared(main).includes("android.permission.USE_FULL_SCREEN_INTENT") && !declared(standalone).includes("android.permission.USE_FULL_SCREEN_INTENT"), "no other build asks for full-screen intents");
+  assert.ok(!declared(main).includes("android.permission.USE_FULL_SCREEN_INTENT"), "no other build asks for full-screen intents");
   // RECEIVE_* reach only the SMS-role holder; only the launcher can be offered that role.
   for (const permission of ["RECEIVE_SMS", "RECEIVE_MMS", "RECEIVE_WAP_PUSH"]) {
     assert.ok(declared(launcher).includes(`android.permission.${permission}`) && !declared(main).includes(`android.permission.${permission}`));
-    assert.ok(removed(standalone).includes(`android.permission.${permission}`));
   }
-  // SMS reads and reviewed sends (#421): launcher flavor only, never main or standalone.
+  // SMS reads and reviewed sends (#421): launcher flavor only, never main.
   for (const permission of ["SEND_SMS", "READ_SMS"]) {
-    assert.ok(!declared(main).includes(`android.permission.${permission}`) && !declared(standalone).includes(`android.permission.${permission}`), `${permission} is launcher-only`);
+    assert.ok(!declared(main).includes(`android.permission.${permission}`), `${permission} is launcher-only`);
     assert.ok(declared(launcher).includes(`android.permission.${permission}`), `launcher declares ${permission}`);
-    assert.ok(removed(standalone).includes(`android.permission.${permission}`), `standalone removes ${permission}`);
   }
   assert.match(launcher, /android\.intent\.action\.SENDTO"\/><data android:scheme="smsto"/);
   assert.doesNotMatch(main, /<intent><action android:name="android\.intent\.action\.SENDTO"\/><data android:scheme="smsto"\/><\/intent>/, "only the image-capable flavor can see SMS handlers");
@@ -233,11 +225,11 @@ test("queued contacts cannot return data after access or lifecycle changes", () 
 });
 
 test("dialer- and SMS-role components exist only in the launcher, disabled until the image is verified", () => {
-  const launcher = read("android/app/src/launcher/AndroidManifest.xml"), standalone = read("android/app/src/standalone/AndroidManifest.xml"), main = read("android/app/src/main/AndroidManifest.xml");
+  const launcher = read("android/app/src/launcher/AndroidManifest.xml"), main = read("android/app/src/main/AndroidManifest.xml");
   const component = name => launcher.match(new RegExp(`<(?:service|activity|receiver) android:name="\\.${name}"[^>]*>`))?.[0] ?? "";
   for (const name of ["AlphaInCallService", "AlphaCallActivity", "AlphaDialPadActivity", "AlphaSmsDeliverReceiver", "AlphaMmsWapPushReceiver", "AlphaMmsResultReceiver", "AlphaRespondViaMessageService", "AlphaSmsComposeActivity"]) {
     assert.match(component(name), /android:enabled="false"/, `${name} is declared disabled`);
-    assert.doesNotMatch(main + standalone, new RegExp(name), `${name} is launcher-only`);
+    assert.doesNotMatch(main, new RegExp(name), `${name} is launcher-only`);
   }
   assert.match(component("AlphaInCallService"), /android:permission="android\.permission\.BIND_INCALL_SERVICE"/, "only Telecom can bind the call service");
   assert.match(component("AlphaCallActivity"), /android:exported="false"/);
@@ -251,7 +243,6 @@ test("dialer- and SMS-role components exist only in the launcher, disabled until
   const roles = read("android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java");
   assert.match(roles, /boolean image = AlphaImageCapability\.verified\(context\);/);
   assert.match(roles, /int wanted = image \? PackageManager\.COMPONENT_ENABLED_STATE_ENABLED : PackageManager\.COMPONENT_ENABLED_STATE_DEFAULT;/, "anything but the verified image returns to the disabled manifest state");
-  assert.match(read("android/app/src/standalone/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java"), /static void sync\(Context context\) \{\}/);
   const activity = read(`${JAVA}/MainActivity.java`);
   assert.ok(activity.indexOf("AlphaTelephonyRoles.sync(this);") > 0 && activity.indexOf("AlphaTelephonyRoles.sync(this);") < activity.indexOf("registerPlugin(AlphaTelephonyPlugin.class)"), "roles follow the image before the plugin is registered");
   // The shared surfaces place calls only from the owner's press and leave emergency routing to Telecom.
@@ -262,8 +253,8 @@ test("dialer- and SMS-role components exist only in the launcher, disabled until
   assert.match(dial, /telecom\.placeCall\(telUri, extras\)/);
   const apk = read("scripts/apk.ts");
   assert.match(apk, /"ai\.alphacompute\.alphaphone\.AlphaInCallService": "android\.permission\.BIND_INCALL_SERVICE"/);
-  assert.match(apk, /if \(data\.xml\.includes\('android\.permission\.CALL_PHONE'\) !== wantsHome\)/);
+  assert.match(apk, /if \(!data\.xml\.includes\('android\.permission\.CALL_PHONE'\)\)/);
   // Per-flavor recent-calls packaging: launcher only, and call-log writes never.
-  assert.match(apk, /if \(data\.xml\.includes\('android\.permission\.READ_CALL_LOG'\) !== wantsHome\)/);
+  assert.match(apk, /if \(!data\.xml\.includes\('android\.permission\.READ_CALL_LOG'\)\)/);
   assert.match(apk, /for \(const permission of \['WRITE_CALL_LOG', 'MANAGE_OWN_CALLS', 'ANSWER_PHONE_CALLS'\]\)/);
 });

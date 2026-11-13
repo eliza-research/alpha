@@ -19,13 +19,13 @@ function scratch(t, prefix) {
   return dir;
 }
 
-/** A product root with a release signer record and the two unsigned releases verify-apks names. */
+/** A product root with a release signer record and the unsigned launcher release verify-apks names. */
 function product(t, signer = RELEASE) {
   const root = scratch(t, "alpha-sign-root-");
   fs.mkdirSync(path.join(root, "android"));
   fs.writeFileSync(path.join(root, "android/release-signer.json"), JSON.stringify({ schema: 1, signerSha256: signer, lastRelease: { versionCode: null, versionName: null, recordedAt: null } }));
   fs.mkdirSync(path.join(root, "artifacts"));
-  for (const variant of ["standalone", "launcher"]) fs.writeFileSync(path.join(root, `artifacts/${variant}-release-unsigned.apk`), `unsigned ${variant}`);
+  for (const variant of ["launcher"]) fs.writeFileSync(path.join(root, `artifacts/${variant}-release-unsigned.apk`), `unsigned ${variant}`);
   return root;
 }
 
@@ -59,18 +59,18 @@ async function sign(root, argv, { env = {}, digest = async () => RELEASE } = {})
   return { code, out: out.join("\n"), err: err.join("\n"), ran };
 }
 
-test("key files sign both releases, replace the unsigned files only after the signer matches, and refresh the manifest and SBOM", async t => {
+test("key files sign the launcher release, replace the unsigned files only after the signer matches, and refresh the manifest and SBOM", async t => {
   const root = product(t), dir = keys(t), { tool, calls } = stubSigner(t);
   const result = await sign(root, ["--keys-dir", dir, "--apksigner", tool]);
   assert.equal(result.code, 0, result.err);
-  for (const variant of ["standalone", "launcher"]) {
+  for (const variant of ["launcher"]) {
     assert.equal(fs.readFileSync(path.join(root, `artifacts/${variant}-release.apk`), "utf8"), `unsigned ${variant}`);
     assert.equal(fs.existsSync(path.join(root, `artifacts/${variant}-release-unsigned.apk`)), false, "exactly one release name per variant");
     assert.equal(fs.existsSync(path.join(root, `artifacts/${variant}-release.apk.partial`)), false);
   }
   const real = fs.realpathSync(dir);
   assert.deepEqual(calls()[0].argv, ["sign", "--key", path.join(real, "alphaphone_app.pk8"), "--cert", path.join(real, "alphaphone_app.x509.pem"),
-    "--v4-signing-enabled", "false", "--out", path.join(root, "artifacts/standalone-release.apk.partial"), path.join(root, "artifacts/standalone-release-unsigned.apk")]);
+    "--v4-signing-enabled", "false", "--out", path.join(root, "artifacts/launcher-release.apk.partial"), path.join(root, "artifacts/launcher-release-unsigned.apk")]);
   assert.deepEqual(result.ran.map(args => args[0]), ["scripts/verify-apks.ts", "scripts/generate-sbom.ts"]);
   assert.deepEqual(result.ran[0], ["scripts/verify-apks.ts"]);
   assert.ok(result.ran[1].includes("--apks"));
@@ -89,14 +89,14 @@ test("re-verification takes no profile option; a build record that is not the na
     const refusedStale = await sign(stale, ["--keys-dir", keys(t), "--apksigner", tool]);
     assert.equal(refusedStale.code, 1);
     assert.match(refusedStale.err, /is not a native-profile build record; rebuild/);
-    assert.equal(fs.existsSync(path.join(stale, "artifacts/standalone-release.apk")), false);
+    assert.equal(fs.existsSync(path.join(stale, "artifacts/launcher-release.apk")), false);
   }
   const mocks = product(t);
   fs.writeFileSync(path.join(mocks, "artifacts/build-config.json"), JSON.stringify({ testMocks: true, runtimeProfile: "native" }));
   const refused = await sign(mocks, ["--keys-dir", keys(t), "--apksigner", tool]);
   assert.equal(refused.code, 1);
   assert.match(refused.err, /test-mocks build, which is never distributable/);
-  assert.equal(fs.existsSync(path.join(mocks, "artifacts/standalone-release.apk")), false);
+  assert.equal(fs.existsSync(path.join(mocks, "artifacts/launcher-release.apk")), false);
 });
 
 test("a result signed by any other certificate leaves the unsigned releases and no signed file", async t => {
@@ -104,7 +104,7 @@ test("a result signed by any other certificate leaves the unsigned releases and 
   const result = await sign(root, ["--keys-dir", dir, "--apksigner", tool], { digest: async () => "f6".repeat(32) });
   assert.equal(result.code, 1);
   assert.match(result.err, /not the recorded release certificate/);
-  for (const variant of ["standalone", "launcher"]) {
+  for (const variant of ["launcher"]) {
     assert.equal(fs.existsSync(path.join(root, `artifacts/${variant}-release-unsigned.apk`)), true);
     assert.equal(fs.existsSync(path.join(root, `artifacts/${variant}-release.apk`)), false);
     assert.equal(fs.existsSync(path.join(root, `artifacts/${variant}-release.apk.partial`)), false);
@@ -129,7 +129,7 @@ test("PKCS#11 signing names the token key by label and passes a PIN only through
   assert.deepEqual(signArguments({ mode: "pkcs11", pkcs11Config: config, keyLabel: "x", pin: false, input: "in.apk", output: "out.apk" }).slice(12, 14), ["--ks-pass", "pass:"]);
 });
 
-test("the protected PKCS#12 adapter signs both APKs with an environment-only password", async t => {
+test("the protected PKCS#12 adapter signs the launcher APK with an environment-only password", async t => {
   const root = product(t), { tool, calls } = stubSigner(t);
   const keystore = path.join(scratch(t, "alpha-sign-p12-"), "app.p12");
   fs.writeFileSync(keystore, "fixture bytes read only by a real signer", { mode: 0o600 });
@@ -205,7 +205,7 @@ test("refusals: no enrolled signer, already signed releases, mixed modes, dry ru
   assert.match(dryRun.out, /Dry run: nothing signed/);
   assert.match(dryRun.out, /sign --key .*alphaphone_app\.pk8/);
   assert.deepEqual(calls(), []);
-  assert.equal(fs.existsSync(path.join(dry, "artifacts/standalone-release-unsigned.apk")), true);
+  assert.equal(fs.existsSync(path.join(dry, "artifacts/launcher-release-unsigned.apk")), true);
   // One explicit APK (for example the preprocessed listener) keeps its input and does not rewrite the manifest.
   const single = product(t);
   const listener = path.join(single, "sense-release-unsigned.apk");
@@ -292,7 +292,7 @@ test("rotation admission requires explicit approval and preserves the exact revi
     schema: 1, approval: "approved", fromVersionCode: 44, versionCode: 45,
     previousSignerSha256: "a1".repeat(32), lineageSha256: sha(fs.readFileSync(lineage)),
     apksignerSha256: "b2".repeat(32), verifierJarSha256: "c3".repeat(32),
-    unsignedApkSHA256: {standalone: sha(fs.readFileSync(unsigned)), launcher: "d4".repeat(32)},
+    unsignedApkSHA256: {launcher: sha(fs.readFileSync(unsigned))},
   };
   const descriptor = {signerSha256: RELEASE, lastRelease: {versionCode: 44}, apkSigningRotation: rotation};
   const targets = [{input: unsigned}];

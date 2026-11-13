@@ -6,7 +6,7 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 export const PARADEE_SOURCE='vendor/eliza/plugins/plugin-local-inference/native/android';
 export const PARADEE_NATIVE='.eliza/paradee-voice/native';
-interface RuntimeVerificationOptions {allowAbsent?: boolean; abis?: readonly string[]}
+interface RuntimeVerificationOptions {abis?: readonly string[]}
 export interface ParadeeAsset {path: string; sha256: string; bytes: number}
 export interface ParadeeBuildRecord {
  sourceCommit: string;
@@ -63,10 +63,9 @@ export function asrSlotFiles(slot: AsrSlot){
  return slot.files;
 }
 /** Integrity only. This never establishes functional, device or release qualification. */
-export function verifyParadeeRuntime(root: string,{allowAbsent=false,abis}: RuntimeVerificationOptions = {}){
+export function verifyParadeeRuntime(root: string,{abis}: RuntimeVerificationOptions = {}){
  const selected=selectedAndroidAbis(abis);
  const native=path.join(root,PARADEE_NATIVE);
- if(allowAbsent&&!fs.existsSync(native))return {packaged:false,qualified:false};
  if(!fs.existsSync(path.join(native,'build-record.json')))throw Error('Paradee native build record is missing. Build pinned paradee-voice outputs outside vendor, then stage a reviewed ASR model pair.');
  if(fs.lstatSync(native).isSymbolicLink())throw Error('Paradee native output must not be a symbolic link');
  const {forkPin}=verifyParadeeFfi(root);
@@ -97,7 +96,7 @@ export function verifyParadeeRuntime(root: string,{allowAbsent=false,abis}: Runt
 }
 /** The app omits the voice bundle's engine and must package those same reviewed bytes via its host. */
 export function verifyParadeeAppLinkage(root: string, options: RuntimeVerificationOptions = {}){
- const result=verifyParadeeRuntime(root,options);if(!result.packaged)return result;
+ const result=verifyParadeeRuntime(root,options);
  const native=path.join(root,PARADEE_NATIVE);
  const record: ParadeeBuildRecord = JSON.parse(fs.readFileSync(path.join(native,'build-record.json'),'utf8'));
  for(const abi of selectedAndroidAbis(options.abis)){
@@ -108,6 +107,6 @@ export function verifyParadeeAppLinkage(root: string, options: RuntimeVerificati
  return result; // Integrity/linkage only; functional qualification is still false.
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- const {rest:args,abis}=abiArguments(process.argv.slice(2));if(args.some(arg=>arg!=='--allow-absent'&&arg!=='--app-linkage'))throw Error('Unknown Paradee verification option');
- console.log(JSON.stringify((args.includes('--app-linkage')?verifyParadeeAppLinkage:verifyParadeeRuntime)(path.resolve(import.meta.dirname,'..'),{allowAbsent:args.includes('--allow-absent'),abis})));
+ const {rest:args,abis}=abiArguments(process.argv.slice(2));if(args.some(arg=>arg!=='--app-linkage'))throw Error('Unknown Paradee verification option');
+ console.log(JSON.stringify((args.includes('--app-linkage')?verifyParadeeAppLinkage:verifyParadeeRuntime)(path.resolve(import.meta.dirname,'..'),{abis})));
 }

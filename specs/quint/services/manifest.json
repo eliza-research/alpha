@@ -2729,37 +2729,32 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "earlyAdmissionDoesNotAdmitFullBuildTest",
+        "preflightIgnoresProducedInputsTest",
         "onlyCurrentOrDescendantPinAdmitsTest",
-        "missingWorkerAndStalePayloadRefuseTest",
-        "payloadReportDoesNotAdmitCloudProfileTest",
-        "missingMobileReceiptPrecedesGoogleHostTest",
+        "missingWorkerAndStalePayloadAreReportedTest",
         "embeddingBytesMustBePresentAndUnchangedTest",
         "signerNeedsIdentityAndEnvironmentTest",
         "completeInputReportDoesNotRunBuildTest"
       ],
       "invariants": [
-        "FullAdmissionRequiresEarlyAdmission",
+        "PreflightIsPinAndVoiceOnly",
         "ReportedPayloadRequiresExactStamp",
-        "GoogleCheckFollowsPayloadAdmission",
         "HumanAttentionNeverReady"
       ],
       "sources": [
         "scripts/android-build-preflight.ts",
         "scripts/build-embedding-host.ts",
-        "scripts/mobile-uuid-adapter.ts",
-        "scripts/stage-embedding-host.ts",
         "scripts/voice-host.ts"
       ],
       "stateMapping": {
-        "input": "Selected disposable checkout, native-library byte, stamp, profile and build-receipt fixtures",
+        "input": "Selected disposable checkout, native-library byte, stamp and worker fixtures",
         "ready/attention/notices": "Real report rows and formatting for native build readiness and human actions",
-        "before/full/googleChecked": "Actual early and full preflight problem classes and order of the Google host admission port"
+        "preflight": "Actual preflight problem classes"
       },
       "abstractions": [
-        "Two synthetic SDK commits and controlled external voice, embedding and Google host admission results.",
-        "Source stamps, worker and profile presence are private fixture bytes. The mobile receipt projection covers refusal of a missing mandatory receipt.",
-        "Cloud runtime verification, signing, build execution and actual Android artifacts remain separate."
+        "Two synthetic SDK commits and a controlled external voice admission result.",
+        "Source stamps and worker presence are private fixture bytes.",
+        "Staging, Gradle verification, signing, build execution and actual Android artifacts remain separate."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -2988,9 +2983,9 @@
         "lostPointerResponseCanBeReconciledTest"
       ],
       "invariants": [
-        "StagedPairRequiresReviewedPlan",
+        "StagedApkRequiresReviewedPlan",
         "MainCandidateRequiresSameAttempt",
-        "PrivateReceiptRequiresStagedPair",
+        "PrivateReceiptRequiresStagedApk",
         "RestoredRequiresReviewedReceipt",
         "PointerWriteRequiresExactAnonymousApk",
         "ReceiptRequiresReadbacks"

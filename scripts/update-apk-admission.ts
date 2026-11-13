@@ -23,7 +23,7 @@ interface UpdateApk {
   file: string;
   sha256: string;
   build: 'debug' | 'release';
-  variant: 'launcher' | 'standalone';
+  variant: 'launcher';
   versionCode: number;
   updateChannel: UpdateChannel | null;
 }
@@ -65,7 +65,7 @@ export function admitPublicUpdateChannel(xml: string, publicUrl: string) {
 /** Only policy over independently inspected facts; fixtures exercise refusals
  * without pretending their JSON is native signing evidence. */
 export function admitUpdateApkIdentity(apk: Pick<UpdateApk, 'build' | 'variant' | 'versionCode'>, descriptor: UpdateSigner | undefined, archive: ArchiveFacts, signing: UpdateSigning) {
-  requireValue(apk.build === 'release' && ['launcher','standalone'].includes(apk.variant), 'a release distribution is required');
+  requireValue(apk.build === 'release' && apk.variant === 'launcher', 'a release distribution is required');
   requireValue(descriptor && HEX.test(descriptor.signerSha256 ?? ''), 'an enrolled release signer is required');
   requireValue(signing?.verified === true && HEX.test(signing.activeSignerSha256 ?? '') && HEX.test(signing.signerRootSha256 ?? ''), 'verified signer and family are required');
   requireValue(signing.activeSignerSha256 === descriptor.signerSha256, 'active signer differs from the enrolled release signer');

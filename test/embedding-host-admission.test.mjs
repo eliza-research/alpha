@@ -147,18 +147,6 @@ test('current-only shallow native inputs admit reviewed bytes without fetching t
  }finally{f.close();}
 });
 
-test('explicit unpackaged builds admit absence, never a partial resident payload or host',()=>{
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-embed-unpackaged-'));
- try{
-  assert.deepEqual(verifyEmbeddingHost(dir,{allowAbsentRuntime:true}),{status:'not-packaged',distributable:false});
-  assert.throws(()=>verifyEmbeddingHost(dir));
-  for(const relative of ['android/app/src/main/assets/agent/alpha-source.json','android/app/src/main/assets/agent/agent-bundle.js','android/app/src/main/assets/agent/workflow-worker/manifest.json','android/app/src/main/jniLibs/arm64-v8a/libelizainference.so','android/app/src/main/jniLibs/x86_64/libelizavoicejni.so']){
-   const file=path.join(dir,relative);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'partial');
-   assert.throws(()=>verifyEmbeddingHost(dir,{allowAbsentRuntime:true}));fs.unlinkSync(file);
-  }
- }finally{fs.rmSync(dir,{recursive:true,force:true});}
-});
-
 test('complete producer closure is required for new embedding-capable admission and preserves the built pin',()=>{
  const legacy=fixture();try{assert.throws(()=>verifyEmbeddingInputs(legacy.dir,legacy.manifest,{requireProducerInputs:true}),/producer input qualification missing/);}finally{legacy.close();}
  const f=fixture({producerInputs:true});try{

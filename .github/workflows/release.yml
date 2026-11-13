@@ -70,8 +70,8 @@ jobs:
           printf '%s  scripts/ci/build-app-signing-fixtures.py\n' "$FIXTURE_GENERATOR_SHA256" | sha256sum --check --strict
           bun -e 'if (!/^[0-9a-f]{64}$/.test(require("./android/release-signer.json").signerSha256)) process.exit(1)'
           python3 scripts/ci/build-app-signing-fixtures.py "$ANDROID_HOME" artifacts
-          sha256sum artifacts/standalone-release-unsigned.apk artifacts/launcher-release-unsigned.apk > artifacts/unsigned-fixtures.sha256
-      - name: Sign both fixtures using the protected app keystore
+          sha256sum artifacts/launcher-release-unsigned.apk > artifacts/unsigned-fixtures.sha256
+      - name: Sign the launcher fixture using the protected app keystore
         env:
           ALPHA_APP_RELEASE_KEYSTORE_B64: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_B64 }}
           ALPHA_APP_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_PASSWORD }}
@@ -92,7 +92,7 @@ jobs:
           actual=$(keytool -exportcert -storetype PKCS12 -keystore "$keystore" -alias alpha-release \
             -storepass:env ALPHA_APP_RELEASE_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)
           test "$actual" = "$expected"
-          for variant in standalone launcher; do
+          for variant in launcher; do
             bun scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release \
               --apk "artifacts/$variant-release-unsigned.apk" --out "artifacts/$variant-release.apk"
           done
@@ -108,7 +108,7 @@ jobs:
           const unsigned = Object.fromEntries(readFileSync('artifacts/unsigned-fixtures.sha256', 'utf8').trim().split('\n')
             .map(line => line.split('  ').reverse()));
           const artifacts = [];
-          for (const variant of ['standalone', 'launcher']) {
+          for (const variant of ['launcher']) {
             const file = `artifacts/${variant}-release.apk`;
             const hash = createHash('sha256');
             for await (const bytes of createReadStream(file)) hash.update(bytes);
@@ -237,7 +237,7 @@ jobs:
             openssl x509 -in "$work/recipient.pem" -noout -checkend 0
           fi
           bash scripts/ci/verify-cloud-signing-input.sh --stage "$work/unsigned"
-          for variant in standalone launcher; do
+          for variant in launcher; do
             "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$work/unsigned/$variant-release-unsigned.apk"
           done
           test "$(git -C qualified-producer rev-parse HEAD)" = "$(jq -r .alphaCommit "$work/pins.json")"
@@ -255,7 +255,7 @@ jobs:
           const expectedPackage = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'app.config.json'), 'utf8')).appId;
           const channel = validateUpdateChannel(plan.updateChannel);
           const aapt = path.join(process.env.ANDROID_HOME, 'build-tools', '36.0.0', 'aapt');
-          for (const variant of ['standalone', 'launcher']) {
+          for (const variant of ['launcher']) {
             const apk = path.join(directory, variant + '-release-unsigned.apk');
             const badging = execFileSync(aapt, ['dump', 'badging', apk], { encoding: 'utf8' });
             const xml = execFileSync(aapt, ['dump', 'xmltree', apk, 'AndroidManifest.xml'], { encoding: 'utf8' });
@@ -286,7 +286,7 @@ jobs:
           const plan = read(path.join(work, 'pins.json'));
           const descriptor = read('android/release-signer.json');
           const lineage = path.join(work, 'rotation.lineage');
-          const variants = ['standalone', 'launcher'];
+          const variants = ['launcher'];
           const targets = variants.map(variant => ({input: path.join(work, 'unsigned', variant + '-release-unsigned.apk')}));
           const approval = await approvedSigningRotation(descriptor, lineage, targets);
           if (approval.lineageSha256 !== plan.rotation.lineageSHA256 || approval.versionCode !== plan.versionCode ||
@@ -314,7 +314,7 @@ jobs:
           set +x
           umask 077
           ulimit -c 0
-          for variant in standalone launcher; do
+          for variant in launcher; do
             digest=$(jq -r --arg variant "$variant" '.unsignedApkSHA256[$variant]' "$ALPHA_PROTECTED_WORK/pins.json")
             printf '%s  %s\n' "$digest" "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk" | sha256sum --check --strict
           done
@@ -334,7 +334,7 @@ jobs:
           if [[ -f "$ALPHA_PROTECTED_WORK/rotation.lineage" ]]; then
             rotation=(--rotation-lineage "$ALPHA_PROTECTED_WORK/rotation.lineage")
           fi
-          for variant in standalone launcher; do
+          for variant in launcher; do
             bun scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release "${rotation[@]}" \
               --apk "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk" \
               --out "$ALPHA_PROTECTED_WORK/signed/$variant-release.apk"
@@ -347,7 +347,7 @@ jobs:
           umask 077
           work="$ALPHA_PROTECTED_WORK"
           expected=$(bun -p 'require("./android/release-signer.json").signerSha256')
-          for variant in standalone launcher; do
+          for variant in launcher; do
             apk="$work/signed/$variant-release.apk"
             "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"
             result=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs \
@@ -356,7 +356,7 @@ jobs:
             test "$actual" = "$expected"
             test "$(printf '%s\n' "$result" | grep -cE '^Signer #[0-9]+ certificate SHA-256 digest: ')" -eq 1
           done
-          (cd "$work/signed" && sha256sum standalone-release.apk launcher-release.apk > signed.sha256)
+          (cd "$work/signed" && sha256sum launcher-release.apk > signed.sha256)
           cp "$work/pins.json" "$work/signed/signing-plan.json"
           printf '%s\n' "$expected" > "$work/signed/production-signer.sha256"
           rotation=()
@@ -364,7 +364,7 @@ jobs:
             cp "$work/rotation.lineage" "$work/signed/rotation.lineage"
             rotation=(rotation.lineage)
           fi
-          tar -C "$work/signed" -cf "$work/bundle.tar" standalone-release.apk launcher-release.apk \
+          tar -C "$work/signed" -cf "$work/bundle.tar" launcher-release.apk \
             signed.sha256 signing-plan.json production-signer.sha256 "${rotation[@]}"
           mkdir -m 700 "$work/delivery"
           if jq -e '.privateStorage != null' "$work/pins.json" >/dev/null; then
@@ -494,7 +494,7 @@ jobs:
           set -euo pipefail
           test "$(jq -er '.runtimeProfile' "$RUNNER_TEMP/qualified-stage/qualification-summary.json")" = native
           bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
-      - name: Require both qualified release rows before publication
+      - name: Require the qualified launcher release row before publication
         run: |
           python3 - <<'PY'
           import json, os
@@ -506,7 +506,7 @@ jobs:
           assert manifest['testMocks'] is False and manifest['runtimeProfile'] == summary['runtimeProfile'] == 'native' and 'localEmbeddings' not in manifest
           assert manifest['updateChannel']['kind'] == 'public'
           rows = [row for row in manifest['results'] if row['mode'] == 'release']
-          assert len(rows) == 2 and {row['variant'] for row in rows} == {'launcher', 'standalone'}
+          assert len(rows) == 1 and {row['variant'] for row in rows} == {'launcher'}
           for row in rows:
               assert row['distributable'] is True and row['versionCode'] == summary['versionCode']
               assert row['packageName'] == 'ai.alphacompute.alphaphone'

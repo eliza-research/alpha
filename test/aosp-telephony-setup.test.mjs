@@ -12,7 +12,7 @@ const java = path.join(launcher, "java", ...packageName.split("."));
 test("fresh telephony preparation is a privileged, explicit launcher receiver", () => {
   const manifest = flavor => fs.readFileSync(path.join(root, "android/app/src", flavor, "AndroidManifest.xml"), "utf8");
   assert.match(manifest("launcher"), /<receiver android:name="\.AlphaTelephonySetupReceiver" android:exported="true"\s+android:permission="android\.permission\.MANAGE_ROLE_HOLDERS" \/>/);
-  for (const flavor of ["main", "standalone"]) assert.doesNotMatch(manifest(flavor), /AlphaTelephonySetupReceiver/);
+  assert.doesNotMatch(manifest("main"), /AlphaTelephonySetupReceiver/);
   assert.doesNotMatch(manifest("launcher"), /<uses-permission[^>]*MANAGE_ROLE_HOLDERS/);
 });
 

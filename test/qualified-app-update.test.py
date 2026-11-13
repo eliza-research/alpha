@@ -329,7 +329,7 @@ class QualifiedUpdateTest(unittest.TestCase):
             elif change == "failed":
                 voice["results"][0]["checks"]["mute"] = False
             elif change == "duplicate":
-                voice["results"][1] = voice["results"][0]
+                voice["results"].append(copy.deepcopy(voice["results"][0]))
             elif change == "wrong-apk":
                 voice["results"][0]["apkSha256"] = "0" * 64
             else:

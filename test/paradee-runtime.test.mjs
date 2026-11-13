@@ -29,7 +29,6 @@ function complete(root){
  const nativeCommit=execFileSync('git',['-C',path.join(root,'vendor/eliza/plugins/plugin-local-inference/native/llama.cpp'),'rev-parse','HEAD'],{encoding:'utf8'}).trim();
  const record={sourceCommit,nativeCommit,inputs,abis:['arm64-v8a','x86_64'],files};write(native,'build-record.json',JSON.stringify(record));return {native,record,save:()=>write(native,'build-record.json',JSON.stringify(record))};
 }
-test('explicit unpackaged lane admits absence, never partial outputs or strict absence',t=>{const root=fixture(t);assert.deepEqual(verifyParadeeRuntime(root,{allowAbsent:true}),{packaged:false,qualified:false});assert.throws(()=>verifyParadeeRuntime(root),/missing/);fs.mkdirSync(path.join(root,PARADEE_NATIVE),{recursive:true});assert.throws(()=>verifyParadeeRuntime(root,{allowAbsent:true}),/missing/);});
 test('complete byte integrity never grants qualification; modified native and missing ASR pins fail',t=>{const root=fixture(t),{native}=complete(root);assert.deepEqual(verifyParadeeRuntime(root),{packaged:true,qualified:false});fs.unlinkSync(path.join(root,'android/paradee-voice/asr-inputs.json'));assert.throws(()=>verifyParadeeRuntime(root),/ASR/);write(root,'android/paradee-voice/asr-inputs.json','{"files":[]}');assert.throws(()=>verifyParadeeRuntime(root),/ASR/);write(native,'jniLibs/arm64-v8a/libelizainference.so','changed');assert.throws(()=>verifyParadeeRuntime(root),/input changed/);});
 test('record path traversal and duplicate records cannot escape admission',t=>{const root=fixture(t),f=complete(root);f.record.files.push({...f.record.files[0],path:'../outside'});f.save();assert.throws(()=>verifyParadeeRuntime(root),/Invalid Paradee/);f.record.files.pop();f.record.files.push(f.record.files[0]);f.save();assert.throws(()=>verifyParadeeRuntime(root),/incomplete/);});
 
@@ -47,9 +46,8 @@ test('app packaging requires the exact inference bytes for both ABIs, independen
  assert.throws(()=>verifyParadeeAppLinkage(root),/App inference/);
  for(const abi of ['arm64-v8a','x86_64'])write(root,`android/app/src/main/jniLibs/${abi}/libelizainference.so`,fs.readFileSync(path.join(native,`jniLibs/${abi}/libelizainference.so`)));
  assert.deepEqual(verifyParadeeAppLinkage(root),{packaged:true,qualified:false});
- write(root,'android/app/src/main/jniLibs/x86_64/libelizainference.so','different');assert.throws(()=>verifyParadeeAppLinkage(root,{allowAbsent:true}),/x86_64/);
+ write(root,'android/app/src/main/jniLibs/x86_64/libelizainference.so','different');assert.throws(()=>verifyParadeeAppLinkage(root),/x86_64/);
 });
-test('app Java-only allowance never admits a partial Paradee output',t=>{const root=fixture(t);assert.deepEqual(verifyParadeeAppLinkage(root,{allowAbsent:true}),{packaged:false,qualified:false});fs.mkdirSync(path.join(root,PARADEE_NATIVE),{recursive:true});assert.throws(()=>verifyParadeeAppLinkage(root,{allowAbsent:true}),/missing/);});
 
 test('a parakeet slot admits exactly one Phonon-2 GGUF and refuses any other file under asr/',t=>{
  const root=fixture(t),{native,record,save}=complete(root),slot=path.join(root,'android/paradee-voice/asr-inputs.json');

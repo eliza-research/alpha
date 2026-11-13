@@ -15,8 +15,6 @@ test("Cloud voice evidence is one readable file for a genuine build, before any 
   for (const [args, message] of [
     [["--cloud-voice-evidence=a.json", "--cloud-voice-evidence=b.json"], /Specify --cloud-voice-evidence only once/],
     [["--cloud-voice-evidence=missing.json"], /Cloud voice evidence could not be read as JSON/],
-    [["--test-mocks", "--cloud-voice-evidence=a.json"], /Cloud voice evidence requires a genuine resident without mocks/],
-    [["--allow-unpackaged-runtime", "--cloud-voice-evidence=a.json"], /Cloud voice evidence requires a genuine resident without mocks/],
   ]) {
     const result=spawnSync(process.execPath,["scripts/verify-apks.ts",...args],{cwd:root,encoding:"utf8"});
     assert.notEqual(result.status,0,args.join(" "));
@@ -37,33 +35,6 @@ function completeAospLock(dir) {
 function zip(file, entries) {
   execFileSync("python3", ["-c", "import json,sys,zipfile\nwith zipfile.ZipFile(sys.argv[1],'w') as z:\n for k,v in json.loads(sys.argv[2]).items(): z.writestr(k,v)", file, JSON.stringify(entries)]);
 }
-
-test("packaged-runtime verification refuses unpackaged releases unless explicitly allowed", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-runtime-"));
-  try {
-    fs.mkdirSync(path.join(dir, "scripts"));
-    fs.copyFileSync(path.join(root, "scripts/verify-packaged-runtime.py"), path.join(dir, "scripts/verify-packaged-runtime.py"));
-    const release = path.join(dir, "launcher-release-unsigned.apk");
-    const debug = path.join(dir, "launcher-debug.apk");
-    zip(release, { "classes.dex": "app" });
-    zip(debug, { "classes.dex": "app" });
-    const run = args => spawnSync("python3", [path.join(dir, "scripts/verify-packaged-runtime.py"), ...args], { encoding: "utf8" });
-    const strict = run(["--release", release, debug]);
-    assert.equal(strict.status, 3, strict.stderr);
-    assert.match(strict.stderr, /not distributable/);
-    const report = JSON.parse(strict.stdout);
-    assert.equal(report[0].runtime, "NOT_PACKAGED");
-    assert.equal(report[0].distributable, false);
-    const allowed = run(["--allow-unpackaged-runtime", "--release", release, debug]);
-    assert.equal(allowed.status, 0, allowed.stderr);
-    assert.equal(JSON.parse(allowed.stdout)[0].distributable, false);
-    const debugOnly = run([debug]);
-    assert.equal(debugOnly.status, 0, debugOnly.stderr);
-    assert.equal(JSON.parse(debugOnly.stdout)[0].runtime, "NOT_PACKAGED");
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
 
 test("AOSP staging refuses test-mocks and non-distributable inputs before any staging", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-stage-"));
@@ -194,7 +165,8 @@ test("APK verification requires the packaged owner route table to match the gene
   }
 });
 
-for (const testMocks of [false, true]) test(`archive retains actual APK web bytes with testMocks=${testMocks}`, t => {
+test('archive retains actual flag-off APK web bytes and refuses a mock payload', t => {
+  const testMocks = false;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-archive-web-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const publicDir = path.join(dir, 'assets/public');
@@ -206,18 +178,20 @@ for (const testMocks of [false, true]) test(`archive retains actual APK web byte
   // Working assets may be restored to a different mode after the APK was built.
   fs.writeFileSync(path.join(publicDir, 'build-flags.json'), JSON.stringify({ testMocks: !testMocks }));
   const archived = path.join(dir, 'archived-web');
-  archiveWebPayload(apkFile, archived, { testMocks });
+  archiveWebPayload(apkFile, archived);
   assert.equal(readBuildFlags(archived).testMocks, testMocks);
   assert.equal(fs.readFileSync(path.join(archived, 'index.html'), 'utf8'), '<html>Actual APK payload</html>');
-  assert.throws(() => archiveWebPayload(apkFile, path.join(dir, 'wrong-mode'), { testMocks: !testMocks }), /testMocks/);
+  fs.writeFileSync(path.join(dir, 'assets/public/build-flags.json'), JSON.stringify({ testMocks: true }));
+  const mockApk = path.join(dir, 'mock.apk');
+  execFileSync('zip', ['-q', '-r', mockApk, 'assets'], { cwd: dir });
+  assert.throws(() => archiveWebPayload(mockApk, path.join(dir, 'wrong-mode')), /testMocks/);
   assert.equal(fs.existsSync(path.join(dir, 'wrong-mode')), false);
 });
 
 // Exercise the archive CLI, its child environments and real ZIP retention without
 // running Gradle. Only the Android builder and source snapshot are fixture commands.
-// `inherited` starts from an environment that still carries the mock flags: a distribution
-// archive strips them.
-for (const mode of ['native', 'test-mocks', 'inherited', 'wrong-profile', 'wrong-channel']) test(`build archive keeps the one runtime profile and its update channel: ${mode}`, t => {
+// `inherited` starts from an environment that still carries the mock flags: the archive strips them.
+for (const mode of ['native', 'inherited', 'wrong-profile', 'wrong-channel']) test(`build archive keeps the one runtime profile and its update channel: ${mode}`, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
   for (const name of ['scripts', 'bin']) fs.mkdirSync(path.join(dir, name));
@@ -237,19 +211,19 @@ const args=process.argv.slice(2);
 const mocks=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS==='1';
 fs.appendFileSync('calls.jsonl',JSON.stringify({args,mocks})+'\\n');
 if(args[1]==='android:build'){
- const output=mocks?'artifacts/test-mocks':'artifacts';
+ const output='artifacts';
  fs.mkdirSync(output,{recursive:true});
  fs.mkdirSync('payload/assets/public',{recursive:true});
  fs.writeFileSync('payload/assets/public/build-flags.json',JSON.stringify({testMocks:mocks}));
  fs.writeFileSync('payload/assets/public/index.html','<html>Synthetic build payload</html>');
  const results=[];
- for(const variant of ['standalone','launcher']){
+ for(const variant of ['launcher']){
   for(const suffix of ['debug','release-unsigned']){
    const file=path.join(output,variant+'-'+suffix+'.apk');
    execFileSync('zip',['-q','-r',path.resolve(file),'assets'],{cwd:'payload'});
    results.push({file,sha256:createHash('sha256').update(fs.readFileSync(file)).digest('hex')});
   }
-  const file=mocks?path.join(output,variant+'-androidTest.apk'):'android/app/build/outputs/apk/androidTest/'+variant+'/debug/app-'+variant+'-debug-androidTest.apk';
+  const file='android/app/build/outputs/apk/androidTest/'+variant+'/debug/app-'+variant+'-debug-androidTest.apk';
   fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'synthetic instrumentation');
  }
  const updateChannel={kind:'public',manifestUrlSha256:createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
@@ -257,14 +231,13 @@ if(args[1]==='android:build'){
  fs.writeFileSync(path.join(output,'apk-manifest.json'),JSON.stringify({testMocks:mocks,runtimeProfile:process.env.FIXTURE_WRONG_PROFILE?'cloud':'native',updateChannel,results}));
 }
 `, {mode:0o755});
-  const inherited = mode !== 'native' && mode !== 'test-mocks', testMocks = mode === 'test-mocks';
-  const args = testMocks ? ['--test-mocks'] : [];
+  const inherited = mode !== 'native';
   const env = {...process.env, PATH:path.join(dir, 'bin')+path.delimiter+process.env.PATH};
   for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL']) delete env[name];
   if (inherited) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});
   if (mode === 'wrong-profile') env.FIXTURE_WRONG_PROFILE='1';
   if(mode==='wrong-channel')env.FIXTURE_WRONG_CHANNEL='1';
-  const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
+  const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
   const archive = path.join(dir, 'test-results/archive');
   if (mode === 'wrong-profile'||mode==='wrong-channel') {
     assert.notEqual(run.status, 0);
@@ -275,28 +248,26 @@ if(args[1]==='android:build'){
   assert.equal(run.status, 0, run.stderr);
   const calls = fs.readFileSync(path.join(dir, 'calls.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
   assert.deepEqual(calls.map(row => row.args[1]), ['android:sync', 'verify', 'android:build']);
-  assert.equal(calls[1].mocks, false, 'verification stays flag-off even for a fixture archive');
-  assert.equal(calls[0].mocks, testMocks);
-  assert.equal(calls[2].mocks, testMocks);
-  assert.deepEqual(calls[2].args, ['run', 'android:build', ...(args.length ? ['--', ...args] : [])]);
+  assert.equal(calls[1].mocks, false);
+  assert.equal(calls[0].mocks, false);
+  assert.equal(calls[2].mocks, false);
+  assert.deepEqual(calls[2].args, ['run', 'android:build']);
   const configuration = JSON.parse(fs.readFileSync(path.join(archive, 'configuration.json')));
   assert.equal(configuration.runtimeProfile, 'native');
-  assert.equal(configuration.testMocks, testMocks);
+  assert.equal(configuration.testMocks, false);
   const manifest = JSON.parse(fs.readFileSync(path.join(archive, 'apk-manifest.json')));
-  assert.equal(Object.keys(manifest).length, 6);
+  assert.deepEqual(Object.keys(manifest).sort(), ['launcher-androidTest.apk', 'launcher-debug.apk', 'launcher-release-unsigned.apk']);
   for (const [name, expected] of Object.entries(manifest)) assert.equal(createHash('sha256').update(fs.readFileSync(path.join(archive, name))).digest('hex'), expected);
   const flags = JSON.parse(fs.readFileSync(path.join(archive, 'web-dist/build-flags.json')));
-  assert.equal(flags.testMocks, testMocks);
+  assert.equal(flags.testMocks, false);
 });
 
 test('archive rejects unsupported options before creating output', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-invalid-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
-  for (const args of [['--allow-unpackaged-runtime']]) {
-    const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, encoding:'utf8'});
-    assert.notEqual(run.status, 0);
-    assert.ok(!fs.existsSync(path.join(dir, 'test-results')));
-  }
+  const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), '--unknown', 'test-results/archive'], {cwd:dir, encoding:'utf8'});
+  assert.notEqual(run.status, 0);
+  assert.ok(!fs.existsSync(path.join(dir, 'test-results')));
 });
 
 test("APK voice admission requires the complete recorded bundle and every recorded engine library", () => {
@@ -345,10 +316,10 @@ test("APK voice admission requires the complete recorded bundle and every record
   assert.equal(voiceBundleAdmission(apk(), pair).asr, true);
 });
 
-test('merged-manifest check keeps launcher-only permissions and components out of standalone', () => {
-  // Stand-ins for aapt's merged xmltree: the launcher carries every launcher-only entry, standalone none.
+test('merged-manifest check requires the launcher permissions and components', () => {
+  // Stand-in for aapt's merged xmltree.
   const identity = {appId: 'ai.alphacompute.alphaphone'};
-  const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG', 'WRITE_CONTACTS', 'READ_PHONE_NUMBERS', 'READ_PRIVILEGED_PHONE_STATE']
+  const required = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG', 'WRITE_CONTACTS', 'READ_PHONE_NUMBERS', 'READ_PRIVILEGED_PHONE_STATE']
     .map(name => `android.permission.${name}`)
     .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity', 'AlphaTelephonySetupReceiver'].map(name => `ai.alphacompute.alphaphone.${name}`));
   const apk = (home, entries) => () => {
@@ -359,16 +330,13 @@ test('merged-manifest check keeps launcher-only permissions and components out o
         : `    A: android:name="${name}"`)].join('\n');
     return {packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml};
   };
-  assert.doesNotThrow(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly)));
-  assert.doesNotThrow(() => validateApk('standalone.apk', identity, false, apk(false, [])));
+  assert.doesNotThrow(() => validateApk('launcher.apk', identity, apk(true, required)));
   for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.alphacompute.alphaphone.AlphaSmsSendReceiver', 'ai.alphacompute.alphaphone.AlphaTelephonySetupReceiver', 'android.permission.WRITE_CONTACTS', 'android.permission.READ_PRIVILEGED_PHONE_STATE']) {
     const name = entry.split('.').at(-1);
-    assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly.filter(other => other !== entry))), new RegExp(`Invalid.*${name}.*launcher\\.apk`));
-    assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), new RegExp(`Invalid.*${name}.*standalone\\.apk`));
+    assert.throws(() => validateApk('launcher.apk', identity, apk(true, required.filter(other => other !== entry))), new RegExp(`Invalid.*${name}.*launcher\\.apk`));
   }
   for (const entry of ['com.android.voicemail.permission.ADD_VOICEMAIL', 'android.telephony.VisualVoicemailService', 'android.permission.BIND_VISUAL_VOICEMAIL_SERVICE']) {
-    assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, [...launcherOnly, entry])), /Unexpected carrier voicemail manifest entry/);
-    assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), /Unexpected carrier voicemail manifest entry/);
+    assert.throws(() => validateApk('launcher.apk', identity, apk(true, [...required, entry])), /Unexpected carrier voicemail manifest entry/);
   }
 });
 

@@ -161,7 +161,7 @@ test('archive measurement binds the actual artifact metadata and expanded upload
   assert.equal(result.expandedBytes, expandedBytes);
   assert.equal(result.files, files.length);
   assert.deepEqual(result.apks, candidate.apks);
-  for (const variant of ['launcher', 'standalone']) {
+  for (const variant of ['launcher']) {
     const bytes = fs.readFileSync(path.join(archive.output, variant + '-debug.apk'));
     assert.equal(result.debugApks[variant].sha256, hash(bytes));
     assert.equal(result.debugApks[variant].bytes, bytes.length);
@@ -171,7 +171,7 @@ test('archive measurement binds the actual artifact metadata and expanded upload
     /artifact identity or size differs/);
   assert.throws(() => candidateArchiveSize({...options, api: () => ({...uploaded, name: uploaded.name.slice(0, -1) + '2'})}),
     /artifact identity or size differs/);
-  const debug = path.join(archive.output, 'standalone-debug.apk'), priorDebug = fs.readFileSync(debug);
+  const debug = path.join(archive.output, 'launcher-debug.apk'), priorDebug = fs.readFileSync(debug);
   fs.appendFileSync(debug, 'changed after upload');
   assert.throws(() => candidateArchiveSize(options), /Measured APK differs/);
   fs.writeFileSync(debug, priorDebug);
@@ -184,8 +184,8 @@ test('changed APKs, mocks, another profile or channel, code/package drift, signe
   const file = path.join(archive.output, 'apk-verification.json'), original = read(file);
   for (const change of [v => v.testMocks = true, v => v.runtimeProfile = 'cloud', v => v.allowUnpackagedRuntime = true,
     v => v.updateChannel.kind = 'other', v => v.upstream.commit = '0'.repeat(40),
-    v => v.results[0].versionCode++, v => v.results[1].packageName = 'other.package',
-    v => v.results[1].signed = true, v => v.results[1].distributable = true]) {
+    v => v.results[0].versionCode++, v => v.results[0].packageName = 'other.package',
+    v => v.results[0].signed = true, v => v.results[0].distributable = true]) {
     const modified = structuredClone(original); change(modified); json(file, modified);
     assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}));
   }
@@ -242,8 +242,6 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.ok(!build.steps.some(step => step.run?.includes('hosted-native-inputs.py')));
   assert.equal(evaluate(build.if, main), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, main), '1');
-  assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
-  assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
   assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), false);
   // Literal expression checks, not execution of GitHub's concurrency backend.
   // One template string holds two GHA substitutions; inspect its group key.
@@ -281,13 +279,10 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   }
   assert.deepEqual(workflow.permissions, {contents: 'read'});
   assert.deepEqual(build.permissions, {contents: 'read', actions: 'read'});
-  const candidate = build.steps.find(step => step.name === 'Retain the unsigned native update candidate separately from test mocks');
+  const candidate = build.steps.find(step => step.name === 'Retain the unsigned native update candidate');
   assert.equal(candidate.if, "env.ALPHA_APP_UPDATE_CANDIDATE == '1'");
   assert.equal(candidate.with.path, 'test-results/resident-ci-distribution/');
-  assert.equal(build.steps.find(step => step.id === 'apks').with.path,
-    'test-results/resident-ci-archive/');
-  assert.equal(workflow.jobs.native.needs, 'build');
-  assert.equal(workflow.jobs.native.env.ALPHA_RESIDENT_MANIFEST_SHA256, '${{ needs.build.outputs.manifest_sha256 }}');
+  assert.deepEqual(Object.keys(workflow.jobs), ['publish-qualification', 'build']);
 });
 
 test('producer evidence retains exact unsigned distribution metadata and refuses drift before recording it', async t => {

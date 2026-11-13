@@ -20,7 +20,7 @@ from app_update_producer import (
     validate_private_storage,
 )
 
-VARIANTS = ("standalone", "launcher")
+VARIANTS = ("launcher",)
 SHA = re.compile("[0-9a-f]{64}")
 COMMIT = re.compile("[0-9a-f]{40}")
 
@@ -248,16 +248,16 @@ def candidate_evidence(data, pin, apk_manifest, source_root=None):
     require(data("producer-evidence/native-build-receipt.json") == native_bytes,
             "Native build receipt differs from retained producer evidence")
     require(isinstance(candidate["apks"], dict) and set(candidate["apks"]) == set(VARIANTS),
-            "Candidate receipt must bind exactly both release variants")
+            "Candidate receipt must bind exactly the launcher release")
     return candidate["apks"]
 
 
-def check_apk_pair(kind, entries):
-    # Bound each two-variant native pair independently. The compressed producer
-    # archive may contain both pairs without exceeding its own transport bound.
+def check_apk_size(kind, entries):
+    # Bound each native APK independently. The compressed producer archive
+    # may contain both debug and release without exceeding its own transport bound.
     if kind == CANDIDATE:
         require(sum(entry.file_size for entry in entries) <= apk_member_limit(kind),
-                "Native APK pair exceeds the expanded pair limit")
+                "Native APK exceeds the expanded APK limit")
 
 
 def debug_apk_members(archive, verified, kind):
@@ -271,7 +271,7 @@ def debug_apk_members(archive, verified, kind):
                 stat.S_IFMT(entry.external_attr >> 16) in (0, stat.S_IFREG) and not entry.flag_bits & 1,
                 "Invalid debug archive member")
         members[name] = (entry, rows[0]["sha256"])
-    check_apk_pair(kind, (entry for entry, _ in members.values()))
+    check_apk_size(kind, (entry for entry, _ in members.values()))
     return members
 
 
@@ -329,7 +329,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
             and isinstance(channel["manifestUrlSha256"], str)
             and SHA.fullmatch(channel["manifestUrlSha256"]), "Invalid reviewed update channel")
     apks = pin["unsignedApkSHA256"]
-    require(set(apks) == set(VARIANTS), "Exactly two variant pins are required")
+    require(set(apks) == set(VARIANTS), "Exactly the launcher APK pin is required")
     for value in (pin["archiveSHA256"], pin["producerManifestSHA256"], *apks.values()):
         require(isinstance(value, str) and SHA.fullmatch(value), "Invalid SHA-256 pin")
     require(archive.is_file() and not archive.is_symlink() and archive.stat().st_size <= MAX_ARCHIVE_BYTES,
@@ -396,7 +396,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
                     "Build flags or version differ from the reviewed unsigned distribution build")
             name_map = json.loads(data("apk-manifest.json"))
             rows = [row for row in verified["results"] if row["mode"] == "release"]
-            require(len(rows) == 2 and {row["variant"] for row in rows} == set(VARIANTS),
+            require(len(rows) == len(VARIANTS) and {row["variant"] for row in rows} == set(VARIANTS),
                     "APK verification must contain exactly one release row per variant")
             release_members = {}
             for row in rows:
@@ -423,7 +423,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
                             voice["asr"] is True and voice["differences"] == [],
                             f"{variant} candidate requires admitted on-device voice with ASR")
                 release_members[variant] = apk_member
-            check_apk_pair(kind, release_members.values())
+            check_apk_size(kind, release_members.values())
             if kind == CANDIDATE:
                 # Refuse archives that publication cannot restore before signing.
                 for entry, expected in debug_apk_members(bundle, verified, kind).values():

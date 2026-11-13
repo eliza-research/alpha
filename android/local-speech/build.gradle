@@ -1,7 +1,4 @@
-// One explicit selection controls JNI compilation and the same integrity checks.
-def selectedParadeeAbis = project.findProperty('elizaParadeeAbis')?.toString()?.split(',', -1)?.toList() ?: ['arm64-v8a', 'x86_64']
-if (!selectedParadeeAbis || selectedParadeeAbis.toSet().size() != selectedParadeeAbis.size() || selectedParadeeAbis.any { !(it in ['arm64-v8a', 'x86_64']) }) throw new GradleException('Invalid elizaParadeeAbis')
-def paradeeAbiArgs = selectedParadeeAbis.collectMany { ['--abi', it] }
+def paradeeAbiArgs = ['arm64-v8a', 'x86_64'].collectMany { ['--abi', it] }
 // Shared native speech API and build policy come from the exact reviewed pin.
 def preparedSpeech = new groovy.json.JsonSlurper().parseText(providers.exec {
  workingDir rootProject.projectDir.parentFile
@@ -15,36 +12,15 @@ if (!paradee.isDirectory()) {
 } else {
  // Alpha's AlphaVoiceCloud bridge subclasses the shared LocalSpeechBridgePlugin.
  ext.elizaSpeechBridgeCapacitor = 'true'
- def nativeOutput = file('../../.eliza/paradee-voice/native')
- def unpackaged = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
- if (unpackaged && !nativeOutput.exists()) {
-  // Every packaged build ships the local engine and models. Only the unpackaged
-  // developer lane keeps the Java API alone, when native outputs are absent.
-  apply plugin: 'com.android.library'
-  android {
-   namespace 'ai.eliza.voice'
-   compileSdk 36
-   defaultConfig { minSdk 26 }
-   sourceSets.main {
-    java.srcDirs = [new File(paradee, 'src/main/java'), new File(paradee, 'speech-bridge/src/main/java')]
-    manifest.srcFile new File(paradee, 'src/main/AndroidManifest.xml')
-    assets.srcDirs = []
-    jniLibs.srcDirs = []
-   }
-   compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
-  }
-  dependencies { compileOnly project(':capacitor-android') }
- } else {
-  ext.elizaParadeeSourceDir = paradee
-  ext.elizaParadeeNativeDir = nativeOutput
-  // The nested engine header is authenticated by verifySpeechInputs, outside the patched Java tree.
-  ext.elizaParadeeFfiIncludeDir = file('../../vendor/eliza/plugins/plugin-local-inference/native/llama.cpp/tools/omnivoice/include')
-  ext.elizaParadeePackageInference = false
-  apply from: new File(paradee, 'consumer.gradle')
- }
+ ext.elizaParadeeSourceDir = paradee
+ ext.elizaParadeeNativeDir = file('../../.eliza/paradee-voice/native')
+ // The nested engine header is authenticated by verifySpeechInputs, outside the patched Java tree.
+ ext.elizaParadeeFfiIncludeDir = file('../../vendor/eliza/plugins/plugin-local-inference/native/llama.cpp/tools/omnivoice/include')
+ ext.elizaParadeePackageInference = false
+ apply from: new File(paradee, 'consumer.gradle')
  def verifySpeechInputs = tasks.register('verifySpeechInputs', Exec) {
   workingDir rootProject.projectDir.parentFile
-  commandLine(['bun', 'scripts/paradee-runtime.ts'] + paradeeAbiArgs + (unpackaged ? ['--allow-absent'] : []))
+  commandLine(['bun', 'scripts/paradee-runtime.ts'] + paradeeAbiArgs)
  }
  tasks.named('preBuild').configure { dependsOn verifySpeechInputs }
 }

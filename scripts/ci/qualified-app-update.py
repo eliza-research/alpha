@@ -37,7 +37,7 @@ DELIVERY_ZIP_LIMIT = 131072
 PLAN_LIMIT = 32768
 VOICE_LIMIT = 16384
 DISPATCH_INPUT_LIMIT = 65535
-VARIANTS = ("standalone", "launcher")
+VARIANTS = ("launcher",)
 CHECKS = {"consent", "session", "acousticInput", "blueBar", "transcript",
           "audibleSpeakerReply", "mute", "unmute", "stopReleased"}
 FIELDS = {"schema", "signingWorkflowCommit", "signingRunId", "signingRunAttempt",
@@ -136,12 +136,12 @@ def validate(record):
     apks = record["signedApkSHA256"]
     require(isinstance(apks, dict) and set(apks) == set(VARIANTS) and
             all(isinstance(value, str) and HEX.fullmatch(value) for value in apks.values()) and
-            len(set(apks.values())) == 2, "Exactly two distinct signed APK hashes required")
+            len(set(apks.values())) == len(VARIANTS), "Exactly the signed launcher APK hash is required")
     voice_bytes = encoded(record, "cloudVoiceEvidence", VOICE_LIMIT)
     voice = decode(voice_bytes)
     require(isinstance(voice, dict) and set(voice) == {"format", "results"} and
             voice["format"] == "alpha-cloud-voice-qualification-v1" and
-            isinstance(voice["results"], list) and len(voice["results"]) == 2, "Content-free voice receipt required")
+            isinstance(voice["results"], list) and len(voice["results"]) == len(VARIANTS), "Content-free voice receipt required")
     observed = []
     for row in voice["results"]:
         require(isinstance(row, dict) and set(row) == {"apkSha256", "provider", "outcome", "checks"} and
@@ -149,7 +149,7 @@ def validate(record):
                 isinstance(row["checks"], dict) and set(row["checks"]) == CHECKS and
                 all(value is True for value in row["checks"].values()), "Voice qualification incomplete or contains extra fields")
         observed.append(row["apkSha256"])
-    require(len(set(observed)) == 2 and set(observed) == set(apks.values()), "Voice receipt does not name exact signed APKs")
+    require(len(set(observed)) == len(VARIANTS) and set(observed) == set(apks.values()), "Voice receipt does not name exact signed APKs")
     return plan, plan_bytes, voice_bytes
 
 
@@ -334,7 +334,7 @@ def signed_bundle(signed, receipt, plan, plan_bytes):
                 checksum = source.read(257)
             require(len(checksum) <= 256, "Signed checksum receipt differs")
             lines = checksum.decode("ascii").strip().splitlines()
-            matches = [re.fullmatch(r"([0-9a-f]{64})  (standalone|launcher)-release\.apk", line) for line in lines]
+            matches = [re.fullmatch(r"([0-9a-f]{64})  (launcher)-release\.apk", line) for line in lines]
             require(len(matches) == len(VARIANTS) and all(matches), "Signed checksum receipt differs")
             apks = {match[2]: match[1] for match in matches}
             require(set(apks) == set(VARIANTS), "Signed checksum receipt differs")
