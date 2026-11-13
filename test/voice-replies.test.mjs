@@ -36,7 +36,7 @@ function fixture({native = true} = {}) {
     },
   };
   // voice-timing.ts configures the shared recorder projected from the pin, evaluated in this realm.
-  for (const [file, name] of [['../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts', 'createRealtimeVoiceTiming'], ['../../../.eliza/client-features/packages/voice/src/voice-turn-timing.ts', 'createVoiceTurnTiming'], ['runtime/local-speech-text.ts', 'screenSpeechText'], ['runtime/voice-selection.ts', ['selectVoiceRoute', 'speechRoute', 'noteNetworkSpeechFailure']], ['runtime/voice-timing.ts', 'markVoiceTiming'], ['prototype/local-speech-playback.ts', 'installLocalSpeechPlayback']]) load(file, name, box);
+  for (const [file, name] of [['../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts', 'createRealtimeVoiceTiming'], ['../../../.eliza/client-features/packages/voice/src/voice-turn-timing.ts', 'createVoiceTurnTiming'], ['runtime/local-speech-text.ts', 'screenSpeechText'], ['runtime/voice-states.ts', 'speechCleanupNotice'], ['runtime/voice-selection.ts', ['selectVoiceRoute', 'speechRoute', 'noteNetworkSpeechFailure']], ['runtime/voice-timing.ts', 'markVoiceTiming'], ['prototype/local-speech-playback.ts', 'installLocalSpeechPlayback']]) load(file, name, box);
   class Shell {
     constructor() { this.state = {chat: 'sheet', msgs: []}; this.live = true; }
     S() { return this.state; }

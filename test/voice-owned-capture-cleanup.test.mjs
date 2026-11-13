@@ -72,6 +72,8 @@ test('Back dismisses failed retirement without claiming cleanup or allowing anot
   await assert.rejects(f.shell.stopVoiceConversation(),/Retirement unconfirmed/);await f.tick();
   assert.equal(f.renderChat().state,'error');f.shell.back();assert.equal(f.renderChat(),null);
   await f.shell.startVoice();assert.equal(f.getStopCalls(),1);assert.deepEqual(f.recordingCancels,[]);
-  assert.ok(f.shell.messages.some(message=>message.includes('Voice unconfirmed · restart app')));
+  assert.ok(f.shell.messages.some(message=>message.includes('Speech could not be stopped. Restart Alpha.')));
+  await assert.rejects(f.shell.prepareDeviceReadReview('proposal', undefined, new AbortController().signal),
+    {message:'Speech could not be stopped. Restart Alpha.'});
  }finally{f.close();}
 });

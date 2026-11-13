@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {formatRecordingClock} from '../apps/app/src/prototype/note-recorder.ts';
+import {MEDIA_UNCONFIRMED_NOTICE} from '../apps/app/src/runtime/voice-states.ts';
 
 const source=fs.readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts',import.meta.url),'utf8');
 const template=fs.readFileSync(new URL('../apps/app/src/prototype/template.html',import.meta.url),'utf8');
@@ -78,13 +79,25 @@ test('transcript text selection bypasses shell gestures without changing playbac
 test('audio playback refuses a foreign or deleted native handle before starting playback',async()=>{
  const implementation=between('  async function playSaved(','  let listener:');
  for(const metadata of [{audioId:'audio',noteId:'other'},{audioId:'audio',noteId:'note',deletedAt:1},{audioId:'other',noteId:'note'},{audioId:'audio',noteId:'note'}]){
-  const calls={play:0,toast:0};const context=vm.createContext({savedPlaybackError:undefined,savedPlaying:undefined,savedPosition:0,savedEpoch:0,savedStarting:undefined,savedTick:undefined,stopping:Promise.resolve(),
+  const calls={play:0,toast:0};const context=vm.createContext({savedPlaybackError:undefined,savedPlaying:undefined,savedPosition:0,savedEpoch:0,savedStarting:undefined,savedTick:undefined,stopping:Promise.resolve(),mediaUnconfirmed:undefined,
    refresh(){},setInterval:()=>1,api:{toast:()=>calls.toast++},noteAudio:{describe:async()=>metadata,play:async()=>{calls.play++;},state:async()=>({playing:true})}});
   context.stopSaved=()=>{context.savedEpoch++;context.savedPlaying=undefined;};
   vm.runInContext(stripTypeScriptTypes(implementation,{mode:'transform'}),context);await context.playSaved({id:'note',audio:{audioId:'audio'}});
   const valid=metadata.noteId==='note'&&metadata.audioId==='audio'&&metadata.deletedAt===undefined;
   assert.equal(calls.play,valid?1:0);assert.equal(calls.toast,0);assert.equal(context.savedPlaybackError?.audioId,valid?undefined:'audio');
  }
+});
+
+test('saved audio names a latched stop refusal without probing or starting playback',async()=>{
+ const refusal=Error('native stop refused');
+ const stopping=Promise.reject(refusal);void stopping.catch(()=>{});
+ const context=vm.createContext({savedPlaybackError:undefined,savedPlaying:undefined,savedEpoch:0,stopping,
+  mediaUnconfirmed:refusal,MEDIA_UNCONFIRMED_NOTICE,refresh(){},stopSaved(){context.savedEpoch++;context.savedPlaying=undefined;},
+  noteAudio:{describe:async()=>assert.fail('blocked playback cannot inspect the handle'),play:async()=>assert.fail('blocked playback cannot start')}});
+ vm.runInContext(stripTypeScriptTypes(between('  async function playSaved(','  let listener:'),{mode:'transform'}),context);
+ await context.playSaved({id:'note',audio:{audioId:'audio'}});
+ assert.equal(context.savedPlaybackError?.audioId,'audio');
+ assert.equal(context.savedPlaybackError?.message,MEDIA_UNCONFIRMED_NOTICE);
 });
 
 test('a retained canonical attachment restores the playback control after the canonical projection disables it',()=>{

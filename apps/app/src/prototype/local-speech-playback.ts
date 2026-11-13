@@ -1,6 +1,7 @@
 import {developmentCartesiaVoiceEnabled} from '../runtime/development-cartesia-flag';
 import {developmentCloudVoiceEnabled} from '../runtime/development-cloud-voice';
 import { Capacitor } from '@capacitor/core';
+import { speechCleanupNotice } from '../runtime/voice-states';
 import { speakLocalText } from '../local-speech-playback';
 import { markVoiceTiming, abandonVoiceTurn, finishVoiceTurn } from '../runtime/voice-timing';
 import { connectionController } from '../runtime/connection-ui';
@@ -98,6 +99,11 @@ export async function readNoteAloud(text: string, owner: { noteId?: string } = {
     return done(noteReading === reading && !signal.aborted ? 'finished' : 'stopped');
   } catch (error) {
     if (noteReading !== reading || signal.aborted) return done('stopped');
+    const cleanupNotice = speechCleanupNotice(error);
+    if (cleanupNotice) {
+      if (reading.pending) retainSpeechRetirement(reading.pending);
+      return done('failed', cleanupNotice);
+    }
     const cause = (cloud ? cloudVoiceFailure(error) : null) || (error instanceof Error && !(error instanceof DOMException) && error.message ? error.message : '');
     return done('failed', reading.state === 'reading' ? (cause ? `Stopped · ${cause}` : 'Stopped') : (cause ? `Couldn’t start reading · ${cause}` : 'Couldn’t start reading'));
   }
@@ -215,7 +221,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
       if((error as {code?:string})?.code==='speech-cleanup-unconfirmed'&&state.pending)retainSpeechRetirement(state.pending);
       if (!current()) return;
       state.controller = undefined;
-      const recovery = cloud ? cloudVoiceFailure(error) : null;
+      const recovery = speechCleanupNotice(error) || (cloud ? cloudVoiceFailure(error) : null);
       state.message = controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError') ? 'Reading stopped.' : recovery || (error instanceof Error && !reached ? error.message : 'Stopped');
       refresh(shell);
     } finally {if(states.get(shell)===state&&!current()){stop(shell);refresh(shell);}}
