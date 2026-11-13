@@ -11,7 +11,7 @@ import {embeddingBuildRemap} from './embedding-build-remap.ts';
 
 const root=path.resolve(import.meta.dirname,'..'),upstream=path.join(root,'vendor/eliza');
 const args=process.argv.slice(2),option=(name: string)=>{const i=args.indexOf(name);return i<0?undefined:args[i+1];};
-for(let i=0;i<args.length;i++){if(args[i]==='--build'||args[i]==='--remap-build-path')continue;if(['--fork','--output','--abi'].includes(args[i])){if(!args[++i]||args[i].startsWith('--'))throw Error('Missing option value');}else throw Error('Unknown option');}
+for(let i=0;i<args.length;i++){if(args[i]==='--build'||args[i]==='--remap-build-path')continue;if(['--fork','--output','--abi','--engine'].includes(args[i])){if(!args[++i]||args[i].startsWith('--'))throw Error('Missing option value');}else throw Error('Unknown option');}
 const abi=option('--abi')||'arm64-v8a',forkInput=option('--fork'),outputInput=option('--output');
 if(!['arm64-v8a','x86_64'].includes(abi)||!forkInput||!outputInput)throw Error('Usage: bun scripts/prepare-embedding-host.ts --fork <existing pinned checkout> --output <new isolated directory> [--abi arm64-v8a|x86_64] [--build] [--remap-build-path]');
 const fork=fs.realpathSync(forkInput),output=path.resolve(outputInput);
@@ -59,8 +59,10 @@ for(const relative of producerInputPaths){
 }
 fs.mkdirSync(path.dirname(path.join(staging,forkPath)),{recursive:true});fs.symlinkSync(fork,path.join(staging,forkPath),'dir');
 const nativeSource=path.join(staging,'packages/app/platforms/android/app/src/main/elizavoice-jni');
+const suppliedEngine=option('--engine');
+if(suppliedEngine){for(const name of ['libelizainference.so','libc++_shared.so']){const from=path.join(suppliedEngine,name),to=path.join(staging,'packages/app/platforms/android/app/src/main/jniLibs',abi,name);if(!fs.statSync(from).isFile()||fs.lstatSync(from).isSymbolicLink())throw Error('Native engine input must be a regular file');fs.mkdirSync(path.dirname(to),{recursive:true});fs.copyFileSync(from,to);}}
 const commands=[
- [process.execPath,path.join(staging,'packages/app/scripts/stage-elizavoice-lib.ts'),'--abi',abi,'--variant','cpu'],
+ ...(!suppliedEngine?[[process.execPath,path.join(staging,'packages/app/scripts/stage-elizavoice-lib.ts'),'--abi',abi,'--variant','cpu']]:[]),
  ['cmake','-S',nativeSource,'-B',path.join(output,'jni-build'),'-G','Ninja',`-DCMAKE_TOOLCHAIN_FILE=${toolchain}`,`-DANDROID_ABI=${abi}`,'-DANDROID_PLATFORM=android-23','-DCMAKE_BUILD_TYPE=Release',...nativeCmakeOptions(jniBinding),`-DELIZAVOICE_FFI_INCLUDE_DIR=${path.join(fork,'tools/omnivoice/include')}`],
  ['cmake','--build',path.join(output,'jni-build'),'--target','elizavoicejni','-j','2'],
 ];

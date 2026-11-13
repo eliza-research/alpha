@@ -1285,6 +1285,7 @@
     "step": "step",
     "invariant": "safety",
     "sources": [
+      "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java"
     ],
     "tests": [
@@ -1318,7 +1319,9 @@
     "sources": [
       "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java",
       "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecorder.java",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecordingService.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecordingService.java",
+      "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
+      "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java"
     ],
     "tests": [
       "permissionReturningDuringCallTest",
@@ -1394,6 +1397,7 @@
     "invariant": "safety",
     "sources": [
       "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+      "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechRequestGate.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
@@ -1440,6 +1444,7 @@
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+      "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
       "android/upstream-native-sources.json",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
@@ -1550,6 +1555,7 @@
     "sources": [
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
+      "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalMicrophoneLease.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
       "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java"
@@ -2515,14 +2521,19 @@
       "dispatchMarkerRefusalRecoversUnknownTest",
       "providerReadbackRequiresReportAndUniqueRowTest",
       "multipartReportDoesNotProveDeliveryTest",
-      "emptyDivisionCannotReviveReviewedIdTest"
+      "emptyDivisionCannotReviveReviewedIdTest",
+      "bothBridgesReceiveTheSameCallbackTest",
+      "pausedAndDestroyedBridgesRetireOnlyTheirDeliveryTest",
+      "eightCallbackPublicationsReachBothBridgesTest"
     ],
     "invariants": [
       "OneRadioCallPerRecipient",
       "RadioNeedsDurableIntent",
       "TombstoneRetiresLiveRecord",
       "DeliveryNeedsSentAndReport",
-      "ProviderRowsHaveOnePhase"
+      "ProviderRowsHaveOnePhase",
+      "LiveBridgeListeners",
+      "PerBridgeNoticeCapacity"
     ],
     "sources": [
       "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java",
@@ -2540,7 +2551,7 @@
       "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsProviderReader.java"
     ],
     "stateMapping": {
-      "reviews/foreground/closed/listener/events": "Exact review calls, saved SIM/tuple, Activity lifecycle and latest native callback publisher",
+      "reviews/foreground/closed/listeners/events": "Exact review calls, saved SIM/tuple, Activity lifecycle, registered bridge identities and each bridge's actual opaque notification count",
       "recipients/parts/attempts/accepted": "Synthetic exact reviewed radio handoff prefix and per-part PendingIntent identity",
       "memory/disk/tombstoneBinding/boot/process": "Real live and durable SmsSendJournal records, pruned binding tombstone and reconstruction after process or boot boundaries",
       "role/outbox/sentRows/failedRows/candidate/providerStatus": "Actual outgoing provider inserts/updates and controlled unique provider readback",
@@ -2550,7 +2561,9 @@
     "abstractions": [
       "One operation ID, two reviewed payloads and bridge actors, one or two recipients with one or two parts each. The existing journal model covers wider ID retirement and capacity.",
       "Successful pruning of the fixed ID retains its binding. Wider tombstone compaction, pruning write faults and capacity are separate from this retained-receipt boundary.",
-      "Controlled AOSP admission, radio, provider, storage and Activity ports. Installed carrier or permission behavior, legacy journal file migration, MMS and larger interleavings remain separate."
+      "Controlled AOSP admission, radio, provider, storage and Activity ports. Installed carrier or permission behavior, legacy journal file migration, MMS and larger interleavings remain separate.",
+      "Eight callback publications per bridge retain the original callback depth with at most sixteen deliveries across two recipients. Only a candidate transition that would overflow a recipient's count is refused; stopped bridges do not consume another bridge's capacity.",
+      "Handler.post executes immediately within each controlled JVM macrostep. Registration, foreground/lock filtering and exact destruction are observed; arbitrary held UI-queue retirement races remain outside this schedule."
     ],
     "bounds": {
       "maxSamples": 1000,
@@ -2575,7 +2588,9 @@
       "carrierFailureOverridesAndroidSuccessTest",
       "providerChildRefusalKeepsRadioAndDeletesPartialRowTest",
       "failedCallbackWriteDeletesPduButLosesEvidenceOnRestartTest",
-      "interruptedHandoffRecoversWithoutResendTest"
+      "interruptedHandoffRecoversWithoutResendTest",
+      "bothMmsBridgesReceiveAndRestartRetiresTheirCountersTest",
+      "lockedMmsCallbackCannotPublishOrReplayALateNoticeTest"
     ],
     "invariants": [
       "OneKindOwnsDispatch",
@@ -2584,7 +2599,9 @@
       "MmsNeverClaimsDelivery",
       "OutboxOnlyForMms",
       "TombstoneRetiresRecord",
-      "ApprovedReceiptMatchesReview"
+      "ApprovedReceiptMatchesReview",
+      "LiveBridgeListeners",
+      "PerBridgeNoticeCapacity"
     ],
     "sources": [
       "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java",
@@ -2607,13 +2624,15 @@
       "reply/replyKind/replyBinding/positiveBinding": "Wire status, typed SMS/MMS result and exact retained and approved binding classes",
       "memory/disk/tombstoneBinding/boot/process": "Actual shared live/durable journal, capacity tombstone and process or boot reconstruction",
       "smsAttempts/mmsAttempts/mmsAccepted/files": "Controlled radio boundary and actual temporary PDU retention",
-      "mmsBox/deletedMms/events": "Outgoing MMS provider state, partial-row rollback and newest bridge callback publication",
+      "mmsBox/deletedMms/events": "Outgoing MMS provider state, partial-row rollback, registered bridge identities and exact per-bridge opaque notification counts",
       "role/carrier/size/sim/provider/locked": "Controlled device admission and failure classes"
     },
     "abstractions": [
       "One ID shared across SMS and MMS, two bridge instances and two exact MMS attachment variants. The SMS competitor is a one-part message.",
       "Successful capacity pruning is observed for a settled MMS. Tombstone compaction and pruning write faults are outside this retained-receipt boundary.",
-      "PDU encoding, staged file and journal execute real code with synthetic Android radio, provider and preview ports. Installed URI grants, provider semantics, platform scheduling, and carrier behavior remain separate."
+      "PDU encoding, staged file and journal execute real code with synthetic Android radio, provider and preview ports. Installed URI grants, provider semantics, platform scheduling, and carrier behavior remain separate.",
+      "Four callback publications per bridge retain the original depth with at most eight deliveries across the two live bridges. Process restart clears every old listener and loads both current bridge identities with zero counters.",
+      "Handler.post executes immediately within each controlled JVM macrostep. Arbitrary held UI-queue retirement races and additional bridge lifecycle interleavings remain separate."
     ],
     "bounds": {
       "maxSamples": 1000,
@@ -3337,6 +3356,7 @@
       "apps/app/src/prototype/voice-adapter.ts",
       "apps/app/src/prototype/local-speech-playback.ts",
       "apps/app/src/runtime/app-speech.ts",
+      "apps/app/src/runtime/voice-states.ts",
       "apps/app/src/runtime/cloud-voice.ts",
       "apps/app/src/local-speech-playback.ts"
     ],
@@ -4597,6 +4617,151 @@
     "abstractions": [
       "Up to three unread threads, missed calls and new voicemails; row content and ordering are presentation.",
       "Source loading and items cleared elsewhere are nondeterministic inputs."
+    ]
+  },
+  {
+    "path": "specs/quint/native/WakeListenerStop.qnt",
+    "module": "WakeListenerStop",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "confirmedStopClearsLatchTest",
+      "lateReplyDoesNotClearLatchTest",
+      "openMicrophoneIsNotAStopTest",
+      "missingPortLatchesTest",
+      "lastFinishedRequestDecidesTest",
+      "admittedRequestLeavesLatchTest",
+      "offAndroidRequestCallsNothingTest"
+    ],
+    "invariants": [
+      "LatchIsLastVerdict",
+      "ConfirmedOnlyByAnswerOrSkip",
+      "SkippedReportsTrue",
+      "PortCallsBounded"
+    ],
+    "witnesses": [
+      "LateStopKeepsWarningWitness",
+      "ConfirmedStopClearsWarningWitness",
+      "OverlappingRequestsDisagreeWitness",
+      "MissingPortWitness",
+      "SkippedRequestKeepsWarningWitness"
+    ],
+    "sources": [
+      "apps/app/src/runtime/always-on-listener.ts"
+    ],
+    "sharedSources": [
+      "plugins/plugin-native-system/src/sense.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/runtime/always-on-listener.ts",
+        "name": "stopWakeListenerForChatOnly"
+      },
+      {
+        "path": "apps/app/src/runtime/always-on-listener.ts",
+        "name": "wakeListeningStopUnconfirmed"
+      },
+      {
+        "path": "apps/app/src/runtime/always-on-listener.ts",
+        "name": "wakeStopUnconfirmed"
+      },
+      {
+        "path": "apps/app/src/runtime/always-on-listener.ts",
+        "name": "admitImageSense"
+      },
+      {
+        "path": "apps/app/src/runtime/always-on-listener.ts",
+        "name": "imageSenseAvailable"
+      },
+      {
+        "path": "apps/app/src/runtime/always-on-listener.ts",
+        "name": "nativeListener"
+      },
+      {
+        "path": "apps/app/src/runtime/always-on-listener.ts",
+        "name": "stopSenseListenerForChatOnly"
+      }
+    ],
+    "stateMapping": {
+      "latch": "wakeStopUnconfirmed, read through wakeListeningStopUnconfirmed",
+      "admitted": "admittedImageSense, set by admitImageSense",
+      "calls": "each stopWakeListenerForChatOnly promise: not yet made, pending, or settled with the value it returned; the model also records why it settled",
+      "portCalls": "turnOff calls that reached the ElizaSense plugin",
+      "lastVerdict/lateReplies": "ghosts: the verdict of the stop that last wrote the latch, and proofs of a stop that arrived after their request's deadline"
+    },
+    "abstractions": [
+      "Two overlapping requests and six port calls. The app makes one request at startup; overlap is modelled because the exported function does not prevent it.",
+      "The five-second deadline and the reading of a reply belong to the shared stopSenseListenerForChatOnly. The model takes them as outcomes (an answer in one of five reply classes, a failed call, the deadline, a reply after the deadline); the replay in specs/quint/refinement/native/wake-listener-stop.mjs bundles the prepared shared source, so those outcomes are the shared code's own.",
+      "Off Android and an admitted image listener are one skipped outcome that reports true and leaves the latch. A warning latched before the image admitted its listener therefore stays for the session (SkippedRequestKeepsWarningWitness).",
+      "The startup toast, the voice settings row and whether the Android listener really stopped capturing are outside this model; a confirmed stop is the native port's status, not device evidence."
+    ]
+  },
+  {
+    "path": "specs/quint/native/DeletionNoticeFence.qnt",
+    "module": "DeletionNoticeFence",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "quietUntilARowIsKnownTest",
+      "oldReadCannotReviveWarningsTest",
+      "lateUndoCannotClearNewSessionTest",
+      "onlyConfirmedUndoRetiresRowTest",
+      "dismissalRetiresRowAndFailureIsReportedTest"
+    ],
+    "invariants": [
+      "KnownIsCurrent",
+      "GenerationFollowsOwner",
+      "FailuresSurfaceOnlyForKnownRows",
+      "KnownFailuresAreNotHidden",
+      "CallsAreAdmittedOnce"
+    ],
+    "witnesses": [
+      "StaleReadIgnoredAfterReturnWitness",
+      "KnownFailureSurfacedWitness",
+      "StaleUndoKeepsRowWitness",
+      "UnconfirmedUndoKeepsRowWitness",
+      "QuietAfterDismissWitness"
+    ],
+    "sources": [
+      "apps/app/src/runtime/deletions.ts"
+    ],
+    "sharedSources": [
+      "packages/contracts/src/deletion-window.ts"
+    ],
+    "symbols": [
+      {
+        "path": "apps/app/src/runtime/deletions.ts",
+        "name": "createDeletionNoticePolicy"
+      },
+      {
+        "path": "apps/app/src/runtime/deletions.ts",
+        "name": "pendingDeletionNotices"
+      },
+      {
+        "path": "apps/app/src/runtime/deletions.ts",
+        "name": "undoConfirmed"
+      },
+      {
+        "path": "apps/app/src/runtime/deletions.ts",
+        "name": "generation"
+      },
+      {
+        "path": "apps/app/src/runtime/deletions.ts",
+        "name": "known"
+      }
+    ],
+    "stateMapping": {
+      "owner/generation": "The identity the policy last read and its generation counter, advanced on every observed owner change",
+      "known/knownGeneration": "The pending deletion rows the current generation was last shown, and the generation that was shown them",
+      "calls": "Two concurrent bridge calls (status read, Undo, dismissal) with the generation each was admitted under and how the policy let it end",
+      "staleEffects/surfacedUnknown/hiddenKnown": "Model bookkeeping: answers that arrived for an earlier generation, and the two failure-reporting errors the invariants exclude"
+    },
+    "abstractions": [
+      "Two owners alternating over at most three changes, two rows and two concurrent bridge calls. Rows outside the notice phases are filtered by the shared deletion-window contract and are not counted as known.",
+      "The shared notice component that polls, shows the rows and reports action errors is outside this model, as are the native journal and the Undo window itself (DeletionJournal).",
+      "Trace replay: test/quint-deletion-notice-fence.test.mjs replays simulator traces step by step against createDeletionNoticePolicy with the native deletions bridge and the owner identity as ports. The known set and generation are private; the outcome of every call and whether a failing status read is surfaced are compared and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
     ]
   }
 ]

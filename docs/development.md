@@ -13,9 +13,11 @@ changes upstream and consume a reviewed commit; never edit the vendor checkout.
 
 ## Setup
 
-Use Bun 1.4.2 (`packageManager` in `package.json`), Node 26.13.0 for the pinned
-upstream tools and Node-only host tests, and JDK 21.
-Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
+Use Bun 1.4.2 (`packageManager` in `package.json`) and JDK 21. The pinned upstream
+source prepares and builds on Bun. Node.js 24+ is needed only for LemmaScript and the
+Node-only host tests (`bun run test:node`).
+Native builds need Python 3 for toolchain bootstrapping, Android SDK platform 36
+and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 
 ```sh
@@ -65,7 +67,7 @@ bun run test:browser:production   # production bundle
 The web build is a development preview and the payload packaged into the APKs.
 Production builds start with live, empty or unconnected states. Mock data,
 fixtures and developer controls require exactly `ELIZA_DEV_ALLOW_TEST_MOCKS=1`.
-`bun run dev`, Playwright and explicit test-mocks builds enable this switch.
+`bun run dev` and Playwright enable this switch; no APK build does.
 Add `?tools=1` to an enabled development server to show developer controls;
 the query cannot enable them in production or on Android.
 
@@ -120,9 +122,11 @@ bun run android:build:local        # prepare, build worker, stage runtime and bu
 bun run android:verify            # inspect APK contents and signatures
 ```
 
-The build produces standalone and launcher, debug and release APKs under
-`artifacts/`. The variants share `ai.alphacompute.alphaphone` and can replace one
-another with an admitted version and signer. The launcher declares HOME.
+There is one launcher product/flavor. The build produces a debug APK and one
+release APK under `artifacts/`, plus an instrumentation APK under
+`artifacts/instrumentation/`. Debug and instrumentation are test/build evidence,
+not additional release distributions. The same launcher APK can be installed on
+stock Android or preinstalled in the Alpha image. It declares HOME.
 Phone, Contacts and SMS/MMS require an admitted AOSP image capability.
 
 Alpha Compute builds use the same ID for the installed package and native
@@ -133,26 +137,44 @@ then verify updates and data retention between builds with the new package ID.
 Qualify the native libraries and APKs for the exact product and SDK revisions.
 
 There is one runtime profile. Every build packages libelizainference with the
-on-device speech models and local embeddings. Stage on-device voice inputs with
-`bun scripts/android-stage-voice-models.ts --from <directory>`.
-The resident source and workflow worker are prepared from the locked upstream
-revision. Build inputs must agree with the staged runtime and native libraries.
+on-device speech models and local embeddings. `bun run android:build:local`
+automatically prepares the pinned native inputs before preparing the resident
+source and workflow worker. Run `bun run agent:build-embedding-host` to prepare
+just the voice and embedding inputs; `bun run android:build:inputs` reports their
+current state without building them. Build inputs must agree with the staged
+runtime and native libraries.
+
+The native producer supports Apple Silicon macOS and x86-64 Linux with glibc
+2.28 or newer. Windows developers can use an x86-64 Linux WSL environment. The
+pinned toolchain does not support Intel macOS or ARM64 Linux hosts. The first
+build needs network access for the pinned source,
+models and isolated Python/compiler dependencies. Native outputs are cached under
+`$XDG_CACHE_HOME/alpha/native-inputs`, or `$HOME/.cache/alpha/native-inputs` when
+XDG_CACHE_HOME is unset. The recipe binds the product identity, native source,
+engine revision, toolchain and model hashes. Reuse checks the complete file
+inventory and every output digest. A changed recipe rebuilds its outputs.
+
+`.eliza/native-inputs/receipt.json` records the current build inputs and actual
+output hashes using relative paths. The receipt does not claim device or user
+acceptance. Signing and signed-byte voice qualification remain separate.
+A previous workstation or its exported artifact IDs are not prerequisites.
 
 Speech is routed at run time, not at build time: the owner's Cartesia key when
 their own provider is selected, Eliza Cloud speech when signed in to Cloud with
 no plan limit in force, otherwise on-device speech. A Cloud or provider speech
 request that fails before audio plays falls back to on-device speech.
 
-Developer APKs may explicitly omit the runtime:
+The production-only APK removes the former Android mock build and its loopback
+paired-host campaigns. Their old receipts do not qualify this launcher. Native
+resident speech, recording/permission/cancellation checks and the real provider
+contracts remain separate from browser fixtures. The Home Calendar provider and
+permission-loss acceptance cases are retained, but need an independently admitted
+signed-in launcher fixture and distinct granted/revoked process phases. The Browser page-question journey also retains its explicit sign-in prerequisite;
+the fresh signed-out hosted reading lane covers only isolated-document navigation.
+Real provider responses, decoded/audible audio and physical-device acceptance still
+need current evidence; deleting a retired fixture does not close those gates.
 
-```sh
-bun run agent:prepare -- --source-only
-bun run android:build -- --allow-unpackaged-runtime
-bun run android:build -- --test-mocks --allow-unpackaged-runtime
-```
-
-Test-mocks APKs go to `artifacts/test-mocks/`. Production Android builds remove
-mock flags from child environments. `scripts/audit-production-bundle.ts` checks
+Android builds remove mock flags from child environments. `scripts/audit-production-bundle.ts` checks
 the web output and APK assets for developer code, fixtures and source maps.
 
 Release signing uses `ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
@@ -171,12 +193,15 @@ product build configuration. Dependency checksums remain in
 
 ```sh
 bun run test:android:instrumentation -- --owned-emulator --avd <avd> --serial emulator-NNNN
-bun run aosp:stage -- --apk artifacts/launcher-debug.apk --development
+bun run aosp:stage -- --target cuttlefish --aosp-source <aosp-checkout> --apk artifacts/launcher-debug.apk --development
 bun scripts/verify-aosp-listener.ts --serial <serial> --user 0
 ```
 
-Instrumentation uses an owned disposable emulator. Image staging emits an AOSP
-vendor add-on under `artifacts/aosp/`. APK builds, emulator HOME-role behavior,
+Instrumentation uses an owned disposable emulator. Image staging takes
+`--target cuttlefish` or `--target pixel10a` (the latter with `--factory-image`),
+requires the reviewed AOSP checkout with the `soong-app-native` patch applied,
+is production staging (reviewed `--descriptor`, distributable release APK) unless
+`--development` is given, and emits an AOSP vendor add-on under `artifacts/aosp/`. APK builds, emulator HOME-role behavior,
 full AOSP boot, real integrations, physical-device testing and user acceptance
 are independent results.
 
@@ -189,7 +214,7 @@ Pixel 10a Sense images take `--listener-apk`, `--listener-descriptor` and
 `listenerQualificationSha256` in `android/aosp/pixel10a-product.json`. The record
 binds the exact signed APKs, staging descriptors, signer, SDK, source inventory,
 applied patches and SELinux policy. Apply and name the `chip`, `ops`, `alpha-protected-power` and
-`alpha-sense-policy` patches in addition to `soong-app-native`.
+`alpha-sense-policy` patches.
 
 An enrolled record with `qualified: false` stages only with `--development`,
 using the signed inputs and the Pixel 10a `userdebug` target. Production staging
@@ -225,100 +250,23 @@ discards the cache hint; the durable installer journal still owns recovery.
 Main pushes automatically build unsigned native candidates in the existing
 Resident Android workflow. The separate `app-native-candidate-*` artifact holds
 the genuine distribution archive and `app-update-candidate.json`, which binds
-source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
-in the qualification archive. Each main-push run and its reruns share a group
-keyed by run ID. Builds can complete out of order, so select the successful
+source, SDK, run/attempt, profile, channel and actual APK hashes. Each main-push
+run and its reruns share a group keyed by run ID. Builds can complete out of order, so select the successful
 candidate for the reviewed source commit.
 
-Before enabling a successful automatic build, a maintainer supplies
-`android/hosted-native-inputs.json` in the reviewed checkout. Use these exact
-fields and replace every placeholder with the reviewed value.
+The hosted native build uses the same automatic producer as the local build.
+Its cache is an optimization: source recipe and output hashes must still match
+before reuse. A missing cache rebuilds from the pinned public inputs instead of
+requiring expiring artifact IDs from a previous machine.
 
-```json
-{
-  "schema": "alpha-hosted-native-inputs/v1",
-  "packageName": "ai.alphacompute.alphaphone",
-  "sdkCommit": "<upstream.lock.json commit>",
-  "voiceRecordSha256": "<SHA-256 of android/voice-host/qualified-voice-host.json>",
-  "embeddingRecordSha256": "<SHA-256 of android/embedding-host/qualified-host.json>",
-  "artifacts": {
-    "voice": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
-    "embeddingComponent": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
-    "embeddingQualification": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"}
-  }
-}
-```
-
-Use three distinct, unexpired GitHub Actions artifact IDs from successful runs
-in this repository. Use the artifact metadata's digest without its `sha256:`
-prefix. The voice artifact contains the reviewed model, data and notice files at
-`assets/paradee-voice/v1/<path>` and the two recorded libraries per ABI at
-`jniLibs/<abi>/<name>`. Upload those files with their relative paths and omit
-generated manifests, APKs and logs. The embedding component contains
-`component-output/INTENT.json`, `component-output/export/PREPARATION.json` and
-the three reviewed ARM64 libraries alongside the preparation receipt. The
-qualification artifact contains `QUALIFICATION.json` and
-`embedding-qualification.json` at its root. These receipts must describe those
-same reviewed component bytes. The two hosts share the exact ARM64 engine and
-C++ runtime. Obtain the recorded bytes from the provisioned host or review and
-admit a reproducible replacement before updating the records and artifact IDs.
-
-On the provisioned host, prepare an operator handoff from the reviewed Alpha
-checkout. Use physical paths and an existing output directory owned and
-writable only by your account.
-
-```sh
-python3 -B scripts/ci/export-native-inputs.py \
-  --voice /absolute/staged-voice-root \
-  --embedding-component /absolute/directory-containing-component-output \
-  --embedding-qualification /absolute/directory-containing-qualification-files \
-  --out /absolute/output-directory
-```
-
-The exporter creates `alpha-native-inputs.zip` after verifying the copied
-files against the committed records and existing embedding qualification.
-The component receipts preserve their original build provenance and paths.
-Record the packet SHA-256 on the producer host and supply it with the handoff.
-On the receiving host, set `packet_sha256` to that digest. Choose a fresh
-destination inside a directory owned and writable only by your account.
-
-```sh
-python3 -B scripts/ci/stage-native-input-packet.py \
-  --packet /absolute/alpha-native-inputs.zip --sha256 "$packet_sha256" \
-  --out /absolute/private/new-staging-directory
-```
-
-The receiver checks the complete ZIP, member hashes and qualification evidence
-against the package, SDK, voice and embedding records in the reviewed checkout
-before publishing the staged directory. Keep its original `packet.json`.
-After approval for transfer and redistribution, upload the contents of
-`voice/`, `embedding-component/` and `embedding-qualification/` as three
-separate artifacts. Record their GitHub artifact IDs and archive digests in
-the hosted manifest. Signed-in users with read access can download Actions
-artifacts from the repository. [GitHub artifact access](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
-
-Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
-manifest against the checkout without downloading. Automatic runs check the
-three pins against GitHub metadata before setting up the Android toolchain.
-The check names each unavailable input and reports the expiry of admitted pins
-so the maintainer can renew them before a build fails. Acquisition checks the
-metadata again and verifies the exact archive bytes through the workflow's
-read-only token. The build stages with the existing voice and embedding tools
-and retains the input IDs, hashes and sizes in `native-input-admission.json`.
-The candidate receipt binds its digest to the exact source, SDK and run attempt.
-The build evidence records the uploaded candidate's ID and compressed size
-from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
-The expiry workflow on the default branch checks `main` on schedule and on
-manual dispatch from `develop`. A manual dispatch from `main` checks the
-selected commit. Its summary records the inspected revision and identifies
-pins expiring within four days. Renew the artifact IDs and digests while the
-old inputs remain available. Retain qualification receipts for identical
-files and review changed native bytes or source records before admission.
-The candidate archive retains the distribution producer evidence before
-the test-mocks build can replace it.
+The unsigned candidate retains the generated native-input receipt and binds its
+digest into the frozen build inputs and candidate manifest. Protected signing
+checks that receipt against the candidate's source, SDK, product identity and
+file inventory. This establishes build custody; it does not establish hardware
+or signed-byte speech qualification.
 
 The existing workflow run number is the candidate versionCode, checked against
-both releases' retained APKs and public pointers, and the committed version floors.
+the active and retired channels' retained APKs and public pointers, and the committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
 migration that exceeds this number stops candidate creation and needs a reviewed
 version migration. Manual builds keep their explicit version input.
@@ -362,11 +310,15 @@ python3 -B scripts/ci/admit-cloud-signing-input.py prepare-candidate \
 ```
 
 Review the plan and retain its exact bytes. The release operator dispatches
-protected signing on `main` with the exact reviewed `workflow_commit` and
-`signing-plan.json` as the `signing_plan` input. Preflight checks the official
-Actions ZIP. The protected job checks the same run attempt and artifact again,
-then stages the pinned private generation before accessing the signing key.
-[Protected signing workflow](../.github/workflows/release-cloud-app-signing.yml)
+the [release workflow](../.github/workflows/release.yml) on `main` with
+operation `sign`, the exact reviewed `workflow_commit` and `signing-plan.json`
+as the `plan` input. Preflight checks the official Actions ZIP. The protected
+job checks the same run attempt and artifact again, then stages the pinned
+private generation before accessing the signing key. Current builds produce one
+native launcher APK on the public update channel. Release tooling also retains
+the previously reviewed private Cloud producer contract: its complete standalone
+and launcher pair must match the approved hashes, Cloud profile and historical
+package identity. This compatibility path does not add a current build variant.
 
 For publication, set `delivery_artifact_id` to the numeric ID of the original
 `private-cloud-apk-delivery-*` artifact from the successful signing attempt.
@@ -386,17 +338,19 @@ gcloud storage cp "$signed_uri" signed.tar
 ```
 
 Complete Cartesia qualification on each exact signed APK. Record a content-free
-`alpha-cloud-voice-qualification-v1` JSON receipt with two `results` rows. Each
+`alpha-cloud-voice-qualification-v1` JSON receipt with one `results` row per
+approved signed APK: one for the current launcher, or two for a retained Cloud pair. Each
 row names the observed `apkSha256`, `provider` and `outcome`, and records the
 observed booleans in `checks` for `consent`, `session`, `acousticInput`,
 `blueBar`, `transcript`, `audibleSpeakerReply`, `mute`, `unmute` and
 `stopReleased`. Record only the check outcomes and omit transcripts, recordings
-and credentials. The workflow admits passing Cartesia checks for both APKs.
+and credentials. The workflow admits passing Cartesia checks for every exact APK
+named in the reviewed plan.
 
 Set `publication_commit` to the exact reviewed commit currently on `main`.
 Prepare the qualification using the original plan bytes and the reviewed voice
 receipt. The command checks the official signing attempt and delivery ZIP,
-streams both APKs from the local signed TAR and retains the original evidence bytes.
+streams the approved APKs from the local signed TAR and retains the original evidence bytes.
 
 ```sh
 python3 -B scripts/ci/qualified-app-update.py prepare-qualification \
@@ -406,18 +360,15 @@ python3 -B scripts/ci/qualified-app-update.py prepare-qualification \
   > qualification.json
 ```
 
-Review `qualification.json` and supply it as the protected workflow's
-`qualification` input with the reviewed `workflow_commit`. Complete both
-admissions before the one-day signing delivery receipt expires. The protected
-job restores the same private mirror and exact signed output before publication.
-[Qualified publication workflow](../.github/workflows/publish-qualified-app-update.yml)
-
-The existing reviewed Cloud producer routes remain available for their
-approved package and profile.
+Review `qualification.json` and dispatch the release workflow with operation
+`publish`, the reviewed `workflow_commit` and `qualification.json` as the
+`plan` input. Complete both admissions before the one-day signing delivery
+receipt expires. The protected job restores the same private mirror and exact
+signed output before publication.
 
 The native route keeps the 1.5 GB limit on the producer ZIP and signed TAR.
-The two unsigned APKs and the two debug APKs each have a separate 1.5 GB
-expanded pair limit. Admission checks exact member lengths against the
+The unsigned release APK and debug APK each have a separate 1.5 GB
+expanded limit. Admission checks exact member lengths against the
 reviewed archives and verifies the APK digests when streaming the bytes.
 
 Release approval, signed-byte voice tests, publication and both sideload and
@@ -488,15 +439,15 @@ bun scripts/verify-wireless-launcher-update.ts matrix \
 ```
 
 The matrix checks the receipt links, signing family, installed SDK revision
-and the same two offered releases across both distributions. It reads the saved
+and the same two offered releases across both installation paths. It reads the saved
 receipts offline, so the public channel may already have advanced.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/alphacompute/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/alphacompute/alphaphone/issues/889).
 Complete it in this order:
 
-1. Admit native voice inputs for the exact SDK, then build and sign both
-   distribution variants. Preserve advancing versions and the enrolled signer.
+1. Admit native voice inputs for the exact SDK, then build and sign the
+   launcher release. Preserve advancing versions and the enrolled signer.
    The protected [release custody workflow](../.github/workflows/release-custody-proof.yml)
    exports the verified public certificates and fingerprints under
    `artifacts/release-public-identities/` for enrollment.
@@ -534,18 +485,9 @@ Complete it in this order:
      [Cloud registration #666](https://github.com/alphacompute/alphaphone/issues/666),
      [App Links #670](https://github.com/alphacompute/alphaphone/issues/670).
 
-   For a debug-signed Pixel, use an explicit `--test-mocks` APK on an owned
-   test device and select **Staging** in **Subscription gate QA**. The staging
-   App Links filter is part of that build. Use the staging URL
-   `https://staging.eliza.app/.well-known/assetlinks.json` and pass
-   `--keep-fingerprint <debug-SHA256>` to the asset-link config generator.
-   For native Google sign-in, add the package and that signer's SHA-1 in
-   the staging Steward project. After deploying, run
-   `bun scripts/cloud-readiness.ts probe --environment staging --signer <debug-SHA256>`.
-   The staging phone flow ends at plan admission. For production Cloud acceptance
-   on the Pixel, use the admitted release APK. Android requires a separate device
-   or fresh installation when the installed copy uses an incompatible signer.
-3. Qualify the exact signed baseline and establish it on both distribution
+   For production Cloud acceptance on the Pixel, use the admitted release APK.
+   Android requires a separate device or fresh installation when the installed copy uses an incompatible signer.
+3. Qualify the exact signed baseline and establish it on both installation
    paths before exposing the phones to a newer offer. If using
    `scripts/provision-unit.ts`, provision before recording the baseline's version
    as the release floor. Qualify and publish the first advancing launcher
@@ -575,11 +517,32 @@ It also includes the [selected-tab permission](https://github.com/elizaOS/eliza/
 [prepared speech](https://github.com/elizaOS/eliza/pull/39424), [download publication](https://github.com/elizaOS/eliza/pull/39425),
 [held update offer](https://github.com/elizaOS/eliza/pull/39440) and [updater scratch storage](https://github.com/elizaOS/eliza/pull/39446) changes
 and [bounded secure-store allocations](https://github.com/elizaOS/eliza/pull/39461)
-at `c9247e6966b572612b51e6b5e6a1f15af2843af8` on upstream develop. The native engine
-gitlink and native compiler inputs match the previous pin. Two producer admission
-digests were reviewed and updated for retired package scripts and Linux workspaces.
-No native build or qualification was run for that metadata update. Rebuild and
-qualify the exact product inputs before OS enrollment.
+at `0f4b3b0b0ee6239bc8b1113e8df6709a6b6940a8` on upstream develop. This
+also consumes the reviewed [Bun and ABI cleanup](https://github.com/elizaOS/eliza/pull/39420),
+[Cloud, Files and Sense fixes](https://github.com/elizaOS/eliza/pull/39444),
+[Calendar provider timestamps](https://github.com/elizaOS/eliza/pull/39467),
+[owner-clock scheduling](https://github.com/elizaOS/eliza/pull/39470) and
+[model-generated morning summaries](https://github.com/elizaOS/eliza/pull/39471).
+The [portable fixture and evidence paths](https://github.com/elizaOS/eliza/pull/39478)
+remove personal home directories from the pinned source. The pin also includes
+reviewed [browser URL parser](https://github.com/elizaOS/eliza/pull/39351) and
+[browser automation dependency](https://github.com/elizaOS/eliza/pull/39354) updates.
+The reviewed batch through `0f4b3b0b0` adds [markdown-it 15](https://github.com/elizaOS/eliza/pull/39353),
+[Workers types](https://github.com/elizaOS/eliza/pull/39352),
+[MapLibre development dependencies](https://github.com/elizaOS/eliza/pull/39350),
+the [native dependency installer cleanup](https://github.com/elizaOS/eliza/pull/39484)
+and the [2.0.6 release cohort](https://github.com/elizaOS/eliza/pull/39483).
+The current SDK pin `442586ce66abf43ff382a951b8d439efd400af84` adds the reviewed
+Phonon model provenance and hash diagnostics to that `0f4b3b0b0` baseline. Its
+engine pin `5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd` canonicalizes zero mel
+weights so the source-built model is byte-identical on ARM64 and x86_64.
+Renderer and core implementation sources are unchanged. SDK preparation and
+native receipt admission run again for the new source recipe.
+Historical native measurements retain their original source attribution.
+New builds use the current source recipe and generated
+output receipts; neither a source update nor a successful APK build qualifies
+hardware. Qualify the launcher APK from the exact current inputs
+before distribution or OS enrollment.
 
 The protected [preserving OS OTA signing workflow](../.github/workflows/release-os-ota-signing.yml)
 signs only an admitted OTA package with the existing release key. Its committed

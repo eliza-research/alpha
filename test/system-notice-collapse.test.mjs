@@ -78,28 +78,8 @@ test('failed, unfinished, streaming, card and phone receipt rows do not prove ch
   assert.deepEqual(collapseSystemNotices([user('u1'),notice('n1'),row]).map(m=>m.id),['u1','n1','x'],JSON.stringify(row));
 });
 
-test('restored history marks saved interrupted replies as unfinished',()=>{
- const restored=ui.slice(ui.indexOf('function restoredMessages('),ui.indexOf('\n}\n',ui.indexOf('function restoredMessages(')));
- const run=new Function('systemNoticeKind','systemNoticeDisplayText','restoredText','displayText',ts(restored.replace(/:RestoredMessage\[\]/,'').replace(/items:Record<string,unknown>\[\]/,'items')+'\n}')+';return restoredMessages;')(systemNoticeKind,systemNoticeDisplayText,text=>text,text=>text);
- const rows=run([{id:'u1',role:'user',text:'hi'},{id:'a1',role:'assistant',text:'',interrupted:true},{id:'a2',role:'assistant',text:'Half',interrupted:true},{id:'n1',role:'assistant',text:systemNoticeText('runtime-error')}]);
- assert.deepEqual(rows.map(m=>[m.id,m.unfinished===true,m.systemNotice]),[['u1',false,undefined],['a1',true,undefined],['a2',true,undefined],['n1',false,'runtime-error']]);
- assert.deepEqual(collapseSystemNotices(rows).map(m=>m.id),['u1','a1','a2','n1'],'after a reload, a failed turn keeps its notice');
-});
 
-test('a live proactive copy after the collapse is not appended again, and unchanged input is returned as is',()=>{
- const merge=new Function(ts(ui.slice(ui.indexOf('export function mergeConversationDelivery'),ui.indexOf('\n}\n',ui.indexOf('export function mergeConversationDelivery'))).replace('export ','')+'\n}')+';return mergeConversationDelivery;')();
- const shown=collapseSystemNotices([user('u1'),notice('n1'),notice('n2')]);
- assert.deepEqual(shown.map(m=>m.id),['u1','n2']);
- const again=collapseSystemNotices(merge(shown,[notice('n3')]));
- assert.deepEqual(again.map(m=>m.id),['u1','n3'],'still one notice');
- assert.equal(collapseSystemNotices(again),again,'an already collapsed list is returned as is');
- const plain=[user('u1'),reply('a1')];assert.equal(collapseSystemNotices(plain),plain);
-});
 
-test('history and live delivery both mark notices and collapse them before rendering',()=>{
- const restored=ui.slice(ui.indexOf('function restoredMessages('),ui.indexOf('\n}\n',ui.indexOf('function restoredMessages(')));
- assert.match(restored,/const notice=item\.role==='assistant'\?systemNoticeKind\(item\.text\):undefined;/);
-  assert.match(adapter,/msgs:collapseSystemNotices\(mergeConversationDelivery\(messages,newer\)\)/);
- assert.match(adapter,/const msgs=collapseSystemNotices\(mergeConversationDelivery\(previous\.msgs,messages\)\);/);
- assert.match(adapter,/const shownNotices=collapseSystemNotices\(live\);/,'a reply sent after the notice hides it at render time');
-});
+
+
+

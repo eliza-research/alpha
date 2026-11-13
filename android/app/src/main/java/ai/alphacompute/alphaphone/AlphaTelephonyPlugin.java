@@ -18,7 +18,7 @@ import com.getcapacitor.annotation.Permission;
  * ({@link AlphaTelephony}) and the bounded contact search over {@link ContactsCatalog} (shared plugin-native-contacts).
  *
  * MainActivity registers this plugin only when {@link AlphaImageCapability} verifies the image, so a
- * standalone APK or a sideloaded launcher APK has no such plugin; each method checks the capability
+ * sideloaded launcher APK has no such plugin; each method checks the capability
  * again. Emergency numbers go to the system dialer like any other number.
  */
 @CapacitorPlugin(name = "AlphaTelephony", permissions = {
@@ -26,8 +26,8 @@ import com.getcapacitor.annotation.Permission;
  @Permission(alias = "phoneState", strings = { Manifest.permission.READ_PHONE_STATE }),
  @Permission(alias = "sms", strings = { Manifest.permission.READ_SMS }),
  @Permission(alias = "sendSms", strings = { Manifest.permission.SEND_SMS }),
- // Bounded recent calls for the image Phone view (shared TelephonyPlugin.listRecentCalls). Only the
- // launcher manifest declares READ_CALL_LOG; the standalone manifest removes it.
+ // Bounded recent calls for the image Phone view (shared TelephonyPlugin.listRecentCalls).
+ // The launcher manifest declares READ_CALL_LOG; the image capability still gates access.
  @Permission(alias = "callLog", strings = { Manifest.permission.READ_CALL_LOG })
 })
 public class AlphaTelephonyPlugin extends TelephonyPlugin {

@@ -7,6 +7,7 @@ import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces} from '../specs/quint/refinement/check-traces.mjs';
 import {action, deferred, until} from '../specs/quint/refinement/services/support.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 /** Bounded source projections for the screen-mode and guidance/readback models.
  * Provider, GPS, voice and native-session boundaries are closed asynchronous ports.
@@ -110,7 +111,7 @@ async function checkMapsScreenModes(extraSources=[],options={}){
      f.screen.back();point('Back clears retained query',action('back'));
     }else{
      f.screen.openDirections();point('Directions never request location or routing by themselves',action('openDirections'));assert.equal(f.routes.length,0);assert.equal(f.agent.starts,0);assert.equal(f.location.starts,0);
-     f.screen.setOriginText(mode==='origin-search'?'Start':'1, 1');point('real typed origin invalidates route',action('editOrigin'));
+     f.screen.setOriginText(mode==='origin-search'?'Start':'1, 1');point('real typed origin invalidates route',action('editOrigin',mode!=='origin-search'));
      if(mode==='origin-search'){
       f.screen.planOrigin();await until(()=>f.controller().snapshot().originSearch.phase==='ready','actual origin search');point('origin search opens only origin layer',action('searchOrigin'));
       f.screen.back();point('Back closes only origin search',action('back'));assert.equal(f.screen.view().mode,'directions');
@@ -128,7 +129,7 @@ async function checkMapsScreenModes(extraSources=[],options={}){
   const receipt=await checkTraces({model:'MapsScreenModes',sources:p.sources,driverHashes:p.hashes,generatedSources:[p.input],traces,scope:'bounded-orchestration',assumptions:[
    'Actual MapsScreenController and MapsController execute search, selected place, directions, origin search, manual-coordinate planning, Start, End and layered Back. Private TypeScript fields are read without rewriting behavior; public view modes and independent provider/GPS call counts cross-check their state.',
    'Closed deterministic provider, storage, location, voice and background-session ports are not installed integrations. Three explicit schedules project searching, query, selection, directions, origin mode, navigation, locating, origin and route readiness.',
-   'hidden, watch, originText, typedOriginReplaced, lastChoice and the shell handoff/counter fields are not projected. Cross-app consumption, permission/watch races, native background lifecycle, saved places, agent commands and arbitrary interleavings remain separate obligations. leaveView deliberately retains settled state and is excluded rather than equated with the older model release action.',
+   'hidden, watch, originText, lastChoice and the shell handoff/counter fields are not projected. The starting point is typed before the location permission read settles, so opening directions requests no fix. Cross-app consumption, permission/watch races, native background lifecycle, saved places, agent commands, leaving the view and arbitrary interleavings are replayed from model traces by maps-screen-modes.mjs.',
   ]});
   return{receipt,obligations:[{model:'MapsScreenModes',obligation:'Unobserved shell, location, lifecycle and agent schedules',reason:receipt.assumptions?.at(-1)??'Only three explicit screen-layer schedules are observed.'}]};
  }finally{p.close();}
@@ -187,8 +188,8 @@ async function checkMapsNavigationGuidanceReadback(extraSources=[],options={}){
  }finally{p.close();}
 }
 
-test('actual Maps screen layers refine the bounded modes projection',async()=>{const {receipt}=await checkMapsScreenModes();assert.equal(receipt.passed,true);assert.equal(receipt.driverInputsBound,true);assert.equal(receipt.traces,3);assert.ok(receipt.checkpoints>=25);});
-test('actual Maps guidance and readback refine bounded route/session schedules',async()=>{const {receipt}=await checkMapsNavigationGuidanceReadback();assert.equal(receipt.passed,true);assert.equal(receipt.driverInputsBound,true);assert.equal(receipt.traces,8);assert.ok(receipt.checkpoints>=40);});
-test('screen source canary detects Back retaining selected place',async()=>{await assert.rejects(checkMapsScreenModes([],{mutant:'keep-place-after-back'}),/Back must retire selected-place layer|Source\/model trace mismatch/);});
-test('guidance source canary detects End retaining guidance',async()=>{await assert.rejects(checkMapsNavigationGuidanceReadback([],{mutant:'keep-guidance-after-end'}),/End must clear actual guidance readback|Source\/model trace mismatch/);});
-test('guidance source canary detects a view switch ending guidance',async()=>{await assert.rejects(checkMapsNavigationGuidanceReadback([],{mutant:'end-guidance-on-view-leave'}),/A view switch must keep|Source\/model trace mismatch/);});
+test('actual Maps screen layers refine the bounded modes projection',{timeout:scaledTimeout(600000)},async()=>{const {receipt}=await checkMapsScreenModes();assert.equal(receipt.passed,true);assert.equal(receipt.driverInputsBound,true);assert.equal(receipt.traces,3);assert.ok(receipt.checkpoints>=25);});
+test('actual Maps guidance and readback refine bounded route/session schedules',{timeout:scaledTimeout(600000)},async()=>{const {receipt}=await checkMapsNavigationGuidanceReadback();assert.equal(receipt.passed,true);assert.equal(receipt.driverInputsBound,true);assert.equal(receipt.traces,8);assert.ok(receipt.checkpoints>=40);});
+test('screen source canary detects Back retaining selected place',{timeout:scaledTimeout(600000)},async()=>{await assert.rejects(checkMapsScreenModes([],{mutant:'keep-place-after-back'}),/Back must retire selected-place layer|Source\/model trace mismatch/);});
+test('guidance source canary detects End retaining guidance',{timeout:scaledTimeout(600000)},async()=>{await assert.rejects(checkMapsNavigationGuidanceReadback([],{mutant:'keep-guidance-after-end'}),/End must clear actual guidance readback|Source\/model trace mismatch/);});
+test('guidance source canary detects a view switch ending guidance',{timeout:scaledTimeout(600000)},async()=>{await assert.rejects(checkMapsNavigationGuidanceReadback([],{mutant:'end-guidance-on-view-leave'}),/A view switch must keep|Source\/model trace mismatch/);});

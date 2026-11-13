@@ -11,6 +11,8 @@ module PhoneRecents {
     // and the controls are disabled while either is held.
     active: bool, epoch: int, session: int, reading: bool, dialing: bool,
     rows: bool, needsAccess: bool, notice: str,
+    // What the number field holds: "" (empty), "valid" or "invalid".
+    number: str,
     // Call-log access on the device: "prompt", "granted", "denied" or "unsupported".
     access: str,
     reads: Set[Read], dials: Set[Dial],
@@ -24,7 +26,7 @@ module PhoneRecents {
   pure def available(v: State): bool = v.mounted and v.phoneView and not(v.hidden)
   pure def busy(v: State): bool = v.reading or v.dialing
   pure def cleared(v: State): State =
-    { ...v, epoch: v.epoch + 1, session: v.session + 1, rows: false, notice: "", reading: false, dialing: false,
+    { ...v, epoch: v.epoch + 1, session: v.session + 1, rows: false, notice: "", number: "", reading: false, dialing: false,
       needsAccess: false }
   pure def startRead(v: State, request: bool): State =
     if (not(available(v))) { ...v, epoch: v.epoch + 1 }
@@ -39,7 +41,7 @@ module PhoneRecents {
 
   action initWith(access: str): bool = all { access.in(Set("prompt", "granted", "unsupported")),
     s' = { mounted: true, phoneView: false, hidden: false, active: false, epoch: 0, session: 0, reading: false, dialing: false,
-      rows: false, needsAccess: false, notice: "", access: access, reads: Set(), dials: Set(),
+      rows: false, needsAccess: false, notice: "", number: "", access: access, reads: Set(), dials: Set(),
       requests: 0, prompts: 0, discarded: 0, handoffs: 0 } }
   action init = { nondet access = Set("prompt", "granted", "unsupported").oneOf() initWith(access) }
   val room = s.epoch + 2 <= MaxEpoch
@@ -62,7 +64,14 @@ module PhoneRecents {
       else if (failed) { ...s, reads: reads, rows: false, reading: false }
       else { ...s, reads: reads, reading: false, rows: s.access == "granted",
         needsAccess: s.access == "prompt" or s.access == "denied" } }
-  action dial(valid: bool): bool = all { not(busy(s)), available(s), s.handoffs < 3,
+  /// Typing in the number field replaces its value and clears the last notice. The field is
+  /// disabled while a read or a handoff holds a latch.
+  action typeNumber(value: str): bool = all { available(s), not(busy(s)), value.in(Set("", "valid", "invalid")),
+    s' = { ...s, number: value, notice: "" } }
+  /// Dial hands a number to the system dial screen: a recent call's own number, or the one typed
+  /// in the field. A field without a valid number is refused with a notice.
+  action dial(fromRow: bool): bool = all { not(busy(s)), available(s), s.handoffs < 3, fromRow implies s.rows,
+    val valid = fromRow or s.number == "valid"
     s' = if (valid) { ...s, dialing: true, dials: s.dials.union(Set({ session: s.session, id: s.handoffs + 1 })),
         handoffs: s.handoffs + 1, notice: "" }
       else { ...s, notice: "invalid" } }
@@ -72,7 +81,8 @@ module PhoneRecents {
       else { ...s, dials: s.dials.exclude(Set(d)), discarded: if (s.discarded < 3) s.discarded + 1 else 3 } }
   action step = {
     nondet flag = Set(true, false).oneOf()
-    any { openPhone, leavePhone, hide, show, unmount, refresh(flag), dial(flag),
+    nondet value = Set("", "valid", "invalid").oneOf()
+    any { openPhone, leavePhone, hide, show, unmount, refresh(flag), dial(flag), typeNumber(value),
       all { s.reads.size() > 0, { nondet read = s.reads.oneOf() any { readSettles(read, flag), systemPrompt(read, flag) } } },
       all { s.dials.size() > 0, { nondet d = s.dials.oneOf() dialSettles(d) } },
       s' = s }
@@ -90,14 +100,19 @@ module PhoneRecents {
   val OneHandoffPerShowing = s.dials.filter(d => d.session == s.session).size() <= 1
   val PromptOnlyOnRequest = s.prompts <= s.requests
   val AccessStateExclusive = not(s.rows and s.needsAccess) and (s.needsAccess implies s.active)
+  /// The typed number and the notice are held only while Phone is showing.
+  val FieldOnlyWhileShowing = s.number != "" or s.notice != "" implies s.active
   val safety = RowsOnlyWhileShowing and ActiveTracksShowing and ReadingHasCurrentRead and DialingTracksHandoff and
-    OneHandoffPerShowing and PromptOnlyOnRequest and AccessStateExclusive
+    OneHandoffPerShowing and PromptOnlyOnRequest and AccessStateExclusive and FieldOnlyWhileShowing
 
   val RowsWitness = s.rows
   val DiscardedResultWitness = s.discarded > 0 and s.active
   val AccessNeededWitness = s.needsAccess and s.prompts == 1
   val DialNoticeWitness = s.notice == "handoff"
   val ReadDuringHandoffWitness = s.dialing and s.reading
+  /// A typed number is handed off without call-log access.
+  val TypedDialWitness = s.dialing and s.number == "valid" and not(s.rows)
+  val RefusedFieldWitness = s.notice == "invalid" and s.number == "invalid"
 
   // A read still in flight when Phone is left must not bring rows back after the view cleared.
   run lateReadAfterLeavingTest = initWith("granted").then(openPhone).expect(s.reading and s.epoch == 1)
@@ -146,4 +161,14 @@ module PhoneRecents {
     .then(readSettles({ token: 3, request: false }, false)).then(dial(true)).expect(s.dials.size() == 2 and safety)
     .then(dialSettles({ session: 0, id: 1 })).expect(s.dialing and s.notice == "" and s.discarded == 1 and safety)
     .then(dialSettles({ session: 1, id: 2 })).expect(not(s.dialing) and s.notice == "handoff" and safety)
+  // Typing after a refused dial clears its notice; the typed number then dials without call-log access.
+  run typedNumberClearsNoticeTest = initWith("prompt").then(openPhone)
+    .then(readSettles({ token: 1, request: false }, false)).then(dial(false))
+    .expect(s.notice == "invalid" and not(s.dialing) and s.handoffs == 0)
+    .then(typeNumber("valid")).expect(s.notice == "" and s.number == "valid" and safety)
+    .then(dial(false)).expect(s.dialing and s.handoffs == 1 and not(s.rows) and safety)
+  run fieldIsLockedWhileBusyTest = initWith("granted").then(openPhone).then(typeNumber("valid").fail())
+  run leavingForgetsFieldTest = initWith("granted").then(openPhone)
+    .then(readSettles({ token: 1, request: false }, false)).then(typeNumber("invalid")).then(dial(false))
+    .expect(s.notice == "invalid").then(leavePhone).expect(s.number == "" and s.notice == "" and safety)
 }

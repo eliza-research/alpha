@@ -138,38 +138,25 @@ test("a complete copy of Alpha's descriptors admits Pixel 10a production staging
   assert.match(pixel10aProductProblems(temporary(t, "alpha-empty-")).join("\n"), /pixel10a-product\.json is missing/);
 });
 
-test("Pixel 10a staging options: development or production, never both, always with exact source inputs", () => {
+test("Pixel 10a staging options: always with exact source inputs", () => {
   const base = { target: "pixel10a", source: "/source", factory: "/factory" };
-  assert.equal(pixel10aOptions({ ...base, development: true }), true);
-  assert.equal(pixel10aOptions({ ...base, production: true }), true);
-  assert.throws(() => pixel10aOptions({ ...base, development: true, production: true }), /exclusive/);
-  assert.throws(() => pixel10aOptions(base), /--development or --production/);
-  assert.throws(() => pixel10aOptions({ ...base, production: true, factory: null }), /--aosp-source and --factory-image/);
-  assert.throws(() => pixel10aOptions({ ...base, development: true, source: null }), /--aosp-source and --factory-image/);
-  // Without a target the existing product is staged, and a factory image alone is refused.
-  assert.equal(pixel10aOptions({ development: true, target: null }), false);
-  assert.throws(() => pixel10aOptions({ factory: "/factory" }), /requires --target pixel10a/);
-  assert.throws(() => pixel10aOptions({ ...base, target: "stallion", development: true }), /Only --target pixel10a/);
+  assert.equal(pixel10aOptions(base), true);
+  assert.throws(() => pixel10aOptions({ ...base, factory: null }), /--aosp-source and --factory-image/);
+  assert.throws(() => pixel10aOptions({ ...base, source: null }), /--aosp-source and --factory-image/);
+  for (const target of [null, "stallion"])
+    assert.throws(() => pixel10aOptions({ ...base, target }), /requires --target pixel10a or --target cuttlefish/);
 });
 
-test("stage-aosp --target pixel10a --production refuses a missing trust identity before reading source or APK", t => {
+test("production stage-aosp --target pixel10a refuses a missing trust identity before reading source or APK", t => {
   const repo = completeRoot(t, keyDirectory(t));
   const product = JSON.parse(fs.readFileSync(path.join(repo.dir, PIXEL10A_PRODUCT), "utf8"));
   product.signer.platformCertificateSha256 = "UNSET";
   repo.write(PIXEL10A_PRODUCT, product);
-  const out = spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), "--target", "pixel10a", "--production", "--descriptor", "reviewed.json",
+  const out = spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), "--target", "pixel10a", "--descriptor", "reviewed.json",
     "--apk", "absent.apk", "--aosp-source", "/absent/source", "--factory-image", "/absent/factory.zip"], { cwd: repo.dir, encoding: "utf8" });
   assert.notEqual(out.status, 0);
   assert.match(out.stderr, /Refusing production staging: the Pixel 10a production product \(android\/aosp\/pixel10a-product\.json\) is incomplete\.[\s\S]*platformCertificateSha256/);
   assert.doesNotMatch(out.stderr, /absent/);
-});
-
-test("the stallion product sets no board AVB variables and no key material is committed", () => {
-  for (const name of fs.readdirSync(path.join(root, "vendor/eliza/packages/os/android/devices/pixel10a")).filter(name => name.endsWith(".mk")))
-    assert.doesNotMatch(fs.readFileSync(path.join(root, "vendor/eliza/packages/os/android/devices/pixel10a", name), "utf8"), /^\s*BOARD_AVB_/m, name);
-  assert.equal(read(PIXEL10A_PRODUCT).avb.makefile, undefined);
-  const files = execFileSync("git", ["-C", root, "ls-files", "android/aosp"], { encoding: "utf8" }).split("\n");
-  assert.deepEqual(files.filter(name => /\.(pk8|pem|key|p12|jks|keystore)$|avb_pkmd/.test(name)), []);
 });
 
 test("Alpha's signing binding signs with its descriptor, channel and APK signer through the shared job", async t => {
@@ -260,8 +247,9 @@ test("Alpha Cloud release evidence does not replace the signer or native-profile
   assert.match(releaseBlockers(candidate,{releaseSigner:{schema:1,signerSha256:"unset",lastRelease:{versionCode:null}}}).join("\n"),/release signer is unset/);
 });
 
-// Public identity enrollment does not remove the independent Soong patch input gate.
-test("production staging requires the applied Soong patch before source or APK IO", () => {
- const out=spawnSync(process.execPath,[path.join(root,"scripts/stage-aosp.ts"),"--target","pixel10a","--production","--descriptor","reviewed.json","--apk","absent.apk","--aosp-source","/absent/source","--factory-image","/absent/factory.zip"],{cwd:root,encoding:"utf8"});
- assert.notEqual(out.status,0);assert.match(out.stderr,/Image staging requires --applied-build-patch soong-app-native/);assert.doesNotMatch(out.stderr,/absent/);
+
+test("the stallion product sets no board AVB variables and no key material is committed", () => {
+  assert.equal(read(PIXEL10A_PRODUCT).avb.makefile, undefined);
+  const files = execFileSync("git", ["-C", root, "ls-files", "android/aosp"], { encoding: "utf8" }).split("\n");
+  assert.deepEqual(files.filter(name => /\.(pk8|pem|key|p12|jks|keystore)$|avb_pkmd/.test(name)), []);
 });

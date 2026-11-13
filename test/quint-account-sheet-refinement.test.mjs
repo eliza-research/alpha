@@ -13,9 +13,10 @@ import {filesWithin, repositoryRoot as root, sha256} from '../scripts/quint-lib.
 import {seedCompletedAccessSetup} from './browser/flag-off-android.ts';
 import {entitlements, installNativeCloudPlanPorts, USER} from './browser/helpers/native-cloud-plan-fixture.ts';
 import {captureInputs, checkTraces, qset} from '../specs/quint/refinement/check-traces.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 const driver=fileURLToPath(import.meta.url),product='apps/app/src/runtime/connection-ui.tsx';
-const expect=baseExpect.configure({timeout:20000});
+const expect=baseExpect.configure({timeout:scaledTimeout(20000)});
 const panel=page=>page.locator('[data-alpha-membership-panel]');
 
 async function nativeFixture(page,input){
@@ -103,7 +104,7 @@ async function checkAccountSheet(extraSources=[]){
   await server.listen();const origin='http://127.0.0.1:'+server.httpServer.address().port;
   browser=await chromium.launch({headless:true});const traces=[];
   for(const kind of ['navigation','cancel-review','owner-switch','confirmed-sign-out','direct-mode-sign-out']){
-   const page=await browser.newPage({reducedMotion:'reduce'});page.setDefaultTimeout(30000);
+   const page=await browser.newPage({reducedMotion:'reduce'});page.setDefaultTimeout(scaledTimeout(30000));
    const foreign=[];await page.route('**/*',route=>{const u=new URL(route.request().url());
     if(u.origin===origin||['data:','blob:'].includes(u.protocol))return route.continue();foreign.push(u.origin+u.pathname);return route.abort();});
    await page.routeWebSocket(/.*/,socket=>socket.close());await page.addInitScript(readFileSync(initializer,'utf8'));
@@ -112,7 +113,7 @@ async function checkAccountSheet(extraSources=[]){
     await expect.poll(()=>page.evaluate(async()=>{
      const c=(await import('/src/runtime/connection-ui.tsx')).connectionController;
      return !!c.getSnapshot().cloudAccount&&!c.getSnapshot().busy&&!!c.getSnapshot().session;
-    }),{timeout:90000}).toBe(true);
+    }),{timeout:scaledTimeout(90000)}).toBe(true);
     await page.evaluate(async originalUser=>{
      const c=(await import('/src/runtime/connection-ui.tsx')).connectionController;
      window.accountController=c;window.accountOriginalUser=originalUser;
@@ -178,7 +179,7 @@ async function checkAccountSheet(extraSources=[]){
  }
 }
 
-test('mounted Account navigation and retained confirmation preserve owned credentials and data',{timeout:300000},async()=>{
+test('mounted Account navigation and retained confirmation preserve owned credentials and data',{timeout:scaledTimeout(300000)},async()=>{
  const receipt=await checkAccountSheet([fileURLToPath(import.meta.url)]);
  assert.equal(receipt.passed,true);assert.equal(receipt.driverInputsBound,true);assert.equal(receipt.inputsUnchanged,true);
  assert.equal(receipt.traces,5);

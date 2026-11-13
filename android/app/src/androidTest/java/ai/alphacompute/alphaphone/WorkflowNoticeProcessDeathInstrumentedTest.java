@@ -148,8 +148,7 @@ public final class WorkflowNoticeProcessDeathInstrumentedTest {
   * A pending approval's notice survives an ordinary process death, and its original OS-owned
   * PendingIntent is then captured by the restarted main for exactly that approval: a second approval
   * posted beside it stays untouched. Native capture only; the renderer opening the approval is not
-  * observed. Run by scripts/ci/pending-recovery-ui.py phase workflow-approval-process-death
-  * (workflowNoticeProcessDeath=approval) in the separate WorkflowNoticeProcessRunner process, after its
+  * observed. Runs with workflowNoticeProcessDeath=approval in the separate WorkflowNoticeProcessRunner process, after its
   * prepare run.
   */
  @Test public void approvalNoticeOpensOnlyItsApprovalAfterProcessDeath()throws Exception {

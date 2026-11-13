@@ -8,7 +8,7 @@ import {boundInputs, call, captureSources, checkpoint, trace} from './support.mj
 const driver = fileURLToPath(import.meta.url);
 const model = 'NotesRecorderMediaAdmission';
 const inputs = ['test/fixtures/notes-recorder-media.mjs', 'apps/app/src/prototype/voice-adapter.ts',
-  'apps/app/src/prototype/note-recorder.ts', 'apps/app/src/prototype/notes-recorder-control.ts',
+  'apps/app/src/prototype/note-recorder.ts', 'apps/app/src/runtime/voice-states.ts', 'apps/app/src/prototype/notes-recorder-control.ts',
   'apps/app/src/prototype/canonical-notes-ui.ts', 'apps/app/src/prototype/template.html',
   'apps/app/src/browser/voice.ts', 'apps/app/src/browser/audio-capture.ts', 'apps/app/src/browser/note-audio-store.ts',
   'apps/app/src/browser/note-recording-journal.ts'];
@@ -85,7 +85,7 @@ export async function checkNotesRecorderMediaAdmission(extraSources = []) {
     await schedule('stop refusal closes microphone admission for a current attempt', async c => {
       await c.retirePlayback();await c.start('control');await c.media.release(true);
       await c.media.wait('recorder', 'failed');await c.media.wait('control', 'failed');
-      assert.equal((await c.media.snapshot()).message, 'Restart needed');
+      assert.equal((await c.media.snapshot()).message, 'Speech could not be stopped. Restart Alpha.');
       await c.mark('Unconfirmed audio shutdown refuses capture and reports the current failure',
         [call('refuseStop'), call('refuseCapture', 1)]);
     });

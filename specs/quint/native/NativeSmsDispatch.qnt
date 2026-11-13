@@ -8,7 +8,7 @@ module NativeSmsDispatch {
   type Review = {binding: int, sim: int}
   type State = {
     recipients: int, parts: int, reply: str, replyBinding: int, memory: Record, disk: Record, tombstoneBinding: int,
-    attempts: int, accepted: int, reviews: int -> Review, foreground: Set[int], closed: Set[int], listener: int, events: int,
+    attempts: int, accepted: int, reviews: int -> Review, foreground: Set[int], closed: Set[int], listeners: Set[int], events: int -> int,
     image: bool, send: bool, phone: bool, read: bool, locked: bool, role: bool, sim: int,
     process: int, boot: int, old: bool, candidate: str, providerStatus: str, refuseOutbox: bool,
     outbox: Set[int], sentRows: Set[int], failedRows: Set[int]
@@ -22,7 +22,7 @@ module NativeSmsDispatch {
   action initWith(recipients: int, parts: int, role: bool): bool = all {
     recipients.in(1.to(2)), parts.in(1.to(2)),
     s' = {recipients:recipients,parts:parts,reply:"none",replyBinding:0,memory:noRecord,disk:noRecord,tombstoneBinding:0,attempts:0,accepted:0,
-      reviews:actors.mapBy(_actor=>noReview),foreground:actors,closed:Set(),listener:2,events:0,
+      reviews:actors.mapBy(_actor=>noReview),foreground:actors,closed:Set(),listeners:actors,events:actors.mapBy(_=>0),
       image:true,send:true,phone:true,read:true,locked:false,role:role,sim:1,process:1,boot:1,old:false,
       candidate:"none",providerStatus:"none",refuseOutbox:false,outbox:Set(),sentRows:Set(),failedRows:Set()}
   }
@@ -97,7 +97,7 @@ module NativeSmsDispatch {
     val stopped=retireReview(s,actor)
     s' = if (mode=="pause") { ...stopped,foreground:stopped.foreground.exclude(Set(actor)) }
       else if (mode=="resume") { ...stopped,foreground:stopped.foreground.union(Set(actor)) }
-      else if (mode=="destroy") { ...stopped,closed:stopped.closed.union(Set(actor)),listener:if (s.listener==actor) 0 else s.listener }
+      else if (mode=="destroy") { ...stopped,closed:stopped.closed.union(Set(actor)),listeners:stopped.listeners.exclude(Set(actor)) }
       else stopped
   }
 
@@ -177,21 +177,29 @@ module NativeSmsDispatch {
     }
   }
 
-  pure def announce(state: State, changed: bool): State =
-    if (changed and state.listener!=0 and current(state,state.listener)) { ...state,events:state.events+1 } else state
+  pure def announce(state: State, changed: bool): State = {
+    val receivers=state.listeners.filter(actor=>current(state,actor))
+    if (not(changed)) state else { ...state,events:actors.mapBy(actor=>
+      state.events.get(actor)+(if (receivers.contains(actor)) 1 else 0)) }
+  }
+  // The original eight callback publications remain available to each bridge.
+  // Two eligible bridges can receive the same publication; no recipient gains past eight.
+  pure def noticeBudget(state: State): bool = state.events.keys()==actors and
+    actors.forall(actor=>state.events.get(actor)>=0 and state.events.get(actor)<=8)
   pure def deliveryChanged(before: Record, after: Record): bool =
     before.delivered!=after.delivered or before.deliveryFailed!=after.deliveryFailed
 
   action reconcile: bool = all {
-    s.image, s.events<8,
+    s.image,
     val read=reconciled(s)
-    s' = announce(read,deliveryChanged(s.memory,read.memory))
+    val candidateState=announce(read,deliveryChanged(s.memory,read.memory))
+    all {noticeBudget(candidateState), s' = candidateState}
   }
 
   action callback(index: int, kind: str, ok: bool, mode: str): bool = all {
     index.in(1.to(4)), index<=s.accepted*s.parts, kind.in(Set("sent","delivery")),
-    mode.in(Set("complete","wrong-action","before","after")), s.events<8,
-    if (not(s.image) or mode=="wrong-action" or s.memory.binding==0) s' = s
+    mode.in(Set("complete","wrong-action","before","after")),
+    val candidateState=if (not(s.image) or mode=="wrong-action" or s.memory.binding==0) s
     else {
       val memory=s.memory
       val updated=if (kind=="delivery") { ...memory,reported:memory.reported.union(Set(index)) }
@@ -199,14 +207,15 @@ module NativeSmsDispatch {
         else if (ok) { ...memory,sent:memory.sent.union(Set(index)) }
         else { ...memory,failed:memory.failed.union(Set(index)) }
       val changed=updated!=memory
-      if (changed and mode=="before") s' = { ...s,memory:project(updated,s.recipients*s.parts) }
-      else if (changed and mode=="after") s' = saved(s,updated)
+      if (changed and mode=="before") { ...s,memory:project(updated,s.recipients*s.parts) }
+      else if (changed and mode=="after") saved(s,updated)
       else {
         val written=if (changed) saved(s,updated) else s
         val read=reconciled(if (kind=="sent") settleRow(written,index) else written)
-        s' = announce(read,changed or deliveryChanged(memory,read.memory))
+        announce(read,changed or deliveryChanged(memory,read.memory))
       }
     }
+    all {noticeBudget(candidateState), s' = candidateState}
   }
 
   action restart(reboot: bool): bool = all {
@@ -217,9 +226,11 @@ module NativeSmsDispatch {
       (stored.binding!=0 and stored.decision=="none" and stored.boot!=boot and stored.sent.union(stored.failed).size()<s.recipients*s.parts)
     val loaded=if (interrupted) project({ ...stored,dispatching:false,unknown:true },s.recipients*s.parts) else stored
     val current={ ...s,process:s.process+1,boot:boot,reviews:actors.mapBy(_actor=>noReview),foreground:actors,closed:Set(),
-      listener:2,events:0,reply:"none",replyBinding:0,memory:loaded,disk:loaded }
+      listeners:Set(1),events:actors.mapBy(_=>0),reply:"none",replyBinding:0,memory:loaded,disk:loaded }
     val recovered=reconciled(current)
-    s' = announce(recovered,deliveryChanged(current.memory,recovered.memory))
+    // The fixture drains the first bridge's startup reconcile before loading the second.
+    val published=announce(recovered,deliveryChanged(current.memory,recovered.memory))
+    s' = { ...published,listeners:actors }
   }
 
   val OneRadioCallPerRecipient = s.accepted<=s.attempts and s.attempts<=s.recipients
@@ -230,8 +241,10 @@ module NativeSmsDispatch {
   val DeliveryNeedsSentAndReport = evidence(s.memory) and evidence(s.disk) and
     (s.parts==1 or s.memory.delivered.union(s.disk.delivered).union(s.memory.deliveryFailed).union(s.disk.deliveryFailed).size()==0)
   val ProviderRowsHaveOnePhase = s.outbox.intersect(s.sentRows.union(s.failedRows)).size()==0 and s.sentRows.intersect(s.failedRows).size()==0
+  val LiveBridgeListeners = s.listeners==actors.exclude(s.closed)
+  val PerBridgeNoticeCapacity = noticeBudget(s)
   val safety = OneRadioCallPerRecipient and RadioNeedsDurableIntent and TombstoneRetiresLiveRecord
-    and DeliveryNeedsSentAndReport and ProviderRowsHaveOnePhase
+    and DeliveryNeedsSentAndReport and ProviderRowsHaveOnePhase and LiveBridgeListeners and PerBridgeNoticeCapacity
 
   action step = any {
     nondet kind=Set("image","send","phone","read","locked","role").oneOf()
@@ -311,4 +324,23 @@ module NativeSmsDispatch {
     .expect(s.reply=="denied" and s.disk.decision=="denied" and s.attempts==0 and s.reviews==actors.mapBy(_=>noReview))
     .then(request(2,1,"complete")).expect(s.reply=="denied" and s.replyBinding==1 and s.attempts==0)
     .then(request(2,2,"complete")).expect(s.reply=="invalid" and s.disk.binding==1 and s.attempts==0)
+
+  run bothBridgesReceiveTheSameCallbackTest = sent.then(callback(1,"sent",true,"complete"))
+    .expect(safety and s.listeners==actors and s.events==Map(1->1,2->1))
+
+  run pausedAndDestroyedBridgesRetireOnlyTheirDeliveryTest = initWith(1,2,false)
+    .then(request(1,1,"complete")).then(approve(1,"complete"))
+    .then(lifecycle(2,"pause")).then(callback(1,"sent",true,"complete"))
+    .expect(s.events==Map(1->1,2->0) and s.listeners==actors)
+    .then(lifecycle(2,"resume")).then(lifecycle(1,"destroy"))
+    .then(callback(2,"sent",true,"complete"))
+    .expect(safety and s.listeners==Set(2) and s.events==Map(1->1,2->1))
+
+  run eightCallbackPublicationsReachBothBridgesTest = initWith(2,2,false)
+    .then(request(1,1,"complete")).then(approve(1,"complete"))
+    .then(callback(1,"sent",true,"complete")).then(callback(2,"sent",true,"complete"))
+    .then(callback(3,"sent",true,"complete")).then(callback(4,"sent",true,"complete"))
+    .then(callback(1,"delivery",true,"complete")).then(callback(2,"delivery",true,"complete"))
+    .then(callback(3,"delivery",true,"complete")).then(callback(4,"delivery",true,"complete"))
+    .expect(safety and s.events==Map(1->8,2->8))
 }

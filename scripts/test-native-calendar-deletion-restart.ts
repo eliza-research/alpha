@@ -9,7 +9,7 @@ import {requireInstrumentationSuccess} from './instrumentation-result.ts';
 // Requires explicit owned emulator/AVD/ABI environment variables accepted by runNativeFixture.
 // Usage: bun scripts/test-native-calendar-deletion-restart.ts ARCHIVE OUTPUT VARIANT undo|expiry
 const [archive,output,variant,mode,...extra]=process.argv.slice(2);
-assert(archive&&output&&!extra.length);assert(['standalone','launcher'].includes(variant));assert(['undo','expiry'].includes(mode));
+assert(archive&&output&&!extra.length);assert(variant==='launcher');assert(['undo','expiry'].includes(mode));
 const runId=crypto.randomBytes(16).toString('hex'),pkg='ai.alphacompute.alphaphone',testClass='CalendarDeletionRestartInstrumentedTest';
 const args=(phase: 'prepare'|'verify'|'replay')=>['-e','calendarDeletionRestart','1','-e','restartRun',runId,'-e','restartMode',mode,'-e','restartPhase',phase];
 await runNativeFixture({scenario:'calendar-deletion-restart',appApk:path.join(archive,variant+'-debug.apk'),testApk:path.join(archive,variant+'-androidTest.apk'),output,testClass,testMethod:'externalRestartPhase',expectedTests:1,requireWebView:false,runnerArgs:args('verify'),

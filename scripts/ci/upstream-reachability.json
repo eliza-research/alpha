@@ -2,15 +2,20 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "9db5fd1461697dd1a13d7c35a6e883bb386ca539",
-  "head": "c9247e6966b572612b51e6b5e6a1f15af2843af8",
-  "recordedAt": "2026-11-12",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...c9247e6966b572612b51e6b5e6a1f15af2843af8",
-  "status": "behind",
-  "aheadBy": 0,
-  "behindBy": 17,
-  "mergeBase": "c9247e6966b572612b51e6b5e6a1f15af2843af8",
-  "pinOnlyCommits": [],
+  "baseCommit": "af84c08ab38fe7a44b6276132bc430b20f696e31",
+  "head": "442586ce66abf43ff382a951b8d439efd400af84",
+  "recordedAt": "2026-11-13",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...442586ce66abf43ff382a951b8d439efd400af84",
+  "status": "diverged",
+  "aheadBy": 1,
+  "behindBy": 19,
+  "mergeBase": "0f4b3b0b0ee6239bc8b1113e8df6709a6b6940a8",
+  "pinOnlyCommits": [
+    {
+      "sha": "442586ce66abf43ff382a951b8d439efd400af84",
+      "subject": "fix(voice): consume reproducible Phonon model pins"
+    }
+  ],
   "pullRequests": [
     "https://github.com/elizaOS/eliza/pull/39247",
     "https://github.com/elizaOS/eliza/pull/39244",
@@ -21,6 +26,16 @@
     "https://github.com/elizaOS/eliza/pull/39268",
     "https://github.com/elizaOS/eliza/pull/39287",
     "https://github.com/elizaOS/eliza/pull/39291",
-    "https://github.com/elizaOS/eliza/pull/39298"
+    "https://github.com/elizaOS/eliza/pull/39298",
+    "https://github.com/elizaOS/eliza/pull/39352",
+    "https://github.com/elizaOS/eliza/pull/39350",
+    "https://github.com/elizaOS/eliza/pull/39480",
+    "https://github.com/elizaOS/eliza/pull/39353",
+    "https://github.com/elizaOS/eliza/pull/39479",
+    "https://github.com/elizaOS/eliza/pull/39475",
+    "https://github.com/elizaOS/eliza/pull/39481",
+    "https://github.com/elizaOS/eliza/pull/39482",
+    "https://github.com/elizaOS/eliza/pull/39484",
+    "https://github.com/elizaOS/eliza/pull/39483"
   ]
 }

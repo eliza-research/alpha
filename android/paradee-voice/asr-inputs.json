@@ -6,7 +6,7 @@
   "runtimeEnv": {
     "ELIZA_ASR_BACKEND": "ggml"
   },
-  "model": "Phonon-2 (Parakeet-TDT 0.6B, five-value weights), the upstream mobile-voice@1.1.0 default ASR (elizaOS/eliza#36212, d06a1aa9c9)",
+  "model": "Phonon-2 (Parakeet-TDT 0.6B, five-value weights), the upstream mobile-voice@1.4.2 default ASR with canonical positive-zero mel weights",
   "license": "CC-BY-4.0",
   "attribution": "Phonon-2 by Fermion Research, CC-BY-4.0, derived from NVIDIA parakeet-tdt-0.6b-v3 (CC-BY-4.0). Fermion's NOTICE ships in the bundle (notices/phonon-2/NOTICE) and in the app's third-party notices; the GGUF also carries it as parakeet.notice.",
   "licenseFlags": [
@@ -18,9 +18,9 @@
       "path": "asr/phonon-2-fv5.gguf",
       "role": "asr-model",
       "bytes": 208932352,
-      "sha256": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+      "sha256": "407c02ab24382bc92b181b165dea8e4702e502ded17dafbe7e1222c0b69cc802",
       "architecture": "parakeet-tdt",
-      "source": "Converted by elizaOS/llama.cpp tools/parakeet/convert_phonon2_to_gguf.py --archive phonon-2.bps.tar.zst --output phonon-2-fv5.gguf --verify from huggingface.co/FermionResearch/Phonon-2@7e153e4054c0a10db6d47d6fff5c062d4c77c154 (archive sha256 98125795b6dda72f5c6eee9ba33d19815df65dcb18b50a357bf9f73c9935309e); byte-reproducible, equal to the mobile-voice@1.1.0 catalog pin (status unpublished: built locally, never downloaded)"
+      "source": "Converted by elizaOS/llama.cpp@5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd tools/parakeet/convert_phonon2_to_gguf.py --archive phonon-2.bps.tar.zst --output phonon-2-fv5.gguf --verify from huggingface.co/FermionResearch/Phonon-2@7e153e4054c0a10db6d47d6fff5c062d4c77c154 (archive sha256 98125795b6dda72f5c6eee9ba33d19815df65dcb18b50a357bf9f73c9935309e); byte-identical macOS ARM64 and Linux x86_64 outputs with Python 3.12.11 / NumPy 2.5.4, equal to the mobile-voice@1.4.2 catalog pin (status unpublished: built locally, never downloaded)"
     }
   ]
 }

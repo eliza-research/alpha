@@ -9,7 +9,7 @@ import {
 import { manifestFacts as readManifestFacts, parseXmlTree as parseAaptTree } from "../vendor/eliza/packages/app/scripts/lib/android-manifest-facts.mjs";
 
 export type ApkMode = "debug" | "release";
-export type ApkVariant = "standalone" | "launcher";
+export type ApkVariant = "launcher";
 
 export interface ManifestNode {
   name: string;
@@ -48,7 +48,7 @@ interface DistributionInput {
   forbiddenDex?: string[];
   removedSpeechClasses?: string[];
 }
-interface DistributionOptions {mode?: ApkMode; testMocks?: boolean}
+interface DistributionOptions {mode?: ApkMode}
 interface ApkInspection extends DistributionInput {
   file: string;
   packageName: string | undefined;
@@ -72,8 +72,8 @@ const assessDistribution = apkDistributionProblems as (
 
 // Alpha's distribution policy as data for the upstream APK inspection
 // (vendor/eliza/packages/app/scripts/mobile/artifact-inspection/apk-distribution.mjs).
-// Debug-only native hooks that may exist only in an explicit test-mocks build
-// (src/testMocks attached to debug variants when ELIZA_DEV_ALLOW_TEST_MOCKS=1).
+// Development hooks no APK may package. The upstream inspection admits them only in a test-mocks
+// debug build, and Alpha never builds one, so every APK is refused if it carries them.
 export const DEVELOPMENT_CLASSES = Object.freeze([
   "SyntheticAutofillService",
   "DevelopmentAgentPlugin",
@@ -139,11 +139,11 @@ export const DISTRIBUTION_POLICY = Object.freeze({
  * The upstream inspection applies DISTRIBUTION_POLICY; the Power entry's
  * component kind and the Quick Settings tile shape and target are Alpha's own checks.
  */
-export function distributionProblems(apk: DistributionInput, { mode, testMocks = false }: DistributionOptions = {}) {
+export function distributionProblems(apk: DistributionInput, { mode }: DistributionOptions = {}) {
   const { facts, problems } = assessDistribution(
     { ...apk, forbiddenDex: apk.forbiddenDex ?? apk.removedSpeechClasses },
     DISTRIBUTION_POLICY,
-    { mode, testMocks },
+    { mode },
   );
   problems.push(...legacyStorageProblems(apk.xml));
   const powerName = "ai.alphacompute.alphaphone.AlphaPowerVoiceActivity";
@@ -241,10 +241,10 @@ export function verifyOwnerRouteTable(file: string) {
 
 export const AUDIT_SCRIPT = "scripts/audit-production-bundle.ts";
 /** Run the shared production-bundle audit CLI against an extracted web payload. */
-export function auditBundle(directory: string, { testMocks = false, script = AUDIT_SCRIPT } = {}) {
+export function auditBundle(directory: string, { script = AUDIT_SCRIPT } = {}) {
   if (!fs.existsSync(script))
     throw new Error(`${script} is missing; the production bundle audit is required to verify APK web payloads`);
-  const args = [script, directory, ...(testMocks ? ["--expect-test-mocks"] : [])];
+  const args = [script, directory];
   try {
     return execFileSync(process.execPath, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   } catch (error) {
@@ -264,7 +264,7 @@ export function signerDigest(file: string, { apiLevel }: SignerOptions = {}): st
 export const parseSignerDigest = parseApkSignerDigest as (output: string, options?: SignerOptions) => string;
 
 /** The image provisioner must be able to prepare the launcher before its first activity starts. */
-export function telephonySetupReceiverProblems(tree: ManifestNode, wantsHome = true): string[] {
+export function telephonySetupReceiverProblems(tree: ManifestNode): string[] {
   const manifest = tree.children.find(node => node.name === "manifest");
   const application = manifest?.children.find(node => node.name === "application");
   const receivers = application?.children.filter(node =>
@@ -272,69 +272,65 @@ export function telephonySetupReceiverProblems(tree: ManifestNode, wantsHome = t
     node.attrs.name === ".AlphaTelephonySetupReceiver" ||
     node.attrs.name === "AlphaTelephonySetupReceiver") ?? [];
   const problems = [];
-  if (wantsHome) {
-    const [receiver] = receivers;
-    if (!receiver || receivers.length !== 1 || receiver.name !== "receiver" || receiver.attrs.exported !== "0xffffffff" ||
-        (receiver.attrs.enabled !== undefined && receiver.attrs.enabled !== "0xffffffff") ||
-        receiver.attrs.permission !== MANAGE_ROLE_HOLDERS || receiver.children.some(node => node.name === "intent-filter"))
-      problems.push("Invalid AlphaTelephonySetupReceiver: expected one enabled, exported, explicit receiver protected by MANAGE_ROLE_HOLDERS");
-  } else if (receivers.length) {
-    problems.push("Invalid AlphaTelephonySetupReceiver: the receiver is launcher-only");
-  }
+  const [receiver] = receivers;
+  if (!receiver || receivers.length !== 1 || receiver.name !== "receiver" || receiver.attrs.exported !== "0xffffffff" ||
+      (receiver.attrs.enabled !== undefined && receiver.attrs.enabled !== "0xffffffff") ||
+      receiver.attrs.permission !== MANAGE_ROLE_HOLDERS || receiver.children.some(node => node.name === "intent-filter"))
+    problems.push("Invalid AlphaTelephonySetupReceiver: expected one enabled, exported, explicit receiver protected by MANAGE_ROLE_HOLDERS");
   if (manifest?.children.some(node =>
     (node.name === "uses-permission" || node.name.startsWith("uses-permission-sdk-")) && node.attrs.name === MANAGE_ROLE_HOLDERS))
     problems.push("Alpha must not request MANAGE_ROLE_HOLDERS");
   return problems;
 }
 
-export function validateApk(file: string, identity: {appId: string}, wantsHome: boolean, inspect: (file: string) => ApkInspection = inspectApk) {
+export function validateApk(file: string, identity: {appId: string}, inspect: (file: string) => ApkInspection = inspectApk) {
   const data = inspect(file);
   if (data.packageName !== identity.appId)
     throw new Error(`Wrong package in ${file}: ${data.packageName}`);
-  if (data.home !== wantsHome || !data.launcher || !data.webPayload)
+  if (!data.home || !data.launcher || !data.webPayload)
     throw new Error(`Invalid launcher/web payload contract in ${file}`);
   if (
     data.xml.includes("android.permission.WRITE_SETTINGS")
   )
     throw new Error(`Unexpected elevated permission in ${file}`);
   if (!data.xml.includes('android.permission.CAMERA')) throw new Error(`Missing native feature permission CAMERA in ${file}`);
-  // Contacts reads are packaged only for the launcher. The native image capability,
+  // The launcher packages Contacts reads. The native image capability,
   // unlocked profile and runtime grant remain separate requirements for access.
-  if (data.xml.includes('android.permission.READ_CONTACTS') !== wantsHome)
-    throw new Error(`Invalid Contacts read permission for distribution in ${file}`);
-  if (data.xml.includes('android.permission.WRITE_CONTACTS') !== wantsHome)
-    throw new Error(`Invalid WRITE_CONTACTS permission for distribution in ${file}`);
+  if (!data.xml.includes('android.permission.READ_CONTACTS'))
+    throw new Error(`Missing READ_CONTACTS permission in ${file}`);
+  if (!data.xml.includes('android.permission.WRITE_CONTACTS'))
+    throw new Error(`Invalid WRITE_CONTACTS permission in ${file}`);
   // The default dialer can use provider voicemail. Carrier registration needs authenticated provisioning.
   for (const entry of ['com.android.voicemail.permission.ADD_VOICEMAIL', 'android.telephony.VisualVoicemailService', 'android.permission.BIND_VISUAL_VOICEMAIL_SERVICE'])
     if (data.xml.includes(entry)) throw new Error(`Unexpected carrier voicemail manifest entry ${entry} in ${file}`);
-  // SMS provider reads and reviewed sends (#421) are packaged only for the launcher; Android grants
+  // The launcher packages SMS provider reads and reviewed sends (#421); Android grants
   // these hard-restricted permissions only to the preinstalled image app or the SMS role holder.
   for (const permission of ['READ_SMS', 'SEND_SMS'])
-    if (data.xml.includes(`android.permission.${permission}`) !== wantsHome)
-      throw new Error(`Invalid ${permission} permission for distribution in ${file}`);
-  // The dialer role grants CALL_PHONE to its holder; only the launcher declares the role components.
-  if (data.xml.includes('android.permission.CALL_PHONE') !== wantsHome)
-    throw new Error(`Invalid CALL_PHONE permission for distribution in ${file}`);
-  // Phone state (the native phone plugin's permission, removed for standalone) and the system shade
-  // are launcher-only; the merged manifest, not the source manifests, is what ships.
+    if (!data.xml.includes(`android.permission.${permission}`))
+      throw new Error(`Invalid ${permission} permission in ${file}`);
+  // The dialer role grants CALL_PHONE to its holder; the launcher declares the role components.
+  if (!data.xml.includes('android.permission.CALL_PHONE'))
+    throw new Error(`Invalid CALL_PHONE permission in ${file}`);
+  // Phone state (the native phone plugin's permission) and the system shade: the merged manifest,
+  // not the source manifests, is what ships.
   // READ_PRIVILEGED_PHONE_STATE is the one privileged permission the launcher declares: the Alpha
   // image allow-lists exactly it (IMEI and SIM serial in Settings); no other install is granted it.
   for (const permission of ['READ_PHONE_STATE', 'READ_PHONE_NUMBERS', 'READ_PRIVILEGED_PHONE_STATE', 'EXPAND_STATUS_BAR'])
-    if (data.xml.includes(`android.permission.${permission}`) !== wantsHome)
-      throw new Error(`Invalid ${permission} permission for distribution in ${file}`);
+    if (!data.xml.includes(`android.permission.${permission}`))
+      throw new Error(`Invalid ${permission} permission in ${file}`);
   for (const component of ['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'])
-    if (data.xml.includes(`ai.alphacompute.alphaphone.${component}`) !== wantsHome)
-      throw new Error(`Invalid telephony-role component ${component} for distribution in ${file}`);
-  const setupProblems = telephonySetupReceiverProblems(parseXmlTree(data.xml), wantsHome);
+    if (!data.xml.includes(`ai.alphacompute.alphaphone.${component}`))
+      throw new Error(`Invalid telephony-role component ${component} in ${file}`);
+  const setupProblems = telephonySetupReceiverProblems(parseXmlTree(data.xml));
   if (setupProblems.length) throw new Error(`${setupProblems.join("; ")} in ${file}`);
-  // The SMS role grants these to its holder; only the launcher declares the role components.
+  // The SMS role grants these to its holder.
   for (const permission of ['RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH'])
-    if (data.xml.includes(`android.permission.${permission}`) !== wantsHome)
-      throw new Error(`Invalid ${permission} permission for distribution in ${file}`);
-  // Recent calls (AP-08) are packaged only for the launcher; the image capability, unlocked
+    if (!data.xml.includes(`android.permission.${permission}`))
+      throw new Error(`Invalid ${permission} permission in ${file}`);
+  // Recent calls (AP-08): the image capability, unlocked
   // foreground and the owner's runtime grant remain separate requirements for any read.
-  if (data.xml.includes('android.permission.READ_CALL_LOG') !== wantsHome)
-    throw new Error(`Invalid READ_CALL_LOG permission for distribution in ${file}`);
+  if (!data.xml.includes('android.permission.READ_CALL_LOG'))
+    throw new Error(`Invalid READ_CALL_LOG permission in ${file}`);
   for (const permission of ['WRITE_CALL_LOG', 'MANAGE_OWN_CALLS', 'ANSWER_PHONE_CALLS'])
     if (data.xml.includes(`android.permission.${permission}`))
       throw new Error(`Unexpected telephony permission ${permission} in ${file}`);
@@ -344,13 +340,13 @@ export function validateApk(file: string, identity: {appId: string}, wantsHome: 
   return data;
 }
 
-/** Archive the verified APK payload, independent of the restored working web bundle. */
-export function archiveWebPayload(apkFile: string, destination: string, { testMocks = false } = {}) {
+/** Archive the verified APK payload, independent of the working web bundle. */
+export function archiveWebPayload(apkFile: string, destination: string) {
   const payload = extractWebPayload(apkFile);
   try {
     const flags = readBuildFlags(payload.public);
-    if (flags.testMocks !== testMocks) throw new Error(`APK web payload has testMocks=${flags.testMocks}; expected ${testMocks}`);
-    auditBundle(payload.public, { testMocks });
+    if (flags.testMocks !== false) throw new Error(`APK web payload has testMocks=${flags.testMocks}; an APK packages only a flag-off bundle`);
+    auditBundle(payload.public);
     fs.cpSync(payload.public, destination, { recursive: true, errorOnExist: true, force: false });
   } finally {
     fs.rmSync(payload.root, { recursive: true, force: true });

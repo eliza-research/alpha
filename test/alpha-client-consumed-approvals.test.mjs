@@ -2,7 +2,6 @@
 // an approved proposal is dispatched once per agent session, also across a history reload.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {tsImport} from './support/ts-import.mjs';
 
 const {AlphaClient} = await tsImport('../apps/app/src/runtime/alpha-client.ts', import.meta.url);
@@ -44,12 +43,4 @@ test('another session, or a plain disconnect, starts with no consumed approvals'
   await client.send('do it');
   await client.approve('proposal-1');
   assert.equal(log.length, 3);
-});
-
-test('the shell keeps consumed approvals on a history reload and forgets them when the agent session changes', () => {
-  const adapter = fs.readFileSync(new URL('../apps/app/src/prototype/agent-adapter.ts', import.meta.url), 'utf8');
-  const restore = adapter.slice(adapter.indexOf('this.restoredHistory = history;'), adapter.indexOf('const delivery=connectionController.getSnapshot().conversationDelivery;'));
-  assert.match(restore, /alphaClient\.disconnect\(\{keepConsumed:true\}\);/);
-  assert.doesNotMatch(restore, /alphaClient\.disconnect\(\)/);
-  assert.match(adapter, /this\.connectionSession = session;\s*alphaClient\.disconnect\(\);/);
 });

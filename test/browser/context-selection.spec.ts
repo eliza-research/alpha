@@ -1,5 +1,6 @@
 import {choosePhotoAction} from './helpers/owned-photo';
 import {chooseMailAction} from './helpers/mail-actions';
+import {preloadPageModules} from './helpers/page-modules';
 import {test,expect,type Page} from '@playwright/test';
 // Each test loads the app and drives Files, Inbox or the shade; under four workers on a loaded machine
 // one load has taken 10-30s, so the timeout is explicit. No step, wait or assertion changes.
@@ -112,6 +113,8 @@ test.describe('mail',()=>{
   // review), so it is recorded as finished before the page loads, as a returning phone has it.
   await page.addInitScript(()=>localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4})));
   await page.goto('/');
+  await preloadPageModules(page,['/src/runtime/connection-ui.tsx']);
+  await page.waitForFunction(()=>{const state=(window as any).__alphaModules['/src/runtime/connection-ui.tsx'].connectionController.getSnapshot();return state.startupResolved&&!state.busy;});
   await page.evaluate(async()=>{
    const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
    const {secureConnectionStore:s}=await import('/src/runtime/native-connection.ts');
@@ -135,6 +138,8 @@ test.describe('mail',()=>{
    // Anything that would reach the agent is recorded here instead.
    const {alphaClient}=await import('/src/runtime/alpha-client.ts');
    (alphaClient as any).send=async(text:string)=>{f.sent.push(text);throw Error("Fixture agent");};
+   // Publish the synthetic owner before opening Inbox; a later update must not first adopt it and clear the reader.
+   c.close();
   });
   await page.getByRole('button',{name:'Inbox',exact:true}).click();
   await page.getByText('Reviewed message',{exact:true}).first().click();

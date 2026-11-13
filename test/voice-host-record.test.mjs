@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {ROOT, VOICE_HOST, collectNotices, voiceHostProblems} from '../scripts/generate-licenses.ts';
@@ -8,12 +9,16 @@ import {buildSbom as generateSbom} from '../scripts/generate-sbom.ts';
 import {readVoiceHost, verifyVoiceHost, VOICE_ASR_SLOT} from '../scripts/voice-host.ts';
 import {stageVoiceModels} from '../scripts/android-stage-voice-models.ts';
 import {fixtureProduct} from './fixtures/voice-host-product.mjs';
+import {readNativeBuildReceipt, validateNativeBuildReceipt, verifyNativeFileBytes} from '../scripts/native-build-inputs.ts';
 
 // The on-device speech engine is libelizainference with the shared paradee-voice library. Its
 // record (android/voice-host/qualified-voice-host.json) drives staging,
-// the notices and the SBOM. Fixture bytes only: no real binary or model is read here.
+// the notices and the SBOM. Staging tests use fixture bytes; when a generated native
+// receipt exists, its integrity test copies one recorded STL library into a temporary root.
 const sha = value => createHash('sha256').update(value).digest('hex');
 const committed = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_HOST), 'utf8'));
+const generated = readNativeBuildReceipt(ROOT);
+const admitted = generated?.voice ?? committed;
 
 test('the committed record satisfies the schema, model inventory and ASR slot', () => {
   assert.deepEqual(voiceHostProblems(committed), []);
@@ -39,7 +44,12 @@ test('the committed record satisfies the schema, model inventory and ASR slot', 
 
 test('only a voice record for the current SDK can admit the native profile', () => {
   const {commit}=JSON.parse(fs.readFileSync(path.join(ROOT,'upstream.lock.json'),'utf8'));
-  if (committed.pin===commit) {
+  if (generated) {
+    const current = readVoiceHost(ROOT);
+    assert.equal(current.pin, commit);
+    assert.equal(current.producerPin, generated.producer.sdkCommit);
+    assert.equal(current.qualified, false);
+  } else if (committed.pin===commit) {
     readVoiceHost(ROOT);
   } else {
     assert.equal(committed.qualified,false,'a historical artifact cannot claim current qualification');
@@ -87,18 +97,35 @@ test('notices list the engine components and every voice model, flagging eSpeak 
 test('the SBOM lists each recorded engine library per ABI and every bundle file with its hash and size', () => {
   const sbom = generateSbom(ROOT);
   const byRef = new Map(sbom.components.map(component => [component['bom-ref'], component]));
-  for (const abi of committed.abis) for (const library of abi.libraries) assert.equal(byRef.get(`voice-host:${abi.abi}/${library.name}`).hashes[0].content, library.sha256);
-  for (const model of committed.models) {
+  for (const abi of admitted.abis) for (const library of abi.libraries) assert.equal(byRef.get(`voice-host:${abi.abi}/${library.name}`).hashes[0].content, library.sha256);
+  for (const model of admitted.models) {
     const component = byRef.get(`voice-model:${model.path}`);
     assert.equal(component.hashes[0].content, model.sha256, model.path);
     assert.equal(component.properties.find(row => row.name === 'alphaphone:bytes')?.value ?? component.properties.find(row => row.name.endsWith('bytes')).value, String(model.bytes));
   }
 });
 
+test('generated native admission refuses a wrong consumer pin and changed output bytes', {
+  skip: generated ? false : 'No generated native build receipt exists in this checkout',
+}, t => {
+  const changed = structuredClone(generated);
+  changed.consumerSdkCommit = '0'.repeat(40);
+  assert.throws(() => validateNativeBuildReceipt(ROOT, changed), /source binding differs/);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-generated-native-byte-refusal-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const row = generated.files.find(file => file.path.endsWith('/libc++_shared.so'));
+  assert.ok(row, 'the native receipt records the actual packaged STL');
+  const target = path.join(dir, row.path);
+  fs.mkdirSync(path.dirname(target), {recursive: true});
+  fs.copyFileSync(path.join(ROOT, row.path), target);
+  verifyNativeFileBytes(dir, [row]);
+  fs.appendFileSync(target, 'changed');
+  assert.throws(() => verifyNativeFileBytes(dir, [row]), /Native output changed/);
+});
+
 test('staging copies exactly the recorded bytes into the shared paradee-voice layout, ASR slot included', t => {
   const {dir, from, record} = fixtureProduct(t);
-  assert.deepEqual(verifyVoiceHost(dir, {allowAbsentRuntime: true}), {status: 'not-packaged', qualified: false});
-  assert.throws(() => verifyVoiceHost(dir), /not staged/, 'a distribution build needs the voice outputs');
+  assert.throws(() => verifyVoiceHost(dir), /not staged/, 'a build needs the voice outputs');
   const result = stageVoiceModels(dir, {from: [from]});
   assert.equal(result.asr, true);
   const native = path.join(dir, '.eliza/paradee-voice/native');

@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import {Sense,createSenseInvocationController,parseAssistantInvocation,parseInvocationUnlocked,parseListenerStatus,stopSenseListenerForChatOnly,type AssistantInvocation,type ListenerStatus} from '@elizaos/capacitor-system/sense';
+import {Sense,createSenseInvocationController,parseAssistantInvocation,parseInvocationUnlocked,parseListenerStatus,parseListenerStopReceipt,stopSenseListenerForChatOnly,type AssistantInvocation,type ListenerStatus} from '@elizaos/capacitor-system/sense';
 
 export type { AssistantInvocation, ListenerState, ListenerStatus } from '@elizaos/capacitor-system/sense';
 
@@ -14,7 +14,7 @@ export function admitImageSense(capabilities: {aospImage?: unknown; sense?: unkn
 export const imageSenseAvailable = () => admittedImageSense && nativeListener();
 async function ask(method: 'status' | 'pause' | 'turnOff'): Promise<ListenerStatus> {
   if (!imageSenseAvailable()) return { available: false };
-  try { return parseListenerStatus(await listener[method]()); } catch { return { available: false }; }
+  try { const reply = await listener[method](); return method === 'status' ? parseListenerStatus(reply) : parseListenerStopReceipt(reply, method); } catch { return { available: false }; }
 }
 
 /** Status of the image's listener; `{available:false}` on the web build and on phones without it. */

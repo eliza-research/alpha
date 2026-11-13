@@ -250,7 +250,7 @@ try {
     signal: AbortSignal.timeout(15000),
   });
   assert.equal(unauthenticated.status, 401);
-  for (const variant of ['standalone', 'launcher']) {
+  for (const variant of ['launcher']) {
     const apk = path.join(archive, `${variant}-debug.apk`);
     const test = path.join(archive, `${variant}-androidTest.apk`);
     const appSha256 = manifest[path.basename(apk)];

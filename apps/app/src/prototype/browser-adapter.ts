@@ -372,9 +372,9 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       // An older launch read cannot restore its tabs or history after that boundary.
       if (epoch !== saveEpoch) { if (!sessionHydrated) sessionRead = false; return; }
       const s = state(); if (!s) return;
-      // Never replace a tab the user is already typing into: the open tabs then stay, still selected,
-      // and the saved tabs that fit under the tab limit follow them, so the first save keeps them.
-      const pristine = tabs.ids().length === 0 && s.tabs.length === 1 && !tabs.info(s.tabs[0].id) && !s.editing;
+      // Keep the current tab while the user types or chooses a tab. Saved tabs that fit under
+      // the limit follow the open tabs, so restoration preserves selection and keyboard focus.
+      const pristine = tabs.ids().length === 0 && s.tabs.length === 1 && !tabs.info(s.tabs[0].id) && !s.editing && !s.tabsOpen;
       const next = restoreBrowsing(saved, s, true);
       const added = pristine ? next.restored : next.restored.filter(tab => !s.tabs.some((open: Bag) => open.id === tab.id)).slice(0, Math.max(0, MAX_TABS - s.tabs.length));
       // Restored tabs load (an ordinary GET of the last committed address)
@@ -433,9 +433,10 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     } catch (error) { report(error); }
   }
   const definition = views.browser;
-  definition.state = { ...definition.state, tabs: [{ id: 'b0', hist: ['newtab'], pos: 0 }], cur: 'b0', marks: [], visits: [], titles: {}, booked: null, ag: null, confirm: null, finding: false, findTab: null, findQuery: '', findCount: 0, findIndex: 0, findDone: true };
+  const initialTabId = newTabId();
+  definition.state = { ...definition.state, tabs: [{ id: initialTabId, hist: ['newtab'], pos: 0 }], cur: initialTabId, marks: [], visits: [], titles: {}, booked: null, ag: null, confirm: null, finding: false, findTab: null, findQuery: '', findCount: 0, findIndex: 0, findDone: true };
   // These are in-memory view-reset keys, not disk persistence. Keep the native
-  // tab identities while visiting other apps; a cold start begins with b0 until
+  // tab identities while visiting other apps; a cold start begins with a fresh tab until
   // restoreSession replaces it with saved normal tabs.
   definition.persist = ['tabs', 'cur', 'marks', 'visits', 'titles'];
   definition.onLeave = () => {externalHandoff.retire();stopReading();hide();};

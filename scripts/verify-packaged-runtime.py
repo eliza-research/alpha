@@ -1,13 +1,10 @@
 """Verify packaged runtime bytes; this does not execute or qualify a runtime.
 
-Usage: verify-packaged-runtime.py [--allow-unpackaged-runtime] [--release APK]... [APK]...
+Usage: verify-packaged-runtime.py [--release APK]... [APK]...
 
-APKs passed with --release are distribution releases: without a packaged,
-authenticated runtime they are not distributable and the script exits 3
-(after printing every result) unless --allow-unpackaged-runtime is given, in
-which case those entries are reported with "distributable": false. Debug and
-other positional APKs keep the original semantics: NOT_PACKAGED is reported,
-not rejected. Byte mismatches always raise (exit 1).
+Every APK must package the authenticated staged runtime: one without it exits 3
+(after printing every result). APKs passed with --release are release builds,
+which package arm64-v8a only. Byte mismatches always raise (exit 1).
 """
 import argparse
 import subprocess
@@ -242,26 +239,23 @@ NOT_DISTRIBUTABLE = 3
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Verify packaged runtime bytes in APKs.')
-    parser.add_argument('--release', action='append', default=[], metavar='APK', help='distribution release APK; requires a packaged runtime')
-    parser.add_argument('--allow-unpackaged-runtime', action='store_true', help='developer option: report unpackaged releases as distributable=false instead of failing')
+    parser.add_argument('--release', action='append', default=[], metavar='APK', help='release APK (arm64-v8a only)')
     parser.add_argument('apks', nargs='*', metavar='APK')
     args = parser.parse_args(argv)
     if not args.release and not args.apks:
         parser.error('no APKs supplied')
     results = []
-    refused = []
     for apk in args.release:
         result = verify(Path(apk), release=True)
         result['release'] = True
         result['distributable'] = result['runtime'] == 'PACKAGED'
-        if not result['distributable']:
-            refused.append(apk)
         results.append(result)
     results.extend(verify(Path(apk)) for apk in args.apks)
     print(json.dumps(results, indent=2))
-    if refused and not args.allow_unpackaged_runtime:
-        print('Release APKs without a packaged resident runtime are not distributable: ' + ', '.join(refused)
-              + '. Stage it with bun run android:build:local, or pass --allow-unpackaged-runtime for a non-distributable developer build.', file=sys.stderr)
+    refused = [result['apk'] for result in results if result['runtime'] != 'PACKAGED']
+    if refused:
+        print('APKs without a packaged resident runtime: ' + ', '.join(refused)
+              + '. Stage it with bun run android:build:local.', file=sys.stderr)
         return NOT_DISTRIBUTABLE
     return 0
 

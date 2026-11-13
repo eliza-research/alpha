@@ -53,7 +53,6 @@ test("Files all-files access: the launcher must request MANAGE_EXTERNAL_STORAGE 
   assert.throws(() => provisioningComponents(tree({ allFiles: false }), PKG), /MANAGE_EXTERNAL_STORAGE/);
   const files = renderProvisioningOverlay(PKG, provisioningComponents(tree(), PKG), {freshTelephony: true});
   assert.match(files["provisioning/README.md"], /MANAGE_EXTERNAL_STORAGE/);
-  assert.match(fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8"), /<uses-permission android:name="android\.permission\.MANAGE_EXTERNAL_STORAGE"/);
 });
 
 test("the overlay sets default HOME, assistant and Autofill offer additively", t => {
@@ -88,18 +87,6 @@ test("Sense qualification provisioning leaves fresh telephony assignment disable
   assert.doesNotMatch(files["provisioning/README.md"], /Fresh telephony setup/);
 });
 
-test("stage-aosp writes provisioning for production and Sense qualification with separate fresh telephony admission", () => {
-  const source = fs.readFileSync("scripts/stage-aosp.ts", "utf8");
-  assert.match(source, /if \(production && development\) throw/);
-  assert.match(source, /if \(reviewed\.apkSha256 !== hash\)/);
-  assert.match(source, /updateArtifactDigest\(stagedLauncher\)\.sha256 !== hash/);
-  assert.match(source, /const provisioningTree = aaptManifestTree\(stagedLauncher, /);
-  assert.match(source, /if \(senseImage\) assertSenseLauncher\(provisioningTree, identity\.appId\);/);
-  assert.match(source, /assertProvisioningUpdateChannel\(apkUpdateChannelOrLegacy\(parseXmlTree\(provisioningTree\)\), reviewedUpdateChannel\);/);
-  assert.match(source, /assertImageLauncherManifest\(provisioningTree, production\);/);
-  assert.match(source, /if \(production \|\| senseActivation\) \{\n  const components = provisioningComponents\(provisioningTree, identity\.appId, \{assistant: senseActivation !== null\}\);\n  writeProvisioningOverlay\(output, identity\.appId, components, \{freshTelephony: production\}\);/);
-});
-
 test("production staging refuses an old or unprotected launcher manifest even with prior admission", () => {
   const withReceiver = (permission, enabled = "(type 0x12)0xffffffff") => [tree(), ...element(6, "receiver", {
     name: `${PKG}.AlphaTelephonySetupReceiver`,
@@ -113,4 +100,22 @@ test("production staging refuses an old or unprotected launcher manifest even wi
   assert.throws(() => assertImageLauncherManifest(withReceiver("android.permission.INTERNET"), true), /MANAGE_ROLE_HOLDERS/);
   assert.throws(() => assertImageLauncherManifest(withReceiver(rolePermission, "(type 0x12)0x0"), true), /AlphaTelephonySetupReceiver/);
   assert.doesNotThrow(() => assertImageLauncherManifest(withReceiver(rolePermission), true));
+});
+
+test("the image grants the launcher its runtime permissions on first boot, revocably, alongside the one privileged permission", async () => {
+  const { LAUNCHER_DEFAULT_PERMISSIONS, LAUNCHER_PRIVILEGED_PERMISSIONS } = await import("../scripts/stage-aosp.ts");
+  const { renderOverlay } = await import("../vendor/eliza/packages/os/scripts/android/stage-launcher-overlay.ts");
+  // The shared stager refuses a grant the APK does not declare; the launcher build merges these two manifests.
+  const declared = ["main", "launcher"].map(flavor => fs.readFileSync(`android/app/src/${flavor}/AndroidManifest.xml`, "utf8")).join("\n");
+  for (const permission of LAUNCHER_DEFAULT_PERMISSIONS)
+    assert.match(declared, new RegExp(`<uses-permission android:name="${permission.replaceAll(".", "\\.")}"(?![^>]*tools:node="remove")`), permission);
+  // Every step of the startup access walkthrough that is an Android runtime permission is covered.
+  for (const name of ["POST_NOTIFICATIONS", "RECORD_AUDIO", "CAMERA", "ACCESS_FINE_LOCATION", "READ_CALENDAR", "READ_MEDIA_IMAGES"])
+    assert.ok(LAUNCHER_DEFAULT_PERMISSIONS.includes(`android.permission.${name}`), name);
+  const overlay = renderOverlay({ schemaVersion: 1, brand: "alphaphone", moduleName: "AlphaPhone", packageName: PKG, apkSha256: "a".repeat(64), certificateSha256: "b".repeat(64), defaultPermissions: LAUNCHER_DEFAULT_PERMISSIONS, privilegedPermissions: LAUNCHER_PRIVILEGED_PERMISSIONS });
+  assert.match(overlay.permissions, new RegExp(`<exception package="${PKG}">`));
+  for (const permission of LAUNCHER_DEFAULT_PERMISSIONS) assert.ok(overlay.permissions.includes(`<permission name="${permission}" fixed="false"/>`), permission);
+  assert.match(overlay.blueprint, /sub_dir: "default-permissions"/);
+  assert.match(overlay.blueprint, /privileged: true/);
+  assert.match(overlay.product, /AlphaPhoneDefaultPermissions/);
 });

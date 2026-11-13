@@ -2,7 +2,7 @@
  * Whether verify-apks records one release APK as distributable. Side-effect free so the
  * predicate can be run by tests; verify-apks assigns `row.distributable` only through it.
  *
- * Every term must hold: a flag-off build (no test mocks), signed by the committed release
+ * Every term must hold: signed by the committed release
  * signer with no admission blockers or failures, the resident runtime packaged
  * (`runtime` is the scripts/verify-packaged-runtime.py entry for this APK) with notices that
  * list it, a packaged on-device voice host with ASR, and no licence blockers.
@@ -30,7 +30,6 @@ export function nativeCartesiaBlockers(apkSha256: string, voice?: CartesiaAdmiss
 }
 
 interface ReleaseFacts {
-  testMocks: boolean;
   signed: unknown;
   releaseAdmission: {signerMatches?: unknown; blockers: readonly string[]; failures: readonly string[]};
   runtime: {distributable?: unknown};
@@ -40,8 +39,8 @@ interface ReleaseFacts {
   cartesia?: {apkSha256: string; admission: CartesiaAdmission};
 }
 
-export function releaseDistributable({ testMocks, signed, releaseAdmission, runtime, runtimeNotices, voiceHost, licenceBlockers, cartesia }: ReleaseFacts): boolean {
-  return !testMocks && signed === true && releaseAdmission.signerMatches === true &&
+export function releaseDistributable({ signed, releaseAdmission, runtime, runtimeNotices, voiceHost, licenceBlockers, cartesia }: ReleaseFacts): boolean {
+  return signed === true && releaseAdmission.signerMatches === true &&
     releaseAdmission.blockers.length === 0 && releaseAdmission.failures.length === 0 &&
     runtime.distributable === true && runtimeNotices === true &&
     voiceHost.packaged === true && voiceHost.asr === true &&

@@ -8,6 +8,7 @@ import {expectedMobileUuidTransforms, mobileBuildInputs, mobileBuildReceipt, ver
 import {CORE_STATE_MANIFEST, coreStateBuildPlugin, coreStateReceipt, PLUGIN_CONNECTOR_TARGET} from '../scripts/core-state-patch.ts';
 import {actualPolicy, hash, mobileUuidFixture} from './fixtures/mobile-uuid-build.mjs';
 import {captureInputs, checkTraces} from '../specs/quint/refinement/check-traces.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {parseBuildPolicy} from '../scripts/build-policy-source.ts';
 
 const repository = path.resolve(fileURLToPath(new URL('../specs/quint/refinement/services', import.meta.url)), '../../../..');
@@ -391,7 +392,7 @@ async function checkMobileBundleAdmission(extraSources = []) {
     ]});
 }
 
-test('mobile bundle receipt admission matches reviewed inputs, transforms and exact readback', {timeout: 120000}, async () => {
+test('mobile bundle receipt admission matches reviewed inputs, transforms and exact readback', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkMobileBundleAdmission([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 11);
   assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);

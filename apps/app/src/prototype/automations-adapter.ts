@@ -61,6 +61,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const readClock=()=>{const hour=Number(scheduleHour),minute=Number(scheduleMinute);return /^\d{1,2}$/.test(scheduleHour)&&/^\d{1,2}$/.test(scheduleMinute)&&hour>=1&&hour<=12&&minute<=59?String(hour%12+(schedulePeriod==='PM'?12:0)).padStart(2,'0')+':'+String(minute).padStart(2,'0'):'';};
  const repeatFor=(days:number[])=>days.length===7?'daily':days.join(',')==='1,2,3,4,5'?'weekdays':days.join(',')==='0,6'?'weekends':'custom';
  let completionDirty=false;
+ let activeMutationKey:string|undefined;
  const uncertain=new Set<string>();
  let releaseReviews:BrowserReviews|undefined;
  let intentStore:WorkflowIntentStore|null=null,suspended=document.hidden;
@@ -71,7 +72,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const automationBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh first':issues.find(issue=>issue.source==='automations'&&issue.unavailable)?.message||'';
  const scheduleBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh first':issues.find(issue=>issue.source==='schedules')?.message||'';
  const publish=()=>{if(owner?.live&&!suspended&&!document.hidden)owner.vset('workflows',{automationTick:Date.now()});};
- const retire=(clear=false)=>{releaseReviews?.cancelAll();dismissFilters();recovery.retire();epoch++;controller?.abort();controller=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message='';if(clear){completionDirty=false;rows=[];issues=[];intentStore=null;state='idle';loadedSession=null;}publish();};
+ const retire=(clear=false)=>{releaseReviews?.cancelAll();dismissFilters();recovery.retire();epoch++;controller?.abort();controller=null;activeMutationKey=undefined;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message='';if(clear){completionDirty=false;rows=[];issues=[];intentStore=null;state='idle';loadedSession=null;}publish();};
  const requestKey=(id:string)=>{const owner=connectionController.getSnapshot().session;return owner?workflowIntentKey(owner,'automation:'+id):'offline:'+id;};
  const key=(row:AutomationRow)=>requestKey(row.key);
  const locked=(row:AutomationRow)=>uncertain.has(key(row))||(!!binding()&&(intentStore?.locked(key(row))??true));
@@ -132,12 +133,12 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  async function work(task:(client:AutomationsProtocol,signal:AbortSignal)=>Promise<unknown>,rowKey?:string){
   if(controller)return;const selected=binding();if(!selected){showAgentStatus(owner);return;}
   const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;
-  const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';message='';publish();
+  const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';activeMutationKey=rowKey;message='';publish();
   const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected.sessionId===binding()?.sessionId;
   const client=new AutomationsProtocol(async(path,method,body,signal)=>{if(!valid())throw Error('Automation connection changed.');if(method!=='GET'){const blocked=path.startsWith('/api/lifeops/scheduled-tasks/')?scheduleBlock():path.startsWith('/api/lifeops/definitions')||path.startsWith('/api/lifeops/occurrences/')?reminderBlock():path.startsWith('/api/triggers')?automationBlock():'';if(blocked)throw new AutomationOutcomeError(blocked);if(!rowKey)throw Error('Missing automation request identity.');retained=await intents.admit(rowKey,{kind:'automation',path,method,body},signal);sent=method+' '+path;if(!valid())throw Error('Automation connection changed.');dispatched=true;uncertain.add(rowKey);}return selected.request(path,method,body,signal);},selected.conversationId);
   try{await intents.load(abort.signal);await task(client,abort.signal);if(!valid())return;if(rowKey&&retained)await intents.acknowledge(rowKey,retained,abort.signal);if(!valid())return;if(rowKey)uncertain.delete(rowKey);if(dispatched){editor=null;review=null;creating=false;message=sent.endsWith('/fire')?'Run started.':sent==='POST /api/triggers'?PROMPT_SAVED_PAUSED:'Saved';}}
   catch(error){const status=error&&typeof error==='object'&&'status' in error?Number(error.status):0,code=error&&typeof error==='object'&&'code' in error&&typeof error.code==='string'?error.code:'',known=error instanceof AutomationOutcomeError,rejected=([400,401,403,404,405,409,410,413,414,415,422].includes(status)||status===429&&sent==='POST /api/triggers')&&!/unknown|unconfirmed|ambiguous/i.test(code);if(rowKey&&(rejected||known)&&retained&&valid()){try{await intents.acknowledge(rowKey,retained,abort.signal);uncertain.delete(rowKey);}catch{/* Keep unconfirmed requests in the existing journal. */}}if(valid())message=dispatched&&!rejected&&!known?'Unknown':error instanceof Error?error.message:'Automation request failed.';}
-  finally{if(ticket===epoch){intentStore=intents;controller=null;publish();}}
+  finally{if(ticket===epoch){intentStore=intents;controller=null;activeMutationKey=undefined;publish();}}
   if(valid()&&!editor&&!review)await refresh(true);
  }
  /** The owner's informed release of an unconfirmed request, after checking the record. Never retries it. */
@@ -168,7 +169,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    else if(await intents.read(id,abort.signal)!==null)throw Error('Automation request changed');
    if(ticket===epoch)uncertain.delete(id);
   }catch{if(ticket===epoch)message='Couldn’t release';}
-  finally{if(ticket===epoch){intentStore=intents;controller=null;publish();}}
+  finally{if(ticket===epoch){intentStore=intents;controller=null;activeMutationKey=undefined;publish();}}
  }
  function show(row:AutomationRow){
   if(controller)return;creating=false;editor=null;review=null;message='';history=[];
@@ -202,7 +203,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   api=current;const workflow=render(value,current),currentSession=binding()?.sessionId||'offline';
   if(visible()&&(state==='idle'||completionDirty)&&!controller&&!editor&&!detail&&!creating&&!review&&!workflow.detail&&!workflow.builder&&!workflow.runOpen&&!workflow.removedList){completionDirty=false;state='loading';queueMicrotask(()=>void refresh(true));}
   if(workflow.detail||workflow.builder||workflow.runOpen||workflow.removedList)return {...workflow,workflowDetail:workflow.detail,automation:null};
-  const cards=rows.filter(row=>rowPasses(row,typeFilter)&&rowPasses(row,statusFilter)).map(row=>({name:row.title,icon:current.ic[row.kind==='reminder'||row.kind==='device-reminder'?'bell':row.kind==='prompt'?'spark':row.kind==='schedule'||row.kind==='routine'?'cal':'flow'],short:row.schedule||row.source.replace(/^Agent /,''),statusLabel:locked(row)?'Outcome unknown':row.kind==='workflow'&&row.workflowId&&workflow.waitingFor?.(row.workflowId)?'Waiting for you':rowStatus(row),on:row.enabled,track:current.track(row.enabled),kx:current.kx(row.enabled),dim:'',failed:row.status==='failed',busy:!!controller,open:()=>show(row),toggle:()=>show(row)}));
+  const cards=rows.filter(row=>rowPasses(row,typeFilter)&&rowPasses(row,statusFilter)).map(row=>({name:row.title,icon:current.ic[row.kind==='reminder'||row.kind==='device-reminder'?'bell':row.kind==='prompt'?'spark':row.kind==='schedule'||row.kind==='routine'?'cal':'flow'],short:row.schedule||row.source.replace(/^Agent /,''),statusLabel:locked(row)&&!(controller&&activeMutationKey===key(row))?'Outcome unknown':row.kind==='workflow'&&row.workflowId&&workflow.waitingFor?.(row.workflowId)?'Waiting for you':rowStatus(row),on:row.enabled,track:current.track(row.enabled),kx:current.kx(row.enabled),dim:'',failed:row.status==='failed',busy:!!controller,open:()=>show(row),toggle:()=>show(row)}));
   // What the list prints, one line per cause: with no agent connected its notice is the message, and a repeated
   // issue is listed once. `issues` itself stays complete for the checks that read it.
   const shownIssues=issues.filter((issue,index)=>issue.message!==message&&!(message&&!binding()&&issue.unavailable)&&issues.findIndex(other=>other.message===issue.message)===index);
@@ -267,7 +268,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
     const expression=scheduleClock?workflowClockExpression(time,scheduleDays):'';
     const trigger=scheduleClock&&expression!==workflowClockExpression(scheduleClock.time,scheduleClock.days)?{kind:'cron' as const,expression,tz:String(scheduled.record.trigger.tz)}:undefined;
     ask('Save schedule',scheduled,(client,signal)=>client.editSchedule(scheduled.id,instructions,trigger,signal));scheduleDraft=null;publish();},
-   locked:selectedLocked||formLocked,allowAnother:()=>void allowAnother(lockId),
+   locked:(selectedLocked||formLocked)&&!(controller&&activeMutationKey===lockId),allowAnother:()=>void allowAnother(lockId),
    review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''}?`,reviewDetails:detail?.kind==='reminder'?[detail.title,detail.description,detail.schedule].filter(Boolean).join('\n'):detail?.kind==='prompt'&&review?.label==='Enable'?[detail.schedule,scheduleRule(timedPrompt(detail))].filter(Boolean).join('\n'):'',reviewConfirmLabel:review?.label.startsWith('Snooze until ')?'Snooze':`Confirm ${review?.label||''}`,confirm:()=>{const selected=review;if(selected){review=null;void work(selected.run,selected.key);}},cancelReview:()=>{review=null;publish();},
   }};
  };

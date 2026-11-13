@@ -8,7 +8,7 @@ import {build} from 'esbuild';
 // Real capture, microphone lease and shared session; only browser primitives and
 // the local preference read are closed ports. No camera, microphone or codec runs.
 const root=process.cwd(), directory=path.join(root,'apps/app/src/browser');
-const file=process.env.ALPHA_VIDEO_CAPTURE_SOURCE||path.join(directory,'video-capture.ts');
+const file=path.join(directory,'video-capture.ts');
 const code=(await build({stdin:{contents:readFileSync(file,'utf8')+`
  export {createCameraSession} from ${JSON.stringify(path.join(root,'.eliza/client-features/plugins/plugin-native-camera/src/session.ts'))};
  export {cameraAccessDenied} from ${JSON.stringify(path.join(root,'.eliza/client-features/plugins/plugin-native-camera/src/host-ports.ts'))};`,resolveDir:directory,sourcefile:'video-capture.ts',loader:'ts'},

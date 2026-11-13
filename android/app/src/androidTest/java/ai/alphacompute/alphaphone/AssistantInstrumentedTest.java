@@ -60,7 +60,7 @@ public class AssistantInstrumentedTest {
     activity.finish();
    });
    for (int i = 0; i < 50 && scenario.getState() != Lifecycle.State.DESTROYED; i++) SystemClock.sleep(100);
-   assertEquals("Assistant closes normally in both distribution variants", Lifecycle.State.DESTROYED, scenario.getState());
+   assertEquals("Assistant closes normally in the launcher APK", Lifecycle.State.DESTROYED, scenario.getState());
   }
  }
  /** Closing the assistant surface must not interrupt work owned by the main surface or clear the

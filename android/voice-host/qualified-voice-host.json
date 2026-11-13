@@ -123,13 +123,13 @@
       "licenseFlags": [
         "Training audio listed in the Phonon-2 NOTICE includes CHiME-6 (CC-BY-SA-4.0) and SPGISpeech (Kensho terms). Flagged for review, not a build blocker."
       ],
-      "source": "Unmodified pinned 0d9fd4b convert_phonon2_to_gguf.py, b5x3t7 layout, ARM64 Python 3.12.14 / NumPy 2.5.4 under QEMU; exact upstream c0f6ad42 hash.",
+      "source": "Source-built with elizaOS/llama.cpp@5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd convert_phonon2_to_gguf.py (blob 05fc24e750541527148f46e461a67843fe23299d), b5x3t7 layout, Python 3.12.11 / NumPy 2.5.4. Full verified macOS ARM64 and Linux x86_64 outputs are byte-identical at the mobile-voice@1.4.2 pin; no device qualification claimed.",
       "noticeFiles": [
         "licenses/Phonon-2-NOTICE.txt",
         "licenses/Phonon-2-LICENSE-WEIGHTS-CC-BY-4.0.txt"
       ],
       "path": "asr/phonon-2-fv5.gguf",
-      "sha256": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+      "sha256": "407c02ab24382bc92b181b165dea8e4702e502ded17dafbe7e1222c0b69cc802",
       "bytes": 208932352
     },
     {

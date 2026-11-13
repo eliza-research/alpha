@@ -14,6 +14,13 @@ Read [README.md](README.md), [docs/development.md](docs/development.md) and [AGE
 7. Change existing code rather than adding a new conditional path, unless there is a strong
    reason for the branch; state that reason in the change.
 
+## Android packaging
+
+Alpha has one launcher product/flavor. Every APK packages the resident runtime,
+on-device voice and local embeddings. Run `bun run android:build:local` and
+`bun run android:verify`; retain debug, release and instrumentation evidence
+separately. Browser test mocks do not define another APK lane.
+
 ## Formal models
 
 Run the Quint models and LemmaScript proofs locally before merging a PR:

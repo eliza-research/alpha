@@ -21,9 +21,13 @@ module DelegationReceiver {
   pure def released(v: State): State =
     if (v.queued) { ...v, queued: false, locked: true, running: "callback" }
     else { ...v, locked: false, running: "none" }
+  /// The authorization's record is finished: native lets go of a return it still keeps for it.
+  /// A return for another account stays.
+  pure def finished(v: State): State =
+    { ...v, record: "none", retained: if (v.retained == "other") "other" else "none" }
   pure def settled(v: State): State =
-    if (v.cloud == "complete") { ...v, record: "none", grant: true }
-    else if (v.cloud == "failed") { ...v, record: "none" }
+    if (v.cloud == "complete") { ...finished(v), grant: true }
+    else if (v.cloud == "failed") finished(v)
     else v
   /// Reads Cloud's state and applies it. A received code is sent for completion once when Cloud
   /// still waits, and the state is read once more without a second completion.
@@ -71,7 +75,7 @@ module DelegationReceiver {
   action cancelEnds(failed: bool): bool = all {
     s.running == "cancel",
     s' = if (failed) released(s)
-      else if (s.record == "waiting" or s.cloud == "waiting") released({ ...s, record: "none", cloud: "failed" })
+      else if (s.record == "waiting" or s.cloud == "waiting") released({ ...finished(s), cloud: "failed" })
       else released(settled(s))
   }
   action cloudFinishes(complete: bool): bool = all {
@@ -93,6 +97,8 @@ module DelegationReceiver {
   /// Completion is sent at most once per received code and once per Check status.
   val CompleteAtMostOncePerTap = s.completes <= s.codeReturns + s.statusTaps
   val GrantOnlyFromCloud = s.grant implies s.cloud == "complete" and s.record == "none"
+  /// A return kept for this authorization does not outlive its record.
+  val RetainedReturnHasRecord = s.retained.in(Set("code", "error", "empty")) implies s.record != "none"
   val RecordHasCloudState = s.record != "none" implies s.cloud != "none"
   val TypeOK = s.record.in(Set("none", "waiting", "finishing"))
     and s.retained.in(Set("none", "code", "error", "empty", "other"))
@@ -100,7 +106,7 @@ module DelegationReceiver {
     and s.cloud.in(Set("none", "waiting", "finishing", "complete", "failed"))
     and s.completes.in(0.to(8)) and s.statusTaps.in(0.to(2)) and s.starts.in(0.to(2))
   val safety = TypeOK and UnreadReturnBehindGate and QueuedNeedsGate and GateHasStep and CompleteAtMostOncePerTap and
-    GrantOnlyFromCloud and RecordHasCloudState
+    GrantOnlyFromCloud and RecordHasCloudState and RetainedReturnHasRecord
 
   val DeferredReturnWitness = s.queued and s.running == "start"
   val CompletionUnconfirmedWitness = s.record == "finishing" and s.cloud == "waiting" and not(s.locked) and s.completes > 0

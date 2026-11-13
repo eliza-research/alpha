@@ -5,15 +5,37 @@ const {cloudVoiceLimitOf}=await tsImport(new URL('../../apps/app/src/runtime/clo
 const {readServiceLimit,retryDuration}=await tsImport(new URL('../../.eliza/client-features/packages/cloud/sdk/src/subscription-entitlement.ts',import.meta.url).href,{parentURL:import.meta.url});
 /** Loads the actual Alpha voice views with in-memory ports only.
  * No microphone, MediaRecorder, native plugin, provider, playback or account API is used. */
-import fs from 'node:fs';
 import vm from 'node:vm';
 import {TextEncoder} from 'node:util';
-import {stripTypeScriptTypes} from '../support/strip-types.mjs';
+import {build} from 'esbuild';
+import path from 'node:path';
 import {loadPreparedBatchVoice} from './shared-batch-voice.mjs';
 
-function load(file,box,names,transform=source=>source){
- const source=transform(fs.readFileSync('apps/app/src/'+file,'utf8')).replace(/^import .*;\n/gm,'').replaceAll('export async function','async function').replaceAll('export function','function').replaceAll('export const','const').replaceAll('export type','type');
- vm.runInNewContext('{'+stripTypeScriptTypes(source,{mode:'strip'})+'\n'+names.map(name=>'globalThis.'+name+'='+name+';').join('\n')+'}',box);
+// Compile whole real modules once. Imports are explicit controlled ports in the fixture realm;
+// no source slice, import stripping, declaration rewriting or injected product exports.
+const moduleFiles = ['runtime/voice-selection.ts',
+ '../../../.eliza/client-features/packages/voice/src/voice-turn-timing.ts',
+ '../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts',
+ 'runtime/voice-timing.ts','local-speech-playback.ts','runtime/local-speech-text.ts',
+ 'runtime/cloud-voice.ts','runtime/action-message-presentation.ts',
+ '../../../.eliza/client-features/packages/core/src/types/system-notice.ts',
+ '../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts',
+ 'prototype/local-speech-playback.ts','runtime/voice-states.ts','runtime/local-agent-stream.ts',
+ 'prototype/note-recorder.ts','runtime/note-recorder-driver.ts','runtime/note-default-title.ts',
+ 'prototype/voice-adapter.ts'];
+const modules = new Map(await Promise.all(moduleFiles.map(async file => {
+ const entry=path.resolve('apps/app/src',file);
+ const built=await build({entryPoints:[entry],bundle:true,write:false,format:'iife',globalName:'__alphaVoiceModule',platform:'browser',target:'es2022',logLevel:'silent',plugins:[{
+  name:'voice-fixture-controlled-imports',setup(builder){
+   builder.onResolve({filter:/.*/},args=>args.kind==='entry-point'?undefined:{path:args.path,namespace:'voice-port'});
+   builder.onLoad({filter:/.*/,namespace:'voice-port'},args=>({contents:args.path==='react'?"module.exports = {createElement:(...args)=>globalThis.React.createElement(...args)};":'module.exports = globalThis;',loader:'js'}));
+  }
+ }]});
+ return [file,built.outputFiles[0].text];
+})));
+function load(file,box){
+ const code=modules.get(file);if(!code)throw Error('Unknown whole voice fixture module: '+file);
+ vm.runInNewContext(code,box,{filename:file});Object.assign(box,box.__alphaVoiceModule);
 }
 export function cloudVoiceViewFixture(options={}){
  const f={account:'cloud-account',credential:'cloud-credential',agent:'agent-session',kind:'resident',platform:'android',native:true,open:false,starts:0,stops:0,uploads:0,cloudSpeech:0,localFactories:0,localSpeech:0,pairedFactories:0,accountOpens:0,sends:0,audioSaves:0,recordingCancels:[],activeRecording:null,lastRecording:null,error:null,peak:0,conversation:'11111111-1111-4111-8111-111111111111',contextRevision:1,sendInputs:[],...options};
@@ -24,39 +46,32 @@ export function cloudVoiceViewFixture(options={}){
  const driver={warmSpeechOutput:async()=>{f.speechWarmups=(f.speechWarmups||0)+1;},getRecordingMetrics:async input=>{if(f.metricsError)throw f.metricsError;if(input.recordingId!==f.activeRecording)throw Error('Recording changed');return {recordingId:input.recordingId,peak:f.peak};},startRecording:async()=>{const id='synthetic-clip-'+(++f.starts);const result=f.holdStart?await new Promise(resolve=>f.releaseStart=resolve):{recordingId:id,maxDurationMs:59000};if(f.startError)throw f.startError;f.activeRecording=result.recordingId;f.lastRecording=result.recordingId;return result;},stopRecording:async()=>{f.stops++;f.activeRecording=null;return {recordingId:f.lastRecording,durationMs:1000};},transcribeRecording:async input=>{f.uploads++;f.transcribeInput=input;if(f.error)throw f.error;if(f.holdTranscript)return new Promise(resolve=>f.releaseTranscript=resolve);return {text:f.transcript||'Synthetic Cloud transcript',local:false};},cancelRecording:async()=>{f.recordingCancels.push(f.activeRecording);if(f.holdCaptureCancel)await new Promise(resolve=>f.releaseCaptureCancel=resolve);if(f.captureCancelError)throw f.captureCancelError;f.activeRecording=null;},cancel:async()=>{},stop:async()=>{f.savedAudioStops=(f.savedAudioStops||0)+1;if(f.holdSavedStop)await new Promise(resolve=>f.releaseSavedStop=resolve);if(f.savedStopError)throw f.savedStopError;f.activeSavedAudio=null;},state:async()=>({playing:!!f.activeSavedAudio,audioId:f.activeSavedAudio,positionMs:0}),stopPlayback:async input=>{f.stopPlaybackInputs??=[];f.stopPlaybackInputs.push(input);if(f.holdPlaybackCleanup)await new Promise(resolve=>f.releasePlaybackCleanup=resolve);if(f.playbackCleanupError)throw f.playbackCleanupError;f.activePlayback=null;},synthesize:async input=>{(f.speechInputs??=[]).push(input);f.cloudSpeech++;if(f.error)throw f.error;return {playbackId:'synthetic-'+input.requestId};},play:async input=>{if(input.audioId){f.savedAudioStarts=(f.savedAudioStarts||0)+1;if(f.holdSavedStart)await new Promise(resolve=>f.releaseSavedStart=resolve);f.activeSavedAudio=input.audioId;return;}f.activePlayback=input.playbackId;f.finishPlayback=()=>{f.activePlayback=null;for(const callback of events.get('playbackEnded')||[])callback(input);};if(!f.holdPlayback)queueMicrotask(f.finishPlayback);},addListener:async(name,callback)=>{const callbacks=events.get(name)||new Set();events.set(name,callbacks);callbacks.add(callback);return {remove:async()=>{callbacks.delete(callback);}};},saveRecording:async input=>{f.audioSaves++;return {audioId:input.recordingId,noteId:input.noteId,durationMs:1000,transcript:input.transcript};}};
  const controller={warmInference:()=>{f.prewarms=(f.prewarms||0)+1;},getCloudEnvironment:()=>f.account?(f.environment||'production'):null,getCloudClient:()=>f.account?{sessionId:f.account,credentialId:f.credential}:null,getSnapshot:()=>({kind:f.kind,open:f.open,session:f.agent?{sessionId:f.agent,ownerId:'synthetic-owner',agentId:'synthetic-agent',origin:'https://owned-agent.invalid'}:null}),getPairedVoiceBinding:()=>null,getBrowserSpeechAgent:()=>null,open:()=>{f.agentOpens=(f.agentOpens||0)+1;f.open=true;},openCloudAccount:()=>{f.accountOpens++;f.open=true;},subscribe:callback=>{subscriptions.add(callback);return()=>subscriptions.delete(callback);}};
  const local={ready:async()=>true,playbackReady:async()=>true,speak:async()=>{f.localSpeech++;}};
- const box={openMicrophoneAvailable:()=>f.openMic===true,createLocalReplySpeaker:()=>f.replySpeaker,developmentCloudRealtimeVoiceEnabled:false,developmentCloudVoiceEnabled:false,developmentCartesiaVoiceEnabled:false,testMocksEnabled:false,browserDevProfile:false,Capacitor:{getPlatform:()=>f.platform,isNativePlatform:()=>f.native,isPluginAvailable:()=>true},connectionController:controller,registerPlugin:()=>driver,createOnDeviceVoice:()=>{f.localFactories++;return local;},createPairedVoice:()=>{f.pairedFactories++;return null;},planLocalSpeech:()=>[],recordingLevels:()=>[],localStorage:{getItem:()=>JSON.stringify({kind:f.kind})},document:{hidden:false,documentElement:{dataset:{}},querySelector:selector=>selector==='dialog[open]'?f.reviewOpen||null:f.noteEditor||null,addEventListener(){},removeEventListener(){}},window:{addEventListener(){},removeEventListener(){},dispatchEvent(){},getSelection:()=>({isCollapsed:true})},queueMicrotask,setInterval:options.clock?.setInterval||setInterval,clearInterval:options.clock?.clearInterval||clearInterval,setTimeout:options.clock?.setTimeout||setTimeout,clearTimeout:options.clock?.clearTimeout||clearTimeout,Date:options.clock?.Date||Date,performance:options.clock?.performance,crypto,structuredClone,AbortController,DOMException,Event,TextEncoder,console};
+ const box={openMicrophoneAvailable:()=>f.openMic===true,createLocalReplySpeaker:()=>f.replySpeaker,developmentCloudRealtimeVoiceEnabled:false,developmentCloudVoiceEnabled:false,developmentCartesiaVoiceEnabled:false,testMocksEnabled:false,browserDevProfile:false,Capacitor:{getPlatform:()=>f.platform,isNativePlatform:()=>f.native,isPluginAvailable:()=>true},connectionController:controller,registerPlugin:()=>driver,createOnDeviceVoice:()=>{f.localFactories++;return local;},createPairedVoice:()=>{f.pairedFactories++;return null;},planLocalSpeech:()=>[],recordingLevels:()=>[],localStorage:{getItem:()=>JSON.stringify({kind:f.kind})},document:{hidden:false,documentElement:{dataset:{}},querySelector:selector=>selector==='dialog[open]'?f.reviewOpen||null:f.noteEditor||null,addEventListener(){},removeEventListener(){}},window:{addEventListener(){},removeEventListener(){},dispatchEvent(){},getSelection:()=>({isCollapsed:true})},queueMicrotask,setInterval:options.clock?.setInterval||setInterval,clearInterval:options.clock?.clearInterval||clearInterval,setTimeout:options.clock?.setTimeout||setTimeout,clearTimeout:options.clock?.clearTimeout||clearTimeout,Date:options.clock?.Date||Date,performance:options.clock?.performance,crypto,structuredClone,AbortController,AbortSignal,DOMException,Event,EventTarget,CustomEvent,URL,TextEncoder,console};
  loadPreparedBatchVoice(box);
  load('runtime/voice-selection.ts',box,['selectVoiceRoute','voiceSendPolicy','speechRoute','noteNetworkSpeechFailure','clearNetworkSpeechHold']);
  // voice-timing.ts configures the shared recorder projected from the pin; it is evaluated in the
  // same realm so its promises keep the view's microtask timing.
  load('../../../.eliza/client-features/packages/voice/src/voice-turn-timing.ts',box,['createVoiceTurnTiming']);
- // Imports are stripped by load(): supply the actual projected realtime recorder in this realm.
+ // The actual projected realtime recorder is evaluated in this realm.
  load('../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts',box,['createRealtimeVoiceTiming']);
  load('runtime/voice-timing.ts',box,['beginVoiceTurn','markVoiceTiming','abandonVoiceTurn','finishVoiceTurn','sendVoiceEntry','observeVoiceStartup','runVoiceStartupPreparation','voiceStartupTiming']);
  load('local-speech-playback.ts',box,['playOwnedSpeech']);
  // The real read-aloud refusal; the on-device planner stays a stub.
  load('runtime/local-speech-text.ts',box,['screenSpeechText']);
  load('runtime/cloud-voice.ts',box,['cloudVoiceFailure','createCloudVoice']);
- // Only the [WORKFLOW] reply filter: the rest of the module reads pinned upstream notice text.
- load('runtime/action-message-presentation.ts',box,['workflowReplyText'],source=>{const start=source.indexOf('/** A chat-started workflow run');if(start<0)throw Error('Missing actual workflow reply filter source');return source.slice(start);});
- // Legacy fixtures exercise batch compatibility; streaming scenarios opt in explicitly.
+ load('../../../.eliza/client-features/packages/core/src/types/system-notice.ts',box);
+ load('runtime/action-message-presentation.ts',box);
+ // These scenarios exercise the batch port; native streaming has its own owning drivers.
  box.nativeCloudStreamingAvailable=()=>false;
- vm.runInNewContext('{'+stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts','utf8').replaceAll('export async function','async function').replaceAll('export function','function').replaceAll('export const','const').replaceAll('export type','type'))+';globalThis.speakCloudSpeechChunks=speakCloudSpeechChunks;}',box);
+ load('../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts',box);
  load('prototype/local-speech-playback.ts',box,['installLocalSpeechPlayback','stopLocalSpeechPlayback','currentNoteReading','stopSpeaking','speakNote','readNoteAloud']);
- load('runtime/voice-states.ts',box,['voiceFailure','transcriptProvenance','deniedSettingsChoice','DENIED_SETTINGS_LABEL']);
+ load('runtime/voice-states.ts',box,['voiceFailure','transcriptProvenance','deniedSettingsChoice','DENIED_SETTINGS_LABEL','MEDIA_UNCONFIRMED_NOTICE','speechCleanupNotice']);
  // Issue #395 native stage bridge: a no-op outside the phone.
  box.installNativeVoiceTurnMarks=()=>{};
  box.alphaViewPath=alphaViewPath;box.cloudServiceName=cloudServiceName;box.cloudVoiceLimitOf=cloudVoiceLimitOf;box.readServiceLimit=readServiceLimit;box.retryDuration=retryDuration;
- // The adapter's imports are stripped by load(), so provide its real progress helper
- // in this same VM realm before evaluating any custom adapter source transform.
- load('runtime/local-agent-stream.ts',box,['createBatchProgressAcknowledgment'],source=>{
-  const start=source.indexOf('export function genuineBatchProgress(');
-  const end=source.indexOf('export async function readLocalAgentStream(',start);
-  if(start<0||end<0)throw Error('Missing actual batch progress helper source');
-  return source.slice(start,end);
- });
+ load('runtime/local-agent-stream.ts',box);
  // Exercise Notes only when the scenario supplies an owned in-memory recording port.
- load('prototype/note-recorder.ts',box,['NoteRecorderSession','formatRecordingClock'],source=>source.replaceAll('export class','class'));
+ load('prototype/note-recorder.ts',box);
  box.createNoteRecorderDriver=()=>({status:async()=>({state:'idle'}),listen:async()=>({remove(){}}),start:async()=>{throw Error('No Notes recording in this fixture');}});
  box.noteSegmentTranscriber=async()=>null;box.setNotesRecorderControl=()=>{};box.openNativeLiveStream=async()=>{throw Error('No live stream in this fixture');};
  if(options.noteRecording){
@@ -65,7 +80,7 @@ export function cloudVoiceViewFixture(options={}){
   box.setNotesRecorderControl=control=>{f.notesRecorderControl=control;};
  }
  load('runtime/note-default-title.ts',box,['nextDefaultNoteTitle']);
- load('prototype/voice-adapter.ts',box,['installPrototypeVoiceAdapter'],options.adapterSourceTransform);
+ load('prototype/voice-adapter.ts',box);
  const icons={check:'check',mic:'official-mic-path',stop:'stop',play:'play',x:'close',cloud:'cloud',user:'account'};
  class Shell{
   live=true;state={view:null,chat:'sheet',draft:'',msgs:[{id:'message',from:'agent',text:'Synthetic reply'}]};notes={list:[]};messages=[];

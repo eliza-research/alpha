@@ -15,10 +15,11 @@ const reactKey = '__alphaStartupCoordinatorReact';
 const progressKey = 'alpha:startup-permission-walkthrough:v1';
 const memoryKey = 'alpha.startup-permissions.v1';
 const permissionKeys = ['notifications', 'microphone', 'camera', 'location', 'calendar', 'photos', 'files'];
+const imageHeaders=[{name:'AlphaTelephony',methods:[{name:'imageCapability'}]}];
 
 async function compileComponent() {
   const ports = `const fixture=()=>globalThis.${fixtureKey};
-export const Capacitor={getPlatform:()=>fixture().platform,isNativePlatform:()=>fixture().platform==='android'};
+export const Capacitor={getPlatform:()=>fixture().platform,isNativePlatform:()=>fixture().platform==='android',get PluginHeaders(){return fixture().pluginHeaders;}};
 export function registerPlugin(name){return new Proxy({},{get:(_,method)=>(...args)=>fixture().ports[name][method](...args)});}
 export const connectionController={subscribe:fn=>fixture().connection.subscribe(fn),getSnapshot:()=>fixture().connection.snapshot};
 export const googleConnectionController={subscribe:fn=>fixture().google.subscribe(fn),getSnapshot:()=>fixture().google.snapshot};`;
@@ -81,7 +82,7 @@ async function fixture(component, options = {}) {
   const state = {notifications:true,microphone:'granted',camera:'granted',location:'granted',calendar:'granted',photos:'selected',files:'granted',...options.permissions};
   const calls = [], held = new Map(), resumes = new Set(), inFlight = new Map();
   let instance = 0, ticket = 0;
-  const runtime = {platform:'android',hooks:{states:[],refs:[]},pauseInvalidation:false,deferredEffects:[],
+  const runtime = {platform:'android',pluginHeaders:options.image?imageHeaders:undefined,hooks:{states:[],refs:[]},pauseInvalidation:false,deferredEffects:[],
     connection:observable({cloudAccount:options.signedOut?null:{credentialId:'owner-a',environment:'production'},open:false}),
     google:observable(false),ports:{}};
   globalThis[fixtureKey]=runtime;
@@ -233,7 +234,9 @@ export async function runStartupPermissionsCoordinatorRefinement() {
       return observation;
     };
     record('mounted signed-in coordinator',[...(options.progress?.status==='completed'?[action('restoreCompleted',options.progress.step)]:[]),
-      action(options.signedOut?'mountSignedOut':'signIn'),...statuses(initial),...(options.writeFailure||options.dropWrite?[action('storageFails'),action('progressWriteFailed')]:[])]);
+      action(options.signedOut?'mountSignedOut':'signIn'),...statuses(initial),
+      ...(options.image&&options.progress?.status!=='completed'?Array.from({length:initial.component.progress?.step??7},()=>action('advance')):[]),
+      ...(options.writeFailure||options.dropWrite?[action('storageFails'),action('progressWriteFailed')]:[])]);
     try {await work(f,record);scenarios.push({name,checkpoints});traces.push(trace);} finally {await f.dispose();}
   }
   await scenario('mounted-before-sign-in',{signedOut:true},async(f,record)=>{
@@ -480,6 +483,24 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
     assert.equal(f.snapshot().durable.effectiveProgress.step,7);
   });
+  await scenario('image-initial-platform-grants-require-no-requests',{image:true},async(f,record)=>{
+    assert.equal(f.snapshot().ui.heading,'All set');assert.equal(f.snapshot().component.progress,null);
+    assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+    await f.click('Done');record('owner acknowledges pregranted image setup',action('finish'));
+    await f.remount();record('completed image installation restores',restart);
+  });
+  await scenario('image-ungranted-location-stops-until-platform-readback',{image:true,permissions:{location:'denied'}},async(f,record)=>{
+    assert.equal(f.snapshot().ui.heading,'Location');assert.equal(f.snapshot().component.progress.step,3);
+    assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+    f.state.location='granted';await f.resume();record('remaining platform grants advance image setup',observation=>[...statuses(observation),...Array.from({length:4},()=>action('advance'))]);
+    assert.equal(f.snapshot().ui.heading,'All set');assert.equal(f.snapshot().durable.effectiveProgress.step,7);
+  });
+  await scenario('image-completed-settings-target-remains-explicit',{image:true,progress:{version:4,status:'completed',step:7}},async(f,record)=>{
+    await f.target('camera');record('Settings requests explicit image permission review',observation=>[action('openTarget',2),...statuses(observation)]);
+    assert.equal(f.snapshot().ui.heading,'Camera');assert.equal(f.snapshot().ui.visible,true);
+    await f.click('Done');record('owner closes the image review',action('closeTarget'));
+    assert.equal(f.snapshot().durable.effectiveProgress.step,7);assert.equal(f.calls.filter(call=>call.kind==='request').length,0);
+  });
   const receipt=await checkTraces({model:'PermissionWalkthrough',id:'PermissionWalkthroughCoordinator',sources:component.sources,
     driverHashes:component.driverHashes,traces,scope:'bounded-orchestration',assumptions:[
       'Actual React component, progress storage helpers and permission-flow implementation execute in JSDOM.',
@@ -487,6 +508,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
       'React state and ref observations are captured by hook wrappers forwarding every call to the real React runtime.',
       'Generation is bounded to six in the model. These traces cover finite owner, lifecycle, callback and storage schedules.',
       'Progress writes may fail or drop silently. Permission-attempt marker writes succeed in these traces.',
+      'The image profile is selected by the actual injected AlphaTelephony plugin header. Existing platformStatus and advance transitions observe its already-granted rows; PermissionChoices separately covers hidden checking and automatic-UI guards.',
     ]});
   const after=captureInputs(component.sources);
   assert.deepEqual(after,component.driverHashes,'Source or driver changed while the coordinator executed');

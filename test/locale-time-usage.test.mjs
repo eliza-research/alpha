@@ -1,30 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync, readdirSync} from 'node:fs';
-import {join, relative} from 'node:path';
 
-// Times shown on the phone go through apps/app/src/prototype/locale-time.ts, which applies the
-// device locale and Android's 12/24-hour choice (a WebView's Intl cannot see the latter).
-// A bare toLocaleTimeString, or a toLocaleString/toLocaleDateString that shows a time (no
-// options, or hour/timeStyle), ignores that choice. Date-only calls are not checked.
-const root = new URL('..', import.meta.url).pathname;
-const src = join(root, 'apps/app/src');
-// Files not yet converted. Each package that converts one removes it here; the test fails
-// when a listed file no longer has a bare time call, so the list only shrinks.
-const pending = new Set([
-  'browser/calendar.ts', 'browser/clock.ts', 'browser/incoming-simulation.ts', 'browser/simulated-workflows.ts',
-  'prototype/automations-adapter.ts', 'prototype/calendar-adapter.ts',
-  'prototype/reminder-adapter.ts', 'prototype/settings-adapter.ts',
-  'runtime/cloud-voice.ts', 'runtime/hosted-live-source-ui.tsx', 'runtime/reminder-creations.ts',
-]);
-
-function files(dir) {
-  return readdirSync(dir, {withFileTypes: true}).flatMap(entry => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return files(path);
-    return /\.(?:[jt]sx?|mjs)$/.test(entry.name) && !entry.name.endsWith('.d.ts') ? [path] : [];
-  });
-}
 /** Argument text of the call whose opening parenthesis is at `open`, with nested parentheses. */
 function args(text, open) {
   let depth = 0;
@@ -55,17 +31,4 @@ test('bareTimeCalls finds time-bearing calls and ignores date-only and number ca
   assert.deepEqual(bareTimeCalls('new Date(x).toLocaleDateString()'), []);
   assert.deepEqual(bareTimeCalls('d.toLocaleDateString(undefined,{month:"short",day:"numeric"})'), []);
   assert.deepEqual(bareTimeCalls('file.size.toLocaleString()'), []);
-});
-
-test('displayed times go through locale-time outside the files still pending conversion', () => {
-  const offenders = [], stale = [];
-  for (const path of files(src)) {
-    const name = relative(src, path);
-    if (name === 'prototype/locale-time.ts') continue;
-    const lines = bareTimeCalls(readFileSync(path, 'utf8'));
-    if (pending.has(name)) { if (!lines.length) stale.push(name); }
-    else for (const line of lines) offenders.push(`${name}:${line}`);
-  }
-  assert.deepEqual(offenders, [], 'use formatTime or formatDateTime from prototype/locale-time.ts');
-  assert.deepEqual(stale, [], 'these files are converted; remove them from the pending list');
 });

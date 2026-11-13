@@ -243,18 +243,28 @@ test('Changing the Cloud credential drops every lookup of the old one',async()=>
 });
 
 test('Concurrent Calendar reads share one lookup, and a joiner reads for itself when the leader ends',async()=>{
- const f=await fixture();try{
-  f.setAccounts(()=>[calendarAccount]);
-  const [a,b]=await Promise.all([f.reader.calendarSources(),f.reader.calendarSources()]);assert.deepEqual(a,b);
-  assert.equal(f.calls.filter(u=>u.pathname==='/api/v1/user').length,1);
-  let release;f.setBeforeOwner(()=>new Promise(resolve=>{release=resolve;}));
+ const timing=process.env.ALPHA_CALENDAR_READ_TIMING,info=console.info;let joined=0,f,release;
+ process.env.ALPHA_CALENDAR_READ_TIMING='1';
+ console.info=(label,value,...rest)=>{if(label==='[alpha-calendar-read-timing]'){const event=JSON.parse(value);if(event.routeBucket==='owner-cache'&&event.cacheHit==='in-flight')joined++;}else info(label,value,...rest);};
+ try{
+  f=await fixture();f.setAccounts(()=>[calendarAccount]);
+  // Starting two methods together does not ensure overlap: their credential-file reads can arrive after the
+  // first lookup finishes, and source lists deliberately never reuse a completed lookup. Hold the response
+  // until the diagnostic from the actual shared lookup proves the second caller joined it.
+  f.setBeforeOwner(()=>new Promise(resolve=>{release=resolve;}));
+  const first=f.reader.calendarSources();await until(()=>release);
+  const second=f.reader.calendarSources();await until(()=>joined===1);
+  f.setBeforeOwner(async()=>{});release();
+  const [a,b]=await Promise.all([first,second]);assert.deepEqual(a,b);
+  assert.equal(ownerCalls(f),1);
+  release=undefined;f.setBeforeOwner(()=>new Promise(resolve=>{release=resolve;}));
   const controller=new AbortController(),leader=f.reader.calendarSources(controller.signal);await until(()=>release);
-  const joiner=f.reader.calendarSources();await new Promise(resolve=>setTimeout(resolve,5));
+  const joiner=f.reader.calendarSources();await until(()=>joined===2);
   assert.equal(ownerCalls(f),2,'the joiner waits on the running lookup');
   f.setBeforeOwner(async()=>{});controller.abort();release();
   const [ended,alive]=await Promise.allSettled([leader,joiner]);
   assert.equal(ended.status,'rejected');assert.equal(alive.status,'fulfilled');assert.equal(alive.value.length,1);
- }finally{await f.close();}
+ }finally{release?.();console.info=info;if(timing===undefined)delete process.env.ALPHA_CALENDAR_READ_TIMING;else process.env.ALPHA_CALENDAR_READ_TIMING=timing;await f?.close();}
 });
 
 test('A refused feed drops the shared lookups',async()=>{

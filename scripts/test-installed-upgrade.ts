@@ -69,15 +69,15 @@ export async function testInstalledUpgrade(kind: string,options=process.argv.sli
  const testMethod=kind==='calendar'?'baselineToCandidatePreservesCalendarIdentity':'installedUpgradePreservesIdentityAndReceipts';
  const flag=kind==='calendar'?'calendarUpgradePhase':'reminderUpgrade';
  const output=path.join(root,'test-results',`${kind}-upgrade-${Date.now()}-${process.pid}`);
- // Immutable pairing, admitted for both distributions before the device is leased or touched: the
+ // Immutable pairing, admitted before the device is leased or touched: the
  // candidate app and its instrumentation APK come from one verified distribution build. Shared
  // Gradle outputs are not used; a later build can overwrite them.
- const candidates=Object.fromEntries(['standalone','launcher'].map(variant=>[variant,admitApks(path.join(root,'artifacts'),variant,{testMocks:false})]));
+ const candidates={launcher:admitApks(path.join(root,'artifacts'))};
  const lease=await acquireDeviceLease(`android:${serial}`,{waitMs:0,ttlMs:Number.MAX_SAFE_INTEGER});
  process.once('SIGINT',cancel);process.once('SIGTERM',cancel);
  try{
   fs.mkdirSync(output,{recursive:true});
-  for(const variant of ['standalone','launcher']){
+  for(const variant of ['launcher'] as const){
    cancellation.signal.throwIfAborted();
    const installed=call('shell','pm','list','packages','-u','--user','all').split(/\r?\n/);
    assert.ok(![pkg,testPkg].some(name=>installed.includes(`package:${name}`)),'Existing package registration; refusing replacement');

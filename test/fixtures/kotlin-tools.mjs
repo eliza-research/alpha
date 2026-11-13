@@ -20,7 +20,7 @@ const modules = [
 
 export function kotlinJars({prepare = false} = {}) {
   const metadata = readFileSync(join(root, 'android/gradle/verification-metadata.xml'), 'utf8');
-  const output = process.env.ALPHA_KOTLIN_HOME || join(process.env.RUNNER_TEMP || tmpdir(), 'alpha-host-kotlin');
+  const output = join(process.env.RUNNER_TEMP || tmpdir(), 'alpha-host-kotlin');
   return modules.map(([group, name, version]) => {
     const file = `${name}-${version}.jar`;
     const component = metadata.split(`<component group="${group}" name="${name}" version="${version}">`)[1]?.split('</component>')[0];

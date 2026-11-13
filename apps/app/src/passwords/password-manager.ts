@@ -193,10 +193,10 @@ function save(helpers: Helpers) {
   void run('save', async (vault, currentRun) => {
     await vault.save({ ...(current.id ? { id: current.id } : {}), label: current.label.trim(), username: current.username, websites, keepBindings: current.keep.map(binding => binding.facet), ...(current.generate ? { generate: { length: current.length } } : secret ? { password: secret } : {}) });
     current.password = '';
-    if (!currentRun() || draft !== current) return;
-    draft = null;
+    if (!currentRun()) return;
+    // The vault holds the entry whether or not its form is still open, so the list is read again either way.
+    if (draft === current) { draft = null; helpers.set({ page: 'password-provider' }); }
     notice = 'Saved';
-    helpers.set({ page: 'password-provider' });
     await refresh();
   });
 }

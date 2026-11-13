@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
 
 /** A lost WebView renderer (MainActivity's onRenderProcessGone listener): the dead host WebView is
  * detached, the activity is recreated, and the page comes back in exactly one resumed MainActivity
- * with a new renderer. Runs on both variants; LauncherHomeInstrumentedTest repeats the kill while
+ * with a new renderer. Runs without HOME; LauncherHomeInstrumentedTest repeats the kill while
  * Alpha holds HOME and returns through the HOME key.
  *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --classes RendererRecovery
  * The renderer is ended through androidx WebViewRenderProcess.terminate() where the provider

@@ -189,7 +189,7 @@ export async function route(page, t) {
   await button(page, 'Directions').click();
   const input = page.getByRole('textbox', {name: 'Starting point', exact: true});
   await expect(input).toBeVisible();
-  await expect(sheet(page, 'directions')).toContainText('Choose a real origin to calculate a route.');
+  assert.equal(await page.evaluate(() => window.inspectHistoricalMaps().route?.phase === 'ready'), false, 'Directions requires an explicit origin before accepting a route');
   assert.equal((await requests(page)).some(row => row.endpoint === 'routes'), false);
   const immediate = t.trace && difference(t.trace, 'directions_wait_for_explicit_origin_before_route');
   immediate?.steps.push({label: 'Directions without an origin has no accepted route', action: action('Directions'), expect: await observe(page)});

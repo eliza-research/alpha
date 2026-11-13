@@ -28,10 +28,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
-      # The pinned upstream SDK retains Node-based build tooling.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "26.13.0"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
@@ -40,7 +36,7 @@ jobs:
       - name: Verify actual Cloud recording signature classifier
         run: python3 scripts/ci/resident-phase.py --name cloud-recording-signature --seconds 60 bun scripts/check-cloud-recording-signature.ts
       # The rejection test bundles with the product's own esbuild and imports the projected client
-      # features (bun run test gets them from its pretest hook), so install the locked product dependencies
+      # features (bun run test prepares them before the suite), so install the locked product dependencies
       # as resident-android does and project the client before running the test file directly.
       - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 bun install --frozen-lockfile
       - run: python3 scripts/ci/resident-phase.py --name client-projection --seconds 300 bun run upstream:prepare-client

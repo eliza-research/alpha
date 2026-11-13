@@ -29,7 +29,7 @@ import static org.junit.Assert.*;
  * chooser (the way back to the stock launcher) stay reachable. Never changes the HOME role: it runs
  * only where Alpha already holds it. On an owned emulator the runner selects and restores it:
  *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN \
- *     --variants launcher --home-role --classes SettingsRoles,LauncherHome
+ *     --home-role --classes SettingsRoles,LauncherHome
  * (SettingsRoles covers the role being removed, declined and accepted in Android's own dialog.)
  * Emulator evidence, not device or user acceptance; boot-time HOME, the recovery partition and
  * emergency calling need a phone. */
@@ -254,7 +254,7 @@ public class LauncherHomeInstrumentedTest {
 
  /** A lost renderer while Alpha is HOME: the recreated activity is the only MainActivity, and the
   * HOME key still lands on Alpha Home in that instance (RendererRecoveryInstrumentedTest covers
-  * both variants without the role). */
+  * the launcher without the role). */
  @Test public void killedRendererWhileHomeRecoversOneMainActivityAndHomeStillReturns() throws Exception {
   assumeAlphaIsHome();
   Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();

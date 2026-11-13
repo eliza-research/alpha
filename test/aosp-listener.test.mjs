@@ -180,7 +180,7 @@ test('the privately staged launcher cannot differ from the initial release admis
 
 test('the staging CLI refuses a production listener before reading unqualified inputs', () => {
  const target = ['--target', 'pixel10a', '--aosp-source', 'missing-source', '--factory-image', 'missing-factory'];
- const stage = (...args) => execFileSync(process.execPath, ['scripts/stage-aosp.ts', '--production', ...target, ...args],
+ const stage = (...args) => execFileSync(process.execPath, ['scripts/stage-aosp.ts', ...target, ...args],
   {stdio:'pipe', encoding:'utf8', timeout:30000});
  assert.throws(() => stage('--listener-apk', 'missing-listener.apk'), /requires Pixel 10a, --listener-apk, --listener-descriptor and --listener-qualification/);
  assert.throws(() => stage('--listener-apk', 'missing-listener.apk', '--listener-descriptor', 'missing.json',

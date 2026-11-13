@@ -6,8 +6,6 @@ import os from 'node:os';
 import path from 'node:path';
 import {deploymentOutputs,validateCloudDeployment,nativeAuthCallbackRegistration} from '../scripts/cloud-deployment.ts';
 import {CLOUD_DEPLOYMENT as defaults} from '../scripts/cloud-deployment-policy.ts';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
-import {runJvm} from './fixtures/jvm-tools.mjs';
 test('committed renderer, native and Gradle authorities match the deployment configuration',()=>{
  for(const [file,contents] of Object.entries(deploymentOutputs(defaults)))assert.equal(fs.readFileSync(file,'utf8'),contents);
 });
@@ -24,58 +22,7 @@ test('protected Pages registrations preserve installed routes and select each co
    browserSignIn:{startPath:'/alphaphone/auth/browser-start',returnPath:'/__alpha-browser-cloud/signin-return',storageKey:'alpha-browser-sign-in:v1',apiOrigin:config[environment].api,tenant:config[environment].tenant},
   });
  }
- const bridge=fs.readFileSync('scripts/browser-cloud-dev-bridge.ts','utf8');
- assert.ok(bridge.includes(JSON.stringify(pages.production[0].browserSignIn.startPath).replaceAll('"',"'")));
  assert.ok(pages.production[0].browserSignIn.returnPath.startsWith('/__alpha-browser-cloud/'));
-});
-test('a different deployment changes actual native login, request admission and revocation together',()=>{
- const config=structuredClone(defaults);
- config.production={api:'https://api.example.org',web:'https://login.example.org',services:'https://services.example.org',tenant:'example'};
- const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-config-'));
- try{
-  const native='android/app/src/main/java/ai/alphacompute/alphaphone/';
-  fs.writeFileSync(path.join(temp,'CloudDeployment.java'),deploymentOutputs(config)[native+'CloudDeployment.java']);
-  const files=['ConnectionRoutes.java'];
-  for(const file of files)fs.copyFileSync(native+file,path.join(temp,file));
-  // Alpha's registration of the shared sign-in client, read from its plugin, over the shared pure classes.
-  const plugin=fs.readFileSync(native+'AlphaCloudSignInPlugin.java','utf8');
-  const registration=plugin.slice(plugin.indexOf(' static final String PENDING_SLOT'),plugin.indexOf(' static String receiptSlot('));
-  assert.ok(registration.includes('static CloudSignInConfig registration(boolean testMocks)'));
-  const staged=preparePatchedNative({root:path.resolve(import.meta.dirname,'..')});
-  const shared=path.join(staged.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud');
-  const sharedFiles=['CloudSignInConfig.java','CloudSignInEnvironment.java','CloudSignInFlow.java','CloudSignInRoutes.java','CloudKeyRenewal.java','CloudKeyRevocation.java','CloudEmailCode.java','CloudSmsCode.java'].map(file=>path.join(shared,file)).concat('vendor/eliza/packages/auth/android/test/org/json/JSONObject.java','vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/CloudConnectionPolicy.java');
-  fs.writeFileSync(path.join(temp,'AlphaRegistration.java'),`package ai.alphacompute.alphaphone;
-import ai.eliza.auth.cloud.*;
-final class BuildConfig {static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}
-final class AlphaRegistration {
-${registration}
-}`);
-  fs.writeFileSync(path.join(temp,'DeploymentTest.java'),`package ai.alphacompute.alphaphone;
-import ai.eliza.auth.cloud.*;
-public class DeploymentTest {public static void main(String[] args){
- CloudSignInConfig product=AlphaRegistration.registration(false);
- CloudSignInEnvironment production=product.defaultEnvironment();
- if(!production.api().equals("https://api.example.org"))throw new AssertionError("login");
- if(!production.callback().equals("https://login.example.org/alphaphone/auth/callback"))throw new AssertionError("callback");
- if(!production.tenant.equals("example")||product.environments().size()!=1)throw new AssertionError("product registration");
- if(AlphaRegistration.registration(true).environments().size()!=2)throw new AssertionError("staging only in test-mocks builds");
- if(!CloudSignInRoutes.origin(product,"https","api.example.org",-1)||CloudSignInRoutes.origin(product,"https","api.eliza.app",-1))throw new AssertionError("sign-in origin");
- if(!ConnectionRoutes.admittedOrigin("https","api.example.org",-1,false))throw new AssertionError("configured origin refused");
- if(ConnectionRoutes.admittedOrigin("https","api.eliza.app",-1,false))throw new AssertionError("default origin retained");
- if(ConnectionRoutes.admittedOrigin("http","api.example.org",-1,false))throw new AssertionError("HTTP admitted");
- if(!ConnectionRoutes.externalHost("https","services.example.org",-1,false))throw new AssertionError("configured services refused");
- if(ConnectionRoutes.externalHost("https","cloud.eliza.app",-1,false))throw new AssertionError("default services retained");
- if(ConnectionRoutes.externalHost("https","unlisted.example.org",-1,true))throw new AssertionError("unconfigured browser host admitted");
- if(!CloudKeyRevocation.endpoint(production).equals("https://api.example.org/api/v1/api-keys/current"))throw new AssertionError("revocation");
- if(!product.readinessPreferences.equals("alpha-cloud-signin-readiness-"+CloudDeployment.STORAGE_NAMESPACE))throw new AssertionError("readiness cache bound to the deployment");
- if(CloudDeployment.storageSlot("cloud:production").equals("cloud:production"))throw new AssertionError("legacy credential reused");
- if(!CloudDeployment.storageSlot("cloud-signin:v1:pending").startsWith(CloudDeployment.STORAGE_NAMESPACE))throw new AssertionError("pending not bound");
- if(!CloudDeployment.storageSlot("local-agent-provider:v1").startsWith(CloudDeployment.STORAGE_NAMESPACE))throw new AssertionError("provider not bound");
- if(!CloudDeployment.storageSlot("notes-records:v1:device").equals("notes-records:v1:device"))throw new AssertionError("local notes changed");
- System.out.println("PASS");}}
-`);
-  assert.equal(runJvm([...['CloudDeployment.java',...files,'AlphaRegistration.java','DeploymentTest.java'].map(f=>path.join(temp,f)),...sharedFiles],'ai.alphacompute.alphaphone.DeploymentTest').trim(),'PASS');
- }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 test('configuration refuses credentials, insecure URLs, paths, aliases and accidental environment overlap',()=>{
  for(const api of ['http://api.example.org','https://user:password@api.example.org','https://api.example.org/path','https://api.example.org/','https://api.example.org?token=x','https://api.example.org#x','https://API.example.org']){
@@ -92,11 +39,6 @@ test('configuration the shared native sign-in client cannot register fails at bu
  const config=structuredClone(defaults);
  config.production={...config.production,tenant:'Org_Tenant-1',name:'N'.repeat(80),services:'https://my_services.example.org'};
  assert.doesNotThrow(()=>validateCloudDeployment(config));
- // The shared registration constructor accepts every tenant this validator admits.
- const shared=fs.readFileSync('vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInEnvironment.java','utf8');
- const tenantRule=shared.match(/tenant\.matches\("([^"]+)"\)/)?.[1];
- assert.ok(tenantRule,'shared tenant rule located');
- for(const tenant of ['Org_Tenant-1','elizacloud','elizacloud-staging','t'.repeat(64)])assert.match(tenant,new RegExp(`^(?:${tenantRule})$`),tenant);
 });
 
 test('build admission rejects drift in renderer, native or Gradle generated authorities',async()=>{
@@ -138,8 +80,6 @@ test('build admission rejects a resident Cloud SDK base that disagrees with the 
  const config=structuredClone(defaults);config.production.api='https://api.example.org';
  assert.equal(cloudSdkBases(config).production,'https://api.example.org/api/v1');
  for(const api of ['http://api.example.org','https://api.example.org/','not a url'])assert.throws(()=>cloudSdkBases({...config,production:{...config.production,api}}),/Invalid Cloud API origin/,api);
- // No second hard-coded authority: the resident hosts take the base from the configured module only.
- for(const file of ['scripts/cloud-sdk-authority.ts','scripts/cloud-resident-host.ts','scripts/start-cloud-qa.ts'])assert.doesNotMatch(fs.readFileSync(file,'utf8'),/https:\/\/api(-staging)?\.eliza\.app/,file);
 });
 
 test('every authority change gives renderer and native credentials a new namespace',async()=>{

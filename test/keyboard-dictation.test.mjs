@@ -9,14 +9,6 @@ import {nativeSource,fixture,runJvm,javaBinary,sharedSpeechSource,jsonJar} from 
 test('keyboard dictation fences duplicate, cancelled, replaced and changed-field/account results',()=>{
  assert.match(runJvm([nativeSource('KeyboardDictationPolicy.java'),fixture('KeyboardDictationPolicyTest.java')],'ai.alphacompute.alphaphone.KeyboardDictationPolicyTest'),/PASS keyboard dictation/);
 });
-test('auxiliary voice entry is launcher-only and protected by Android binding permission',()=>{
- const manifest=readFileSync('android/app/src/launcher/AndroidManifest.xml','utf8');
- assert.match(manifest, /AlphaKeyboardDictationService[^>]+android:permission="android.permission.BIND_INPUT_METHOD"/);
- assert.doesNotMatch(readFileSync('android/app/src/main/AndroidManifest.xml','utf8'),/AlphaKeyboardDictationService/);
- const subtype=readFileSync('android/app/src/launcher/res/xml/alpha_keyboard_dictation.xml','utf8');
- assert.match(subtype,/imeSubtypeMode="voice"/);assert.match(subtype,/isAuxiliary="true"/);
- assert.match(subtype,/overridesImplicitlyEnabledSubtype="true"/);
-});
 
 test('Quint traces conform to the actual Java dictation gate at every transition',()=>{
  const work=mkdtempSync(join(tmpdir(),'keyboard-dictation-traces-'));
@@ -49,7 +41,6 @@ test('voice IME and Cloud adapter compile against Android API and shared real re
  const work=mkdtempSync(join(tmpdir(),'keyboard-dictation-compile-'));
  try {
   const stubs={
-   'BuildConfig.java':'final class BuildConfig {static final String ELIZA_RUNTIME_PROFILE="cloud";}',
    'MainActivity.java':'final class MainActivity {static void refreshKeyboardInsets(){} static void beginKeyboardReturn(){}}',
    'AlphaLocalAgentPlugin.java':'final class AlphaLocalAgentPlugin {static long credentialAuthorityEpoch(){return 0;} static <T>T withCredentialAuthority(long epoch,java.util.concurrent.Callable<T> body)throws Exception{return body.call();}}',
    'AlphaCredentialStore.java':'final class AlphaCredentialStore {AlphaCredentialStore(android.content.Context c){} String readCredentialSlot(String slot){return null;}}',
@@ -61,7 +52,7 @@ test('voice IME and Cloud adapter compile against Android API and shared real re
   const api=join(process.env.ANDROID_HOME||process.env.ANDROID_SDK_ROOT||join(homedir(),process.platform==='darwin'?'Library/Android/sdk':'Android/Sdk'),'platforms/android-36/android.jar');
   assert.ok(existsSync(api),'Android API36 required for actual service compile');
   const shared='vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/';
-  execFileSync(javaBinary('javac'),['--release','17','-cp',api,'-d',work,...Object.keys(stubs).map(n=>join(work,n)),passwords,revision,sharedSpeechSource('CartesiaSpeech.java'),...['KeyboardDictationPolicy.java','KeyboardDictationCloud.java','AlphaKeyboardDictationService.java','CloudSpeechPolicy.java','CloudDeployment.java'].map(nativeSource),shared+'LocalVoiceRecording.java',shared+'RecordingPcm.java'],{stdio:'pipe',timeout:60000});
+  execFileSync(javaBinary('javac'),['--release','17','-cp',api,'-d',work,...Object.keys(stubs).map(n=>join(work,n)),passwords,revision,sharedSpeechSource('CartesiaSpeech.java'),...['KeyboardDictationPolicy.java','KeyboardDictationCloud.java','AlphaKeyboardDictationService.java','CloudSpeechPolicy.java','CloudDeployment.java'].map(nativeSource),shared+'LocalMicrophoneLease.java',shared+'LocalVoiceRecording.java',shared+'RecordingPcm.java'],{stdio:'pipe',timeout:60000});
  }finally{rmSync(work,{recursive:true,force:true});}
 });
 
@@ -76,7 +67,6 @@ test('real dictation transport preserves selected Direct/Cloud ownership and can
    'NativeProviderSlot.java':`package ai.eliza.plugins.agent.runtime;public final class NativeProviderSlot{public static String managementRevision(String s,long epoch){return s+":"+epoch;}}`,
    'PasswordSurfaces.java':`package ai.eliza.plugins.passwords;public final class PasswordSurfaces{public static boolean visible(){return false;}}`,
    'RecordingPcm.java':`package ai.eliza.voice;public final class RecordingPcm{public static byte[] decode(java.io.File f,java.util.function.BooleanSupplier cancelled)throws Exception{if(cancelled.getAsBoolean())throw new java.io.IOException();return new byte[44];}}`,
-   'BuildConfig.java':`package ai.alphacompute.alphaphone;final class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}`,
   };
   for(const [name,body] of Object.entries(stubs))writeFileSync(join(work,name),body);
   const harness=join(work,'KeyboardAuthorityTest.java');

@@ -1,6 +1,8 @@
 import {test,expect}from '@playwright/test';
+import {preloadPageModules}from './helpers/page-modules';
 async function setup(page:any,chat:string){
  await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=async()=>{throw Error('No capture in header fixture');};});await page.goto('/?connections=advanced');await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();
+ await preloadPageModules(page,['/src/prototype/model.js','/src/runtime/connection-ui.tsx','/src/runtime/alpha-client.ts']);
  await page.evaluate(async chat=>{const{Component}=await import('/src/prototype/model.js');const f=(window as any).headerFixture={};const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){f.shell=this;return render.call(this);};(await import('/src/runtime/connection-ui.tsx')).connectionController.close();},chat);await expect.poll(()=>page.evaluate(()=>!!(window as any).headerFixture.shell)).toBe(true);await page.getByRole('button',{name:'Notes',exact:true}).click();await page.evaluate(chat=>(window as any).headerFixture.shell.setState({chat}),chat);await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
 }
 for(const chat of ['sheet','full'])test(`actual chat header goes Home preserving ${chat} and original foreground cancellation`,async({page})=>{

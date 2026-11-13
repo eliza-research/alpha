@@ -69,7 +69,7 @@ interface FixtureClient {
 type State = {q: string | null; compose: unknown; open?: string | null; nativeMailSelection?: unknown};
 type Chip = {label: string; pick: Action; on?: boolean};
 type Reader = {
- body: string; failed: boolean; canLoadThread: boolean; loadThread: Action;
+ body: string; failed: boolean; retry: Action; actionsAvailable: boolean; canLoadThread: boolean; loadThread: Action;
  hasThread: boolean; nextThread: Action; archive: Action; canArchive: boolean;
  canToggleRead: boolean; toggleRead: Action; forward: Action; ask: Action; hasLinks: boolean;
  links: {href: string; mismatch: boolean; open: Action}[];
@@ -80,7 +80,7 @@ type Rendering = ReturnType<MailDraftsController['render']> & MailReviewView & {
  extraFolders: Chip[];
  rows: {name: string; subj: string; clip: boolean; label: string; time: string; open: Action}[];
  d: Reader | null;
- attachment: {external: boolean; text: string; save: Action; close: Action} | null;
+ attachment: {external: boolean; text: string; save: Action; close: Action; saveDisabled: boolean; saveStatus: string; saveLabel?: string} | null;
  cachedListNotice: string;
  cachedListShown: boolean;
  refreshDisabled: boolean;
@@ -143,7 +143,7 @@ export const today=new Date(FIXTURE_NOW);today.setHours(9,41,0,0);
 export const mail=(id: string,extra: Partial<GmailMessage>={}): GmailMessage=>({id,threadId:'thread-'+id,subject:'Fixture '+id,from:'Sender',fromEmail:'sender@example.invalid',to:['owner@example.invalid'],snippet:'Preview',receivedAt:'2026-09-30T00:00:00Z',unread:false,...extra});
 export const inboxPage=[mail('m1',{unread:true,hasAttachments:true,receivedAt:today.toISOString()}),mail('m2',{unread:true}),mail('m3')];
 
-function scenario({caps={},accounts=null}: {caps?: Partial<GmailInboxCapabilities>; accounts?: Account[] | null}={}){
+function scenario({caps={},accounts=null,nativePlatform=false}: {caps?: Partial<GmailInboxCapabilities>; accounts?: Account[] | null; nativePlatform?: boolean}={}){
  let session: string | null = 'session-a';
  let clock = FIXTURE_NOW, probeFail: Error | null = null, probeGate: Promise<void> | null = null;
  const calls: Call[] = [], toasts: string[] = [], prepared: Proposal[] = [], dispatched: number[] = [];
@@ -174,7 +174,7 @@ function scenario({caps={},accounts=null}: {caps?: Partial<GmailInboxCapabilitie
  const listeners = new Set<Action>(), slots = new Map<string, unknown>();
  const controller={getCloudClient:()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null,getWorkflowDeviceTarget:()=>({installationId:'device'}),getSnapshot:()=>({session:mailNotices?.agent||null,cloudAccount:session?{environment:'production',userId:'fixture-owner',sessionId:session}:null}),subscribe:(fn: Action)=>{listeners.add(fn);return()=>listeners.delete(fn);},rejectCloudSession:()=>false,open:()=>{}};
  let selectionCount=0;const files=[{name:'a.txt',mimeType:'text/plain',text:'alpha'},{name:'b.txt',mimeType:'text/plain',text:'bravo'},{name:'c.txt',mimeType:'text/plain',text:'charlie'}];
- const native={cancel:async()=>{},openReviewed:async (input: NativeAttachment)=>{opened.push(input);return {message:'opened'};},saveReviewed:async (input: NativeAttachment)=>{saved.push(input);return {status:'saved',message:'Saved to the chosen destination. Exact bytes verified.'};},
+ const native={cancel:async()=>{},openReviewed:async (input: NativeAttachment)=>{opened.push(input);return {status:'opened',message:'opened'};},saveReviewed:async (input: NativeAttachment)=>{saved.push(input);return {status:'saved',message:'Saved to the chosen destination. Exact bytes verified.'};},
   readSelected:async({selectionId}: {selectionId: string})=>{const f=files[Number(selectionId.slice(4))%3];return {name:f.name,mimeType:f.mimeType,dataBase64:b64(f.text),size:f.text.length,sha256:await digest(f.text)};}};
  class FixedDate extends Date{constructor(value: number | string | Date=clock){super(value);}static now(){return clock;}}
  const windowFixture={addEventListener(){},removeEventListener(){},dispatchEvent(){return true;},confirm:(text: string)=>{confirms.push(text);return confirmAnswer;}};
@@ -200,13 +200,14 @@ function scenario({caps={},accounts=null}: {caps?: Partial<GmailInboxCapabilitie
 
  const sandbox=inboxAdapterBindings({MailboxListCache:class extends mailboxList.MailboxListCache{get(key: string,now=clock){return super.get(key,now);}},MailBodyCache:class extends mailboxList.MailBodyCache<Read>{remember(key: string,body: Read,now=clock){return super.remember(key,body,now);}},serviceReadCache,alphaClient:{getState:()=>({context:{sensitive:false}})},reviewOwnNoticeQuestion:(options: ReviewNotice)=>{mailNotices.review=options;return ()=>{};},releaseGmailQuestion:async()=>{mailNotices.released++;mailNotices.tap=null;},configureGmailBackground:async()=>{},withdrawGmailBackground:async (grant?: string)=>{mailNotices.withdrawals++;mailNotices.withdrawn.push(grant??null);},pendingGmailNotice:async (): Promise<MailNoticeTap | null>=>mailNotices.tap,consumeGmailNotice:async (token: string)=>{mailNotices.consumed.push(token);mailNotices.tap=null;},onGmailNotice:async (fn: Action)=>{mailNotices.listener=fn;return {remove:async()=>{}};},readGmailAccountChoice:(owner: Parameters<typeof readGmailAccountChoice>[0])=>readGmailAccountChoice(owner,choices),saveGmailAccountChoice:(owner: Parameters<typeof saveGmailAccountChoice>[0], id: string | null)=>saveGmailAccountChoice(owner,id,choices),Date:FixedDate,inboxUnsaved,
   registerPlugin:()=>native,
+  Capacitor:{isNativePlatform:()=>nativePlatform},
   secureConnectionStore:inboxMemoryStore(slots),
   connectionController:controller,
   DailyApps:{addListener:async(name: string,fn: Action)=>{if(name==='appResumed')resume.push(fn);return {remove:async()=>{}};},perform:async()=>({status:'selected',selectionId:'sel-'+(selectionCount++),name:'file'}),forgetSelected:async()=>{}},
   // The in-app review (apps/app/src/browser/review.ts) is rendered by the browser checks; this fixture answers it.
   BrowserReviews:class{confirm(_id: string,title: string,details: string,_label?: string,choice?: {current?:()=>boolean}){confirms.push(title+'\n'+details);return Promise.resolve(confirmAnswer&&choice?.current?.()!==false);}cancel(){}cancelAll(){}},
   window:windowFixture,document});
- return {choices,mailNotices,sandbox,client,calls,toasts,prepared,dispatched,opened,saved,navigations,confirms,resume,listeners,slots,
+ return {choices,mailNotices,sandbox,client,native,calls,toasts,prepared,dispatched,opened,saved,navigations,confirms,resume,listeners,slots,
   setSession:(value: string | null)=>{session=value;for(const fn of listeners)fn();},
   advance:(ms: number)=>{clock+=ms;},
   gate:()=>{let release: Action;probeGate=new Promise<void>(resolve=>{release=resolve;});return ()=>{probeGate=null;release();};},
@@ -234,6 +235,7 @@ export function inboxAdapterBindings<T extends object>(overrides: T) {
  return {
   ...mailboxList, formatMonthDay, formatTime, formatFullDateTime, weekdayName, formatBytes,
   createMailReviewController, createMailDraftsController, reviewMailAttachment,
+  Capacitor:{isNativePlatform:()=>false},
   cloudServiceName, linkifyMailText, linkTextMismatch, React, MailFolderPicker, mailSenderImage, decodeMailPreview,
   cachedDevicePreferences:()=>({autoLoadMailImages:true}), initializeDevicePreferences:()=>{},
   prepareMailHtml:()=>{throw Error('HTML uses the rendered browser test');},

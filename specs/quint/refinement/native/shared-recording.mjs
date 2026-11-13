@@ -16,7 +16,7 @@ const voice='vendor/eliza/plugins/plugin-local-inference/native/android/';
 export function sharedRecordingSources(platform,source=currentNativeSource('LocalSpeechBridgePlugin.java')){
  return [source,
   ...['SpeechRequestGate','SpeechAudioFocusPolicy','LiveCaptureAdmission','LiveCaptureOptions','LiveVadGate','SpeechEngineHold','SpeechCores','LocalSpeechEngine','StreamingSpeechPlayback','SpeechPcmQueue','VoiceLatencyTrials'].map(name=>name==='LiveCaptureAdmission'?currentNativeSource(name+'.java'):voice+'src/main/java/ai/eliza/voice/'+name+'.java'),
-  ...['LocalVoiceRecording','SpeechOutputWarmup','SpeechLeadTrim','FirstWriteSpeechOutput'].map(name=>currentNativeSource(name+'.java')),directory+'/NoteBridgePorts.java',directory+'/NoteRecordingPorts.java',
+  ...['LocalMicrophoneLease','LocalVoiceRecording','SpeechOutputWarmup','SpeechLeadTrim','FirstWriteSpeechOutput'].map(name=>currentNativeSource(name+'.java')),directory+'/NoteBridgePorts.java',directory+'/NoteRecordingPorts.java',
   'node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/JSObject.java',...platform.paths];
 }
 export function probeSharedRecording(source){
@@ -42,6 +42,7 @@ export async function checkSharedRecording(extraSources=[]){
    'The complete staged LocalSpeechBridgePlugin executes public draft recording methods, private permission callback, host lifecycle callbacks and cancellation worker barrier. SpeechRequestGate, LocalVoiceRecording and the serial ThreadPoolExecutor execute their actual implementation.',
    'Two recording requests, two cancellation waiters and two successful starts bound the campaign. Exact permission epochs and waiter ownership are observed. Record and cancel main-queue tasks execute through their actual captured closures.',
    'Audio mode and permission state are primitive platform inputs. Live capture, physical audio output, inference and latency environment are explicitly unexercised ports.',
+   'The synthetic live controller rejects every live acquisition. Its drain completes only the no-live-owner case; actual live-to-draft release and refusal remain outside this model.',
    'Protected-screen state is fixed inactive in this projection; production protected-surface guards remain present.',
    'A held real worker, rejected full queue and MediaRecorder release failure control interruption and cleanup schedules. An interrupted draft is unavailable while release is unresolved; the cancellation barrier can retry that release. Installed Android permission/call delivery and physical microphone state remain platform obligations.'
   ]});

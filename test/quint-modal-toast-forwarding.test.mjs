@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {JSDOM} from 'jsdom';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {checkTraces, qset} from '../specs/quint/refinement/check-traces.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {boundInputs, captureSources, checkpoint, read, tick, trace, call} from '../specs/quint/refinement/application/support.mjs';
 
 const model = 'ModalToastForwarding';
@@ -204,7 +205,7 @@ async function checkModalToastForwarding() {
       'Platform focus fallback for dialogs opened before installation, installed assistive technology and latency remain separate.']}));
 }
 
-test('actual dialog toast forwarding follows modal order and exact installation ownership', {timeout: 60000}, async () => {
+test('actual dialog toast forwarding follows modal order and exact installation ownership', {timeout: scaledTimeout(60000)}, async () => {
   const receipt = await checkModalToastForwarding();
   assert.equal(receipt.traceInputs.length, 8);
   assert.equal(receipt.observedFields.length, 10);

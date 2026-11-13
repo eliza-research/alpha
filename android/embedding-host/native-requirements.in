@@ -1,0 +1,12 @@
+# Build-host tools only. Model archives and converted outputs have separate SHA-256 pins.
+cmake==4.0.3
+ninja==1.13.0
+numpy==2.5.4
+torch==2.9.1+cpu ; sys_platform == "linux"
+torch==2.9.1 ; sys_platform == "darwin"
+onnx==1.20.1
+librosa==0.11.0
+zstandard==0.25.0
+requests==2.32.5
+PyYAML==6.0.3
+tqdm==4.67.1

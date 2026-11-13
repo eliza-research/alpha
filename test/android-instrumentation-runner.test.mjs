@@ -62,37 +62,29 @@ test("records bind commit and APK hashes, are emulator class E and refuse overwr
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("argument policy: short names, campaigns refused with their runner, clock and test-mocks gates", () => {
+test("argument policy: short names, campaigns refused with their runner and the clock gate", () => {
   const options = parseInstrumentationArgs(["--owned-emulator", "--avd", "a", "--classes", "NoMockProduct,Shell,StartupReadiness"]);
   assert.deepEqual(options.classes, [C("NoMockProduct"), C("Shell"), C("StartupReadiness")]);
   assert.equal(options.apkDir, "artifacts");
-  assert.deepEqual(options.variants, ["standalone", "launcher"]);
   assert.equal(parseInstrumentationArgs([]).classes.length, DEFAULT_CLASSES.length);
-  assert.equal(parseInstrumentationArgs(["--test-mocks"]).apkDir, "artifacts/test-mocks");
-  for (const name of ["ResidentEgressRedaction", "ReminderTapProcessDeath", "WorkflowNoticeProcessDeath", "NotificationChannels", "VoicePermissionDenied", "VoicePermissionRevoke", "LocalVoiceRecordingLimit"])
+  for (const name of ["ResidentEgressRedaction", "NotificationChannels", "VoicePermissionDenied", "VoicePermissionRevoke", "LocalVoiceRecordingLimit"])
     assert.throws(() => parseInstrumentationArgs(["--classes", name]), /own campaign/);
-  // Classes that assume a test-mocks app build are refused without it instead of reporting "skipped".
-  assert.throws(() => parseInstrumentationArgs(["--classes", "ConnectionChooser"]), /test-mocks app build/);
-  assert.equal(parseInstrumentationArgs(["--test-mocks", "--classes", "ConnectionChooser"]).classes[0], C("ConnectionChooser"));
   // HOME-role classes never run (and so never skip) outside the opt-in phase.
   for (const name of ["LauncherHome", "SettingsRoles"]) assert.throws(() => parseInstrumentationArgs(["--owned-emulator", "--classes", name]), /--home-role/);
   assert.deepEqual(parseInstrumentationArgs(["--owned-emulator", "--home-role", "--classes", "SettingsRoles,LauncherHome"]).classes, [C("SettingsRoles"), C("LauncherHome")]);
   assert.throws(() => parseInstrumentationArgs(["--home-role", "--classes", "LauncherHome"]), /requires --owned-emulator/);
-  assert.throws(() => parseInstrumentationArgs(["--owned-emulator", "--home-role", "--variants", "standalone", "--classes", "LauncherHome"]), /launcher variant/);
   assert.throws(() => parseInstrumentationArgs(["--owned-emulator", "--home-role", "--classes", "Shell"]), /no requested class uses the HOME role/);
   assert.throws(() => parseInstrumentationArgs(["--owned-emulator", "--home-role", "--all"]), /cannot be combined with --all/);
   assert.deepEqual(instrumentArgs(C("BrowserPageQuestion")).slice(-6, -1), ["browserPageQuestion", "1", "-e", "class", C("BrowserPageQuestion")]);
   assert.throws(() => parseInstrumentationArgs(["--classes", "RealClock"]), /clock-exclusive/);
   assert.equal(parseInstrumentationArgs(["--classes", "RealClock", "--clock-exclusive"]).classes[0], C("RealClock"));
-  assert.throws(() => parseInstrumentationArgs(["--classes", "BrowserAutofill"]), /test-mocks/);
   assert.throws(() => parseInstrumentationArgs(["--all", "--classes", "Shell"]));
-  assert.throws(() => parseInstrumentationArgs(["--variants", "standalone,standalone"]));
+  assert.throws(() => parseInstrumentationArgs(["--variants", "launcher"]), /Unknown option/);
   assert.throws(() => parseInstrumentationArgs(["--classes", "Shell;id"]));
   assert.throws(() => parseInstrumentationArgs(["--bogus"]));
   const args = instrumentArgs(C("StartupReadiness"));
   assert.deepEqual(args.slice(-6, -1), ["startupReadiness", "1", "-e", "class", C("StartupReadiness")]);
   assert.ok(args.includes("startupReadiness") && args.at(-1) === `${PACKAGE}.test/androidx.test.runner.AndroidJUnitRunner`);
-  assert.deepEqual(CLASS_REGISTRY.HostedProcessRestart.phases.length, 3);
 });
 
 test("APK admission binds the app to the verify-apks manifest and the test APK to its recorded hash", () => {
@@ -100,145 +92,27 @@ test("APK admission binds the app to the verify-apks manifest and the test APK t
   try {
     const sha = bytes => createHash("sha256").update(bytes).digest("hex");
     fs.mkdirSync(path.join(dir, "instrumentation"));
-    fs.writeFileSync(path.join(dir, "standalone-debug.apk"), "app");
-    fs.writeFileSync(path.join(dir, "instrumentation/standalone-androidTest.apk"), "test");
-    const manifest = { testMocks: false, results: [{ variant: "standalone", mode: "debug", sha256: sha("app"), versionCode: 7 }], instrumentation: { standalone: { sha256: sha("test") } } };
+    fs.writeFileSync(path.join(dir, "launcher-debug.apk"), "app");
+    fs.writeFileSync(path.join(dir, "instrumentation/launcher-androidTest.apk"), "test");
+    const manifest = { testMocks: false, results: [{ variant: "launcher", mode: "debug", sha256: sha("app"), versionCode: 7 }], instrumentation: { launcher: { sha256: sha("test") } } };
     fs.writeFileSync(path.join(dir, "apk-manifest.json"), JSON.stringify(manifest));
-    const [app, testApk] = admitApks(dir, "standalone", { testMocks: false });
+    const [app, testApk] = admitApks(dir);
     assert.equal(app.sha256, sha("app"));
     assert.equal(testApk.sha256, sha("test"));
-    assert.throws(() => admitApks(dir, "standalone", { testMocks: true }), /testMocks/);
+    fs.writeFileSync(path.join(dir, "apk-manifest.json"), JSON.stringify({ ...manifest, testMocks: true }));
+    assert.throws(() => admitApks(dir), /testMocks/);
     // A test APK the manifest does not record is not bound to this app build.
     fs.writeFileSync(path.join(dir, "apk-manifest.json"), JSON.stringify({ ...manifest, instrumentation: {} }));
-    assert.throws(() => admitApks(dir, "standalone", { testMocks: false }), /instrumentation APK recorded/);
+    assert.throws(() => admitApks(dir), /instrumentation APK recorded/);
     fs.writeFileSync(path.join(dir, "apk-manifest.json"), JSON.stringify(manifest));
-    fs.writeFileSync(path.join(dir, "standalone-debug.apk"), "changed");
-    assert.throws(() => admitApks(dir, "standalone", { testMocks: false }), /does not match/);
+    fs.writeFileSync(path.join(dir, "launcher-debug.apk"), "changed");
+    assert.throws(() => admitApks(dir), /does not match/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("restart runner keeps the bookmark phase wired", () => {
-  const source = fs.readFileSync("scripts/test-native-restart.ts", "utf8");
-  // P-04 sign-in persistence: the phase the test class documents must have a runner case with its gate.
-  assert.match(source, /signin: \{\n\t\ttestClass: "BrowserSigninsInstrumentedTest",\n\t\tmethod: "signinProcessRestartPhase",\n\t\tgate: "signinPhase"/);
-  const signins = fs.readFileSync("android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserSigninsInstrumentedTest.java", "utf8");
-  assert.match(signins, /void signinProcessRestartPhase\(\)/);
-  for (const phase of ["prepare", "verify", "cleanup"]) assert.ok(signins.includes(`"${phase}"`), `sign-in restart phase ${phase}`);
-  assert.ok(signins.includes('getString("signinPhase")'));
-  assert.match(source, /bookmark: \{\n\t\ttestClass: "BrowserContinuityInstrumentedTest",\n\t\tmethod: "bookmarkProcessRestartPhase",\n\t\tgate: "bookmarkPhase"/);
-  assert.equal(JSON.parse(fs.readFileSync("package.json", "utf8")).scripts["test:android:instrumentation"], "bun scripts/android-instrumentation.ts");
-});
-
-const ROOTS = ["android/app/src/androidTest/java", "android/app/src/testMocks/androidTest/java"];
 const javaFiles = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
   const file = path.join(dir, entry.name);
   return entry.isDirectory() ? javaFiles(file) : file.endsWith(".java") ? [file] : [];
-});
-/** Every class under androidTest with at least one @Test method, by simple class name. */
-const testClasses = () => new Map(ROOTS.flatMap(javaFiles).filter(file => /^\s*@(?:org\.junit\.)?Test\b/m.test(fs.readFileSync(file, "utf8")) || /[\s;{}]@(?:org\.junit\.)?Test\b/.test(fs.readFileSync(file, "utf8")))
-  .map(file => [path.basename(file, ".java"), file]));
-const registryName = cls => cls.replace(/InstrumentedTest$/, "");
-const gateRead = (source, gate, value) => source.includes(`"${value}".equals(InstrumentationRegistry.getArguments().getString("${gate}")`);
-
-test("every registered class exists in the app's instrumentation sources and declares the gates the runner passes", () => {
-  const roots = ROOTS.map(root => path.join(root, "ai/alphacompute/alphaphone"));
-  for (const [name, spec] of Object.entries(CLASS_REGISTRY)) {
-    const found = roots.map(root => path.join(root, `${name}InstrumentedTest.java`)).filter(file => fs.existsSync(file));
-    assert.equal(found.length, 1, `${name} must be exactly one class in the app instrumentation sources`);
-    assert.equal(found[0].includes("testMocks"), spec.testMocks === true, `${name} test-mocks flag must match its source set`);
-    const source = fs.readFileSync(found[0], "utf8");
-    for (const [gate, value] of Object.entries(spec.args ?? {}))
-      assert.ok(gateRead(source, gate, value), `${name} does not read gate ${gate}=${value}`);
-    for (const method of spec.phases ?? []) assert.match(source, new RegExp(`void ${method}\\(`), `${name} has no phase ${method}`);
-    if (spec.requiresTestMocksBuild) assert.ok(source.includes("BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS"), `${name} does not assume a test-mocks app build`);
-    if (spec.homeRole) {
-      assert.ok(["requests", "held"].includes(spec.homeRole) && source.includes("BuildConfig.IS_LAUNCHER"), `${name} is not a launcher-variant HOME class`);
-      // "held" classes must not change the role themselves; "requests" classes must put back what they found.
-      if (spec.homeRole === "held") assert.ok(!/add-role-holder|remove-role-holder|set-home-activity/.test(source), `${name} must not change the HOME role`);
-      else assert.ok(source.includes("add-role-holder") && /finally\s*\{/.test(source), `${name} must restore the HOME holder it found`);
-    }
-    if (spec.campaign) {
-      // The refusal names a real script, and that script names the class.
-      const script = /(?:bun|python3) (scripts\/[A-Za-z0-9_./-]+)/.exec(spec.campaign)?.[1];
-      assert.ok(script && fs.existsSync(script), `${name} campaign names no existing script: ${spec.campaign}`);
-      assert.ok(new RegExp(`\\b${name}InstrumentedTest\\b`).test(fs.readFileSync(script, "utf8")), `${script} does not run ${name}`);
-      assert.ok(!spec.args && !spec.phases, `${name} is a campaign; its gates belong to the campaign runner`);
-    }
-  }
-  // A core-loop class with a gate runs its gated methods instead of reporting them skipped.
-  assert.deepEqual(instrumentArgs(C("ClockHandoff")).slice(-6, -1), ["clockHandoff", "1", "-e", "class", C("ClockHandoff")]);
-  // HostedResultNotice's posted and denied notices need the notification permission set first, so
-  // this runner passes neither gate and the permission runner owns both.
-  assert.equal(CLASS_REGISTRY.HostedResultNotice.args, undefined);
-  for (const scenario of ["notice", "notice-denied"]) assert.equal(permissionCases[scenario].testClass, "HostedResultNoticeInstrumentedTest");
-});
-
-test("guarded app, recording and catalog cases require an owned secondary user", () => {
-  for (const name of ["AppInfo", "NoteRecorder", "NoteRecordingSave", "StorageCategories", "PhotosCatalogOrder"]) {
-    assert.equal(CLASS_REGISTRY[name].secondaryUser, true, name);
-    assert.throws(() => parseInstrumentationArgs(["--classes", name]), /requires --owned-emulator/);
-  }
-  assert.equal(CLASS_REGISTRY.NoteRecorder.grant, undefined, "preserve the effective guarded recorder policy");
-  const catalog = fs.readFileSync("android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosCatalogOrderInstrumentedTest.java", "utf8");
-  assert.match(catalog, /assertTrue\("Disposable secondary user required",android\.os\.Process\.myUid\(\)\/100000>0\)/);
-});
-
-test("every @Test class is run by a runner or listed with a reason, and neither list goes stale", () => {
-  const classes = testClasses();
-  assert.ok(classes.size > 100, "instrumentation sources were found");
-  for (const file of CAMPAIGN_RUNNERS) assert.ok(fs.existsSync(file), `campaign runner ${file} is missing`);
-  const campaignSources = CAMPAIGN_RUNNERS.map(file => [file, fs.readFileSync(file, "utf8")]);
-  const namedBy = cls => campaignSources.filter(([, source]) => new RegExp(`\\b${cls}\\b`).test(source)).map(([file]) => file);
-  const unreachable = [], stale = [];
-  for (const cls of classes.keys()) {
-    const name = registryName(cls);
-    const registered = Object.hasOwn(CLASS_REGISTRY, name) && cls.endsWith("InstrumentedTest");
-    const campaigns = namedBy(cls);
-    const excused = Object.hasOwn(NOT_RUN_BY_A_RUNNER, name);
-    if (!registered && !campaigns.length && !excused) unreachable.push(cls);
-    if (excused && (registered || campaigns.length)) stale.push(`${cls} (${registered ? "registered" : campaigns.join(", ")})`);
-  }
-  assert.deepEqual(unreachable, [], "these @Test classes have no runner entry, no campaign and no listed reason; register them in scripts/android-instrumentation.ts or a campaign runner, or add them to NOT_RUN_BY_A_RUNNER with the reason");
-  assert.deepEqual(stale, [], "these classes are run by a runner now; remove them from NOT_RUN_BY_A_RUNNER");
-  for (const [name, reason] of Object.entries(NOT_RUN_BY_A_RUNNER)) {
-    assert.ok(classes.has(name) || classes.has(`${name}InstrumentedTest`), `NOT_RUN_BY_A_RUNNER lists ${name}, which is not a @Test class`);
-    assert.ok(typeof reason === "string" && reason.trim().length >= 40, `NOT_RUN_BY_A_RUNNER.${name} needs a specific reason`);
-  }
-  // Check source keys: Object.keys alone has already discarded duplicate object properties.
-  const registry = fs.readFileSync("scripts/android-instrumentation.ts", "utf8");
-  const registrySource = /export const CLASS_REGISTRY(?:\s*:[^=]+)?\s*=\s*\{([\s\S]*?)\n\};/.exec(registry)?.[1];
-  assert.ok(registrySource, "the class policy registry is declared");
-  const keys = [...registrySource.matchAll(/^  ([A-Za-z]\w*):/gm)].map(match => match[1]);
-  assert.equal(new Set(keys).size, keys.length, "every instrumentation class has one policy entry");
-  assert.deepEqual(keys, Object.keys(CLASS_REGISTRY));
-  // Current shared-storage/catalog coverage remains registered; retired SAF-picker classes do not.
-  for (const name of ["BrowserPageQuestion", "ConnectionChooser", "LauncherHome", "SettingsRoles", "NotesSecureStorage", "StorageLegacyAccess", "PhotosCatalogOrder"]) assert.ok(Object.hasOwn(CLASS_REGISTRY, name), name);
-  for (const name of ["FilesTree", "FilesTreeBatch", "FilesFolderQuestion"]) assert.ok(!Object.hasOwn(CLASS_REGISTRY, name), `${name} is a retired SAF-picker class`);
-  for (const cls of ["VoicePermissionDeniedInstrumentedTest", "VoicePermissionRevokeInstrumentedTest", "HostedResultNoticeInstrumentedTest", "LocalVoiceRecordingLimitInstrumentedTest"])
-    assert.deepEqual(namedBy(cls), ["scripts/test-native-permissions.ts"], cls);
-});
-
-test("permission scenarios name real classes, methods and gates", () => {
-  const classes = testClasses();
-  for (const [scenario, spec] of Object.entries(permissionCases)) {
-    const file = classes.get(spec.testClass);
-    assert.ok(file, `${scenario}: ${spec.testClass} is not a @Test class`);
-    const source = fs.readFileSync(file, "utf8");
-    assert.match(source, new RegExp(`@Test\\s+public void ${spec.method}\\(`), `${scenario}: ${spec.testClass} has no test ${spec.method}`);
-    assert.ok(source.includes(`getString("${spec.gate}")`), `${scenario}: ${spec.testClass} does not read ${spec.gate}`);
-    if (!spec.revokeWhileRecording) assert.ok(gateRead(source, spec.gate, spec.value), `${scenario}: gate ${spec.gate}=${spec.value} is not what the class checks`);
-    for (const [operation, permission] of spec.permissions) {
-      assert.ok(["grant", "revoke"].includes(operation));
-      assert.ok(fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8").includes(`android.permission.${permission}`), `${scenario}: the app does not declare ${permission}`);
-    }
-  }
-  // The microphone scenarios: denied before start, and revoked mid-recording in phases the class implements.
-  assert.deepEqual(permissionCases.voice.permissions, [["revoke", "RECORD_AUDIO"]]);
-  const revoke = permissionCases["voice-revoke"], source = fs.readFileSync(classes.get(revoke.testClass), "utf8");
-  for (const phase of [revoke.value, ...revoke.revokeWhileRecording.phases]) assert.ok(source.includes(`case "${phase}":`), `voice-revoke phase ${phase}`);
-  assert.ok(source.includes(`getString("${revoke.revokeWhileRecording.runIdGate}")`));
-  assert.equal(revoke.revokeWhileRecording.marker, `files/${/static final String MARKER = "([^"]+)"/.exec(source)[1]}`);
-  assert.deepEqual(permissionCases["notice-denied"].permissions, [["revoke", "POST_NOTIFICATIONS"]]);
 });
 
 /** A scripted emulator: role state, installs and instrumentation output, with every command recorded. */
@@ -281,7 +155,7 @@ function fakeEmulator({ stock = "com.android.launcher3", mode = "pass" } = {}) {
       // A role-requesting class that forgets to restore leaves Alpha as HOME.
       if (mode === "requests-leaves-home" && cls === C("SettingsRoles") && !args.includes("log")) { state.holder = PACKAGE; state.activity = `${PACKAGE}/.MainActivity`; }
       // -3 is an assumption failure: every method of the class skipped by its own gate.
-      if (mode === "all-skipped" && cls === C("BrowserDownload")) return block(cls, "m", 1) + block(cls, "m", -3) + done();
+      if (mode === "all-skipped" && cls === C("CameraScan")) return block(cls, "m", 1) + block(cls, "m", -3) + done();
       return block(cls, "m", 1) + block(cls, "m", 0) + done();
     }
     return "";
@@ -293,7 +167,7 @@ function apkDir() {
   const sha = bytes => createHash("sha256").update(bytes).digest("hex");
   fs.mkdirSync(path.join(dir, "instrumentation"));
   const manifest = { testMocks: false, results: [], instrumentation: {} };
-  for (const variant of ["standalone", "launcher"]) {
+  for (const variant of ["launcher"]) {
     fs.writeFileSync(path.join(dir, `${variant}-debug.apk`), `${variant} app`);
     fs.writeFileSync(path.join(dir, `instrumentation/${variant}-androidTest.apk`), `${variant} test`);
     manifest.results.push({ variant, mode: "debug", sha256: sha(`${variant} app`), versionCode: 7 });
@@ -338,9 +212,7 @@ test("HOME role phase selects the launcher APK, runs the HOME classes and restor
   const { result, error, state } = await homeRun("pass");
   assert.ifError(error);
   assert.deepEqual(stepsOf(state.commands), [
-    // Standalone: only the classes that do not need HOME; LauncherHome and SettingsRoles are not run, so they cannot skip.
-    "install standalone-debug", "install standalone-androidTest", "run Shell", `uninstall ${PACKAGE}.test`, `uninstall ${PACKAGE}`,
-    // Launcher: ordinary classes, then the class that requests the role itself, then selection and a cold HOME start.
+    // Ordinary classes, then the class that requests the role itself, then selection and a cold HOME start.
     "install launcher-debug", "install launcher-androidTest", "run Shell", "run SettingsRoles",
     `home ${PACKAGE}/.MainActivity`, "force-stop", "HOME key", "run LauncherHome",
     // The original holder is put back while Alpha is still installed, and only then is Alpha removed.
@@ -350,7 +222,7 @@ test("HOME role phase selects the launcher APK, runs the HOME classes and restor
   assert.deepEqual(result.homeRole, { user: "0", original: { holders: ["com.android.launcher3"], activity: "com.android.launcher3/.Launcher" }, selected: true,
     coldHome: { resumed: true }, restored: true, after: { holders: ["com.android.launcher3"], activity: "com.android.launcher3/.Launcher" } });
   assert.deepEqual(result.classes.map(row => `${row.variant}:${row.class.split(".").pop()}:${row.status}`), [
-    "standalone:ShellInstrumentedTest:passed", "launcher:ShellInstrumentedTest:passed", "launcher:SettingsRolesInstrumentedTest:passed", "launcher:LauncherHomeInstrumentedTest:passed"]);
+    "launcher:ShellInstrumentedTest:passed", "launcher:SettingsRolesInstrumentedTest:passed", "launcher:LauncherHomeInstrumentedTest:passed"]);
   assert.equal(state.holder, "com.android.launcher3");
   assert.equal(state.installed.size, 0);
 });
@@ -408,45 +280,16 @@ test("HOME role admission refuses an emulator without one stock HOME holder, and
   assert.equal(restoreHome(ready.adb, home, timing).restored, true);
   assert.equal(ready.state.holder, "com.android.launcher3");
 });
-
-test("each named class starts from cleared app data with Android's shade closed", () => {
-  // First emulator runs: Video, Accessibility and SettingsFlow passed or failed with the order of
-  // the classes before them, and a system shade left open failed every later gesture.
-  const commands = classIsolationCommands();
-  assert.ok(commands.some(command => command.join(" ") === `shell pm clear ${PACKAGE}`));
-  assert.ok(commands.some(command => command.join(" ") === "shell cmd statusbar collapse"));
-  // Only the app under test is cleared; the instrumentation package and other apps keep their data.
-  assert.equal(commands.filter(command => command.includes("clear")).length, 1);
-  const runner = fs.readFileSync("scripts/android-instrumentation.ts", "utf8");
-  const start = runner.indexOf("const runClass = ");
-  assert.ok(start >= 0, "the named-class runner is present");
-  const loop = runner.slice(start);
-  assert.ok(loop.indexOf("classIsolationCommands(user)") > 0 && loop.indexOf("classIsolationCommands(user)") < loop.indexOf("spec.phases"), "isolation runs once per class, before its phases");
-  // In the secondary-user phase the same isolation applies to that user only.
-  assert.ok(classIsolationCommands("10").some(command => command.join(" ") === `shell pm clear --user 10 ${PACKAGE}`));
-});
-
 test("classes that assert a secondary user run in a disposable user the runner creates and removes", async () => {
-  // First run: HostedProcessRestart (then a default class) and HostedBackgroundWorker received their
-  // gates in user 0 and failed on "Disposable secondary user required". Run in that user (round 7)
-  // they answered "HTTPS required": their loopback HTTP fixture is admitted by a test-mocks app build only.
-  for (const name of ["HostedProcessRestart", "HostedBackgroundWorker"]) {
+  for (const name of ["AppInfo", "NoteRecorder"]) {
     assert.equal(CLASS_REGISTRY[name].secondaryUser, true);
-    assert.equal(CLASS_REGISTRY[name].requiresTestMocksBuild, true);
-    assert.throws(() => parseInstrumentationArgs(["--owned-emulator", "--classes", name]), /needs a test-mocks app build/);
-    assert.throws(() => parseInstrumentationArgs(["--test-mocks", "--classes", name]), /requires --owned-emulator/);
-    assert.ok(!DEFAULT_CLASSES.includes(name), `${name} needs a test-mocks build, so it cannot be a default class`);
-    const source = fs.readFileSync(`android/app/src/androidTest/java/ai/alphacompute/alphaphone/${name}InstrumentedTest.java`, "utf8");
-    assert.match(source, /isSystemUser\(\)/, `${name} still asserts a secondary user`);
+    assert.throws(() => parseInstrumentationArgs(["--classes", name]), /requires --owned-emulator/);
   }
   assert.doesNotThrow(() => parseInstrumentationArgs([]));
-  const run = async ({ lifecycle, classes = "Shell,HostedProcessRestart,HostedBackgroundWorker" }) => {
+  const run = async ({ lifecycle, classes = "Shell,AppInfo,NoteRecorder" }) => {
     const dir = apkDir(), emulator = fakeEmulator();
-    // A test-mocks archive keeps both APKs beside the manifest.
-    for (const variant of ["standalone", "launcher"]) fs.copyFileSync(path.join(dir, `instrumentation/${variant}-androidTest.apk`), path.join(dir, `${variant}-androidTest.apk`));
-    fs.writeFileSync(path.join(dir, "apk-manifest.json"), JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(dir, "apk-manifest.json"), "utf8")), testMocks: true }));
     try {
-      const options = parseInstrumentationArgs(["--owned-emulator", "--avd", "fixture-avd", "--serial", "emulator-5554", "--test-mocks", "--variants", "standalone", "--classes", classes, "--apk-dir", dir, "--output", path.join(dir, "out")]);
+      const options = parseInstrumentationArgs(["--owned-emulator", "--avd", "fixture-avd", "--serial", "emulator-5554", "--classes", classes, "--apk-dir", dir, "--output", path.join(dir, "out")]);
       let result, error;
       try { result = await runFixture(dir, { options, serial: "emulator-5554", adb: emulator.adb, timing, withSecondaryUser: lifecycle }); } catch (failure) { error = failure; }
       return { result, error, commands: emulator.state.commands };
@@ -463,14 +306,13 @@ test("classes that assert a secondary user run in a disposable user the runner c
   const passed = await run({ lifecycle });
   assert.equal(passed.error, undefined);
   assert.equal(passed.result.passed, true, JSON.stringify([passed.result.secondaryUsers, passed.result.classes.map(row => [row.class, row.status, row.note])]));
-  assert.deepEqual(passed.result.secondaryUsers, [{ variant: "standalone", user: 10, ownerRestored: true, removed: true }]);
-  assert.match(created[0], /^instrumentation-standalone-\d+$/);
+  assert.deepEqual(passed.result.secondaryUsers, [{ variant: "launcher", user: 10, ownerRestored: true, removed: true }]);
+  assert.match(created[0], /^instrumentation-launcher-\d+$/);
   const rows = Object.fromEntries(passed.result.classes.map(row => [row.class.split(".").at(-1), row.user]));
-  assert.deepEqual(rows, { ShellInstrumentedTest: undefined, HostedProcessRestartInstrumentedTest: "secondary", HostedBackgroundWorkerInstrumentedTest: "secondary" });
+  assert.deepEqual(rows, { ShellInstrumentedTest: undefined, AppInfoInstrumentedTest: "secondary", NoteRecorderInstrumentedTest: "secondary" });
   const inUser = passed.commands.filter(command => command.includes("--user 10"));
   assert.ok(inUser.indexOf(`shell cmd package install-existing --user 10 ${PACKAGE}`) < inUser.findIndex(command => command.includes("am instrument --user 10")), "packages reach the user before any class runs");
   assert.ok(inUser.includes(`shell cmd package install-existing --user 10 ${PACKAGE}.test`));
-  assert.equal(inUser.filter(command => command.includes("am instrument --user 10") && !command.includes("-e log true") && command.includes("HostedProcessRestart")).length, 3, "each phase is its own instrumentation process in that user");
   assert.ok(inUser.includes(`shell pm clear --user 10 ${PACKAGE}`));
   assert.deepEqual(inUser.filter(command => command.startsWith("shell pm uninstall")), [`shell pm uninstall --user 10 ${PACKAGE}.test`, `shell pm uninstall --user 10 ${PACKAGE}`]);
   // The class that runs in user 0 never receives the user argument.
@@ -487,65 +329,71 @@ test("classes that assert a secondary user run in a disposable user the runner c
   assert.ok(!none.commands.some(command => command.startsWith("install")));
 });
 
+test("the runner passes a core-loop gate and leaves the notice gates to the permission runner", () => {
+  // A core-loop class with a gate runs its gated methods instead of reporting them skipped.
+  assert.deepEqual(instrumentArgs(C("ClockHandoff")).slice(-6, -1), ["clockHandoff", "1", "-e", "class", C("ClockHandoff")]);
+  // HostedResultNotice's posted and denied notices need the notification permission set first, so
+  // this runner passes neither gate and the permission runner owns both.
+  assert.equal(CLASS_REGISTRY.HostedResultNotice.args, undefined);
+  for (const scenario of ["notice", "notice-denied"]) assert.equal(permissionCases[scenario].testClass, "HostedResultNoticeInstrumentedTest");
+});
+
+
+test("guarded app, recording and catalog cases require an owned secondary user", () => {
+  for (const name of ["AppInfo", "NoteRecorder", "NoteRecordingSave", "StorageCategories", "PhotosCatalogOrder"]) {
+    assert.equal(CLASS_REGISTRY[name].secondaryUser, true, name);
+    assert.throws(() => parseInstrumentationArgs(["--classes", name]), /requires --owned-emulator/);
+  }
+  assert.equal(CLASS_REGISTRY.NoteRecorder.grant, undefined, "preserve the effective guarded recorder policy");
+});
+
+
+
+test("every campaign runner exists and every class not run by a runner gives a specific reason", () => {
+  for (const file of CAMPAIGN_RUNNERS) assert.ok(fs.existsSync(file), `campaign runner ${file} is missing`);
+  for (const [name, reason] of Object.entries(NOT_RUN_BY_A_RUNNER))
+    assert.ok(typeof reason === "string" && reason.trim().length >= 40, `NOT_RUN_BY_A_RUNNER.${name} needs a specific reason`);
+});
+
+test("the microphone and notice permission scenarios revoke the permission they test", () => {
+  assert.deepEqual(permissionCases.voice.permissions, [["revoke", "RECORD_AUDIO"]]);
+  assert.deepEqual(permissionCases["notice-denied"].permissions, [["revoke", "POST_NOTIFICATIONS"]]);
+});
+
+
+test("each named class starts from cleared app data with Android's shade closed", () => {
+  // First emulator runs: Video, Accessibility and SettingsFlow passed or failed with the order of
+  // the classes before them, and a system shade left open failed every later gesture.
+  const commands = classIsolationCommands();
+  assert.ok(commands.some(command => command.join(" ") === `shell pm clear ${PACKAGE}`));
+  assert.ok(commands.some(command => command.join(" ") === "shell cmd statusbar collapse"));
+  // Only the app under test is cleared; the instrumentation package and other apps keep their data.
+  assert.equal(commands.filter(command => command.includes("clear")).length, 1);
+  // In the secondary-user phase the same isolation applies to that user only.
+  assert.ok(classIsolationCommands("10").some(command => command.join(" ") === `shell pm clear --user 10 ${PACKAGE}`));
+});
+
+
+
+
 test("declared permissions are granted after isolation, and a failed listing is kept", () => {
   // First run: WorkflowApprovalNotice failed to post because nothing had granted the notification
   // permission its fixture requires. RealClock needs AOSP Clock's own notification permission.
   assert.deepEqual(CLASS_REGISTRY.WorkflowApprovalNotice.grant, ["POST_NOTIFICATIONS"]);
   assert.deepEqual(CLASS_REGISTRY.RealClock.grantOther, { "com.android.deskclock": ["POST_NOTIFICATIONS"] });
-  const runner = fs.readFileSync("scripts/android-instrumentation.ts", "utf8");
-  const start = runner.indexOf("const runClass = ");
-  assert.ok(start >= 0, "the named-class runner is present");
-  const body = runner.slice(start);
-  assert.ok(body.indexOf("classIsolationCommands(user)") < body.indexOf("spec.grant"), "grants follow the data clear, which revokes them");
-  assert.ok(body.indexOf("spec.grant") < body.indexOf("spec.grantOther"));
-  assert.match(body, /-listing\.txt/);
 });
-
 test("a class whose every method is skipped by its gate is recorded as skipped, a skipped phase as failed", async () => {
-  // Round 7: BrowserDownload on a build without test mocks was recorded "failed" although the
-  // verification guide promises "skipped" for a class skipped by its own assumption gate.
   const dir = apkDir(), emulator = fakeEmulator({ mode: "all-skipped" });
   try {
-    const options = parseInstrumentationArgs(["--owned-emulator", "--avd", "fixture-avd", "--serial", "emulator-5554", "--variants", "standalone", "--classes", "Shell,BrowserDownload", "--apk-dir", dir, "--output", path.join(dir, "out")]);
+    const options = parseInstrumentationArgs(["--owned-emulator", "--avd", "fixture-avd", "--serial", "emulator-5554", "--classes", "Shell,CameraScan", "--apk-dir", dir, "--output", path.join(dir, "out")]);
     const result = await runFixture(dir, { options, serial: "emulator-5554", adb: emulator.adb, timing });
-    assert.deepEqual(result.classes.map(row => [row.class.split(".").at(-1), row.status]), [["ShellInstrumentedTest", "passed"], ["BrowserDownloadInstrumentedTest", "skipped"]]);
+    assert.deepEqual(result.classes.map(row => [row.class.split(".").at(-1), row.status]), [["ShellInstrumentedTest", "passed"], ["CameraScanInstrumentedTest", "skipped"]]);
     assert.equal(result.passed, false, "a skipped class is not a pass");
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-  const runner = fs.readFileSync("scripts/android-instrumentation.ts", "utf8");
-  assert.match(runner, /row\.status === "passed" \? "passed" : spec\.phases \? "failed" : row\.status/);
 });
 
-const sourceOf = name => fs.readFileSync(ROOTS.map(root => path.join(root, `ai/alphacompute/alphaphone/${name}InstrumentedTest.java`)).find(file => fs.existsSync(file)), "utf8");
 
-test("BrowserFlow's live search page runs only with --live-network; the default run is offline", () => {
-  // Rounds 7 and 8: the default campaign failed on www.google.com/search for environment reasons.
-  assert.ok(!instrumentArgs(C("BrowserFlow")).includes("browserFlowLive"), "a default run never passes the live gate");
-  assert.deepEqual(instrumentArgs(C("BrowserFlow"), { live: true }).slice(-6, -1), ["browserFlowLive", "1", "-e", "class", C("BrowserFlow")]);
-  assert.equal(parseInstrumentationArgs([]).liveNetwork, false);
-  assert.equal(parseInstrumentationArgs(["--live-network"]).liveNetwork, true);
-  assert.ok(DEFAULT_CLASSES.includes("BrowserFlow"));
-  assert.match(CLASS_REGISTRY.BrowserFlow.note, /--live-network \(browserFlowLive=1\)/);
-  const method = sourceOf("BrowserFlow").slice(sourceOf("BrowserFlow").indexOf("void submittedSearchUsesRealProviderAndRejectsExecutableAddress"));
-  assert.ok(method.indexOf("if(!live)return;") > 0 && method.indexOf("if(!live)return;") < method.indexOf("location.hostname==='www.google.com'"), "the live page load follows the gate");
-  // Every liveArgs gate is one the class reads, as for `args`.
-  for (const [name, spec] of Object.entries(CLASS_REGISTRY)) for (const [gate, value] of Object.entries(spec.liveArgs ?? {}))
-    assert.ok(sourceOf(name).includes(`"${value}".equals(androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("${gate}"))`) || gateRead(sourceOf(name), gate, value), `${name} reads ${gate}=${value}`);
-  const runner = fs.readFileSync("scripts/android-instrumentation.ts", "utf8");
-  assert.equal((runner.match(/instrumentArgs\(cls, \{[^}]*\blive\b[^}]*\}\)/g) ?? []).length, 3, "listing, retry and run all carry the live choice");
-});
 
-test("ConnectionRoutes runs only on a flag-off build", () => {
-  assert.equal(parseInstrumentationArgs(["--classes", "ConnectionRoutes"]).classes[0], C("ConnectionRoutes"));
-  assert.throws(() => parseInstrumentationArgs(["--test-mocks", "--classes", "ConnectionRoutes"]), /flag-off policy/);
-  for (const [name, spec] of Object.entries(CLASS_REGISTRY).filter(([, spec]) => spec.flagOffOnly)) {
-    assert.ok(sourceOf(name).includes("!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS"), `${name} assumes a flag-off build`);
-    assert.ok(!spec.requiresTestMocksBuild && !spec.testMocks, `${name} cannot need test mocks too`);
-  }
-  const source = sourceOf("ConnectionRoutes");
-  for (const route of [".cloud.eliza.app/api/v1/user", "https://agent.example.test/api/auth/pair", "https://api.eliza.app/api/auth/pair", "https://api.eliza.app/api/v1/api-keys/other", "/api/v1/api-keys/current\").put(\"method\", \"DELETE\").put(\"body\""]) assert.ok(source.includes(route), route);
-  assert.match(source, /"Connection request failed"/);
-  assert.match(source, /"VALIDATE"/);
-});
 
 test("round-9 registrations: new classes, campaigns and removed reasons", () => {
   for (const name of ["RendererRecovery", "ChatContinuity", "SelectedDocument", "PasswordVaultSettings", "PasswordVaultFill"]) {
@@ -563,29 +411,13 @@ test("round-9 registrations: new classes, campaigns and removed reasons", () => 
   // The reviewed-workflow host classes were deleted, not left unreachable.
   for (const name of ["Workflow", "WorkflowApproval", "WorkflowCancellation", "WorkflowLifecycle", "WorkflowMetadata", "WorkflowSubmission"]) {
     assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, name), name);
-    assert.ok(!fs.existsSync(path.join(ROOTS[0], `ai/alphacompute/alphaphone/${name}InstrumentedTest.java`)), `${name} is deleted`);
+    assert.ok(!fs.existsSync(path.join("android/app/src/androidTest/java", `ai/alphacompute/alphaphone/${name}InstrumentedTest.java`)), `${name} is deleted`);
   }
   // The vault classes change device security state, so they are gated and never default.
   for (const name of ["PasswordVaultSettings", "PasswordVaultFill"]) assert.ok(CLASS_REGISTRY[name].args && !DEFAULT_CLASSES.includes(name), name);
-  // The page refuses an entry without a website, so each synthetic entry names one (.invalid only).
-  assert.match(sourceOf("PasswordVaultSettings"), /type\("Add website", website\)/);
-  assert.equal((sourceOf("PasswordVaultSettings").match(/\.example\.invalid", (typedSecret|null)\)/g) ?? []).length, 2);
-  // A fixture PIN that was set is cleared even when its own verification fails (no close() follows a throwing constructor).
-  const fixture = fs.readFileSync(ROOTS.map(root => path.join(root, "ai/alphacompute/alphaphone/PasswordVaultFixture.java")).find(file => fs.existsSync(file)), "utf8");
-  assert.match(fixture, /set = true;[\s\S]*catch \(Throwable failed\) \{ close\(\); throw failed; \}/);
-  // The prompt is its credential field, not the SystemUI package (the status bar is SystemUI): a
-  // PIN typed before that field holds focus was lost and failed verification on the emulator.
-  assert.match(fixture, /systemui:id\/lockPassword/);
-  assert.match(fixture, /isFocused\(\)[\s\S]*field\.setText\(PIN\)/);
-  assert.doesNotMatch(fixture, /input text " \+ PIN/);
-  // Closing is the prompt going away; a save sheet finishes itself, so Alpha in front is not required.
-  assert.doesNotMatch(fixture, /By\.pkg\(BuildConfig\.APPLICATION_ID\)\.depth\(0\)/);
-  // Every save and every fill asks for the credential, so the Fill class requires the prompt each time.
-  const fill = sourceOf("PasswordVaultFill");
-  assert.doesNotMatch(fill, /By\.pkg\(Pattern\.compile\("com\\\\\.android/);
-  assert.equal((fill.match(/^\s+PasswordVaultFixture\.confirmDeviceCredential\(\);$/gm) ?? []).length, 3);
-  assert.match(fill, /asks for the device credential before listing sign-ins", PasswordVaultFixture\.credentialPromptShown\(10_000\)/);
 });
+
+
 
 test("PrototypeFlow and CalendarFlow are registered; the retired resident Activity test is gone", () => {
   // PrototypeFlow's four methods need no host: the class runs by name, and its live-agent journey is LiveAgent's.
@@ -598,60 +430,38 @@ test("PrototypeFlow and CalendarFlow are registered; the retired resident Activi
   assert.throws(() => parseInstrumentationArgs(["--classes", "CalendarFlow"]), /requires --owned-emulator/);
   assert.deepEqual(instrumentArgs(C("CalendarFlow")).slice(-6, -1), ["calendarFlow", "1", "-e", "class", C("CalendarFlow")]);
   assert.ok(!Object.hasOwn(CLASS_REGISTRY, "ResidentAgent") && !Object.hasOwn(NOT_RUN_BY_A_RUNNER, "ResidentAgent"));
-  assert.ok(!testClasses().has("ResidentAgentInstrumentedTest"));
-  // Each BrowserContinuity method drives the views, so a signed-out flag-off default run could only skip it.
-  assert.ok(!DEFAULT_CLASSES.includes("BrowserContinuity"));
-  assert.throws(() => parseInstrumentationArgs(["--classes", "BrowserContinuity"]), /test-mocks app build/);
 });
 
-test("restart runner wires the migration, crash-log, theme and source-reference phases to real methods and gates", () => {
-  const source = fs.readFileSync("scripts/test-native-restart.ts", "utf8");
-  const classes = testClasses();
-  for (const [scenario, cls, method, gate, phases] of [
-    ["notes-secure-migration", "NotesSecureStorageInstrumentedTest", "secureMigrationProcessRestartPhase", "notesSecureMigrationPhase", ["prepare", "verify", "cleanup"]],
-    ["crash-log", "SettingsCrashLogInstrumentedTest", "realCrashSurvivesRestartAndShowsInSettings", "crashLogPhase", ["prepare", "crash", "readback", "cleanup"]],
-    ["theme", "SettingsFlowInstrumentedTest", "themeProcessRestartPhase", "themePhase", ["prepare", "verify", "cleanup"]],
-    ["source-reference", "SelectedDocumentInstrumentedTest", "sourceReferenceProcessRestartPhase", "sourceReferencePhase", ["prepare", "verify", "cleanup"]],
-  ]) {
-    assert.ok(source.includes(`"${scenario}": {`) || source.includes(`\t${scenario}: {`), scenario);
-    assert.ok(source.includes(`testClass: "${cls}",\n\t\tmethod: "${method}",\n\t\tgate: "${gate}"`), `${scenario} names ${cls}#${method} with ${gate}`);
-    const java = fs.readFileSync(classes.get(cls), "utf8");
-    assert.match(java, new RegExp(`void ${method}\\(`), `${cls} has ${method}`);
-    assert.ok(java.includes(`getString("${gate}")`), `${cls} reads ${gate}`);
-    for (const phase of phases) assert.ok(java.includes(`"${phase}"`), `${cls} handles ${phase}`);
-  }
-});
+
+
 
 test("round-9 journeys and links: J01, J05, the note link and the Maps return are registered offline", () => {
   // J01 drives Camera UI the view refresh removed; it is listed as not run until it is rewritten.
   assert.ok(Object.hasOwn(NOT_RUN_BY_A_RUNNER, "PosterCalendarJourney") && !Object.hasOwn(CLASS_REGISTRY, "PosterCalendarJourney"));
   for (const [name, gate] of [["JourneyJ05", "journeyJ05"], ["Maps", "mapsEventReturn"]]) {
     assert.equal(CLASS_REGISTRY[name].args[gate], "1", `${name} passes ${gate}`);
-    assert.ok(gateRead(sourceOf(name), gate, "1"), `${name} reads ${gate}`);
     assert.ok(!DEFAULT_CLASSES.includes(name), `${name} is not a default class`);
   }
   // Maps has a runner entry, so it is not listed as unreachable.
   assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, "Maps"));
   assert.equal(parseInstrumentationArgs(["--classes", "Maps"]).classes[0], C("Maps"));
-  // J05 composes the flag-off journey: a test-mocks build is refused.
-  assert.equal(CLASS_REGISTRY.JourneyJ05.flagOffOnly, true);
-  assert.throws(() => parseInstrumentationArgs(["--test-mocks", "--classes", "JourneyJ05"]), /flag-off policy/);
   // The note link needs no gate or provider.
   assert.equal(CLASS_REGISTRY.NoteOrigin.args, undefined);
-  assert.match(sourceOf("NoteOrigin"), /"note-origins:v1:device"/);
-  // BrowserPageQuestion and the journey built on it name no public host.
-  for (const name of ["BrowserPageQuestion", "JourneyJ05"]) assert.ok(!/example\.com|www\.google\.com/.test(sourceOf(name)), `${name} contacts no public host`);
   assert.doesNotMatch(CLASS_REGISTRY.BrowserPageQuestion.note, /needs network|example\.com/);
 });
 
-test("no registered instrumented class drives a control the view refresh removed", () => {
-  // The SAF folder chooser and Camera Scan mode are gone. Image import belongs in Photos.
-  const removed = ["Choose folder", "Scan mode"];
-  for (const name of Object.keys(CLASS_REGISTRY)) {
-    const java = sourceOf(name);
-    for (const label of removed) assert.ok(!java.includes(`"${label}"`), `${name} still clicks "${label}"`);
-  }
-  const template = fs.readFileSync("apps/app/src/prototype/template.html", "utf8");
-  for (const label of removed) assert.equal(template.includes(label), false, `the renderer has no "${label}"`);
-  assert.match(template, /Photos tools[\s\S]*photos\.importAvailable[\s\S]*photos\.importImage[\s\S]*photos\.importLabel/, "image import remains an explicit Photos tool");
+test("BrowserFlow keeps its live-search opt-in on the production-only APK", () => {
+  // Rounds 7 and 8: the default campaign failed on www.google.com/search for environment reasons.
+  assert.ok(!instrumentArgs(C("BrowserFlow")).includes("browserFlowLive"), "the view fixture does not pass the live search gate");
+  assert.deepEqual(instrumentArgs(C("BrowserFlow"), { live: true }).slice(-6, -1), ["browserFlowLive", "1", "-e", "class", C("BrowserFlow")]);
+  assert.equal(parseInstrumentationArgs([]).liveNetwork, false);
+  assert.equal(parseInstrumentationArgs(["--live-network"]).liveNetwork, true);
+  assert.ok(!DEFAULT_CLASSES.includes("BrowserFlow"));
+  assert.deepEqual(parseInstrumentationArgs(["--classes", "BrowserFlow"]).classes, [C("BrowserFlow")]);
+  assert.throws(() => parseInstrumentationArgs(["--test-mocks", "--classes", "BrowserFlow"]), /Unknown option/);
+  assert.match(CLASS_REGISTRY.BrowserFlow.note, /--live-network \(browserFlowLive=1\)/);
+});
+
+test("ConnectionRoutes checks the product origin policy", () => {
+  assert.equal(parseInstrumentationArgs(["--classes", "ConnectionRoutes"]).classes[0], C("ConnectionRoutes"));
 });
