@@ -1,10 +1,9 @@
 // tst-alphaphone-1-015: the device capabilities the phone offers an agent, by platform profile,
-// run on the shipped selection (the clarification eval sends the same Android APK set).
+// run on the shipped selection.
 // Evidence class: unit test of the pure selection; not a device, image or model run.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {selectDeviceCapabilities} from '../apps/app/src/runtime/phone-context.ts';
-import {DEVICE_PROFILE} from '../scripts/eval-device-action-clarification.ts';
 
 const everything = [
   'calendar.local-event.v1', 'notes.local-record.v1', 'camera.capture-photo.v1', 'reminders.local-record.v1', 'reminders.local-record.v2',
@@ -42,8 +41,4 @@ test('the agent must offer a capability, and platform gates still apply', () => 
   const image = selectDeviceCapabilities(everything, {...apk, aospImage: true});
   assert.ok(image.includes('sms.send.v1'));
   assert.ok(image.includes('phone.dial.v1'));
-});
-
-test('the clarification eval measures the Android APK profile', () => {
-  assert.deepEqual(DEVICE_PROFILE, {...apk, camera: false, clockRepeatDays: false});
 });

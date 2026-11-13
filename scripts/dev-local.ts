@@ -8,7 +8,7 @@ import {resolve,join} from 'node:path';
 import {homedir} from 'node:os';
 import {readFileSync,existsSync} from 'node:fs';
 import {createServer} from 'node:net';
-// This launcher invokes Vite directly, so it prepares the client features itself (bun run dev has no predev hook).
+// This launcher invokes Vite directly, so it prepares the client features itself.
 prepareClientFeatures();
 const profile=resolve(process.env.ALPHA_REMOTE_PROFILE||join(homedir(),'.local/share/alphaphone/browser-agent'));
 const configuredEnvironment=developmentSpeechEnvironment(profile);

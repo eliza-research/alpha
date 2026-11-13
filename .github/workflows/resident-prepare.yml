@@ -36,7 +36,7 @@ jobs:
       - name: Verify actual Cloud recording signature classifier
         run: python3 scripts/ci/resident-phase.py --name cloud-recording-signature --seconds 60 bun scripts/check-cloud-recording-signature.ts
       # The rejection test bundles with the product's own esbuild and imports the projected client
-      # features (bun run test gets them from its pretest hook), so install the locked product dependencies
+      # features (bun run test prepares them before the suite), so install the locked product dependencies
       # as resident-android does and project the client before running the test file directly.
       - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 bun install --frozen-lockfile
       - run: python3 scripts/ci/resident-phase.py --name client-projection --seconds 300 bun run upstream:prepare-client

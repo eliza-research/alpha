@@ -44,7 +44,6 @@ import {runFactWriteScopeRefinement} from './fact-write-scope.mjs';
 import {runNativeGoogleAccessFileRefinement} from './native-google-access-file.mjs';
 import {runNamedEmbeddingProvenanceRefinement} from './named-embedding-provenance.mjs';
 import {checkCombinedAgentLauncher} from './combined-agent-launcher.mjs';
-import {checkReviewedWorkflowLauncher} from './reviewed-workflow-launcher.mjs';
 import {checkCoreConnectorCustody} from './core-runtime/connector-custody.mjs';
 import {checkMobileBundleAdmission} from './mobile-bundle-admission.mjs';
 import {checkWorkflowWorkerStaging} from './workflow-worker-staging.mjs';
@@ -53,7 +52,6 @@ import {checkPreparedSourceStamp} from './prepared-source-stamp.mjs';
 import {checkClientFeaturePublication} from './client-feature-publication.mjs';
 import {checkAppUpdateCandidate} from './app-update-candidate.mjs';
 import {checkProtectedAppUpdatePromotion} from './protected-app-update-promotion.mjs';
-import {checkCloudQaLauncher} from './cloud-qa-launcher.mjs';
 import {checkBrowserCloudRequestCustody} from './browser-cloud-request-custody.mjs';
 import {checkGmailAgentMailboxRecovery} from './gmail-agent-mailbox-recovery.mjs';
 import {checkDevelopmentDigestPending} from './development-digest-pending.mjs';
@@ -78,9 +76,9 @@ export async function runServicesRefinement(onProgress) {
       readingRefinement, scanRefinement, credentialRefinement, pdfRefinement, runSignInCoordinatorRefinement,
       runCoreRetirementRefinement, runCoreServiceLifecycleRefinement, runCoreRuntimeShutdownRefinement,
       runTurnControllerRefinement].map(direct),
-    ...[checkBrowserGoogleReturn, checkCombinedAgentLauncher, checkReviewedWorkflowLauncher,
+    ...[checkBrowserGoogleReturn, checkCombinedAgentLauncher,
       checkCoreConnectorCustody, checkMobileBundleAdmission, checkWorkflowWorkerStaging, checkNativeGoogleHostArtifact,
-      checkPreparedSourceStamp, checkClientFeaturePublication, checkAppUpdateCandidate, checkProtectedAppUpdatePromotion, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
+      checkPreparedSourceStamp, checkClientFeaturePublication, checkAppUpdateCandidate, checkProtectedAppUpdatePromotion, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
       checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage,
       checkAndroidBrowserModuleStage, checkAndroidBuildInputReadiness, checkLifeOpsScheduledTaskRoute,
       checkPersonalAssistantScheduledTaskCustody, checkPreparedWorkflowWorker].map(withDriver),
@@ -98,8 +96,6 @@ export async function runServicesRefinement(onProgress) {
     {model: 'BrowserGoogleReturn', obligation: 'Canonical account readback and browser presentation', reason: 'The real callback only emits a candidate wakeup. Account verification, panel dismissal, tab closing and live Google authorization require their own UI and integration evidence.'},
     {model: 'CombinedAgentLauncher', obligation: 'Confirm runtime readiness at the service boundary',
       reason: 'The receipt establishes spawn and process custody. The source campaign uses a closed child process, and live HTTP readiness is a separate observation.'},
-    {model: 'ReviewedWorkflowLauncher', obligation: 'Confirm live workflow readiness and capability admission',
-      reason: 'Source schedules observe reviewed bytes, child custody and preload rejection under closed ports. The metadata receipt alone does not observe HTTP readiness or permission to execute work.'},
     {model: 'CoreConnectorCustody', obligation: 'Arbitrary detached callbacks and direct host mutation',
       reason: 'The bounded source campaign holds selected service, disposal and detached continuations. Untracked host registry mutation and arbitrary scheduling remain separate.'},
     {model: 'MobileBundleAdmission', obligation: 'Staging and installation after mobile receipt admission',
@@ -114,8 +110,6 @@ export async function runServicesRefinement(onProgress) {
       reason: 'The source calls use real private files and byte hashing with closed metadata and synthetic archives. GitHub run-number custody, actual APK/voice admission, concurrent IO, signing, publication and installed updates retain separate evidence.'},
     {model: 'ProtectedAppUpdatePromotion', obligation: 'Protected production effects and release qualification',
       reason: 'Workflow ordering and command failures use reviewed source with closed ports and synthetic bytes. Main-push signing admission, released native input bounds, exact signed voice, actual keys, live transport and installed-device delivery remain separate.'},
-    {model: 'CloudQaLauncher', obligation: 'Concurrent launcher, kernel signal and live readiness behavior',
-      reason: 'Private files and receipts use the real implementation in scratch, with closed child events. Concurrent profile writers, kernel delivery and a running Cloud session retain separate evidence.'},
     {model: 'BrowserCloudRequestCustody', obligation: 'Authenticated requests, real HTTP and process restart',
       reason: 'Closed request and response ports drive the real handler on the public entitlement route. Authenticated routes, Node socket delivery and process restart remain separate.'},
     {model: 'GmailAgentMailboxRecovery', obligation: 'Provider receipt durability and concurrent calls',
