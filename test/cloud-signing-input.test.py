@@ -209,6 +209,7 @@ class CloudSigningInputTest(unittest.TestCase):
             "qualification": {"deviceExecuted": False, "userAccepted": False},
             "files": [{"path": "android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so", "bytes": 100, "sha256": "a" * 64}],
         }
+        native["embedding"]["additionalAbis"] = [{"abi": "x86_64", "libraries": copy.deepcopy(native["embedding"]["libraries"])}]
         native["files"] = [{"path": name, "bytes": 100, "sha256": "a" * 64} for name in [
             ".eliza/paradee-voice/native/build-record.json",
             ".eliza/paradee-voice/native/assets/paradee-voice/v1/manifest.json",
@@ -218,7 +219,8 @@ class CloudSigningInputTest(unittest.TestCase):
             "android/app/src/main/jniLibs/arm64-v8a/libc++_shared.so",
             "android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so",
             "android/app/src/main/jniLibs/x86_64/libelizainference.so",
-            "android/app/src/main/jniLibs/x86_64/libc++_shared.so"]]
+            "android/app/src/main/jniLibs/x86_64/libc++_shared.so",
+            "android/app/src/main/jniLibs/x86_64/libelizavoicejni.so"]]
         if change_native:
             change_native(native)
         native_bytes = json.dumps(native).encode()
@@ -478,6 +480,11 @@ class CloudSigningInputTest(unittest.TestCase):
             lambda value: value["files"].pop(),
             lambda value: value["files"].append({"path": "unexpected", "bytes": 1, "sha256": "a" * 64}),
             lambda value: value["embedding"]["libraries"][0].update(sha256="b" * 64),
+            lambda value: value["embedding"].pop("additionalAbis"),
+            lambda value: value["embedding"]["additionalAbis"][0].update(abi="arm64-v8a"),
+            lambda value: value["embedding"]["additionalAbis"][0]["libraries"].pop(),
+            lambda value: value["embedding"]["additionalAbis"][0]["libraries"][0].update(sha256="b" * 64),
+            lambda value: value["files"].__setitem__(slice(None), [row for row in value["files"] if row["path"] != "android/app/src/main/jniLibs/x86_64/libelizavoicejni.so"]),
         ]
         for change in changes:
             self.write_candidate(change_native=change)

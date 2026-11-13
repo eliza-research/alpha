@@ -213,13 +213,23 @@ def candidate_evidence(data, pin, apk_manifest, source_root=None):
             expected_outputs[f"android/app/src/main/jniLibs/{abi['abi']}/{library['name']}"] = library
             if library["name"] == "libelizainference.so":
                 expected_outputs[f".eliza/paradee-voice/native/jniLibs/{abi['abi']}/{library['name']}"] = library
-    require(all(row["alignment16KiB"] is True for row in libraries), "Candidate native JNI alignment differs")
-    for library in abis[0]["libraries"]:
-        same = next(row for row in libraries if row["name"] == library["name"])
-        require(same["bytes"] == library["bytes"] and same["sha256"] == library["sha256"],
-                "Candidate voice and embedding engines differ")
-    expected_outputs["android/app/src/main/jniLibs/arm64-v8a/libelizavoicejni.so"] = next(
-        row for row in libraries if row["name"] == "libelizavoicejni.so")
+    additional = embedding.get("additionalAbis")
+    require(isinstance(additional, list) and len(additional) == 1 and additional[0].get("abi") == "x86_64",
+            "Candidate native embedding ABI inventory differs")
+    embedding_abis = [{"abi": embedding["abi"], "libraries": libraries}, *additional]
+    for target, voice_abi in zip(embedding_abis, abis):
+        rows = target.get("libraries")
+        require(target.get("abi") == voice_abi["abi"] and isinstance(rows, list) and
+                sorted(row["name"] for row in rows) ==
+                ["libc++_shared.so", "libelizainference.so", "libelizavoicejni.so"] and
+                all(row["alignment16KiB"] is True for row in rows),
+                "Candidate native JNI inventory or alignment differs")
+        for library in voice_abi["libraries"]:
+            same = next(row for row in rows if row["name"] == library["name"])
+            require(same["bytes"] == library["bytes"] and same["sha256"] == library["sha256"],
+                    "Candidate voice and embedding engines differ")
+        expected_outputs[f"android/app/src/main/jniLibs/{target['abi']}/libelizavoicejni.so"] = next(
+            row for row in rows if row["name"] == "libelizavoicejni.so")
     outputs = native["files"]
     require(isinstance(outputs, list) and outputs and len(outputs) <= 4096, "Candidate native output inventory is empty or excessive")
     output_paths = set()

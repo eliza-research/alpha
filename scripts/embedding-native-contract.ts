@@ -1,4 +1,8 @@
 // The complete unmodified producer closure is shared by preparation and admission.
+/** ARM64 remains the historical primary record; generated builds also carry x86_64. */
+export function embeddingAbiLibraries<T>(record: {abi:string; libraries:T[]; additionalAbis?:{abi:string; libraries:T[]}[]}) {
+ return [{abi:record.abi,libraries:record.libraries},...(record.additionalAbis??[])];
+}
 export const embeddingProducerInputPaths=[
  "package.json",
  "packages/agent/package.json",

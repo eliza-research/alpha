@@ -150,7 +150,8 @@ test("every registered class exists in the app's instrumentation sources and dec
     for (const [gate, value] of Object.entries(spec.args ?? {}))
       assert.ok(gateRead(source, gate, value), `${name} does not read gate ${gate}=${value}`);
     for (const method of spec.phases ?? []) assert.match(source, new RegExp(`void ${method}\\(`), `${name} has no phase ${method}`);
-    if (spec.requiresTestMocksBuild) assert.ok(source.includes("BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS"), `${name} does not assume a test-mocks app build`);
+    if (spec.requiresTestMocksBuild) assert.match(source, /BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS|AppNavigation\.assumeNoRequiredSignIn\(/,
+      `${name} does not declare the fixture prerequisites`);
     if (spec.homeRole) {
       assert.ok(["requests", "held"].includes(spec.homeRole) && source.includes("BuildConfig.IS_LAUNCHER"), `${name} is not a launcher-variant HOME class`);
       // "held" classes must not change the role themselves; "requests" classes must put back what they found.
@@ -517,13 +518,15 @@ test("a class whose every method is skipped by its gate is recorded as skipped, 
 
 const sourceOf = name => fs.readFileSync(ROOTS.map(root => path.join(root, `ai/alphacompute/alphaphone/${name}InstrumentedTest.java`)).find(file => fs.existsSync(file)), "utf8");
 
-test("BrowserFlow's live search page runs only with --live-network; the default run is offline", () => {
+test("BrowserFlow uses the test-mocks views and opts in separately to live search results", () => {
   // Rounds 7 and 8: the default campaign failed on www.google.com/search for environment reasons.
-  assert.ok(!instrumentArgs(C("BrowserFlow")).includes("browserFlowLive"), "a default run never passes the live gate");
+  assert.ok(!instrumentArgs(C("BrowserFlow")).includes("browserFlowLive"), "the view fixture does not pass the live search gate");
   assert.deepEqual(instrumentArgs(C("BrowserFlow"), { live: true }).slice(-6, -1), ["browserFlowLive", "1", "-e", "class", C("BrowserFlow")]);
   assert.equal(parseInstrumentationArgs([]).liveNetwork, false);
   assert.equal(parseInstrumentationArgs(["--live-network"]).liveNetwork, true);
-  assert.ok(DEFAULT_CLASSES.includes("BrowserFlow"));
+  assert.ok(!DEFAULT_CLASSES.includes("BrowserFlow"));
+  assert.throws(() => parseInstrumentationArgs(["--classes", "BrowserFlow"]), /test-mocks app build/);
+  assert.equal(parseInstrumentationArgs(["--test-mocks", "--classes", "BrowserFlow"]).classes[0], C("BrowserFlow"));
   assert.match(CLASS_REGISTRY.BrowserFlow.note, /--live-network \(browserFlowLive=1\)/);
   const method = sourceOf("BrowserFlow").slice(sourceOf("BrowserFlow").indexOf("void submittedSearchUsesRealProviderAndRejectsExecutableAddress"));
   assert.ok(method.indexOf("if(!live)return;") > 0 && method.indexOf("if(!live)return;") < method.indexOf("location.hostname==='www.google.com'"), "the live page load follows the gate");

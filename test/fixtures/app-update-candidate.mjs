@@ -95,6 +95,7 @@ export function candidateFixture(t) {
       voice, embedding: {identity: config.appId, model: {id: 'synthetic-embedding-model'}, pin: sdkCommit, forkPin: recipe.engineCommit, abi: 'arm64-v8a',
         jniIdentityRelocated: true, jniBinding: binding,
         libraries: ['libelizainference.so', 'libc++_shared.so', 'libelizavoicejni.so'].map(library),
+        additionalAbis: [{abi: 'x86_64', libraries: ['libelizainference.so', 'libc++_shared.so', 'libelizavoicejni.so'].map(library)}],
         inputs: nativeInputs(binding).map(name => ({path: name, sourceSha256: hash('synthetic source'),
           generatedSha256: hash(nativeGenerated(name, 'synthetic source', config.appId, binding))})),
         producerInputs: embeddingProducerInputPaths.map(name => ({path: name, sha256: hash('synthetic source')}))},

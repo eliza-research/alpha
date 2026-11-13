@@ -146,13 +146,13 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   BrowserInstalledResolver: { note: "Real installed generic HTTPS filter visibility only; no external launch or network request" },
   Shell: {},
   StartupReadiness: { args: { startupReadiness: "1" } },
-  TextScale: { note: "textScaleProcessRestartPhase is skipped here; run bun scripts/test-native-restart.ts text-scale" },
+  TextScale: { requiresTestMocksBuild: true, note: "Display and Notes need the views on a signed-out emulator. Run textScaleProcessRestartPhase separately with bun scripts/test-native-restart.ts text-scale and the test-mocks APKs." },
   CloudSignInCallback: { args: { cloudSignInNative: "1" }, note: "Synthetic in-app sign-in returns through MainActivity; a matching return is never delivered, so nothing reaches Steward or Cloud. Not App Link verification (adb shell pm get-app-links) or real-account sign-in" },
   BrowserExternalHandoff: { note: "Synthetic committed HTTPS child and resolver fixture; intercepts chooser dispatch, no external page is opened" },
   ResetPolicy: { note: "Non-destructive cancellation, migration refusal and isolated marker checks; not a system reset proof" },
   BrowserCookiePolicy: { note: "Synthetic intercepted HTTPS origins; private method requires scoped WebView deletion support" },
   BrowserSignins: { note: "signinProcessRestartPhase is skipped here; run bun scripts/test-native-restart.ts signin" },
-  BrowserFlow: { liveArgs: { browserFlowLive: "1" }, note: "loopback fixture methods need --test-mocks; by default the search method asserts the submitted www.google.com/search URL and the javascript: refusal offline; only --live-network (browserFlowLive=1) needs live HTTPS to www.google.com and records INSTRUMENTATION_STATUS browserFlowSearch=results or provider-check (the provider's own check page for that exact search)" },
+  BrowserFlow: { requiresTestMocksBuild: true, liveArgs: { browserFlowLive: "1" }, note: "the signed-out fixture needs test-mocks for the views and loopback methods. The search method asserts the submitted www.google.com/search URL and the javascript: refusal offline; only --live-network (browserFlowLive=1) needs live HTTPS to www.google.com and records INSTRUMENTATION_STATUS browserFlowSearch=results or provider-check (the provider's own check page for that exact search)" },
   // Every method drives the views, which P-43's required sign-in covers on a signed-out flag-off build.
   BrowserContinuity: { requiresTestMocksBuild: true, note: "bookmarkProcessRestartPhase is skipped here; run bun scripts/test-native-restart.ts bookmark" },
   BrowserDownload: { note: "needs --test-mocks (loopback HTTP fixtures); skipped on any other build, so it is not a default class" },
@@ -349,9 +349,11 @@ export const NOT_RUN_BY_A_RUNNER = {
  * "skipped", which fails the run. It runs with `--test-mocks --classes BrowserDownload`.
  * BrowserContinuity is not listed for the same reason: each of its methods drives the views, which
  * P-43's required sign-in covers on a signed-out flag-off build. It runs with `--test-mocks`.
+ * TextScale and BrowserFlow likewise drive the views. The hosted suite runs them separately on
+ * the test-mocks pair while keeping the flag-off smoke classes below.
  */
 export const DEFAULT_CLASSES = [
-  "NoMockProduct", "Shell", "StartupReadiness", "TextScale", "BrowserSignins", "BrowserFlow",
+  "NoMockProduct", "Shell", "StartupReadiness", "BrowserSignins",
 ];
 
 const short = (name: string) => name.replace(new RegExp(`^${PACKAGE.replace(/\./g, "\\.")}\\.`), "").replace(/InstrumentedTest$/, "");

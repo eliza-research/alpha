@@ -51,6 +51,8 @@ import { licenceFlagLines, licenceFlagRecords } from "./licence-policy.ts";
 import { packagedGzipProblems } from "./android-gzip-assets.ts";
 import { appLinkFilters, requiredAppLinkProblems, webViewFilterProblems } from "./render-assetlinks.ts";
 import { readVoiceHost, voiceBundleAdmission } from "./voice-host.ts";
+import {embeddingApkProblems,type EmbeddingManifest} from './stage-embedding-host.ts';
+import {readNativeBuildReceipt} from './native-build-inputs.ts';
 import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, listenerPackage } from "./aosp-listener.ts";
 
 import {cloudVoiceAdmission} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
@@ -165,6 +167,7 @@ function releaseFile(dir: string, variant: ApkVariant) {
 function voiceHostAdmission(file: string, names: string[]) {
   return voiceBundleAdmission({ names, read: (entry: string) => execFileSync("unzip", ["-p", file, entry], { maxBuffer: 1536 * 1024 * 1024 }) }, () => readVoiceHost("."));
 }
+const embeddingManifest:EmbeddingManifest=readNativeBuildReceipt('.')?.embedding as EmbeddingManifest ?? JSON.parse(fs.readFileSync('android/embedding-host/qualified-host.json','utf8'));
 
 const results: VerificationRow[] = [];
 const failures: string[] = [];
@@ -226,6 +229,7 @@ for (const variant of variants)
     catch (error) { problems.push(`Native patch provenance: ${message(error)}`); }
     try { verifyOwnerRouteTable(file); }
     catch (error) { problems.push(`Owner route table: ${message(error)}`); }
+    problems.push(...embeddingApkProblems({names:d.names,read:entry=>execFileSync('unzip',['-p',file,entry],{maxBuffer:256*1024*1024})},embeddingManifest));
     let signerSha256: string | null = null;
     if (signed) {
       try { signerSha256 = signerDigest(file, {apiLevel: signerApiLevel}); }

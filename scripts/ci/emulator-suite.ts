@@ -6,7 +6,8 @@
  *   bun scripts/ci/emulator-suite.ts instrumentation | browser-reading | browser-controls
  *
  * instrumentation   `bun run test:android:instrumentation` with its default classes on both
- *                   distributions of the flag-off developer APKs.
+ *                   distributions of the flag-off developer APKs, followed by TextScale and
+ *                   BrowserFlow on the separate test-mocks pair so required sign-in leaves the views available.
  * browser-reading   the same runner after the pinned Chromium 157 WebView is installed
  *                   (scripts/prepare-ci-webview.ts): BrowserReadingNavigation and
  *                   BrowserPageQuestion on the flag-off pair, then BrowserReading,
@@ -33,6 +34,7 @@ export const AVD = "test";
 export const READING_CLASSES = ["BrowserReadingNavigation", "BrowserPageQuestion"];
 export const READING_TEST_MOCKS_CLASSES = ["BrowserReading", "BrowserSensitiveReading", "BrowserIsolatedReading"];
 export const BROWSER_CONTROLS_CLASSES = ["BrowserDownload", "BrowserAutofill", "PasswordBrowserFill"];
+export const DEFAULT_TEST_MOCKS_CLASSES = ["TextScale", "BrowserFlow"];
 
 type Command = string[];
 type SuiteStep = {name: string; command: Command; env?: NodeJS.ProcessEnv} & (
@@ -89,7 +91,11 @@ const prepareWebView: SuiteStep = { name: "prepare-webview", kind: "preparation"
 
 /** The ordered steps of a suite. Pure: nothing is run. */
 export function suitePlan(suite: string): SuiteStep[] {
-  if (suite === "instrumentation") return [prepareEmulator, runner("ci-default")];
+  if (suite === "instrumentation") return [
+    prepareEmulator,
+    runner("ci-default"),
+    runner("ci-default-test-mocks", "--test-mocks", "--classes", DEFAULT_TEST_MOCKS_CLASSES.join(",")),
+  ];
   if (suite === "browser-reading") return [
     prepareEmulator,
     prepareWebView,

@@ -224,7 +224,7 @@ jobs:
           echo "sha256=$(bun -e 'import {nativeRecipe,nativeRecipeDigest} from "./scripts/native-build-inputs.ts"; process.stdout.write(nativeRecipeDigest(nativeRecipe(process.cwd())))')" >> "$GITHUB_OUTPUT"
       - name: Cache verified native source and model inputs
         id: native-cache
-        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ${{ env.XDG_CACHE_HOME }}/alpha/native-inputs
           key: alpha-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-recipe.outputs.sha256 }}
@@ -239,7 +239,7 @@ jobs:
           bun scripts/voice-host.ts --verify
       - name: Retain verified native build cache
         if: steps.native-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ${{ env.XDG_CACHE_HOME }}/alpha/native-inputs
           key: alpha-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-recipe.outputs.sha256 }}

@@ -72,9 +72,8 @@ jobs:
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
         run: bun run android:build -- --allow-unpackaged-runtime
-      # The browser suites use loopback fixtures that require the separate test-mocks build.
+      # The signed-out hosted views and browser loopback fixtures need the separate test-mocks pair.
       - name: Build the separate test-mocks APKs
-        if: inputs.suite == 'browser-reading' || inputs.suite == 'browser-controls' || inputs.suite == 'all'
         run: |
           before=$(sha256sum artifacts/*.apk artifacts/instrumentation/*.apk)
           bun run android:build -- --test-mocks --allow-unpackaged-runtime
@@ -124,6 +123,7 @@ jobs:
     env:
       SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
       EXPECTED_MANIFEST_SHA256: ${{ needs.build.outputs.manifest_sha256 }}
+      EXPECTED_TEST_MOCKS_MANIFEST_SHA256: ${{ needs.build.outputs.test_mocks_manifest_sha256 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -146,10 +146,12 @@ jobs:
           artifact-ids: ${{ needs.build.outputs.artifact_id }}
           path: artifacts
           merge-multiple: true
-      - name: Require the build job's exact APK manifest, capacity and KVM
+      - name: Require the build job's exact APK manifests, capacity and KVM
         run: |
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test "$(sha256sum artifacts/apk-manifest.json | cut -d' ' -f1)" = "$EXPECTED_MANIFEST_SHA256"
+          test -n "$EXPECTED_TEST_MOCKS_MANIFEST_SHA256"
+          test "$(sha256sum artifacts/test-mocks/apk-manifest.json | cut -d' ' -f1)" = "$EXPECTED_TEST_MOCKS_MANIFEST_SHA256"
           python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 8*1024**3, "Insufficient fresh-runner emulator capacity"'
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -174,6 +176,7 @@ jobs:
             test-results/emulator-suite/
             test-results/android-fixture/
             artifacts/apk-manifest.json
+            artifacts/test-mocks/apk-manifest.json
           if-no-files-found: error
           retention-days: 3
 
