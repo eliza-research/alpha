@@ -1473,11 +1473,14 @@
         "DiscardIsCancelled",
         "PausedMicrophoneStopped",
         "ResumeIsOnlyPermissionReservation",
-        "Bounded"
+        "Bounded",
+        "FailedReleaseRetainsOwner"
       ],
       "abstractions": [
         "Two capture identities/reservations and source instances, with three host epochs. Native open and release are controlled ports.",
-        "Provider-piped capture remains a separate source schedule obligation."
+        "Provider-piped capture remains a separate source schedule obligation.",
+        "The actual sticky LiveCaptureResource.releaseFailed flag is observed independently of physical AudioRecord.released. A failed startup close retains a stopped quarantined controller owner, reports CAPTURE before cancellation cause and refuses replacement; stop and lifecycle teardown do not erase an unconfirmed owner.",
+        "These schedules inject failed close during rejected startup and follow its retained ownership. Arbitrary newly injected later stop failures remain outside this projection; lower capture-loop cleanup has separate NativeCaptureFrames coverage."
       ]
     },
     {
