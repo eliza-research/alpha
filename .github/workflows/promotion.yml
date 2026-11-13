@@ -1,16 +1,16 @@
-name: Native crash row predicate default qualification
-run-name: Equivalent row predicate NativeCrashJournal CI6 row predicate default qualification
+name: Native crash row predicate after qualification
+run-name: Equivalent row predicate NativeCrashJournal CI6 row predicate after qualification
 # Isolated branch experiment only. No canonical workflow or model change.
 on:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: native-crash-row-predicate-candidate-${{ github.ref }}
+  group: native-crash-row-predicate-after-candidate-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   symbolic:
-    name: Equivalent row predicate NativeCrashJournal CI6 row predicate default
+    name: Equivalent row predicate NativeCrashJournal CI6 row predicate after
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     steps:
@@ -30,21 +30,21 @@ jobs:
         run: |
           sha256sum --check <<'PINS'
           c0093845d30dbd6bdb5c3dc6096fd7c7717a9a627109a12b027b1d88d20ee46c  specs/quint/native/NativeCrashJournal.qnt
-          7ad7d45af7f6fac2a65f89f21ea1281bc41930f92de46afced1d762ef23c7d76  scripts/check-quint.ts
-          eca738dbc8155b8e2da07ff1a72a27aea10ba0fe3256289ad8b18ef5846bec7e  scripts/ci/native-crash-row-predicate.json
+          9ff6db2210e186eb88c5e7612b8a387b6ee37a3dc4d3413279fb9973547087bf  scripts/check-quint.ts
+          3342d0e8513f3176a254784fdb947c1d7d34778900baf170dbf09dce7d1c45ad  scripts/ci/native-crash-row-predicate-after.json
           PINS
-      - name: Original full CI6 safety with row predicate default scheduling
+      - name: Original full CI6 safety with row predicate after scheduling
         run: |
           set -euo pipefail
           unset JVM_ARGS JVM_GC_ARGS JAVA_TOOL_OPTIONS _JAVA_OPTIONS SMT_ENCODING SMT_SOLVER CONFIG_FILE OUT_DIR RUN_DIR WRITE_INTERMEDIATE
           alpha_crash_watch=$(mktemp -d "$RUNNER_TEMP/alpha-crash-after.XXXXXX")
-          bun scripts/check-quint.ts verify --models=NativeCrashJournal --steps=6 --out=test-results/quint/native-crash-row-predicate.json &
+          bun scripts/check-quint.ts verify --models=NativeCrashJournal --steps=6 --out=test-results/quint/native-crash-row-predicate-after.json &
           alpha_crash_checker_pid=$!
           python3 - "$alpha_crash_watch" "$alpha_crash_checker_pid" <<'PYWATCH' &
           from pathlib import Path
           import json,subprocess,sys,time
           control,root=Path(sys.argv[1]),int(sys.argv[2])
-          destination=Path('test-results/quint/native-crash-row-predicate-process.json')
+          destination=Path('test-results/quint/native-crash-row-predicate-after-process.json')
           while not (control/'stop').exists():
             probe=subprocess.run(['lsof','-t','-nP','-iTCP:8845','-sTCP:LISTEN'],capture_output=True,text=True)
             for value in probe.stdout.split():
@@ -82,17 +82,17 @@ jobs:
           from pathlib import Path
           import hashlib,json,re,shutil,subprocess
           out=Path('test-results/quint');out.mkdir(parents=True,exist_ok=True)
-          proof=out/'native-crash-row-predicate.json'
+          proof=out/'native-crash-row-predicate-after.json'
           receipt=json.loads(proof.read_text()) if proof.exists() else {}
           phases=receipt.get('results',[])
           result=phases[0] if len(phases)==1 else {}
           output=result.get('output','')
-          (out/'native-crash-row-predicate-output.log').write_text(output)
-          config_file=Path('scripts/ci/native-crash-row-predicate.json')
+          (out/'native-crash-row-predicate-after-output.log').write_text(output)
+          config_file=Path('scripts/ci/native-crash-row-predicate-after.json')
           config=json.loads(config_file.read_text())
           jar=Path.home()/'.quint/apalache-dist-0.62.4/apalache/lib/apalache.jar'
           digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-          process_file=out/'native-crash-row-predicate-process.json'
+          process_file=out/'native-crash-row-predicate-after-process.json'
           process=json.loads(process_file.read_text()) if process_file.exists() else None
           vc_counts=[int(x) for x in re.findall(r'VCGen produced ([0-9]+) verification condition',output)]
           holds={(int(s),int(i)) for s,i in re.findall(r'State ([0-9]+): state invariant ([0-9]+) holds\.',output)}
@@ -102,7 +102,7 @@ jobs:
             server=Path(source[1].strip()).resolve()
             admitted=(Path.cwd()/'_apalache-out').resolve()
             assert server.is_relative_to(admitted)
-            destination=out/'native-crash-row-predicate-actual-server';destination.mkdir(exist_ok=True)
+            destination=out/'native-crash-row-predicate-after-actual-server';destination.mkdir(exist_ok=True)
             for item in server.iterdir():
               if item.is_file() and not item.is_symlink() and (item.name in ['detailed.log','log0.smt','run.txt'] or item.name.startswith('violation')):
                 target=destination/item.name;shutil.copyfile(item,target);raw_files[item.name]={'bytes':target.stat().st_size,'sha256':digest(target)}
@@ -113,14 +113,14 @@ jobs:
             'jarSha256':digest(jar) if jar.exists() else None,
             'actualJvm':process,'VCCounts':vc_counts,'completedStateInvariantPairs':sorted(holds),
             'rawServerFiles':raw_files,'passed':receipt.get('passed',False),
-            'scope':'Original raw-integer model, all seven safety VCs, states0–6, default deadlocks/oopsla19/4GiB/1800. Only equivalent forall-to-conjunction-fold row predicate changes; original Z3/default before/deadlocks/encoding/heap/deadline retained; debug observes logs.'}
-          (out/'native-crash-row-predicate-custody.json').write_text(json.dumps(custody,indent=2)+'\n')
+            'scope':'Original raw-integer model, all seven safety VCs, states0–6, default deadlocks/oopsla19/4GiB/1800. Only equivalent forall-to-conjunction-fold row predicate changes; original Z3/after invariant scheduling; deadlocks/encoding/heap/deadline retained; debug observes logs.'}
+          (out/'native-crash-row-predicate-after-custody.json').write_text(json.dumps(custody,indent=2)+'\n')
           assert receipt, 'Missing actual checker receipt'
-          assert config=={'debug':True}
+          assert config=={'debug':True,'checker':{'tuning':{'search.invariant.mode':'after'}}}
           assert receipt['timeoutSeconds']==1800 and not receipt['finalInputErrors']
           assert custody['modelSha256']=='c0093845d30dbd6bdb5c3dc6096fd7c7717a9a627109a12b027b1d88d20ee46c'
           assert custody['jarSha256']=='e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262'
-          assert receipt['inputHashes']['scripts/ci/native-crash-row-predicate.json']==custody['configurationSha256']
+          assert receipt['inputHashes']['scripts/ci/native-crash-row-predicate-after.json']==custody['configurationSha256']
           assert receipt['inputHashes']['.github/workflows/promotion.yml']==digest(Path('.github/workflows/promotion.yml'))
           if receipt.get('passed'):
             assert len(phases)==1 and result['model']=='NativeCrashJournal' and result['phase']=='apalache' and result['backend']=='apalache'
@@ -128,18 +128,18 @@ jobs:
             assert receipt['modelOptions']['NativeCrashJournal']['steps']==6
             for argument in ['--main=NativeCrashJournal','--backend=apalache','--max-steps=6','--init=init','--step=step','--invariant=safety']:
               assert argument in result['argv'],argument
-            assert any(x.endswith('/scripts/ci/native-crash-row-predicate.json') and x.startswith('--apalache-config=') for x in result['argv'])
+            assert any(x.endswith('/scripts/ci/native-crash-row-predicate-after.json') and x.startswith('--apalache-config=') for x in result['argv'])
             assert vc_counts==[7] and holds=={(s,i) for s in range(7) for i in range(7)}
             assert 'The outcome is: NoError' in output and not re.search(r'=> TIMEOUT|Assuming it holds|Found a deadlock|invariant [0-9]+.* violated',output)
             assert process and process['capturedWhileOwned'] and '-Xmx4096m' in process['actualProcess']
             assert raw_files, 'Missing actual server output custody'
-            detailed='\n'.join(p.read_text(errors='replace') for p in (out/'native-crash-row-predicate-actual-server').rglob('detailed.log'))
-            smt='\n'.join(p.read_text(errors='replace') for p in (out/'native-crash-row-predicate-actual-server').rglob('*.smt'))
+            detailed='\n'.join(p.read_text(errors='replace') for p in (out/'native-crash-row-predicate-after-actual-server').rglob('detailed.log'))
+            smt='\n'.join(p.read_text(errors='replace') for p in (out/'native-crash-row-predicate-after-actual-server').rglob('*.smt'))
             assert 'Creating Z3 solver context' in detailed and 'Creating CVC5 solver context' not in detailed
           PYCUSTODY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: native-crash-row-predicate-ci6-default
+          name: native-crash-row-predicate-after-ci6-default
           path: test-results/quint/
           if-no-files-found: error
