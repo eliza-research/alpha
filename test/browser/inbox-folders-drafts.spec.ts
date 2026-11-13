@@ -1,7 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 
 // Rendered Inbox against a synthetic managed provider: Drafts/Archive/Trash folders, provider draft
-// editing and the rule that nothing is sent or saved remotely without the explicit review.
+// editing and the rule that opening and editing a draft leave it unsent.
 async function install(page:Page,caps:Record<string,unknown>){
  await page.goto('/');
  await page.evaluate(async caps=>{
@@ -42,7 +42,7 @@ test('Older servers offer only the query-based Archive folder',async({page})=>{
  expect((await fixture(page)).searches.at(-1)).toBe('in:archive');
 });
 
-test('Drafts, Archive and Trash load their lists; a Gmail draft opens for editing and saves only through review',async({page})=>{
+test('Drafts, Archive and Trash load their lists; Gmail draft editing keeps the composer clean',async({page},info)=>{
  await install(page,{draftsList:true,searchTrash:true});
  // Folder filters, including the overflow menu, are full 44px touch targets (#411).
  for(const control of [page.getByRole('button',{name:'Other mail folders',exact:true}),page.getByRole('button',{name:'Archive',exact:true})])expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
@@ -61,22 +61,16 @@ test('Drafts, Archive and Trash load their lists; a Gmail draft opens for editin
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Quarterly plan');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Draft text');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Edited draft text');
- await expect(page.getByText('Review save to Gmail drafts',{exact:true})).toHaveCount(0);
- const save=page.getByRole('menuitem',{name:'Save to Gmail drafts',exact:true});
- await expect(save).toHaveCount(0);
- const options=page.locator('summary[aria-label="Draft options"]');
- await options.focus();
- await options.press('Enter');
- await save.click();
- const review=page.getByRole('dialog',{name:'Review mail operation'});
- await expect(review.getByRole('heading',{name:'Replace Gmail draft'})).toBeVisible();
- await expect(review.getByText('Edited draft text',{exact:true})).toBeVisible();
- const state=await fixture(page);
- expect(state.prepared.at(-1)).toMatchObject({kind:'draft-replace',draftId:'draft-1',expectedDigest:'a'.repeat(64),acceptNonAtomicReplacement:true,bodyText:'Edited draft text'});
- expect(state.dispatches).toBe(0);
- await review.getByRole('button',{name:'Cancel unsent review',exact:true}).click();
- await expect(review).toHaveCount(0);
+ await expect(page.getByText(/save to Gmail drafts/i)).toHaveCount(0);
+ await expect(page.getByLabel('Draft options',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Send email',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Attach file',exact:true})).toBeVisible();
+ expect((await fixture(page)).prepared).toEqual([]);
  expect((await fixture(page)).dispatches).toBe(0);
+ await page.screenshot({path:info.outputPath('clean-composer-mobile.png')});
+ await page.setViewportSize({width:1280,height:800});
+ await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Edited draft text');
+ await page.screenshot({path:info.outputPath('clean-composer-desktop.png')});
 });
 
 test('Send opens the exact review and nothing is sent until it is confirmed',async({page})=>{
