@@ -29,7 +29,7 @@ test('host asset manifest matches the current shared worker pins: Paradee, optio
  // No package script names the retired Kokoro or Whisper speech paths.
  assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
 });
-test('embedding source admission binds the current package and rejects another JNI identity',()=>{
+test('embedding identity stays bound while stale producer records remain refused',()=>{
  const source=readFileSync(new URL('../scripts/combined-agent-source.ts',import.meta.url),'utf8');
  const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
  assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+reviewed+"'"));
@@ -40,7 +40,12 @@ test('embedding source admission binds the current package and rejects another J
  assert.equal(qualification.forkPin,reviewed);
  assert.equal(qualification.identity,appId);
  assert.equal(qualification.jniBinding.className,appId.replaceAll('.','/')+'/ElizaVoiceNative');
- assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}));
+ // A reviewed SDK upgrade does not relabel an existing native build. The tracked
+ // producer remains inadmissible until its exact build inputs have been qualified.
+ const currentProducerInputs=qualification.producerInputs.every(row=>
+  createHash('sha256').update(readFileSync(new URL('../vendor/eliza/'+row.path,import.meta.url))).digest('hex')===row.sha256);
+ if(currentProducerInputs)assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}));
+ else assert.throws(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}),/Embedding producer input changed:/);
  const retainedAppId='ai.example.other';
  assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,identity:retainedAppId}),/Embedding host source or identity admission changed/);
  const retainedBinding={...qualification.jniBinding,className:retainedAppId.replaceAll('.','/')+'/ElizaVoiceNative'};
