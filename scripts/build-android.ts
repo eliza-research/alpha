@@ -205,7 +205,7 @@ export function consumerBuildOptions(env: NodeJS.ProcessEnv, root: string, updat
       name: "build-config.json",
       metadata: {
         createdAt: new Date().toISOString(),
-        // Constants since the test-mocks APK and the Cloud profile were removed; record readers still expect the fields.
+        // Constant fields that verify-apks, build archives and release admission compare.
         testMocks: false,
         runtimeProfile: "native",
         updateChannel,

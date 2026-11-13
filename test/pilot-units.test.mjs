@@ -331,11 +331,6 @@ test("campaign records are read from emulator-suite, resident proofs and residen
   assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidate.campaigns.find(row => row.id === "emulator-suite:browser-reading").status, "mismatched");
   write("test-results/android-instrumentation/ci-reading/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: app }] });
   assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidateQualified, true);
-  // A test-mocks step in the suite is recorded but binds nothing; it does not make the campaign foreign.
-  write("test-results/emulator-suite/browser-reading.json", { suite: "browser-reading", passed: true, steps: [
-    { name: "ci-reading", results: "test-results/android-instrumentation/ci-reading/results.json" },
-    { name: "ci-reading-test-mocks", results: "test-results/android-instrumentation/ci-reading-test-mocks/results.json" }] });
-  write("test-results/android-instrumentation/ci-reading-test-mocks/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: "7".repeat(64), testMocks: true }] });
   const reading = () => recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidate.campaigns.find(row => row.id === "emulator-suite:browser-reading");
   assert.equal(reading().status, "passed");
   assert.deepEqual(reading().apkSha256, [app]);

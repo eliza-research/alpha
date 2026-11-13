@@ -61,8 +61,8 @@ test('instrumented tests reach browser host state through the shared BrowserTabH
  // The host's fields and helpers are declared on the upstream base class, so a reflective lookup on
  // AlphaBrowserPlugin (or on the plugin instance's own class) fails only on a device, and the deleted
  // BrowserReading class would stop androidTest compiling.
- const roots=['android/app/src/androidTest/java','android/app/src/testMocks/androidTest/java'];
- const files=roots.filter(root=>fs.existsSync(root)).flatMap(root=>fs.readdirSync(root,{recursive:true}).filter(name=>String(name).endsWith('.java')).map(name=>path.join(root,String(name))));
+ const root='android/app/src/androidTest/java';
+ const files=fs.readdirSync(root,{recursive:true}).filter(name=>String(name).endsWith('.java')).map(name=>path.join(root,String(name)));
  assert.ok(files.length>0);
  for(const file of files){
   const source=fs.readFileSync(file,'utf8');

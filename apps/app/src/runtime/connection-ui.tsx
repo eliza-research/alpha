@@ -1435,8 +1435,8 @@ function residentBindingController(environment:CloudEnvironment,client:CloudProt
     isFatalBindError:error=>error instanceof LocalCloudProviderStopUnconfirmed,
   });
 }
-/** The packaged-runtime refusal. Android production without the runtime is a non-distributable
- * developer build (--allow-unpackaged-runtime); browser development needs the host agent running. */
+/** The packaged-runtime refusal. Every Android build packages the runtime; browser development
+ * needs the host agent running. */
 const RESIDENT_UNPACKAGED = !testMocksEnabled ? 'No on-device agent' : !isAndroid && browserLocalAgentEnabled ? 'The local agent on this computer is not running. Start it with bun run dev.' : webCloudUnavailable() ? 'The local agent is unavailable here. Alpha runs its agent on the phone; this preview needs the local agent.' : 'The local agent is unavailable in this version. Connect a remote agent or sign in with Cloud.';
 /** Restore optional Cloud services independently of owner-provided inference. Neither an
  * absent account nor a failed read may unbind, restart, or delay the resident agent. */

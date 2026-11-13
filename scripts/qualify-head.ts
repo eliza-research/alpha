@@ -175,7 +175,7 @@ interface CampaignEvidence {
 interface CampaignReport {
   passed?: boolean;
   apkSha256?: string;
-  apks?: {role?: string; testMocks?: boolean; sha256: string}[];
+  apks?: {role?: string; sha256: string}[];
   steps?: {results?: string}[];
 }
 interface CiArchive {
@@ -194,15 +194,14 @@ export const CAMPAIGNS: readonly Campaign[] = Object.freeze([
 
 const readJsonFile = <T>(file: string): T | undefined => { try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return undefined; } };
 const jsonFiles = (dir: string) => fs.existsSync(dir) ? fs.readdirSync(dir).filter(name => name.endsWith(".json")).sort().map(name => path.join(dir, name)) : [];
-// App APKs a record installed. A separate test-mocks build is never the candidate, so its rows bind nothing.
+// App APKs a record installed.
 const appHashes = (record?: CampaignReport) => [
-  ...(Array.isArray(record?.apks) ? record.apks.filter(apk => (!apk.role || apk.role === "app") && apk.testMocks !== true).map(apk => apk.sha256) : []),
+  ...(Array.isArray(record?.apks) ? record.apks.filter(apk => !apk.role || apk.role === "app").map(apk => apk.sha256) : []),
   ...(typeof record?.apkSha256 === "string" ? [record.apkSha256] : []),
 ];
 // App APKs in a CI archive's apk-manifest.json (file name -> SHA-256); test and helper APKs are not the candidate.
 const archiveAppHashes = (manifest: object) => Object.entries(manifest)
-  .flatMap(([name, hash]) => /^(standalone|launcher)-(debug|release[^.]*)\.apk$/.test(name) && typeof hash === "string" ? [hash] : []);
-const testMocksOnly = (record?: CampaignReport) => Array.isArray(record?.apks) && record.apks.some(apk => apk.testMocks === true) && !appHashes(record).length;
+  .flatMap(([name, hash]) => /^launcher-(debug|release[^.]*)\.apk$/.test(name) && typeof hash === "string" ? [hash] : []);
 
 /**
  * Read each campaign's evidence as {id, present, passed, apkSha256[], records[]}. Pure apart from
@@ -215,13 +214,12 @@ export function readCampaigns(root = process.cwd(), campaigns = CAMPAIGNS): Camp
       const report = readJsonFile<CampaignReport>(at(campaign.file));
       if (!report) return { id: campaign.id, kind: campaign.kind, present: false, passed: false, apkSha256: [], records: [] };
       // The suite report names each instrumentation record; those bind the installed APKs.
-      // A test-mocks step (browser-reading) is recorded but cannot bind; every other record must name a flag-off app APK.
+      // Every record must name a flag-off app APK.
       const records = (report.steps ?? []).flatMap(step => step.results ? [step.results] : []);
       const rows = records.map(rel => readJsonFile<CampaignReport>(at(rel)));
-      const bound = rows.filter(row => !testMocksOnly(row));
-      const hashes = bound.flatMap(appHashes);
+      const hashes = rows.flatMap(appHashes);
       return { id: campaign.id, kind: campaign.kind, present: true, passed: report.passed === true, apkSha256: [...new Set(hashes)], records: [campaign.file, ...records],
-        unbound: !bound.length || bound.some(row => !appHashes(row).length) };
+        unbound: !rows.length || rows.some(row => !appHashes(row).length) };
     }
     if (campaign.kind === "record-dir") {
       const files = jsonFiles(at(campaign.dir));
@@ -277,7 +275,7 @@ export function readCiArchive(file: string, name = file): CiArchive {
   const manifest = readJsonFile<unknown>(file);
   if (!manifest || typeof manifest !== "object") throw new Error(`${file} is not a readable apk-manifest.json`);
   const apkSha256 = archiveAppHashes(manifest);
-  if (!apkSha256.length) throw new Error(`${file} names no standalone or launcher app APK`);
+  if (!apkSha256.length) throw new Error(`${file} names no launcher app APK`);
   return { manifest: name, apkSha256 };
 }
 

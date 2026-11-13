@@ -20,7 +20,7 @@ const labels = new Map([
   ['Gradle dependency verification metadata', 'gradle'], ['release signer', 'signer'],
 ]);
 const notices = [
-  [/Every strict-build input is present/, 'allInputs'],
+  [/Every build input is present/, 'allInputs'],
   [/Missing or changed voice outputs stop Gradle/, 'voiceBlocker'],
   [/An unset release signer does not stop the build/, 'unsigned'],
 ];

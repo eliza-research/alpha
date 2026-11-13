@@ -380,7 +380,7 @@ fs.writeFileSync(
     {
       createdAt: new Date().toISOString(),
       evidence: "apk-build",
-      // Constants since the test-mocks APK was removed; record readers still expect the fields.
+      // Constant fields that provisioning, qualification and release admission compare.
       testMocks: false,
       demoEntryPoints: false,
       mapsProvider: "cloud",

@@ -71,7 +71,6 @@ test('a build assembles the launcher APKs and instrumentation, lints and verifie
  const updateChannel={kind:'public',manifestUrlSha256:createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
  assert.deepEqual(record, {testMocks: false, runtimeProfile: 'native', updateChannel, mapsProvider: 'cloud', signingRequested: false, versionOverride: {code: null, name: null}});
  assert.deepEqual(f.result.files.map(file => path.basename(file)), ['launcher-debug.apk', 'launcher-release-unsigned.apk']);
- assert.throws(() => parseBuildArgs(['--test-mocks']), /Unknown option --test-mocks/);
 });
 
 test('a version override reaches the build record', t => {

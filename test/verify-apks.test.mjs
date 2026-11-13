@@ -15,8 +15,6 @@ test("Cloud voice evidence is one readable file for a genuine build, before any 
   for (const [args, message] of [
     [["--cloud-voice-evidence=a.json", "--cloud-voice-evidence=b.json"], /Specify --cloud-voice-evidence only once/],
     [["--cloud-voice-evidence=missing.json"], /Cloud voice evidence could not be read as JSON/],
-    [["--test-mocks"], /Unknown option --test-mocks/],
-    [["--allow-unpackaged-runtime"], /Unknown option --allow-unpackaged-runtime/],
   ]) {
     const result=spawnSync(process.execPath,["scripts/verify-apks.ts",...args],{cwd:root,encoding:"utf8"});
     assert.notEqual(result.status,0,args.join(" "));
@@ -274,11 +272,9 @@ if(args[1]==='android:build'){
 test('archive rejects unsupported options before creating output', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-invalid-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
-  for (const args of [['--allow-unpackaged-runtime'], ['--test-mocks']]) {
-    const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, encoding:'utf8'});
-    assert.notEqual(run.status, 0);
-    assert.ok(!fs.existsSync(path.join(dir, 'test-results')));
-  }
+  const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), '--unknown', 'test-results/archive'], {cwd:dir, encoding:'utf8'});
+  assert.notEqual(run.status, 0);
+  assert.ok(!fs.existsSync(path.join(dir, 'test-results')));
 });
 
 test("APK voice admission requires the complete recorded bundle and every recorded engine library", () => {

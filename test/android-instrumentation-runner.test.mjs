@@ -69,7 +69,6 @@ test("argument policy: short names, campaigns refused with their runner and the 
   assert.equal(parseInstrumentationArgs([]).classes.length, DEFAULT_CLASSES.length);
   for (const name of ["ResidentEgressRedaction", "NotificationChannels", "VoicePermissionDenied", "VoicePermissionRevoke", "LocalVoiceRecordingLimit"])
     assert.throws(() => parseInstrumentationArgs(["--classes", name]), /own campaign/);
-  assert.throws(() => parseInstrumentationArgs(["--test-mocks"]), /Unknown option/);
   // HOME-role classes never run (and so never skip) outside the opt-in phase.
   for (const name of ["LauncherHome", "SettingsRoles"]) assert.throws(() => parseInstrumentationArgs(["--owned-emulator", "--classes", name]), /--home-role/);
   assert.deepEqual(parseInstrumentationArgs(["--owned-emulator", "--home-role", "--classes", "SettingsRoles,LauncherHome"]).classes, [C("SettingsRoles"), C("LauncherHome")]);

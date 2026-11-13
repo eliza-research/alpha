@@ -188,7 +188,6 @@ test('staged Java-only native patches retain their authenticated dependency desc
 test('dependency verification takes exactly one mode', () => {
   assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write'});
   assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check'});
-  assert.throws(() => parseVerificationArgs(['--write','--allow-unpackaged-runtime']), /Usage/);
   assert.throws(() => parseVerificationArgs(['--write','--other']), /Usage/);
 });
 
