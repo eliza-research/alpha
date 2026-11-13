@@ -93,7 +93,17 @@ JavaScript is not refinement and does not belong here.
 An adapter lives in its test file, `test/quint-<name>.test.mjs`, unless another module also uses
 it. Shared drivers, ports, fixtures and Java harnesses are in
 `specs/quint/refinement/<family>/`. Adapters that cover several models at once run from
-`test/quint-<family>-refinement.test.mjs`. `specs/quint/refinement/check-traces.mjs` evaluates the
+`test/quint-<family>-refinement.test.mjs`. A model has more than one test file only when each file
+drives a different product component through it: AgentCalendarRefresh (refresh and mutation
+controllers), CanonicalNotesController, CanonicalNotesDraft and CanonicalNotesFeedback (the
+controller, draft, mutation and view surfaces), CoreFactWriteDedupe (dedupe and write scope),
+HostedDigestRefresh (refresh, mutation and the renewal question), MapsScreenModes (model-trace
+replay and the explicit-schedule canaries), NativeCredentialMutation (credential leases and the
+native and service campaigns), NativeLiveCapture and SharedRecordingAdmission (frame, live and
+piped capture and shared recording), NativeStreamBridge (the bridge and forwarded receipts),
+PhotosWindow (window, trash, owned album and browser album storage) and ResidentRuntime (resident,
+scheduling admission, start cancellation and the native campaign).
+`specs/quint/refinement/check-traces.mjs` evaluates the
 generated checks with the pinned Quint interpreter, compares observations after every checkpoint
 and fails on a mismatch; `test/quint-refinement-harness.test.mjs` includes a deliberately wrong
 observation. A trace has this shape:
