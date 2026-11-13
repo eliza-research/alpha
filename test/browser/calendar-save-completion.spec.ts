@@ -2,6 +2,8 @@ import {openBrowserCalendar, chooseCalendarEventAction} from './helpers/browser-
 import { returnToApps } from './app-navigation';
 import {test,expect} from '@playwright/test';
 for(const next of ['stay','home','new-draft'] as const)test(`edited event refresh waits for React completion and preserves ${next}`,async({page})=>{
+ // Keep the default one-hour event within one civil day so it opens the inline editor.
+ await page.clock.setFixedTime(new Date(2026,10,13,10));
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');await openBrowserCalendar(page);await page.getByRole('button',{name:'New event',exact:true}).click();await page.getByRole('textbox',{name:'Title',exact:true}).fill('Original meeting');await page.getByRole('switch',{name:'Video link',exact:true}).click();await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByRole('button',{name:'Join',exact:true})).toBeVisible();
  await chooseCalendarEventAction(page, 'Edit event');await page.getByRole('textbox',{name:'Title',exact:true}).fill('Renamed meeting');
  await page.evaluate(async()=>{const {BrowserCalendar}=await import('/src/browser/calendar.ts');const save=BrowserCalendar.prototype.save,list=BrowserCalendar.prototype.list;let hold=false;(window as any).editSaves=0;BrowserCalendar.prototype.save=async function(input){(window as any).editSaves++;const result=await save.call(this,input);hold=true;return result;};BrowserCalendar.prototype.list=async function(input){if(hold){hold=false;await new Promise<void>(resolve=>(window as any).releaseEditedRefresh=resolve);}return list.call(this,input);};});

@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import {settled as settleScreen} from './helpers/settled';
 
 // The chat sheet is an overlay. Pulling it up over a website, opening it and expanding it must not
 // resize, hide, reflow or scroll the page underneath (owner report, 2026-10-30: the frame shrank with
@@ -29,9 +30,8 @@ async function openSite(page:Page){
   frame:await page.locator('[data-browser-surface]').evaluate(element=>{const box=element.getBoundingClientRect();return {display:getComputedStyle(element).display,x:Math.round(box.x),y:Math.round(box.y),width:Math.round(box.width),height:Math.round(box.height)};}),
   page:await site.evaluate(()=>({width:innerWidth,height:innerHeight,scrollY:Math.round(scrollY),resizes:(window as any).resizes})),
  });
- // The app layer slides in and the adapter presents on a 100 ms poll: start from settled geometry.
- let settled=await geometry();
- await expect.poll(async()=>{const next=await geometry(),same=JSON.stringify(next)===JSON.stringify(settled);settled=next;return same;},{intervals:[150]}).toBe(true);
+ await settleScreen(page);
+ const settled=await geometry();
  return {site,geometry,settled,loads:()=>loads};
 }
 const nextFrame=(page:Page)=>page.evaluate(()=>new Promise(requestAnimationFrame));
