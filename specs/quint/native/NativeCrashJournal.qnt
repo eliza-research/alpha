@@ -141,10 +141,8 @@ module NativeCrashJournal {
   val ExactHeldRead = if (s.held==0) s.captured==Set() else
     lanes.contains(s.held) and pending(s,s.held).op=="read" and s.captured.subseteq(s.history)
   val KnownExitWatermark = s.disk.watermark==0 or s.history.contains(s.disk.watermark)
-  val BridgeRowsAllowlisted = s.reply.rows.indices().forall(index=> {
-    val row=s.reply.rows.nth(index)
-    not(row.extra) and row.stamp=="safe"
-  })
+  val BridgeRowsAllowlisted = s.reply.rows.foldl(true,(allowed,row)=>
+    allowed and not(row.extra) and row.stamp=="safe")
   val safety = BoundedJournal and ExactHeldRead and KnownExitWatermark and BridgeRowsAllowlisted
 
   action step = any {
