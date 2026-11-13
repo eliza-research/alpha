@@ -73,12 +73,16 @@ module FindInPage {
     s' = nativeClear(s, Set(id))
   }
   // A closed tab is disposed without a cleared event.
-  action closeTab(id: int): bool = all {
-    s.alive.contains(id), s.alive.size() > 1,
-    s' = { ...s, alive: s.alive.exclude(Set(id)),
-      cur: if (s.cur == id) s.alive.exclude(Set(id)).getOnlyElement() else s.cur,
-      presented: if (s.presented == id) 0 else s.presented,
-      nativeQuery: s.nativeQuery.exclude(Set(id)) }
+  action closeTab(id: int): bool = {
+    // The unchanged guards and alive subseteq Tabs make the remaining set a singleton.
+    nondet remaining = s.alive.exclude(Set(id)).oneOf()
+    all {
+      s.alive.contains(id), s.alive.size() > 1,
+      s' = { ...s, alive: s.alive.exclude(Set(id)),
+        cur: if (s.cur == id) remaining else s.cur,
+        presented: if (s.presented == id) 0 else s.presented,
+        nativeQuery: s.nativeQuery.exclude(Set(id)) }
+    }
   }
   action step = {
     nondet id = Tabs.oneOf()
@@ -118,4 +122,8 @@ module FindInPage {
   run closeFindClearsNativeSearchTest = init.then(openFind).then(typeQuery(true)).then(timerFires)
     .then(closeFind).expect(s.nativeQuery.size() == 0 and not(s.finding))
     .then(deliver).expect(not(s.finding) and s.events.length() == 0 and safety)
+  run closeSelectedTabChoosesRemainingTest = init.then(closeTab(1))
+    .expect(s.alive == Set(2) and s.cur == 2 and s.presented == 0 and safety)
+  run closeBackgroundTabKeepsSelectionTest = init.then(closeTab(2))
+    .expect(s.alive == Set(1) and s.cur == 1 and s.presented == 1 and safety)
 }
