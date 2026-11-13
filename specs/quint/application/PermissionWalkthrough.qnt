@@ -140,4 +140,8 @@ module PermissionWalkthrough {
     .then(ownerChange).then(openTarget(1)).then(platformStatus(1, false)).then(begin).then(request)
     .then(staleResult(0)).expect(s.pending == 1 and s.operations.get(1) == s.generation and safety)
   run completedRemountTest = orderedProgressTest.then(restart).expect(s.phase == "home" and s.progress == -1 and safety)
+  /// Image provisioning supplies platform status, not a completed installation marker. The
+  /// existing advance transition needs a ready row and never issues a permission request.
+  run imageGrantedProgressTest = orderedProgressTest
+    .expect(Keys.forall(key => s.requests.get(key) == 0) and s.completed and s.savedProgress == 7 and safety)
 }

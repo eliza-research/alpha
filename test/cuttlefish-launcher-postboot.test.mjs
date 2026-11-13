@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {verifyCuttlefishLauncher, validateExpectation, parseArgs} from '../scripts/verify-cuttlefish-launcher.ts';
+import {verifyCuttlefishLauncher, verifyFirstBootGrants, validateExpectation, parseArgs} from '../scripts/verify-cuttlefish-launcher.ts';
 const pkg='ai.alphacompute.alphaphone';
 const expected={packageName:pkg,apkSha256:'a'.repeat(64),certificateSha256:'b'.repeat(64),fingerprint:'Alpha/alpha_cf/vsoc_x86_64_only:17/test:userdebug/test-keys',apkPath:'/product/app/AlphaPhone/AlphaPhone.apk',defaultPermissions:['android.permission.RECORD_AUDIO','android.permission.CAMERA']};
 function fixture(overrides={}) {
@@ -91,5 +91,5 @@ test('first-boot grants: a domain-verification User block before the package ent
  // Real dumpsys output lists App Links state per user before the Packages: section.
  const real='Domain verification status:\n  '+pkg+':\n    ID: 1\n    Signatures: [AA]\n    Domain verification state:\n      alpha.example: verified\n  User 0:\n    Verification link handling allowed: true\n    Selection state:\n      Disabled:\n        alpha.example\n\nPackages:\n  Package ['+pkg+'] (abc):\n    userId=10123\n    install permissions:\n      android.permission.INTERNET: granted=true\n    User 0: ceDataInode=1 installed=true hidden=false\n      runtime permissions:\n'+expected.defaultPermissions.map(name=>'        '+name+': granted=true, flags=[ GRANTED_BY_DEFAULT]').join('\n')+'\n    User 10: ceDataInode=2 installed=true\n      runtime permissions:\n\nQueries:\n  system apps queryable: false\n';
  assert.deepEqual(verifyCuttlefishLauncher(fixture({[`shell dumpsys package ${pkg}`]:real}).run,expected,'0').firstBootGrants,expected.defaultPermissions);
- assert.throws(()=>verifyCuttlefishLauncher(fixture({[`shell dumpsys package ${pkg}`]:real}).run,expected,'10'),/First-boot grants missing/);
+ assert.throws(()=>verifyFirstBootGrants(fixture({[`shell dumpsys package ${pkg}`]:real}).run,expected,'10'),/First-boot grants missing/);
 });
