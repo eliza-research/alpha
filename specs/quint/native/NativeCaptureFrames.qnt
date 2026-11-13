@@ -47,7 +47,7 @@ module NativeCaptureFrames {
   action stop(sourceOk: bool, detectorOk: bool, call: bool): bool = all {
     s.started,
     s' = if (s.ended) {...s, running: false}
-      else {...s, running: false, ended: true, attached: false, sourceClosed: sourceOk, detectorClosed: detectorOk,
+      else {...s, running: false, ended: true, attached: not(sourceOk), sourceClosed: sourceOk, detectorClosed: detectorOk,
         buffersZeroed: true, flush: true, packets: predicted(s.history, true),
         error: if (not(sourceOk and detectorOk)) "capture" else if (call) "call" else "none"}
   }
@@ -63,9 +63,10 @@ module NativeCaptureFrames {
     any {start, accept(input, pieces), stop(flag, true, false), stop(true, flag, false), stop(true, true, true), readFailure, s' = s}
   }
   val PacketAgreement = s.packets == predicted(s.history, s.flush)
-  val TerminalBuffersCleared = s.ended implies s.buffersZeroed and not(s.attached)
+  val TerminalBuffersCleared = s.ended implies s.buffersZeroed
+  val SourceCloseControlsAttachment = s.started implies (s.attached == not(s.sourceClosed))
   val Bounded = s.history.length() <= 40 and s.reads <= 160 and s.negativeReads <= 1
-  val safety = PacketAgreement and TerminalBuffersCleared and Bounded
+  val safety = PacketAgreement and TerminalBuffersCleared and SourceCloseControlsAttachment and Bounded
   run tenWindowPrerollTest = init.then(start).then(12.reps(_ => accept(0, 1))).then(accept(500, 1)).then(accept(500, 1))
     .expect(safety and s.packets.nth(4).frames == List(4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))
   run stopFlushesOpenTailTest = init.then(start).then(4.reps(_ => accept(500, 1))).then(stop(true, true, false))
@@ -73,5 +74,5 @@ module NativeCaptureFrames {
   run readFailureDropsUnpublishedTailTest = init.then(start).then(3.reps(_ => accept(500, 1))).then(readFailure)
     .expect(safety and s.running and s.packets.length() == 1).then(stop(true, true, false)).expect(safety and not(s.running))
   run closeFailureStillClearsBuffersTest = init.then(start).then(accept(500, 4)).then(stop(false, true, false))
-    .expect(safety and s.error == "capture" and s.buffersZeroed)
+    .expect(safety and s.error == "capture" and s.buffersZeroed and s.attached and not(s.sourceClosed))
 }
