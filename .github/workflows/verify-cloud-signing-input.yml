@@ -29,6 +29,14 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ fromJSON(inputs.signing_plan).producerKind == 'github-main-candidate' }}
+        with:
+          ref: ${{ fromJSON(inputs.signing_plan).alphaCommit }}
+          fetch-depth: 0
+          submodules: true
+          path: qualified-producer
+          persist-credentials: false
       - name: Admit only the reviewed Cloud producer archive
         id: verify
         env:

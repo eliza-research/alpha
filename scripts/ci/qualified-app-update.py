@@ -338,10 +338,10 @@ def signed_bundle(signed, receipt, plan, plan_bytes):
             yield archive, entries, apks
 
 
-def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_signed=signed_download):
+def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_signed=signed_download, *, source_root=None):
     unsigned, signed = work / "producer.zip", work / "signed.tar"
     fetch_unsigned(plan, unsigned)
-    PRODUCER.admit(unsigned, plan)
+    PRODUCER.admit(unsigned, plan, source_root=source_root or product)
     fetch_signed(plan, record["signedBundle"], signed)
     plan_bytes = read_bounded(work / "signing-plan.json", PLAN_LIMIT)
     with signed_bundle(signed, record["signedBundle"], plan, plan_bytes) as (archive, entries, apks):

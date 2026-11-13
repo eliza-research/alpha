@@ -25,8 +25,8 @@ SPEC = importlib.util.spec_from_file_location(
 ADMISSION = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ADMISSION)
 
-NATIVE_SOURCE_PATHS = ('package.json', 'packages/agent/package.json', 'packages/app/package.json', 'packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt', 'packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp', 'packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java', 'packages/app/scripts/aosp/compile-libllama-paths.ts', 'packages/app/scripts/aosp/compile-libllama.ts', 'packages/app/scripts/aosp/compile-shim.ts', 'packages/app/scripts/aosp/vulkan-source-contract.ts', 'packages/app/scripts/aosp/zig-toolchain.ts', 'packages/app/scripts/build-helpers/arm64-simd.ts', 'packages/app/scripts/build-helpers/elizavoice-build-flags.ts', 'packages/app/scripts/build-helpers/omnivoice-merged.ts', 'packages/app/scripts/build-helpers/verify-fused-symbols.ts', 'packages/app/scripts/lib/repo-root.ts', 'packages/app/scripts/paradee-voice/build-native.ts', 'packages/app/scripts/stage-elizavoice-lib.ts', 'packages/app/scripts/voice/build-phonon2-gguf.ts', 'plugins/plugin-local-inference/native/android', 'plugins/plugin-native-inference/src/model-catalog/voice-model-versions.json')
-NATIVE_PRODUCT_PATHS = ('android/embedding-host/build-toolchain.json', 'android/embedding-host/native-requirements.txt', 'android/embedding-host/bootstrap-requirements.txt', 'android/paradee-voice/asr-inputs.json', 'scripts/build-embedding-host.ts', 'scripts/prepare-embedding-host.ts', 'scripts/embedding-native-contract.ts', 'scripts/embedding-build-remap.ts', 'scripts/native-build-inputs.ts', 'scripts/android-stage-voice-models.ts')
+NATIVE_SOURCE_PATHS = ('packages/app/scripts', 'plugins/plugin-native-inference/src/model-catalog', 'bun.lock', 'package.json', 'packages/agent/package.json', 'packages/app/package.json', 'packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt', 'packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp', 'packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java', 'packages/app/scripts/aosp/compile-libllama-paths.ts', 'packages/app/scripts/aosp/compile-libllama.ts', 'packages/app/scripts/aosp/compile-shim.ts', 'packages/app/scripts/aosp/vulkan-source-contract.ts', 'packages/app/scripts/aosp/zig-toolchain.ts', 'packages/app/scripts/build-helpers/arm64-simd.ts', 'packages/app/scripts/build-helpers/elizavoice-build-flags.ts', 'packages/app/scripts/build-helpers/omnivoice-merged.ts', 'packages/app/scripts/build-helpers/verify-fused-symbols.ts', 'packages/app/scripts/lib/repo-root.ts', 'packages/app/scripts/paradee-voice/build-native.ts', 'packages/app/scripts/stage-elizavoice-lib.ts', 'packages/app/scripts/voice/build-phonon2-gguf.ts', 'plugins/plugin-local-inference/native/android', 'plugins/plugin-native-inference/src/model-catalog/voice-model-versions.json')
+NATIVE_PRODUCT_PATHS = ('android/embedding-host/build-toolchain.json', 'android/embedding-host/native-requirements.txt', 'android/embedding-host/bootstrap-requirements.txt', 'android/paradee-voice/asr-inputs.json', 'scripts/build-embedding-host.ts', 'scripts/prepare-embedding-host.ts', 'scripts/embedding-native-contract.ts', 'scripts/embedding-build-remap.ts', 'scripts/native-build-inputs.ts', 'scripts/android-stage-voice-models.ts', 'scripts/local-agent-source.ts')
 
 class CloudSigningInputTest(unittest.TestCase):
     def setUp(self):
@@ -120,7 +120,61 @@ class CloudSigningInputTest(unittest.TestCase):
         self.pin["archiveSHA256"] = ADMISSION.digest(self.archive.read_bytes())
         self.pin["producerManifestSHA256"] = ADMISSION.digest(producer)
 
+    def prepare_native_source(self):
+        if hasattr(self, "native_source"):
+            return
+        self.source_directory = tempfile.TemporaryDirectory(prefix="alpha-reviewed-native-source-")
+        self.addCleanup(self.source_directory.cleanup)
+        root = Path(self.source_directory.name)
+        sdk = root / "vendor/eliza"
+        sdk.mkdir(parents=True)
+        def put(base, name, value):
+            target = base / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(value)
+        def git(base, *args):
+            return subprocess.check_output(["git", "-C", str(base), *args], stderr=subprocess.PIPE).decode().strip()
+        def commit(base):
+            git(base, "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "Synthetic reviewed source")
+            return git(base, "rev-parse", "HEAD")
+        git(sdk, "init", "-q")
+        directories = {"packages/app/scripts", "plugins/plugin-native-inference/src/model-catalog"}
+        for name in NATIVE_SOURCE_PATHS:
+            if name not in directories:
+                put(sdk, name + "/CMakeLists.txt" if name.endswith("/android") else name, b"synthetic upstream source")
+        git(sdk, "add", ".")
+        git(sdk, "update-index", "--add", "--cacheinfo", "160000," + "e" * 40 + ",plugins/plugin-local-inference/native/llama.cpp")
+        sdk_commit = commit(sdk)
+        toolchain = {"ndk": "28.2.13676358", "cmake": "4.0.3"}
+        for name in NATIVE_PRODUCT_PATHS:
+            put(root, name, b"synthetic producer input")
+        put(root, "android/embedding-host/build-toolchain.json", json.dumps(toolchain).encode())
+        put(root, "scripts/native-build-inputs.ts", b"export const NATIVE_PYTHON = '3.12.11';")
+        put(root, "android/embedding-host/qualified-host.json", b'{"model":{"id":"synthetic-embedding-model"}}')
+        put(root, "android/voice-host/qualified-voice-host.json", b'{"models":[],"asrSlot":{}}')
+        put(root, "upstream.lock.json", json.dumps({"commit": sdk_commit}).encode())
+        put(root, "app.config.json", json.dumps({"appId": PRODUCER.CANDIDATE_PACKAGE}).encode())
+        git(root, "init", "-q")
+        git(root, "add", "android", "scripts", "upstream.lock.json", "app.config.json")
+        git(root, "update-index", "--add", "--cacheinfo", "160000," + sdk_commit + ",vendor/eliza")
+        source = commit(root)
+        self.native_source = (source, sdk_commit)
+        self.native_recipe = {
+            "schema": "alpha-native-recipe/v1", "identity": PRODUCER.CANDIDATE_PACKAGE,
+            "engineCommit": "e" * 40,
+            "sourceTrees": dict(zip(NATIVE_SOURCE_PATHS, git(sdk, "rev-parse", *(sdk_commit + ":" + name for name in NATIVE_SOURCE_PATHS)).splitlines())),
+            "productInputs": {name: ADMISSION.digest((root / name).read_bytes()) for name in NATIVE_PRODUCT_PATHS},
+            "models": [], "asrSlot": {}, "toolchain": toolchain, "python": "3.12.11",
+        }
+        source_env = patch.dict(os.environ, {"ALPHA_NATIVE_SOURCE_ROOT": str(root)})
+        source_env.start()
+        self.addCleanup(source_env.stop)
+
     def write_candidate(self, extra=None, change_receipt=None, change_native=None):
+        self.prepare_native_source()
+        self.pin.update(alphaCommit=self.native_source[0], sdkCommit=self.native_source[1])
+        self.producer["source"] = self.pin["alphaCommit"]
+        self.verification["upstream"]["commit"] = self.pin["sdkCommit"]
         self.pin.pop("privateProducerReceiptSHA256", None)
         self.pin.update(producerKind=PRODUCER.CANDIDATE, producerRunId="171", producerRunAttempt=2, artifactId="202")
         for record in (self.verification, self.build, self.producer):
@@ -137,14 +191,7 @@ class CloudSigningInputTest(unittest.TestCase):
             debug[name] = (extra or {}).get(name, f"{variant} debug fixture".encode())
             self.verification["results"].append({"variant": variant, "mode": "debug", "sha256": ADMISSION.digest(debug[name])})
         source, sdk = self.pin["alphaCommit"], self.pin["sdkCommit"]
-        recipe = {
-            "schema": "alpha-native-recipe/v1", "identity": PRODUCER.CANDIDATE_PACKAGE,
-            "engineCommit": "e" * 40,
-            "sourceTrees": dict.fromkeys(NATIVE_SOURCE_PATHS, "f" * 40),
-            "productInputs": dict.fromkeys(NATIVE_PRODUCT_PATHS, "a" * 64),
-            "models": [], "asrSlot": {}, "toolchain": {"ndk": "28.2.13676358", "cmake": "4.0.3"},
-            "python": "3.12.11",
-        }
+        recipe = copy.deepcopy(self.native_recipe)
         native = {
             "schema": "alpha-native-build/v1", "consumerSdkCommit": sdk, "recipe": recipe,
             "recipeSha256": ADMISSION.digest(json.dumps(recipe, separators=(",", ":")).encode()),
@@ -155,7 +202,7 @@ class CloudSigningInputTest(unittest.TestCase):
                         "libraries": [{"name": name, "bytes": 100, "sha256": "a" * 64} for name in
                                       ("libelizainference.so", "libc++_shared.so")]} for abi in ("arm64-v8a", "x86_64")]},
             "embedding": {"identity": PRODUCER.CANDIDATE_PACKAGE, "pin": sdk, "forkPin": recipe["engineCommit"],
-                          "abi": "arm64-v8a", "jniIdentityRelocated": True,
+                          "abi": "arm64-v8a", "jniIdentityRelocated": True, "model": {"id": "synthetic-embedding-model"},
                           "libraries": [{"name": name, "bytes": 100, "sha256": "a" * 64, "alignment16KiB": True}
                                         for name in ("libelizainference.so", "libc++_shared.so", "libelizavoicejni.so")]},
             "qualification": {"deviceExecuted": False, "userAccepted": False},
@@ -444,6 +491,31 @@ class CloudSigningInputTest(unittest.TestCase):
         self.write_candidate()
         with self.assertRaisesRegex(ValueError, "on-device voice with ASR"):
             ADMISSION.admit(self.archive, self.pin)
+
+    def test_native_recipe_cannot_forge_self_consistent_source_or_model_pins(self):
+        def rehash(value):
+            value["recipeSha256"] = ADMISSION.digest(json.dumps(value["recipe"], separators=(",", ":")).encode())
+        def change_tree(value):
+            value["recipe"]["sourceTrees"][NATIVE_SOURCE_PATHS[0]] = "f" * 40
+            rehash(value)
+        def change_input(value):
+            value["recipe"]["productInputs"][NATIVE_PRODUCT_PATHS[0]] = "f" * 64
+            rehash(value)
+        def change_models(value):
+            model = {"path": "forged-model.bin", "bytes": 100, "sha256": "a" * 64}
+            value["recipe"]["models"] = value["voice"]["models"] = [model]
+            value["files"].append({**model, "path": ".eliza/paradee-voice/native/assets/paradee-voice/v1/forged-model.bin"})
+            rehash(value)
+        def change_python(value):
+            value["recipe"]["python"] = value["producer"]["python"] = "0.0.0"
+            rehash(value)
+        def change_embedding_model(value):
+            value["embedding"]["model"] = {"id": "forged-model"}
+        for change in (change_tree, change_input, change_models, change_python, change_embedding_model):
+            with self.subTest(change=change.__name__):
+                self.write_candidate(change_native=change)
+                with self.assertRaisesRegex(ValueError, "reviewed"):
+                    ADMISSION.admit(self.archive, self.pin)
 
     def test_candidate_cannot_claim_other_producer_or_delivery_routes(self):
         self.write_candidate()

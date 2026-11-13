@@ -48,7 +48,56 @@ def reviewed_private_producer(plan, descriptor):
         descriptor.get("privateProducerApproval") == approval
 
 
-def candidate_evidence(data, pin, apk_manifest):
+def checked_source_bytes(root, commit, name, *, object_id=False):
+    """Read immutable Git objects, never execute the candidate checkout."""
+    require(matches(COMMIT, commit), "Invalid native source commit")
+    command = ["git", "--no-replace-objects", "-C", str(root),
+               "rev-parse" if object_id else "show", f"{commit}:{name}"]
+    try:
+        result = subprocess.run(command, check=True, capture_output=True, timeout=20,
+                                env={**os.environ, "GIT_NO_LAZY_FETCH": "1"})
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError("Reviewed native source object is unavailable: " + name) from error
+    require(len(result.stdout) <= 4 * 1024**2, "Native source object is oversized")
+    return result.stdout.decode().strip() if object_id else result.stdout
+
+
+def verify_native_source(native, files, pin, source_root=None):
+    root = Path(source_root or os.environ.get("ALPHA_NATIVE_SOURCE_ROOT") or Path(__file__).resolve().parents[2])
+    if not source_root and not os.environ.get("ALPHA_NATIVE_SOURCE_ROOT") and (root / "qualified-producer").is_dir():
+        root /= "qualified-producer"
+    sdk = root / "vendor/eliza"
+    product = lambda name: checked_source_bytes(root, pin["alphaCommit"], name)
+    recipe = native["recipe"]
+    require(json.loads(product("upstream.lock.json"))["commit"] == pin["sdkCommit"] and
+            checked_source_bytes(root, pin["alphaCommit"], "vendor/eliza", object_id=True) == pin["sdkCommit"] and
+            json.loads(product("app.config.json"))["appId"] == recipe["identity"],
+            "Native recipe differs from the reviewed product source")
+    for name, value in recipe["productInputs"].items():
+        require(digest(product(name)) == value == files[name],
+                "Native recipe input differs from reviewed source: " + name)
+    voice = json.loads(product("android/voice-host/qualified-voice-host.json"))
+    python_pin = re.search(r"export const NATIVE_PYTHON\s*=\s*['\"]([^'\"]+)['\"]", product("scripts/native-build-inputs.ts").decode())
+    require(python_pin is not None and recipe["python"] == python_pin[1] and
+            native["embedding"]["model"] == json.loads(product("android/embedding-host/qualified-host.json"))["model"],
+            "Native Python or embedding model differs from reviewed product source")
+    require(recipe["models"] == voice["models"] and recipe["asrSlot"] == voice["asrSlot"] and
+            recipe["toolchain"] == json.loads(product("android/embedding-host/build-toolchain.json")),
+            "Native models or toolchain differ from reviewed product source")
+    expected = {**recipe["sourceTrees"], "plugins/plugin-local-inference/native/llama.cpp": recipe["engineCommit"]}
+    for commit in {pin["sdkCommit"], native["producer"]["sdkCommit"]}:
+        try:
+            result = subprocess.run(["git", "--no-replace-objects", "-C", str(sdk), "rev-parse",
+                                     *(f"{commit}:{name}" for name in expected)],
+                                    check=True, capture_output=True, timeout=20,
+                                    env={**os.environ, "GIT_NO_LAZY_FETCH": "1"})
+        except (OSError, subprocess.SubprocessError) as error:
+            raise ValueError("Reviewed native SDK source objects are unavailable") from error
+        require(result.stdout.decode().splitlines() == list(expected.values()),
+                "Native producer source differs from reviewed SDK")
+
+
+def candidate_evidence(data, pin, apk_manifest, source_root=None):
     raw = data("app-update-candidate.json")
     require(digest(raw) == pin["candidateReceiptSHA256"], "Candidate receipt differs from the reviewed digest")
     candidate = json.loads(raw)
@@ -105,6 +154,7 @@ def candidate_evidence(data, pin, apk_manifest):
         require(component["identity"] == CANDIDATE_PACKAGE and component["forkPin"] == recipe["engineCommit"],
                 "Candidate native input component identity differs")
     expected_trees = {
+        "packages/app/scripts", "plugins/plugin-native-inference/src/model-catalog", "bun.lock",
         'package.json',
         'packages/agent/package.json',
         'packages/app/package.json',
@@ -135,10 +185,11 @@ def candidate_evidence(data, pin, apk_manifest):
                        "android/paradee-voice/asr-inputs.json", "scripts/native-build-inputs.ts",
                        "scripts/build-embedding-host.ts", "scripts/prepare-embedding-host.ts",
                        "scripts/embedding-native-contract.ts", "scripts/embedding-build-remap.ts",
-                       "scripts/android-stage-voice-models.ts"}
-    require(isinstance(recipe["productInputs"], dict) and expected_inputs <= recipe["productInputs"].keys() and
+                       "scripts/android-stage-voice-models.ts", "scripts/local-agent-source.ts"}
+    require(isinstance(recipe["productInputs"], dict) and expected_inputs == recipe["productInputs"].keys() and
             all(matches(SHA, value) and value == files.get(name) for name, value in recipe["productInputs"].items()),
             "Candidate native recipe differs from frozen product inputs")
+    verify_native_source(native, files, pin, source_root)
     voice, embedding = native["voice"], native["embedding"]
     require(voice["pin"] == producer["sdkCommit"] == embedding["pin"] and
             voice["models"] == recipe["models"] and voice["asrSlot"] == recipe["asrSlot"],
@@ -257,7 +308,7 @@ def producer_evidence_members(names, inventory):
         yield name, entry, fact["sha256"]
 
 
-def admit(archive, pin, stage=None):
+def admit(archive, pin, stage=None, *, source_root=None):
     kind = producer_kind(pin)
     archive_json = decode if kind == CANDIDATE else json.loads
     profile = "native" if kind == CANDIDATE else "cloud"
@@ -326,7 +377,7 @@ def admit(archive, pin, stage=None):
             for name, value in (("artifacts/apk-manifest.json", apk_manifest), ("artifacts/build-config.json", build)):
                 require(producer["files"][name] == {"bytes": len(value), "sha256": digest(value)},
                         f"Producer evidence does not bind {name}")
-            candidate_apks = candidate_evidence(data, pin, apk_manifest) if kind == CANDIDATE else None
+            candidate_apks = candidate_evidence(data, pin, apk_manifest, source_root) if kind == CANDIDATE else None
             verified = archive_json(apk_manifest)
             require(verified.get("updateChannel") == channel, "Verified update channel differs")
             require(verified["upstream"]["commit"] == pin["sdkCommit"], "Verified SDK commit differs")

@@ -123,7 +123,8 @@ class QualifiedUpdateTest(unittest.TestCase):
         plan = BRIDGE.preflight(self.record, "f" * 40, work, self.api, self.download)
         BRIDGE.stage(self.record, plan, work, product,
                      lambda _plan, target: shutil.copyfile(self.producer.archive, target),
-                     lambda _plan, _receipt, target: shutil.copyfile(self.signed_tar, target))
+                     lambda _plan, _receipt, target: shutil.copyfile(self.signed_tar, target),
+                     source_root=os.environ.get("ALPHA_NATIVE_SOURCE_ROOT"))
 
     def test_native_exact_debug_and_signed_members_can_exceed_the_cloud_limit(self):
         payload = bytes(4097)

@@ -27,6 +27,7 @@ export function candidateFixture(t) {
     'packages/app/scripts/paradee-voice/build-native.ts', 'packages/app/scripts/voice/build-phonon2-gguf.ts',
     'plugins/plugin-local-inference/native/android/CMakeLists.txt',
     'plugins/plugin-native-inference/src/model-catalog/voice-model-versions.json'])) write(name, 'synthetic source', sdk);
+  write('bun.lock', 'synthetic lock', sdk);
   fs.mkdirSync(path.join(sdk, 'plugins/plugin-local-inference/native/llama.cpp'), {recursive: true});
   git(sdk, ['add', '.']);
   git(sdk, ['update-index', '--add', '--cacheinfo', '160000,' + 'e'.repeat(40) + ',plugins/plugin-local-inference/native/llama.cpp']);
@@ -40,13 +41,13 @@ export function candidateFixture(t) {
   json(path.join(directory, 'android/release-signer.json'), {lastRelease: {versionCode: null}});
   for (const name of ['voice-host', 'embedding-host']) fs.mkdirSync(path.join(directory, 'android', name));
   json(path.join(directory, 'android/voice-host/qualified-voice-host.json'), {models: [], asrSlot: {}});
-  json(path.join(directory, 'android/embedding-host/qualified-host.json'), {forkPin: 'e'.repeat(40)});
+  json(path.join(directory, 'android/embedding-host/qualified-host.json'), {forkPin: 'e'.repeat(40), model: {id: 'synthetic-embedding-model'}});
   json(path.join(directory, 'android/embedding-host/build-toolchain.json'), {ndk: '28.2.13676358', cmake: '4.0.3'});
   write('android/embedding-host/native-requirements.txt', 'synthetic pinned package==1');
   write('android/embedding-host/bootstrap-requirements.txt', 'synthetic pinned bootstrap==1');
   write('android/paradee-voice/asr-inputs.json', '{}');
   for (const name of ['build-embedding-host', 'prepare-embedding-host', 'embedding-native-contract',
-    'embedding-build-remap', 'native-build-inputs', 'android-stage-voice-models']) write(`scripts/${name}.ts`, 'synthetic recipe input');
+    'embedding-build-remap', 'native-build-inputs', 'android-stage-voice-models', 'local-agent-source']) write(`scripts/${name}.ts`, 'synthetic recipe input');
   git(directory, ['init', '-q']); git(directory, ['add', 'app.config.json', 'upstream.lock.json', 'android', 'scripts']); commit(directory);
   const env = {...process.env, GITHUB_REPOSITORY: repository.full_name, GITHUB_EVENT_NAME: 'push',
     GITHUB_REPOSITORY_ID: String(repository.id),
@@ -91,7 +92,7 @@ export function candidateFixture(t) {
     const binding = nativeBinding('synthetic source', 'synthetic source', config.appId);
     const native = {schema: 'alpha-native-build/v1', consumerSdkCommit: sdkCommit, recipe, recipeSha256: nativeRecipeDigest(recipe),
       producer: {sdkCommit, platform: 'linux', arch: 'x64', ndk: recipe.toolchain.ndk, cmake: recipe.toolchain.cmake, python: recipe.python},
-      voice, embedding: {identity: config.appId, pin: sdkCommit, forkPin: recipe.engineCommit, abi: 'arm64-v8a',
+      voice, embedding: {identity: config.appId, model: {id: 'synthetic-embedding-model'}, pin: sdkCommit, forkPin: recipe.engineCommit, abi: 'arm64-v8a',
         jniIdentityRelocated: true, jniBinding: binding,
         libraries: ['libelizainference.so', 'libc++_shared.so', 'libelizavoicejni.so'].map(library),
         inputs: nativeInputs(binding).map(name => ({path: name, sourceSha256: hash('synthetic source'),
