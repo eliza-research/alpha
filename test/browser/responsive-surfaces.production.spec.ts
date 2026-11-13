@@ -33,8 +33,8 @@ async function box(locator: Locator) { const value = await locator.boundingBox()
 async function resize(page: Page, viewport: { width: number; height: number }) {
   await page.setViewportSize(viewport);
   // Maps can occupy the renderer while it redraws after rotation. Wait for the
-  // measured viewport, including the evaluation round trip, before inspecting layout.
-  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--alpha-visible-height')), { timeout: 15_000 }).toBe(`${viewport.height}px`);
+  // measured viewport before inspecting layout.
+  await expect(page.locator('html')).toHaveCSS('--alpha-visible-height', `${viewport.height}px`, { timeout: 15_000 });
   await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => done(null)))));
 }
 /** Within the readable column and centred in the window, or the full phone width when narrow. */
