@@ -109,7 +109,7 @@ export async function uploadedCandidateMetadata(id: string, token: string | unde
         catch {throw Error('Uploaded candidate metadata stream failed');}
         if (chunk.done) break;
         size += chunk.value.byteLength;
-        if (size > 1024 * 1024) {await reader.cancel(); throw Error('Uploaded candidate metadata exceeds 1 MiB');}
+        if (size > 16 * 1024 * 1024) {await reader.cancel(); throw Error('Uploaded candidate metadata exceeds 16 MiB');}
         chunks.push(chunk.value);
       }
     } finally {reader.releaseLock();}

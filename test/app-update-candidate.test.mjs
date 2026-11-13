@@ -38,12 +38,12 @@ test('artifact metadata never substitutes a floor or retries authorization and m
     }), error => error.message === 'Uploaded candidate metadata read failed (HTTP ' + status + ')');
     assert.equal(calls, 1);
   }
-  for (const payload of ['not JSON', 'x'.repeat(1024 * 1024 + 1)]) {
+  for (const payload of ['not JSON', 'x'.repeat(16 * 1024 * 1024 + 1)]) {
     let calls = 0;
     await assert.rejects(uploadedCandidateMetadata('4242', 'controlled-token', {
       request: async () => {calls++; return new Response(payload);},
       wait: async () => assert.fail('Malformed metadata cannot become a retry'),
-    }), /metadata (?:is not JSON|exceeds 1 MiB)/);
+    }), /metadata (?:is not JSON|exceeds 16 MiB)/);
     assert.equal(calls, 1);
   }
   let calls = 0, waits = 0;
