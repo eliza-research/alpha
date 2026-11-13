@@ -662,6 +662,7 @@
   {
     "path": "specs/quint/legacy/SettingsNav.qnt",
     "module": "SettingsNav",
+    "verifyBackend": "tlc",
     "init": "checkerInit",
     "step": "step",
     "invariant": "safety",

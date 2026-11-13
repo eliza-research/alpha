@@ -48,6 +48,10 @@ The checker appends a depth counter to the translated model, checks every state
 at depths zero through the bound, and records the scope, depth and translation
 hashes. It does not establish safety beyond that bound.
 
+SettingsNav uses full `tlc` exploration of its finite historical design model.
+Its original row inventories, initializer, transition relation and invariants are
+retained; this historical comparison does not establish current runtime behavior.
+
 `quint:tests` prepares the explicitly inventoried historical source revisions and runs the
 `test/quint-*` owners. They compare product behavior with model transitions. Whole-file refinement
 and the retained partial-source contract regressions below have distinct evidence scopes.
