@@ -14,6 +14,18 @@ CORE=BRAND/'core-launcher'
 core_baseline=lambda relative:(CORE/'.cache/baseline'/relative).read_bytes()
 
 class FreshPresets(unittest.TestCase):
+ def test_alpha_runtime_defaults_cover_phone_contacts_sms_and_setup(self):
+  root=ET.parse(BRAND/'default-permissions-alpha-phone.xml').getroot()
+  package=root.find("exception[@package='ai.elizaresearch.alphaphone']")
+  expected={'POST_NOTIFICATIONS','RECORD_AUDIO','CAMERA','ACCESS_COARSE_LOCATION','ACCESS_FINE_LOCATION',
+   'READ_CALENDAR','WRITE_CALENDAR','READ_MEDIA_IMAGES','READ_MEDIA_VIDEO','READ_CONTACTS',
+   'READ_PHONE_STATE','READ_CALL_LOG','CALL_PHONE','READ_SMS','SEND_SMS','RECEIVE_SMS',
+   'RECEIVE_MMS','RECEIVE_WAP_PUSH','ACCESS_LOCAL_NETWORK','READ_MEDIA_VISUAL_USER_SELECTED'}
+  permissions=package.findall('permission')
+  self.assertEqual({row.attrib['name'] for row in permissions},{'android.permission.'+name for name in expected})
+  self.assertEqual(len(permissions),len(expected))
+  self.assertTrue(all(row.attrib.get('fixed')=='false' for row in permissions))
+
  def test_actual_policy_completed_managed_home_failure_and_existing_ime_choices(self):
   with tempfile.TemporaryDirectory(prefix='alpha-fresh-policy-')as d:
    p=Path(d)/'FreshTest.java';p.write_text('''package com.android.provision;
