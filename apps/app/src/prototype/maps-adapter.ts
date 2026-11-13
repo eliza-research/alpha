@@ -282,6 +282,8 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       nativeShareLabel:mapShareLabel(),nativeCanShare:canShareMap(),
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
+      standaloneCredit:!basemap&&!!cloudCredit(directionsOpen),
+      hasCredits:!!basemap||!!cloudCredit(directionsOpen),
       notNative:false, hasNativeMap:!!basemap&&locationReady,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
       mapRef:(element:HTMLElement)=>{
         if(!element||!basemap)return;

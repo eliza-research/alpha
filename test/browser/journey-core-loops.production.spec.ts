@@ -446,7 +446,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   // An unavailable Agent Calendar must not silently create a local event.
   await page.goto('/');
   await button(page, 'Maps').click();
-  await expect(page.getByRole('region', {name: 'Map', exact: true})).toBeVisible();
+  await expect(page.locator('[data-alpha-map-plane]')).toHaveCount(0);
   await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toBeVisible();
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(page.getByRole('region', {name: 'Maps'})).not.toContainText(/\d+ min|\d km/);

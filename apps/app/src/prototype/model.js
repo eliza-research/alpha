@@ -2826,7 +2826,7 @@ registerView("maps", {
 
     return {
       nativeModeMetadata: MAPS_MODES.map(function (md) { return { mode: md[0], d: IC[md[1]], label: md[2] }; }),
-      notNative: true, mode: mode, isBase: mode === "base", isResults: mode === "results", isPlace: mode === "place", isDir: mode === "dir", isNav: mode === "nav",
+      notNative: true, mode: mode, isBase: mode === "base", isResults: mode === "results", isPlace: mode === "place", isDir: mode === "dir", routeReady: mode === "dir", isNav: mode === "nav",
       showSearch: mode === "base" || mode === "results" || mode === "place",
       C: C, tr: tr, W: MAPS_WW, H: MAPS_WH, grid: MAPS_GRID, major: MAPS_MAJOR, fwy: MAPS_FWY, water: MAPS_WATER, parks: MAPS_PARKS, rwy: MAPS_RWY,
       routeD: routeD, doneD: doneD, hasRoute: !!routeD, routeDash: routeDash,

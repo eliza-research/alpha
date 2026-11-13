@@ -103,7 +103,7 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
     await expect(page.getByRole('button', { name: /^Port Hercule fuel dock/ }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /^Port Hercule,|^Port Hercule$|^Port Hercule Quai/ }).first()).toBeVisible();
     // The Cloud provider's own credit sits beside its results.
-    await expect(page.locator('.alpha-map-credits [data-maps-cloud-credit]')).toHaveText(' · © OpenStreetMap contributors (ODbL). Search: Nominatim. Routing: GraphHopper.');
+    await expect(page.locator('.alpha-map-credits [data-maps-cloud-credit]')).toHaveText('© OpenStreetMap contributors (ODbL). Search: Nominatim. Routing: GraphHopper.');
     // Two candidates: nothing is selected or routed until the user chooses.
     await expect(button(page, 'Directions')).toHaveCount(0);
     expect(await mapsRequests(page)).toEqual([{ route: 'capabilities', body: null }, { route: 'places/search', body: { query: LOCATION } }]);
@@ -112,7 +112,7 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
   await test.step('an explicit destination, an explicit origin and an explicit mode choice', async () => {
     await page.getByRole('button', { name: /^Port Hercule fuel dock/ }).first().click();
     await button(page, 'Directions').click();
-    await expect(page.getByText('Choose a real origin to calculate a route.')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Starting point' })).toHaveValue('');
     expect((await mapsRequests(page)).filter(row => row.route === 'routes')).toEqual([]);
     const origin = page.getByRole('textbox', { name: 'Starting point' });
     await origin.fill(`${ORIGIN.latitude}, ${ORIGIN.longitude}`);
@@ -192,7 +192,7 @@ test('a cancelled search shows nothing late, a place outside coverage is named, 
     await search.fill('Nice harbour');
     await search.press('Enter');
     await page.getByRole('button', { name: /^Port of Nice/ }).first().click();
-    await expect(maps).toContainText('This location is outside Monaco search and route coverage.');
+    await expect(maps).toContainText('This location is outside Monaco search and route coverage. Its coordinates are retained.');
     expect((await mapsRequests(page)).filter(row => row.route === 'routes')).toEqual([]);
   });
 
