@@ -63,6 +63,9 @@ jobs:
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: bun install --frozen-lockfile
+      - name: Prepare pinned Python host-test prerequisites
+        if: github.event_name == 'workflow_dispatch'
+        run: bash scripts/ci/prepare-python-host-tests.sh
       - name: Install browser for manual host verification
         if: github.event_name == 'workflow_dispatch'
         run: bash scripts/ci/install-playwright-browser.sh chromium
@@ -88,6 +91,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
+          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
         run: bun run verify
       - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # The normal chain builds and verifies its native source/model inputs.
@@ -103,6 +107,26 @@ jobs:
           # A clean release R8 pass exhausted the default 2 GiB heap on this runner.
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: bun run android:build:local
+      - name: Qualify generated native admission and staged wallet exclusion
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .eliza/native-inputs/receipt.json
+          test -f android/app/src/main/assets/agent/agent-bundle-dependencies.json
+          node --test --test-concurrency=1 --test-reporter=tap test/voice-host-record.test.mjs test/wallet-disabled.test.mjs | tee artifacts/android-postbuild-owners.tap
+          python3 - <<'PY'
+          import hashlib, json, pathlib, re, subprocess
+          text = pathlib.Path('artifacts/android-postbuild-owners.tap').read_text()
+          for field in ('fail', 'skipped', 'cancelled'):
+              assert re.search(r'^# ' + field + r' 0\s*$', text, re.M), field + ' must be zero'
+          for name in ('generated native admission refuses a wrong consumer pin and changed output bytes', 'a staged resident runtime inventory lists no @metamask/*, wagmi or @rainbow-me/* package'):
+              assert re.search(r'^ok \d+ - ' + re.escape(name) + r'\s*$', text, re.M), name
+          digest = lambda file: hashlib.sha256(pathlib.Path(file).read_bytes()).hexdigest()
+          record = {'sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(), 'tests':int(re.search(r'^# tests (\d+)\s*$', text, re.M)[1]), 'skipped':0,
+                    'nativeReceiptSha256':digest('.eliza/native-inputs/receipt.json'), 'runtimeInventorySha256':digest('android/app/src/main/assets/agent/agent-bundle-dependencies.json'),
+                    'scope':'Actual normal producer receipt and staged runtime inventory; no device execution.'}
+          pathlib.Path('artifacts/android-postbuild-owners.json').write_text(json.dumps(record, indent=2) + '\n')
+          PY
       # Use actual normal JavaCompile outputs; this qualification assembles no extra APK.
       # It reads ALPHA_JSON_JAR from the host-test JSON step above.
       - name: Qualify actual Calendar bridge in normal Java compile context
@@ -138,6 +162,8 @@ jobs:
             artifacts/*.json
             # Written offline by the build beside the APKs it verified (scripts/generate-sbom.ts).
             artifacts/sbom/*.json
+            artifacts/ci-python-host-tests/
+            artifacts/android-postbuild-owners.tap
             test-results/
             android/app/build/reports/
             android/voice-host/qualified-voice-host.json

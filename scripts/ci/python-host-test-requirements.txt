@@ -1,0 +1,31 @@
+# CI host-tool tests only; never used by the packaged native producer.
+# Primary PyPI version metadata and wheel hashes; Linux x86_64 and macOS, Python 3.12/3.13.
+# Install: python3 -m pip install --require-hashes --only-binary=:all: -r scripts/ci/python-host-test-requirements.txt
+
+# https://pypi.org/pypi/grpcio/1.80.0/json
+grpcio==1.80.0 \
+    --hash=sha256:4e78c4ac0d97dc2e569b2f4bcbbb447491167cb358d1a389fc4af71ab6f70411 \
+    --hash=sha256:873ff5d17d68992ef6605330127425d2fc4e77e612fa3c3e0ed4e668685e3140 \
+    --hash=sha256:92d787312e613754d4d8b9ca6d3297e69994a7912a32fa38c4c4e01c272974b0 \
+    --hash=sha256:f49eddcac43c3bf350c0385366a58f36bed8cc2c0ec35ef7b74b49e56552c0c2
+
+# https://pypi.org/pypi/grpcio-tools/1.80.0/json
+grpcio-tools==1.80.0 \
+    --hash=sha256:51caf99c28999e7e0f97e9cea190c1405b7681a57bb2e0631205accd92b43fa4 \
+    --hash=sha256:7982b5fe42f012686b667dda12916884de95c4b1c65ff64371fb7232a1474b23 \
+    --hash=sha256:a447f28958a8fe84ff0d9d3d9473868feb27ee4a9c9c805e66f5b670121cec59 \
+    --hash=sha256:fb599a3dc89ed1bb24489a2724b2f6dd4cddbbf0f7bdd69c073477bab0dc7554
+
+# https://pypi.org/pypi/protobuf/6.31.1/json
+protobuf==6.31.1 \
+    --hash=sha256:4ee898bf66f7a8b0bd21bce523814e6fbd8c6add948045ce958b73af7e8878c6 \
+    --hash=sha256:6f1227473dc43d44ed644425268eb7c2e488ae245d51c6866d19fe158e207402 \
+    --hash=sha256:720a6c7e6b77288b85063569baae8536671b39f15cc22037ec7045658d80489e
+
+# https://pypi.org/pypi/setuptools/80.10.2/json
+setuptools==80.10.2 \
+    --hash=sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173
+
+# https://pypi.org/pypi/typing-extensions/4.16.0/json
+typing-extensions==4.16.0 \
+    --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8

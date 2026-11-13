@@ -29,6 +29,11 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Prepare pinned Python host-test prerequisites
+        run: bash scripts/ci/prepare-python-host-tests.sh
       - name: Install browser for host tests that drive a page
         run: bash scripts/ci/install-playwright-browser.sh chromium
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -54,6 +59,13 @@ jobs:
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
           ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: python-host-test-qualification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci-python-host-tests/
+          if-no-files-found: error
+          retention-days: 3
       # Reuses the product dependencies and client projection prepared by bun run verify.
       - name: Build the connected browser proof renderer
         env:
