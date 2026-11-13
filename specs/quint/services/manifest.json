@@ -5224,7 +5224,8 @@
         "SingleOwner",
         "RefusedCallbackHasNoEffect",
         "StoppedAdmissionHasNoEffect",
-        "StopWaitsForWork"
+        "StopWaitsForWork",
+        "TimeoutSuccessRequiresCallback"
       ],
       "witnesses": [
         "UnavailableSelectorWitness",
@@ -5243,7 +5244,8 @@
       "abstractions": [
         "Selected current-source synchronous callback-bearing approvals, two selector identities, one task and one controlled deadline. Source replay retains every historical PC/effect observation and adds refusal and draining-stop observations.",
         "Task creation races, role checks, asynchronous callback-free persisted approvals, failed storage writes and arbitrary approval counts remain outside this bounded component; this is not complete implementation refinement.",
-        "Temporal properties assume weak fairness of admitted callback and storage continuations; unresponsive ports can intentionally keep stop pending."
+        "Temporal properties assume weak fairness of admitted callback and storage continuations; unresponsive ports can intentionally keep stop pending.",
+        "A timeout whose held task read returns no task rejects and reports APPROVAL_TASK_UNAVAILABLE without a callback or deletion; the final no-delete checkpoint only observes those absent effects."
       ],
       "bounds": {
         "maxSamples": 1000,

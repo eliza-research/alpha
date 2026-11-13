@@ -24,7 +24,11 @@ module CoreApprovalServiceCurrent {
   action fire = all {state.timer == "armed", not(state.stopped), move({...state,
     timer: "fired", tHas: state.inMap, inMap: false, tpc: if (state.inMap) "getTask" else "done"})}
   action timeoutTask = all {state.tpc == "getTask", move({...state,
-    tpc: if (state.taskExists) "onTimeout" else "resolve", toRuns: state.toRuns + (if (state.taskExists) 1 else 0)})}
+    tpc: if (state.taskExists) "onTimeout" else "done", toRuns: state.toRuns + (if (state.taskExists) 1 else 0),
+    result: if (state.taskExists) state.result else settle("rejected")})}
+  /// An observation checkpoint, not a fabricated delete request after a missing task.
+  action timeoutMissingTaskNoEffects = all {state.tpc == "done", state.tHas, not(state.taskExists),
+    state.result == "rejected", state.toRuns == 0, move(state)}
   action timeoutCallbackDone = all {state.tpc == "onTimeout", move({...state, tpc: "resolve"})}
   action timeoutCallbackFails = all {state.tpc == "onTimeout", move({...state,
     tpc: "done", inMap: false, result: settle("rejected")})}
@@ -79,8 +83,9 @@ module CoreApprovalServiceCurrent {
   val StoppedAdmissionHasNoEffect = state.blocked.forall(selector => not(state.sHas.get(selector))
     and not(state.deleteCalls.contains(selector)) and state.spc.get(selector) == "done")
   val StopWaitsForWork = state.stopDone implies state.stopped and pendingWork == 0
+  val TimeoutSuccessRequiresCallback = state.result == "timedOut" implies state.toRuns == 1
   val safety = TypeOK and AtMostOneCallback and ResultAgrees and SingleOwner and settlementStable
-    and RefusedCallbackHasNoEffect and StoppedAdmissionHasNoEffect and StopWaitsForWork
+    and RefusedCallbackHasNoEffect and StoppedAdmissionHasNoEffect and StopWaitsForWork and TimeoutSuccessRequiresCallback
   /// Fairness assumes admitted callback/storage ports eventually answer; it does not assert bounded wall time.
   val vars = (state, settlementStable)
   temporal Fairness = fire.weakFair(vars) and timeoutTask.weakFair(vars)
