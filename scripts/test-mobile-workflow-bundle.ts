@@ -8,6 +8,7 @@ import {execFileSync} from 'node:child_process';
 import {sourceDirectory,workerArtifactDirectory} from './local-agent-source.ts';
 import {stageWorkerArtifact} from './workflow-worker-artifact.ts';
 import {sha256 as workerHash} from './sha256.ts';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 const root=resolve(import.meta.dirname,'..');
 const bundle=join(sourceDirectory(root),'packages/agent/dist-mobile');
 type MobileBundleManifest = {
@@ -34,7 +35,7 @@ try{
   sourceStampSha256:workerHash(readFileSync(join(prepared,'.alpha-runtime-source.json'))),
   lockSha256:workerHash(readFileSync(join(prepared,'bun.lock'))),
  });
- const bun=realpathSync(execFileSync(process.env.ALPHA_BUN||'bun',['--no-install','-e','process.stdout.write(process.execPath)'],{cwd:temporary,env:{PATH:process.env.PATH,HOME:temporary},encoding:'utf8',timeout:10000}).trim());
+ const bun=realpathSync(execFileSync(process.env.ALPHA_BUN||'bun',['--no-install','-e','process.stdout.write(process.execPath)'],{cwd:temporary,env:{PATH:process.env.PATH,HOME:temporary},encoding:'utf8',timeout:scaledTimeout(10000)}).trim());
  const program=`import assert from 'node:assert/strict';
 const hardDeadline=setTimeout(()=>{console.error('Workflow bundle bootstrap deadline exceeded');process.exit(2)},60000);
 await import(${JSON.stringify(pathToFileURL(join(temporary,'bundle/agent-bundle.js')).href)});
@@ -52,6 +53,6 @@ for(const path of ['/api/workflow/status','/api/workflow/phone/validate','/api/w
 console.log('ALPHA_MOBILE_WORKFLOW_BUNDLE '+JSON.stringify({isolatedDirectory:true,verifiedWorkerArtifact:true,workflowRegistrationObserved:true,workflowRouteCount:plugin.routes.length,fullRuntimeReadiness:false,nativeExecution:false}));clearTimeout(hardDeadline);process.exit(0);`;
  // Exercise the real direct-executable process-host contract with this host's
  // Bun and authenticated worker files. This does not execute Android binaries.
- const output=execFileSync(bun,['--no-install','-e',program],{cwd:join(temporary,'bundle'),env:{PATH:process.env.PATH,HOME:temporary,TMPDIR:temporary,ELIZA_STATE_DIR:state,ELIZA_DISABLE_TRAJECTORY_LOGGING:'1',ELIZA_DISABLE_AGENT_WALLET_BOOTSTRAP:'1',ELIZA_PLATFORM:'android',ELIZA_ANDROID_APP_DATA_DIR:temporary,ELIZA_MOBILE_WORKFLOWS:'1',ELIZA_SMTHRS_RUNTIME_DIR:worker,ELIZA_ANDROID_BUN_TARGET:'android',BUN_PATH:bun,LD_PATH:bun,LD_LIBRARY_PATH:dirname(bun)},encoding:'utf8',timeout:90000,maxBuffer:8*1024*1024});
+ const output=execFileSync(bun,['--no-install','-e',program],{cwd:join(temporary,'bundle'),env:{PATH:process.env.PATH,HOME:temporary,TMPDIR:temporary,ELIZA_STATE_DIR:state,ELIZA_DISABLE_TRAJECTORY_LOGGING:'1',ELIZA_DISABLE_AGENT_WALLET_BOOTSTRAP:'1',ELIZA_PLATFORM:'android',ELIZA_ANDROID_APP_DATA_DIR:temporary,ELIZA_MOBILE_WORKFLOWS:'1',ELIZA_SMTHRS_RUNTIME_DIR:worker,ELIZA_ANDROID_BUN_TARGET:'android',BUN_PATH:bun,LD_PATH:bun,LD_LIBRARY_PATH:dirname(bun)},encoding:'utf8',timeout:scaledTimeout(90000),maxBuffer:8*1024*1024});
  const result=output.split('\n').find(line=>line.startsWith('ALPHA_MOBILE_WORKFLOW_BUNDLE '));assert.ok(result,'Missing qualification result');console.log(result);
 }finally{rmSync(temporary,{recursive:true,force:true});}

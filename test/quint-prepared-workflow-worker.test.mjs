@@ -45,7 +45,7 @@ const deferred = () => {
   return {promise, resolve};
 };
 
-async function waitForPreparedWorkerProducer(entered, preparation, timeoutMs = 30000) {
+async function waitForPreparedWorkerProducer(entered, preparation, timeoutMs = scaledTimeout(30000)) {
   let timer;
   try {
     await Promise.race([
