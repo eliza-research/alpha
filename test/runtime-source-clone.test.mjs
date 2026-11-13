@@ -205,17 +205,14 @@ for(const selection of ['override','npm_execpath','bare'])test(`nested installer
  const result=f.run({full:true,env});assert.equal(result.status,0,result.stderr);
  const actual=JSON.parse(fs.readFileSync(receipt));assert.deepEqual(actual.args,['install','--frozen-lockfile']);assert.equal(actual.executable,selected);assert.equal(actual.agent,null);
  const requested=(selection==='bare'?inheritedPath:[path.dirname(selected),inheritedPath].join(path.delimiter)).split(path.delimiter);
- const actualPath=actual.path.split(path.delimiter),omitted=new Set(requested.filter(directory=>!actualPath.includes(directory)));
- for(const directory of omitted){
-  assert.deepEqual(fs.readdirSync(directory).sort(),['bun','node'],'only the injected aliases may leave PATH');
-  for(const name of ['bun','node'])assert.ok(fs.lstatSync(path.join(directory,name)).isSymbolicLink());
-  assert.equal(fs.realpathSync(path.join(directory,'node')),fs.realpathSync(path.join(directory,'bun')));
-  assert.match(execFileSync(path.join(directory,'bun'),['--print','process.versions.bun??""'],{encoding:'utf8'}).trim(),/^\d+\.\d+\.\d+/,'omitted aliases execute Bun rather than genuine Node');
- }
- assert.deepEqual(actualPath,requested.filter(directory=>!omitted.has(directory)),'legitimate PATH entries retain their order');
+ const actualPath=actual.path.split(path.delimiter);
+ assert.deepEqual(actualPath,requested,'the selected toolchain keeps every inherited PATH entry in order');
  assert.equal(actualPath[0],path.dirname(selected),'nested Bun resolves from the selected toolchain, never a dot prefix');
- assert.notEqual(actualPath[0],'.');assert.equal(actual.extra,'retained-extra');assert.equal(actual.node.bun,null);
- assert.ok(path.isAbsolute(actual.node.executable));if(process.versions.bun)assert.notEqual(fs.realpathSync(actual.node.executable),fs.realpathSync(process.execPath));
+ assert.notEqual(actualPath[0],'.');assert.equal(actual.extra,'retained-extra');
+ // The reviewed SDK supports Bun's node alias; preparation must preserve the caller's runtime selection.
+ const expectedNode=JSON.parse(execFileSync('node',['-p','JSON.stringify({executable:process.execPath,bun:process.versions.bun??null})'],
+  {env:{...process.env,PATH:requested.join(path.delimiter)},encoding:'utf8'}));
+ assert.deepEqual(actual.node,expectedNode);assert.ok(path.isAbsolute(actual.node.executable));
  assert.deepEqual(f.snapshot(),before);
 });
 
