@@ -193,3 +193,62 @@ test('early-morning timeline hours use the device 24-hour format of the base row
   assert.ok(labels.every(label=>/^\d{2}$/.test(label)),labels.join(','));
  }finally{setLocalePreferences({});}
 });
+
+test('Calendar projects timed intervals once per redraw and keeps exact civil-day boundaries',async()=>{
+ const [{presentCalendarIntervals},{surfaceLayout,publishSurfaceLayout,currentSurfaceLayout}]=await loadBrowserModule([
+  'apps/app/src/prototype/calendar-interval-presentation.ts','apps/app/src/runtime/canvas-geometry.ts',
+ ]);
+ const priorZone=process.env.TZ,priorLayout=currentSurfaceLayout();
+ process.env.TZ='America/New_York';
+ publishSurfaceLayout(surfaceLayout(1360,1));
+ try{
+  let endpointReads=0;
+  const timed=(id,start,finish)=>{
+   const begin=Date.parse(start),end=Date.parse(finish);
+   return Object.freeze({id,title:id,calendarInterval:true,calendarIntervalData:Object.freeze({
+    get begin(){endpointReads++;return begin;},get end(){endpointReads++;return end;},
+   })});
+  };
+  const midnight=timed('Ends at midnight','2026-11-01T03:15Z','2026-11-01T04:00Z');
+  const repeated=timed('Repeated hour','2026-11-01T05:45Z','2026-11-01T06:15Z');
+  const overnight=timed('Overnight','2026-11-02T04:15Z','2026-11-02T06:30Z');
+  const december=timed('December','2026-12-15T14:00Z','2026-12-15T15:00Z');
+  const allDay=Object.freeze({id:'All day',title:'All day',calendarInterval:true,allDay:true,off:1,allDayEndOff:3});
+  const events=Object.freeze([midnight,repeated,overnight,december,allDay,
+   ...Array.from({length:1996},(_,i)=>timed('Later '+i,'2027-02-01T12:00Z','2027-02-01T13:00Z')),
+  ]);
+  const actions=[],projected=[];
+  const api={now:new Date('2026-11-01T17:00Z'),set:patch=>actions.push(patch)};
+  const render=state=>({dayEvents:state.events.filter(event=>event.off===state.day&&event.calendarInterval).map(event=>{
+   projected.push(event);
+   return {title:event.title,top:(event.t-7)*56+8,left:60,w:332,open:()=>api.set({open:event.id,openDay:state.day})};
+  })});
+  const base=()=>({hours:[],nowTop:0,week:Array.from({length:7},()=>({dot:'transparent'})),mdays:Array.from({length:42},()=>({dot:'transparent'})),dayEvents:[]});
+  const project=month=>presentCalendarIntervals(render,{events,day:0,month},api,base(),true);
+  const marks=days=>days.flatMap(({dot},i)=>dot==='transparent'?[]:[i]);
+  const out=project(0);
+  assert.deepEqual(marks(out.week),[5,6]);
+  assert.deepEqual(marks(out.mdays),[5,6,7,8]);
+  assert.deepEqual(out.dayColumns.map(day=>day.events.map(event=>event.title)),[
+   ['Ends at midnight'],['Repeated hour','Overnight'],['Overnight'],[],[],
+  ]);
+  assert.equal(out.nativeAllDay.length,2);
+  assert.equal(projected.find(event=>event.id===repeated.id).d,.5);
+  const split=projected.filter(event=>event.id===overnight.id);
+  assert.deepEqual(split.map(event=>[event.off,event.t,event.d]),[[0,23.25,.75],[1,0,1.5]]);
+  assert.ok(split.every(event=>event.calendarIntervalData===overnight.calendarIntervalData));
+  out.dayColumns[2].events[0].open();
+  out.nativeAllDay[1].open();
+  assert.deepEqual(actions,[{open:overnight.id,openDay:1},{open:allDay.id,openDay:2}]);
+  assert.equal(endpointReads,4000);
+
+  endpointReads=0;
+  const next=project(1);
+  assert.deepEqual(marks(next.week),[5,6]);
+  assert.deepEqual(marks(next.mdays),[15]);
+  assert.equal(endpointReads,4000);
+ }finally{
+  publishSurfaceLayout(priorLayout);
+  if(priorZone===undefined)delete process.env.TZ;else process.env.TZ=priorZone;
+ }
+});
