@@ -1,9 +1,14 @@
 import {test,expect,type Page} from '@playwright/test';
+import {seedCompletedAccessSetup} from './flag-off-android';
+import {preloadPageModules} from './helpers/page-modules';
 
 // Rendered Inbox against a synthetic managed provider: Drafts/Archive/Trash folders, provider draft
 // editing and the rule that nothing is sent or saved remotely without the explicit review.
 async function install(page:Page,caps:Record<string,unknown>){
+ await seedCompletedAccessSetup(page);
  await page.goto('/');
+ await preloadPageModules(page,['/src/runtime/connection-ui.tsx']);
+ await page.waitForFunction(()=>{const state=(window as any).__alphaModules['/src/runtime/connection-ui.tsx'].connectionController.getSnapshot();return state.startupResolved&&!state.busy;});
  await page.evaluate(async caps=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
   const {inboxLocalStore:s}=await import('/src/runtime/inbox-local-store.ts');
@@ -26,6 +31,7 @@ async function install(page:Page,caps:Record<string,unknown>){
   };
   c.getCloudClient=()=>({client,sessionId:'fixture-session',credentialId:'fixture'} as any);
   const snapshot={...c.getSnapshot(),cloudAccount:{environment:'production',userId:'fixture-owner',sessionId:'fixture-session',credentialId:'fixture'}} as any;c.getSnapshot=()=>snapshot;
+  c.close();
  },caps);
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
