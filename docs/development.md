@@ -310,9 +310,11 @@ the [release workflow](../.github/workflows/release.yml) on `main` with
 operation `sign`, the exact reviewed `workflow_commit` and `signing-plan.json`
 as the `plan` input. Preflight checks the official Actions ZIP. The protected
 job checks the same run attempt and artifact again, then stages the pinned
-private generation before accessing the signing key. Signing and publication
-admit only producers that record the native runtime profile and the public
-update channel.
+private generation before accessing the signing key. Current builds produce one
+native launcher APK on the public update channel. Release tooling also retains
+the previously reviewed private Cloud producer contract: its complete standalone
+and launcher pair must match the approved hashes, Cloud profile and historical
+package identity. This compatibility path does not add a current build variant.
 
 For publication, set `delivery_artifact_id` to the numeric ID of the original
 `private-cloud-apk-delivery-*` artifact from the successful signing attempt.
@@ -332,17 +334,19 @@ gcloud storage cp "$signed_uri" signed.tar
 ```
 
 Complete Cartesia qualification on each exact signed APK. Record a content-free
-`alpha-cloud-voice-qualification-v1` JSON receipt with one `results` row. Each
+`alpha-cloud-voice-qualification-v1` JSON receipt with one `results` row per
+approved signed APK: one for the current launcher, or two for a retained Cloud pair. Each
 row names the observed `apkSha256`, `provider` and `outcome`, and records the
 observed booleans in `checks` for `consent`, `session`, `acousticInput`,
 `blueBar`, `transcript`, `audibleSpeakerReply`, `mute`, `unmute` and
 `stopReleased`. Record only the check outcomes and omit transcripts, recordings
-and credentials. The workflow admits passing Cartesia checks for the exact launcher APK.
+and credentials. The workflow admits passing Cartesia checks for every exact APK
+named in the reviewed plan.
 
 Set `publication_commit` to the exact reviewed commit currently on `main`.
 Prepare the qualification using the original plan bytes and the reviewed voice
 receipt. The command checks the official signing attempt and delivery ZIP,
-streams the launcher APK from the local signed TAR and retains the original evidence bytes.
+streams the approved APKs from the local signed TAR and retains the original evidence bytes.
 
 ```sh
 python3 -B scripts/ci/qualified-app-update.py prepare-qualification \
