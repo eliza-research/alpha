@@ -28,5 +28,29 @@ export function prepareMailHtml(html:string,showRemoteImages=false):{document:st
   for(const node of content.querySelectorAll('a[data-alpha-link]')){node.setAttribute('role','link');node.setAttribute('tabindex','0');inlineLinks.add(node.getAttribute('data-alpha-link')!);}
   const container=document.createElement('div');container.append(content);
   const csp=`default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src data:${showRemoteImages?' https:':''}; font-src 'none'; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'`;
-  return {document:`<!doctype html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="${csp}"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;color:#171717;background:#fff;font:15px/1.5 Arial,sans-serif;overflow-wrap:anywhere}img{max-width:100%;height:auto}table{max-width:100%!important}body>table{width:100%!important}td{overflow-wrap:anywhere}a[role=link]{color:#245dc1;cursor:pointer;text-decoration:underline}:focus-visible{outline:2px solid #245dc1}</style></head><body>${container.innerHTML}</body></html>`,remoteImages,inlineLinks};
+  return {document:`<!doctype html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="${csp}"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html{overflow:hidden}html,body{margin:0;padding:0;color:#171717;background:#fff;font:15px/1.5 Arial,sans-serif;overflow-wrap:anywhere}img{max-width:100vw;height:auto}td{overflow-wrap:anywhere}a[role=link]{color:#245dc1;cursor:pointer;text-decoration:underline}:focus-visible{outline:2px solid #245dc1}</style></head><body>${container.innerHTML}</body></html>`,remoteImages,inlineLinks};
+}
+
+/** Fit a sender's table layout without collapsing image columns or adding sideways scrolling. */
+export function fitMailFrame(frame:HTMLIFrameElement):()=>void {
+  const doc=frame.contentDocument;
+  if(!doc)return ()=>{};
+  let lastWidth=0;
+  const fit=()=>{
+    const available=frame.clientWidth;
+    if(!frame.isConnected||!available)return;
+    lastWidth=available;
+    doc.body.style.zoom='1';
+    doc.body.style.width='auto';
+    const width=Math.max(available,doc.body.scrollWidth,doc.documentElement.scrollWidth);
+    doc.body.style.width=`${width}px`;
+    const scale=available/width;
+    doc.body.style.zoom=String(scale);
+    frame.style.height=`${Math.ceil(Math.max(doc.body.scrollHeight,doc.body.offsetHeight)*scale)}px`;
+  };
+  const observer=new ResizeObserver(()=>{if(frame.clientWidth!==lastWidth)fit();});
+  observer.observe(frame);
+  doc.addEventListener('load',fit,true);
+  fit();
+  return ()=>{observer.disconnect();doc.removeEventListener('load',fit,true);};
 }
