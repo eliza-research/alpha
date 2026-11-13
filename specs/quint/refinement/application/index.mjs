@@ -1,3 +1,4 @@
+import {checkMapPlaneFailures} from './map-plane-failures.mjs';
 import {checkChatTools} from './chat-tools.mjs';
 import {checkHomeStartupCache} from './home-startup-cache.mjs';
 import {checkCalendarActionReview} from './calendar-action-review.mjs';
@@ -119,7 +120,7 @@ import {checkOSDefaults} from './os-defaults.mjs';
 import {checkOSProvisioning} from './os-provisioning.mjs';
 import {checkOSSourceStaging} from './os-source-staging.mjs';
 
-const adapters = [checkChatTools, checkHomeStartupCache, checkCalendarActionReview, checkMailComposerPresentation, checkSavedServiceRead, checkMailDraftSelection, checkWorkflowRecoverySelection, checkHomeAutomationsRead, checkVoiceTranscriptFollow, checkAccountSheet, checkMailSelection, checkNotesStartupCache, checkContentLinks, checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
+const adapters = [checkMapPlaneFailures, checkChatTools, checkHomeStartupCache, checkCalendarActionReview, checkMailComposerPresentation, checkSavedServiceRead, checkMailDraftSelection, checkWorkflowRecoverySelection, checkHomeAutomationsRead, checkVoiceTranscriptFollow, checkAccountSheet, checkMailSelection, checkNotesStartupCache, checkContentLinks, checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
