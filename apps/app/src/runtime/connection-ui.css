@@ -87,7 +87,7 @@ body:has([data-alpha-layer="conversation"][aria-hidden="false"]) .alpha-plan-not
 .alpha-cloud-sign-in p{margin:0}
 .alpha-cloud-sign-in [role=status],.alpha-cloud-sign-in [role=alert]{margin:0}
 .alpha-cloud-sign-in>[role=status],.alpha-cloud-sign-in>[role=alert]{margin-top:16px}
-.alpha-google-icon{display:inline-block;flex:none;width:20px;height:20px;background:url('/icons/senders/google.com.png') center/contain no-repeat}
+.alpha-google-icon{display:inline-block;flex:none;width:20px;height:20px;background:url('./google-sign-in-mark.png') center/contain no-repeat}
 .alpha-auth-divider{display:flex;align-items:center;gap:14px;margin:8px 0;color:var(--connection-mut,#666);font-size:13px}
 .alpha-auth-divider::before,.alpha-auth-divider::after{content:'';flex:1;height:1px;background:var(--connection-line,#dedede)}
 .alpha-cloud-sign-in-code p{overflow-wrap:anywhere}
