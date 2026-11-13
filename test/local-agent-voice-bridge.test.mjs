@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {once} from 'node:events';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -77,6 +78,31 @@ test('renderer channel uses a single-use same-origin ticket and keeps the paired
  assert.deepEqual(f.rendererHeaders,[{url:'/ws?clientId='+clientId,authorization:'Bearer '+paired}]);
  assert.equal((await upgrade(wsUrl,f.origin)).status,403);connected.socket.destroy();
  }finally{await f.close();}
+});
+
+test('renewable voice tunnels stay open past the join deadline and revoke normally', async () => {
+  const f = await fixture(false, true, {
+    speechRoute: 'cloud', speechProvider: 'cartesia', providerAdmission: 'at-session-start',
+  });
+  const originalNow = Date.now;
+  try {
+    f.mintMetadata(() => ({ leaseRenewal: true }));
+    const ticket = JSON.parse((await f.call(mint())).data.body);
+    assert.equal(ticket.leaseRenewal, true);
+    const connected = await upgrade(ticket.wsUrl, f.origin);
+    assert.equal(connected.status, 101);
+    Date.now = () => originalNow() + 121000;
+    assert.equal((await f.call(mint())).status, 200);
+    assert.equal(connected.socket.destroyed, false);
+    assert.equal((await upgrade(ticket.wsUrl, f.origin)).status, 403);
+    const closed = once(connected.socket, 'close');
+    connected.socket.resume();
+    await f.call({ path: `${BASE}/${ticket.sessionId}/revoke`, method: 'POST', body: '{}' });
+    await closed;
+  } finally {
+    Date.now = originalNow;
+    await f.close();
+  }
 });
 
 test('canonical message-history pagination is allowed with bounded cursor fields only',()=>{

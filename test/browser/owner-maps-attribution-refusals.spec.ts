@@ -66,7 +66,7 @@ const REFUSALS: (Refusal & { text: RegExp })[] = [
   { status: 429, code: 'allowance_exhausted', text: /used your Maps allowance/ },
   { status: 503, code: 'provider_unavailable', text: /temporarily unavailable/ },
 ];
-test('each typed Cloud refusal is shown as its own message, with no invented result', async ({ page }) => {
+test('Cloud refusals stay typed while a transient request pause stays quiet', async ({ page }) => {
   await openMaps(page);
   const shown = new Map<string, string>();
   for (const refusal of REFUSALS) {
@@ -75,7 +75,12 @@ test('each typed Cloud refusal is shown as its own message, with no invented res
     expect(expected, refusal.code).toMatch(text);
     await page.evaluate(typed => { (window as any).mapsRefusal = typed; }, typed);
     await search(page, `Port ${refusal.code}`);
-    await expect(page.locator('[data-alpha-maps-status] [role="status"]'), refusal.code).toHaveText(expected);
+    if (refusal.status === 429) {
+      await expect(page.locator('[data-alpha-maps-status] [role="status"]')).toHaveCount(0);
+      await page.clock.setFixedTime(new Date(Date.now() + 43_000));
+    } else {
+      await expect(page.locator('[data-alpha-maps-status] [role="status"]'), refusal.code).toHaveText(expected);
+    }
     await expect(page.getByRole('button', { name: /^Port Hercule/ })).toHaveCount(0);
     shown.set(refusal.code, expected);
   }

@@ -126,7 +126,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       const image = mime.startsWith('image/') && (uri?.startsWith('content://') || (!Capacitor.isNativePlatform() && uri?.startsWith('blob:'))) ? Capacitor.convertFileSrc(uri) : undefined;
       const close = () => { clear(); api.set({ open: null }); };
       const forget = () => { clear(true); api.set({ open: null }); };
-      const canAsk=selected.result.status==='selected'&&(!!selected.text?.trim()||!!image||!!selected.pdf?.image);
+      const canAsk=selected.result.status==='selected'&&(!!selected.text?.trim()||!!image||!!selected.pdf?.image||(mime==='text/plain'&&!!selected.result.selectionId));
       const ask=()=>{
         if(!canAsk||!sameSelection())return;
         closeQuestion?.();

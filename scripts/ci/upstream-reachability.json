@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "1d9a9a367d6785c2e98e4a95da53ae9ea8c4f288",
-  "head": "89dffa7ab1e90203fcacc81f1b06d6579125ffb2",
+  "baseCommit": "4dd0e30237da72dc221c217735010a336d9744fa",
+  "head": "bfc365428a53e3c92d9edd4e82cac39b37c51551",
   "recordedAt": "2026-11-13",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...89dffa7ab1e90203fcacc81f1b06d6579125ffb2",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...bfc365428a53e3c92d9edd4e82cac39b37c51551",
   "status": "diverged",
-  "aheadBy": 82,
-  "behindBy": 662,
+  "aheadBy": 83,
+  "behindBy": 669,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -334,6 +334,10 @@
     {
       "sha": "89dffa7ab1e90203fcacc81f1b06d6579125ffb2",
       "subject": "test(maps): exercise typed throttling response"
+    },
+    {
+      "sha": "bfc365428a53e3c92d9edd4e82cac39b37c51551",
+      "subject": "fix(voice): renew Cloud speech without restarting the active session"
     }
   ],
   "pullRequests": []

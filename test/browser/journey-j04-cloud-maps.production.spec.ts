@@ -196,15 +196,21 @@ test('a cancelled search shows nothing late, a place outside coverage is named, 
     expect((await mapsRequests(page)).filter(row => row.route === 'routes')).toEqual([]);
   });
 
-  await test.step('a 429 with Retry-After is worded with its wait and nothing is retried automatically', async () => {
+  await test.step('a 429 pauses requests quietly until the server wait expires', async () => {
+    const before = (await mapsRequests(page)).filter(row => row.route === 'places/search').length;
     await page.evaluate(() => { (window as any).residentStub.maps.limit = '30'; });
     await search.fill(LOCATION);
     await search.press('Enter');
-    await expect(maps).toContainText('Maps request limit reached. Try again in about 30 seconds.');
+    await expect.poll(async () => (await mapsRequests(page)).filter(row => row.route === 'places/search').length).toBe(before + 1);
+    await expect(maps).not.toContainText('Maps request limit reached.');
     const searches = (await mapsRequests(page)).filter(row => row.route === 'places/search').length;
     await page.waitForTimeout(1_000);
     expect((await mapsRequests(page)).filter(row => row.route === 'places/search')).toHaveLength(searches);
-    // An explicit retry by the user is a new request, and it succeeds.
+    // Reopening or pressing Enter cannot bypass the shared server pause.
+    await search.press('Enter');
+    await page.waitForTimeout(300);
+    expect((await mapsRequests(page)).filter(row => row.route === 'places/search')).toHaveLength(searches);
+    await page.clock.setFixedTime(new Date(Date.now() + 31_000));
     await search.press('Enter');
     await expect(page.getByRole('button', { name: /^Port Hercule fuel dock/ }).first()).toBeVisible();
   });

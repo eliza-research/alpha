@@ -105,7 +105,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
     await button(page, 'Directions').click();
     const status = page.getByRole('region', {name: 'Maps'}).getByRole('status');
     await expect(status).toHaveText('Choose a starting point, or use your current location.');
-    await expect(page.getByText('Choose a real origin to calculate a route.')).toBeVisible();
+    await expect(page.getByText('Choose a real origin to calculate a route.')).toHaveCount(0);
     expect((await requests(page)).routes).toEqual([]);
     const origin = page.getByRole('textbox', {name: 'Starting point'});
     await origin.fill('43.738, 7.424');
