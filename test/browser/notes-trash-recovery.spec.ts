@@ -32,6 +32,8 @@ async function deleteNote(page:Page,title:string){
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:`Open ${title}`,exact:true})).toHaveCount(0);
+ // A preceding permanent deletion can still be showing its own “Deleted” notice.
+ await expect.poll(async()=>(await trashEntries(page)).some((entry:{note:{title:string}})=>entry.note.title===title)).toBe(true);
 }
 /**
  * A later host with a lower entry limit: the served policy module is the product module with
