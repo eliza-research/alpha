@@ -1,3 +1,4 @@
+import {conversationReadPathAllowed} from '../apps/app/src/runtime/conversation-read-path.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -23,7 +24,7 @@ async function fixture(){
   return Response.json({text:'dictation',apiKey:'must-not-leak'},{headers:{'X-Eliza-STT-Provider':'cartesia','X-Eliza-Speech-Route':mode==='wrong-route'?'cloud':'direct','X-Request-Id':input.headers['X-Request-Id']}});
  };
  const source=fs.readFileSync('scripts/local-agent-dev-bridge.ts','utf8').replace(/^import\b[\s\S]*?;\s*$/gm,'').replace(/^export /gm,'');
- const box={URL,Buffer,Response,AbortSignal,AbortController,DOMException,Date,Map,Set,JSON,Number,Error,process,console,once,readFileSync:fs.readFileSync,statSync:fs.statSync,randomUUID,createHash,httpRequest,dirname:path.dirname,join:path.join,homedir:os.homedir,isPreparedViewNavigationRequest:()=>false,parseViewInteractionClientId:()=>undefined,ownerRouteGroup:()=>undefined,ownerRouteAllowed:()=>false};
+ const box={conversationReadPathAllowed,URL,Buffer,Response,AbortSignal,AbortController,DOMException,Date,Map,Set,JSON,Number,Error,process,console,once,readFileSync:fs.readFileSync,statSync:fs.statSync,randomUUID,createHash,httpRequest,dirname:path.dirname,join:path.join,homedir:os.homedir,isPreparedViewNavigationRequest:()=>false,parseViewInteractionClientId:()=>undefined,ownerRouteGroup:()=>undefined,ownerRouteAllowed:()=>false};
  vm.runInNewContext(stripTypeScriptTypes(source,{mode:'strip'})+';globalThis.make=createLocalAgentDevHandler;',box);
  const handler=box.make({origin:'http://127.0.0.1:47839',tokenFile,request,selectableProvider:true}),server=createServer(handler);
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin=`http://127.0.0.1:${server.address().port}`;
