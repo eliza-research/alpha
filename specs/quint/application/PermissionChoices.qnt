@@ -83,6 +83,9 @@ module PermissionChoices {
     s' = { ...s, locationDescription: location, photoDescription: photos } }
   action platformStatus(key: int, granted: bool): bool = platformState(key,
     if (granted) "ready" else if (s.attempted.contains(key)) "settings" else "request")
+  action autoAdvance = all { s.native, visible, s.enabled, s.active, not(s.ready), not(s.reopened),
+    s.target == -1, s.pending == -1, Keys.contains(s.progress), s.states.get(s.progress) == "ready",
+    s' = advanced(s, "continued") }
   action begin = all { visible, s.enabled or s.reopened, s.active, not(s.ready), s.pending == -1,
     Keys.contains(selected), s.states.get(selected) != "checking", s.flowTickets.get(selected) == -1,
     s' = { ...s, pending: selected, ticket: s.generation, flowTickets: s.flowTickets.set(selected, s.generation),
@@ -154,7 +157,7 @@ module PermissionChoices {
     nondet photos = PhotoDescriptions.oneOf()
     any { mountSignedOut, signIn, directEnabled, signOut, ownerChange, suspend, resume, authSetup(created),
       overlays(false, false), overlays(true, false), overlays(false, true), platformState(key, state), platformDetails(location, photos),
-      begin, request, skipPending, resultState(state), staleResult(key), retiredResult,
+      autoAdvance, begin, request, skipPending, resultState(state), staleResult(key), retiredResult,
       skipAvailable, skip, finish, reopen, openTarget(key), closeTarget, closeReview,
       storageFails, storageRecovers, progressWriteFailed, restart, blockedDismiss } }
   val OnePromptPerPermission = AllKeys.forall(key => s.requests.get(key) <= 1)
@@ -218,6 +221,13 @@ module PermissionChoices {
   run nativeDisclosureTest = init.then(signIn)
     .then(platformDetails("Approximate location allowed", "Selected photos and videos only"))
     .expect(s.locationDescription == "Approximate location allowed" and s.photoDescription == "Selected photos and videos only" and safety)
+
+  run imageDefaultsAutoAdvanceTest = init.then(signIn)
+    .then(platformStatus(0, true)).then(platformStatus(1, true)).then(platformStatus(2, true))
+    .then(platformStatus(3, true)).then(platformStatus(4, true)).then(platformStatus(5, true))
+    .then(platformStatus(6, true)).then(autoAdvance).then(autoAdvance).then(autoAdvance)
+    .then(autoAdvance).then(autoAdvance).then(autoAdvance).then(autoAdvance)
+    .expect(s.ready and s.completed and Keys.forall(key => s.requests.get(key) == 0) and safety)
 
   run directProviderProgressTest = init.then(mountSignedOut).then(authSetup(false)).then(directEnabled)
     .then(platformStatus(0, true)).then(begin).then(result(true))
