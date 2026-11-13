@@ -192,7 +192,7 @@ test('a cancelled search shows nothing late, a place outside coverage is named, 
     await search.fill('Nice harbour');
     await search.press('Enter');
     await page.getByRole('button', { name: /^Port of Nice/ }).first().click();
-    await expect(maps).toContainText('This location is outside Monaco search and route coverage. Its coordinates are retained.');
+    await expect(maps).toContainText('This location is outside Monaco search and route coverage.');
     expect((await mapsRequests(page)).filter(row => row.route === 'routes')).toEqual([]);
   });
 

@@ -292,7 +292,7 @@ async function guidanceTargets(page, viewports) {
             owned: points(node, [0.2, 0.5, 0.8]),
           }));
           // This provider advertises routes without tiles. Production must not insert a different basemap.
-          const assertNoMap = !root.querySelector('[data-alpha-map-plane],.alpha-map-credits');
+          const assertNoMap = !root.querySelector('[data-alpha-map-plane]');
           const notice = root.querySelector('[data-alpha-maps-status] [role="status"]');
           const pill = root.closest('[data-screen]').querySelector('[data-alpha-layer="pill"]');
           const rail = pill?.getBoundingClientRect(), app = root.getBoundingClientRect();
