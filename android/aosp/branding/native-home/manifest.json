@@ -1,5 +1,10 @@
 {
   "path": "packages/apps/Launcher3/quickstep/src/com/android/quickstep/inputconsumers/AlphaHomeOnlyInputConsumer.java",
   "beforeSha256": "24d694a0a7734db48b11a849df123b3cddae1dd22f482687645c832acab7982b",
-  "afterSha256": "88a893d7d8cde6a0157f15d4508c069783e03e959be22d4fa7c71b4091b6bd83"
+  "afterSha256": "88a893d7d8cde6a0157f15d4508c069783e03e959be22d4fa7c71b4091b6bd83",
+  "test": {
+    "path": "packages/apps/Launcher3/quickstep/tests/multivalentTests/src/com/android/quickstep/inputconsumers/AlphaHomeOnlyInputConsumerTest.java",
+    "beforeSha256": "4e354d4b1fa0561c9e1f28297d5cb4809efdc37dd4205b3260ecd6131a1216de",
+    "afterSha256": "d3f97dad2d1a327ff7858fdb874d26603efef15172bf00905d190c0566b21388"
+  }
 }

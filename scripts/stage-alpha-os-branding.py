@@ -102,6 +102,9 @@ def build_plan(root, assets, report_hash, source_inputs, prior=None, product_mk_
     dispatcher = safe(root, 'packages/apps/Launcher3/quickstep/src/com/android/quickstep/InputConsumerUtils.kt')
     assert dispatcher.is_file() and 'AlphaHomeOnlyInputConsumer(' in dispatcher.read_text(), 'Stage the existing native Alpha Home dispatcher first'
     put(home['path'], home_source, (home['beforeSha256'],))
+    test_source = (home_packet / 'AlphaHomeOnlyInputConsumerTest.java').read_bytes()
+    assert digest(test_source) == home['test']['afterSha256'], 'Native Home test source drift'
+    put(home['test']['path'], test_source, (home['test']['beforeSha256'],))
     # This is part of normal OS staging for every fresh image and update, not a phone-side edit.
     for name, (data, before) in core_policy_plan(root, core_baseline).items():
         put(name, data, (before,) if before is not None else ())
