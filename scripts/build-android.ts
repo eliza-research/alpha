@@ -25,7 +25,7 @@ import type {UpdateChannel} from './update-channel.ts';
 type BuildCommand = (command: string, args: string[], extra?: ExecFileSyncOptionsWithBufferEncoding) => unknown;
 
 const FLAG = "ELIZA_DEV_ALLOW_TEST_MOCKS";
-const FLAG_ENV_NAMES = [FLAG, `VITE_${FLAG}`, `ORG_GRADLE_PROJECT_${FLAG}`];
+const FLAG_ENV_NAMES = [FLAG, `VITE_${FLAG}`];
 /**
  * The release-signing environment names the generated Gradle host reads
  * (android/consumer-host.json, profile.signing): store file, store password,

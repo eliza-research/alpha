@@ -71,11 +71,6 @@ public class SettingsFlowInstrumentedTest {
    WebViewTestDriver.evaluate(AppNavigation.request("Settings"));until(AppNavigation.selected("Settings"));AppNavigation.declineStartupAccess();
    until("document.querySelector('button[aria-label=\"About\"]')");
    for(String removed:new String[]{"Wi-Fi","Bluetooth","Mobile data","Battery","Sound & vibration","Display","Models","Privacy & data"})assertEquals("Settings omits "+removed,"false",WebViewTestDriver.evaluate("Boolean(document.querySelector('button[aria-label='+"+JSONObject.quote(JSONObject.quote(removed))+"+']'))"));
-   if(!BuildConfig.IS_LAUNCHER){
-    // The standalone app is not the phone's system shell: no Android settings row.
-    assertEquals("Standalone Settings has no Android settings row","false",WebViewTestDriver.evaluate("Boolean(document.querySelector('button[aria-label=\"Android settings\"]'))"));
-    aboutShowsTheInstalledVersion();return;
-   }
    instrumentation.addMonitor(monitor);monitored=true;
    click("Android settings");
    long end=SystemClock.elapsedRealtime()+15000;boolean foreground=false;

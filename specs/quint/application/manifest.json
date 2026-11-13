@@ -2204,7 +2204,7 @@
       "Three native read identities with sampled timeout percentages and explicit rejection.",
       "One active shell toast and up to three queued messages. Callback authority, domain expiry, modal presentation and physical scheduling remain separate.",
       "One active shell toast and at most one waiting message. Modal presentation, Undo action selection and real platform scheduling are separate.",
-      "expire stands for every close of the visible toast (timer, tap, Undo); closing an Undo offer from its focused button and the focus return are covered by test/toast-undo-offer.test.mjs and rendered browser checks."
+      "expire stands for every close of the visible toast (timer, tap, Undo); closing an Undo offer from its focused button and the focus return are outside this model."
     ],
     "bounds": {
       "maxSamples": 1000,
@@ -3941,7 +3941,7 @@
     },
     "abstractions": [
       "OS scheduling and text rendering require installed-device evidence. This model covers focus transitions, not dictation or navigation.",
-      "Production renderer transitions execute in test/final-ui-lifecycle.test.mjs, including Home and full conversation with constant viewport."
+      "Production renderer transitions, including Home and full conversation with constant viewport, are outside this model."
     ]
   },
   {
@@ -8277,7 +8277,7 @@
       }
     ],
     "stateMapping": {
-      "host": "BuildConfig.IS_LAUNCHER, isAssistantSurface() and showsHome() in MainActivity; assistantSurface prop in the shell",
+      "host": "isAssistantSurface() and showsHome() in MainActivity; assistantSurface prop in the shell",
       "popover/dialog/panel/inert": "topmost :popover-open menu, dialog[open], modalPanels() and the inert .os element as backHandler tests them",
       "view/inners/stack/chat/drawer/shade/voice": "shell state S(), each view's own kept state (its inner page) and the shared navigation reducer through shellNavigate",
       "menu/homeEdit/homeAdd": "drawerMenu, homeEdit and homeAdd as home-shell's Back wrapper closes them",
@@ -8402,7 +8402,7 @@
       "barKept": "the last settled drag began on Home's bar (Drag.home, mode input) and was released downward: chatRelease returns input and the bar stays"
     },
     "abstractions": [
-      "Heights are three zones (near the collapsed form, between, near the top) and a flick flag; pixel geometry, release velocity and the paint path are checked by test/chat-release.test.mjs.",
+      "Heights are three zones (near the collapsed form, between, near the top) and a flick flag; pixel geometry, release velocity and the paint path are outside this model.",
       "The compatibility click arrives inside the 350 ms window or not at all. A deliberate later click is a new gesture.",
       "The assistant surface (where a collapse closes the assistant instead of resting on a bar), the scrim press lease, composer focus and the dock keyboard watch are not modeled here (KeyboardFocus, ModalScrimOwnership).",
       "Home keeps its bar on the modeled paths only: drag and flick release, tap controls, Close without a voice session, the late click and a navigation that takes the destination's rest. A voice session's compact controls, which take the pill's place on any surface while the session lives, a navigation that asks for or carries the pill, developer chat-mode buttons and direct state writes by test fixtures are outside the model.",

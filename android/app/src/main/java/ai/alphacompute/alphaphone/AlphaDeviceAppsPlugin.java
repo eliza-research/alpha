@@ -17,10 +17,9 @@ public final class AlphaDeviceAppsPlugin extends Plugin {
   result.put("sense",AlphaSenseAdmission.available(getContext()));
   result.put("phone",false);result.put("contacts",AlphaImageCapabilities.aospImage(getContext()));result.put("sms",false);call.resolve(result);
  }
- /** The recovery screen's way out of Alpha as HOME (launcher builds): the stock Home picker, else
+ /** The recovery screen's way out of Alpha as HOME: the stock Home picker, else
   * default apps, else Settings itself, never one of Alpha's own activities. Only from a user tap. */
  @PluginMethod public void openHomeChooser(PluginCall call){
-  if(!BuildConfig.IS_LAUNCHER){call.reject("Not a launcher build");return;}
   java.util.function.Predicate<String> resolves=candidate->new Intent(candidate).resolveActivity(getContext().getPackageManager())!=null;
   String action=RendererRecoveryBudget.homeChoiceAction(resolves);
   if(action==null){call.reject("No Home or Settings screen");return;}

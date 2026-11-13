@@ -11,13 +11,8 @@ final class AppNavigation {
  static String closeConnection() { return "document.querySelector('.alpha-connection-scrim button[aria-label=\"" + CLOSE_CONNECTION + "\"]')?.click()"; }
  static void liveMode() throws Exception {
   try(StartupDocumentProbe startup=new StartupDocumentProbe()) {
-   // Builds without ELIZA_DEV_ALLOW_TEST_MOCKS have no mock mode: require live directly.
-   if("mock".equals(startup.awaitReady(!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS))) {
-    // One real click only. Never retry effects if their callback is lost.
-    startup.expectNavigation();
-    WebViewTestDriver.withActivity(MainActivity.class,a->a.getBridge().getWebView().evaluateJavascript("document.querySelector('.mock-mode-banner button')?.click()",null));
-    startup.awaitReady(true);
-   }
+   // APK builds have no mock mode: require live directly.
+   startup.awaitReady();
   }
  }
  static String request(String view) {
@@ -50,13 +45,12 @@ final class AppNavigation {
   * Decision P-43: a flag-off build signed out of Eliza Cloud opens the full-page sign-in screen by
   * itself, and it cannot be dismissed (connection-ui.tsx productionCloudSignInRequired); it covers every view
   * and withdraws the native browser page. Tests never enter credentials, so a journey that needs the
-  * views runs on the test-mocks pair, or on a flag-off phone its owner already signed in. Skips with
+  * views runs on a phone its owner already signed in. Skips with
   * that reason instead of timing out behind the dialog.
   */
  static void assumeNoRequiredSignIn(String journey) throws Exception {
-  if (BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS) return;
   android.content.Context context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().getTargetContext();
-  org.junit.Assume.assumeTrue(journey + " needs the views: this flag-off build is signed out of Eliza Cloud, so P-43's sign-in screen opens by itself and cannot be dismissed (tests never sign in). Run it on the test-mocks pair or on a flag-off phone its owner signed in.",
+  org.junit.Assume.assumeTrue(journey + " needs the views: this flag-off build is signed out of Eliza Cloud, so P-43's sign-in screen opens by itself and cannot be dismissed (tests never sign in). Run it on a phone its owner signed in.",
    new AlphaCredentialStore(context).readCredentialSlot("cloud:production") != null);
  }
  /** P-43's required sign-in page (signed out, flag-off) has finished its readiness check and takes an email. */

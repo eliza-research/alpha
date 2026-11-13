@@ -2,7 +2,7 @@
 module NativeSettingsHandoff {
   type Attempt = {target: str, data: str, packageExtra: str, newTask: bool, result: str, phase: str}
   type Reply = {status: str, page: str, destination: str, specific: bool}
-  type State = {launcher: bool, phase: str, provider: str, command: str, pending: bool,
+  type State = {phase: str, provider: str, command: str, pending: bool,
     attempts: List[Attempt], reply: Reply}
   var s: State
   val routes = Map(
@@ -28,14 +28,13 @@ module NativeSettingsHandoff {
   val providers=Set("trusted","untrusted","unsupported","absent","refused")
 
   pure def response(status: str): Reply = {status:status,page:"",destination:"",specific:false}
-  action initWith(launcher: bool, present: bool): bool = s' = {
-    launcher:launcher,phase:if (present) "live" else "absent",provider:"trusted",
+  action initWith(present: bool): bool = s' = {
+    phase:if (present) "live" else "absent",provider:"trusted",
     command:"",pending:false,attempts:List(),reply:response("none")
   }
   action init = {
-    nondet launcher=Bool.oneOf()
     nondet present=Bool.oneOf()
-    initWith(launcher,present)
+    initWith(present)
   }
 
   action request(command: str): bool = all {
@@ -55,7 +54,7 @@ module NativeSettingsHandoff {
   }
 
   pure def intent(state: State, target: str, result: str): Attempt = {
-    target:target,result:result,phase:state.phase,newTask:state.launcher and state.command!="system",
+    target:target,result:result,phase:state.phase,newTask:state.command!="system",
     data:if (state.command=="privacy") "package:fixture.alpha"
       else if (target=="ACTION_REQUEST_SET_AUTOFILL_SERVICE") "package:proton.android.pass" else "",
     packageExtra:if (state.command=="notifications") "fixture.alpha" else ""
@@ -90,7 +89,7 @@ module NativeSettingsHandoff {
     implies s.attempts.length()==2
   val CorrectTaskAndScope = s.attempts.indices().forall(index=>{
     val launched=s.attempts.nth(index)
-    launched.newTask==(s.launcher and s.command!="system")
+    launched.newTask==(s.command!="system")
     and (launched.target=="ACTION_SETTINGS" implies s.command.in(Set("system","provider-settings")))
   })
   val safety = OneAcceptedStart and ExactOpenedReply and BroadReplyNeedsSecondCandidate and CorrectTaskAndScope
@@ -108,22 +107,22 @@ module NativeSettingsHandoff {
     s'=s
   }
 
-  run explicitSystemHomeKeepsCurrentTaskTest = initWith(true,true).then(request("system")).then(deliver("ok","ok"))
+  run explicitSystemHomeKeepsCurrentTaskTest = initWith(true).then(request("system")).then(deliver("ok","ok"))
     .expect(s.reply.specific and s.attempts.head().target=="ACTION_SETTINGS" and not(s.attempts.head().newTask))
-  run broaderPageReportsExactFallbackTest = initWith(true,true).then(request("mobile")).then(deliver("security","ok"))
+  run broaderPageReportsExactFallbackTest = initWith(true).then(request("mobile")).then(deliver("security","ok"))
     .expect(s.attempts.length()==2 and s.attempts.nth(1).target=="ACTION_WIRELESS_SETTINGS" and not(s.reply.specific))
-  run rejectedPageDoesNotFallBackToSettingsHomeTest = initWith(false,true).then(request("wifi")).then(deliver("missing","ok"))
+  run rejectedPageDoesNotFallBackToSettingsHomeTest = initWith(true).then(request("wifi")).then(deliver("missing","ok"))
     .expect(s.reply.status=="unavailable" and s.attempts.length()==1)
-  run permissionPagesCarryOwnPackageTest = initWith(true,true).then(request("privacy")).then(deliver("ok","ok"))
+  run permissionPagesCarryOwnPackageTest = initWith(true).then(request("privacy")).then(deliver("ok","ok"))
     .expect(s.attempts.head().data=="package:fixture.alpha").then(request("notifications")).then(deliver("ok","ok"))
     .expect(s.attempts.head().packageExtra=="fixture.alpha" and s.attempts.head().data=="")
-  run providerFallbackNeedsMissingPickerTest = initWith(true,true).then(request("provider-settings")).then(deliver("security","ok"))
+  run providerFallbackNeedsMissingPickerTest = initWith(true).then(request("provider-settings")).then(deliver("security","ok"))
     .expect(s.reply.status=="unavailable" and s.attempts.length()==1)
     .then(request("provider-settings")).then(deliver("missing","ok"))
     .expect(s.reply.destination=="system-settings" and s.attempts.nth(1).newTask)
-  run absentHostAnswersOnlyExplicitSystemAsBuiltTest = initWith(true,false).then(request("system"))
+  run absentHostAnswersOnlyExplicitSystemAsBuiltTest = initWith(false).then(request("system"))
     .expect(s.reply.status=="unavailable").then(request("wifi")).expect(s.reply.status=="threw" and s.attempts.length()==0)
-  run queuedDispatchUsesPlatformAfterRetirementAsBuiltTest = initWith(false,true).then(request("wifi"))
+  run queuedDispatchUsesPlatformAfterRetirementAsBuiltTest = initWith(true).then(request("wifi"))
     .then(retire("destroyed")).then(deliver("missing","ok"))
     .expect(s.attempts.head().phase=="destroyed" and s.reply.status=="unavailable")
 }

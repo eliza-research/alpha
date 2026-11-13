@@ -69,7 +69,7 @@ test('the pinned generator accepts the descriptor and owns identity, version and
  assert.deepEqual(profile.versionOverride, {versionCode: 'ELIZAOS_VERSION_CODE', versionName: 'ELIZAOS_VERSION_NAME'});
  assert.deepEqual(profile.manifestPlaceholders, {appOrientation: identity.orientation});
  // One distribution: the launcher, debug and release.
- assert.deepEqual(profile.flavors.map(flavor => [flavor.name, flavor.buildConfigFields.find(field => field.name === 'IS_LAUNCHER').value]), [['launcher', 'true']]);
+ assert.deepEqual(profile.flavors.map(flavor => [flavor.name, flavor.buildConfigFields]), [['launcher', []]]);
  assert.equal(profile.flavors[0].manifest, fs.realpathSync(path.join(root, 'android/app/src/launcher/AndroidManifest.xml')));
  assert.equal(profile.manifest, fs.realpathSync(path.join(root, 'android/app/src/main/AndroidManifest.xml')));
  assert.equal(profile.releaseMinify, true);

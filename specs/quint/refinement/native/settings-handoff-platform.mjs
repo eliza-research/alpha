@@ -33,7 +33,6 @@ public final class AlphaDevicePlugin extends Plugin {
 ${exact(device,' private static Intent handOff(', ' /**\n  * Asks Android')}
 ${exact(device,' @PluginMethod public void openSettings(', ' private final java.util.concurrent.ExecutorService diagnosticsWorker')}
 }`,
-    'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone;public final class BuildConfig {public static boolean IS_LAUNCHER;}',
     'android/provider/Settings.java':`package android.provider;
 public final class Settings {
 ${constants.map(name=>` public static final String ${name}="${name}";`).join('\n')}

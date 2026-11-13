@@ -14,8 +14,8 @@ import org.junit.runner.RunWith;
 
 /**
  * Rotate on Home and with a composer draft: the active view and the draft survive and
- * the visible primary actions stay inside the viewport. The standalone app requires the
- * landscape layout; the launcher is portrait only, so there the same steps assert it stays put.
+ * the visible primary actions stay inside the viewport. The launcher is portrait only, so the
+ * same steps assert it stays put.
  * A flag-off build signed out of Eliza Cloud rotates its required sign-in page instead (P-43);
  * AccessibilityLifecycleInstrumentedTest rotates every retained view at 200% font.
  * Emulator evidence only.
@@ -45,18 +45,9 @@ public final class RotationInstrumentedTest {
  }
 
  private static void rotateAndCheck(UiDevice device,String view,String extra)throws Exception{
-  if(BuildConfig.IS_LAUNCHER){
-   device.setOrientationLeft();SystemClock.sleep(1500);
-   assertEquals("The launcher stays portrait",Configuration.ORIENTATION_PORTRAIT,orientation());
-   device.setOrientationNatural();until(AppNavigation.selected(view));if(extra!=null)until(extra);
-   return;
-  }
-  device.setOrientationLeft();awaitOrientation(Configuration.ORIENTATION_LANDSCAPE);
-  until(AppNavigation.selected(view));if(extra!=null)until(extra);
-  assertEquals("Primary actions clipped in landscape "+view,"[]",clipped());
-  device.setOrientationNatural();awaitOrientation(Configuration.ORIENTATION_PORTRAIT);
-  until(AppNavigation.selected(view));if(extra!=null)until(extra);
-  assertEquals("Primary actions clipped after returning to portrait "+view,"[]",clipped());
+  device.setOrientationLeft();SystemClock.sleep(1500);
+  assertEquals("The launcher stays portrait",Configuration.ORIENTATION_PORTRAIT,orientation());
+  device.setOrientationNatural();until(AppNavigation.selected(view));if(extra!=null)until(extra);
  }
 
  @Test public void homeAndComposerDraftSurviveRotation()throws Exception{
@@ -83,7 +74,7 @@ public final class RotationInstrumentedTest {
   */
  @Test public void requiredSignInSurvivesRotation()throws Exception{
   android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
-  org.junit.Assume.assumeTrue("Only a flag-off build signed out of Eliza Cloud opens the required sign-in page (P-43)",!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS&&new AlphaCredentialStore(context).readCredentialSlot("cloud:production")==null);
+  org.junit.Assume.assumeTrue("Only a flag-off build signed out of Eliza Cloud opens the required sign-in page (P-43)",new AlphaCredentialStore(context).readCredentialSlot("cloud:production")==null);
   UiDevice device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
   String page="document.querySelector('.alpha-auth-page #cloud-sign-in-title')?.textContent==='Welcome to Alpha.'";
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
@@ -91,8 +82,7 @@ public final class RotationInstrumentedTest {
    until(page);
    for(int turn=0;turn<2;turn++){
     device.setOrientationLeft();
-    if(BuildConfig.IS_LAUNCHER){SystemClock.sleep(1500);assertEquals("The launcher stays portrait",Configuration.ORIENTATION_PORTRAIT,orientation());until(page);}
-    else{awaitOrientation(Configuration.ORIENTATION_LANDSCAPE);until(page);assertEquals("Sign-in controls clipped in landscape","[]",clipped());}
+    SystemClock.sleep(1500);assertEquals("The launcher stays portrait",Configuration.ORIENTATION_PORTRAIT,orientation());until(page);
     device.setOrientationNatural();awaitOrientation(Configuration.ORIENTATION_PORTRAIT);until(page);
     assertEquals("Sign-in controls clipped after returning to portrait","[]",clipped());
    }

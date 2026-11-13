@@ -52,7 +52,7 @@ test("partial source contract: every settled drag in simulated ChatDock traces t
     }
   }
   // The campaign settles drags from every detent, in both directions, in every zone, flicked and not.
-  // It does not reach all 48 combinations; chatRelease's own cases are in test/chat-release.test.mjs.
+  // It does not reach all 48 combinations.
   for (const word of ['home', 'view', 'hidden', 'input', 'sheet', 'full', 'up', 'down', 'floor', 'middle', 'top', 'flick', 'release'])
     assert.ok([...seen].some(label => label.split(' ').includes(word)), word);
   assert.ok(seen.size >= 24, `${seen.size} distinct releases`);

@@ -33,7 +33,7 @@ const activity = readFileSync('android/app/src/main/java/ai/alphacompute/alphaph
 const script = activity.match(/String script = "(.*?)"\s*\+ \(home \? "(.*?)" : "(.*?)"\) \+ "(.*?)";/s);
 assert.ok(script, 'the Back script MainActivity evaluates');
 // What the activity does with the script's answer.
-assert.match(activity, /if \(home \|\| "true"\.equals\(handled\) \|\| isFinishing\(\) \|\| isDestroyed\(\)\) return;\s*if \(BuildConfig\.IS_LAUNCHER && !isAssistantSurface\(\)\) moveTaskToBack\(true\); else finish\(\);/);
+assert.match(activity, /if \(home \|\| "true"\.equals\(handled\) \|\| isFinishing\(\) \|\| isDestroyed\(\)\) return;\s*if \(!isAssistantSurface\(\)\) moveTaskToBack\(true\); else finish\(\);/);
 const backScript = home => script[1] + (home ? script[2] : script[3]) + script[4];
 
 const built = await build({absWorkingDir: root, stdin: {resolveDir: root, sourcefile: 'back-dispatch-entry.ts', contents: `

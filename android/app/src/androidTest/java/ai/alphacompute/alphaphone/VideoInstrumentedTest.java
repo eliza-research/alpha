@@ -58,7 +58,6 @@ public class VideoInstrumentedTest {
   if(android.os.Build.VERSION.SDK_INT>=33)InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.POST_NOTIFICATIONS);
  }
  private void admitAccount()throws Exception{
-  if(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS){AppNavigation.liveMode();return;}
   // Install at launch, before startup settles: the required sign-in page opens by itself (P-43) and
   // its readiness probe must reach the fixture, never Cloud. A late install fails the check below.
   until("window.Capacitor?.nativePromise&&!window.__alphaVideoAccount");

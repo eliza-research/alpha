@@ -17,7 +17,6 @@ public final class ImageCapabilitiesInstrumentedTest {
   throw new AssertionError("Image capability fixture did not settle");
  }
  @Test public void ordinaryApkRejectsTelephonyRolesAndOwnedDialerHandoffs()throws Exception{
-  org.junit.Assume.assumeFalse("Production policy build",BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   assertFalse("Ordinary APK has no admitted image capability",AlphaImageCapabilities.aospImage(InstrumentationRegistry.getInstrumentation().getTargetContext()));
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();until("window.Capacitor?.Plugins?.DeviceApps");
@@ -37,7 +36,6 @@ public final class ImageCapabilitiesInstrumentedTest {
   }
  }
  @Test public void ordinaryApkCannotEnablePhoneContactsOrSmsWithDeveloperRoutes()throws Exception{
-  org.junit.Assume.assumeFalse("Production policy build",BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();until("document.documentElement.dataset.activeView==='home'");
    for(String view:new String[]{"phone","contacts","messages"}){

@@ -96,7 +96,7 @@ public final class AlphaDevicePlugin extends Plugin {
   for(java.util.Map.Entry<String,Object> fact:facts.entrySet())out.put(fact.getKey(),fact.getValue());
  }
  /** As HOME, an outside screen gets its own task, as stock launchers do, so HOME does not clear it. Never for a result start. */
- private static Intent handOff(Intent intent){return BuildConfig.IS_LAUNCHER?intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK):intent;}
+ private static Intent handOff(Intent intent){return intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);}
  @PluginMethod public void openPasswordProvider(PluginCall call) {
   String action=call.getString("action","");
   getActivity().runOnUiThread(()->{
@@ -114,9 +114,9 @@ public final class AlphaDevicePlugin extends Plugin {
   });
  }
  /**
-  * Asks Android to open its own notification shade (#416, #417). Launcher flavor only, and only
+  * Asks Android to open its own notification shade (#416, #417), only
   * while Alpha's window has focus, so a pull or button on visible Home is the only way to reach it.
-  * Resolves with {status}: opened, standalone, permission-missing, unsupported or not-in-front.
+  * Resolves with {status}: opened, permission-missing, unsupported or not-in-front.
   * Any status but opened leaves the renderer's truthful fallback to show.
   */
  @PluginMethod public void openNotificationShade(PluginCall call){
@@ -125,7 +125,7 @@ public final class AlphaDevicePlugin extends Plugin {
   activity.runOnUiThread(()->{
    JSObject out=new JSObject();
    if(activity.isFinishing()||activity.isDestroyed()||!activity.hasWindowFocus())out.put("status",SystemShade.NOT_IN_FRONT);
-   else out.put("status",SystemShade.expand(getContext(),BuildConfig.IS_LAUNCHER));
+   else out.put("status",SystemShade.expand(getContext(),true));
    call.resolve(out);
   });
  }
@@ -193,8 +193,8 @@ public final class AlphaDevicePlugin extends Plugin {
    try{
     JSObject out=new JSObject();
     out.put("appVersion",BuildConfig.VERSION_NAME);out.put("versionCode",BuildConfig.VERSION_CODE);
-    out.put("variant",BuildConfig.IS_LAUNCHER?"launcher":"standalone");out.put("buildType",BuildConfig.BUILD_TYPE);
-    out.put("testMocks",BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);out.put("sdkInt",Build.VERSION.SDK_INT);
+    out.put("variant","launcher");out.put("buildType",BuildConfig.BUILD_TYPE);
+    out.put("testMocks",false);out.put("sdkInt",Build.VERSION.SDK_INT);
     out.put("androidRelease",Build.VERSION.RELEASE);out.put("securityPatch",Build.VERSION.SECURITY_PATCH);
     JSObject hashes=new JSObject();
     for(String asset:new String[]{"agent/alpha-source.json","agent/agent-bundle.js","agent/workflow-worker/manifest.json","agent/workflow-worker/files.sha256"}){String hash=assetSha256(asset);if(hash!=null)hashes.put(asset,hash);}
@@ -806,7 +806,7 @@ public final class AlphaDevicePlugin extends Plugin {
    org.json.JSONTokener parser=new org.json.JSONTokener(new String(manifest,java.nio.charset.StandardCharsets.UTF_8));
    Object document=parser.nextValue();
    if(document instanceof org.json.JSONObject&&parser.nextClean()==0){
-    String variant=BuildConfig.IS_LAUNCHER?"launcher":"standalone";
+    String variant="launcher";
     org.json.JSONObject offer=selectUpdateOffer((org.json.JSONObject)document,variant,signer);
     if(offer!=null&&
        variant.equals(offer.opt("variant"))&&signer.equals(offer.opt("signerSha256"))&&
@@ -911,7 +911,7 @@ public final class AlphaDevicePlugin extends Plugin {
       // The release verifier requires READ_CONTACTS only in the launcher manifest.
       // Read that existing flavor marker from the APK, independent of the offer.
       if(archive.requestedPermissions==null||
-       BuildConfig.IS_LAUNCHER!=java.util.Arrays.asList(archive.requestedPermissions).contains("android.permission.READ_CONTACTS")||
+       !java.util.Arrays.asList(archive.requestedPermissions).contains("android.permission.READ_CONTACTS")||
        signer==null||!signer.equals(signingRoot(archive.signingInfo)))
        throw new java.io.IOException("Update does not match this installation");
       throwIfDestroyed();

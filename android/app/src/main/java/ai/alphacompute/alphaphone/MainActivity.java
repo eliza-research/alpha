@@ -70,7 +70,7 @@ public class MainActivity extends BridgeActivity {
   * Alpha is the HOME app now, whichever way this task started: a renderer crash loop must not leave
   * a blank, inescapable HOME, and root Back stays on Home. startedAsHome still routes hand-offs.
   */
- private boolean showsHome() { return BuildConfig.IS_LAUNCHER && !isAssistantSurface() && isCurrentHome(); }
+ private boolean showsHome() { return !isAssistantSurface() && isCurrentHome(); }
  /**
   * The HOME role on API 29+. Resolving the HOME intent is not that answer there: package visibility
   * hides other launchers from Alpha, so the resolver can name Alpha while another app is HOME.
@@ -296,7 +296,7 @@ public class MainActivity extends BridgeActivity {
  }
  @Override public void onCreate(Bundle state) {
   SplashScreen.installSplashScreen(this);
-  MainActivity live = BuildConfig.IS_LAUNCHER && !isAssistantSurface() ? liveInstance() : null;
+  MainActivity live = !isAssistantSurface() ? liveInstance() : null;
   // An instance our own front start made always finishes. Any other start is handed to the live
   // instance, unless the front start has already been seen to miss it in this process.
   if (live != null && live != this && (!handOffUnreliable || hasFrontMarker(getIntent()))) {
@@ -312,7 +312,7 @@ public class MainActivity extends BridgeActivity {
    handOff(live);
    return;
   }
-  if (BuildConfig.IS_LAUNCHER && !isAssistantSurface()) {
+  if (!isAssistantSurface()) {
    liveInstance = new java.lang.ref.WeakReference<>(this);
    // First instance in this task: its start intent says which kind of task Android made. A relaunch
    // in the same task keeps that answer whatever intent it was handed (see "One live MainActivity").
@@ -355,11 +355,6 @@ public class MainActivity extends BridgeActivity {
   registerPlugin(AlphaListenerPlugin.class);
   registerPlugin(ai.eliza.plugins.system.SensePlugin.class);
   registerPlugin(ai.eliza.plugins.passwords.PasswordsPlugin.class);
-  if (BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS) {
-   // The optional transfer module is absent from production builds.
-   try { registerPlugin(Class.forName("ai.eliza.plugins.passwords.PasswordTransferPlugin").asSubclass(com.getcapacitor.Plugin.class)); }
-   catch (ClassNotFoundException ignored) { /* Optional development transfer module is not attached. */ }
-  }
   // The native image gate is checked again by every telephony operation.
   // Reconcile the role components with the verified image before registering telephony.
   AlphaTelephonyRoles.sync(this);
@@ -382,7 +377,7 @@ public class MainActivity extends BridgeActivity {
   // The privileged app host never participates in third-party browser sessions.
   android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(getBridge().getWebView(),false);
   AlphaDevicePlugin.applyTextScale(this);
-  // Launcher reference layouts include system-bar space. Standalone and assist
+  // Launcher reference layouts include system-bar space. Assist
   // content must fit inside the real bars/cutout, including enforced edge-to-edge.
   WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
   getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
@@ -398,7 +393,7 @@ public class MainActivity extends BridgeActivity {
    boolean handoff = !imeVisible && (voiceKeyboardSelected() || keyboardReturnPending);
    getBridge().getWebView().evaluateJavascript("(() => { const root = document.documentElement; if (!root) return; const visible = " + imeVisible
      + ", handoff = " + handoff + "; if (root.dataset.alphaKeyboardVisible === String(visible) && root.dataset.alphaKeyboardHandoff === String(handoff)) return; root.dataset.alphaKeyboardVisible = String(visible); root.dataset.alphaKeyboardHandoff = String(handoff); window.dispatchEvent(new CustomEvent('alpha-keyboard-visibility', { detail: { visible, handoff } })); })()", null);
-   boolean fitContent = !BuildConfig.IS_LAUNCHER || isAssistantSurface();
+   boolean fitContent = isAssistantSurface();
    Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
    Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
    int left = fitContent ? safe.left : 0, top = fitContent ? safe.top : 0, right = fitContent ? safe.right : 0;
@@ -418,15 +413,15 @@ public class MainActivity extends BridgeActivity {
    @Override public void handleOnBackPressed() {
     if (BuildConfig.DEBUG) android.util.Log.d("AlphaNavigation", "Back dispatched");
     // Test and consume renderer navigation in one evaluation. While Alpha is HOME, root Back
-    // stays on Home. Otherwise it uses normal Android task behavior; the launcher flavor moves its
-    // task back instead of finishing, so the one live instance and its page survive.
+    // stays on Home. Otherwise the launcher moves its task back instead of finishing, so the one
+    // live instance and its page survive.
     boolean home = showsHome();
     String script = "(() => { if (document.documentElement.dataset.alphaCanGoBack === 'true') { window.dispatchEvent(new Event('alpha-back')); return true; } "
      + (home ? "window.dispatchEvent(new Event('launcher-home')); return true;" : "return false;") + " })()";
     getBridge().getWebView().evaluateJavascript(script, handled -> {
      if (BuildConfig.DEBUG) android.util.Log.d("AlphaNavigation", "Back handled by renderer=" + handled);
      if (home || "true".equals(handled) || isFinishing() || isDestroyed()) return;
-     if (BuildConfig.IS_LAUNCHER && !isAssistantSurface()) moveTaskToBack(true); else finish();
+     if (!isAssistantSurface()) moveTaskToBack(true); else finish();
     });
    }
   });

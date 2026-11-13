@@ -48,7 +48,7 @@ import static org.junit.Assert.*;
  * stores the note in the shape that save writes instead of producing it from an answer.
  * Emulator evidence for the native boundary only; not a real page, agent or device.
  *
- *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN --test-mocks --classes BrowserPageQuestion
+ *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN --classes BrowserPageQuestion
  */
 public final class BrowserPageQuestionInstrumentedTest {
  static final String BASE = "https://reading.invalid";

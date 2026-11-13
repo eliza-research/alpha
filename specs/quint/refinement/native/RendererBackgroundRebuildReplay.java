@@ -109,7 +109,6 @@ public final class RendererBackgroundRebuildReplay {
     MainActivityPorts.run(task);
   }
   static void initialize(boolean home, int prior) throws Exception {
-    BuildConfig.IS_LAUNCHER = true;
     Slot launcher = new Slot();
     launcher.activity = create("launcher", home, true);
     slots.put("launcher", launcher);

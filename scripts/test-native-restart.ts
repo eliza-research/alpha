@@ -52,15 +52,6 @@ const cases: Record<string, RestartCase> = {
 		scope:
 			"Synthetic Cloud protocol and real encrypted drafts; no mail or provider network",
 	},
-	notes: {
-		testClass: "NotesDocumentInstrumentedTest",
-		method: "documentProcessRestartPhase",
-		gate: "notesDocumentPhase",
-		runId: "notesDocumentRunId",
-		pid: "notesDocumentPid",
-		restore: "restore",
-		scope: "Development fixture only: explicit test-mocks APK required; real SAF grants, exact document bytes and persisted local notes",
-	},
 	document: {
 		testClass: "SelectedDocumentInstrumentedTest",
 		method: "documentProcessRestartPhase",

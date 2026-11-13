@@ -7,7 +7,7 @@ import {checkNativeAssistantEntry} from '../specs/quint/refinement/native/assist
 test('partial source contract: native assistant Activities and tile refine the exact closed-source entry paths', {timeout:scaledTimeout(600000)}, async () => {
   const {receipt}=await checkNativeAssistantEntry();
   assert.equal(receipt.passed,true);
-  assert.equal(receipt.traces,69);
+  assert.equal(receipt.traces,67);
   assert.equal(receipt.observedFields.length,16);
   assert.equal(verifyRefinementReceiptInputs(receipt),true);
 });

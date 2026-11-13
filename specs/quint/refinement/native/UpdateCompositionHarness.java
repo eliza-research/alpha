@@ -114,7 +114,7 @@ public final class UpdateCompositionHarness {
   var requested = install.getData();
   boolean matches = digest.equals(requested.optString("manifestSha256")) &&
    "alpha-update/v1".equals(offer.optString("schema")) &&
-   (BuildConfig.IS_LAUNCHER ? "launcher" : "standalone").equals(offer.optString("variant")) &&
+   "launcher".equals(offer.optString("variant")) &&
    signer.equals(offer.optString("signerSha256")) &&
    offer.optString("apkUrl").equals(requested.optString("apkUrl")) &&
    offer.optString("sha256").equals(requested.optString("sha256")) &&
