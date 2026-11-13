@@ -28,7 +28,7 @@ import type { ExecFileSyncOptionsWithBufferEncoding } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import {readUpdateChannel} from './update-channel.ts';
+import {publicUpdateChannel} from './update-channel.ts';
 import type {UpdateChannel} from './update-channel.ts';
 
 
@@ -214,8 +214,7 @@ export function sbomArgs(outDir: string, root = process.cwd()) {
 
 async function main() {
   const options = parseBuildArgs(process.argv.slice(2));
-  const channel=readUpdateChannel(process.env,JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl);
-  if(channel.kind==='private-qa'&&(options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires a complete packaged build with test mocks off');
+  const channel=publicUpdateChannel(JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl);
   // A partial signing set would silently produce unsigned releases; refuse it up front.
   const partial = partialSigningProblem(process.env);
   if (partial) throw new Error(partial);
@@ -242,8 +241,7 @@ async function main() {
  * `<variant>-release.apk`), instrumentation APKs and R8 mappings. Alpha supplies the flags,
  * output directory, signing variable names, build record and its own APK verification.
  */
-export function consumerBuildOptions(options: AndroidBuildOptions, env: NodeJS.ProcessEnv, root: string, updateChannel = readUpdateChannel(env, JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl)) {
-  if(updateChannel.kind==='private-qa'&&(options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires a complete packaged build with test mocks off');
+export function consumerBuildOptions(options: AndroidBuildOptions, env: NodeJS.ProcessEnv, root: string, updateChannel = publicUpdateChannel(JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl)) {
   return {
     root,
     environment: env,

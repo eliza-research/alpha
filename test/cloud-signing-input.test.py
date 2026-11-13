@@ -50,7 +50,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 "variant": variant,
                 "mode": "release",
                 "file": f"artifacts/{variant}-release-unsigned.apk",
-                "packageName": ADMISSION.PACKAGE,
+                "packageName": PRODUCER.CANDIDATE_PACKAGE,
                 "versionCode": 44,
                 "sha256": ADMISSION.digest(payload),
                 "signed": False,
@@ -68,18 +68,18 @@ class CloudSigningInputTest(unittest.TestCase):
             })
         self.verification = {
             "upstream": {"commit": self.pin["sdkCommit"]},
-            "runtimeProfile": "cloud",
+            "runtimeProfile": "native",
             "testMocks": False,
             "allowUnpackagedRuntime": False,
             "results": rows,
         }
         self.build = {
-            "runtimeProfile": "cloud",
+            "runtimeProfile": "native",
             "testMocks": False,
             "signingRequested": False,
             "versionOverride": {"code": "44"},
         }
-        self.producer = {"source": self.pin["alphaCommit"], "versionCode": 44, "runtimeProfile": "cloud"}
+        self.producer = {"source": self.pin["alphaCommit"], "versionCode": 44, "runtimeProfile": "native"}
         for record in [self.verification, self.build, self.producer, *rows]:
             record["updateChannel"] = copy.deepcopy(self.pin["updateChannel"])
 
@@ -178,11 +178,8 @@ class CloudSigningInputTest(unittest.TestCase):
         self.verification["upstream"]["commit"] = self.pin["sdkCommit"]
         self.pin.pop("privateProducerReceiptSHA256", None)
         self.pin.update(producerKind=PRODUCER.CANDIDATE, producerRunId="171", producerRunAttempt=2, artifactId="202")
-        for record in (self.verification, self.build, self.producer):
-            record["runtimeProfile"] = "native"
         for row in self.verification["results"]:
             if row["mode"] == "release":
-                row["packageName"] = PRODUCER.CANDIDATE_PACKAGE
                 row["distributable"] = False
                 row.setdefault("voiceHost", {"packaged": True, "asr": True, "differences": []})
         debug = {}
@@ -531,8 +528,7 @@ class CloudSigningInputTest(unittest.TestCase):
     def test_candidate_cannot_claim_other_producer_or_delivery_routes(self):
         self.write_candidate()
         for drift in ({"privateProducerReceiptSHA256": "0" * 64}, {"producerKind": PRODUCER.PRIVATE_RUNNER},
-                      {"producerRunAttempt": "2"}, {"privateStorage": None}, {"encryptedArtifactApproved": True},
-                      {"purpose": "private-update-qa-baseline"}):
+                      {"producerRunAttempt": "2"}, {"privateStorage": None}, {"encryptedArtifactApproved": True}):
             with self.assertRaises(ValueError):
                 ADMISSION.admit(self.archive, {**self.pin, **drift})
 
@@ -587,21 +583,19 @@ class CloudSigningInputTest(unittest.TestCase):
     def test_channel_substitution_is_refused_at_each_evidence_boundary(self):
         for boundary in [self.verification, self.build, self.producer, *self.verification["results"]]:
             original = boundary["updateChannel"]
-            boundary["updateChannel"] = {"kind": "private-qa", "manifestUrlSha256": "d" * 64}
+            boundary["updateChannel"] = {"kind": "public", "manifestUrlSha256": "d" * 64}
             self.write_archive()
             with self.assertRaises(ValueError):
                 ADMISSION.admit(self.archive, self.pin)
             boundary["updateChannel"] = original
 
-    def test_private_channel_needs_its_reviewed_baseline_purpose(self):
-        channel = {"kind": "private-qa", "manifestUrlSha256": "d" * 64}
+    def test_only_the_public_channel_is_admitted(self):
+        channel = {"kind": "other", "manifestUrlSha256": "d" * 64}
         for record in [self.pin, self.verification, self.build, self.producer, *self.verification["results"]]:
             record["updateChannel"] = copy.deepcopy(channel)
         self.write_archive()
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "Invalid reviewed update channel"):
             ADMISSION.admit(self.archive, self.pin)
-        self.pin["purpose"] = "private-update-qa-baseline"
-        self.assertEqual(ADMISSION.admit(self.archive, self.pin)["updateChannel"], channel)
 
     def test_rejects_changed_archive_or_reviewed_pins(self):
         self.write_archive()
@@ -634,11 +628,10 @@ class CloudSigningInputTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not bind artifacts/build-config.json"):
             ADMISSION.admit(self.archive, self.pin)
 
-    def test_rejects_non_cloud_profiles_and_local_embedding_records(self):
-        # This Cloud release requires its own profile and excludes local embedding projection flags.
+    def test_rejects_non_native_profiles_and_local_embedding_records(self):
         for record_name in ("producer", "verification", "build"):
             record = getattr(self, record_name)
-            for field, value in (("runtimeProfile", "native"), ("runtimeProfile", "unknown"), ("localEmbeddings", True), ("localEmbeddings", False)):
+            for field, value in (("runtimeProfile", "cloud"), ("runtimeProfile", "unknown"), ("localEmbeddings", True), ("localEmbeddings", False)):
                 with self.subTest(record=record_name, field=field):
                     old = copy.deepcopy(record)
                     record[field] = value
@@ -701,7 +694,6 @@ class CloudSigningInputTest(unittest.TestCase):
 
 class PrivateProducerSourceReviewTest(unittest.TestCase):
     def test_isolated_source_requires_exact_committed_approval(self):
-        self.assertEqual(ADMISSION.PACKAGE.split("."), ["ai", "elizaresearch", "alphaphone"])
         self.assertEqual(PRODUCER.REPOSITORY, "eliza-research/alpha")
         with tempfile.TemporaryDirectory(prefix="alpha-source-review-") as directory:
             root = Path(directory)

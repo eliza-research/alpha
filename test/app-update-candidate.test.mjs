@@ -179,11 +179,11 @@ test('archive measurement binds the actual artifact metadata and expanded upload
   assert.throws(() => candidateArchiveSize(options), /native input receipt changed/);
 });
 
-test('changed APKs, mocks, Cloud/private profiles, code/package drift, signed output and changed inputs cannot become native candidates', async t => {
+test('changed APKs, mocks, another profile or channel, code/package drift, signed output and changed inputs cannot become native candidates', async t => {
   const f = fixture(t), admission = await candidateVersion(f), archive = f.archive(admission);
   const file = path.join(archive.output, 'apk-verification.json'), original = read(file);
   for (const change of [v => v.testMocks = true, v => v.runtimeProfile = 'cloud', v => v.allowUnpackagedRuntime = true,
-    v => v.updateChannel.kind = 'private-qa', v => v.upstream.commit = '0'.repeat(40),
+    v => v.updateChannel.kind = 'other', v => v.upstream.commit = '0'.repeat(40),
     v => v.results[0].versionCode++, v => v.results[1].packageName = 'other.package',
     v => v.results[1].signed = true, v => v.results[1].distributable = true]) {
     const modified = structuredClone(original); change(modified); json(file, modified);

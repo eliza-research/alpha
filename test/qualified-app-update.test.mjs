@@ -11,99 +11,68 @@ test('qualified publication binds source, private output and exact reviewed voic
   execFileSync('python3',['-B','test/qualified-app-update.test.py'],{cwd:new URL('..',import.meta.url),stdio:'pipe',timeout:scaledTimeout(30_000)});
 });
 
-test('publication workflow preserves protected review, exact source and verification before writes',()=>{
-  const source=fs.readFileSync(new URL('../.github/workflows/publish-qualified-app-update.yml',import.meta.url),'utf8');
+const RELEASE=new URL('../.github/workflows/release.yml',import.meta.url);
+
+test('publication preserves protected review, exact source and verification before writes',()=>{
+  const source=fs.readFileSync(RELEASE,'utf8');
   const workflow=YAML.parse(source);
   assert.deepEqual(Object.keys(workflow.on),['workflow_dispatch']);
   assert.deepEqual(workflow.permissions,{});
-  assert.deepEqual(workflow.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
-  assert.deepEqual(workflow.jobs.admit.permissions,{contents:'read',actions:'read'});
+  assert.deepEqual(workflow.concurrency,{group:"${{ inputs.operation == 'publish' && 'alpha-app-stable-publication' || 'release-signing' }}",'cancel-in-progress':false});
+  assert.deepEqual(workflow.jobs['admit-publication'].permissions,{contents:'read',actions:'read'});
   const publish=workflow.jobs.publish;
   assert.equal(publish.environment,'release');
   assert.deepEqual(publish.permissions,{actions:'read',contents:'write','id-token':'write'});
-  assert.match(workflow.jobs.admit.if,/inputs.workflow_commit == github.sha/);
+  assert.match(workflow.jobs['admit-publication'].if,/inputs.operation == 'publish' && inputs.workflow_commit == github.sha/);
   const steps=publish.steps;
   assert(steps.filter(step=>step.uses?.startsWith('actions/checkout@')).every(step=>step.with['persist-credentials']===false));
-  const toolchain=steps.find(step=>step.id==='product_toolchain');
-  assert.equal(toolchain['working-directory'],'qualified-product');
-  assert.match(toolchain.run,/test -f bun\.lock[\s\S]*manager=bun[\s\S]*test -f package-lock\.json[\s\S]*manager=npm[\s\S]*exit 1/);
-  const nodes=steps.filter(step=>step.uses?.startsWith('actions/setup-node@'));
-  assert.equal(nodes.find(step=>step.with['node-version-file']==='qualified-product/.nvmrc')?.if,"hashFiles('qualified-product/.nvmrc') != ''");
-  const node=nodes.find(step=>step.with['node-version']);
-  assert.equal(node.if,"steps.product_toolchain.outputs.runtime == 'node' && hashFiles('qualified-product/.nvmrc') == ''");
-  assert.equal(node.with['node-version'],'26.13.0');
+  assert(!steps.some(step=>step.uses?.startsWith('actions/setup-node@')));
   const install=steps.findIndex(step=>step['working-directory']==='qualified-product'&&step.run?.includes('install --frozen-lockfile'));
-  assert(install>steps.indexOf(toolchain));
-  assert.match(steps[install].run,/bun install --frozen-lockfile --ignore-scripts[\s\S]*npm ci --ignore-scripts/);
+  assert.match(steps[install].run,/^test -f bun\.lock\nbun install --frozen-lockfile --ignore-scripts\n$/);
   const projection=steps.findIndex(step=>step.run?.includes('run upstream:prepare-client'));
   const verification=steps.findIndex(step=>step.run?.includes('run android:verify --'));
   const delivery=steps.findIndex(step=>step.run?.includes('scripts/deliver-app-update.ts --variant launcher'));
-  assert.match(steps[verification].run,/native\) args=\(\)[\s\S]*cloud\) args=\(--runtime-profile=cloud\)[\s\S]*exit 1/);
-  assert(projection>install&&verification>projection&&delivery>verification);
-  for(const index of [install,projection,verification]){
-    assert.equal(steps[index]['working-directory'],'qualified-product');
-    assert.equal(steps[index].env.PRODUCT_PACKAGE_MANAGER,'${{ steps.product_toolchain.outputs.manager }}');
-  }
-  assert.equal(steps[delivery]['working-directory'],'qualified-product');
-  assert.equal(steps[delivery].env.PRODUCT_RUNTIME,'${{ steps.product_toolchain.outputs.runtime }}');
-  assert.match(steps[delivery].run,/scripts\/deliver-app-update\.mjs/);
+  assert(install>=0&&projection>install&&verification>projection&&delivery>verification);
+  for(const index of [install,projection,verification,delivery])assert.equal(steps[index]['working-directory'],'qualified-product');
+  assert.equal(steps[delivery].run,'bun scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json');
   assert.match(steps[verification].run,/qualified-stage\/cloud-voice.json/);
   const restore=steps.findIndex(step=>step.run?.includes('--product \"$GITHUB_WORKSPACE/qualified-product\"'));
   assert(restore>=0&&restore<verification);
   assert.match(steps[restore].run,/cp android\/release-signer\.json qualified-product\/android\/release-signer\.json/);
   const secretSteps=steps.filter(step=>JSON.stringify(step.env||{}).includes('secrets.'));
   assert.equal(secretSteps.length,0,'private delivery must not depend on a copied storage token');
-  assert(!/APP_RELEASE_KEYSTORE|RELEASE_KEY_PASSPHRASE|RECIPIENT_PRIVATE|openssl cms|sign-release-apks/.test(source));
+  const publication=YAML.stringify({admit:workflow.jobs['admit-publication'],publish});
+  assert(!/APP_RELEASE_KEYSTORE|RELEASE_KEY_PASSWORD|RECIPIENT_PRIVATE|openssl cms|sign-release-apks/.test(publication));
   for(const step of steps.filter(step=>step.uses))assert.match(step.uses,/@[0-9a-f]{40}$/);
 });
 
-test('publication supplies the Cloud profile flag only to the retained Cloud verifier', t => {
-  const workflow = YAML.parse(fs.readFileSync(new URL('../.github/workflows/publish-qualified-app-update.yml', import.meta.url), 'utf8'));
-  const steps = workflow.jobs.publish.steps;
-  const toolchain = steps.find(step => step.id === 'product_toolchain');
-  const step = steps.find(step => step.run?.includes('android:verify --'));
-  assert.ok(toolchain && step);
+test('publication verifies only a native qualification', t => {
+  const step = YAML.parse(fs.readFileSync(RELEASE, 'utf8')).jobs.publish.steps.find(step => step.run?.includes('android:verify --'));
+  assert.ok(step);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-qualified-profile-'));
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   const stage = path.join(root, 'qualified-stage');
   fs.mkdirSync(stage);
   const summary = path.join(stage, 'qualification-summary.json');
   const evidence = path.join(stage, 'cloud-voice.json');
-  const run = (profile, lockfile) => {
-    const cwd = fs.mkdtempSync(path.join(root, 'product-'));
-    fs.writeFileSync(path.join(cwd, lockfile), '');
+  const run = profile => {
     fs.writeFileSync(summary, JSON.stringify({runtimeProfile: profile}));
-    const outputs = path.join(cwd, 'outputs');
-    const selected = spawnSync('bash', ['-e', '-c', toolchain.run], {
-      cwd, env: {...process.env, GITHUB_OUTPUT: outputs}, encoding: 'utf8', timeout: 10_000,
-    });
-    assert.equal(selected.status, 0, selected.stderr);
-    const manager = /^manager=(bun|npm)$/m.exec(fs.readFileSync(outputs, 'utf8'))?.[1];
-    assert.ok(manager);
-    const stub = 'bun() { printf "%s\\n" bun "$@"; }\nnpm() { printf "%s\\n" npm "$@"; }\n';
-    return spawnSync('bash', ['-e', '-c', stub + step.run], {
-      cwd, env: {...process.env, RUNNER_TEMP: root, PRODUCT_PACKAGE_MANAGER: manager}, encoding: 'utf8', timeout: 10_000,
+    return spawnSync('bash', ['-e', '-c', 'bun() { printf "%s\\n" bun "$@"; }\n' + step.run], {
+      cwd: root, env: {...process.env, RUNNER_TEMP: root}, encoding: 'utf8', timeout: 10_000,
     });
   };
-  const native = run('native', 'bun.lock');
+  const native = run('native');
   assert.equal(native.status, 0, native.stderr);
   assert.deepEqual(native.stdout.trim().split('\n'), ['bun', 'run', 'android:verify', '--', `--cloud-voice-evidence=${evidence}`]);
-  const cloud = run('cloud', 'package-lock.json');
-  assert.equal(cloud.status, 0, cloud.stderr);
-  assert.deepEqual(cloud.stdout.trim().split('\n'), ['npm', 'run', 'android:verify', '--',
-    '--runtime-profile=cloud', `--cloud-voice-evidence=${evidence}`]);
-  const cloudBun = run('cloud', 'bun.lock');
-  assert.equal(cloudBun.status, 0, cloudBun.stderr);
-  assert.deepEqual(cloudBun.stdout.trim().split('\n'), ['bun', 'run', 'android:verify', '--',
-    '--runtime-profile=cloud', `--cloud-voice-evidence=${evidence}`]);
-  const invalid = run('other', 'bun.lock');
-  assert.equal(invalid.status, 1);
-  assert.match(invalid.stderr, /^Unknown qualified runtime profile\n$/);
+  for (const profile of ['cloud', 'other']) {
+    const refused = run(profile);
+    assert.equal(refused.status, 1);
+    assert.equal(refused.stdout, '');
+  }
 });
 
 test('publication retains the exact Alpha Compute manifest only after both signed release rows qualify', () => {
-  const workflow = YAML.parse(fs.readFileSync(new URL('../.github/workflows/publish-qualified-app-update.yml', import.meta.url), 'utf8'));
-  const steps = workflow.jobs.publish.steps;
+  const steps = YAML.parse(fs.readFileSync(RELEASE, 'utf8')).jobs.publish.steps;
   const gate = steps.find(step => step.name === 'Require both qualified release rows before publication');
   const upload = steps.find(step => step.uses?.startsWith('actions/upload-artifact@'));
   assert.ok(gate && upload);
@@ -137,7 +106,7 @@ test('publication retains the exact Alpha Compute manifest only after both signe
     fs.writeFileSync(path.join(staged, 'qualification-summary.json'), JSON.stringify({...summary, runtimeProfile: 'cloud'}));
     fs.writeFileSync(input, JSON.stringify({...manifest, runtimeProfile: 'cloud'}));
     const legacy = run();
-    assert.equal(legacy.status, 0, legacy.stderr);
+    assert.equal(legacy.status, 1);
     assert.equal(fs.existsSync(retained), false);
     fs.writeFileSync(path.join(staged, 'qualification-summary.json'), JSON.stringify(summary));
     const bytes = JSON.stringify(manifest, null, 4) + '\n';
@@ -157,16 +126,15 @@ test('artifact identity is confined to protected signing and publication jobs',(
  assert.deepEqual(identity.roles.map(role=>role.includedPermissions),[['storage.objects.get'],['storage.objects.create']]);
  for(const claim of ["assertion.repository_id == '1396333361'","assertion.ref == 'refs/heads/main'","assertion.environment == 'release'","assertion.event_name == 'workflow_dispatch'"])assert(identity.attributeCondition.includes(claim));
  assert.deepEqual([...identity.attributeCondition.matchAll(/"([^"]+\.yml@refs\/heads\/main)"/g)].map(match=>match[1]),[
-  'eliza-research/alpha/.github/workflows/release-cloud-app-signing.yml@refs/heads/main',
-  'eliza-research/alpha/.github/workflows/publish-qualified-app-update.yml@refs/heads/main',
+  'eliza-research/alpha/.github/workflows/release.yml@refs/heads/main',
   'eliza-research/alpha/.github/workflows/release-os-ota-signing.yml@refs/heads/main',
  ]);
  assert(identity.roles[1].condition.expression.endsWith("/objects/signed/')"));
- const cases=[['release-cloud-app-signing.yml','sign'],['publish-qualified-app-update.yml','publish']];
- for(const [file,name] of cases){
-  const source=fs.readFileSync(new URL('../.github/workflows/'+file,import.meta.url),'utf8'),workflow=YAML.parse(source),job=workflow.jobs[name];
+ const source=fs.readFileSync(RELEASE,'utf8'),workflow=YAML.parse(source);
+ for(const [admit,name] of [['admit-signing','sign'],['admit-publication','publish']]){
+  const job=workflow.jobs[name];
   assert.equal(job.environment,'release');assert.equal(job.permissions['id-token'],'write');
-  assert(!workflow.jobs.admit.permissions['id-token']);assert(!workflow.jobs.admit.steps?.some(step=>step.uses?.startsWith('google-github-actions/auth@')));
+  assert(!workflow.jobs[admit].permissions['id-token']);assert(!workflow.jobs[admit].steps?.some(step=>step.uses?.startsWith('google-github-actions/auth@')));
   const index=job.steps.findIndex(step=>step.id==='private_storage_auth'),auth=job.steps[index];
   assert(index>=0);assert.equal(auth.uses,'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093');
   assert.equal(auth.with.workload_identity_provider,identity.providerResource);
@@ -177,7 +145,7 @@ test('artifact identity is confined to protected signing and publication jobs',(
   const consumers=job.steps.filter(step=>step.env?.ALPHA_PRIVATE_STORAGE_TOKEN);assert(consumers.length);
   if(name==='sign'){
    const source=job.steps.find(step=>step.with?.path==='qualified-producer');assert(source);
-   assert.equal(source.with.ref,'${{ fromJSON(inputs.signing_plan).alphaCommit }}');
+   assert.equal(source.with.ref,'${{ fromJSON(inputs.plan).alphaCommit }}');
    const staged=job.steps.find(step=>step.run?.includes('ALPHA_ADMITTED_APK_DIR='));assert(staged);
    assert(staged.run.indexOf('unset ALPHA_PRIVATE_STORAGE_TOKEN')<staged.run.indexOf('await import('));
   }

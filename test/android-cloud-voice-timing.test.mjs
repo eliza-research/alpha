@@ -75,7 +75,7 @@ test('debugger disconnect rejects promptly instead of waiting for the read deadl
 
 test('a readable build-flags file without runtimeProfile is the native build; an unreadable one stays unknown', () => {
   assert.deepEqual(sanitizeBuild({ testMocks: false }), { runtimeProfile: 'native', testMocks: false });
-  assert.deepEqual(sanitizeBuild({ testMocks: true, runtimeProfile: 'cloud' }), { runtimeProfile: 'cloud', testMocks: true });
+  assert.deepEqual(sanitizeBuild({ testMocks: true, runtimeProfile: 'native' }), { runtimeProfile: 'native', testMocks: true });
   assert.deepEqual(sanitizeBuild(null), { runtimeProfile: null, testMocks: null });
-  assert.deepEqual(sanitizeBuild({ testMocks: false, runtimeProfile: 'other' }), { runtimeProfile: null, testMocks: false });
+  assert.deepEqual(sanitizeBuild({ testMocks: false, runtimeProfile: 'cloud' }), { runtimeProfile: null, testMocks: false });
 });

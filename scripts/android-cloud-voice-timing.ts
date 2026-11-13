@@ -125,13 +125,11 @@ export function sanitizeStreaming(value: unknown) {
   }) };
 }
 
-/** There is one runtime profile: a readable build-flags.json is native. An APK from before the
- * profiles were merged may still name `cloud`; it is reported as such. */
+/** There is one runtime profile: a readable build-flags.json is native. */
 export function sanitizeBuild(value: unknown) {
   if (!record(value)) return { runtimeProfile: null, testMocks: null };
   const testMocks = typeof value.testMocks === 'boolean' ? value.testMocks : null;
-  const runtimeProfile = member(value.runtimeProfile, ['native', 'cloud'] as const) ? value.runtimeProfile
-    : testMocks !== null && value.runtimeProfile === undefined ? 'native' : null;
+  const runtimeProfile = value.runtimeProfile === 'native' || (testMocks !== null && value.runtimeProfile === undefined) ? 'native' : null;
   return { runtimeProfile, testMocks };
 }
 

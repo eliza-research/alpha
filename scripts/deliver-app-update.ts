@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /** Publish an admitted release APK first, verify anonymous download, then move
- * the stable manifest. No keys, builds or private QA URLs enter this command.
+ * the stable manifest. No keys or builds enter this command.
  * GitHub asset replacement is not atomic: a manifest upload failure is reported
  * and must be repaired by retrying this same candidate, never by changing its APK.
  */

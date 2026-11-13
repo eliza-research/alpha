@@ -105,13 +105,13 @@ test("a pilot or acceptance unit never gets a non-distributable release, and eve
   assert.throws(() => admitUnitApk(build(t, { mode: "debug", signed: true, distributable: true }), { variant: "launcher", build: "release" }, { descriptor: descriptor() }), /no launcher release APK/);
 });
 
-test("pilot release admission rejects private QA in either the record or the exact APK", t => {
+test("pilot release admission rejects another update channel in either the record or the exact APK", t => {
   const publicChannel = {kind: "public", manifestUrlSha256: sha("public")};
-  const privateChannel = {kind: "private-qa", manifestUrlSha256: sha("private fixture")};
+  const otherChannel = {kind: "other", manifestUrlSha256: sha("other fixture")};
   const admit = (row, extra) => admitUnitApk(build(t, {...DISTRIBUTABLE, ...row}, extra),
     {variant: "launcher", build: "release"}, {descriptor: descriptor()});
-  assert.throws(() => admit({updateChannel: privateChannel}, {updateChannel: publicChannel}), /Private QA/);
-  assert.throws(() => admit({updateChannel: publicChannel}, {updateChannel: privateChannel}), /Private QA/);
+  assert.throws(() => admit({updateChannel: otherChannel}, {updateChannel: publicChannel}), /Update channel input refused/);
+  assert.throws(() => admit({updateChannel: publicChannel}, {updateChannel: otherChannel}), /Update channel input refused/);
   const legacy = admit({}, {});
   const release = admit({updateChannel: publicChannel}, {updateChannel: publicChannel});
   const facts = {testMocks: false, debuggable: false, runtime: "PACKAGED", signerSha256: SIGNER};
@@ -120,8 +120,6 @@ test("pilot release admission rejects private QA in either the record or the exa
   assert.deepEqual(check(release, publicChannel), []);
   assert.match(check(legacy, publicChannel).join(), /differs from the reviewed release/);
   assert.match(check(release, "legacy").join(), /differs from the reviewed release/);
-  assert.match(check(legacy, privateChannel).join(), /Private QA/);
-  assert.match(check(release, privateChannel).join(), /Private QA/);
   assert.match(check(release, null).join(), /could not be verified/);
 });
 

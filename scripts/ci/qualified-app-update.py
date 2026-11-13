@@ -23,12 +23,12 @@ import tempfile
 from urllib.parse import quote, urlencode
 import zipfile
 
-from app_update_producer import CANDIDATE, HOSTED_DISPATCH, apk_member_limit, copy_verified, decode, producer_kind
+from app_update_producer import HOSTED_DISPATCH, apk_member_limit, copy_verified, decode, producer_kind
 
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = "eliza-research/alpha"
 REPOSITORY_ID = 1396333361
-SIGNING_WORKFLOW_ID = 411388003
+SIGNING_WORKFLOW = ".github/workflows/release.yml"
 HEX = re.compile(r"[0-9a-f]{64}")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 NUMBER = re.compile(r"[1-9][0-9]{0,15}")
@@ -103,8 +103,7 @@ def public_private_plan(raw):
     require(isinstance(plan, dict) and plan.get("privateStorage") is not None,
             "Only existing privateStorage delivery is supported; CMS is not admitted")
     storage = STORAGE.validate(plan)
-    require(plan.get("updateChannel", {}).get("kind") == "public" and
-            plan.get("purpose") != "private-update-qa-baseline", "Public channel qualification required")
+    require(plan.get("updateChannel", {}).get("kind") == "public", "Public channel qualification required")
     require(COMMIT.fullmatch(plan["alphaCommit"]) and COMMIT.fullmatch(plan["sdkCommit"]), "Invalid producer source")
     return plan, storage
 
@@ -186,14 +185,18 @@ def check_signing_run(record, plan, workflow_commit, api):
             plan, decode((ROOT / "android/release-signer.json").read_bytes()))
         require(on_main or reviewed_producer,
                 "Producer or signing workflow is not on reviewed main history")
+    workflow = api(f"repos/{REPOSITORY}/actions/workflows/release.yml")
+    require(type(workflow.get("id")) is int and workflow.get("path") == SIGNING_WORKFLOW,
+            "Release workflow identity differs")
     run = api(f"repos/{REPOSITORY}/actions/runs/{record['signingRunId']}/attempts/{record['signingRunAttempt']}")
     repos = [run.get(key) or {} for key in ("repository", "head_repository")]
     require(run.get("status") == "completed" and run.get("conclusion") == "success" and
-            run.get("id") == int(record["signingRunId"]) and run.get("workflow_id") == SIGNING_WORKFLOW_ID and
+            run.get("id") == int(record["signingRunId"]) and run.get("workflow_id") == workflow["id"] and
+            run.get("display_title") == f"Release sign on {record['signingWorkflowCommit']}" and
             run.get("event") == "workflow_dispatch" and run.get("head_branch") == "main" and
             run.get("head_sha") == record["signingWorkflowCommit"] and
             all(repo.get("id") == REPOSITORY_ID and repo.get("full_name") == REPOSITORY for repo in repos) and
-            run.get("path") == ".github/workflows/release-cloud-app-signing.yml" and
+            run.get("path") == SIGNING_WORKFLOW and
             run.get("run_attempt") == record["signingRunAttempt"], "Signing run identity differs")
 
 
@@ -425,7 +428,7 @@ def main():
         stage(record, plan, args.work, product)
     output = {"qualificationSHA256": sha(record_bytes), "sourceCommit": plan["alphaCommit"],
               "sdkCommit": plan["sdkCommit"], "versionCode": plan["versionCode"],
-              "runtimeProfile": "native" if producer_kind(plan) == CANDIDATE else "cloud",
+              "runtimeProfile": "native",
               "signedApkSHA256": record["signedApkSHA256"], "voiceEvidenceSHA256": record["cloudVoiceEvidenceSHA256"],
               "voiceAuthority": "reviewed-external-receipt", "published": False}
     (args.work / "qualification-summary.json").write_text(json.dumps(output, indent=2) + "\n")

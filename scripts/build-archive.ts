@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {archiveWebPayload} from './apk.ts';
 import {parseBuildArgs,buildEnv as androidBuildEnv} from './build-android.ts';
-import {readUpdateChannel} from './update-channel.ts';
+import {publicUpdateChannel} from './update-channel.ts';
 const cli=process.argv.slice(2);
 const buildArgs=cli.filter(arg=>arg==='--test-mocks');
 const options=parseBuildArgs(buildArgs);
@@ -30,10 +30,7 @@ const sourceDir=testMocks?'artifacts/test-mocks':'artifacts';
 // Distribution archives are always flag-off; build-android also strips these.
 const buildEnv=androidBuildEnv(process.env,options);
 const verifyEnv=androidBuildEnv(process.env,{testMocks:false});
-// Source tests construct their own synthetic channel inputs. The real private
-// capability is used only by the native build and its digest-bound verifier.
-for(const name of ['ALPHA_UPDATE_CHANNEL','ALPHA_PRIVATE_UPDATE_MANIFEST_FILE','ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256'])delete verifyEnv[name];
-const updateChannel=readUpdateChannel(buildEnv,JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl);
+const updateChannel=publicUpdateChannel(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl);
 assert.ok(destination && path.resolve(destination).startsWith(path.resolve('test-results')+path.sep), 'Use a new archive beneath test-results');
 assert.ok(!fs.existsSync(destination), 'Archive already exists; preserve earlier evidence');
 fs.mkdirSync(destination,{recursive:true});

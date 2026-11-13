@@ -21,8 +21,6 @@ from app_update_producer import (
 )
 
 VARIANTS = ("standalone", "launcher")
-# Existing installed Cloud releases retain their Android identity during the branding migration.
-PACKAGE = ".".join(("ai", "elizaresearch", "alphaphone"))
 SHA = re.compile("[0-9a-f]{64}")
 COMMIT = re.compile("[0-9a-f]{40}")
 
@@ -36,8 +34,8 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def single_profile(record, profile):
-    return record["runtimeProfile"] == profile and "localEmbeddings" not in record
+def native_profile(record):
+    return record["runtimeProfile"] == "native" and "localEmbeddings" not in record
 
 
 def reviewed_private_producer(plan, descriptor):
@@ -322,18 +320,14 @@ def producer_evidence_members(names, inventory):
 def admit(archive, pin, stage=None, *, source_root=None):
     kind = producer_kind(pin)
     archive_json = decode if kind == CANDIDATE else json.loads
-    profile = "native" if kind == CANDIDATE else "cloud"
-    package = CANDIDATE_PACKAGE if kind == CANDIDATE else PACKAGE
     for field in ("alphaCommit", "sdkCommit"):
         require(isinstance(pin.get(field), str) and COMMIT.fullmatch(pin[field]), f"Invalid {field} pin")
     require(type(pin.get("versionCode")) is int and pin["versionCode"] > 0, "Invalid version pin")
     channel = pin.get("updateChannel")
     require(isinstance(channel, dict) and set(channel) == {"kind", "manifestUrlSha256"}
-            and channel["kind"] in ("public", "private-qa")
+            and channel["kind"] == "public"
             and isinstance(channel["manifestUrlSha256"], str)
             and SHA.fullmatch(channel["manifestUrlSha256"]), "Invalid reviewed update channel")
-    require((channel["kind"] == "private-qa") == (pin.get("purpose") == "private-update-qa-baseline"),
-            "Private update channel requires the explicit QA baseline purpose")
     apks = pin["unsignedApkSHA256"]
     require(set(apks) == set(VARIANTS), "Exactly two variant pins are required")
     for value in (pin["archiveSHA256"], pin["producerManifestSHA256"], *apks.values()):
@@ -367,7 +361,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
                         private["alphaCommit"] == pin["alphaCommit"] and
                         private["sdkCommit"] == pin["sdkCommit"] and
                         private["versionCode"] == pin["versionCode"] and
-                        private["unsignedApkSHA256"] == apks and single_profile(private, profile),
+                        private["unsignedApkSHA256"] == apks and native_profile(private),
                         "Private producer identity differs from the reviewed build")
                 require(private.get("updateChannel") == channel, "Private producer update channel differs")
                 for check in ("productSourceGuard", "sdkSourceGuard", "normalPreparation",
@@ -378,7 +372,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
             require(digest(producer_bytes) == pin["producerManifestSHA256"], "Producer manifest digest differs")
             producer = archive_json(producer_bytes)
             require(producer["source"] == pin["alphaCommit"] and producer["versionCode"] == pin["versionCode"]
-                    and single_profile(producer, profile),
+                    and native_profile(producer),
                     "Producer source, version or runtime profile differs")
             require(producer.get("updateChannel") == channel, "Producer update channel differs")
             apk_manifest = data("apk-verification.json")
@@ -392,12 +386,12 @@ def admit(archive, pin, stage=None, *, source_root=None):
             verified = archive_json(apk_manifest)
             require(verified.get("updateChannel") == channel, "Verified update channel differs")
             require(verified["upstream"]["commit"] == pin["sdkCommit"], "Verified SDK commit differs")
-            require(single_profile(verified, profile) and verified["testMocks"] is False
+            require(native_profile(verified) and verified["testMocks"] is False
                     and verified.get("allowUnpackagedRuntime") is False,
                     "APK verification is outside the reviewed distribution profile")
             config = json.loads(build)
             require(config.get("updateChannel") == channel, "Build update channel differs")
-            require(single_profile(config, profile) and config["testMocks"] is False and config["signingRequested"] is False
+            require(native_profile(config) and config["testMocks"] is False and config["signingRequested"] is False
                     and config["versionOverride"]["code"] == str(pin["versionCode"]),
                     "Build flags or version differ from the reviewed unsigned distribution build")
             name_map = json.loads(data("apk-manifest.json"))
@@ -409,7 +403,7 @@ def admit(archive, pin, stage=None, *, source_root=None):
                 variant = row["variant"]
                 require(row.get("updateChannel") == channel, "APK update channel differs")
                 name = f"{variant}-release-unsigned.apk"
-                require(row["file"] == f"artifacts/{name}" and row["packageName"] == package
+                require(row["file"] == f"artifacts/{name}" and row["packageName"] == CANDIDATE_PACKAGE
                         and row["versionCode"] == pin["versionCode"] and row["signed"] is False
                         and row["signerSha256"] is None and row["testMocks"] is False
                         and row["debuggable"] is False and row["home"] is (variant == "launcher")
