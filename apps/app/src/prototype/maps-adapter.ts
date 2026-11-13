@@ -79,12 +79,17 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   };
   let submittedSearch:{kind:'place'|'origin';text:string}|undefined;
   const cancelSearch=()=>{if(searchTimer!==undefined)clearTimeout(searchTimer);searchTimer=undefined;};
-  const runSearch=(kind:'place'|'origin',text:string,explicit=false)=>{
+  const runSearch=(kind:'place'|'origin',text:string)=>{
     cancelSearch();
     const snapshot=mapsController?.snapshot();
     const discovery=regionalMapsConfigured?regionalDiagnostics():cloudMapsDiagnostics();
-    const failed=(kind==='origin'?snapshot?.originSearch:snapshot?.search)?.phase==='error'||!!discovery.error;
-    if(!active()||!text.trim()||!explicit&&!failed&&submittedSearch?.kind===kind&&submittedSearch.text===text)return;
+    const failed=(kind==='origin'?snapshot?.originSearch:snapshot?.search)?.phase==='error'
+      ||kind==='origin'&&!!snapshot?.route.error
+      ||snapshot?.provider.status!=='configured'&&!!discovery.error;
+    // A resolved origin can display a place label instead of the typed coordinates.
+    // queueSearch clears this receipt whenever the user actually edits the field.
+    const sameSubmission=submittedSearch?.kind===kind&&(kind==='origin'||submittedSearch.text===text);
+    if(!active()||!text.trim()||!failed&&sameSubmission)return;
     submittedSearch={kind,text};
     if(kind==='origin')screen.planOrigin();else screen.searchFor(text);
   };
@@ -314,7 +319,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       searchLead: () => {cancelSearch();submittedSearch=undefined;screen.searchLead();},
       onQ: (event: Event) => {const text=(event.target as HTMLInputElement).value;screen.setQuery(text);queueSearch('place',text);},
       focusQ: () => screen.focusQuery(),
-      qKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); runSearch('place',(event.target as HTMLInputElement).value,true); (event.target as HTMLInputElement).blur(); } },
+      qKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); runSearch('place',(event.target as HTMLInputElement).value); (event.target as HTMLInputElement).blur(); } },
       clearQ: () => {cancelSearch();submittedSearch=undefined;screen.clearQuery();},
       chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => {cancelSearch();screen.chooseSaved(item.id);submittedSearch=undefined;} })),
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => screen.searchFor(category.label) })),
@@ -350,7 +355,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       // Coordinates plan directly; any other text searches places and saved places.
       data.originText=directions.originText;
       data.onOrigin=(event:Event)=>{const text=(event.target as HTMLInputElement).value;screen.setOriginText(text);queueSearch('origin',text);};
-      data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();runSearch('origin',(event.target as HTMLInputElement).value,true);}};
+      data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();runSearch('origin',(event.target as HTMLInputElement).value);}};
       data.originLocation=()=>{cancelSearch();submittedSearch=undefined;screen.locate();};
       data.swapDirections=()=>screen.swapDirections();
       data.swapDirectionsDisabled=!mapsController?.snapshot().origin||mapsController.snapshot().selection.phase!=='ready';
