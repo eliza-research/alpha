@@ -12,7 +12,7 @@ const end=source.indexOf('  const env = (): CloudEnvironment',start);
 assert.ok(start>=0&&end>start);
 const inert=stripTypeScriptTypes(readFileSync(new URL('../apps/app/src/runtime/modal-inert.ts',import.meta.url),'utf8').replace('export function','function'),{mode:'strip'});
 const effects=stripTypeScriptTypes(source.slice(start,end),{mode:'strip'});
-const make=new Function('React','useRef','useEffect','holdPhoneInert','connectionController',`return function Chooser({visible,snapshot}){const panel=useRef(null);${effects};return visible?React.createElement('div',{role:'dialog',tabIndex:-1,ref:panel},React.createElement('input',{'aria-label':'Email'})):null;}`);
+const make=new Function('React','useRef','useEffect','holdPhoneInert','connectionController',`${source.match(/^let homePresentationRevision=.*$/m)?.[0]??''}\nreturn function Chooser({visible,snapshot}){const panel=useRef(null),signInEntryRequired=false;${effects};return visible?React.createElement('div',{role:'dialog',tabIndex:-1,ref:panel},React.createElement('input',{'aria-label':'Email'})):null;}`);
 const hold=new Function(inert+';return holdPhoneInert;')();
 async function fixture(run){
  const dom=new JSDOM('<div class="os"><button id="opener">Sign in</button></div><div id="root"></div>',{url:'http://localhost/'});
