@@ -82,11 +82,12 @@ module NativeCrashJournal {
   pure def replaced(state: State, doc: Disk, fault: str): State =
     if (fault.in(Set("before","staged"))) state
     else { ...state,disk:pruned({ ...doc,format:"valid" },state.now) }
-  pure def harvested(disk: Disk, history: Set[int]): Disk =
-    List(4,3,2,1).foldl(disk,(doc,id)=>if (history.contains(id) and id>disk.watermark)
-      { ...doc,watermark:if (id>doc.watermark) id else doc.watermark,
-        rows:if (id==2) doc.rows else doc.rows.append(exitRow(id)) }
-      else doc)
+  pure def harvested(disk: Disk, history: Set[int]): Disk = {
+    val eligible=List(4,3,2,1).select(id=>history.contains(id) and id>disk.watermark)
+    val harvestedWatermark=eligible.foldl(disk.watermark,(watermark,id)=>if (id>watermark) id else watermark)
+    val harvestedRows=eligible.select(id=>id!=2).foldl(disk.rows,(rows,id)=>rows.append(exitRow(id)))
+    { ...disk,watermark:harvestedWatermark,rows:harvestedRows }
+  }
 
   pure def complete(state: State, actor: int, fault: str, history: Set[int]): State = {
     val req=pending(state,actor)
