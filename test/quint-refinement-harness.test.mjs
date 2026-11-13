@@ -55,6 +55,36 @@ test('collection observations are evaluated with the actual Quint value construc
   } finally { rmSync(directory, {recursive: true, force: true}); }
 });
 
+test('application source capture retains initial model and source inputs across repeated observations', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'alpha-application-capture-'));
+  const source = join(directory, 'source.mjs');
+  // Isolate the temporary source from the shared application driver's capture map.
+  const support = await import(new URL('../specs/quint/refinement/application/support.mjs?capture='+randomUUID(), import.meta.url));
+  try {
+    writeFileSync(source, 'initial implementation bytes');
+    support.captureSources([source]);
+    const options = support.boundInputs({model: 'DevelopmentHost', sources: [source], scope: 'bounded-component',
+      assumptions: ['Synthetic application input-integrity canary.'], out: join(directory, 'result.json'),
+      traces: [{name: 'empty-runtime', expect: {'s.active': qset([])}, steps: []}]});
+    const modelInputs = captureInputs([]);
+    for (const [path, hash] of Object.entries(modelInputs)) assert.equal(options.driverHashes[path], hash);
+    const originalHash = options.driverHashes[source];
+    writeFileSync(source, 'changed implementation bytes');
+    support.captureSources([source, source]);
+    const repeated = support.boundInputs(options);
+    assert.equal(repeated.driverHashes[source], originalHash, 'Repeated observation cannot replace the original source snapshot');
+    await assert.rejects(checkTraces(repeated), /changed during observation generation/);
+    writeFileSync(source, 'initial implementation bytes');
+    const manifest = Object.keys(modelInputs).find(path => path.endsWith('/application/manifest.json'));
+    const model = Object.keys(modelInputs).find(path => path.endsWith('/DevelopmentHost.qnt'));
+    assert.ok(manifest && model);
+    for (const path of [manifest, model]) {
+      await assert.rejects(checkTraces({...options, driverHashes: {...options.driverHashes, [path]: 'changed-before-checking'}}),
+        /changed during observation generation/);
+    }
+  } finally {rmSync(directory, {recursive: true, force: true});}
+});
+
 test('Quint checks every source checkpoint and rejects a divergent observation', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'alpha-refinement-harness-'));
   const options = {model: 'VadSegmentation', sources: ['test/quint-refinement-harness.test.mjs'],
