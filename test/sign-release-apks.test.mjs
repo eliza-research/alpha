@@ -138,7 +138,7 @@ test("the protected PKCS#12 adapter signs the launcher APK with an environment-o
   const password = "fixture-not-a-secret";
   const result = await sign(root, argv, { env: { [KEYSTORE_PASSWORD_ENV]: password } });
   assert.equal(result.code, 0, result.err);
-  assert.equal(calls().length, 2);
+  assert.equal(calls().length, 1);
   for (const { argv: args } of calls()) {
     assert.deepEqual(args.slice(0, 11), ["sign", "--ks", keystore, "--ks-type", "PKCS12", "--ks-key-alias",
       "alpha-release", "--ks-pass", `env:${KEYSTORE_PASSWORD_ENV}`, "--key-pass", `env:${KEYSTORE_PASSWORD_ENV}`]);

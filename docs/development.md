@@ -168,8 +168,9 @@ paired-host campaigns. Their old receipts do not qualify this launcher. Native
 resident speech, recording/permission/cancellation checks and the real provider
 contracts remain separate from browser fixtures. The Home Calendar provider and
 permission-loss acceptance cases are retained, but need an independently admitted
-signed-in launcher fixture and distinct granted/revoked process phases. Real
-provider responses, decoded/audible audio and physical-device acceptance still
+signed-in launcher fixture and distinct granted/revoked process phases. The Browser page-question journey also retains its explicit sign-in prerequisite;
+the fresh signed-out hosted reading lane covers only isolated-document navigation.
+Real provider responses, decoded/audible audio and physical-device acceptance still
 need current evidence; deleting a retired fixture does not close those gates.
 
 Android builds remove mock flags from child environments. `scripts/audit-production-bundle.ts` checks
@@ -430,7 +431,7 @@ bun scripts/verify-wireless-launcher-update.ts matrix \
 ```
 
 The matrix checks the receipt links, signing family, installed SDK revision
-and the same two offered releases across both distributions. It reads the saved
+and the same two offered releases across both installation paths. It reads the saved
 receipts offline, so the public channel may already have advanced.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/alphacompute/alphaphone/issues/888)
@@ -478,7 +479,7 @@ Complete it in this order:
 
    For production Cloud acceptance on the Pixel, use the admitted release APK.
    Android requires a separate device or fresh installation when the installed copy uses an incompatible signer.
-3. Qualify the exact signed baseline and establish it on both distribution
+3. Qualify the exact signed baseline and establish it on both installation
    paths before exposing the phones to a newer offer. If using
    `scripts/provision-unit.ts`, provision before recording the baseline's version
    as the release floor. Qualify and publish the first advancing launcher

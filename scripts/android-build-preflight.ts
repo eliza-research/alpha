@@ -237,7 +237,9 @@ async function main() {
     return;
   }
   const notes: string[] = [];
-  if(readHead(path.join(root,'vendor/eliza'))===readJson(root,'upstream.lock.json').commit) {
+  const pin=readJson(root,'upstream.lock.json').commit;
+  // Refuse an old or unknown source pin before acquiring or compiling its native inputs.
+  if(readHead(path.join(root,'vendor/eliza'))===pin&&!mainPinProblem(root,pin)) {
     const {preparePortableNativeInputs}=await import('./build-embedding-host.ts');
     await preparePortableNativeInputs(root);
   }

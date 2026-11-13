@@ -8,8 +8,8 @@
  * instrumentation   `bun run test:android:instrumentation` with its default classes on the
  *                   launcher APK.
  * browser-reading   the same runner after the pinned Chromium 157 WebView is installed
- *                   (scripts/prepare-ci-webview.ts): BrowserReadingNavigation and
- *                   BrowserPageQuestion.
+ *                   (scripts/prepare-ci-webview.ts): BrowserReadingNavigation. The real
+ *                   page-question journey additionally needs independently admitted sign-in.
  *
  * A preparation step that fails stops the suite. Evidence steps are independent: each runs, and
  * the suite fails when any of them did not pass (a failed, skipped or missing class fails the
@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 export const SERIAL = "emulator-5554";
 export const AVD = "test";
 /** Classes that need isolated-world injection. */
-export const READING_CLASSES = ["BrowserReadingNavigation", "BrowserPageQuestion"];
+export const READING_CLASSES = ["BrowserReadingNavigation"];
 
 type Command = string[];
 type SuiteStep = {name: string; command: Command; env?: NodeJS.ProcessEnv} & (

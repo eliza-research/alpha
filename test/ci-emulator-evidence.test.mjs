@@ -204,10 +204,12 @@ test('suite plans: default classes; reading classes with the gates they need',()
  assert.deepEqual(reading[1].command.slice(1),['scripts/prepare-ci-webview.ts']);
  assert.deepEqual(reading[1].env,{ANDROID_SERIAL:'emulator-5554',ALPHA_DISPOSABLE_WEBVIEW_FIXTURE:'api35-default-x86_64'});
  assert.deepEqual(reading[0].command.slice(1),['scripts/prepare-ci-emulator.ts']);
- assert.deepEqual(READING_CLASSES,['BrowserReadingNavigation','BrowserPageQuestion']);
+ assert.deepEqual(READING_CLASSES,['BrowserReadingNavigation']);
+ assert.match(read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserPageQuestionInstrumentedTest.java'),/AppNavigation\.assumeNoRequiredSignIn/);
+ assert.ok(!READING_CLASSES.includes('BrowserPageQuestion'),'a fresh signed-out fixture cannot qualify the account-gated journey');
  const parsedReading=parseInstrumentationArgs(reading[2].command.slice(4));
  assert.deepEqual(parsedReading.classes.map(name=>name.split('.').at(-1)),READING_CLASSES.map(name=>name+'InstrumentedTest'));
- assert.deepEqual(Object.fromEntries(READING_CLASSES.map(name=>[name,CLASS_REGISTRY[name].args])),{BrowserReadingNavigation:{browserIsolatedReading:'1'},BrowserPageQuestion:{browserPageQuestion:'1'}});
+ assert.deepEqual(Object.fromEntries(READING_CLASSES.map(name=>[name,CLASS_REGISTRY[name].args])),{BrowserReadingNavigation:{browserIsolatedReading:'1'}});
 
  assert.throws(()=>suitePlan('all'),/Unknown suite/);assert.throws(()=>suitePlan('resident'),/Unknown suite/);
  assert.equal(SERIAL,'emulator-5554');assert.equal(AVD,'test');
@@ -236,7 +238,7 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
  const root=inDirectory(t);
  let calls=[];
  const failing=runSuite('browser-reading',{environment:hosted,execute:(command,env)=>{calls.push([command,env]);const step=suitePlan('browser-reading').find(row=>row.command===command||JSON.stringify(row.command)===JSON.stringify(command));
-  if(step.name==='ci-reading'){results(root,step,{BrowserReadingNavigation:'failed',BrowserPageQuestion:'passed'});return 1;}
+  if(step.name==='ci-reading'){results(root,step,{BrowserReadingNavigation:'failed'});return 1;}
   return 0;}});
  assert.equal(calls.length,3);assert.deepEqual(calls[1][1],{ANDROID_SERIAL:'emulator-5554',ALPHA_DISPOSABLE_WEBVIEW_FIXTURE:'api35-default-x86_64'});
  assert.deepEqual(failing.steps.map(row=>row.status),['passed','passed','failed']);assert.equal(failing.passed,false);
