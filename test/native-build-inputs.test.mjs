@@ -26,6 +26,18 @@ test('native cache identity changes with producer code, model pins and compiler 
     assert.notEqual(nativeRecipeDigest(nativeRecipe(dir)),before,name);fs.writeFileSync(file,original);
   }
 });
+test('archive source freeze binds every native producer input and changes with ABI policy',t=>{
+  const dir=fixture(t),recipe=nativeRecipe(dir);
+  const snapshot=()=>JSON.parse(execFileSync(process.execPath,[path.join(root,'scripts/source-snapshot.ts')],{cwd:dir,encoding:'utf8'}));
+  const before=snapshot();
+  for(const [name,digest] of Object.entries(recipe.productInputs))assert.equal(before.files[name],digest,`Missing native producer input: ${name}`);
+  const policy='scripts/android-abis.ts';
+  fs.appendFileSync(path.join(dir,policy),'\n// changed ABI policy\n');
+  const after=snapshot();
+  assert.notEqual(after.digest,before.digest);
+  assert.equal(after.files[policy],fileDigest(path.join(dir,policy)));
+  assert.notEqual(after.files[policy],recipe.productInputs[policy]);
+});
 function receiptFor(dir){
   const recipe=nativeRecipe(dir),pin=JSON.parse(fs.readFileSync(path.join(dir,'upstream.lock.json'))).commit;
   const voice=JSON.parse(fs.readFileSync(path.join(dir,'android/voice-host/qualified-voice-host.json')));voice.pin=pin;voice.forkPin=recipe.engineCommit;
