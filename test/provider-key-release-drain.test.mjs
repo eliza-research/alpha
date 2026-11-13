@@ -22,7 +22,7 @@ function harness({fail=false}={}){
   let release;
   const gate=new Promise(resolve=>{release=resolve;});
   const request=async()=>{await gate;if(fail)throw Error('offline');return STATUS;};
-  const box={AbortController,operation:null,sending:null,epoch:1,signInReadinessOwner:null,providerStatusGeneration:0,
+  const box={AbortController,cancelStoppedVoiceRead(){},operation:null,sending:null,epoch:1,signInReadinessOwner:null,providerStatusGeneration:0,
     returned:[],rebinds:0,retries:0,state:{open:false,signIn:null,message:'',error:'',busy:false,startupResolved:true},
     update:patch=>Object.assign(box.state,patch),signInFailureMessage:code=>`failure:${code}`,
     anyAbortSignal:signals=>AbortSignal.any(signals),
