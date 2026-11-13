@@ -2915,8 +2915,10 @@
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">Files</h1>
     <sc-if value="{{files.toolbar.ready}}"><details class="photo-import-menu"><summary aria-label="Files tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
       <sc-if value="{{files.toolbar.canCreate}}"><button aria-label="New folder" onClick="{{files.toolbar.newFolder}}">New folder</button></sc-if>
-      <button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button>
-      <button aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}">{{files.toolbar.viewLabel}}</button>
+      <sc-if value="{{files.toolbar.canSort}}">
+        <button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button>
+        <button aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}">{{files.toolbar.viewLabel}}</button>
+      </sc-if>
     </div></details></sc-if>
   </div>
   <sc-if value="{{files.filterVisible}}">
