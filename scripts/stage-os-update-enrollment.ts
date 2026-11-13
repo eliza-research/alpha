@@ -24,8 +24,8 @@ const profileBytes=fs.readFileSync(file('android/aosp/pilot-system-update-enroll
 const profile:PilotEnrollment=JSON.parse(profileBytes.toString('utf8'));
 require(profile.schema===1&&profile.purpose==='preserving-pilot-qualification'&&profile.product==='alpha_stallion_phone'&&profile.device==='stallion','Unexpected pilot enrollment');
 require(profile.rotatePlatformOrAVBKeys===false&&profile.wipeData===false,'This enrollment cannot authorize a key rotation or wipe');
-const url=new URL(profile.manifestUrl);
-require(url.protocol==='https:'&&!url.username&&!url.password&&!url.search&&!url.hash&&url.hostname==='github.com'&&url.pathname==='/alphacompute/alphaphone/releases/download/os-pilot/alpha-os-update.json','Unexpected OS discovery channel');
+// Preserve the enrolled pilot URL, which GitHub redirects to the canonical repository.
+require(profile.manifestUrl==='https://github.com/eliza-research/alphaphone/releases/download/os-pilot/alpha-os-update.json','Unexpected OS discovery channel');
 require(JSON.stringify(profile.hosts)===JSON.stringify(['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com','storage.googleapis.com']),'Unexpected OS download hosts');
 const custody:Custody=JSON.parse(fs.readFileSync(file('android/signing/os-custody-expected.json'),'utf8'));
 require(profile.otaCertificateSha256===custody.osCertificateSha256.releasekey,'OTA enrollment must use the verified release identity');
