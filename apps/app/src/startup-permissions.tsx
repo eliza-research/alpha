@@ -101,9 +101,9 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const shown = (active || ready) && (enabled || reopened) && !connection.open && !googleOpen;
   // The Alpha image grants this access at first boot (scripts/stage-aosp.ts LAUNCHER_DEFAULT_PERMISSIONS
   // and AlphaSharedStoragePolicy), so first setup there passes a row Android already reports as allowed
-  // without a tap, and shows nothing while it reads. A row that is off still stops and asks; a Settings
+  // without a tap. A stalled read exposes Checking and Skip after the usual wait. A row that is off still stops and asks; a Settings
   // review shows every row.
-  const granted = image && active && !ready && !target && !review && (state === 'ready' || state === 'checking');
+  const granted = image && active && !ready && !target && !review && (state === 'ready' || (state === 'checking' && !canSkip));
   const visible = shown && !granted;
   const writeProgress = (value: Progress | null, choices = value?.choices ?? []) => {
     if (!reviewRef.current) try {
@@ -206,10 +206,10 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
 
   useEffect(() => {
     setCanSkip(false);setCheckNotice('');
-    if (!visible || ready) return;
+    if (!shown || ready) return;
     const timer = setTimeout(() => setCanSkip(true), 20_000);
     return () => clearTimeout(timer);
-  }, [key, visible, ready]);
+  }, [key, shown, ready]);
 
   useEffect(() => {if (visible) dialog.current?.querySelector<HTMLHeadingElement>('h2')?.focus({preventScroll: true});}, [key, visible, ready]);
 

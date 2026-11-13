@@ -16,13 +16,15 @@ async function shot(page: Page, info: TestInfo, name: string) { await page.evalu
 
 /** A fresh phone: no Cloud key, setup not done. `window.postSignIn.hold` holds the next agent start;
  * `window.postSignIn.admission` holds the next identity read (the account admission after the code). */
-async function freshPhone(page: Page) {
+async function freshPhone(page: Page, access: {image?: boolean; holdLocation?: boolean} = {}) {
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { freshAccess: true });
   await residentStub(page, { nativeSignIn: true, emptyKeystore: true, accounts: [account] });
-  await page.addInitScript(() => {
+  await page.addInitScript((access: {image?: boolean; holdLocation?: boolean}) => {
     const w = window as any, previous = w.Capacitor.nativePromise;
-    const granted: Record<string, boolean> = { notifications: false, microphone: false, camera: false, location: false, calendar: false, photos: false, files: false };
+    const granted: Record<string, boolean> = Object.fromEntries(['notifications', 'microphone', 'camera', 'location', 'calendar', 'photos', 'files'].map(key => [key, !!access.image]));
+    const accessPort = w.imageAccess = { requests: [] as string[], held: [] as (() => void)[], released: false, releaseLocation() {this.released = true; this.held.splice(0).forEach(resolve => resolve());} };
+    if (access.image) w.Capacitor.PluginHeaders.push({name: 'AlphaTelephony', methods: [{name: 'imageCapability', rtype: 'promise'}]});
     const ports: Record<string, string[]> = { DailyApps: ['checkPermissions', 'requestPermissions'], AlphaVoiceCloud: ['checkPermissions', 'requestPermissions'], ElizaLocation: ['checkPermissions', 'requestPermissions'], AlphaCalendar: ['checkPermissions', 'requestAccess'], AlphaPhotoLibrary: ['scope', 'requestAccess'], AlphaFiles: ['storageState', 'storageRequestAccess'] };
     for (const [name, methods] of Object.entries(ports)) {
       let header = w.Capacitor.PluginHeaders.find((row: any) => row.name === name);
@@ -31,6 +33,8 @@ async function freshPhone(page: Page) {
     }
     const hold = w.postSignIn = { hold: false, held: false, release: null as null | (() => void), admission: false, admit: null as null | (() => void) };
     w.Capacitor.nativePromise = async (plugin: string, method: string, input: any) => {
+      if (plugin === 'AlphaTelephony' && method === 'imageCapability') return {version: 1, image: true, feature: 'fixture.image'};
+      if (access.holdLocation && !accessPort.released && plugin === 'ElizaLocation' && method === 'checkPermissions') await new Promise<void>(resolve => accessPort.held.push(resolve));
       // The restart with the new key takes as long as a first boot (about 27 s on the owner's run).
       if (plugin === 'Agent' && method === 'start' && hold.hold) { hold.hold = false; hold.held = true; await new Promise<void>(resolve => { hold.release = resolve; }); }
       // A funded organization-credit account: no subscription, a positive balance (the owner's account mode).
@@ -40,7 +44,7 @@ async function freshPhone(page: Page) {
         return { status: 200, data: { success: true, data: { schemaVersion: 2, v2: { subscription: { status: 'not_applicable', reason: 'no_organization_subscription' },
           balance: { status: 'available', source: 'organizations', observedAt: new Date().toISOString(), value: { balance: { value: '5.00', unit: 'usd', currency: 'USD' }, revision: '1' } } } } } };
       const key = plugin === 'AlphaNotifications' ? 'notifications' : plugin === 'AlphaVoiceCloud' ? 'microphone' : plugin === 'DailyApps' ? 'camera' : plugin === 'ElizaLocation' ? 'location' : plugin === 'AlphaCalendar' ? 'calendar' : plugin === 'AlphaPhotoLibrary' ? 'photos' : plugin === 'AlphaFiles' ? 'files' : null;
-      if (key && (method === 'requestPermissions' || method === 'requestAccess' || method === 'storageRequestAccess')) { granted[plugin === 'DailyApps' ? input.permissions[0] : key] = true; return {}; }
+      if (key && (method === 'requestPermissions' || method === 'requestAccess' || method === 'storageRequestAccess')) { accessPort.requests.push(plugin + '.' + method); granted[plugin === 'DailyApps' ? input.permissions[0] : key] = true; return {}; }
       if (plugin === 'AlphaNotifications' && method === 'status') return { permissionGranted: granted.notifications, appEnabled: granted.notifications };
       if (plugin === 'AlphaFiles' && method === 'storageState') return {status: 'ready', access: granted.files ? 'granted' : 'denied', volumes: []};
       if (plugin === 'AlphaPhotoLibrary' && method === 'scope') return { scope: granted.photos ? 'selected' : 'denied', locked: false };
@@ -49,7 +53,7 @@ async function freshPhone(page: Page) {
       if (key && method === 'checkPermissions') return key === 'location' ? { location: granted.location ? 'granted' : 'prompt', accuracy: granted.location ? 'approximate' : 'none' } : { [key]: granted[key] ? 'granted' : 'prompt' };
       return previous(plugin, method, input);
     };
-  });
+  }, access);
   await page.goto('/');
   await setStub(page, { nextToken: account.token });
   await expect.poll(() => starts(page), { timeout: 30_000 }).toBe(1);
@@ -158,5 +162,41 @@ test('APK path: a saved sign-in that cannot reach Cloud at startup shows Home wi
   await expect(page.locator('.alpha-connection')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => !!(window as any).firstStart.release)).toBe(true);
   await page.evaluate(() => (window as any).firstStart.release());
+  expect(foreign).toEqual([]);
+});
+
+
+test('AOSP image: granted startup access reaches Ready without permission prompts or taps', async ({page}, info) => {
+  test.setTimeout(150_000);
+  const {foreign, welcome} = await freshPhone(page, {image: true});
+  await verifyHeld(page, welcome, info);
+  const setup = page.locator('dialog.alpha-startup-permissions');
+  await expect(setup.getByRole('heading', {name: 'All set', exact: true})).toBeVisible();
+  await expect(setup.locator('.alpha-permission-rows')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).imageAccess.requests)).toEqual([]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1') || 'null'))).toEqual({version: 4, status: 'completed', step: 7});
+  await setup.getByRole('button', {name: 'Done', exact: true}).click();
+  await expect(setup).toHaveCount(0);
+  await page.evaluate(() => (window as any).postSignIn.release());
+  expect(foreign).toEqual([]);
+});
+
+test('AOSP image: a stalled startup status exposes Checking and Skip without requesting access', async ({page}, info) => {
+  test.setTimeout(150_000);
+  await page.clock.install();
+  const {foreign, welcome} = await freshPhone(page, {image: true, holdLocation: true});
+  await verifyHeld(page, welcome, info);
+  const setup = page.locator('dialog.alpha-startup-permissions');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1') || 'null')?.step)).toBe(3);
+  await expect(setup).toHaveCount(0);
+  await page.clock.fastForward(20_000);
+  await expect(setup.locator('[aria-current=step]', {hasText: 'Location'})).toBeVisible();
+  await expect(setup.getByRole('button', {name: 'Checking', exact: true})).toBeDisabled();
+  await setup.getByRole('button', {name: 'Skip', exact: true}).click();
+  await expect(setup.getByRole('heading', {name: 'All set', exact: true})).toBeVisible();
+  await page.evaluate(() => {(window as any).imageAccess.releaseLocation(); (window as any).postSignIn.release();});
+  expect(await page.evaluate(() => (window as any).imageAccess.requests)).toEqual([]);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1') || 'null'));
+  expect(saved).toEqual({version: 4, status: 'completed', step: 7, choices: ['continued', 'continued', 'continued', 'skipped', 'continued', 'continued', 'continued']});
   expect(foreign).toEqual([]);
 });

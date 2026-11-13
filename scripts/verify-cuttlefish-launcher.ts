@@ -6,10 +6,11 @@
  * (scripts/stage-aosp.ts LAUNCHER_DEFAULT_PERMISSIONS). No install, role change, alarm, or runtime request.
  */
 import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {main as sharedMain, parseArgs as parseShared, validateExpectation as validateShared, verifyLauncherImage} from '../vendor/eliza/packages/os/scripts/android/verify-launcher-image.mjs';
+import {parseArgs as parseShared, validateExpectation as validateShared, verifyLauncherImage} from '../vendor/eliza/packages/os/scripts/android/verify-launcher-image.mjs';
 
 const PACKAGE: string = JSON.parse(fs.readFileSync(new URL('../app.config.json', import.meta.url), 'utf8')).appId;
 
@@ -53,27 +54,46 @@ export function verifyFirstBootGrants(run: AdbRead, expected: unknown, user: str
 }
 
 export function verifyAlphaLauncherImage(run: AdbRead, expected: unknown, user: string, target: ImageTarget) {
-  const report = verifyLauncherImage(run, validateExpectation(expected), user, target);
-  return {...report, firstBootGrants: verifyFirstBootGrants(run, expected, user)};
+  const reviewed = validateExpectation(expected);
+  // Capture the boot the shared verifier admits, then extend its observation through the grant read.
+  let bootId = '';
+  const report = verifyLauncherImage((...args: string[]) => {
+    const value = run(...args);
+    if (!bootId && args.join(' ') === 'shell cat /proc/sys/kernel/random/boot_id') bootId = value.trim();
+    return value;
+  }, reviewed, user, target);
+  const firstBootGrants = verifyFirstBootGrants(run, reviewed, user);
+  const shell = (...args: string[]) => run('shell', ...args).trim();
+  if (shell('cat', '/proc/sys/kernel/random/boot_id') !== bootId ||
+      shell('getprop', 'ro.build.fingerprint') !== reviewed.fingerprint ||
+      shell('am', 'get-current-user') !== user || shell('am', 'get-started-user-state', user) !== 'RUNNING_UNLOCKED' ||
+      shell('pm', 'path', '--user', user, reviewed.packageName) !== `package:${reviewed.apkPath}` ||
+      shell('sha256sum', reviewed.apkPath).split(/\s+/)[0] !== reviewed.apkSha256)
+    throw Error('Image, user or APK changed during runtime-grant verification');
+  return {...report, bootId, firstBootGrants, scope: report.scope + '; first-boot runtime grants for the same boot, user and APK'};
 }
 
 export function runAlphaLauncherVerifier(argv: string[], target: ImageTarget) {
-  // The shared JS entry supports the target strings as well as its null default.
-  const main = sharedMain as unknown as (
-    args: string[], options: {target: ImageTarget; admitDescriptor: typeof validateExpectation},
-  ) => ReturnType<typeof sharedMain>;
-  // The shared CLI runs the shared checks only, so the first-boot grants are read here first; a
-  // refusal leaves no report, and so no PASS.
+  let output: number | undefined;
   try {
     const options = (parseShared as unknown as (args: string[], target: ImageTarget) => Record<string, string>)(argv, target);
-    const run: AdbRead = (...args) => execFileSync(options['--adb'] ?? 'adb', ['-s', options['--serial'], ...args], {encoding: 'utf8', timeout: 15_000, maxBuffer: 16 << 20, stdio: ['ignore', 'pipe', 'pipe']});
-    verifyFirstBootGrants(run, {...JSON.parse(fs.readFileSync(options['--descriptor'], 'utf8')), fingerprint: options['--fingerprint'], apkPath: options['--apk-path']}, options['--user']);
+    // Own one report so a grant refusal has the same durable failure result as the shared image checks.
+    output = fs.openSync(options['--out'], 'wx', 0o600);
+    const descriptor = fs.readFileSync(options['--descriptor']);
+    const expected = {...JSON.parse(descriptor.toString('utf8')), fingerprint: options['--fingerprint'], apkPath: options['--apk-path'], ...(options['--listener'] ? {listener: true} : {})};
+    const run: AdbRead = (...args) => {
+      try { return execFileSync(options['--adb'] ?? 'adb', ['-s', options['--serial'], ...args], {encoding: 'utf8', timeout: 15_000, maxBuffer: 16 << 20, stdio: ['ignore', 'pipe', 'pipe']}); }
+      catch { throw Error('ADB observation failed or timed out'); }
+    };
+    const report = {...verifyAlphaLauncherImage(run, expected, options['--user'], target), descriptorSha256: createHash('sha256').update(descriptor).digest('hex'), observedAt: new Date().toISOString()};
+    fs.writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
+    console.log(`PASS ${options['--out']}: ${report.evidence} checks only`);
   } catch (error) {
-    console.error(String(error instanceof Error ? error.message : error).slice(0, 1024));
+    const message = String(error instanceof Error ? error.message : error).slice(0, 1024);
+    if (output !== undefined) fs.writeFileSync(output, `${JSON.stringify({passed: false, evidence: `${target}-launcher-postboot`, error: message, observedAt: new Date().toISOString()}, null, 2)}\n`);
+    console.error(message);
     process.exitCode = 1;
-    return;
-  }
-  return main(argv, {target, admitDescriptor: validateExpectation});
+  } finally { if (output !== undefined) fs.closeSync(output); }
 }
 
 /** Injected runner enables controlled negative tests; all commands are read-only. */

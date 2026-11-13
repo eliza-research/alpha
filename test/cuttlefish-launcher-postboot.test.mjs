@@ -31,7 +31,7 @@ function fixture(overrides={}) {
 }
 test('exact image and system launcher checks remain read-only and narrowly scoped',()=>{
  const f=fixture(),r=verifyCuttlefishLauncher(f.run,expected,'0');
- assert.equal(r.passed,true);assert.equal(f.hashes(),2);
+ assert.equal(r.passed,true);assert.equal(f.hashes(),3,'APK bytes are checked again after the runtime-grant read');
  assert.deepEqual(r.recoveryHomes,['com.android.launcher3/com.android.launcher3.Launcher']);
  assert.equal(r.clock.fingerprint,expected.fingerprint);assert.equal(r.clock.ringingVerified,false);assert.equal(r.runtimeExecutionVerified,false);assert.equal(r.physicalDeviceVerified,false);
  assert.ok(f.calls.every(a=>a[0]==='shell'&&!a.some(x=>['install','uninstall','start','set','grant','reboot'].includes(x))));

@@ -7,7 +7,7 @@ import {verifyPixel10aImage, verifiedBootProblem, main} from '../scripts/verify-
 const pkg='ai.alphacompute.alphaphone';
 const expected={packageName:pkg,apkSha256:'a'.repeat(64),certificateSha256:'b'.repeat(64),fingerprint:'Alpha/alpha_stallion_phone/stallion:17/test:user/release-keys',apkPath:'/product/app/AlphaPhone/AlphaPhone.apk',defaultPermissions:['android.permission.RECORD_AUDIO','android.permission.CAMERA']};
 // Self-contained so the same responder also serves as a fake adb executable for the CLI test.
-function respond(s,expected,bootState){
+function respond(s,expected,bootState,granted='true'){
  const pkg=expected.packageName;
  if(s==='shell getprop ro.boot.verifiedbootstate')return bootState;
  if(s==='shell getprop ro.boot.slot_suffix')return '_a';
@@ -26,7 +26,7 @@ function respond(s,expected,bootState){
  if(s.includes('pm list packages')&&s.endsWith('com.android.launcher3'))return 'package:com.android.launcher3';
  if(s.includes('pm list packages')&&s.endsWith('com.android.deskclock'))return 'package:com.android.deskclock';
  if(s.includes('query-activities')&&s.endsWith('com.android.deskclock'))return 'com.android.deskclock/.HandleApiCalls';
- if(s===`shell dumpsys package ${pkg}`)return 'Packages:\n    User 0: ceDataInode=1 installed=true\n      runtime permissions:\n'+expected.defaultPermissions.map(name=>'        '+name+': granted=true, flags=[ GRANTED_BY_DEFAULT]').join('\n')+'\n    User 10: installed=true\n';
+ if(s===`shell dumpsys package ${pkg}`)return 'Packages:\n    User 0: ceDataInode=1 installed=true\n      runtime permissions:\n'+expected.defaultPermissions.map(name=>'        '+name+': granted='+granted+', flags=[ GRANTED_BY_DEFAULT]').join('\n')+'\n    User 10: installed=true\n';
  if(s==='shell dumpsys webviewupdate')return 'Current WebView package (name, version): (com.android.webview, 145.0.1)';
  throw Error('Unexpected command '+s);
 }
@@ -42,16 +42,32 @@ for(const state of ['orange','red','',undefined])test(`rejects verified boot sta
 test('CLI writes a failing report on an unlocked (orange) device',t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pixel10a-image-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
  const adb=path.join(dir,'adb'),descriptor=path.join(dir,'launcher.json');
- fs.writeFileSync(adb,`#!${process.execPath}\n${respond}\ntry{process.stdout.write(respond(process.argv.slice(4).join(' '),${JSON.stringify(expected)},process.env.FAKE_VERIFIED_BOOT_STATE))}catch(e){console.error(e.message);process.exit(1)}\n`,{mode:0o700});
+ fs.writeFileSync(adb,`#!${process.execPath}\n${respond}\ntry{process.stdout.write(respond(process.argv.slice(4).join(' '),${JSON.stringify(expected)},process.env.FAKE_VERIFIED_BOOT_STATE,process.env.FAKE_PERMISSION_STATE))}catch(e){console.error(e.message);process.exit(1)}\n`,{mode:0o700});
  const {fingerprint,apkPath,...descriptorBody}=expected;fs.writeFileSync(descriptor,JSON.stringify(descriptorBody));
- const cli=(state,out)=>{
-  process.env.FAKE_VERIFIED_BOOT_STATE=state;// Bun ignores `process.exitCode=undefined`, so the neutral value is an explicit 0.
+ const cli=(state,out,granted='true')=>{
+  process.env.FAKE_VERIFIED_BOOT_STATE=state;process.env.FAKE_PERMISSION_STATE=granted;// Bun ignores `process.exitCode=undefined`, so the neutral value is an explicit 0.
   const exit=process.exitCode??0;process.exitCode=0;
   try{main(['--serial','ABC12345','--user','0','--descriptor',descriptor,'--fingerprint',fingerprint,'--apk-path',apkPath,'--out',out,'--adb',adb]);return [process.exitCode,JSON.parse(fs.readFileSync(out,'utf8'))];}
-  finally{process.exitCode=exit;delete process.env.FAKE_VERIFIED_BOOT_STATE;}
+  finally{process.exitCode=exit;delete process.env.FAKE_VERIFIED_BOOT_STATE;delete process.env.FAKE_PERMISSION_STATE;}
  };
  const [okExit,ok]=cli('yellow',path.join(dir,'yellow.json'));
- assert.equal(okExit,0);assert.equal(ok.passed,true);assert.equal(ok.verifiedBoot.state,'yellow');
+ assert.equal(okExit,0);assert.equal(ok.passed,true);assert.equal(ok.verifiedBoot.state,'yellow');assert.deepEqual(ok.firstBootGrants,expected.defaultPermissions);
  const [badExit,bad]=cli('orange',path.join(dir,'orange.json'));
  assert.equal(badExit,1);assert.equal(bad.passed,false);assert.match(bad.error,/"orange" is not green or yellow/);
+ const [missingExit,missing]=cli('yellow',path.join(dir,'missing-grants.json'),'false');assert.equal(missingExit,1);assert.equal(missing.passed,false);assert.match(missing.error,/First-boot grants missing/);
+});
+
+for(const fact of ['boot','user','user running state','APK','APK bytes'])test(`rejects ${fact} changing during the runtime-grant observation`,()=>{
+ let changed=false;
+ const run=(...args)=>{
+  const command=args.join(' ');
+  if(command===`shell dumpsys package ${pkg}`)changed=true;
+  if(changed&&fact==='boot'&&command==='shell cat /proc/sys/kernel/random/boot_id')return '22345678-1234-1234-1234-123456789abc';
+  if(changed&&fact==='user'&&command==='shell am get-current-user')return '10';
+  if(changed&&fact==='user running state'&&command==='shell am get-started-user-state 0')return 'STOPPING';
+  if(changed&&fact==='APK bytes'&&command===`shell sha256sum ${expected.apkPath}`)return 'c'.repeat(64)+'  '+expected.apkPath;
+  if(changed&&fact==='APK'&&command===`shell pm path --user 0 ${pkg}`)return 'package:/data/app/Alpha/base.apk';
+  return respond(command,expected,'yellow');
+ };
+ assert.throws(()=>verifyPixel10aImage(run,expected,'0'),/changed during/);
 });
