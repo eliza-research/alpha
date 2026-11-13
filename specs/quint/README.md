@@ -54,6 +54,10 @@ SettingsNav uses full `tlc` exploration of its finite historical design model.
 Its original row inventories, initializer, transition relation and invariants are
 retained; this historical comparison does not establish current runtime behavior.
 
+BookmarksHydration also uses full `tlc`, retaining its finite queue, store-version
+and recovery domains. Its source replay remains a partial renderer contract with
+controlled browser ports, as described in its manifest.
+
 `quint:tests` prepares the explicitly inventoried historical source revisions and runs the
 `test/quint-*` owners. They compare product behavior with model transitions. Whole-file refinement
 and the retained partial-source contract regressions below have distinct evidence scopes.
