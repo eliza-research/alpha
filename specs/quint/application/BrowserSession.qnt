@@ -3,6 +3,8 @@
 module BrowserSession {
   // The source allows 8 open tabs (normal and private together); 3 stand for that limit.
   pure val Cap = 3
+  // Three saved normal tabs and a fresh launch tab need four distinct identities.
+  pure val NormalIds = Set(1, 2, 4, 5)
   type State = { normal: Set[int], privateTabs: Set[int], saved: Set[int], active: int,
     epoch: int, captured: int, navigating: bool, committed: bool, pristine: bool,
     history: Set[int], privatePage: bool, privateHistory: Set[int],
@@ -31,14 +33,12 @@ module BrowserSession {
   // Saved tabs, in saved order, that are not already open and still fit under the limit.
   val added = s.savedOrder.foldl(List(), (fit, id) =>
     if (open.contains(id) or open.size() + fit.length() >= Cap) fit else fit.append(id))
-  action normalTab = all { not(s.normal.contains(2)), open.size() < Cap,
-    s' = { ...s, normal: s.normal.union(Set(2)), order: s.order.append(2),
-      active: 2, privatePage: false, pristine: false, navigating: false,
+  action normalTabWithId(id: int): bool = all { NormalIds.contains(id), not(open.contains(id)), open.size() < Cap,
+    s' = { ...s, normal: s.normal.union(Set(id)), order: s.order.append(id),
+      active: id, privatePage: false, pristine: false, navigating: false,
       tabsOpen: false, focusedTab: 0, intendedTab: 0 } }
-  action thirdNormalTab = all { not(s.normal.contains(4)), open.size() < Cap,
-    s' = { ...s, normal: s.normal.union(Set(4)), order: s.order.append(4),
-      active: 4, privatePage: false, pristine: false, navigating: false,
-      tabsOpen: false, focusedTab: 0, intendedTab: 0 } }
+  action normalTab = normalTabWithId(2)
+  action thirdNormalTab = normalTabWithId(4)
   action privateTab = all { not(s.privateTabs.contains(3)), open.size() < Cap,
     s' = { ...s, privateTabs: s.privateTabs.union(Set(3)), order: s.order.append(3), active: 3,
       privatePage: true, pristine: false, navigating: false,
@@ -46,7 +46,7 @@ module BrowserSession {
   // A pop-up the native browser opened inherits its opener's privacy. Past the limit the
   // renderer closes it again instead of keeping a tab that would never be saved.
   action popupOpened(id: int): bool = all { not(open.contains(id)),
-    if (s.privatePage) id == 3 else id.in(Set(2, 4)),
+    if (s.privatePage) id == 3 else NormalIds.contains(id),
     s' = if (open.size() >= Cap) s
       else { ...s, normal: if (s.privatePage) s.normal else s.normal.union(Set(id)),
         privateTabs: if (s.privatePage) s.privateTabs.union(Set(id)) else s.privateTabs,
@@ -100,23 +100,29 @@ module BrowserSession {
       history: s.savedHistory, hydrated: true, restorePending: false, clearing: false,
       launchSaved: s.saved, launchHistory: s.savedHistory, owed: Set() }
   }
-  // A launch whose saved record has not been read yet: one new tab, nothing may be saved.
-  action coldStart = s' = { ...s, normal: Set(1), order: List(1), privateTabs: Set(), privateHistory: Set(),
-    active: 1, privatePage: false, navigating: false, pristine: true, tabsOpen: false, focusedTab: 0,
-    intendedTab: 0, history: Set(), hydrated: false, restorePending: true, clearing: false,
-    launchSaved: s.saved, launchHistory: s.savedHistory, owed: Set() }
+  // A launch whose saved record has not been read yet: one fresh tab, nothing may be saved.
+  // Canonicalize the random source identity to an unused representative. The old process's
+  // open tabs retire here; only saved identities must remain distinct from the new placeholder.
+  action coldStart = {
+    val fresh = if (not(s.saved.contains(1))) 1 else if (not(s.saved.contains(5))) 5
+      else if (not(s.saved.contains(2))) 2 else 4
+    s' = { ...s, normal: Set(fresh), order: List(fresh), privateTabs: Set(), privateHistory: Set(),
+      active: fresh, privatePage: false, navigating: false, pristine: true, tabsOpen: false, focusedTab: 0,
+      intendedTab: 0, history: Set(), hydrated: false, restorePending: true, clearing: false,
+      launchSaved: s.saved, launchHistory: s.savedHistory, owed: Set() }
+  }
   // The read settles while the launch tab is untouched. A failed read leaves saving off, so the
   // record stays as it was.
-  action restoreRead(ok: bool): bool = all { s.restorePending, s.pristine or not(ok),
+  action restoreRead(ok: bool): bool = all { s.restorePending, (s.pristine and not(s.tabsOpen)) or not(ok),
     s' = if (not(ok)) { ...s, restorePending: false }
       else if (s.saved.size() == 0) { ...s, restorePending: false, hydrated: true,
         history: s.history.union(s.savedHistory) }
       else { ...s, restorePending: false, hydrated: true, normal: s.saved, order: s.savedOrder,
         active: if (s.saved.contains(s.savedActive)) s.savedActive else firstTab(s.savedOrder),
         privatePage: false, history: s.history.union(s.savedHistory) } }
-  // The read settles after the user already acted: the open tabs stay, still selected, the saved
-  // history is merged and the saved tabs that fit follow the open ones, so the next save keeps them.
-  action lateRestore = all { not(s.pristine), s.restorePending,
+  // The read settles after the user already acted or opened the tab chooser: open tabs and
+  // focus stay, history is merged and saved tabs that fit follow them, so the next save keeps them.
+  action lateRestore = all { not(s.pristine) or s.tabsOpen, s.restorePending,
     s' = { ...s, restorePending: false, hydrated: true, normal: s.normal.union(tabSet(added)),
       order: s.order.concat(added), owed: tabSet(added), history: s.history.union(s.savedHistory) } }
   action clearStart = all { not(s.clearing), not(s.restorePending), s' = { ...s, clearing: true } }
@@ -137,9 +143,9 @@ module BrowserSession {
   action retireNavigation = all { s.epoch < 2,
     s' = { ...s, epoch: s.epoch + 1, navigating: false } }
   action step = {
-    nondet id = Set(1, 2, 3, 4).oneOf()
+    nondet id = NormalIds.union(Set(3)).oneOf()
     nondet ok = Set(false, true).oneOf()
-    any { normalTab, thirdNormalTab, privateTab, popupOpened(id), showTabs, focusTab(id), closeTab(id), activateFocusedTab,
+    any { normalTabWithId(id), privateTab, popupOpened(id), showTabs, focusTab(id), closeTab(id), activateFocusedTab,
       navigate, commit, loadFailed, snapshot, closePrivate, restart, coldStart, restoreRead(ok), lateRestore,
       clearStart, clearDone(ok), retireNavigation, s' = s }
   }
@@ -169,8 +175,19 @@ module BrowserSession {
   // added after them, so the next save still contains it.
   run lateRestoreTest = init.then(thirdNormalTab).then(navigate).then(commit).then(snapshot)
     .then(coldStart).then(normalTab).then(lateRestore)
-    .expect(s.active == 2 and s.order == List(1, 2, 4) and s.owed == Set(4) and s.history == Set(4) and safety)
-    .then(snapshot).expect(s.saved == Set(1, 2, 4) and safety)
+    .expect(s.active == 2 and s.order == List(5, 2, 1) and s.owed == Set(1) and s.history == Set(4) and safety)
+    .then(snapshot).expect(s.saved == Set(1, 2, 5) and safety)
+  run focusedTabSurvivesRestoreTest = init.then(normalTab).then(closeTab(1)).then(snapshot)
+    .then(coldStart).then(showTabs).then(focusTab(1)).then(lateRestore)
+    .expect(s.order == List(1, 2) and s.active == 1 and s.focusedTab == 1 and s.intendedTab == 1 and
+      s.owed == Set(2) and safety)
+    .then(activateFocusedTab).expect(s.active == 1 and safety)
+  run fullSavedRecordKeepsFreshFocusedTabTest = init.then(normalTab).then(thirdNormalTab).then(snapshot)
+    .then(coldStart).expect(s.active == 5 and not(s.saved.contains(s.active)))
+    .then(showTabs).then(focusTab(5)).then(lateRestore)
+    .expect(s.order == List(5, 1, 2) and s.active == 5 and s.focusedTab == 5 and s.intendedTab == 5 and
+      s.saved == Set(1, 2, 4) and s.owed == Set(1, 2) and safety)
+    .then(activateFocusedTab).expect(s.active == 5 and safety)
   run normalHistoryTest = init.then(navigate).then(commit).then(snapshot)
     .then(restart).expect(s.history.contains(1) and safety)
   run closeEarlierTabKeepsFocusTest = init.then(normalTab).then(thirdNormalTab).then(showTabs)
