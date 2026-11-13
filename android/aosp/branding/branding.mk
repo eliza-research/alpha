@@ -7,3 +7,4 @@ PRODUCT_PACKAGES += AlphaFrameworkOverlay AlphaSystemUIOverlay AlphaSettingsOver
 PRODUCT_PACKAGE_OVERLAYS += $(alpha_branding_dir)/keyboard-overlay
 PRODUCT_ENFORCE_RRO_EXCLUDED_OVERLAYS += $(alpha_branding_dir)/keyboard-overlay
 PRODUCT_COPY_FILES += $(alpha_branding_dir)/generated/bootanimation.zip:$(TARGET_COPY_OUT_PRODUCT)/media/bootanimation.zip
+PRODUCT_COPY_FILES += $(alpha_branding_dir)/generated/bootanimation.zip:$(TARGET_COPY_OUT_PRODUCT)/media/bootanimation-dark.zip

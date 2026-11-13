@@ -14,6 +14,11 @@ CORE=BRAND/'core-launcher'
 core_baseline=lambda relative:(CORE/'.cache/baseline'/relative).read_bytes()
 
 class FreshPresets(unittest.TestCase):
+ def test_alpha_boot_animation_covers_both_device_themes(self):
+  source=(BRAND/'branding.mk').read_text()
+  for destination in ['bootanimation.zip','bootanimation-dark.zip']:
+   self.assertIn('generated/bootanimation.zip:$(TARGET_COPY_OUT_PRODUCT)/media/'+destination,source)
+
  def test_alpha_runtime_defaults_cover_phone_contacts_sms_and_setup(self):
   root=ET.parse(BRAND/'default-permissions-alpha-phone.xml').getroot()
   package=root.find("exception[@package='ai.elizaresearch.alphaphone']")
