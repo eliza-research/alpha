@@ -1185,6 +1185,16 @@ private static final class ResidentAttachDiagnostic {
   synchronized(lifecycleLock){requireEnrollmentRoot(epoch,root);AlphaCanonicalNotifications.suspendForRestart();rootToken=root;ownerToken=token;ownerIdentity=paired.getString("identityId");notificationAgent=null;expiresAt=expiry;AlphaCanonicalNotifications.ensure(getContext());return token;}
   }
  }
+ // Keep these read-only routes aligned with conversation-read-path.ts.
+ static boolean conversationReadPathAllowed(String path,String method) {
+  return "GET".equals(method)&&path.length()<=2048&&(
+   path.matches("^/api/conversations/messages/search\\?q=(?:[A-Za-z0-9_.*+~-]|%[0-9A-Fa-f]{2})+&limit=50&offset=[0-9]{1,9}$")||
+   path.matches("^/api/conversations/[A-Za-z0-9_-]+/messages\\?around=[0-9a-fA-F-]{36}$"));
+ }
+ // Match the server's 20 MiB image-capable chat request limit; other routes keep their cap.
+ static int requestBodyLimit(String path,String method) {
+  return "POST".equals(method)&&path.matches("^/api/conversations/[A-Za-z0-9_-]+/messages(/stream)?$")?20*1024*1024:2*1024*1024;
+ }
  private static void logRequestFailure(String category,String method,int status,String reason) {
   String safeMethod=java.util.Arrays.asList("GET","POST","PATCH","DELETE").contains(method)?method:"OTHER";
   android.util.Log.w("AlphaAgentRequest","category="+category+" method="+safeMethod+" status="+status+" reason="+reason);
@@ -1195,7 +1205,11 @@ private static final class ResidentAttachDiagnostic {
   OwnerRoutes routes;
   try{routes=OwnerRoutes.shipped(getContext().getAssets()::open);}catch(IllegalStateException unavailable){logRequestFailure("other",method,0,"route-table");call.reject("Unsupported local agent request.");return;}
   String group=routes.group(path);
-  if((group!=null? !routes.allowed(group,path,method)||expectedOwner==null||expectedOwner.trim().isEmpty() : ((path.startsWith("/api/views/")||path.endsWith("/messages/truncate")||path.endsWith("/heard"))&&(!method.equals("POST")||expectedOwner==null||expectedOwner.trim().isEmpty()))||(path.equals("/api/asr/local-inference/end-of-turn")&&!method.equals("POST"))||(path.contains("?before=")&&!method.equals("GET"))||(path.startsWith("/api/turns/")&&!method.equals("POST"))||path.contains("..")||path.contains("%")||path.contains("\\")||!path.matches("^/api/(auth/me|agents|status|cloud/warm|conversations(/[A-Za-z0-9_-]+(/messages(/truncate|/[0-9a-fA-F-]{36}/heard|\\?before=[0-9]{1,16}(&beforeId=[0-9a-fA-F-]{36})?(&limit=[0-9]{1,3})?)?)?)?|turns/[0-9a-fA-F-]{36}/abort|views/(interact-(claim|result)|[A-Za-z0-9_-]+/navigate)|client-devices/[A-Za-z0-9_/-]+|workflow(/[A-Za-z0-9_/?=&-]+)?|asr/local-inference/(live(/status)?|end-of-turn))$")||!(method.equals("GET")||method.equals("POST")))||((method.equals("GET")||method.equals("DELETE"))&&body!=null)||(body!=null&&body.length()>2*1024*1024)){
+  boolean invalidRoute;
+  if(group!=null)invalidRoute=!routes.allowed(group,path,method)||expectedOwner==null||expectedOwner.trim().isEmpty();
+  else if(conversationReadPathAllowed(path,method))invalidRoute=false;
+  else invalidRoute=((path.startsWith("/api/views/")||path.endsWith("/messages/truncate")||path.endsWith("/heard"))&&(!method.equals("POST")||expectedOwner==null||expectedOwner.trim().isEmpty()))||(path.equals("/api/asr/local-inference/end-of-turn")&&!method.equals("POST"))||(path.contains("?before=")&&!method.equals("GET"))||(path.startsWith("/api/turns/")&&!method.equals("POST"))||path.contains("..")||path.contains("%")||path.contains("\\")||!path.matches("^/api/(auth/me|agents|status|cloud/warm|conversations(/[A-Za-z0-9_-]+(/messages(/truncate|/[0-9a-fA-F-]{36}/heard|\\?before=[0-9]{1,16}(&beforeId=[0-9a-fA-F-]{36})?(&limit=[0-9]{1,3})?)?)?)?|turns/[0-9a-fA-F-]{36}/abort|views/(interact-(claim|result)|[A-Za-z0-9_-]+/navigate)|client-devices/[A-Za-z0-9_/-]+|workflow(/[A-Za-z0-9_/?=&-]+)?|asr/local-inference/(live(/status)?|end-of-turn))$")||!(method.equals("GET")||method.equals("POST"));
+  if(invalidRoute||((method.equals("GET")||method.equals("DELETE"))&&body!=null)||(body!=null&&body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>requestBodyLimit(path,method))){
    logRequestFailure(group==null?"other":group,method,0,"gate");
    call.reject("Unsupported local agent request.");return;
   }
@@ -1224,7 +1238,7 @@ private static final class ResidentAttachDiagnostic {
  }
  @PluginMethod public void requestStream(PluginCall call) {
   String id=call.getString("streamId",""),path=call.getString("path",""),owner=call.getString("ownerId",""),body=call.getString("body","");
-  if(!id.matches("[A-Za-z0-9-]{16,64}")||id.startsWith("voice-")||id.startsWith("view-")||!path.matches("^/api/conversations/[A-Za-z0-9_-]+/messages/stream$")||owner.isEmpty()||body.isEmpty()||body.length()>2*1024*1024){call.reject("Unsupported local stream.");return;}
+  if(!id.matches("[A-Za-z0-9-]{16,64}")||id.startsWith("voice-")||id.startsWith("view-")||!path.matches("^/api/conversations/[A-Za-z0-9_-]+/messages/stream$")||owner.isEmpty()||body.isEmpty()||body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>requestBodyLimit(path,"POST")){call.reject("Unsupported local stream.");return;}
   final long epoch;final var handle=new ElizaAgentService.LocalStreamHandle();
   try{synchronized(lifecycleLock){epoch=admittedEpoch();if(streams.keySet().stream().filter(value->!value.startsWith("voice-")&&!value.startsWith("view-")).count()>=2||streams.containsKey(id))throw new IllegalStateException();streams.put(id,handle);streamInvalidators.put(id,()->notifyListeners("alphaAgentStream",new JSObject().put("streamId",id).put("event",new JSObject().put("type","complete").put("error","Local connection changed. Outcome unknown; check history before retrying."))));}}
   catch(Exception unavailable){call.reject("Local stream unavailable.");return;}

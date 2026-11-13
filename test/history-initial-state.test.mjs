@@ -33,12 +33,13 @@ test('history does not import concurrent messages from another room',()=>{const 
 test('explicit history selection retains its existing full-chat and draft-clear behavior',()=>{const f=fixture();f.shell.state.draft='old room draft';f.setSnapshot({...f.snapshot,history:{...history(),automatic:false}});f.changed();f.flush();assert.equal(f.shell.state.chat,'full');assert.equal(f.shell.state.draft,'');assert.equal(f.shell.state.msgs[0].id,'saved');});
 
 test('history restores a saved user attachment through the owner and room scoped document port',async()=>{
- const attachment={transcriptAttachment:{title:'Saved transcript',text:'Reviewed words'}},f=fixture({savedAttachment:attachment});
+ const attachment={transcriptAttachment:{title:'Saved transcript',text:'Reviewed words'},fileAttachments:[{id:'file',name:'saved.txt',data:'dGVzdA==',mimeType:'text/plain'}]},f=fixture({savedAttachment:attachment});
  const session={sessionId:'owner-a',origin:'https://owner.invalid',ownerId:'owner',agentId:'agent'};
  f.setSnapshot({...f.snapshot,session,history:history([{id:'saved',clientMessageId:'client-message',from:'user',text:'Attached transcript'}])});
  f.changed();f.flush();await new Promise(setImmediate);f.flush();
  assert.deepEqual(f.attachmentReads,[['chat-attachment-v1',session.origin,session.ownerId,session.agentId,'room','client-message']]);
  assert.equal(f.shell.state.msgs[0].transcriptAttachment.title,'Saved transcript');
+ assert.equal(f.shell.state.msgs[0].fileAttachments[0].name,'saved.txt');
 });
 test('asynchronous attachment restoration cannot replace messages after an owner change',async()=>{
  const f=fixture({savedAttachment:{transcriptAttachment:{title:'Old owner transcript'}}});
