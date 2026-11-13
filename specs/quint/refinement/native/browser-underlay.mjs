@@ -53,7 +53,7 @@ export async function checkBrowserUnderlay(extraSources = []) {
     const traces = JSON.parse(execFileSync(javaBinary('java'), ['-cp', classpath, 'BrowserUnderlayTracesKt'],
       {encoding: 'utf8', timeout: 30000}));
     return await checkTraces({model: 'BrowserUnderlay', sources, driverHashes, traces,
-      generatedSources: [file], scope: 'partial-source-contract', assumptions: [
+      generatedSources: [file], scope: 'bounded-component', assumptions: [
         'The unmodified production Kotlin touch-router fields, initialization, page selection, coordinate forwarding and dispatchTouchEvent execute on the JVM. Production takesPageInput gates the supplied page list.',
         'Only gesture ownership is observed. Android page visibility, selection, pause, disposal and geometry are controlled ports; their plugin lifecycle transitions are not claimed by this projection.',
         'Withdrawal and its next input delivery form one observation. The actual router must issue exactly one CANCEL and consume later motion; it must not replay cancellation.',

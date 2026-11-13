@@ -36,7 +36,7 @@ export async function checkNativeDigestConsent(extraSources=[]) {
     for(const trace of traces)for(const {expect} of [trace,...trace.steps])
       expect['s.rows']=qmap(Object.entries(expect['s.rows']).map(([id,row])=>[Number(id),row]));
     const receipt=await checkTraces({model,sources,driverHashes,generatedSources:fixture.paths,traces,
-      scope: 'partial-source-contract',assumptions:[
+      scope: 'bounded-orchestration',assumptions:[
         'Actual NativeDigestHost and NativeDigestSources execute with exact HostedDelivery.nativeSource admission and generation check calls. Resident transport, source identity, Android permission and Calendar/Reminder source reads are closed synthetic ports.',
         'Two synthetic owners and two source slots, reviewed scope classes, one held operation and selected wall clock boundaries. The source uses actual 23-hour owner day projection, scope parsing, exact revision hash, and item and serialized byte limits.',
         'The store port records before-commit refusal, lost acknowledgement after commit, and a foreground transition following the grant write. Exact reply classification, durable row state and projected fields are observed.',

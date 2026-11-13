@@ -52,7 +52,7 @@ export async function checkNativeAppInfoHandoff(extraSources = []) {
   return withAppInfoSource(async ({sources, driverHashes, generatedSources, javaSources}) => {
     const traces = javaTraces(harness, javaSources);
     const receipt = await checkTraces({
-      model, sources, driverHashes, generatedSources, traces, scope: 'partial-source-contract', assumptions:[
+      model, sources, driverHashes, generatedSources, traces, scope: 'bounded-orchestration', assumptions:[
         'The complete AlphaSystemPlugin compiles and openAppInfo runs with exact authenticated SystemLauncherApps validation and codes and the installed Capacitor getData/getString members.',
         'A synthetic installed package and two distinct launcher profiles exercise personal and exact-profile lookup. Disabled packages and paused and locked profiles are fixture inputs.',
         'Only closed ports receive intent and profile dispatch attempts. Each checkpoint represents one completed synchronous Capacitor request or a controlled environment change.',

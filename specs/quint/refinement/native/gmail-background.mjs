@@ -60,7 +60,7 @@ export async function checkNativeGmailBackground(extraSources=[]) {
     const traces=javaTraceCampaign(harness,[...compiled,...fixture.paths],scenarios.map(name=>[name]));
     // Keep every trace; bounded batches prevent one large generated checker from timing out.
     const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,batchSize:8,
-      scope: 'partial-source-contract',assumptions:[
+      scope: 'bounded-orchestration',assumptions:[
         'The app-owned AlphaGmailPlugin, GmailBackground, GmailDeliveryWorker and CloudDeployment run with authenticated staged MailBackgroundDelivery and MailHistoryReconciliation. The exact native verified Cloud identity helper runs over synthetic responses.',
         'Every JVM URL open is intercepted and accepts only the exact constructed Cloud routes. No network request, socket, real credential or provider action is used. One held transport callback and two serial bridge instances exercise owner retirement and readback.',
         'The exact Activity/bridge teardown calls shut the real product executor in one schedule. A second schedule delays execute on a forwarding port backed by the real executor, then lets a later selection reach admission before delivering the older rejection. Accepted worker draining is outside this refusal boundary.',

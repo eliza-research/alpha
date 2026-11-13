@@ -39,7 +39,7 @@ export async function checkNativeSourceRenewal(extraSources=[]) {
       expect['s.visible']=qset(expect['s.visible']);
       expect['s.routes']=qset(expect['s.routes']);
     }
-    const receipt=await checkTraces({model,sources,driverHashes,generatedSources:ports,traces,scope: 'partial-source-contract',assumptions:[
+    const receipt=await checkTraces({model,sources,driverHashes,generatedSources:ports,traces,scope: 'bounded-orchestration',assumptions:[
       'Actual SourceRenewalNotices, SourceRenewalHost, HostedNoticePoster and selected renewal intent/pending/settle bridge members.',
       'Four exact synthetic owner/revision/source bindings. Runtime token UUIDs are projected by observed durable equality classes.',
       'Credential-slot reports, resident describe replies, Android notification manager, and PendingIntent identity are closed ports. The actual builder creates only synthetic alerts.',

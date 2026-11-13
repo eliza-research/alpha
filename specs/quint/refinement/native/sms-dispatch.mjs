@@ -96,7 +96,7 @@ export async function checkNativeSmsDispatch(extraSources = []) {
       for(const view of ['memory','disk'])for(const field of ['sent','failed','reported','delivered','deliveryFailed','rows'])
         expect['s.'+view][field]=qset(expect['s.'+view][field]);
     }
-    const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,scope: 'partial-source-contract',assumptions:[
+    const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,scope: 'bounded-orchestration',assumptions:[
       'The exact product telephony plugin and receiver use the authenticated staged SMS dispatch/journal and extracted exact review and provider members.',
       'Synthetic radio, provider, dialog, Android image/permissions and encrypted-slot ports execute no device or real SMS operations.',
       'Exact registered identities and per-bridge opaque operation-ID notifications are observed. The synthetic Handler runs posted work immediately within each macrostep; arbitrary held UI-queue retirement races remain separate.',

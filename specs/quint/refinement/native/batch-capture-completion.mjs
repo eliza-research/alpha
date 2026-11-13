@@ -151,7 +151,7 @@ export async function checkBatchCaptureCompletion(extraSources=[]){
  const driverHashes=captureInputs(sources);
  const make=extractImplementation(),traces=[];
  for(const name of batchCaptureScenarios)traces.push(await generate(make,name));
- return checkTraces({model,modelPath,sources,driverHashes,traces,scope: 'partial-source-contract',assumptions:[
+ return checkTraces({model,modelPath,sources,driverHashes,traces,scope: 'bounded-orchestration',assumptions:[
   'The exact renderer captureConversationAudio closure and its clip guard execute with a read-only observer. Capacitor delivery, clock, native stop and cleanup are controlled ports.',
   'One held start, two distinguishable recording IDs and settled synchronous or promise effects bound this projection. The shared loop and actual JVM recorder are checked separately.',
   'Installed callback transport, concurrently pending detach/cleanup, PCM and media erasure remain external.'

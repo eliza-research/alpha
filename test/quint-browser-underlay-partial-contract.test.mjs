@@ -9,7 +9,7 @@ test('partial source contract: Browser underlay keeps actual touch and layout cu
   assert.equal(receipt.passed,true);
   assert.equal(receipt.inputsUnchanged,true);
   assert.equal(receipt.driverInputsBound,true);
-  assert.equal(receipt.scope,'partial-source-contract');
+  assert.equal(receipt.scope,'bounded-component');
   assert.equal(receipt.traces,8);
   assert.equal(receipt.checkpoints,39);
 });

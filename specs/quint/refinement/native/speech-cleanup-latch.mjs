@@ -126,5 +126,5 @@ export function createDriver(code) {
 
 export async function runSpeechCleanupLatchReplay({random = 80, steps = 40} = {}) {
   const code = compile(), traces = modelTraces({...model, scenarios, witnesses, random, steps});
-  return {...await replayTraces(traces, () => createDriver(code), {project}), scope: 'partial-source-contract'};
+  return replayTraces(traces, () => createDriver(code), {project});
 }

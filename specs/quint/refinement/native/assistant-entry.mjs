@@ -74,7 +74,7 @@ export async function checkNativeAssistantEntry(extraSources=[]) {
       for(const step of trace.steps) mapSurfaces(step.expect);
     }
     const receipt=await checkTraces({model,sources,driverHashes,generatedSources:fixture.paths,traces,
-      scope: 'partial-source-contract',assumptions:[
+      scope: 'bounded-orchestration',assumptions:[
         'Actual AlphaSenseAdmission, AlphaImageCapabilities, pinned ImageCapability, assistant and Power Activity subclasses, MainActivity and tile compile with unmodified pinned SenseInvocation, SenseListenerClient and AssistantEntryTile. Exact AlphaLocalAgentPlugin PowerLaunchPin and two legacy readbacks are extracted with closed credential ports.',
         'A controlled Capacitor BridgeActivity supplies bridge assignment and virtual one-argument intent reentry. One adversarial schedule passes a copied object through the same hook. The API 35 port forwards the ComponentCaller overload to the one-argument override. Installed Capacitor bridge-load ordering, Android caller disclosure, signer enforcement, Activity delivery and lifecycle scheduling are external.',
         'Two Activity and bridge identities, one fixed renderer generation, exact and foreign binding classes, checked synthetic account/generation and mutation values, and selected elapsed-time boundaries. Host admission, exact bind/attach/release calls and foreground observations are controlled rather than running the whole Sense plugin.',

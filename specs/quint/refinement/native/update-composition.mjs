@@ -60,7 +60,7 @@ export async function checkNativeUpdateComposition(extraSources = []) {
     traces.push(trace);
   }
 
-  const receipt = await checkTraces({model, traces, sources, driverHashes, definitionBatchSize: 1, scope: 'partial-source-contract', assumptions: [
+  const receipt = await checkTraces({model, traces, sources, driverHashes, definitionBatchSize: 1, scope: 'bounded-orchestration', assumptions: [
     'The exact updater executes with the pinned journal and real CredentialShutdownLease policy. The JVM controls the resident stop observation and Android installer ports.',
     'The fixture observes the actual pre-stop durable write, confirmed stop, COMMITTING row, session handoff and exact cancellation. One activation and one session are retained across the selected cuts.',
     'After the journal rename and directory-sync refusal, the exact sealed reconnect receipt retains the logical pending session even though the physical row reads empty. Startup mount and resident lease admission are recorded separately.',
