@@ -69,7 +69,7 @@ interface FixtureClient {
 type State = {q: string | null; compose: unknown; open?: string | null; nativeMailSelection?: unknown};
 type Chip = {label: string; pick: Action; on?: boolean};
 type Reader = {
- body: string; failed: boolean; canLoadThread: boolean; loadThread: Action;
+ body: string; failed: boolean; retry: Action; actionsAvailable: boolean; canLoadThread: boolean; loadThread: Action;
  hasThread: boolean; nextThread: Action; archive: Action; canArchive: boolean;
  canToggleRead: boolean; toggleRead: Action; forward: Action; ask: Action; hasLinks: boolean;
  links: {href: string; mismatch: boolean; open: Action}[];

@@ -7,6 +7,8 @@ import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {call, checkpoint, deferred, root, tick, trace} from './support.mjs';
+import {inboxDriverArtifact, inboxDriverSources, rebuildInboxDriver} from '../services/inbox-coordinator-ports.mjs';
+import {savedInboxTraces} from './saved-inbox-read.mjs';
 
 const driver = fileURLToPath(import.meta.url);
 const implementation = 'apps/app/src/runtime/agent-calendar.ts';
@@ -24,11 +26,11 @@ async function compile(driverHashes) {
     plugins: [{name: 'capture-exact-saved-read-inputs', setup(builder) {
       builder.onLoad({filter: /\.(?:tsx?|js|json)$/}, ({path}) => {
         const bytes = readFileSync(path);
-        // Capture the bytes before the compiler consumes them. The generated
-        // bundle is separately retained as an input before source execution.
-        const captured = captureInputs([path]);
-        assert.equal(captured[path], createHash('sha256').update(bytes).digest('hex'), 'Compiler consumes the captured bytes');
-        Object.assign(driverHashes, captured);
+        // Bind the exact bytes returned to the compiler. The initial source graph
+        // and final receipt check also reject changes during the replay.
+        const captured = createHash('sha256').update(bytes).digest('hex');
+        assert.equal(driverHashes[path] ?? captured, captured, 'An already captured source still matches');
+        driverHashes[path] = captured;
         return {contents: bytes, loader: extname(path).slice(1), resolveDir: dirname(path)};
       });
     }}]});
@@ -155,14 +157,21 @@ const cases = [
 ];
 
 export async function checkSavedServiceRead(extraSources = []) {
+  const inboxSources = await inboxDriverSources();
   const sources = [driver, implementation, cacheSource, 'specs/quint/refinement/application/support.mjs',
-    'specs/quint/refinement/application/index.mjs', 'test/quint-application-refinement.test.mjs', ...extraSources];
+    'specs/quint/refinement/application/index.mjs', 'test/quint-application-refinement.test.mjs',
+    'specs/quint/refinement/application/saved-inbox-read.mjs',
+    'specs/quint/refinement/services/inbox-coordinator-ports.mjs', 'bun.lock', ...inboxSources, ...extraSources];
   const driverHashes = captureInputs(sources);
+  rebuildInboxDriver(inboxSources);
   const temporary = mkdtempSync(join(tmpdir(), 'alpha-saved-service-source-'));
   const input = join(temporary, 'saved-read.cjs');
+  const inboxInput = join(temporary, 'inbox-read.iife.js');
   try {
     writeFileSync(input, await compile(driverHashes));
-    Object.assign(driverHashes, captureInputs([input]));
+    writeFileSync(inboxInput, await inboxDriverArtifact());
+    const generated = captureInputs([input, inboxInput]);
+    for (const path of [input, inboxInput]) driverHashes[path] = generated[path];
     const code = readFileSync(input, 'utf8'), traces = [];
     for (const [name, steps] of cases) {
       const f = await fixture(code), t = trace(name, f.observe());
@@ -173,12 +182,14 @@ export async function checkSavedServiceRead(extraSources = []) {
         traces.push(t);
       } finally {await f.close();}
     }
+    traces.push(...await savedInboxTraces());
     return await checkTraces({model: 'SavedServiceRead', sources: [...sources, ...Object.keys(driverHashes)], driverHashes,
-      generatedSources: [input], traces, scope: 'bounded-orchestration', assumptions: [
+      generatedSources: [input, inboxInput], traces, scope: 'bounded-orchestration', assumptions: [
         'Actual AgentCalendar controller, its source/selection policy and actual bounded ServiceReadCache execute. A completed live controller seeds the serialized document before a new controller performs controlled local/provider races.',
         'Two owners, credential namespaces and windows; one synthetic event and readable source. The concrete projection observes shown data, active read and actual mutation eligibility. Internal model epoch, settlement and saved-timestamp fields remain abstract and are not claimed as observed.',
         'The refusal trace executes HTTP 403 invalidation, persists the owner refusal marker and returns through another window. Owner, credential and window replacement call actual retirement before a new read; production caller retirement and account authentication remain separate obligations.',
-        'Local CAS is a closed in-memory store; provider promises never contact Google or a device. This is a Calendar representative of saved service-read policy, not source-refinement evidence for Inbox/Gmail, physical storage durability or live authorization.',
+        'Inbox mounts the actual adapter, shared draft/review controllers and service cache with closed storage and provider ports. The driver observes its registered render, Back and Refresh callbacks, action eligibility, and account/read/effect calls.',
+        'Inbox starts with one exact locally saved grant and injects a definitive empty grant list or a transient transport failure. This covers the same-grant reopen after refused eviction in one process. Mounted HTML, background Home reads, physical persistence and live authorization remain outside these schedules.',
       ]});
   } finally {rmSync(temporary, {recursive: true, force: true});}
 }

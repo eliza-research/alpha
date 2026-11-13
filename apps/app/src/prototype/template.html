@@ -787,6 +787,7 @@
   </div>
 
   <sc-if value="{{inbox.hasActionChips}}"><div class="scr" style="display:flex;gap:8px;padding:0 20px 8px;overflow-x:auto;flex-shrink:0"><sc-for list="{{inbox.actionChips}}" as="action"><button aria-label="{{action.label}}" onClick="{{action.pick}}" style="min-height:36px;padding:0 12px;border-radius:18px;background:var(--s2);color:var(--fg);font-size:13px;white-space:nowrap;flex-shrink:0">{{action.label}}</button></sc-for></div></sc-if>
+  <sc-if value="{{inbox.cachedListNotice}}"><p role="status" style="margin:0;padding:0 20px 8px;font-size:12px;color:var(--mut)">{{inbox.cachedListNotice}}</p></sc-if>
   <div class="scr" data-alpha-app-scroll="inbox" data-mail-cached="{{inbox.cachedListShown}}" style="flex-grow: 1; overflow-y: auto; padding-bottom: 120px; touch-action: pan-y">
     <sc-for list="{{inbox.rows}}" as="it">
       <div onPointerDown="{{it.down}}" onPointerUp="{{it.up}}" style="position: relative; overflow: hidden; touch-action: pan-y">
@@ -837,6 +838,7 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" aria-label="Back to inbox" onClick="{{back}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
+        <sc-if value="{{inbox.d.actionsAvailable}}">
         <details class="photo-import-menu mail-message-menu" onKeyDown="{{inbox.d.menuKey}}">
           <summary aria-label="Message actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary>
           <div onClick="{{inbox.d.closeMenu}}">
@@ -849,7 +851,9 @@
             <sc-if value="{{inbox.d.canTrash}}"><button onClick="{{inbox.d.del}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/trash-2.svg')"></span>Move to Trash</button></sc-if>
           </div>
         </details>
+        </sc-if>
       </div>
+      <sc-if value="{{inbox.cachedListNotice}}"><p role="status" style="margin:0;padding:0 24px 8px;font-size:12px;color:var(--mut)">{{inbox.cachedListNotice}}</p></sc-if>
       <div class="scr inbox-message-content" role="region" aria-label="Email message" tabindex="0" style="flex-grow: 1; overflow-y: auto; padding: 4px 24px 130px; touch-action: pan-y">
         <sc-if value="{{inbox.d.hasThread}}">
           <div class="mail-thread" role="group" aria-label="Conversation">
@@ -2911,8 +2915,10 @@
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">Files</h1>
     <sc-if value="{{files.toolbar.ready}}"><details class="photo-import-menu"><summary aria-label="Files tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
       <sc-if value="{{files.toolbar.canCreate}}"><button aria-label="New folder" onClick="{{files.toolbar.newFolder}}">New folder</button></sc-if>
-      <button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button>
-      <button aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}">{{files.toolbar.viewLabel}}</button>
+      <sc-if value="{{files.toolbar.canSort}}">
+        <button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button>
+        <button aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}">{{files.toolbar.viewLabel}}</button>
+      </sc-if>
     </div></details></sc-if>
   </div>
   <sc-if value="{{files.filterVisible}}">

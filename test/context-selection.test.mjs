@@ -249,7 +249,7 @@ test('a mail context switched, deleted or changed during its review cannot send 
  await refused(source,{...destination,sessionId:'other-session'});
  // The adapter reads the open message at send time; a deleted message is no source at all.
  const adapter=readFileSync('apps/app/src/prototype/inbox-cloud-adapter.ts','utf8');
- assert.match(adapter,/function mailContext\(\):MailContextSource \{if\(!body\|\|!selected\|\|!body\.historyId\)throw new Error\('Refresh this message before sharing'\);/);
+ assert.match(adapter,/function mailContext\(\):MailContextSource \{if\(accountsFromDisk\|\|!body\|\|!selected\|\|!body\.historyId\)throw new Error\('Refresh this message before sharing'\);/);
  assert.match(adapter,/return validateMailContext\(review,mailContext\(\),current\);/);
  assert.match(adapter,/if \(body\?\.message\.id === id\) \{ body = null;/,'an archived or trashed open message is cleared');
 });
