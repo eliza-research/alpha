@@ -21,10 +21,9 @@ public final class SettingsHandoffTraces {
  String command="";
  JSONObject reply=reply("none","","",false);
 
- SettingsHandoffTraces(String name,boolean launcher,boolean present){
-  BuildConfig.IS_LAUNCHER=launcher;
+ SettingsHandoffTraces(String name,boolean present){
   host=present?new Activity():null;context=host==null?new Context():host;plugin.attach(context,host);
-  trace=new Trace(name,observe());trace.value.put("init",Trace.action("initWith",launcher,present));
+  trace=new Trace(name,observe());trace.value.put("init",Trace.action("initWith",present));
  }
  static void check(boolean value,String reason){if(!value)throw new AssertionError(reason);}
  static JSONObject reply(String status,String page,String destination,boolean specific){
@@ -62,7 +61,7 @@ public final class SettingsHandoffTraces {
   String provider=context.packages.refuse?"refused":!context.packages.trusted?"untrusted":
    !context.autofillPresent?"absent":!context.autofill.supported?"unsupported":"trusted";
   check(host==null?pending==null:host.ui.size()==(pending==null?0:1),"Exact closed UI queue");
-  return Trace.fields("launcher",BuildConfig.IS_LAUNCHER,"phase",host==null?"absent":host.phase,"provider",provider,
+  return Trace.fields("phase",host==null?"absent":host.phase,"provider",provider,
    "command",command,"pending",pending!=null,"attempts",attempts,"reply",reply);
  }
  void point(String action,Object... args){trace.step(action,observe(),args);}
@@ -99,24 +98,24 @@ public final class SettingsHandoffTraces {
  void open(String name,String first,String second){request(name);deliver(first,second);}
  public static void main(String[] args){
   String name=args[0];
-  var f=new SettingsHandoffTraces(name,name.endsWith("-launcher"),!name.equals("absent-host"));
+  var f=new SettingsHandoffTraces(name,!name.equals("absent-host"));
   switch(name){
-   case "all-pages-launcher","all-pages-standalone" -> {
+   case "all-pages" -> {
     f.open("system","ok","ok");
     for(String page:SystemSettingsPages.PAGES)f.open(page,"ok","ok");
    }
-   case "fallback-launcher","fallback-standalone" -> {
+   case "fallback" -> {
     f.open("mobile","missing","ok");f.open("airplane","security","ok");f.open("dnd","missing","ok");
     f.open("mobile","missing","security");f.open("dnd","security","missing");f.open("wifi","missing","ok");
     f.open("system","security","ok");
    }
    case "invalid" -> {f.request("missing");f.request("numeric");f.request("unknown");f.request(" wifi");}
    case "absent-host" -> {f.request("system");f.request("wifi");f.request("provider-settings");f.request("unknown");}
-   case "retired-host-launcher" -> {
+   case "retired-host" -> {
     f.request("mobile");f.phase("finishing");f.deliver("security","missing");
     f.request("system");f.phase("destroyed");f.deliver("ok","missing");
    }
-   case "provider-launcher","provider-standalone" -> {
+   case "provider" -> {
     f.open("provider-settings","ok","ok");f.open("provider-settings","missing","ok");
     f.open("provider-settings","missing","security");f.open("provider-settings","security","ok");
     for(String mode:new String[]{"untrusted","unsupported","absent","refused"}){

@@ -97,7 +97,6 @@ public class ChatContinuityInstrumentedTest {
   * recreate() ran with Alpha in the background (the recreated activity stopped, never resumed).
   */
  static boolean alphaIsHome(Context context) {
-  if (!BuildConfig.IS_LAUNCHER) return false;
   android.app.role.RoleManager roles = context.getSystemService(android.app.role.RoleManager.class);
   return roles != null && roles.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME) && roles.isRoleHeld(android.app.role.RoleManager.ROLE_HOME);
  }

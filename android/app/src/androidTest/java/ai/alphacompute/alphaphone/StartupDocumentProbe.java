@@ -31,9 +31,8 @@ final class StartupDocumentProbe implements AutoCloseable {
  void expectNavigation()throws Exception{
   BoundedActivityScenario.main(()->{awaitingNavigation=true;epoch.navigated();last="Waiting for requested document replacement";});
  }
- String awaitReady(boolean requestLive)throws Exception{
-  // Mock readiness is acceptable only in test-mocks builds; product builds must reach live.
-  final boolean requireLive=requestLive||!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS;
+ String awaitReady()throws Exception{
+  // APK builds have no mock mode: the renderer must reach live.
   CountDownLatch done=new CountDownLatch(1);AtomicReference<String> answer=new AtomicReference<>();AtomicReference<Throwable> failure=new AtomicReference<>();
   long remaining=deadline-SystemClock.elapsedRealtime();
   if(remaining<=0)throw new AssertionError("Startup readiness deadline expired: "+last);
@@ -48,8 +47,8 @@ final class StartupDocumentProbe implements AutoCloseable {
       final long request=epoch.issue(SystemClock.elapsedRealtime()),document=epoch.generation();
       if(request!=0)web.evaluateJavascript("(()=>{const d=document.documentElement,m=d.dataset.connectionMode;const ready=m==='live'?!!d.dataset.activeView:m==='mock'&&!!document.querySelector('[data-screen]')&&!!document.querySelector('.mock-mode-banner button');return document.readyState==='complete'&&ready?m:null})()",value->{
        if(closed||waitId!=thisWait||!epoch.complete(document,request))return;
-       if("\"live\"".equals(value)||(!requireLive&&"\"mock\"".equals(value))){answer.set("\"live\"".equals(value)?"live":"mock");waitId++;done.countDown();}
-       else last="Renderer has not reached "+(requireLive?"live":"live/mock")+" readiness";
+       if("\"live\"".equals(value)){answer.set("live");waitId++;done.countDown();}
+       else last="Renderer has not reached live readiness";
       });
      }
      main.postDelayed(this,100);

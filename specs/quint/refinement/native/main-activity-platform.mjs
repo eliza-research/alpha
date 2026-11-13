@@ -541,7 +541,7 @@ public class BridgeActivity {
 }`,
     'ai/alphacompute/alphaphone/BuildConfig.java': `package ai.alphacompute.alphaphone;
 public class BuildConfig {
-  public static boolean IS_LAUNCHER = true, DEBUG = false, ELIZA_DEV_ALLOW_TEST_MOCKS = false;
+  public static boolean DEBUG = false;
 }`,
     'ai/alphacompute/alphaphone/AlphaImageCapability.java': `package ai.alphacompute.alphaphone;
 public class AlphaImageCapability {

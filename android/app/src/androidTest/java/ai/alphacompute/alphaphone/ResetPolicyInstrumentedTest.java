@@ -14,7 +14,6 @@ import static org.junit.Assert.*;
 /** Non-destructive installed boundary checks. Real self-clear needs an external disposable runner. */
 public final class ResetPolicyInstrumentedTest {
  @Test public void cancelledNativeReviewLeavesDataAndOffersNoMigrationPlugins()throws Exception {
-  org.junit.Assume.assumeFalse(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   assertFalse("No real reset pending before fixture",AlphaDataReset.RESET.pending(context));
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){

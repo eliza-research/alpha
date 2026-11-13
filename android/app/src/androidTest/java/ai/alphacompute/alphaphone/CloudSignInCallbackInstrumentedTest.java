@@ -40,7 +40,7 @@ public final class CloudSignInCallbackInstrumentedTest {
   for (String other : new String[]{"https://" + HOST + "/", "https://" + HOST + "/alphaphone/auth/callback/extra", "https://" + HOST + "/auth/callback", "https://api." + HOST + "/alphaphone/auth/callback", "http://" + HOST + "/alphaphone/auth/callback"})
    assertTrue(other, packages.queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse(other)).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName()), 0).isEmpty());
   boolean staging = !packages.queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse("https://staging.eliza.app/alphaphone/auth/callback")).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName()), 0).isEmpty();
-  assertEquals("The staging return exists only in test-mocks builds", BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS, staging);
+  assertFalse("Alpha registers no staging return", staging);
  }
 
  /** A return whose state does not match is ignored: the pending record stays and nothing is stored (shared callback contract). */

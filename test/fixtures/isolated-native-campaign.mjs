@@ -10,7 +10,7 @@ const scripts={'recovery':path.resolve('scripts/test-reminder-recovery.ts'),'rec
 export const permissionCampaign=['camera','camera-capture','settings','channels','voice','voice-revoke','voice-limit','notice','notice-denied'];
 export function exercise(mode,kind='calendar',extraArguments=[]){
  const homePackage=mode==='google-home'?'com.google.android.apps.nexuslauncher':'com.android.launcher3';
- const restartCampaign=['inbox','notes','document','text-scale','bookmark','notes-secure-migration','crash-log','theme','source-reference'].includes(kind);
+ const restartCampaign=['inbox','document','text-scale','bookmark','notes-secure-migration','crash-log','theme','source-reference'].includes(kind);
  const permissionCase=permissionCampaign.includes(kind);
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-calendar-runner-')));
  try{
@@ -110,14 +110,14 @@ else if(a.includes('instrument')){
   if(JSON.parse(fs.readFileSync(file)).recording?.alive){console.log(block(1)+block(-2)+'FAILURES!!!\\nINSTRUMENTATION_CODE: -1\\n');process.exit(0);}
   console.log(block(1)+'INSTRUMENTATION_RESULT: shortMsg=Process crashed.\\nINSTRUMENTATION_CODE: 0\\n');process.exit(0);
  }
- const gate=['inboxPhase','notesDocumentPhase','documentPhase','textScalePhase','bookmarkPhase','notesSecureMigrationPhase','crashLogPhase','themePhase','sourceReferencePhase'].find(g=>a.includes(g)),phase=gate?a[a.indexOf(gate)+1]:null;
+ const gate=['inboxPhase','documentPhase','textScalePhase','bookmarkPhase','notesSecureMigrationPhase','crashLogPhase','themePhase','sourceReferencePhase'].find(g=>a.includes(g)),phase=gate?a[a.indexOf(gate)+1]:null;
  // The crash-log phase ends its own process through the default handler.
  if(gate==='crashLogPhase'&&phase==='crash'){s.crashed=true;save();console.log(mode==='crash-completes'?block(1)+block(0)+'OK (1 test)\\nINSTRUMENTATION_CODE: -1\\n':block(1)+'INSTRUMENTATION_RESULT: shortMsg=Process crashed.\\nINSTRUMENTATION_CODE: 0\\n');process.exit(0);}
  let output=block(1)+block(0)+'OK (1 test)\\nINSTRUMENTATION_CODE: -1\\n';
  if(${kind==='recurrence'})output=block(1)+block(0)+(block(1)+block(0)).replaceAll('test='+method,'test=civilScheduleSkipsWeekendHandlesGapAndEditInvalidatesOldDecisions')+'OK (2 tests)\\nINSTRUMENTATION_CODE: -1\\n';
  // The whole availability class: four methods, none selected by name.
  if(${kind==='availability'})output=['readsOnlyChosenCalendarsAndCarriesProviderAvailability','allDayEventsFollowTheOwnersCivilDate','changedSourcesBoundsAndSourceListing','timeZoneMatchesByRulesNotSpelling'].slice(0,mode==='missing-method'?3:4).map(name=>(block(1)+block(0)).replaceAll('test='+method,'test='+name)).join('')+'OK (4 tests)\\nINSTRUMENTATION_CODE: -1\\n';
- if(phase){output+='INSTRUMENTATION_RESULT: inboxFixturePid='+(mode==='same-pid'||phase==='prepare'?100:200)+'\\nINSTRUMENTATION_RESULT: notesDocumentPid='+(mode==='same-pid'||phase==='prepare'?100:200)+'\\n';if(mode==='missing-pid')output=output.replace(/(?:inboxFixturePid|notesDocumentPid)=.*\\n/g,'');if(mode==='duplicate-pid')output+='INSTRUMENTATION_RESULT: inboxFixturePid=300\\nINSTRUMENTATION_RESULT: notesDocumentPid=300\\n';}
+ if(phase){output+='INSTRUMENTATION_RESULT: inboxFixturePid='+(mode==='same-pid'||phase==='prepare'?100:200)+'\\n';if(mode==='missing-pid')output=output.replace(/inboxFixturePid=.*\\n/g,'');if(mode==='duplicate-pid')output+='INSTRUMENTATION_RESULT: inboxFixturePid=300\\n';}
  if(mode==='prepare-failure'&&phase==='prepare')output='OK (1 test)\\n';
  if(mode==='summary-only')output='OK (1 test)\\n';
  if(mode==='missing-start')output=block(0)+'OK (1 test)\\nINSTRUMENTATION_CODE: -1\\n';

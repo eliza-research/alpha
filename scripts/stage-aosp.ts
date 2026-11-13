@@ -105,8 +105,9 @@ import { stageListener } from "./aosp-listener.ts";
 
 /**
  * Alpha's policy for the shared image APK admission
- * (vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs): its separate test-mocks
- * builds live in artifacts/test-mocks/, and a release row is judged by release-blockers.ts
+ * (vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs): the shared admission requires a
+ * test-mocks directory to refuse. Alpha no longer builds a mocks lane, so nothing writes
+ * artifacts/test-mocks/; the name stays only for that required refusal. A release row is judged by release-blockers.ts
  * (Alpha's signer and font-licence policy). Production judges the row against the committed
  * release signer now, not only the admission verify-apks recorded, and requires the reviewed
  * image platform certificate. Open-source licence flags are a record, never a blocker (P-09).

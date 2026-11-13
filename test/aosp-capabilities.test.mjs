@@ -15,7 +15,7 @@ test('compiled image admission uses the shared decision, requires every trusted 
  'android/content/pm/PackageManager.java':'package android.content.pm; public class PackageManager {public java.util.Set<String> features=new java.util.HashSet<>();public boolean hasSystemFeature(String name,int version){return version<=1&&features.contains(name);}}',
  'android/content/res/Resources.java':'package android.content.res; public class Resources {public boolean value; public boolean missing;public boolean getBoolean(int id){if(missing)throw new IllegalArgumentException();return value;}}',
  'android/content/Context.java':'package android.content; public class Context {public android.content.pm.ApplicationInfo info=new android.content.pm.ApplicationInfo();public android.content.res.Resources resources=new android.content.res.Resources();public android.content.pm.PackageManager packages=new android.content.pm.PackageManager();public android.content.pm.ApplicationInfo getApplicationInfo(){return info;}public android.content.res.Resources getResources(){return resources;}public Context getApplicationContext(){return null;}public android.content.pm.PackageManager getPackageManager(){return packages;}public String getPackageName(){return "ai.alphacompute.alphaphone";}}',
- 'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone; public class BuildConfig {public static boolean DEBUG=Boolean.getBoolean("t.debug"),ELIZA_DEV_ALLOW_TEST_MOCKS=Boolean.getBoolean("t.mocks"),IS_LAUNCHER=!Boolean.getBoolean("t.flavor");}',
+ 'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone; public class BuildConfig {public static boolean DEBUG=Boolean.getBoolean("t.debug");}',
  'ai/alphacompute/alphaphone/R.java':'package ai.alphacompute.alphaphone; public class R {public static class bool {public static int alpha_aosp_image_capability=1;}}',
  'ai/alphacompute/alphaphone/CapabilityTest.java':`package ai.alphacompute.alphaphone;
 public class CapabilityTest {
@@ -40,8 +40,8 @@ public class CapabilityTest {
  execFileSync(javaBinary('javac'),['--release','11','-d',dir,...sources,...Object.keys(files).map(name=>path.join(dir,name))],{timeout:30000,stdio:'pipe'});
  const run=(...args)=>execFileSync(javaBinary('java'),[...args,'-cp',dir,'ai.alphacompute.alphaphone.CapabilityTest',...(args.length?[args[0]]:[])],{encoding:'utf8',timeout:30000});
  assert.match(run(),/PASS image admission/);
- // Debug, test-mocks and non-launcher builds are refused even with every image fact present.
- for(const flag of ['-Dt.debug=true','-Dt.mocks=true','-Dt.flavor=true'])assert.match(run(flag),/PASS refused/);
+ // A debug build is refused even with every image fact present.
+ assert.match(run('-Dt.debug=true'),/PASS refused/);
 });
 test('production RRO targets the prebuilt app overlayable and cannot be a development default',t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-image-overlay-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));fs.writeFileSync(path.join(dir,'product.mk'),'');

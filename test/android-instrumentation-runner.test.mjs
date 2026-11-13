@@ -458,7 +458,6 @@ test("BrowserFlow keeps its live-search opt-in on the production-only APK", () =
   assert.equal(parseInstrumentationArgs(["--live-network"]).liveNetwork, true);
   assert.ok(!DEFAULT_CLASSES.includes("BrowserFlow"));
   assert.deepEqual(parseInstrumentationArgs(["--classes", "BrowserFlow"]).classes, [C("BrowserFlow")]);
-  assert.throws(() => parseInstrumentationArgs(["--test-mocks", "--classes", "BrowserFlow"]), /Unknown option/);
   assert.match(CLASS_REGISTRY.BrowserFlow.note, /--live-network \(browserFlowLive=1\)/);
 });
 

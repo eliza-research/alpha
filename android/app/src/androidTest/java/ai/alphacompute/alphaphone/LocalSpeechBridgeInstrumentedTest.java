@@ -42,7 +42,7 @@ public final class LocalSpeechBridgeInstrumentedTest {
    until("window.Capacitor?.Plugins?.AlphaVoiceCloud&&document.querySelector('.os')",30000);
    // Resident startup changes the selected session and deliberately releases prior speech.
    // The signed-out production sign-in page exposes connection work through aria-busy.
-   if(!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)until(AppNavigation.SIGN_IN_PAGE_READY,120000);
+   until(AppNavigation.SIGN_IN_PAGE_READY,120000);
    try {
     assertFalse(call("Capacitor.Plugins.AlphaVoiceCloud.cancelRecording()").has("error"));ready("bridge-ready");
     AlphaVoiceCloudPlugin nativePlugin=plugin();Object capture=field(ai.eliza.voice.LocalSpeechBridgePlugin.class,"capture").get(nativePlugin);

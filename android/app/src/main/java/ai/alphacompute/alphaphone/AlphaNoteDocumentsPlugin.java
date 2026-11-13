@@ -6,7 +6,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.OpenableColumns;
 import androidx.activity.result.ActivityResult;
 import com.getcapacitor.*;
 import com.getcapacitor.annotation.*;
@@ -23,7 +22,7 @@ public final class AlphaNoteDocumentsPlugin extends Plugin {
   if(closed||!busy.compareAndSet(false,true)){call.resolve(result("unavailable","A document operation is already open."));return;}
   try{startActivityForResult(call,intent,callback);}catch(RuntimeException error){busy.set(false);call.resolve(result("unavailable","Android document selection is unavailable."));}
  }
- @PluginMethod public void importText(PluginCall call){if(!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS){call.resolve(result("unsupported","Notes import is unavailable."));return;}choose(call,DocumentDestinations.open("text/*"),"imported");}
+ @PluginMethod public void importText(PluginCall call){call.resolve(result("unsupported","Notes import is unavailable."));}
  @PluginMethod public void exportText(PluginCall call){
   if(!AlphaDevicePlugin.shareForeground(getActivity())){call.resolve(result("unavailable","Open and unlock the selected note before saving."));return;}
   try{DocumentExport.utf8(call.getString("text"));choose(call,DocumentDestinations.create("text/plain",DocumentExport.title(call.getString("title","Note"),"Note")+".txt"),"exported");}
@@ -50,13 +49,6 @@ public final class AlphaNoteDocumentsPlugin extends Plugin {
   Uri uri=response.getData().getData();if(!DocumentDestinations.admits(uri)){busy.set(false);call.resolve(result("unavailable","The document provider returned no accessible document."));return null;}return uri;
  }
  private void run(PluginCall call,Runnable operation){PluginWorkers.submit(worker,()->{try{if(closed)call.resolve(result("cancelled","Document operation closed."));else operation.run();}finally{busy.set(false);}},()->{busy.set(false);call.resolve(result("cancelled","Document operation closed."));});}
- @ActivityCallback private void imported(PluginCall call,ActivityResult response){Uri uri=chosen(call,response);if(uri==null)return;run(call,()->{
-  try{
-   JSObject value=SelectedDocumentAccess.readTransientText(getContext(),uri);
-   String name="Imported note";try(android.database.Cursor row=getContext().getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){if(row!=null&&row.moveToFirst()&&!row.isNull(0))name=row.getString(0);}
-   value.put("name",name);call.resolve(value);
-  }catch(RuntimeException error){call.resolve(result("failed","The selected document could not be read."));}
- });}
  @ActivityCallback private void exported(PluginCall call,ActivityResult response){Uri uri=chosen(call,response);if(uri==null)return;run(call,()->{
   byte[] content;try{content=DocumentExport.utf8(call.getString("text"));}catch(Exception invalid){call.resolve(result("failed","The selected destination could not be written."));return;}
   write(call,uri,content,"Saved.","Save not confirmed. Check the file before trying again.");

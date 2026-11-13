@@ -59,7 +59,7 @@ public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
  /** The shared reminder plugin asks for the notification permission inside this method; see {@link LateLaunch}. */
  @Override @PluginMethod public void scheduleReminder(PluginCall call){LateLaunch.ask(call,()->{super.scheduleReminder(call);AlphaNotificationChannels.describe(getContext());});}
  @PluginMethod public void surfaceInfo(PluginCall call) {
-  JSObject value = new JSObject(); value.put("assistant", getActivity() instanceof AlphaAssistActivity); value.put("developmentBuild", BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
+  JSObject value = new JSObject(); value.put("assistant", getActivity() instanceof AlphaAssistActivity); value.put("developmentBuild", false);
   addReminderCapabilities(value);
   // Repeat days reach Clock (clock.handoff.v2): clockHandoff accepts days.
   value.put("clockRepeatDaysVersion", 1);

@@ -25,7 +25,6 @@ public final class TextScaleLifecycleTraces {
  String outcome="none";
 
  TextScaleLifecycleTraces(String name,int stored)throws Exception{
-  BuildConfig.IS_LAUNCHER=false;
   Context.appearance.visible=stored;Context.appearance.durable=stored;
   trace=new Trace(name,observe());trace.value.put("init",Trace.action("initWith",stored));
  }

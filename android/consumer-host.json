@@ -12,8 +12,7 @@
     "flavors": [
       {
         "name": "launcher",
-        "manifest": { "root": "consumer", "path": "android/app/src/launcher/AndroidManifest.xml" },
-        "buildConfigFields": [{ "name": "IS_LAUNCHER", "type": "boolean", "value": true }]
+        "manifest": { "root": "consumer", "path": "android/app/src/launcher/AndroidManifest.xml" }
       }
     ],
     "modules": [
@@ -63,8 +62,7 @@
     "buildConfigFields": [
       { "name": "AOSP_BUILD", "type": "boolean", "value": false },
       { "name": "ELIZA_CHROMIUM_PACKAGE_NAME", "type": "String", "value": "" },
-      { "name": "ELIZA_CHROMIUM_CERT_SHA256", "type": "String", "value": "" },
-      { "name": "ELIZA_DEV_ALLOW_TEST_MOCKS", "type": "boolean", "value": false }
+      { "name": "ELIZA_CHROMIUM_CERT_SHA256", "type": "String", "value": "" }
     ],
     "buildTypes": {
       "release": {

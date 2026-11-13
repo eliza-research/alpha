@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { exercise } from "./fixtures/isolated-native-campaign.mjs";
 for (const kind of [
 	"inbox",
-	"notes",
 	"document",
 	"text-scale",
 	"bookmark",
@@ -38,7 +37,6 @@ for (const kind of [
 			);
 		const gate = {
 			inbox: "inboxPhase",
-			notes: "notesDocumentPhase",
 			document: "documentPhase",
 			"text-scale": "textScalePhase",
 			bookmark: "bookmarkPhase",
@@ -53,12 +51,12 @@ for (const kind of [
 				? ["prepare", "crash", "readback", "cleanup"]
 				: [
 						"prepare",
-						["inbox", "notes"].includes(kind) ? "restore" : "verify",
+						kind === "inbox" ? "restore" : "verify",
 						...(kind === "bookmark" ? ["verifyRemoved"] : []),
 						"cleanup",
 					],
 		);
-		if (["inbox", "notes"].includes(kind))
+		if (kind === "inbox")
 			assert.deepEqual(r.record.processes, { prepare: 100, restore: 200 });
 		if (kind === "crash-log") {
 			// The crash phase is a raw instrumentation that must end in the process crash.

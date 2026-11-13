@@ -174,7 +174,7 @@
       "A two-chunk queue represents bounded PCM sample storage and backpressure.",
       "Three capture and synthesis generations, one native capture reservation, one playback writer.",
       "Native cleanup calls are atomic completion steps; PCM buffer contents and wall-clock latency are omitted.",
-      "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only.",
+      "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement are outside this model, which represents capture and audible reply playback only.",
       "Exclusivity is stated for the live reservation only: a recording draft and a live capture are admitted by separate owners (SharedRecordingAdmission, NativeLiveCapture).",
       "A focus loss, the stop of speech and the release that abandons the request are one step."
     ],
@@ -773,7 +773,7 @@
       "Two chunks, two frames per chunk and one writer preserve partial/zero writes and output-drain ordering.",
       "Elapsed timeout boundaries are represented by explicit synthesis-stall and drain-timeout events.",
       "PCM values, platform timestamps and audio quality stay external numeric inputs, while writer and callback lifecycle is explicit.",
-      "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
+      "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement are outside this model, which represents capture and audible reply playback only."
     ],
     "tests": [
       "partialWriteThenDrainTest",

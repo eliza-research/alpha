@@ -33,7 +33,7 @@ const scenarios=[
   ...[33,34,36].flatMap(sdk=>['none','listener','foreign','system-uid-mismatch','system']
     .map(caller=>['cold-power-caller-'+caller,String(sdk)])),
   ...[33,34,36].map(sdk=>['warm-power-caller',String(sdk)]),
-  ...['launcher','debug','mocks','host-system','provisioned','feature','enabled',
+  ...['debug','host-system','provisioned','feature','enabled',
     'companion-system','companion-path','hotword','control'].map(fact=>['image-denied-'+fact,'36']),
 ];
 

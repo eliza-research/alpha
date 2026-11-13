@@ -39,7 +39,6 @@ public class ResidentAlwaysPresentInstrumentedTest {
   try (ParcelFileDescriptor.AutoCloseInputStream input = new ParcelFileDescriptor.AutoCloseInputStream(ui.executeShellCommand(command))) { input.readAllBytes(); }
  }
  @Test public void signedOutOfflineStartsTheResidentAndSendsNothing() throws Exception {
-  Assume.assumeTrue("Product behavior only; test-mocks builds keep the development chooser", !BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
   AlphaCredentialStore store = new AlphaCredentialStore(context);
   String savedCloud = store.readCredentialSlot("cloud:production");
@@ -51,7 +50,7 @@ public class ResidentAlwaysPresentInstrumentedTest {
    if (savedCloud != null) store.removeCredentialSlot("cloud:production");
    String previous = WebViewTestDriver.evaluate("performance.timeOrigin");
    // An older build's "Use local apps without AI" choice.
-   WebViewTestDriver.navigateHostDocument("localStorage.setItem('" + SELECTION + "',JSON.stringify({kind:'offline',localApps:true}));location.replace(location.origin+location.pathname)", true);
+   WebViewTestDriver.navigateHostDocument("localStorage.setItem('" + SELECTION + "',JSON.stringify({kind:'offline',localApps:true}));location.replace(location.origin+location.pathname)");
    until("performance.timeOrigin!==" + previous + "&&document.querySelector('[data-screen]')");
    // Signed out: AI is off until sign-in. P-43's required sign-in page opens by itself once the
    // resident's start has settled (connection-ui productionCloudSignInRequired).

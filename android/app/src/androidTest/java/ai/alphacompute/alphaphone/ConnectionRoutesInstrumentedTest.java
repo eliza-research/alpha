@@ -76,7 +76,6 @@ public class ConnectionRoutesInstrumentedTest {
  }
 
  @Test public void flagOffTransportRefusesEveryNonCloudRouteBeforeConnecting() throws Exception {
-  Assume.assumeTrue("ConnectionRoutes admits every origin in a test-mocks build; this checks the flag-off policy", !BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
   android.content.SharedPreferences diagnostics = context.getSharedPreferences("alpha-transport-diagnostics", Context.MODE_PRIVATE);
   try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(MainActivity.class)) {

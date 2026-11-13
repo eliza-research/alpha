@@ -380,11 +380,9 @@ private static final class ResidentAttachDiagnostic {
   },()->{call.reject("Local agent bridge is closed.");});
  }
  /** Owner-selected direct provider configuration; shared admission owns validation and secure CAS. */
- static boolean directProviderAllowed(boolean testMocks){return NativeProviderSlot.directProviderAllowed(testMocks);}
  @PluginMethod public void configureProvider(PluginCall call) {
   try{requireProviderOwner(true);}catch(Exception unavailable){call.reject("Open unlocked Settings to manage provider keys.");return;}
   final long surface=providerSurfaceGeneration;
-  if(!directProviderAllowed(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)){call.reject(PRODUCT_NAME+" uses your Cloud plan for AI.");return;}
   if(!runtimePackaged()){call.reject("On-device agent is unavailable in this version.");return;}
   String key=call.getString("apiKey",""),model=call.getString("model",CEREBRAS_PROVIDER_MODEL);
   String cartesia=call.getString("cartesiaKey",null);

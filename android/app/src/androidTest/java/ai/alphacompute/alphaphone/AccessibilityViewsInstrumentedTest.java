@@ -95,8 +95,8 @@ public final class AccessibilityViewsInstrumentedTest {
   + "if(el.closest('[inert],[aria-hidden=\"true\"],[hidden]'))return 'focus is in hidden content: '+(el.getAttribute('aria-label')||el.textContent.trim().slice(0,40));"
   + "if(el.closest('[data-alpha-layer=\"home\"]')&&document.documentElement.dataset.activeView!=='home')return 'focus stayed on Home';return null;})()";
 
- /** P-43: the views need the test-mocks pair (BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS) or a phone its owner signed in. */
- private static void assumeViews(String journey) throws Exception { if (!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS) AppNavigation.assumeNoRequiredSignIn(journey); }
+ /** P-43: the views need a phone its owner signed in. */
+ private static void assumeViews(String journey) throws Exception { AppNavigation.assumeNoRequiredSignIn(journey); }
 
  @Test public void everyViewReadsInOrderAtDoubleFontScale() throws Exception {
   auditViews(100, 2);

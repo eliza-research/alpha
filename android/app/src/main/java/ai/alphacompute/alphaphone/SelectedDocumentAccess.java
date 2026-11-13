@@ -33,7 +33,6 @@ final class SelectedDocumentAccess {
  static JSObject restore(Context context){return documents(context).restore();}
  static JSObject read(Context context,String id){return documents(context).read(id);}
  /** Only native picker callbacks may use this; no renderer-supplied URI entrypoint. */
- static JSObject readTransientText(Context context,Uri uri){return documents(context).readTransientText(uri);}
  /** Callers must first validate a picker capability or an admitted media identity. */
  static JSObject shareUri(Activity activity,Uri uri){return SelectedDocuments.shareUri(activity,uri);}
  /** A copy of the loaded selections, for instrumentation. */

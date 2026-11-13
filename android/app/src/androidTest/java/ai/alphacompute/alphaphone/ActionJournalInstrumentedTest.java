@@ -25,7 +25,7 @@ public class ActionJournalInstrumentedTest {
  private JSONObject call(String expression)throws Exception{
   // The bridge can appear in a document that cold-start navigation will replace.
   // Wait for the live document before dispatching; never retry an effect call.
-  try(StartupDocumentProbe startup=new StartupDocumentProbe()){startup.awaitReady(true);}
+  try(StartupDocumentProbe startup=new StartupDocumentProbe()){startup.awaitReady();}
   assertEquals("Journal bridge is registered in the ready document","true",WebViewTestDriver.evaluate("Boolean(window.Capacitor?.Plugins?.AlphaActionJournal)"));
   WebViewTestDriver.evaluate("window.__journalResult=null;Promise.resolve().then(()=>"+expression+").then(v=>window.__journalResult=JSON.stringify(v),()=>window.__journalResult=JSON.stringify({error:true}))");
   for(int i=0;i<200;i++){

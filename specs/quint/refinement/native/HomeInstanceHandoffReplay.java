@@ -165,7 +165,6 @@ public final class HomeInstanceHandoffReplay {
   public static void main(String[] args) throws Exception {
     JSONArray trace = new JSONArray(Files.readString(Path.of(args[0])));
     JSONArray observed = new JSONArray();
-    BuildConfig.IS_LAUNCHER = true;
     for (int i = 0; i < trace.length(); i++) {
       JSONObject step = trace.getJSONObject(i), picks = step.getJSONObject("picks");
       switch (step.getString("action")) {

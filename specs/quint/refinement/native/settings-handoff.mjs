@@ -17,8 +17,7 @@ const model='NativeSettingsHandoff';
 const harness='SettingsHandoffTraces.java';
 const modulePath='plugins/plugin-native-system/android';
 const provider=app+'PasswordProviderSupport.java';
-const scenarios=['all-pages-launcher','all-pages-standalone','fallback-launcher','fallback-standalone',
-  'invalid','absent-host','retired-host-launcher','provider-launcher','provider-standalone'];
+const scenarios=['all-pages','fallback','invalid','absent-host','retired-host','provider'];
 
 export async function checkNativeSettingsHandoff(extraSources=[]) {
   const temporary=mkdtempSync(join(tmpdir(),'quint-native-settings-handoff-'));

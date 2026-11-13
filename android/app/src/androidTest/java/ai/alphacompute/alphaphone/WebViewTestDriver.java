@@ -57,11 +57,11 @@ final class WebViewTestDriver {
   assertTrue("Android accepted Back down",accepted);assertTrue("Android accepted Back up",released);
  }
  /** Dispatch one document-changing action; lost old-document JS callbacks are not readiness. */
- static void navigateHostDocument(String script,boolean requireLive)throws Exception {
+ static void navigateHostDocument(String script)throws Exception {
   try(StartupDocumentProbe startup=new StartupDocumentProbe()){
    startup.expectNavigation();
    withActivity(MainActivity.class,a->a.getBridge().getWebView().evaluateJavascript(script,null));
-   startup.awaitReady(requireLive);
+   startup.awaitReady();
   }
  }
  static String evaluate(String script) throws Exception {
