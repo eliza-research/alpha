@@ -35,8 +35,10 @@ module CoreSemaphoreTemplate {
     s' = {...s, listener: s.listener.set(c, false), waiters: if (Queued(c)) Remove(s.waiters, c) else s.waiters,
       pc: if (Queued(c)) s.pc.set(c, "rejected") else s.pc}
   }
-  def Skipped(sequence: List[str]): int = sequence.indices().fold(0, (count, i) =>
-    if (count == i and s.aborted.get(sequence.nth(i))) i + 1 else count)
+  // The historical recurrence visits indices in order. A set fold must instead use the
+  // order-independent first live index (or the length when every waiter is aborted).
+  def Skipped(sequence: List[str]): int = sequence.indices().fold(sequence.length(), (count, i) =>
+    if (not(s.aborted.get(sequence.nth(i))) and i < count) i else count)
   action Release(c: str): bool = all {
     s.pc.get(c) == "holding",
     val k = Skipped(s.waiters)
@@ -87,6 +89,10 @@ module CoreSemaphore {
   run cancellationListenerTest = init.then(M::Acquire("c1")).then(M::Acquire("c2")).then(M::Abort("c2"))
     .then(M::CancelListener("c2")).then(M::Release("c1")).expect(safety and M::s.permits == 1)
   run preAbortedCallerTest = init.then(M::Abort("c1")).then(M::Acquire("c1")).expect(safety and M::s.pc.get("c1") == "rejected")
+  run consecutiveCancelledWaitersTest = init.then(M::Acquire("c4")).then(M::Acquire("c2")).then(M::Abort("c2"))
+    .then(M::Acquire("c3")).then(M::Abort("c3")).then(M::Release("c4"))
+    .expect(safety and M::s.permits == 1 and M::s.waiters == [] and M::s.pc.get("c2") == "rejected"
+      and M::s.pc.get("c3") == "rejected" and not(M::s.listener.get("c2")) and not(M::s.listener.get("c3")))
 }
 
 module CoreSemaphoreTwo {
@@ -104,4 +110,8 @@ module CoreSemaphoreTwo {
   action release(caller: str): bool = M::Release(caller)
   run twoOwnersTest = init.then(M::Acquire("c1")).then(M::Acquire("c2")).then(M::Acquire("c3"))
     .then(M::Release("c2")).expect(safety and M::s.pc.get("c3") == "holding" and M::s.pc.get("c1") == "holding")
+  run twoCancelledWaitersTest = init.then(M::Acquire("c1")).then(M::Acquire("c2")).then(M::Acquire("c3"))
+    .then(M::Abort("c3")).then(M::Acquire("c4")).then(M::Abort("c4")).then(M::Release("c2"))
+    .expect(safety and M::s.permits == 1 and M::s.waiters == [] and M::s.pc.get("c1") == "holding"
+      and M::s.pc.get("c3") == "rejected" and M::s.pc.get("c4") == "rejected")
 }
