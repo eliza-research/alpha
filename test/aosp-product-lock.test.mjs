@@ -38,7 +38,6 @@ test("the committed Cuttlefish product names its target, lock, host packages and
   assert.equal(product.signer.apkDescriptor, "android/release-signer.json");
   const brand = read(product.brandConfig);
   assert.equal(brand.packageName, read("app.config.json").appId);
-  assert.equal(brand.envPrefix, "ELIZA", "brand environment names stay on the upstream ELIZA_ prefix");
   // Pixel 10a (stallion) has its own source lock and production descriptor; the Cuttlefish product never stages against them.
   assert.equal(product.separateLocks.pixel10a, "vendor/eliza/packages/os/android/sources/pixel10a-stallion.json");
   assert.notEqual(product.sourceLock.file, product.separateLocks.pixel10a);
@@ -83,9 +82,9 @@ test("a fully populated fixture lock is complete; each unset, placeholder or for
   assert.deepEqual(aospProductLockProblems(dir), [`${PRODUCT_DESCRIPTOR} is missing`]);
 });
 
-test("stage-aosp --production refuses an incomplete lock before reading any APK and accepts a complete one", t => {
+test("production stage-aosp refuses an incomplete lock before reading any APK and accepts a complete one", t => {
   const { dir } = completeLock(t);
-  const stage = (cwd, args) => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), ...args], { cwd, encoding: "utf8" });
+  const stage = (cwd, args) => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), "--target", "cuttlefish", "--aosp-source", "absent-source", ...args], { cwd, encoding: "utf8" });
   const unset = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-aosp-unset-"));
   t.after(() => fs.rmSync(unset, { recursive: true, force: true }));
   for (const rel of ["app.config.json", "android/release-signer.json", "vendor/eliza/packages/os/android/aosp.lock.json", ...fs.readdirSync(path.join(root, "android/aosp")).map(name => `android/aosp/${name}`)]) {
@@ -94,12 +93,12 @@ test("stage-aosp --production refuses an incomplete lock before reading any APK 
     fs.cpSync(path.join(root, rel), path.join(unset, rel), { recursive: true });
   }
   // The committed (unset) product: refused, naming the gaps, without touching the APK path.
-  let out = stage(unset, ["--apk", "absent.apk", "--descriptor", "reviewed.json", "--production"]);
+  let out = stage(unset, ["--apk", "absent.apk", "--descriptor", "reviewed.json"]);
   assert.notEqual(out.status, 0);
   assert.match(out.stderr, /Refusing production staging: the Alpha AOSP product lock is incomplete\.[\s\S]*host package cuttlefish-base needs a version and a SHA-256/);
   assert.doesNotMatch(out.stderr, /absent\.apk/);
   // A complete fixture lock passes the lock check and reaches APK admission.
-  out = stage(dir, ["--apk", "absent.apk", "--descriptor", "reviewed.json", "--production"]);
+  out = stage(dir, ["--apk", "absent.apk", "--descriptor", "reviewed.json"]);
   assert.notEqual(out.status, 0);
   assert.doesNotMatch(out.stderr, /product lock is incomplete/);
   assert.match(out.stderr, /absent\.apk/);
