@@ -116,6 +116,15 @@ transition bound and may take substantially longer on large finite models.
 `tlc-bounded` is restricted to safety verification; temporal and comparison
 commands retain full `tlc` exploration.
 
+For a full temporal check, `--tlc-liveness=final` asks the pinned TLC engine to
+check liveness once after constructing the complete state graph. It preserves
+the translated actions, initial states, fairness and temporal properties; it
+does not impose the symbolic transition bound. Bootstrap, compilation and TLC
+share the same phase deadline. The receipt records the translation/configuration
+hashes, JAR hash and actual JVM arguments. `--tlc-liveness=default` (or omitting
+the option) keeps the original Quint routine. This option is restricted to the
+`temporal` command with the full `tlc` backend.
+
 ## Source changes and review
 
 After changing implementation behavior, review the corresponding executable model, its scenarios
