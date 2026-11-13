@@ -27,7 +27,7 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
     return {};
    }
    if(plugin==='AlphaMapsTransport'&&method==='navigationAvailability')return {background:false,activeSessionId:null};
-   if(plugin==='ElizaSense')return {available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false};
+   if(plugin==='ElizaSense')return {available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false,...(method==='turnOff'?{saved:true}:{})};
    if(plugin==='AlphaConnection'&&method==='request'&&new URL(input.url).pathname.startsWith('/api/v1/maps/')){
     const path=new URL(input.url).pathname;
     if(path.endsWith('/capabilities'))return {status:200,data:{providerId,connectionId:'conn_google_fixture_0001',revision:'fixture-google',attribution,disclosure:{cloudRecords:'operation-and-result-code',recipients:[{role:'gateway',name:'Eliza Cloud',operator:'Eliza'},{role:'search',name:'Google Places',operator:'Google'},{role:'routing',name:'Google Routes',operator:'Google'}]},sources:{data:'Google Maps',search:'Google Places',routing:'Google Routes'},regions:[{id:'world',name:'World',bounds:[-180,-85,180,85]}],capabilities:{map:tiles!=='unavailable',search:true,placeDetails:true,modes:['drive','walk'],alternatives:false,traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}},...(tiles==='unavailable'?{}:{tiles:{urlTemplate:'/api/v1/maps/tiles/{z}/{x}/{y}',tileSize:256,minZoom:0,maxZoom:18,attribution:'Map data © Google'}})}};

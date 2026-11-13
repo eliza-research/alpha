@@ -19,7 +19,7 @@ for(const [orientation,viewport] of [['portrait',{width:412,height:915}],['lands
     w.Capacitor.PluginHeaders.push({name:'ElizaSense',methods:[{name:'turnOff',rtype:'promise'},{name:'status',rtype:'promise'}]});
     const f=w.mapsUnavailableFixture={capabilities:0,otherMaps:0};
     w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
-     if(plugin==='ElizaSense')return{available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false};
+     if(plugin==='ElizaSense')return{available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false,...(method==='turnOff'?{saved:true}:{})};
      if(plugin==='AlphaConnection'&&method==='request'&&new URL(input.url).pathname.startsWith('/api/v1/maps/')){
       if(new URL(input.url).pathname.endsWith('/capabilities')){f.capabilities++;return{status:refusal.status,data:{code:refusal.code,error:'Synthetic private backend detail'}};}
       f.otherMaps++;throw Error('Unavailable fixture must not request places or routes');

@@ -11,7 +11,7 @@ async function setup(page:Page,options:Options={}){
   // as in voice-assistant-fixture.ts: the Cloud slot is absent at the native storage boundary.
   const provider={mode:'own',revision:'synthetic-local-voice-provider-r1',persistence:'native-secure-store',keys:{text:{configured:true},voice:{configured:false}},provider:'cerebras',configured:true,selected:true,model:'qwen-3.8-27b',voiceConfigured:false};
   if(options.localSpeech){delete w.flagOff.slots['cloud:production'];w.flagOff.persist();}
-  const f=w.live={captures:[] as any[],stops:[] as string[],active:null as string|null,routes:[] as any[],invocations:0,binding:null as any,bindings:[] as any[],claims:[] as any[],listenerCalls:[] as string[],power:[] as string[],listener:options.listener??null,deviceSettings:[] as string[],forbidden:[] as string[]};
+  const f=w.live={captures:[] as any[],stops:[] as string[],active:null as string|null,routes:[] as any[],invocations:0,binding:null as any,bindings:[] as any[],claims:[] as any[],listenerCalls:[] as string[],power:[] as string[],listener:options.listener??null,stopReceipt:options.stopReceipt,deviceSettings:[] as string[],forbidden:[] as string[]};
   const events:Array<{event:string;callback:(value:any)=>void}>=[];
   const header=(name:string)=>c.PluginHeaders.find((p:any)=>p.name===name);
   header('AlphaVoiceCloud').methods=[...['checkPermissions','localSpeechStatus','liveCaptureStatus','startLiveCapture','stopLiveCapture','synthesizeLocal','play','stopPlayback','cancel','releaseLocalSpeech','cancelRecording'].map(name=>({name,rtype:'promise'})),{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}];
@@ -46,8 +46,8 @@ async function setup(page:Page,options:Options={}){
     }
     f.listenerCalls.push(method);
     if(method==='status')return f.listener??{available:false};
-    if(method==='pause'){f.listener={...f.listener,saved:true,state:'PAUSED_USER',label:'Paused',listening:false,microphoneOpen:false};return f.listener;}
-    if(method==='turnOff'){if(options.stopReceipt)return options.stopReceipt;f.listener={...f.listener,saved:true,state:'OFF',label:'Listening off',listening:false,microphoneOpen:false};return f.listener;}
+    if(method==='pause'){if(f.stopReceipt)return f.stopReceipt;f.listener={...f.listener,state:'PAUSED_USER',label:'Paused',listening:false,microphoneOpen:false};return {...f.listener,saved:true};}
+    if(method==='turnOff'){if(f.stopReceipt)return f.stopReceipt;f.listener={...f.listener,state:'OFF',label:'Listening off',listening:false,microphoneOpen:false};return {...f.listener,saved:true};}
     if(method==='openSettings')return {opened:true};
     throw Error('Unexpected Sense method '+method);
    }
@@ -179,7 +179,7 @@ test('qualified image Privacy uses only the native status, pause, stop and setti
 });
 
 test('an inconsistent stop receipt keeps Android recovery available without opening Sense controls',async({page})=>{
- const foreign=await setup(page,{image:true,sense:false,stopReceipt:{available:true,state:'OFF',listening:true,microphoneOpen:false}});
+ const foreign=await setup(page,{image:true,sense:false,stopReceipt:{available:true,state:'OFF',saved:true,listening:true,microphoneOpen:false}});
  await residentHome(page);
  await button(page,'Settings').click();
  await button(page,'Microphone may be on, open Android settings').click();
@@ -191,17 +191,29 @@ test('an inconsistent stop receipt keeps Android recovery available without open
  expect(foreign).toEqual([]);
 });
 
-test('qualified Privacy refuses an unconfirmed microphone stop',async({page})=>{
- const listener={available:true,state:'LISTENING',label:'Listening',consented:true,listening:true,microphoneOpen:true};
- const foreign=await setup(page,{image:true,sense:true,listener,stopReceipt:{...listener,state:'OFF',listening:false}});
+for(const action of ['pause','turnOff'] as const)test(`qualified Privacy retains the open microphone status after unconfirmed ${action}`,async({page})=>{
+ const listener={available:true,state:'OFF',label:'Listening off',consented:true,listening:false,microphoneOpen:true};
+ const foreign=await setup(page,{image:true,sense:true,listener,stopReceipt:{available:false}});
  await residentHome(page);
  await button(page,'Settings').click();
  await button(page,'Privacy').click();
  const listening=page.getByRole('switch',{name:'Listening',exact:true});
- await listening.click();
- await expect(page.getByText('Not responding · Use notification',{exact:true})).toBeVisible();
- await expect(listening).toHaveCount(0);
+ const stop=action==='pause'?button(page,'Pause listening'):listening;
+ const recovery=button(page,'Microphone may be on, open Android settings');
+ await expect(page.getByText('Microphone still open',{exact:true})).toBeVisible();
+ await stop.click();
+ await expect(page.getByText('Stop not confirmed · Use notification',{exact:true})).toBeVisible();
+ await expect(page.getByText('Microphone still open',{exact:true})).toBeVisible();
+ await expect(listening).toHaveAttribute('aria-checked','true');
+ await expect(button(page,'Pause listening')).toBeVisible();
+ await recovery.click();
+ await expect.poll(()=>live(page,f=>f.deviceSettings)).toEqual(['system']);
+ await page.evaluate(()=>{delete (window as any).live.stopReceipt;});
+ await stop.click();
+ await expect(recovery).toHaveCount(0);
  await expect(button(page,'Pause listening')).toHaveCount(0);
+ await expect(listening).toHaveAttribute('aria-checked',action==='pause'?'true':'false');
+ expect(await live(page,f=>f.listenerCalls.filter((method:string)=>method!=='status'))).toEqual([action,action]);
  expect(await live(page,f=>f.captures)).toEqual([]);
  expect(foreign).toEqual([]);
 });
