@@ -29,7 +29,7 @@ roots.push('android/voice-host','android/embedding-host','android/paradee-voice'
  'scripts/embedding-native-contract.ts','scripts/embedding-build-remap.ts',
  '.eliza/paradee-voice/native',
  'scripts/stage-embedding-host.ts','scripts/prepare-embedding-host.ts',
- 'scripts/android-stage-voice-models.ts','scripts/voice-host.ts','scripts/paradee-runtime.ts');
+ 'scripts/android-stage-voice-models.ts','scripts/voice-host.ts','scripts/paradee-runtime.ts','scripts/android-abis.ts');
 // Resident payload and generated Java are consumed directly by Gradle. Capture
 // their exact bytes, provenance and reproduction inputs, excluding web assets/dependencies.
 roots.push('android/app/src/main/assets/agent','android/app/src/main/jniLibs',

@@ -1,38 +1,33 @@
 name: Android emulator evidence
-# Dispatch only. Every job after `build` boots an emulator on a hosted runner, so nothing
-# here runs on a push, a pull request or a schedule. The result is
-# emulator-class evidence for the launcher debug APK on an x86_64 SDK image: never a
-# distributable build, a device or acceptance.
+# The one emulator lane: nightly on the default branch and on dispatch, never on a push or a pull
+# request. One job builds the launcher APKs and runs both suites on hosted x86_64 SDK emulators.
+# The result is emulator-class evidence for the launcher debug APK: never a distributable
+# build, a device or acceptance.
 on:
+  schedule:
+    - cron: "17 7 * * *"
   workflow_dispatch:
-    inputs:
-      suite:
-        description: Emulator evidence to produce
-        type: choice
-        required: true
-        default: instrumentation
-        options:
-          - instrumentation
-          - browser-reading
-          - all
 permissions:
   contents: read
   # The native input artifacts are read through the workflow token.
   actions: read
 concurrency:
-  # A later dispatch of the same suite on the same ref supersedes the earlier one.
-  group: android-emulator-${{ github.ref }}-${{ inputs.suite }}
+  # A later run on the same ref supersedes the earlier one.
+  group: android-emulator-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  build:
-    name: Build the launcher APKs
+  emulator:
+    name: Launcher APKs on the emulator
     runs-on: ubuntu-24.04
     timeout-minutes: 180
-    outputs:
-      artifact_id: ${{ steps.apks.outputs.artifact-id }}
-      source_sha: ${{ github.sha }}
-      manifest_sha256: ${{ steps.freeze.outputs.manifest }}
     steps:
+      # The build and both emulators share this runner's disk.
+      - name: Free disk on the disposable runner
+        run: |
+          for unused in /usr/share/dotnet /usr/local/.ghcup /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$unused" ]; then sudo rm -rf -- "$unused"; fi
+          done
+          df -h "$GITHUB_WORKSPACE"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
@@ -62,76 +57,21 @@ jobs:
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: bun install --frozen-lockfile
       - name: Build the launcher APKs with their instrumentation APK
+        id: build
         env:
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: bun run android:build:local
-      - name: Anchor the exact manifest
-        id: freeze
-        run: echo "manifest=$(sha256sum artifacts/apk-manifest.json | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        id: apks
-        with:
-          name: android-emulator-apks-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          # The upload roots this archive at artifacts/. Restore it there in each emulator job.
-          path: |
-            artifacts/apk-manifest.json
-            artifacts/launcher-debug.apk
-            artifacts/instrumentation/*.apk
-          compression-level: 0
-          if-no-files-found: error
-          retention-days: 3
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: android-emulator-build-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            artifacts/*.json
-            android/app/build/reports/
-          retention-days: 3
-
-  # The default instrumentation run.
-  instrumentation:
-    name: Default instrumentation
-    needs: build
-    if: inputs.suite == 'instrumentation' || inputs.suite == 'all'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    env:
-      SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
-      EXPECTED_MANIFEST_SHA256: ${{ needs.build.outputs.manifest_sha256 }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.build.outputs.source_sha }}
-          submodules: true
-      # The runner imports only checked-in scripts and Node builtins; no dependency install.
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
-        with:
-          packages: platform-tools build-tools;36.0.0
-          log-accepted-android-sdk-licenses: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          artifact-ids: ${{ needs.build.outputs.artifact_id }}
-          path: artifacts
-          merge-multiple: true
-      - name: Require the build job's exact APK manifests, capacity and KVM
+      - name: Require emulator capacity and KVM
         run: |
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-          test "$(sha256sum artifacts/apk-manifest.json | cut -d' ' -f1)" = "$EXPECTED_MANIFEST_SHA256"
           python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 8*1024**3, "Insufficient fresh-runner emulator capacity"'
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+      # The default instrumentation run.
+      - name: Default instrumentation
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
           target: default
@@ -142,58 +82,11 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: bun scripts/ci/emulator-suite.ts instrumentation
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: android-emulator-instrumentation-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            test-results/android-instrumentation/
-            test-results/emulator-suite/
-            test-results/android-fixture/
-            artifacts/apk-manifest.json
-          if-no-files-found: error
-          retention-days: 3
-
-  # The browser reading suite, on the pinned Chromium 157 WebView.
-  browser-reading:
-    name: Browser reading on WebView 157
-    needs: build
-    if: inputs.suite == 'browser-reading' || inputs.suite == 'all'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    env:
-      SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
-      EXPECTED_MANIFEST_SHA256: ${{ needs.build.outputs.manifest_sha256 }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.build.outputs.source_sha }}
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
-        with:
-          packages: platform-tools build-tools;36.0.0
-          log-accepted-android-sdk-licenses: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          artifact-ids: ${{ needs.build.outputs.artifact_id }}
-          path: artifacts
-          merge-multiple: true
-      - name: Require the build job's exact APK manifest, capacity and KVM
-        run: |
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-          test "$(sha256sum artifacts/apk-manifest.json | cut -d' ' -f1)" = "$EXPECTED_MANIFEST_SHA256"
-          python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 8*1024**3, "Insufficient fresh-runner emulator capacity"'
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+      # The browser reading suite, on the pinned Chromium 157 WebView. It runs even when the
+      # instrumentation suite failed, and last, because it replaces the image's WebView provider.
+      - name: Browser reading on WebView 157
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
           target: default
@@ -202,24 +95,24 @@ jobs:
           ram-size: 4096M
           # Chromium recommends at least 4 GB of guest storage for WebView development.
           disk-size: 4096M
-          # The provider is replaced on this fresh disposable AOSP image only: a writable system
-          # partition, host Vulkan off across the framework restart, and the boot devices the
-          # provisioner reads back.
-          emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -writable-system -append-userspace-opt 'androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:05.0 pci0000:00/0000:00:06.0'
+          # The provider is replaced on this fresh disposable AOSP image only: wiped user data
+          # (the instrumentation run installed the launcher), a writable system partition, host
+          # Vulkan off across the framework restart, and the boot devices the provisioner reads back.
+          emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -wipe-data -noaudio -no-boot-anim -writable-system -append-userspace-opt 'androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:05.0 pci0000:00/0000:00:06.0'
           disable-animations: true
           script: bun scripts/ci/emulator-suite.ts browser-reading
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: android-emulator-browser-reading-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: android-emulator-evidence-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           # The pinned URL and hashes reproduce the provider archive; it is not uploaded again.
           path: |
+            artifacts/apk-manifest.json
             test-results/android-instrumentation/
             test-results/emulator-suite/
             test-results/android-fixture/
             test-results/ci-webview-provider/
             !test-results/ci-webview-provider/chromium.zip
             !test-results/ci-webview-provider/SystemWebView.apk
-            artifacts/apk-manifest.json
-          if-no-files-found: error
+            android/app/build/reports/
           retention-days: 3

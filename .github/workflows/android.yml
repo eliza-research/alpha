@@ -1,7 +1,7 @@
 name: Android foundation
 on:
   # The build's inputs: Android and renderer sources, the scripts and root configuration that
-  # produce the APKs, the lockfile and the upstream pin.
+  # produce the APKs, the lockfile and the upstream pin. Documentation-only changes do not run it.
   pull_request:
     paths:
       - 'android/**'
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
-      # bun run verify's LemmaScript fixture tests run on genuine Node.js.
+      # The post-build owner checks run under node --test.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26.13.0"
@@ -63,36 +63,12 @@ jobs:
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: bun install --frozen-lockfile
-      - name: Prepare pinned Python host-test prerequisites
-        if: github.event_name == 'workflow_dispatch'
-        run: bash scripts/ci/prepare-python-host-tests.sh
-      - name: Install browser for manual host verification
-        if: github.event_name == 'workflow_dispatch'
-        run: bash scripts/ci/install-playwright-browser.sh chromium
-      # The host JVM tests in bun run verify and the Calendar bridge both need the pinned org.json jar.
+      # The Calendar bridge needs the pinned org.json jar.
       - name: Prepare normal host-test JSON
         timeout-minutes: 1
         run: bash scripts/ci/prepare-host-test-json.sh
       - name: Prepare reviewed Kotlin compiler for native routing checks
         run: bun test/fixtures/kotlin-tools.mjs --prepare
-      # bun run verify's prepared-SDK tests need the prepared SDK, as in verify.yml.
-      - name: Prepare pinned SDK for manual verification
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          ALPHA_BUN="$(command -v bun)"
-          export ALPHA_BUN
-          test "$("$ALPHA_BUN" --version)" = '1.4.2'
-          bun scripts/prepare-local-agent.ts
-          prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
-          echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
-          echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
-      - name: Verify manual qualification
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          ALPHA_REQUIRE_PREPARED_SDK: '1'
-          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
-        run: bun run verify
       - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # The normal chain builds and verifies its native source/model inputs.
       - name: Record tracked source frame before the Android build
@@ -134,6 +110,22 @@ jobs:
         env:
           ALPHA_CALENDAR_BRIDGE_EXPECTED_HEAD: ${{ github.sha }}
         run: python scripts/ci/calendar-bridge.py
+      # The build prepared the pinned SDK and built the workflow worker; both are reused here.
+      - name: Verify digest recovery across independent runtime processes
+        timeout-minutes: 10
+        env:
+          TMPDIR: ${{ runner.temp }}/digest-restart
+        run: |
+          mkdir -p "$TMPDIR"
+          bun run agent:test-digest-restart
+      - name: Export the portable worker dependency proof
+        run: bun scripts/ci/export-browser-proof.ts worker
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-proof-worker-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/browser-proof/worker/
+          retention-days: 3
+          if-no-files-found: error
       - name: Require flag-off APKs
         run: |
           bun scripts/audit-production-bundle.ts web-dist
@@ -162,9 +154,11 @@ jobs:
             artifacts/*.json
             # Written offline by the build beside the APKs it verified (scripts/generate-sbom.ts).
             artifacts/sbom/*.json
-            artifacts/ci-python-host-tests/
             artifacts/android-postbuild-owners.tap
             test-results/
+            ${{ runner.temp }}/digest-restart/alpha-digest-crash-*/*.log
+            ${{ runner.temp }}/digest-restart/alpha-digest-crash-*/*.json
+            ${{ runner.temp }}/digest-restart/alpha-digest-crash-*/*.jsonl
             android/app/build/reports/
             android/voice-host/qualified-voice-host.json
             ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/receipt/inputs.json

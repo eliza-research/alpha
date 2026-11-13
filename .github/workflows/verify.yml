@@ -13,10 +13,9 @@ jobs:
   verify:
     name: Repository verification
     runs-on: ubuntu-24.04
-    # The 70-115 minute runs measured on main (Nov 2026) included the Quint gate, its
-    # node tests and the Lemma proofs, which now run in promotion.yml. The limit
-    # is unchanged until runs without them are measured.
-    timeout-minutes: 180
+    # Passing runs without the Quint gate and the Lemma proofs take 10-16 minutes (27 runs,
+    # Nov 2026). A hung test file is cut off here instead of holding a runner for three hours.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

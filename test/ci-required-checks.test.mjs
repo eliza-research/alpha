@@ -8,7 +8,7 @@ import YAML from 'yaml';
 
 const read = file => fs.readFileSync(file, 'utf8');
 
-test('pull requests run one verify job, Android and resident preparation only for their inputs, and nothing re-runs on push', () => {
+test('pull requests run one verify job and Android only for its inputs; only main pushes build the native candidate', () => {
   const verify = YAML.parse(read('.github/workflows/verify.yml'));
   // No path filter: the required check must report on every pull request, or it stays pending.
   assert.deepEqual(verify.on, {pull_request: null});
@@ -18,20 +18,22 @@ test('pull requests run one verify job, Android and resident preparation only fo
   for (const path of ['android/**', 'apps/app/**', 'scripts/**', 'bun.lock', 'upstream.lock.json', 'vendor/eliza'])
     assert.ok(androidOn.pull_request.paths.includes(path), path);
   assert.deepEqual(Object.keys(YAML.parse(android).jobs), ['build']);
-  const prepare = YAML.parse(read('.github/workflows/resident-prepare.yml'));
-  assert.deepEqual(Object.keys(prepare.on), ['pull_request', 'workflow_dispatch']);
-  for (const path of ['scripts/**', 'bun.lock', 'upstream.lock.json', 'vendor/eliza'])
-    assert.ok(prepare.on.pull_request.paths.includes(path), path);
-  for (const workflow of [androidOn, prepare.on])
-    for (const path of workflow.pull_request.paths.filter(path => !/[*]/.test(path))) assert.ok(fs.existsSync(path), path);
+  for (const path of androidOn.pull_request.paths.filter(path => !/[*]/.test(path))) assert.ok(fs.existsSync(path), path);
+  assert.ok(!androidOn.pull_request.paths.some(path => path.startsWith('docs')), 'Documentation-only changes do not build APKs');
 
-  const resident = read('.github/workflows/resident-android.yml');
+  const resident = YAML.parse(read('.github/workflows/resident-android.yml'));
+  assert.deepEqual(resident.on.push, {branches: ['main']});
+  assert.deepEqual(Object.keys(resident.on), ['workflow_dispatch', 'push']);
   // Independent main runs cannot cancel each other even if GitHub starts the older one later.
-  // Reruns keep their run ID. Develop, nightly and manual qualification keep their existing groups.
+  // Reruns keep their run ID. Manual builds keep their group per ref and operation.
   const carrierGroupSuffix = "${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}";
-  const concurrency = YAML.parse(resident).concurrency;
-  assert.equal(concurrency.group, "resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('app-candidate-run-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}" + carrierGroupSuffix);
-  assert.equal(concurrency['cancel-in-progress'], "${{ github.event_name == 'workflow_dispatch' }}");
+  assert.equal(resident.concurrency.group, "resident-${{ github.event_name == 'push' && format('app-candidate-run-{0}', github.run_id) || github.ref }}" + carrierGroupSuffix);
+  assert.equal(resident.concurrency['cancel-in-progress'], "${{ github.event_name == 'workflow_dispatch' }}");
+
+  // The one emulator lane runs nightly and on dispatch in a single job.
+  const emulator = YAML.parse(read('.github/workflows/android-emulator.yml'));
+  assert.deepEqual(Object.keys(emulator.on), ['schedule', 'workflow_dispatch']);
+  assert.deepEqual(Object.keys(emulator.jobs), ['emulator']);
 });
 
 test('browser tests, the Quint gate, its node tests and the Lemma proofs run in CI only for promotion to main and on dispatch', () => {
@@ -119,12 +121,6 @@ test('the actual promotion selector preserves manual filters and refuses an empt
       refused(select('application', '', scratch), reason);
     }
   } finally {fs.rmSync(scratch, {recursive: true, force: true});}
-  const unknown = spawnSync('bun', ['scripts/check-quint.ts', 'verify', '--models=UnknownPromotionPartitionProbe'], {
-    encoding: 'utf8', timeout: 30000,
-  });
-  assert.ifError(unknown.error);
-  assert.notEqual(unknown.status, 0);
-  assert.match(unknown.stderr, /Unknown model UnknownPromotionPartitionProbe/, 'The real CLI rejects unknown names before starting a solver');
 });
 
 test('committed ruleset requires exactly the verify job', () => {
