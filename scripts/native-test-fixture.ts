@@ -5,6 +5,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { androidEnv } from "./toolchain.ts";
 import { verifyPinnedUpstream } from "./pinned-upstream-source.ts";
+import { isAndroidAbi } from "./android-abis.ts";
 
 type Instrumentation = typeof import("../vendor/eliza/packages/app/scripts/lib/instrumentation-result.mjs");
 type DeviceLease = typeof import("../vendor/eliza/packages/app/scripts/lib/device-lease.ts");
@@ -105,7 +106,7 @@ export async function runNativeFixture({
 		"Explicit owned AVD name required",
 	);
 	assert.ok(
-		abi === "x86_64" || abi === "arm64-v8a",
+		isAndroidAbi(abi),
 		"Explicit emulator ABI required",
 	);
 	assert.ok(appApk && testApk, "Matching archived app/test APK pair required");

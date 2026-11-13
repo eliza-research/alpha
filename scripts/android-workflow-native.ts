@@ -22,6 +22,7 @@ import {androidEnv} from './toolchain.ts';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {verifyPinnedUpstream} from './pinned-upstream-source.ts';
+import {isAndroidAbi} from './android-abis.ts';
 import type {IsolatedAndroidTest, IsolatedUserState} from './native-test-fixture.ts';
 
 type Case = {
@@ -66,7 +67,7 @@ assert.ok(!requestedPhase||PHASES.includes(requestedPhase),'Unknown phase');
 const serial=process.env.ANDROID_SERIAL,avd=process.env.ALPHA_WORKFLOW_TEST_AVD,abi=process.env.ALPHA_WORKFLOW_TEST_ABI;
 assert.ok(serial&&/^emulator-\d+$/.test(serial),'Explicit emulator serial required');
 assert.ok(avd&&/^[A-Za-z0-9_.-]+$/.test(avd),'Explicit owned AVD name required');
-assert.ok(abi==='x86_64'||abi==='arm64-v8a','Explicit owned emulator ABI required');
+assert.ok(isAndroidAbi(abi),'Explicit owned emulator ABI required');
 assert.ok(process.env.ALPHA_BUILD_ARCHIVE,'Set ALPHA_BUILD_ARCHIVE');
 const archive=path.resolve(process.env.ALPHA_BUILD_ARCHIVE),output=path.resolve(process.env.ALPHA_CAMPAIGN_OUTPUT??path.join(archive,'workflow-native'));
 assert.ok(output.startsWith(path.resolve('test-results')+path.sep),'Evidence must remain beneath test-results');assert.ok(!fs.existsSync(output),'Use a new evidence folder');

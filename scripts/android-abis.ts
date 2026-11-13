@@ -1,7 +1,7 @@
 export const ANDROID_ABIS = Object.freeze(['arm64-v8a', 'x86_64'] as const);
 /** Explicit ABI selection never relaxes the requested binary's integrity. */
 export type AndroidAbi = (typeof ANDROID_ABIS)[number];
-const isAndroidAbi = (value: unknown): value is AndroidAbi => value === 'arm64-v8a' || value === 'x86_64';
+export const isAndroidAbi = (value: unknown): value is AndroidAbi => (ANDROID_ABIS as readonly unknown[]).includes(value);
 
 export function selectedAndroidAbis(requested: readonly string[] = ANDROID_ABIS): AndroidAbi[] {
   if (!Array.isArray(requested) || requested.length === 0 || new Set(requested).size !== requested.length || !requested.every(isAndroidAbi)) throw Error('Requested Android ABIs must be unique arm64-v8a or x86_64 values');
