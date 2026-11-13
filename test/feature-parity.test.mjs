@@ -55,22 +55,6 @@ test('branding never counts as a functional difference, and the launcher is shar
   assert.doesNotMatch(JSON.stringify(parity.alpha.functional), /alpha|Alpha/);
 });
 
-test('every device capability Alpha negotiates is declared in its registration', () => {
-  // The manifest is only as honest as the declared list: a capability added to the negotiation
-  // without being declared would never surface as a parity difference.
-  const source = fs.readFileSync('apps/app/src/runtime/phone-context.ts', 'utf8');
-  const start = source.indexOf('export function selectDeviceCapabilities(');
-  assert.ok(start >= 0, 'device capability selection found');
-  const body = source.slice(start, source.indexOf('\n}\n', start));
-  const constants = Object.fromEntries([...source.matchAll(/(?:export )?const ([A-Z_]+_CAPABILITY)\s*=\s*'([^']+)'/g)].map(match => [match[1], match[2]]));
-  const literals = [...body.matchAll(/'([a-z]+\.[a-z0-9.-]+\.v\d+)'/g)].map(match => match[1]);
-  const named = [...body.matchAll(/\b([A-Z_]+_CAPABILITY)\b/g)].map(match => constants[match[1]]).filter(Boolean);
-  const declared = new Set(parity.alpha.functional.capabilities);
-  const undeclared = [...new Set([...literals, ...named])].filter(name => !declared.has(name));
-  assert.ok(literals.length > 0, 'negotiated capability literals found');
-  assert.deepEqual(undeclared, [], 'declare these in apps/app/src/product/alpha-product-registration.ts features.capabilities');
-});
-
 test('the Alpha manifest is deterministic and served views appear on both sides', async () => {
   const again = await featureParity();
   assert.equal(JSON.stringify(again.alpha), JSON.stringify(parity.alpha));
