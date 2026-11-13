@@ -482,7 +482,7 @@ public final class UpdateFlowTest {
    PluginCall late=tap(owner);
    check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
    check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
-   deadline(defaultDeadline);
+   deadline(TimeUnit.SECONDS.toNanos(3));
    body=trickle(2);
    check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");
   }finally{deadline(defaultDeadline);body=IN_MEMORY;}
@@ -2215,7 +2215,7 @@ public final class UpdateFlowTest {
   PluginCall first=tlsApk(8);
   owner.installUpdate(fixtureAutomatic(first));first.awaitAnswer();
   check(first.rejected.get()==1&&cacheTlsRequests.get()==1&&!owner.activity.focused,"owned TLS reaches archive admission before foreground deferral");
-  check(download(context).exists()&&java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"foreground deferral retains the exact TLS download");
+  check(download(context).isFile()&&java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"foreground deferral retains the exact TLS download");
   check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"TLS deferral grants no session/pause authority");
   context.packages.archiveRead=()->{};owner.activity.focused=true;
   PluginCall next=fixtureAutomatic(tlsApk(8));owner.installUpdate(next);next.awaitAnswer();
@@ -2291,6 +2291,8 @@ public final class UpdateFlowTest {
   if(interrupted)Thread.currentThread().interrupt();
  }
  private static void finalOfferDeadlineRetiresBeforeLateTransport(File cache)throws Exception{
+  var offerDeadlineField=AlphaDevicePlugin.class.getDeclaredField("UPDATE_MANIFEST_RECHECK_MILLIS");offerDeadlineField.setAccessible(true);
+  int originalOfferDeadline=offerDeadlineField.getInt(null);
   for(String cut:List.of("foreground","stock-call","image-call-access","headers","body","open")){
    Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
    boolean stockCall=cut.equals("stock-call"),imageCallAccess=cut.equals("image-call-access");
@@ -2355,7 +2357,7 @@ public final class UpdateFlowTest {
     }
    }finally{
     released.countDown();manifestOpenObserver=()->{};manifestExchange=null;manifestTlsReply=null;
-    plugin("UPDATE_MANIFEST_RECHECK_MILLIS",10000);
+    offerDeadlineField.setInt(null,originalOfferDeadline);
    }
   }
   System.out.println("PASS final offer deadline bounds held network stages and leaves manual recovery available");

@@ -56,6 +56,7 @@ test('local authorization review survives reload and revocation disables its sou
  await reviewRemoval.click();
  await expect(removal).toContainText('Same grant, second connection');
  const confirmRemoval=removal.getByRole('button',{name:'Confirm removal',exact:true});
+ await expect(confirmRemoval).toBeEnabled();
  await confirmRemoval.evaluate(button=>button.addEventListener('click',()=>{
   (window as any).removalFixture.holdNext=true;
  },{capture:true,once:true}));
