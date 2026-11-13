@@ -29,6 +29,7 @@ const selected=(()=>{
 const fakeAudio=process.env.ALPHA_LIVE_FAKE_AUDIO;
 const needsProduction=!selected.length||selected.includes('production');
 const needsDevelopment=!selected.length||selected.some(name=>name!=='production');
+const needsChromiumWarmup=!selected.length||selected.some(name=>name==='chromium'||name==='live');
 // Specs that start their own in-process Vite server (dev-hosted-journey, dev-reload,
 // reading-source) read the flag from the worker environment, so development lanes opt in
 // here too. The production web server below clears it explicitly.
@@ -53,8 +54,8 @@ export default defineConfig({
   testDir: './test/browser',
   // A committed test.only would turn a shard green while skipping the rest.
   forbidOnly: true,
-  // Loads the app once on the development server before the workers start (see the file).
-  globalSetup: needsDevelopment ? './test/browser/warm-dev-server.ts' : undefined,
+  // Warm Chromium development runs before workers start. Storage jobs install their own browser only.
+  globalSetup: needsChromiumWarmup ? './test/browser/warm-dev-server.ts' : undefined,
   timeout: 30_000,
   workers: 2,
   fullyParallel: true,

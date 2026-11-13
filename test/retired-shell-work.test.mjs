@@ -8,16 +8,24 @@ test('image revocation retires the raw Contacts view after the presentation gate
  const declaration=source.match(/^    (const refreshImage\s*=\s*async\b[\s\S]*?^    \};)/m)?.[1];
  assert.ok(declaration,'Android image refresh declaration is present');
  let admitted=true,homes=0;
+ let capabilities={aospImage:true,contacts:true,sense:true};
+ const senseReads=[];
  const ORDER=['contacts','settings'];
  const shell={state:{view:'contacts'},S(){return {view:admitted?this.state.view:null};},goHome(){homes++;this.state.view=null;}};
- const refresh=new Function('DeviceApps','admitImageSense','admitImageContacts','ORDER','shell','applyImageContacts',declaration+';return refreshImage;')(
-  {platformCapabilities:async()=>({aospImage:true,contacts:false})},()=>assert.fail('a visibility refresh does not re-admit Sense'),value=>{admitted=value;},ORDER,shell,applyImageContacts);
+ const refresh=new Function('DeviceApps','admitImageSense','admitImageContacts','ORDER','shell','applyImageContacts',
+  declaration+';return refreshImage;')(
+  {platformCapabilities:async()=>capabilities},value=>senseReads.push(value),value=>{admitted=value;},ORDER,shell,applyImageContacts);
+ await refresh(true);
+ assert.deepEqual(senseReads,[capabilities]);
+ assert.equal(admitted,true);
+ capabilities={aospImage:false,contacts:true,sense:false};
  await refresh();
  assert.equal(admitted,false);
  assert.equal(shell.state.view,null,'the hidden raw view must not return when image capability is later re-admitted');
  assert.equal(homes,1);
  assert.deepEqual(ORDER,['settings']);
  shell.state.view='settings';await refresh();assert.equal(homes,1,'a different current view stays open');
+ assert.equal(senseReads.length,1,'resuming rechecks Contacts without readmitting Sense');
 });
 
 test('a retired send finally cannot clear the newer send typing lease',()=>{
