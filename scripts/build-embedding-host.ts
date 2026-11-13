@@ -4,13 +4,13 @@
  * Generated receipts preserve output hashes and the original producer identity.
  */
 import {execFileSync, spawnSync} from 'node:child_process';
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import type {EmbeddingManifest} from "./stage-embedding-host.ts";
-import {nativeCacheRoot,nativeCacheDirectory,nativeRecipe,nativeRecipeDigest,NATIVE_BUILD_RECEIPT,NATIVE_BUILD_REQUIREMENTS,NATIVE_PYTHON,fileDigest,verifyNativeBuildFiles,verifyNativeBuildLibraries,validateNativeBuildReceipt,nativeOutputInventory,writeNativeBuildReceipt,assertNativeOutputPath,withNativeCacheLock,type NativeBuildReceipt} from './native-build-inputs.ts';
+import {nativeCacheRoot,nativeCacheDirectory,nativeRecipe,nativeRecipeDigest,NATIVE_BUILD_RECEIPT,NATIVE_BUILD_REQUIREMENTS,NATIVE_PYTHON,fileDigest,verifyNativeBuildFiles,verifyNativeBuildLibraries,validateNativeBuildReceipt,nativeOutputInventory,writeNativeBuildReceipt,assertNativeOutputPath,withNativeCacheLock,nativeAndroidSdk,prepareNativeSource,type NativeBuildReceipt} from './native-build-inputs.ts';
 import {stageVoiceModels} from './android-stage-voice-models.ts';
 import {voiceHostProblems} from './voice-host.ts';
 
@@ -35,9 +35,7 @@ export function embeddingHostState(_manifest:LibraryManifest,_toolchain:Toolchai
 }
 export class Stop extends Error {constructor(readonly code:number,message:string){super(message);}}
 function resolveSdk() {
-  const sdk=process.env.ANDROID_HOME||process.env.ANDROID_SDK_ROOT||[path.join(process.env.HOME||'','Library/Android/sdk'),path.join(process.env.HOME||'','Android/Sdk')].find(value=>fs.existsSync(path.join(value,'ndk')));
-  if(!sdk||!fs.existsSync(sdk))throw new Stop(2,'Set ANDROID_HOME to an Android SDK. Native setup installs its pinned NDK automatically.');
-  return sdk;
+  return nativeAndroidSdk();
 }
 function ndkTools(ndk:string) {
   const prebuilt=path.join(ndk,'toolchains/llvm/prebuilt'),host=fs.readdirSync(prebuilt).find(name=>fs.existsSync(path.join(prebuilt,name,'bin/llvm-strip')));
@@ -61,42 +59,6 @@ export async function preparePortableNativeInputs(root:string) {
   if(!fs.existsSync(path.join(ndk,'source.properties')))command('sdkmanager',[`ndk;${toolchain.ndk}`]);
   const enginePath='plugins/plugin-local-inference/native/llama.cpp';
   command('git',['submodule','update','--init','--depth','1',enginePath],path.join(root,'vendor/eliza'));
-  // Source-only SDK changes reuse the same compiled native inputs without changing their producer receipt.
-  const source=path.join(cacheRoot,`source-${nativeRecipeDigest(recipe).slice(0,20)}`);
-  if(!fs.existsSync(path.join(source,'.git')))command('git',['clone','--no-hardlinks','--dissociate','--no-checkout',path.join(root,'vendor/eliza'),source]);
-  if(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:source,encoding:'utf8'}).trim())throw Error('Cached native producer source has tracked modifications');
-  const alternates=path.join(source,'.git/objects/info/alternates');
-  if(fs.existsSync(alternates)){command('git',['repack','-a','-d'],source);fs.rmSync(alternates);}
-  if(spawnSync('git',['-C',source,'cat-file','-e',`${pin}^{commit}`],{stdio:'ignore'}).status!==0)command('git',['fetch','--no-tags',path.join(root,'vendor/eliza'),pin],source);
-  command('git',['checkout','--detach',pin],source);
-  const reference=path.join(root,'vendor/eliza',enginePath);
-  const referenceHead=fs.existsSync(path.join(reference,'.git'))?spawnSync('git',['-C',reference,'rev-parse','HEAD'],{encoding:'utf8'}):null;
-  command('git',['submodule','update','--init','--recursive',...(referenceHead?.status===0&&referenceHead.stdout.trim()===recipe.engineCommit?['--reference',reference]:[]),enginePath],source);
-  if(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:source,encoding:'utf8'}).trim())throw Error('Cached native producer source has tracked modifications');
-  const fork=path.join(source,'plugins/plugin-local-inference/native/llama.cpp');
-  const engineAlternates=execFileSync('git',['-C',fork,'rev-parse','--path-format=absolute','--git-path','objects/info/alternates'],{encoding:'utf8'}).trim();
-  if(fs.existsSync(engineAlternates)){command('git',['repack','-a','-d'],fork);fs.rmSync(engineAlternates);}
-
-  // Python and build tools live in this cache, never in a user/global environment.
-  let uv='uv';
-  if(spawnSync(uv,['--version'],{stdio:'ignore'}).status!==0) {
-    const bootstrap=path.join(cacheRoot,'bootstrap');
-    command('python3',['-m','pip','install','--require-hashes','--no-deps','--target',bootstrap,'-r',path.join(root,'android/embedding-host/bootstrap-requirements.txt')]);
-    uv=path.join(bootstrap,'bin','uv');
-  }
-  command(uv,['python','install',NATIVE_PYTHON]);
-  const venv=path.join(cache,'python'),python=path.join(venv,'bin','python');
-  if(!fs.existsSync(python))command(uv,['venv','--python',NATIVE_PYTHON,venv]);
-  const requirements=path.join(root,NATIVE_BUILD_REQUIREMENTS),requirementsStamp=path.join(venv,'requirements.sha256');
-  if(!fs.existsSync(requirementsStamp)||fs.readFileSync(requirementsStamp,'utf8')!==fileDigest(requirements)) {
-    command(uv,['pip','install','--python',python,'--require-hashes','--extra-index-url','https://download.pytorch.org/whl/cpu','--index-strategy','unsafe-best-match','-r',requirements]);
-    fs.writeFileSync(requirementsStamp,fileDigest(requirements));
-  }
-  if([source,cache,sdk].some(file=>/[\s=\0]/.test(file)))throw Error('Native compiler path remapping requires build/cache/SDK paths without whitespace');
-  const remap=['#',`+-ffile-prefix-map=${source}=/alpha-native-source`,`+-ffile-prefix-map=${cache}=/alpha-native-build`,`+-ffile-prefix-map=${cacheRoot}=/alpha-native-cache`,`+-ffile-prefix-map=${sdk}=/android-sdk`].join(' ');
-  const {preparedSourceEnv}=await import('./local-agent-source.ts');
-  const nativeEnv=preparedSourceEnv(process.env);
-  const env:NodeJS.ProcessEnv={...nativeEnv,PATH:`${path.join(venv,'bin')}${path.delimiter}${nativeEnv.PATH}`,ANDROID_HOME:sdk,ANDROID_SDK_ROOT:sdk,ELIZA_NDK_VERSION:toolchain.ndk,CMAKE_BUILD_PARALLEL_LEVEL:'2',PYTHONPATH:path.join(fork,'gguf-py'),CCC_OVERRIDE_OPTIONS:remap};
   const voiceOutput=path.join(cache,'voice'),cacheOutput=path.join(cache,'output'),builtReceipt=path.join(cacheOutput,NATIVE_BUILD_RECEIPT);
   let receipt:NativeBuildReceipt|undefined;
   if(fs.existsSync(builtReceipt)) {
@@ -112,10 +74,42 @@ export async function preparePortableNativeInputs(root:string) {
     }
   }
   if(!receipt) {
+  // Source-only SDK changes reuse the same compiled native inputs without changing their producer receipt.
+  const source=path.join(cache,'source');
+  prepareNativeSource(path.join(root,'vendor/eliza'),source,pin);
+  const reference=path.join(root,'vendor/eliza',enginePath);
+  const referenceHead=fs.existsSync(path.join(reference,'.git'))?spawnSync('git',['-C',reference,'rev-parse','HEAD'],{encoding:'utf8'}):null;
+  command('git',['submodule','update','--init','--recursive',...(referenceHead?.status===0&&referenceHead.stdout.trim()===recipe.engineCommit?['--reference',reference]:[]),enginePath],source);
+  if(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:source,encoding:'utf8'}).trim())throw Error('Cached native producer source has tracked modifications');
+  const fork=path.join(source,'plugins/plugin-local-inference/native/llama.cpp');
+  const engineAlternates=execFileSync('git',['-C',fork,'rev-parse','--path-format=absolute','--git-path','objects/info/alternates'],{encoding:'utf8'}).trim();
+  if(fs.existsSync(engineAlternates)){command('git',['repack','-a','-d'],fork);fs.rmSync(engineAlternates);}
+
+  // Python and build tools live in this cache, never in a user/global environment.
+  let uv='uv';
+  if(spawnSync(uv,['--version'],{stdio:'ignore'}).status!==0) {
+    const bootstrap=path.join(cache,'bootstrap');
+    command('python3',['-m','pip','install','--require-hashes','--no-deps','--target',bootstrap,'-r',path.join(root,'android/embedding-host/bootstrap-requirements.txt')]);
+    uv=path.join(bootstrap,'bin','uv');
+  }
+  command(uv,['python','install',NATIVE_PYTHON]);
+  const venv=path.join(cache,'python'),python=path.join(venv,'bin','python'),location=path.join(venv,'native-location');
+  if(fs.existsSync(venv)&&(!fs.existsSync(location)||fs.readFileSync(location,'utf8')!==venv||!fs.existsSync(python)))fs.rmSync(venv,{recursive:true,force:true});
+  if(!fs.existsSync(python)){command(uv,['venv','--python',NATIVE_PYTHON,venv]);fs.writeFileSync(location,venv);}
+  const requirements=path.join(root,NATIVE_BUILD_REQUIREMENTS),requirementsStamp=path.join(venv,'requirements.sha256');
+  if(!fs.existsSync(requirementsStamp)||fs.readFileSync(requirementsStamp,'utf8')!==fileDigest(requirements)) {
+    command(uv,['pip','install','--python',python,'--require-hashes','--extra-index-url','https://download.pytorch.org/whl/cpu','--index-strategy','unsafe-best-match','-r',requirements]);
+    fs.writeFileSync(requirementsStamp,fileDigest(requirements));
+  }
+  if([source,cache,sdk].some(file=>/[\s=\0]/.test(file)))throw Error('Native compiler path remapping requires build/cache/SDK paths without whitespace');
+  const remap=['#',`+-ffile-prefix-map=${source}=/alpha-native-source`,`+-ffile-prefix-map=${cache}=/alpha-native-build`,`+-ffile-prefix-map=${cacheRoot}=/alpha-native-cache`,`+-ffile-prefix-map=${sdk}=/android-sdk`].join(' ');
+  const {preparedSourceEnv}=await import('./local-agent-source.ts');
+  const nativeEnv=preparedSourceEnv(process.env);
+  const env:NodeJS.ProcessEnv={...nativeEnv,PATH:`${path.join(venv,'bin')}${path.delimiter}${nativeEnv.PATH}`,ANDROID_HOME:sdk,ANDROID_SDK_ROOT:sdk,ELIZA_NDK_VERSION:toolchain.ndk,CMAKE_BUILD_PARALLEL_LEVEL:'2',PYTHONPATH:path.join(fork,'gguf-py'),CCC_OVERRIDE_OPTIONS:remap};
     const {assertAndroidVoiceLibrary}=createRequire(import.meta.url)('../vendor/eliza/packages/app/scripts/build-helpers/verify-fused-symbols.ts');
     // The upstream builder verifies each download, converted GGUF and native ABI/symbol contract.
     // It runs in an isolated source checkout; it never writes into vendor/eliza.
-    command(env.ALPHA_NODE||'node',[path.join(source,'packages/app/scripts/paradee-voice/build-native.ts'),'--workspace',path.join(cacheRoot,'downloads'),'--out',voiceOutput,'--model-cache',path.join(cacheRoot,'models'),'--python',python],source,env);
+    command(env.ALPHA_NODE||'node',[path.join(source,'packages/app/scripts/paradee-voice/build-native.ts'),'--workspace',path.join(cache,'workspace'),'--out',voiceOutput,'--model-cache',path.join(cacheRoot,'models'),'--python',python],source,env);
     const nativeTools=ndkTools(ndk),host=readJson<any>(path.join(root,'android/voice-host/qualified-voice-host.json'));
     const abis=host.abis.map((abi:any)=>({abi:abi.abi,release:abi.release,alignment16KiB:true,abiVersion:assertAndroidVoiceLibrary({lib:path.join(voiceOutput,'jniLibs',abi.abi,'libelizainference.so'),objdump:path.join(nativeTools,'bin/llvm-objdump'),nm:path.join(nativeTools,'bin/llvm-nm')}).abiVersion,componentBuild:`Portable source build from SDK ${pin}, engine ${recipe.engineCommit}, recipe ${nativeRecipeDigest(recipe)}. Integrity only; no device qualification.`,libraries:abi.libraries.map((library:any)=> {
       const output=path.join(voiceOutput,'jniLibs',abi.abi,library.name);
@@ -133,7 +127,7 @@ export async function preparePortableNativeInputs(root:string) {
       const file=path.join(voiceOutput,'assets/paradee-voice/v1',model.path);
       if(!fs.existsSync(file)||fs.statSync(file).size!==model.bytes||fileDigest(file)!==model.sha256)throw Error(`Native producer model differs: ${model.path}`);
       const shared=path.join(cacheRoot,'models',model.path);
-      if(!fs.existsSync(shared)||fileDigest(shared)!==model.sha256){fs.mkdirSync(path.dirname(shared),{recursive:true});const pending=`${shared}.${process.pid}.partial`;fs.copyFileSync(file,pending);fs.renameSync(pending,shared);}
+      if(!fs.existsSync(shared)||fileDigest(shared)!==model.sha256){fs.mkdirSync(path.dirname(shared),{recursive:true});const pending=`${shared}.${randomUUID()}.partial`;fs.copyFileSync(file,pending);fs.renameSync(pending,shared);}
     }
     const embeddingOutput=path.join(cache,'embedding');
     const preparedFile=path.join(embeddingOutput,'PREPARATION.json');

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {createHash,randomUUID} from 'node:crypto';
-import {execFileSync,spawn} from 'node:child_process';
+import {execFileSync,spawn,spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,verifyNativeSymbols} from './embedding-native-contract.ts';
 
@@ -46,6 +46,31 @@ export function nativeRecipe(root:string) {
 export const nativeRecipeDigest=(recipe:ReturnType<typeof nativeRecipe>)=>bytesDigest(JSON.stringify(recipe));
 export function nativeCacheRoot() {return path.join(process.env.XDG_CACHE_HOME||path.join(os.homedir(),'.cache'),'alpha','native-inputs');}
 export function nativeCacheDirectory(root:string) {return path.join(nativeCacheRoot(),nativeRecipeDigest(nativeRecipe(root)),`${process.platform}-${process.arch}`);}
+export function nativeAndroidSdk(env:NodeJS.ProcessEnv=process.env,home=os.homedir()) {
+  const candidates=[env.ANDROID_HOME,env.ANDROID_SDK_ROOT,path.join(home,'Library/Android/sdk'),path.join(home,'Android/Sdk')];
+  const sdk=candidates.find((candidate):candidate is string=>!!candidate&&fs.existsSync(candidate));
+  if(!sdk)throw Error('Set ANDROID_HOME to an Android SDK. Native setup installs its pinned NDK automatically.');
+  return sdk;
+}
+/** Initialize before checking cleanliness; later calls never overwrite a dirty checkout. */
+export function prepareNativeSource(repository:string,source:string,pin:string) {
+  const git=(...args:string[])=>execFileSync('git',['-C',source,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+  if(!fs.existsSync(path.join(source,'.git'))){
+    if(fs.existsSync(source)&&fs.readdirSync(source).length)throw Error('Native source cache directory is not empty');
+    fs.mkdirSync(source,{recursive:true});git('init','--quiet');
+  }
+  const marker=path.join(source,'.git/alpha-native-checkout');
+  if(!fs.lstatSync(path.join(source,'.git')).isDirectory())throw Error('Native source cache must own its Git metadata');
+  const populated=fs.readdirSync(source).some(name=>name!=='.git');
+  if((fs.existsSync(marker)||populated)&&git('status','--porcelain','--untracked-files=no'))throw Error('Cached native producer source has tracked modifications');
+  const alternates=path.join(source,'.git/objects/info/alternates');
+  if(fs.existsSync(alternates)){git('repack','-a','-d');fs.rmSync(alternates);}
+  const hasCommit=spawnSync('git',['-C',source,'cat-file','-e',`${pin}^{commit}`],{stdio:'ignore'}).status===0;
+  if(!hasCommit)git('fetch','--quiet','--no-tags','--depth','1',repository,pin);
+  git('checkout','--quiet','--detach',pin);
+  if(git('status','--porcelain','--untracked-files=no'))throw Error('Native producer checkout is not clean');
+  fs.writeFileSync(marker,pin+'\n');
+}
 export function assertNativeOutputPath(root:string,relative:string) {
   let cursor=root;
   if(fs.existsSync(cursor)&&(!fs.lstatSync(cursor).isDirectory()||fs.lstatSync(cursor).isSymbolicLink()))throw Error('Native output root must be a real directory');
@@ -126,7 +151,7 @@ export function verifyNativeFileBytes(root:string,files:NativeFile[]) {
 /** Inspect executable structure separately from frozen-byte custody checks. */
 export function verifyNativeBuildLibraries(root:string,receipt:NativeBuildReceipt) {
   const {assertAndroidVoiceLibrary,minElfLoadAlignment}=createRequire(import.meta.url)('../vendor/eliza/packages/app/scripts/build-helpers/verify-fused-symbols.ts');
-  const sdk=process.env.ANDROID_HOME||process.env.ANDROID_SDK_ROOT||path.join(os.homedir(),'Library/Android/sdk');
+  const sdk=nativeAndroidSdk();
   const prebuilt=path.join(sdk,'ndk',receipt.producer.ndk,'toolchains/llvm/prebuilt');
   const host=fs.readdirSync(prebuilt).find(name=>fs.existsSync(path.join(prebuilt,name,'bin/llvm-nm')));
   if(!host)throw Error('Pinned Android NDK inspection tools are required');

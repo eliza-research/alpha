@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {embeddingProducerInputPaths,nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated} from '../scripts/embedding-native-contract.ts';
-import {nativeRecipe,nativeRecipeDigest,readNativeBuildReceipt,verifyNativeFileBytes,nativeOutputInventory,NATIVE_BUILD_RECEIPT,fileDigest,bytesDigest,withNativeCacheLock} from '../scripts/native-build-inputs.ts';
+import {nativeRecipe,nativeRecipeDigest,readNativeBuildReceipt,verifyNativeFileBytes,nativeOutputInventory,NATIVE_BUILD_RECEIPT,fileDigest,bytesDigest,withNativeCacheLock,prepareNativeSource,nativeAndroidSdk} from '../scripts/native-build-inputs.ts';
 
 const root=path.resolve(import.meta.dirname,'..');
 function fixture(t) {
@@ -60,10 +60,27 @@ test('concurrent native producers serialize and a failed producer releases its c
   const events=[];
   let release;
   const pending=new Promise(resolve=>{release=resolve;});
-  const first=withNativeCacheLock(dir,async()=>{events.push('first');await pending;throw Error('producer failed');});
+  let started;
+  const entered=new Promise(resolve=>{started=resolve;});
+  const first=withNativeCacheLock(dir,async()=>{events.push('first');started();await pending;throw Error('producer failed');});
+  await entered;
   const second=withNativeCacheLock(dir,async()=>{events.push('second');});
   await new Promise(resolve=>setTimeout(resolve,120));assert.deepEqual(events,['first']);
   release();await assert.rejects(first,/producer failed/);await second;
   assert.deepEqual(events,['first','second']);
   await withNativeCacheLock(dir,async()=>events.push('third'));assert.equal(events.at(-1),'third');
+});
+test('a fresh native source cache checks out successfully and preserves later dirty files',t=>{
+  const dir=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-source-')));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const repository=path.join(dir,'repository'),source=path.join(dir,'source');fs.mkdirSync(repository);
+  const git=(...args)=>execFileSync('git',['-C',repository,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+  git('init','--quiet');fs.writeFileSync(path.join(repository,'input'),'reviewed');git('add','.');git('-c','user.name=fixture','-c','user.email=fixture@example.invalid','commit','-qm','input');
+  const pin=git('rev-parse','HEAD');prepareNativeSource(repository,source,pin);
+  assert.equal(fs.readFileSync(path.join(source,'input'),'utf8'),'reviewed');assert.equal(fs.existsSync(path.join(source,'.git/objects/info/alternates')),false);
+  fs.writeFileSync(path.join(source,'input'),'local work');assert.throws(()=>prepareNativeSource(repository,source,pin),/tracked modifications/);assert.equal(fs.readFileSync(path.join(source,'input'),'utf8'),'local work');
+});
+test('native build and inspection share Linux and macOS SDK discovery',t=>{
+  const home=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-sdk-'));t.after(()=>fs.rmSync(home,{recursive:true,force:true}));
+  const linux=path.join(home,'Android/Sdk');fs.mkdirSync(linux,{recursive:true});assert.equal(nativeAndroidSdk({},home),linux);
+  const mac=path.join(home,'Library/Android/sdk');fs.mkdirSync(mac,{recursive:true});assert.equal(nativeAndroidSdk({},home),mac);assert.equal(nativeAndroidSdk({ANDROID_HOME:linux},home),linux);
 });
