@@ -72,8 +72,10 @@ function checkWorkflows() {
   const reverify = jobs.publish.steps.find(runs('run android:verify --'));
   assert.equal(reverify?.['working-directory'], 'qualified-product');
   assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'bun scripts/verify-apks.ts');
+  const qualifiedRow = jobs.publish.steps.find(step => step.name === 'Require the qualified launcher release row before publication');
+  const publication = jobs.publish.steps.find(step => step.name === 'Publish launcher APK first and anonymously verify the stable pointer');
   ordered(jobs.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
-    step => step === reverify);
+    step => step === reverify, step => step === qualifiedRow, step => step === publication);
 }
 
 const initial = {release: false, apk: 'missing', pointer: 'missing', floor: 1, apkVerified: false,
@@ -260,7 +262,7 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
   }
   return checkTraces({model: 'ProtectedAppUpdatePromotion', sources, driverHashes, traces, scope: 'bounded-orchestration',
     assumptions: [
-      'The adjacent AppUpdateCandidate campaign exercises the live version and unsigned-receipt helper. The release workflow structures are parsed for admission/dependency/environment identity and restore-before-reverification order without executing jobs. Shell command spelling is not behavioral evidence.',
+      'The adjacent AppUpdateCandidate campaign exercises the live version and unsigned-receipt helper. The release workflow structures are parsed for admission/dependency/environment identity and restore, reverify, qualified-release-row and publication step order without executing jobs. Shell command spelling is not behavioral evidence.',
       'The current signing admission shell runs against scratch Git and a closed gh command. Private object media, receipt staging and signed byte restoration run actual Python implementations against controlled transports. Signed APKs, signer facts and reviewed voice receipts are synthetic inputs.',
       'The actual publication helper runs with closed release and anonymous read ports using the restored launcher bytes. The ports choose possible failures before effects, after committed effects, and during a partial upload. They do not predict GitHub or object-storage durability or concurrency.',
       'The main-push route checks the same exact successful attempt at preflight and before protected restore. The legacy dispatched archive path keeps its prior run-level identity. The publication reader pins the protected signing attempt and exact private object generation. No live credentials, approvals, signed APKs, rollout, voice qualification or device acceptance are exercised.',
