@@ -20,7 +20,7 @@ async function bundle() {
     "device-preferences": "export const cachedDevicePreferences=()=>({autoLoadMailImages:false});export const initializeDevicePreferences=()=>{};",
     "gmail-background": "export const configureGmailBackground=async()=>{};export const withdrawGmailBackground=async()=>{};export const retireGmailBackground=async()=>{};export const pendingGmailNotice=async()=>null;export const consumeGmailNotice=async()=>{};export const releaseGmailQuestion=async()=>{};export const onGmailNotice=async()=>({remove:async()=>{}});",
     "google-connect-flow": "export const googleConnect={subscribe:()=>()=>{},getSnapshot:()=> 'idle',start:()=>{throw Error('OAuth is outside this fixture');}};export const googleConnectNote=()=>'';",
-    "mail-html": "export const prepareMailHtml=()=>{throw Error('HTML body rendering is outside this fixture');};",
+    "mail-html": "export const prepareMailHtml=()=>{throw Error('HTML body rendering is outside this fixture');}; export const fitMailFrame=()=>{throw Error('HTML frame sizing is covered by rendered browser tests');};",
     "own-notice-question": "export const reviewOwnNoticeQuestion=()=>{throw Error('Notice question is outside this fixture');};",
     "google-connection-ui": "export const googleConnectionController={getSnapshot:()=>({}),subscribe:()=>()=>{},open:()=>{throw Error(\"Google connection UI is outside this fixture\");}};",
     "alpha-client": "export const alphaClient={getState:()=>({context:{sensitive:false}})};"
