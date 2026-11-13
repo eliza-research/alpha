@@ -2770,8 +2770,10 @@ export const connectionController = {
     update({providerStatusError:true,residentInference:'unknown'});
     try{await work(mode==='cloud'?'Switching to Cloud':'Switching to own keys',async signal=>{
       const providerStatus=await selectLocalProvider({mode,expectedRevision},signal);signal.throwIfAborted();
-      update({providerStatus,providerStatusError:false,open:false,purpose:'agent'});
-      await restartAfterProviderChange(signal,true);update({message:''});finished=true;
+      update({providerStatus,providerStatusError:false});
+      await restartAfterProviderChange(signal,true);
+      const keepOpen=!!state.error||!!state.signIn||(mode==='cloud'&&!state.cloudAccount);
+      update({open:keepOpen,purpose:keepOpen?state.purpose:'agent',message:''});finished=true;
     });}finally{
       // A lost/cancelled response may follow a committed selection. Resolve its
       // saved result once under this generation; never resend the mutation.
