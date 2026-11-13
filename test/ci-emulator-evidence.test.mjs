@@ -51,8 +51,6 @@ test('every emulator job is selected by the suite input, needs the build, and it
   assert.match(text,/artifact-ids: \$\{\{ needs\.build\.outputs\.artifact_id \}\}/,name);
   assert.match(text,/test "\$\(sha256sum artifacts\/apk-manifest\.json \| cut -d' ' -f1\)" = "\$EXPECTED_MANIFEST_SHA256"/,name);
   assert.match(text,/EXPECTED_MANIFEST_SHA256: \$\{\{ needs\.build\.outputs\.manifest_sha256 \}\}/,name);
-  assert.match(text,/EXPECTED_TEST_MOCKS_MANIFEST_SHA256: \$\{\{ needs\.build\.outputs\.test_mocks_manifest_sha256 \}\}/,name);
-  assert.match(text,/test -n "\$EXPECTED_TEST_MOCKS_MANIFEST_SHA256"\n\s+test "\$\(sha256sum artifacts\/test-mocks\/apk-manifest\.json/,name);
  }
  assert.doesNotMatch(job.build,/android-emulator-runner/,'the build job boots nothing');
  assert.doesNotMatch(job.build,/\n    if: /,'every suite needs the build');
@@ -176,7 +174,8 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
 
 test('the build job hands over hash-anchored APKs',()=>{
  const build=job.build;
- const order=['hosted-native-inputs.py --acquire','bun run android:build:local','actions/upload-artifact@'].map(text=>build.indexOf(text));
+ const order=['bun run android:build:local','actions/upload-artifact@'].map(text=>build.indexOf(text));
+ assert.doesNotMatch(build,/hosted-native-inputs|artifacts\/test-mocks|--allow-unpackaged-runtime/);
  assert.ok(order.every(index=>index>0),'every build step is present');assert.deepEqual([...order].sort((a,b)=>a-b),order,'in this order');
  assert.match(build,/ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n/);
  for(const file of ['artifacts/apk-manifest.json','artifacts/launcher-debug.apk','artifacts/instrumentation/*.apk'])
@@ -255,10 +254,9 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
   fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
   const report=runSuite('instrumentation',{environment:hosted,execute:command=>{
    if(command[0]!=='bun')return 0;
-   if(command.includes('--test-mocks')){results(root,suitePlan('instrumentation')[2],{TextScale:status,BrowserFlow:'passed'});return exit;}
-   results(root,suitePlan('instrumentation')[1],Object.fromEntries(DEFAULT_CLASSES.map(name=>[name,'passed'])));return 0;
+   results(root,suitePlan('instrumentation')[1],Object.fromEntries(DEFAULT_CLASSES.map(name=>[name,name==='Shell'?status:'passed'])));return exit;
   }});
-  assert.equal(report.passed,false,`${status}/${exit}`);assert.equal(report.steps[1].status,'passed');assert.equal(report.steps[2].status,'failed',`${status}/${exit}`);
+  assert.equal(report.passed,false,`${status}/${exit}`);assert.equal(report.steps[1].status,'failed',`${status}/${exit}`);
  }
  fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
  const silent=runSuite('instrumentation',{environment:hosted,execute:()=>0});
@@ -268,8 +266,7 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
  const records=[];
  const passing=runSuite('instrumentation',{environment:hosted,record:value=>records.push(JSON.parse(JSON.stringify(value))),execute:command=>{
   if(command[0]!=='bun')return 0;
-  const mocks=command.includes('--test-mocks');
-  results(root,suitePlan('instrumentation')[mocks?2:1],Object.fromEntries((mocks?DEFAULT_TEST_MOCKS_CLASSES:DEFAULT_CLASSES).map(name=>[name,'passed'])));
+  results(root,suitePlan('instrumentation')[1],Object.fromEntries(DEFAULT_CLASSES.map(name=>[name,'passed'])));
   return 0;
  }});
  assert.equal(passing.passed,true);assert.match(summarize(passing),/`instrumentation`: passed/);

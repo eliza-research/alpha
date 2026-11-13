@@ -492,15 +492,15 @@ test("a class whose every method is skipped by its gate is recorded as skipped, 
 
 const sourceOf = name => fs.readFileSync(ROOTS.map(root => path.join(root, `ai/alphacompute/alphaphone/${name}InstrumentedTest.java`)).find(file => fs.existsSync(file)), "utf8");
 
-test("BrowserFlow uses the test-mocks views and opts in separately to live search results", () => {
+test("BrowserFlow keeps its live-search opt-in on the production-only APK", () => {
   // Rounds 7 and 8: the default campaign failed on www.google.com/search for environment reasons.
   assert.ok(!instrumentArgs(C("BrowserFlow")).includes("browserFlowLive"), "the view fixture does not pass the live search gate");
   assert.deepEqual(instrumentArgs(C("BrowserFlow"), { live: true }).slice(-6, -1), ["browserFlowLive", "1", "-e", "class", C("BrowserFlow")]);
   assert.equal(parseInstrumentationArgs([]).liveNetwork, false);
   assert.equal(parseInstrumentationArgs(["--live-network"]).liveNetwork, true);
   assert.ok(!DEFAULT_CLASSES.includes("BrowserFlow"));
-  assert.throws(() => parseInstrumentationArgs(["--classes", "BrowserFlow"]), /test-mocks app build/);
-  assert.equal(parseInstrumentationArgs(["--test-mocks", "--classes", "BrowserFlow"]).classes[0], C("BrowserFlow"));
+  assert.deepEqual(parseInstrumentationArgs(["--classes", "BrowserFlow"]).classes, [C("BrowserFlow")]);
+  assert.throws(() => parseInstrumentationArgs(["--test-mocks", "--classes", "BrowserFlow"]), /Unknown option/);
   assert.match(CLASS_REGISTRY.BrowserFlow.note, /--live-network \(browserFlowLive=1\)/);
   const method = sourceOf("BrowserFlow").slice(sourceOf("BrowserFlow").indexOf("void submittedSearchUsesRealProviderAndRejectsExecutableAddress"));
   assert.ok(method.indexOf("if(!live)return;") > 0 && method.indexOf("if(!live)return;") < method.indexOf("location.hostname==='www.google.com'"), "the live page load follows the gate");

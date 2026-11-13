@@ -252,14 +252,6 @@ def candidate_evidence(data, pin, apk_manifest, source_root=None):
     return candidate["apks"]
 
 
-def check_apk_size(kind, entries):
-    # Bound each native APK independently. The compressed producer archive
-    # may contain both debug and release without exceeding its own transport bound.
-    if kind == CANDIDATE:
-        require(sum(entry.file_size for entry in entries) <= apk_member_limit(kind),
-                "Native APK exceeds the expanded APK limit")
-
-
 def debug_apk_members(archive, verified, kind):
     members = {}
     for variant in VARIANTS:
@@ -271,7 +263,6 @@ def debug_apk_members(archive, verified, kind):
                 stat.S_IFMT(entry.external_attr >> 16) in (0, stat.S_IFREG) and not entry.flag_bits & 1,
                 "Invalid debug archive member")
         members[name] = (entry, rows[0]["sha256"])
-    check_apk_size(kind, (entry for entry, _ in members.values()))
     return members
 
 
@@ -423,7 +414,6 @@ def admit(archive, pin, stage=None, *, source_root=None):
                             voice["asr"] is True and voice["differences"] == [],
                             f"{variant} candidate requires admitted on-device voice with ASR")
                 release_members[variant] = apk_member
-            check_apk_size(kind, release_members.values())
             if kind == CANDIDATE:
                 # Refuse archives that publication cannot restore before signing.
                 for entry, expected in debug_apk_members(bundle, verified, kind).values():

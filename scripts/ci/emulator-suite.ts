@@ -86,7 +86,6 @@ export function suitePlan(suite: string): SuiteStep[] {
   if (suite === "instrumentation") return [
     prepareEmulator,
     runner("ci-default"),
-    runner("ci-default-test-mocks", "--test-mocks", "--classes", DEFAULT_TEST_MOCKS_CLASSES.join(",")),
   ];
   if (suite === "browser-reading") return [
     prepareEmulator,

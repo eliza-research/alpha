@@ -236,6 +236,7 @@ export async function approvedSigningRotation(signerRecord: SignerRecord, lineag
       await fileDigest(lineage) !== record.lineageSha256)
     throw new Error("Public rotation lineage differs from the reviewed digest");
   const allowed = new Set(Object.values(unsigned));
+  if (targets.length !== VARIANTS.length) throw new Error("Unsigned APK is outside the reviewed rotation scope");
   for (const target of targets) {
     if (!fs.lstatSync(target.input).isFile() || !allowed.delete(await fileDigest(target.input)))
       throw new Error("Unsigned APK is outside the reviewed rotation scope");

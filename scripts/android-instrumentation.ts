@@ -136,7 +136,7 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   BrowserInstalledResolver: { note: "Real installed generic HTTPS filter visibility only; no external launch or network request" },
   Shell: {},
   StartupReadiness: { args: { startupReadiness: "1" } },
-  TextScale: { requiresTestMocksBuild: true, note: "Display and Notes need the views on a signed-out emulator. Run textScaleProcessRestartPhase separately with bun scripts/test-native-restart.ts text-scale and the test-mocks APKs." },
+  TextScale: { note: "Display and Notes require a phone its owner already signed in; a signed-out APK is inconclusive. Run textScaleProcessRestartPhase separately with bun scripts/test-native-restart.ts text-scale." },
   CloudSignInCallback: { args: { cloudSignInNative: "1" }, note: "Synthetic in-app sign-in returns through MainActivity; a matching return is never delivered, so nothing reaches Steward or Cloud. Not App Link verification (adb shell pm get-app-links) or real-account sign-in" },
   BrowserExternalHandoff: { note: "Synthetic committed HTTPS child and resolver fixture; intercepts chooser dispatch, no external page is opened" },
   ResetPolicy: { note: "Non-destructive cancellation, migration refusal and isolated marker checks; not a system reset proof" },
@@ -274,6 +274,7 @@ const NO_HOSTED_SUPERVISOR = "ran only under the resident-android.yml emulator s
  * gained a registry entry or a campaign, and for any new class that has neither.
  */
 export const NOT_RUN_BY_A_RUNNER = {
+  HomeCalendarCard: "real CalendarProvider and revoked-permission checks retained; the retired mock-build Calendar campaign cannot run on the production-only APK. Requires a launcher fixture with independently admitted sign-in and separate granted/revoked process phases before device acceptance",
   CalendarAvailability: CALENDAR_CAMPAIGN,
   CalendarCrud: CALENDAR_CAMPAIGN,
   CalendarExternalEditor: CALENDAR_CAMPAIGN,

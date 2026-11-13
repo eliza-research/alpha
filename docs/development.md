@@ -163,6 +163,15 @@ their own provider is selected, Eliza Cloud speech when signed in to Cloud with
 no plan limit in force, otherwise on-device speech. A Cloud or provider speech
 request that fails before audio plays falls back to on-device speech.
 
+The production-only APK removes the former Android mock build and its loopback
+paired-host campaigns. Their old receipts do not qualify this launcher. Native
+resident speech, recording/permission/cancellation checks and the real provider
+contracts remain separate from browser fixtures. The Home Calendar provider and
+permission-loss acceptance cases are retained, but need an independently admitted
+signed-in launcher fixture and distinct granted/revoked process phases. Real
+provider responses, decoded/audible audio and physical-device acceptance still
+need current evidence; deleting a retired fixture does not close those gates.
+
 Android builds remove mock flags from child environments. `scripts/audit-production-bundle.ts` checks
 the web output and APK assets for developer code, fixtures and source maps.
 

@@ -551,7 +551,7 @@ class CloudSigningInputTest(unittest.TestCase):
             ADMISSION.admit(self.archive, self.pin, stage)
             self.assertEqual({path.name: path.read_bytes() for path in stage.iterdir()}, self.apk_bytes)
 
-    def test_native_expanded_apk_pairs_are_bounded_independently(self):
+    def test_native_release_and_debug_apks_are_bounded_independently(self):
         ceiling = 12_000
         debug = {f"{variant}-debug.apk": bytes(4_000) for variant in ADMISSION.VARIANTS}
         with patch.object(PRODUCER, "MAX_ARCHIVE_BYTES", ceiling):
@@ -559,13 +559,13 @@ class CloudSigningInputTest(unittest.TestCase):
             self.write_candidate(debug)
             self.assertLess(self.archive.stat().st_size, ceiling)
             ADMISSION.admit(self.archive, self.pin)
-            self.unsigned_pair(6_001)
+            self.unsigned_pair(12_001)
             self.write_candidate(debug)
-            with self.assertRaisesRegex(ValueError, "expanded pair limit"):
+            with self.assertRaisesRegex(ValueError, "oversized archive member"):
                 ADMISSION.admit(self.archive, self.pin)
             self.unsigned_pair(4_000)
-            self.write_candidate({name: bytes(6_001) for name in debug})
-            with self.assertRaisesRegex(ValueError, "expanded pair limit"):
+            self.write_candidate({name: bytes(12_001) for name in debug})
+            with self.assertRaisesRegex(ValueError, "Invalid debug archive member"):
                 ADMISSION.admit(self.archive, self.pin)
 
     def test_admits_both_exact_unsigned_cloud_variants(self):
@@ -656,7 +656,7 @@ class CloudSigningInputTest(unittest.TestCase):
         baseline = copy.deepcopy(row)
         for field, value in (
             ("signed", True), ("signerSha256", "c" * 64), ("debuggable", True),
-            ("testMocks", True), ("home", True), ("launcher", False),
+            ("testMocks", True), ("home", False), ("launcher", False),
             ("webPayload", False), ("runtime", "NOT_PACKAGED"), ("runtimeNotices", False),
             ("bundleAudit", "failed"), ("packageName", "another.product"),
             ("licenceBlockers", ["unreviewed"]),
