@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -30,7 +31,7 @@ const today=reminders.filter(r=>r.id!=='overdue');
 try{await R.workflowReminderRows({...op,maximumItems:2},today);out.todayOverflow=false;}catch(error){out.todayOverflow=error instanceof R.WorkflowReminderOverflow&&error.message;}
 console.log(JSON.stringify(out));`;
 test('a selected-reminders read shares only today’s open and completed reminders within the reviewed bound',()=>{
- const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
+ const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:scaledTimeout(60000)}));
  assert.deepEqual(out,{rows:[['overdue','open'],['done','completed'],['daily','completed'],['tonight','open']],noBodies:true,
   overflow:'More than 3 reminders match today, 1 of them overdue, so none were shared. Delete old reminders to include the rest.',
   todayOverflow:'More than 2 reminders match today, so none were shared.'});

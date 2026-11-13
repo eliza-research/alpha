@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -18,7 +19,7 @@ out.unbound=[d.digestTapNotice('other-account',false),d.digestTapNotice('unavail
 out.bound=[d.digestTapNotice('other-account',true),d.digestTapNotice('unavailable',true)];
 out.discard=[d.digestPendingDiscardable({phase:'review'}),d.digestPendingDiscardable({phase:'dispatched'}),d.digestPendingDiscardable({})];
 console.log(JSON.stringify(out));`;
-const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
+const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:scaledTimeout(60000)}));
 test('pause and resume keep the saved time, zone and source',()=>{
  assert.deepEqual(out.paused,{version:1,template:'morning',sourceId:'s',sourceRevision:'r',timeZone:'America/New_York',localTime:'07:15',enabled:false});
  assert.equal(out.resumed.localTime,'07:15');assert.equal(out.resumed.timeZone,'America/New_York');assert.equal(out.resumed.enabled,true);

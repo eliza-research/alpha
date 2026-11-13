@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -196,7 +197,7 @@ async function checkAndroidBuildInputReadiness(extraSources = []) {
     ]});
 }
 
-test('native Android prerequisite reports and the preflight refusal refine the readiness model', {timeout: 120000}, async () => {
+test('native Android prerequisite reports and the preflight refusal refine the readiness model', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkAndroidBuildInputReadiness([fileURLToPath(import.meta.url)]);
   assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);
   assert.equal(receipt.traces, 6);

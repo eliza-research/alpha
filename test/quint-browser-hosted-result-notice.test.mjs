@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -315,7 +316,7 @@ async function checkBrowserHostedResultNotice(extraSources = []) {
   ]};
 }
 
-test('the browser hosted ledger refines exact published results, redaction and tap readback', {timeout: 120000}, async () => {
+test('the browser hosted ledger refines exact published results, redaction and tap readback', {timeout: scaledTimeout(120000)}, async () => {
   const {receipt} = await checkBrowserHostedResultNotice([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 10);
   assert.equal(receipt.observedFields.length, 14);

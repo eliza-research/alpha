@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -236,7 +237,7 @@ async function checkHostedNoticeQuestion(extraSources = []) {
     ]}));
 }
 
-test('hosted result questions refine actual review, readback and post-settlement ownership', {timeout: 120000}, async () => {
+test('hosted result questions refine actual review, readback and post-settlement ownership', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkHostedNoticeQuestion([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 23);
   assert.equal(receipt.observedFields.length, 19);

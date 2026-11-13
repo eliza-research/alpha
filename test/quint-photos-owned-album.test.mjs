@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -199,7 +200,7 @@ test('a retained save cannot dispatch after the same dialog enters Delete confir
   } finally {await t.close();}
 });
 
-test('rendered Photos album controls refine scoped mutation admission and settlement', {timeout: 180_000}, async () => {
+test('rendered Photos album controls refine scoped mutation admission and settlement', {timeout: scaledTimeout(180_000)}, async () => {
   const receipt = await checkPhotosOwnedAlbumDialog(sources);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

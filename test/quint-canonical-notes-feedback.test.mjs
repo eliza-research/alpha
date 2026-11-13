@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {checkCanonicalNotesFeedback} from '../specs/quint/refinement/application/canonical-notes-feedback.mjs';
 
-test('current Notes feedback preserves uncertain mutations across later reads', {timeout:120000}, async () => {
+test('current Notes feedback preserves uncertain mutations across later reads', {timeout:scaledTimeout(120000)}, async () => {
   const receipt = await checkCanonicalNotesFeedback([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

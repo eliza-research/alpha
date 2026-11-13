@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runSpeechRouteHoldReplay} from '../specs/quint/refinement/application/speech-route-hold.mjs';
@@ -5,7 +6,7 @@ import {runSpeechRouteHoldReplay} from '../specs/quint/refinement/application/sp
 // SpeechRouteHold model traces (scenarios, witnesses and random walks from the pinned Quint CLI)
 // replayed step by step against speechRoute, noteNetworkSpeechFailure and clearNetworkSpeechHold in
 // runtime/voice-selection.ts, with the account, the stored Cloud limit and the clock as ports.
-test('the speech route and its network hold follow every SpeechRouteHold model trace', {timeout: 240000}, async () => {
+test('the speech route and its network hold follow every SpeechRouteHold model trace', {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await runSpeechRouteHoldReplay();
   assert.equal(receipt.traces, 95);
   assert.ok(receipt.checkpoints > 2000, `checkpoints ${receipt.checkpoints}`);

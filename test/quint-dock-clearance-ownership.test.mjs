@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -202,7 +203,7 @@ globalThis.install = installDockClearance; globalThis.current = () => installed;
       'One screen and one layout dock. Physical Android insets, installed font scaling, and focus scrolling have separate evidence.']}));
 }
 
-test('the exact layout observers publish current header clearance and retain the last dock footprint', {timeout: 60000}, async () => {
+test('the exact layout observers publish current header clearance and retain the last dock footprint', {timeout: scaledTimeout(60000)}, async () => {
   const receipt = await checkDockClearanceOwnership();
   assert.equal(receipt.traceInputs.length, 5);
   assert.equal(receipt.observedFields.length, 12);

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {mkdtempSync, readFileSync, readdirSync, rmSync} from 'node:fs';
@@ -16,7 +17,7 @@ export function settingsScenarioTraces() {
     const result = spawnSync(process.execPath, [join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js'),
       'test', file, '--main=SettingsSession', '--backend=typescript', '--max-samples=1', '--seed=20261107',
       `--match=^(${scenarios.map(match => match[1]).join('|')})$`, `--out-itf=${join(directory, 'scenario-{test}-{seq}.json')}`],
-    {cwd: repositoryRoot, encoding: 'utf8', timeout: 120000});
+    {cwd: repositoryRoot, encoding: 'utf8', timeout: scaledTimeout(120000)});
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const files = readdirSync(directory), known = new Set(['mount', 'unmount', 'refresh', 'changeScale', 'deviceHandles', 'deviceChanges', 'settleRead', 'settleWrite']);
     const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);

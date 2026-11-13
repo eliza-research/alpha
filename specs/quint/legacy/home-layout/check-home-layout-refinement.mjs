@@ -78,7 +78,7 @@ async function attachFixture(page, launcher) {
         state.surfaceReads++;
         if (launcher && state.surfaceReads >= 2) {
           await insets;
-          return {assistant: false, developmentBuild: false, topInset: 96, bottomInset: 30};
+          return {assistant: false, topInset: 96, bottomInset: 30};
         }
       }
       if (plugin === 'Agent' && method === 'request' && input.method !== 'POST') {

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {buildCalendarAdapter, calendarAdapterFixture} from '../specs/quint/refinement/application/calendar-adapter-fixture.mjs';
@@ -124,7 +125,7 @@ async function checkDayAnchor(mutate) {
   return {traces: traces.length, steps, actions: actionCounts(traces), sources: compiled.sources};
 }
 
-test('the calendar adapters follow every DayAnchor model step', {timeout: 280000}, async () => {
+test('the calendar adapters follow every DayAnchor model step', {timeout: scaledTimeout(280000)}, async () => {
   const result = await checkDayAnchor();
   assert.equal(result.traces, 40);
   for (const action of ['openForm', 'closeForm', 'midnight', 'refresh', 'render', 'save', 'unmount', 'mount', 'stutter'])
@@ -133,7 +134,7 @@ test('the calendar adapters follow every DayAnchor model step', {timeout: 280000
     'apps/app/src/prototype/calendar-edit-draft-adapter.ts']) assert.ok(result.sources.includes(source), source);
 });
 
-test('an editor that keeps a closed form\'s anchor is rejected by the replay', {timeout: 280000}, async () => {
+test('an editor that keeps a closed form\'s anchor is rejected by the replay', {timeout: scaledTimeout(280000)}, async () => {
   const forget = 'this.calendarEditDraftIdentity = void 0;\n      return;';
   await assert.rejects(checkDayAnchor(code => {
     assert.ok(code.includes(forget));

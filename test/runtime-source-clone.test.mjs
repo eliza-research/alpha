@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -46,7 +47,7 @@ function fixture(t){
  write(path.join(consumer,'upstream.lock.json'),JSON.stringify({commit,url:cache}));
  fs.mkdirSync(path.join(consumer,'vendor'),{recursive:true});fs.symlinkSync(cache,path.join(consumer,'vendor/eliza'));
  const snapshot=()=>({head:git('rev-parse','HEAD'),index:hash(path.join(cache,'.git/index')),data:hash(path.join(cache,'packages/example/data.bin')),tool:fs.statSync(path.join(cache,'packages/example/tool.sh')).mode,ignored:hash(path.join(cache,'ignored/native-build.bin')),submoduleHead:subgit('rev-parse','HEAD'),submoduleFile:hash(path.join(external,'submodule-only.txt')),files:Object.fromEntries(git('ls-files','-z').split('\0').filter(Boolean).map(name=>{const file=path.join(cache,name),stat=fs.lstatSync(file);return [name,{mode:stat.mode,value:stat.isSymbolicLink()?fs.readlinkSync(file):stat.isFile()?hash(file):null}];}))});
- const run=(options={})=>spawnSync(process.execPath,[...(options.preload?['--preload',options.preload]:[]),path.join(consumer,'scripts/prepare-local-agent.ts'),...(options.full?[]:['--source-only'])],{cwd:consumer,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:destination,ALPHA_RUNTIME_GIT_CACHE:options.cache??cache,...options.env},encoding:'utf8',timeout:20000});
+ const run=(options={})=>spawnSync(process.execPath,[...(options.preload?['--preload',options.preload]:[]),path.join(consumer,'scripts/prepare-local-agent.ts'),...(options.full?[]:['--source-only'])],{cwd:consumer,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:destination,ALPHA_RUNTIME_GIT_CACHE:options.cache??cache,...options.env},encoding:'utf8',timeout:scaledTimeout(20000)});
  return {directory,cache,consumer,destination,commit,git,write,snapshot,run};
 }
 test('verified cache seeds independent committed files and metadata, excluding ignored output',t=>{

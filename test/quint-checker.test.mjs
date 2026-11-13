@@ -32,7 +32,7 @@ test('unknown model selection fails before source loading while valid selections
   }
   const run = name => spawnSync(process.env.ALPHA_BUN ?? process.execPath,
     ['scripts/check-quint.ts', 'typecheck', `--models=${name}`, '--out=proof.json'],
-    {cwd: root, encoding: 'utf8', timeout: 30000});
+    {cwd: root, encoding: 'utf8', timeout: scaledTimeout(30000)});
   const refused = (result, message) => {
     assert.ifError(result.error);
     assert.equal(result.status, 1, result.stdout + result.stderr);
@@ -265,7 +265,7 @@ test('runner records backend routing, unexpected exceptions and unfinished resul
     write('specs/quint/tlc.json', '{}');
     write('node_modules/@informalsystems/quint/package.json', JSON.stringify({ version: '0.33.1' }));
 
-    const compare = spawnSync(process.execPath, ['scripts/check-quint.ts', 'compare', '--out=compare.json'], { cwd: root, encoding: 'utf8', timeout: 10000 });
+    const compare = spawnSync(process.execPath, ['scripts/check-quint.ts', 'compare', '--out=compare.json'], { cwd: root, encoding: 'utf8', timeout: scaledTimeout(10000) });
     assert.equal(compare.status, 1, compare.stderr);
     const failure = readJson(join(root, 'compare.json'));
     assert.equal(failure.passed, false);
@@ -279,7 +279,7 @@ test('runner records backend routing, unexpected exceptions and unfinished resul
     write('node_modules/@informalsystems/quint/dist/src/cli.js', 'console.log(process.argv.find(arg => arg.startsWith("--backend=")));');
     for (const override of [[], ['--backend=apalache']]) {
       const result = spawnSync(process.execPath, ['scripts/check-quint.ts', 'verify', '--out=verify.json', ...override],
-        {cwd: root, encoding: 'utf8', timeout: 10000});
+        {cwd: root, encoding: 'utf8', timeout: scaledTimeout(10000)});
       assert.equal(result.status, 0, result.stderr);
       const proof = readJson(join(root, 'verify.json'));
       assert.equal(proof.passed, true);
@@ -290,7 +290,7 @@ test('runner records backend routing, unexpected exceptions and unfinished resul
     }
 
     const parallelProof = spawnSync(process.execPath, ['scripts/check-quint.ts', 'verify', '--jobs=2'],
-      {cwd: root, encoding: 'utf8', timeout: 10000});
+      {cwd: root, encoding: 'utf8', timeout: scaledTimeout(10000)});
     assert.equal(parallelProof.status, 1);
     assert.match(parallelProof.stderr, /one job per server endpoint/);
 
@@ -313,7 +313,7 @@ test('runner records backend routing, unexpected exceptions and unfinished resul
         }
       `);
       const parallel = spawnSync(process.execPath, ['scripts/check-quint.ts', 'typecheck', '--out=parallel.json'],
-        {cwd: root, encoding: 'utf8', timeout: 10000, env: {...process.env, ALPHA_QUINT_JOBS: '2'}});
+        {cwd: root, encoding: 'utf8', timeout: scaledTimeout(10000), env: {...process.env, ALPHA_QUINT_JOBS: '2'}});
       assert.equal(parallel.status, 0, parallel.stderr);
       const evidence = readJson(join(root, 'parallel.json'));
       assert.equal(evidence.jobs, 2);

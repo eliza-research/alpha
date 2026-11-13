@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -94,15 +95,15 @@ public class WorkerAssetTest {
  }
 }`;
   const harnessPath=path.join(temporary,'WorkerAssetTest.java');fs.writeFileSync(harnessPath,harness);
-  execFileSync(javaBinary('javac'),['--release','8','-d',temporary,path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowWorkerAssets.java'),harnessPath],{timeout:20000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,identity+'.WorkerAssetTest',assets,state],{encoding:'utf8',timeout:20000}),/^PASS extract/);
+  execFileSync(javaBinary('javac'),['--release','8','-d',temporary,path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowWorkerAssets.java'),harnessPath],{timeout:scaledTimeout(20000)});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,identity+'.WorkerAssetTest',assets,state],{encoding:'utf8',timeout:scaledTimeout(20000)}),/^PASS extract/);
   if(process.env.ALPHA_WORKFLOW_WORKER_OUTPUT){
    const realAssets=path.join(temporary,'real-assets'),realState=path.join(temporary,'real-agent');
    const staged=stageWorkerArtifact(process.env.ALPHA_WORKFLOW_WORKER_OUTPUT,realAssets);fs.mkdirSync(realState);
    const manifest=JSON.parse(fs.readFileSync(path.join(realAssets,'manifest.json'),'utf8'));
    const payload=Object.keys(manifest.files).find(name=>name.startsWith('lib/')&&name.endsWith('.js'));
    assert.ok(payload,'real artifact must contain a worker module');
-   assert.match(execFileSync(javaBinary('java'),['-cp',temporary,identity+'.WorkerAssetTest',realAssets,realState,payload],{encoding:'utf8',timeout:30000}),/^PASS extract/);
+   assert.match(execFileSync(javaBinary('java'),['-cp',temporary,identity+'.WorkerAssetTest',realAssets,realState,payload],{encoding:'utf8',timeout:scaledTimeout(30000)}),/^PASS extract/);
    console.log(`Verified native extractor against ${staged.files} real worker artifact files (host JVM only)`);
   }
  }finally{fs.rmSync(temporary,{recursive:true,force:true});}

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -19,7 +20,7 @@ async function checkRecognizerAvailability(extraSources=[]){
  ]});
 }
 
-test('actual recognizer availability preserves timed and ticketed cache authority', {timeout:180000},async()=>{
+test('actual recognizer availability preserves timed and ticketed cache authority', {timeout:scaledTimeout(180000)},async()=>{
  const result=await checkRecognizerAvailability(['test/quint-recognizer-availability.test.mjs']);
  assert.equal(result.passed,true);
  assert.equal(result.traces,recognizerAvailabilityScenarios.length);

@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {checkNavigationProgress,navigationProgressScenarios} from '../specs/quint/refinement/native/navigation-progress.mjs';
 
-test('current Maps guidance follows cursor, reroute and exact background ownership transitions', {timeout:120000},async()=>{
+test('current Maps guidance follows cursor, reroute and exact background ownership transitions', {timeout:scaledTimeout(120000)},async()=>{
  const receipt=await checkNavigationProgress(['test/quint-navigation-progress.test.mjs']);
  assert.equal(receipt.passed,true);
  assert.equal(receipt.traces,Object.keys(navigationProgressScenarios).length);
@@ -39,7 +40,7 @@ test('current Maps guidance follows cursor, reroute and exact background ownersh
 });
 
 for(const mutant of ['single-clear-fix','retain-clearance','retired-watch-fix']){
- test(`navigation source canary rejects ${mutant}`,{timeout:120000},async()=>{
+ test(`navigation source canary rejects ${mutant}`,{timeout:scaledTimeout(120000)},async()=>{
   await assert.rejects(checkNavigationProgress(['test/quint-navigation-progress.test.mjs'],{mutant}),/Source\/model trace mismatch/);
  });
 }

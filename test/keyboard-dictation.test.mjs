@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdtempSync,readdirSync,rmSync,existsSync} from 'node:fs';
@@ -52,7 +53,7 @@ test('voice IME and Cloud adapter compile against Android API and shared real re
   const api=join(process.env.ANDROID_HOME||process.env.ANDROID_SDK_ROOT||join(homedir(),process.platform==='darwin'?'Library/Android/sdk':'Android/Sdk'),'platforms/android-36/android.jar');
   assert.ok(existsSync(api),'Android API36 required for actual service compile');
   const shared='vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/';
-  execFileSync(javaBinary('javac'),['--release','17','-cp',api,'-d',work,...Object.keys(stubs).map(n=>join(work,n)),passwords,revision,sharedSpeechSource('CartesiaSpeech.java'),...['KeyboardDictationPolicy.java','KeyboardDictationCloud.java','AlphaKeyboardDictationService.java','CloudSpeechPolicy.java','CloudDeployment.java'].map(nativeSource),shared+'LocalMicrophoneLease.java',shared+'LocalVoiceRecording.java',shared+'RecordingPcm.java'],{stdio:'pipe',timeout:60000});
+  execFileSync(javaBinary('javac'),['--release','17','-cp',api,'-d',work,...Object.keys(stubs).map(n=>join(work,n)),passwords,revision,sharedSpeechSource('CartesiaSpeech.java'),...['KeyboardDictationPolicy.java','KeyboardDictationCloud.java','AlphaKeyboardDictationService.java','CloudSpeechPolicy.java','CloudDeployment.java'].map(nativeSource),shared+'LocalMicrophoneLease.java',shared+'LocalVoiceRecording.java',shared+'RecordingPcm.java'],{stdio:'pipe',timeout:scaledTimeout(60000)});
  }finally{rmSync(work,{recursive:true,force:true});}
 });
 
@@ -103,7 +104,7 @@ public final class KeyboardAuthorityTest {
 }`);
   const api=join(process.env.ANDROID_HOME||process.env.ANDROID_SDK_ROOT||join(homedir(),process.platform==='darwin'?'Library/Android/sdk':'Android/Sdk'),'platforms/android-36/android.jar');
   const classpath=jsonJar+':'+api;
-  execFileSync(javaBinary('javac'),['--release','17','-cp',classpath,'-d',work,...Object.keys(stubs).map(n=>join(work,n)),harness,...['KeyboardDictationCloud.java','KeyboardDictationPolicy.java','CloudSpeechPolicy.java','CloudDeployment.java'].map(nativeSource),sharedSpeechSource('CartesiaSpeech.java')],{timeout:60000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',work+':'+classpath,'ai.alphacompute.alphaphone.KeyboardAuthorityTest'],{encoding:'utf8',timeout:15000}),/PASS nine selected-route/);
+  execFileSync(javaBinary('javac'),['--release','17','-cp',classpath,'-d',work,...Object.keys(stubs).map(n=>join(work,n)),harness,...['KeyboardDictationCloud.java','KeyboardDictationPolicy.java','CloudSpeechPolicy.java','CloudDeployment.java'].map(nativeSource),sharedSpeechSource('CartesiaSpeech.java')],{timeout:scaledTimeout(60000)});
+  assert.match(execFileSync(javaBinary('java'),['-cp',work+':'+classpath,'ai.alphacompute.alphaphone.KeyboardAuthorityTest'],{encoding:'utf8',timeout:scaledTimeout(15000)}),/PASS nine selected-route/);
  }finally{rmSync(work,{recursive:true,force:true});}
 });

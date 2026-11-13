@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -24,7 +25,7 @@ for (const filter of ['selected', 'failure']) test(`bun run test forwards the na
  `);
  const env = {...process.env}; delete env.NODE_TEST_CONTEXT;
  const result = spawnSync(process.execPath, [path.join(root, 'scripts/run-tests.ts'), '--test-name-pattern', `^${filter}$`],
-   {env, encoding: 'utf8', timeout: 30000});
+   {env, encoding: 'utf8', timeout: scaledTimeout(30000)});
  assert.equal(result.status, filter === 'failure' ? 1 : 0, result.stdout + result.stderr);
  assert.equal(fs.readFileSync(path.join(root, 'ran.txt'), 'utf8'), filter);
  const runtime = JSON.parse(fs.readFileSync(path.join(root, 'runtime.json')));
@@ -50,7 +51,7 @@ test('bun run quint:tests runs only the quint suites', t => {
  const suites = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts['quint:tests']
    .match(/'[^']+'/g).map(glob => glob.slice(1, -1));
  const env = {...process.env}; delete env.NODE_TEST_CONTEXT;
- const result = spawnSync(process.execPath, [path.join(root, 'scripts/run-tests.ts'), ...suites], {env, encoding: 'utf8', timeout: 30000});
+ const result = spawnSync(process.execPath, [path.join(root, 'scripts/run-tests.ts'), ...suites], {env, encoding: 'utf8', timeout: scaledTimeout(30000)});
  assert.equal(result.status, 0, result.stdout + result.stderr);
  assert.equal(fs.readFileSync(path.join(root, 'ran.txt'), 'utf8'), 'quint-fixture');
  const identity = JSON.parse(fs.readFileSync(path.join(root, 'test-results/host-test-runtime.json')));
@@ -67,7 +68,7 @@ test('the host-test runner preserves the builder default, parallelism and child 
  fs.writeFileSync(path.join(root,'test/signal.test.mjs'), `import test from 'node:test';test('signal',()=>process.kill(process.pid,'SIGTERM'));`);
  const builder = process.env.ALPHA_BUN ?? process.execPath;
  const env = {...process.env, ALPHA_TEST_CONCURRENCY:'2'}; delete env.NODE_TEST_CONTEXT; delete env.ALPHA_BUN;
- const result = spawnSync(builder, [path.join(root,'scripts/run-tests.ts')], {env,encoding:'utf8',timeout:30000});
+ const result = spawnSync(builder, [path.join(root,'scripts/run-tests.ts')], {env,encoding:'utf8',timeout:scaledTimeout(30000)});
  assert.equal(result.signal, 'SIGTERM', result.stdout+result.stderr);
  const identity = JSON.parse(fs.readFileSync(path.join(root,'test-results/host-test-runtime.json')));
  assert.equal(identity.builder.file, builder);

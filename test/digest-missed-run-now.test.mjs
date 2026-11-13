@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -43,7 +44,7 @@ out.badId=offers([result(1,'missed',{runId:'../x'})]).length;
 out.sameId=d.missedRunNowMutationId('run-2')===d.missedRunNowMutationId('run-2');
 console.log(JSON.stringify(out));`;
 test('Run now is offered only for the newest missed morning digest over a current reviewed phone source',()=>{
- const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
+ const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:scaledTimeout(60000)}));
  assert.deepEqual(out.missed,[{runId:'run-2',sourceId:'s',sourceRevision:'r',sourceLabel:'Phone sources',scheduledAt:'2026-10-14T08:00:00Z',mutationId:'missed-run-now-run-2'}]);
  assert.equal(out.olderMissed.length,0,'a later result supersedes the missed one');
  assert.deepEqual(out.twoMissed,['run-2'],'only the newest missed occurrence, never a backlog');
@@ -60,7 +61,7 @@ test('Run now is offered only for the newest missed morning digest over a curren
 test('resident schedule re-arming policy runs on the JVM',()=>{
  const temporary=mkdtempSync(join(tmpdir(),'resident-rearm-'));
  try{
-  execFileSync(javaBinary('javac'),['--release','11','-d',temporary,join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java'),join(root,'test/fixtures/ResidentScheduleRearmTest.java')],{timeout:60000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.alphacompute.alphaphone.ResidentScheduleRearmTest'],{encoding:'utf8',timeout:60000}),/^PASS resident schedule rearm/);
+  execFileSync(javaBinary('javac'),['--release','11','-d',temporary,join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java'),join(root,'test/fixtures/ResidentScheduleRearmTest.java')],{timeout:scaledTimeout(60000)});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.alphacompute.alphaphone.ResidentScheduleRearmTest'],{encoding:'utf8',timeout:scaledTimeout(60000)}),/^PASS resident schedule rearm/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

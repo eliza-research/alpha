@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -5,7 +6,7 @@ import {resolve} from 'node:path';
 // Pure workflow output contracts: an execution receipt shows only the typed final text, and a typed
 // presentation review binds the exact steps, title, device and run before any notice or speech. No runtime.
 const root=resolve(import.meta.dirname,'..');
-const run=script=>JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
+const run=script=>JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:scaledTimeout(120000)}));
 const prelude=`
 const P=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/workflow-protocol.ts'))});
 const A=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/phone-workflow-authoring.ts'))});

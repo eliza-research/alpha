@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -12,7 +13,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {checkCanonicalNotificationTapAdmission} from '../specs/quint/refinement/application/canonical-notification-tap-admission.mjs';
 
-test("partial source contract: canonical notification taps preserve current renderer commit and exact native token custody", {timeout: 60000}, async () => {
+test("partial source contract: canonical notification taps preserve current renderer commit and exact native token custody", {timeout: scaledTimeout(60000)}, async () => {
   const receipt = await checkCanonicalNotificationTapAdmission();
   assert.equal(receipt.traceInputs.length, 8);
   assert.equal(receipt.observedFields.length, 21);

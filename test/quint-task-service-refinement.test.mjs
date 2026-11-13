@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -171,7 +172,7 @@ async function runTaskServiceRefinement(extraSources = []) {
   return {receipts:[receipt],obligations:[{model:'TaskServiceLifecycle',obligation:'Expand timing, wake revisions, multi-task ordering and daemon registration beyond the current finite lifecycle schedules.',reason:'Current campaign observes concrete one-task lifecycle fields and ownership boundaries.'}]};
 }
 
-test('TaskService source traces refine counted execution, stop and persistent orphan state', {timeout: 300000}, async () => {
+test('TaskService source traces refine counted execution, stop and persistent orphan state', {timeout: scaledTimeout(300000)}, async () => {
   const result=await runTaskServiceRefinement([fileURLToPath(import.meta.url)]);
   assert.equal(result.receipts.length,1);
   const receipt=result.receipts[0];

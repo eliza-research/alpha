@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {checkListenerService, listenerServiceScenarios, probeListenerService} from '../specs/quint/refinement/native/listener-service.mjs';
@@ -17,7 +18,7 @@ function probeListenerAdmission(){
  }finally{platform.close();rmSync(state,{recursive:true,force:true});}
 }
 
-test('actual listener/service lifecycle retains failed resources and completes destruction', {timeout:360000},async()=>{
+test('actual listener/service lifecycle retains failed resources and completes destruction', {timeout:scaledTimeout(360000)},async()=>{
  const result=await checkListenerService(['test/quint-listener-service.test.mjs']);
  assert.equal(result.passed,true);
  assert.equal(result.traces,listenerServiceScenarios.length);
@@ -26,7 +27,7 @@ test('actual listener/service lifecycle retains failed resources and completes d
  for(const action of ['create','start','markerWriteFailed','load','pause','disable','destroy'])assert.ok(result.actions[action]>0,action);
 });
 
-test('release failure preserves uncertainty while retiring callbacks and recognizer', {timeout:90000},()=>{
+test('release failure preserves uncertainty while retiring callbacks and recognizer', {timeout:scaledTimeout(90000)},()=>{
  for(const mode of ['release','both']){
   const result=probeListenerService(mode);
   assert.equal(result.threw,false);
@@ -42,7 +43,7 @@ test('release failure preserves uncertainty while retiring callbacks and recogni
 });
 
 
-test('failed durable listener session admission cannot arm recognition or load an engine', {timeout:90000},()=>{
+test('failed durable listener session admission cannot arm recognition or load an engine', {timeout:scaledTimeout(90000)},()=>{
  const result=probeListenerAdmission();
  assert.equal(result.storageFailed,true);
  assert.equal(result.memoryMarker,true);

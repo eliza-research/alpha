@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {loadProductModule, memoryDocuments, modelTraces, replayTraces} from '../specs/quint/refinement/application/notes-files-media-itf.mjs';
@@ -48,13 +49,13 @@ async function replayDomainDocumentCreation({rewrite, ...options} = {}) {
   });
 }
 
-test('browser domain documents follow every DomainDocumentCreation model step', {timeout: 180000}, async () => {
+test('browser domain documents follow every DomainDocumentCreation model step', {timeout: scaledTimeout(180000)}, async () => {
   const receipt = await replayDomainDocumentCreation({traces: 40, maxSteps: 14});
   assert.equal(receipt.traces, 40);
   assert.ok(receipt.steps > 100, JSON.stringify(receipt));
   for (const action of ['read', 'edit', 'legacyWrite']) assert.ok(receipt.actions[action] > 0, action);
 });
-test('a domain document that imports changed legacy bytes is rejected by the replay', {timeout: 180000}, async () => {
+test('a domain document that imports changed legacy bytes is rejected by the replay', {timeout: scaledTimeout(180000)}, async () => {
   await assert.rejects(replayDomainDocumentCreation({traces: 40, maxSteps: 14, rewrite: {'browser/domain-document.ts': text =>
     text.replace("if(actual!==expected)throw", 'if(false)throw')}}), /trace \d+ step \d+ (read|edit)/);
 });

@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -15,7 +16,7 @@ import {runPendingActionRecoveryReplay} from '../specs/quint/refinement/applicat
 // PendingActionRecovery model traces (scenarios, witnesses and random walks from the pinned Quint
 // CLI) replayed step by step against recoverPendingActions, with the connection, the pending read,
 // the expiry timer and the clock replaced by ports.
-test("partial source contract: pending action recovery follows every PendingActionRecovery model trace", {timeout: 240000}, async () => {
+test("partial source contract: pending action recovery follows every PendingActionRecovery model trace", {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await runPendingActionRecoveryReplay();
   assert.equal(receipt.traces, 89);
   assert.ok(receipt.checkpoints > 2500, `checkpoints ${receipt.checkpoints}`);

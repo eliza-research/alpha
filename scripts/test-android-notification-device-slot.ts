@@ -6,6 +6,7 @@ import {tmpdir} from 'node:os';
 import {sha256} from './sha256.ts';
 import {execFileSync} from 'node:child_process';
 import {nativeSource,javaBinary} from '../test/fixtures/jvm-tools.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 const android=process.env.ALPHA_ANDROID_JSON_SOURCE;
 assert.ok(android,'Set ALPHA_ANDROID_JSON_SOURCE to the reviewed Android SDK source directory for this diagnostic');
 // Actual Android JSON serializers; only unavailable annotation types are stubbed.
@@ -57,7 +58,7 @@ public class DeviceKeyTest {public static void main(String[]args)throws Exceptio
 `);
   put('NativeDeviceEnrollmentKey.java',readFileSync(nativeSource('NativeDeviceEnrollmentKey.java'),'utf8'));
   put('NativeOwnerReminderHost.java',readFileSync(nativeSource('NativeOwnerReminderHost.java'),'utf8'));
-  execFileSync(javaBinary('javac'),['--release','17','-d',dir,...files],{timeout:30000,stdio:'pipe'});
-  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.DeviceKeyTest'],{encoding:'utf8',timeout:30000,stdio:'pipe'}),/^PASS Android JSON mismatch reproduced/);
+  execFileSync(javaBinary('javac'),['--release','17','-d',dir,...files],{timeout:scaledTimeout(30000),stdio:'pipe'});
+  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.DeviceKeyTest'],{encoding:'utf8',timeout:scaledTimeout(30000),stdio:'pipe'}),/^PASS Android JSON mismatch reproduced/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

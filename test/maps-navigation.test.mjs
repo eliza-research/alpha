@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,7 +12,7 @@ test('upstream plugin-maps navigation tests pass on the pinned source', () => {
   const directory = path.join(root, 'plugins/plugin-maps/test');
   const tests = ['navigation-client.test.mjs'].map(name => path.join(directory, name));
   for (const file of tests) assert.ok(fs.existsSync(file), file);
-  execFileSync(process.execPath, ['test', ...tests], { stdio: 'pipe', timeout: 60_000 });
+  execFileSync(process.execPath, ['test', ...tests], { stdio: 'pipe', timeout: scaledTimeout(60_000) });
 });
 
 test('guidance presents the next maneuver, the following step and the remaining trip', async () => {
@@ -111,7 +112,7 @@ assert good=={'phone':'+377 92 05 01 50','website':'https://example.org/x','open
 assert m.details({'phone':'call us','website':'javascript:alert(1)','opening_hours':'x'*300})=={}
 assert m.details({'website':'https://user@example.org/'})=={}
 print('ok')
-`], { encoding: 'utf8', timeout: 20_000 });
+`], { encoding: 'utf8', timeout: scaledTimeout(20_000) });
   assert.equal(output.trim(), 'ok');
 });
 
@@ -212,5 +213,5 @@ assert.equal(agent.registered(), false);
 assert.equal(requests.length, 2, 'signing out reads nothing');
 stop(); agent.dispose();
 `;
-  execFileSync(process.execPath, ['--no-warnings', '-e', script], { cwd: path.resolve(import.meta.dirname, '..'), stdio: 'pipe', timeout: 60_000 });
+  execFileSync(process.execPath, ['--no-warnings', '-e', script], { cwd: path.resolve(import.meta.dirname, '..'), stdio: 'pipe', timeout: scaledTimeout(60_000) });
 });

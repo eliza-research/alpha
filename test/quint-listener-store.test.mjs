@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync, rmSync} from 'node:fs';
@@ -26,7 +27,7 @@ async function checkListenerStore(extraSources=[]){
  }finally{platform.close();rmSync(state,{recursive:true,force:true});}
 }
 
-test('actual listener settings distinguish durable acknowledgement, per-process consent and restart', {timeout:360000},async()=>{
+test('actual listener settings distinguish durable acknowledgement, per-process consent and restart', {timeout:scaledTimeout(360000)},async()=>{
  const result=await checkListenerStore(['test/quint-listener-store.test.mjs']);
  assert.equal(result.passed,true);
  assert.equal(result.traces,listenerStoreScenarios.length);

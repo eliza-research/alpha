@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -200,7 +201,7 @@ async function checkGoogleConsentAdmission(extraSources = []) {
     ]}));
 }
 
-test('mounted Google consent retains only verified current readbacks and grant tiers', {timeout: 120000}, async () => {
+test('mounted Google consent retains only verified current readbacks and grant tiers', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkGoogleConsentAdmission([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

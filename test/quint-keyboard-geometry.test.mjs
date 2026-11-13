@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelTraces, replay} from '../specs/quint/refinement/application/shell-model-traces.mjs';
@@ -8,7 +9,7 @@ import {modelTraces, replay} from '../specs/quint/refinement/application/shell-m
 const {canvasGeometry, keyboardFreeHeight, WIDE_CANVAS} = await import('../apps/app/src/runtime/canvas-geometry.ts');
 const KEYBOARD = 300;
 
-test('simulated KeyboardGeometry traces agree with the estimator and canvas after every measurement', {timeout: 120000}, async () => {
+test('simulated KeyboardGeometry traces agree with the estimator and canvas after every measurement', {timeout: scaledTimeout(120000)}, async () => {
   const traces = modelTraces({module: 'KeyboardGeometry', traces: 80, steps: 30});
   const result = await replay(traces, {
     start({state}) {

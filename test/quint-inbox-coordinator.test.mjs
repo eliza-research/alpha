@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
-test('Inbox source coordination refines grant, confirmation, attachment and recovery transitions', {timeout: 180000}, () => {
+test('Inbox source coordination refines grant, confirmation, attachment and recovery transitions', {timeout: scaledTimeout(180000)}, () => {
   const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runInboxCoordinatorRefinement} from './specs/quint/refinement/services/inbox-coordinator.mjs';
@@ -23,7 +24,7 @@ test('Inbox source coordination refines grant, confirmation, attachment and reco
   `], {
     cwd: new URL('..', import.meta.url),
     encoding: 'utf8',
-    timeout: 170000,
+    timeout: scaledTimeout(170000),
     maxBuffer: 8 * 1024 * 1024,
   });
   assert.ifError(result.error);

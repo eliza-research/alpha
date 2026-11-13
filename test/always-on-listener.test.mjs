@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import '../vendor/eliza/packages/app/test/android/sense.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,7 +23,7 @@ test('Alpha public components still compile against the common listener and pres
   fs.writeFileSync(path.join(temp,'VoiceAssets.java'),'package ai.eliza.voice; public final class VoiceAssets { public static VoiceAssets install(android.content.Context context){return null;} public NativeAsr openAsr(){return null;} }');
   const java=javaBinary('javac');
   const sources=dir=>fs.readdirSync(dir).filter(file=>file.endsWith('.java')).map(file=>path.join(dir,file));
-  execFileSync(java,['--release','21','-cp',path.join(process.env.ANDROID_HOME??path.join(os.homedir(),'Android/Sdk'),'platforms/android-36/android.jar'),'-d',path.join(temp,'out'),...sources(temp),...sources(shared),...sources(component)],{timeout:60000});
+  execFileSync(java,['--release','21','-cp',path.join(process.env.ANDROID_HOME??path.join(os.homedir(),'Android/Sdk'),'platforms/android-36/android.jar'),'-d',path.join(temp,'out'),...sources(temp),...sources(shared),...sources(component)],{timeout:scaledTimeout(60000)});
  } finally {fs.rmSync(temp,{recursive:true,force:true});}
 });
 
@@ -39,6 +40,6 @@ test('legacy AlphaListener is a thin alias of the shared native control bridge',
   };
   const files=Object.entries(stubs).map(([name,text])=>{const file=path.join(temp,name);fs.writeFileSync(file,text);return file;});
   const sdk=path.join(process.env.ANDROID_HOME??path.join(os.homedir(),'Android/Sdk'),'platforms/android-36/android.jar');
-  execFileSync(javaBinary('javac'),['--release','21','-cp',sdk,'-d',path.join(temp,'out'),...files,...['SenseInvocation','SenseListenerClient','SensePlugin'].map(name=>path.join(source,`${name}.java`)),path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaListenerPlugin.java')],{timeout:60000});
+  execFileSync(javaBinary('javac'),['--release','21','-cp',sdk,'-d',path.join(temp,'out'),...files,...['SenseInvocation','SenseListenerClient','SensePlugin'].map(name=>path.join(source,`${name}.java`)),path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaListenerPlugin.java')],{timeout:scaledTimeout(60000)});
  } finally {fs.rmSync(temp,{recursive:true,force:true});}
 });

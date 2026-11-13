@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -24,7 +25,7 @@ async function review(run, id) {
   assert.ok(pending(state, 'renewal-read', id));
 }
 
-test('a retired renewal question cannot publish its refusal in the replacement binding', {timeout: 60_000}, async () => {
+test('a retired renewal question cannot publish its refusal in the replacement binding', {timeout: scaledTimeout(60_000)}, async () => {
   await mounted(async scenario => scenario(async run => {
     await attach(run, 1);
     await review(run, 1);
@@ -38,7 +39,7 @@ test('a retired renewal question cannot publish its refusal in the replacement b
   }));
 });
 
-test('a renewal question leaves its exact native tap pending when the composer is unavailable', {timeout: 60_000}, async () => {
+test('a renewal question leaves its exact native tap pending when the composer is unavailable', {timeout: scaledTimeout(60_000)}, async () => {
   await mounted(async scenario => scenario(async run => {
     await attach(run, 1);
     await review(run, 1);
@@ -51,7 +52,7 @@ test('a renewal question leaves its exact native tap pending when the composer i
   }));
 });
 
-test('mounted source renewal question matches the bounded Quint projection', {timeout: 120_000}, async () => {
+test('mounted source renewal question matches the bounded Quint projection', {timeout: scaledTimeout(120_000)}, async () => {
   const receipt = await checkSourceRenewalQuestion([driver]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.traces, 11);

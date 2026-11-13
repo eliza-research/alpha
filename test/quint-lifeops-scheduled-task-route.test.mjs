@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -34,7 +35,7 @@ test("partial source contract: the generic SDK route exposes the unfenced occurr
   await f.finish(2, 'ok');
 });
 
-test("partial source contract: pinned SDK scheduled-task route and in-memory claim schedules refine the as-built model", {timeout: 60_000}, async () => {
+test("partial source contract: pinned SDK scheduled-task route and in-memory claim schedules refine the as-built model", {timeout: scaledTimeout(60_000)}, async () => {
   const {receipt, obligations} = await checkLifeOpsScheduledTaskRoute();
   assert.equal(receipt.passed, true);
   assert.equal(receipt.driverInputsBound, true);

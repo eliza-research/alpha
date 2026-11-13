@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
@@ -73,7 +74,7 @@ public class WorkspaceReturnTest {
   System.out.println("PASS Workspace return pure contract "+checks);
  }
 }`);
-  execFileSync(javaBinary('javac'),['--release','11','-d',root,nativeSource('GoogleWorkspaceReturn.java'),source],{timeout:30000,stdio:'pipe'});
-  assert.match(execFileSync(javaBinary('java'),['-cp',root,'ai.alphacompute.alphaphone.WorkspaceReturnTest'],{timeout:30000,encoding:'utf8'}),/^PASS Workspace return pure contract 85/);
+  execFileSync(javaBinary('javac'),['--release','11','-d',root,nativeSource('GoogleWorkspaceReturn.java'),source],{timeout:scaledTimeout(30000),stdio:'pipe'});
+  assert.match(execFileSync(javaBinary('java'),['-cp',root,'ai.alphacompute.alphaphone.WorkspaceReturnTest'],{timeout:scaledTimeout(30000),encoding:'utf8'}),/^PASS Workspace return pure contract 85/);
  }finally{rmSync(root,{recursive:true,force:true});}
 });

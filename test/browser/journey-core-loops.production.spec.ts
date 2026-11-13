@@ -141,7 +141,7 @@ async function android(page: Page, options: { clock?: 'opened' | 'unavailable' |
         }
         if (plugin === 'AlphaActionJournal') return method === 'list' ? { entries: [] } : { entry: null };
         if (plugin === 'DailyApps') {
-          if (method === 'surfaceInfo') return { developmentBuild: false, assistant: false, ...(options.voice ? { reminderTimingVersion: 2 } : {}) };
+          if (method === 'surfaceInfo') return { assistant: false, ...(options.voice ? { reminderTimingVersion: 2 } : {}) };
           if (method === 'listReminders') return { reminders: structuredClone(device.reminders) };
           if (method === 'pendingReminderTap') return {};
           // Android keeps the reminder and schedules its alert inexactly; one with no alert stays pending.

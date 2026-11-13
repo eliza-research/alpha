@@ -7,6 +7,7 @@ import {sha256File} from './sha256.ts';
 import {isAndroidAbi} from './android-abis.ts';
 import {verifyPinnedUpstream} from './pinned-upstream-source.ts';
 import {fixtureCommandError, type IsolatedAndroidTest, type IsolatedUserState} from './native-test-fixture.ts';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 type Companion = { label: string; class: string; method: string; totalTests: number; appSha256: string; testSha256: string };
 type InstrumentationResult = ReturnType<typeof import('./instrumentation-result.ts').requireInstrumentationSuccess>;
@@ -63,7 +64,7 @@ export async function testInstalledUpgrade(kind: string,options=process.argv.sli
  assert.ok(options.every(arg=>(kind==='calendar'&&arg==='--bridge')||(kind==='reminder'&&arg==='--baseline-process-runner')),'Unknown upgrade option');
  const currentRunners=[pkg+'.WorkflowNoticeProcessRunner'];
  const cancellation=new AbortController(),cancel=()=>cancellation.abort();
- const call=(...args: string[])=>execFileSync(adb,['-s',serial,...args],{encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024}).trim();
+ const call=(...args: string[])=>execFileSync(adb,['-s',serial,...args],{encoding:'utf8',timeout:scaledTimeout(120000),maxBuffer:16*1024*1024}).trim();
  const host=process.env.ALPHA_TEST_HOME_PACKAGE??(kind==='calendar'?'com.android.launcher3':'com.google.android.apps.nexuslauncher');
  const testClass=kind==='calendar'?'CalendarUpgradeInstrumentedTest':'ReminderUpgradeInstrumentedTest';
  const testMethod=kind==='calendar'?'baselineToCandidatePreservesCalendarIdentity':'installedUpgradePreservesIdentityAndReceipts';

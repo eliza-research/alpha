@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
@@ -18,7 +19,7 @@ async function prepare(run) {
   assert.deepEqual(current.writes, [[1, 'dispatched'], [1, 'dispatched']]);
 }
 
-test('mounted digest save settlement keeps the exact journal and refresh owner', {timeout: 120000}, async t => {
+test('mounted digest save settlement keeps the exact journal and refresh owner', {timeout: scaledTimeout(120000)}, async t => {
   await withHostedDigestRefresh(async scenario => {
     await t.test('a retired save may clear its journal while replacement history remains held', () => scenario(async run => {
       await prepare(run);

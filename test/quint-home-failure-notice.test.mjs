@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -158,7 +159,7 @@ async function checkHomeFailureNotice(extraSources = []) {
   ]}));
 }
 
-test('Home notices follow the actual installed launcher and current surface', {timeout: 120000}, async () => {
+test('Home notices follow the actual installed launcher and current surface', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkHomeFailureNotice([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

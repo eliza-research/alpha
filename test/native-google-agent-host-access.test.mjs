@@ -1,6 +1,7 @@
 // The phone's Google host enforces the owner's Settings switches from the file AlphaLocalAgentPlugin writes,
 // read before every agent write, and fails closed. Synthetic Cloud transport only; the file writer runs on the
 // host JVM, not Android, so this is not device or Settings evidence.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync,spawnSync} from 'node:child_process';
@@ -87,7 +88,7 @@ test('linked and nonregular access files are refused without a blocking read',()
   const pipe=join(dir,'pipe');execFileSync('mkfifo',[pipe]);
   const read=spawnSync(process.execPath,['-e',
    'import {savedGoogleAgentAccess} from "./test/support/managed-google-agent.mjs"; console.log(JSON.stringify(savedGoogleAgentAccess()));'],
-   {env:{...process.env,ALPHA_GOOGLE_AGENT_ACCESS_FILE:pipe},encoding:'utf8',timeout:10000});
+   {env:{...process.env,ALPHA_GOOGLE_AGENT_ACCESS_FILE:pipe},encoding:'utf8',timeout:scaledTimeout(10000)});
   assert.ifError(read.error);
   assert.equal(read.status,0,read.stderr);
   assert.deepEqual(JSON.parse(read.stdout),off);

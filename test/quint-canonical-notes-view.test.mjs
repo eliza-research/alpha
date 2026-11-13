@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -149,7 +150,7 @@ async function checkCanonicalNotesView(extraSources = []) {
     'The waiter list is observed directly at admission and drain. The eight-attempt settle loop and competing navigation intent policy are exercised in selected schedules but not proven universally. Recorder, dictation, folder-store and Calendar handoff remain separate protocols.'] }));
 }
 
-test('canonical Notes rows and navigation waiters refine actual view callbacks', {timeout:120000}, async () => {
+test('canonical Notes rows and navigation waiters refine actual view callbacks', {timeout:scaledTimeout(120000)}, async () => {
   const receipt = await checkCanonicalNotesView([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

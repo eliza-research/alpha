@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -37,8 +38,8 @@ public class CapabilityTest {
  // Alpha's adapters compile against the shared decision (plugin-native-messages ImageCapability) at the pin.
  const alpha='android/app/src/main/java/ai/alphacompute/alphaphone', shared='vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages';
  const sources=[`${alpha}/AlphaImageCapabilities.java`,`${alpha}/AlphaImageCapability.java`,`${shared}/ImageCapability.java`,`${shared}/SmsTelephonyConfiguration.java`];
- execFileSync(javaBinary('javac'),['--release','11','-d',dir,...sources,...Object.keys(files).map(name=>path.join(dir,name))],{timeout:30000,stdio:'pipe'});
- const run=(...args)=>execFileSync(javaBinary('java'),[...args,'-cp',dir,'ai.alphacompute.alphaphone.CapabilityTest',...(args.length?[args[0]]:[])],{encoding:'utf8',timeout:30000});
+ execFileSync(javaBinary('javac'),['--release','11','-d',dir,...sources,...Object.keys(files).map(name=>path.join(dir,name))],{timeout:scaledTimeout(30000),stdio:'pipe'});
+ const run=(...args)=>execFileSync(javaBinary('java'),[...args,'-cp',dir,'ai.alphacompute.alphaphone.CapabilityTest',...(args.length?[args[0]]:[])],{encoding:'utf8',timeout:scaledTimeout(30000)});
  assert.match(run(),/PASS image admission/);
  // A debug build is refused even with every image fact present.
  assert.match(run('-Dt.debug=true'),/PASS refused/);

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -81,7 +82,7 @@ async function checkAndroidBrowserModuleStage(extraSources = []) {
       'Publication and settings write refusals are confined to the scratch filesystem. Arbitrary process interruption, concurrent publishers, all-module Gradle configuration, APK packaging and installed browser behavior are separate.']});
 }
 
-test('authenticated browser module and Android host generation refine staged provenance', {timeout: 120000}, async () => {
+test('authenticated browser module and Android host generation refine staged provenance', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkAndroidBrowserModuleStage([fileURLToPath(import.meta.url)]);
   assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);
   assert.equal(receipt.traces, 8);

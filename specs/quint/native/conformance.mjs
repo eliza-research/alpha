@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {captureReplayInputs, observedReplay, recordComparedObservation} from '../refinement/observed-replay.mjs';
+import {scaledTimeout} from '../refinement/timeouts.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const root = resolve(directory, '../../..');
@@ -16,7 +17,7 @@ const speechDirectory = join(root, 'vendor/eliza/plugins/plugin-local-inference/
 const resetDirectory = join(root, 'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset');
 
 function run(command, args) {
-  const result = spawnSync(command, args, {cwd: root, encoding: 'utf8', timeout: 120_000, maxBuffer: 8 * 1024 * 1024});
+  const result = spawnSync(command, args, {cwd: root, encoding: 'utf8', timeout: scaledTimeout(120_000), maxBuffer: 8 * 1024 * 1024});
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `${command} failed\n${result.stdout}\n${result.stderr}`);
   return result.stdout.trim();

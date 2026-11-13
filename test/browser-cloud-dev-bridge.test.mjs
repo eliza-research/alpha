@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,rm,stat,mkdir} from 'node:fs/promises';
@@ -683,7 +684,7 @@ test('service-info honors the configured staging authority without requiring its
   assert.notEqual((await f.rpc({operation:'signInServiceInfo',environment:'production'})).status,200);assert.equal(f.calls.length,1);
  }finally{await f.close();}
 });
-test('service-info cancels its provider request when the browser request closes',{timeout:3000},async()=>{
+test('service-info cancels its provider request when the browser request closes',{timeout:scaledTimeout(3000)},async()=>{
  const f=await fixture();const controller=new AbortController();let started,aborted;
  const ready=new Promise(resolve=>started=resolve),cancelled=new Promise(resolve=>aborted=resolve);
  try{
@@ -935,7 +936,7 @@ function publicSequentialGoogleAttempts(){
   close(){for(const reply of starts)reply.reject(Error('test cleanup'));for(const reply of cancellations)reply.reject(Error('test cleanup'));}
  };
 }
-test('a committed public Google attempt retains its delayed cancel outcome while the next public attempt is pending',{timeout:3000},async()=>{
+test('a committed public Google attempt retains its delayed cancel outcome while the next public attempt is pending',{timeout:scaledTimeout(3000)},async()=>{
  const f=publicSequentialGoogleAttempts();let a,b,cancellingA,bSettled=false;
  try{
   a=f.client.signInWithGoogle(new AbortController().signal);a.catch(()=>{});assert.equal(f.starts.length,1);

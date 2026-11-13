@@ -1,10 +1,11 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const globals = ['alphaTriggerDevice', 'document', 'window', 'localStorage'];
 const descriptors = () => Object.fromEntries(globals.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
 
-test('TriggerCursor import and cases restore globals before the next PGlite source campaign', {timeout: 120000}, async t => {
+test('TriggerCursor import and cases restore globals before the next PGlite source campaign', {timeout: scaledTimeout(120000)}, async t => {
   const previous = descriptors();
   const fixture = await import('../specs/quint/refinement/services/trigger-cursor-replay.mjs');
   assert.deepEqual(descriptors(), previous, 'import must not leave a synthetic browser installed');

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -23,7 +24,7 @@ async function checkSpeechWarmup(extraSources=[]){
  }finally{platform.close();}
 }
 
-test('actual speech output warmup fences late opens and retires silent writes', {timeout:180000},async()=>{
+test('actual speech output warmup fences late opens and retires silent writes', {timeout:scaledTimeout(180000)},async()=>{
  const result=await checkSpeechWarmup(['test/quint-speech-warmup.test.mjs']);
  assert.equal(result.passed,true);
  assert.equal(result.traces,speechWarmupScenarios.length);

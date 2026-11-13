@@ -53,7 +53,7 @@ async function remoteAgent(page: Page, options: Options = {}) {
         if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
         if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
         if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'continuity-fixture' };
-        if (plugin === 'DailyApps' && method === 'surfaceInfo') return { developmentBuild: true, assistant: sessionStorage.getItem('continuity-assistant') === '1' };
+        if (plugin === 'DailyApps' && method === 'surfaceInfo') return { assistant: sessionStorage.getItem('continuity-assistant') === '1' };
         if (plugin === 'DailyApps' && method === 'closeAssistant') { f.assistantClosed++; return {}; }
         if (plugin === 'AlphaActionJournal') return method === 'list' ? { entries: [] } : { entry: null };
         if (plugin !== 'AlphaConnection') throw Error('Unexpected native operation');

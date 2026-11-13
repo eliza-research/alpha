@@ -1,5 +1,6 @@
 // Partial source contract regression evidence. Original schedules, actions and assertions are retained.
 // Only the selected source members/components and controlled ports execute; this is not whole-file refinement.
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {after as afterPartialContract} from 'node:test';
 import partialContractAssert from 'node:assert/strict';
 import {fileURLToPath as partialContractFile} from 'node:url';
@@ -37,7 +38,7 @@ function tryLockedCamera(shell) {
   assert.deepEqual(structuredClone(shell.S()), before, 'an absent locked control dispatches nothing');
 }
 
-test("partial source contract: simulated ShellScreen traces agree with the reference shell after every step", {timeout: 120000}, async () => {
+test("partial source contract: simulated ShellScreen traces agree with the reference shell after every step", {timeout: scaledTimeout(120000)}, async () => {
   const traces = modelTraces({module: 'ShellScreen', traces: 120, steps: 30});
   const result = await replay(traces, {
     start() {

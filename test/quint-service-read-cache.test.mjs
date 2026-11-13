@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test, {mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {recordComparedObservation} from '../specs/quint/refinement/observed-replay.mjs';
@@ -137,6 +138,6 @@ async function runServiceReadCacheCase3(t, {canaries=true}={}) {
 
 async function runServiceReadCacheReplay(){const beforeTraces=observedTraces,beforeCheckpoints=observedCheckpoints;const t={mock};try{await runServiceReadCacheCase1(t,{canaries:false});await runServiceReadCacheCase2(t,{canaries:false});}finally{mock.restoreAll();}return{traces:observedTraces-beforeTraces,checkpoints:observedCheckpoints-beforeCheckpoints};}
 
-test('the real read cache and its store binding follow every step of the model scenarios', {timeout: 120000}, async t => runServiceReadCacheCase1(t));
-test('the real read cache and its store binding follow random model walks step by step', {timeout: 240000}, async t => runServiceReadCacheCase2(t));
+test('the real read cache and its store binding follow every step of the model scenarios', {timeout: scaledTimeout(120000)}, async t => runServiceReadCacheCase1(t));
+test('the real read cache and its store binding follow random model walks step by step', {timeout: scaledTimeout(240000)}, async t => runServiceReadCacheCase2(t));
 test('a document keeps its newest entries within the entry bound', async () => runServiceReadCacheCase3(undefined));

@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {loadBrowserModule} from './fixtures/browser-source.mjs';
@@ -116,7 +117,7 @@ async function runNativeStreamBridgeReplay({random = 60, steps = 30} = {}) {
 // NativeStreamBridge model traces (scenarios, witnesses and random walks from the pinned Quint
 // CLI) replayed step by step against streamNativeAgent over a synthetic Capacitor port. No device
 // or agent runtime.
-test('the native stream bridge follows every NativeStreamBridge model trace', {timeout: 240000}, async () => {
+test('the native stream bridge follows every NativeStreamBridge model trace', {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await runNativeStreamBridgeReplay();
   assert.equal(receipt.traces, 70);
   assert.ok(receipt.checkpoints > 1500, `checkpoints ${receipt.checkpoints}`);

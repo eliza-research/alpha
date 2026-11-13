@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync, rmSync} from 'node:fs';
@@ -46,14 +47,14 @@ async function checkNoteRecordingService(extraSources=[]) {
 }
 
 const sources=['test/quint-native-recording.test.mjs'];
-test('actual native recorder preserves segmented journal and restart state', {timeout:300000}, async()=>{
+test('actual native recorder preserves segmented journal and restart state', {timeout:scaledTimeout(300000)}, async()=>{
   const receipt=await checkNativeNoteRecording(sources);
   assert.equal(receipt.passed,true);
   assert.equal(receipt.traces,noteRecordingScenarios.length);
   assert.equal(receipt.driverInputsBound,true);
   assert.equal(receipt.inputsUnchanged,true);
 });
-test('actual recording service preserves exact foreground owner', {timeout:300000}, async()=>{
+test('actual recording service preserves exact foreground owner', {timeout:scaledTimeout(300000)}, async()=>{
   const receipt=await checkNoteRecordingService(sources);
   assert.equal(receipt.passed,true);
   assert.equal(receipt.traces,noteServiceScenarios.length);

@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {checkCanonicalNotesController} from '../specs/quint/refinement/application/canonical-notes-controller.mjs';
 
-test('current canonical Notes controller matches owner, request and listener schedules', {timeout:120000}, async () => {
+test('current canonical Notes controller matches owner, request and listener schedules', {timeout:scaledTimeout(120000)}, async () => {
   const receipt = await checkCanonicalNotesController([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

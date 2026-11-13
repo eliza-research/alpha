@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {modelNames, modelTraces, replayTraces, repositoryRoot} from '../specs/quint/refinement/services/maps-model-traces.mjs';
@@ -171,7 +172,7 @@ async function replayNativeMapsLocation({scenarios, witnesses, random = 60, step
   return replayTraces(traces, trace => driver(code, trace.init.available), {project});
 }
 
-test('the Maps location owner follows every NativeMapsLocation model trace step by step', {timeout: 300000}, async () => {
+test('the Maps location owner follows every NativeMapsLocation model trace step by step', {timeout: scaledTimeout(300000)}, async () => {
   const {scenarios, witnesses} = modelNames('specs/quint/native/NativeMapsLocation.qnt');
   assert.equal(scenarios.length, 11);
   assert.equal(witnesses.length, 8);

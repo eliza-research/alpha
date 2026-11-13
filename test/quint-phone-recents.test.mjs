@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
@@ -82,7 +83,7 @@ function fixture(initial) {
   };
 }
 
-test('simulated PhoneRecents traces agree with the image Phone adapter after every step', {timeout: 120000}, async () => {
+test('simulated PhoneRecents traces agree with the image Phone adapter after every step', {timeout: scaledTimeout(120000)}, async () => {
   const traces = modelTraces({module: 'PhoneRecents', traces: 300, steps: 40});
   const result = await replay(traces, {
     start: ({state}) => fixture(state),

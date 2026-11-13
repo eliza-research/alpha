@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -210,7 +211,7 @@ async function checkGoogleCalendarAccessChoice(extraSources = []) {
     ]}));
 }
 
-test('Calendar access choice belongs to the exact verified account read and current intent', {timeout: 120000}, async () => {
+test('Calendar access choice belongs to the exact verified account read and current intent', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkGoogleCalendarAccessChoice([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

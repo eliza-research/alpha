@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {recordComparedObservation} from '../specs/quint/refinement/observed-replay.mjs';
@@ -90,5 +91,5 @@ async function runInboxEditCoalescerCase3(t, {canaries=true}={}) {
 async function runInboxEditCoalescerReplay(){const beforeTraces=observedTraces,beforeCheckpoints=observedCheckpoints;await runInboxEditCoalescerCase1(undefined,{canaries:false});await runInboxEditCoalescerCase2(undefined,{canaries:false});return{traces:observedTraces-beforeTraces,checkpoints:observedCheckpoints-beforeCheckpoints};}
 
 test('the real edit coalescer follows every step of the model scenarios', () => runInboxEditCoalescerCase1(undefined));
-test('the real edit coalescer follows random model walks step by step', {timeout: 120000}, () => runInboxEditCoalescerCase2(undefined));
+test('the real edit coalescer follows random model walks step by step', {timeout: scaledTimeout(120000)}, () => runInboxEditCoalescerCase2(undefined));
 test('an armed timer is the only way a waiting copy is written without a caller', () => runInboxEditCoalescerCase3(undefined));

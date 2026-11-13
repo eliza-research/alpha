@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkMapsRefinement} from '../specs/quint/legacy/maps/check-maps-refinement.mjs';
 
-test('historical Maps compares against the current mounted browser and Cloud provider', {timeout: 420000}, async () => {
+test('historical Maps compares against the current mounted browser and Cloud provider', {timeout: scaledTimeout(420000)}, async () => {
   const {receipts: [receipt], mismatches, portrait, landscape} = await checkMapsRefinement([fileURLToPath(import.meta.url)]);
   assert.deepEqual(portrait.map(({width, height, percent}) => [width, height, percent]),
     [[412, 915, 100], [360, 640, 100], [412, 915, 150], [360, 640, 150]]);

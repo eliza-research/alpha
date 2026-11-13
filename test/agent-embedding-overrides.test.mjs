@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -71,7 +72,7 @@ function launch(launcher,kind){
   if(kind==='all'){env.ELIZA_INFERENCE_LIBRARY=library;env.ELIZA_INFERENCE_LIB_DIR=libDir;}
   execFileSync('/usr/bin/git',['init','-q',source],{env});
   execFileSync('/usr/bin/git',['-C',source,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','-c','commit.gpgsign=false','commit','--allow-empty','-qm','fixture'],{env});
-  const result=spawnSync(process.execPath,[path.join(root,launcher)],{cwd:root,env,encoding:'utf8',timeout:15000});
+  const result=spawnSync(process.execPath,[path.join(root,launcher)],{cwd:root,env,encoding:'utf8',timeout:scaledTimeout(15000)});
   assert.equal(result.error,undefined,result.error?.message);
   assert.equal(result.status,0,result.stderr);
   const child=JSON.parse(fs.readFileSync(receipt,'utf8'));

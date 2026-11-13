@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
-test('workflow wakeups and restart refine actual source callbacks and persisted state', {timeout: 300000}, () => {
+test('workflow wakeups and restart refine actual source callbacks and persisted state', {timeout: scaledTimeout(300000)}, () => {
   const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runWorkflowWakeupRefinement} from './specs/quint/refinement/services/workflow-scheduler/index.mjs';
@@ -18,7 +19,7 @@ test('workflow wakeups and restart refine actual source callbacks and persisted 
     assert.ok(receipt.actions.staleCallback);
     assert.ok(result.obligations.length);
     console.log(JSON.stringify({traces: receipt.traces, checkpoints: receipt.checkpoints}));
-  `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 280000, maxBuffer: 16 * 1024 * 1024});
+  `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: scaledTimeout(280000), maxBuffer: 16 * 1024 * 1024});
   assert.ifError(result.error);
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });

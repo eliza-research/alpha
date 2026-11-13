@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -133,7 +134,7 @@ async function runTaskSchedulerRefinement(extraSources = []) {
   ]};
 }
 
-test('actual shared daemon and TaskService refine both original scheduler profiles', {timeout: 120000}, async () => {
+test('actual shared daemon and TaskService refine both original scheduler profiles', {timeout: scaledTimeout(120000)}, async () => {
   const result = await runTaskSchedulerRefinement([fileURLToPath(import.meta.url)]);
   assert.deepEqual(result.receipts.map(({model, traces}) => [model, traces]), [
     ['CoreTaskScheduler', 7], ['CoreTaskSchedulerRestart', 3],

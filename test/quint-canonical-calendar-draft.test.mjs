@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -89,7 +90,7 @@ async function checkCanonicalCalendarDraft(extraSources = []) {
   ]}));
 }
 
-test('canonical Calendar draft ownership matches actual editor and durable-store transitions', {timeout: 120000}, async () => {
+test('canonical Calendar draft ownership matches actual editor and durable-store transitions', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkCanonicalCalendarDraft([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);

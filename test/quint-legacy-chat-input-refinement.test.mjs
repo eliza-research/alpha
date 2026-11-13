@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkChatInputRefinement} from '../specs/quint/legacy/chat-input/check-chat-input-refinement.mjs';
 
-test('historical chat input profiles replay exact mounted composer observations', {timeout: 240000}, async () => {
+test('historical chat input profiles replay exact mounted composer observations', {timeout: scaledTimeout(240000)}, async () => {
   const {receipts: [receipt], mismatches} = await checkChatInputRefinement([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.model, 'ChatInput');
   assert.equal(receipt.traces, 6);

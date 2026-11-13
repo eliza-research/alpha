@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -136,7 +137,7 @@ async function runRendererSpeechChunkReplay({random = 80, steps = 40} = {}) {
 
 // RendererSpeechChunk model traces (scenarios, witnesses and random walks from the pinned Quint
 // CLI) replayed step by step against playOwnedSpeech over a synthetic voice plugin. No audio.
-test('owned renderer speech follows every RendererSpeechChunk model trace', {timeout: 240000}, async () => {
+test('owned renderer speech follows every RendererSpeechChunk model trace', {timeout: scaledTimeout(240000)}, async () => {
   const receipt = await runRendererSpeechChunkReplay();
   assert.equal(receipt.traces, 92);
   assert.ok(receipt.checkpoints > 2000, `checkpoints ${receipt.checkpoints}`);

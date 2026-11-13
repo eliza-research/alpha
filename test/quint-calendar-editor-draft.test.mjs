@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {checkCalendarEditorDraft, checkCalendarEditorWithSharedController} from '../specs/quint/refinement/application/calendar-editor-draft.mjs';
 
-test('the modal calendar editor and its retained edits follow every CalendarEditorDraft model step', {timeout: 280000}, async () => {
+test('the modal calendar editor and its retained edits follow every CalendarEditorDraft model step', {timeout: scaledTimeout(280000)}, async () => {
   const result = await checkCalendarEditorDraft();
   assert.equal(result.traces, 41);
   for (const action of ['openDone', 'edit', 'reportConflict', 'reportError', 'restore', 'replace', 'discard', 'discardDone', 'retry',
@@ -11,7 +12,7 @@ test('the modal calendar editor and its retained edits follow every CalendarEdit
     assert.ok(result.sources.includes(source), source);
 });
 
-test('saving retained edits typed against an older revision of the event is rejected by the replay', {timeout: 280000}, async () => {
+test('saving retained edits typed against an older revision of the event is rejected by the replay', {timeout: scaledTimeout(280000)}, async () => {
   const guard = 'if (revision !== identity.revision) throw Error("These edits belong to an older event revision. Discard them and reopen the current event.");';
   await assert.rejects(checkCalendarEditorDraft(code => {
     assert.ok(code.includes(guard));

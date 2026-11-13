@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {startMountedCalendar} from './fixtures/calendar-mounted-editor.mjs';
@@ -22,7 +23,7 @@ async function complete(fixture, gate, attempt) {
 const home = fixture => fixture.page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
 const back = fixture => fixture.page.evaluate(() => window.dispatchEvent(new Event('alpha-back', {cancelable: true})));
 
-test('mounted saved-event approval owns the exact Calendar review and Settings visit', {timeout: 240_000}, async t => {
+test('mounted saved-event approval owns the exact Calendar review and Settings visit', {timeout: scaledTimeout(240_000)}, async t => {
   const browser = await startMountedCalendar();
   try {
     await t.test('same-account replacement cannot finish the old marker admission', async () => {

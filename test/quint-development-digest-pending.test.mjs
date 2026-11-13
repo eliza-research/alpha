@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -17,7 +18,7 @@ async function checkDevelopmentDigestPending(extraSources = []) {
     'package.json', 'bun.lock', 'tsconfig.json', ...extraSources])];
   const driverHashes = captureInputs(sources);
   const run = spawnSync(process.execPath, [probe, 'current'], {
-    cwd: root, encoding: 'utf8', timeout: 10000, maxBuffer: 2*1024*1024,
+    cwd: root, encoding: 'utf8', timeout: scaledTimeout(10000), maxBuffer: 2*1024*1024,
     env: {PATH: '/usr/bin:/bin', TSX_DISABLE_CACHE: '1'},
   });
   if (run.error) throw run.error;
@@ -31,7 +32,7 @@ async function checkDevelopmentDigestPending(extraSources = []) {
     ]});
 }
 
-test('development digest phase changes retain exact reviewed payload and raw CAS', {timeout: 30000}, async () => {
+test('development digest phase changes retain exact reviewed payload and raw CAS', {timeout: scaledTimeout(30000)}, async () => {
   const receipt = await checkDevelopmentDigestPending([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 7);
   assert.equal(receipt.checkpoints, 52);

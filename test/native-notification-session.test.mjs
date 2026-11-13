@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
@@ -11,7 +12,7 @@ test('native notifications restore only an existing verified machine owner',()=>
  const root=resolve(import.meta.dirname,'..'),temporary=mkdtempSync(join(tmpdir(),'native-notification-session-'));
  const base=join(root,'android/app/src/main/java/ai/alphacompute/alphaphone');
  try{
-  execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/SecureSlotPolicy.java'),...['CloudDeployment','RendererCredentialSlots','ResidentResultTransport','ResidentResultSession','HostedInbox','HostedResultNotices','HostedStorageFault','NativeNotificationSession'].map(name=>join(base,name+'.java')),...noticeSources(prepareNativeFixture(root,temporary).root,'NoticeOwner'),join(root,'test/fixtures/NativeNotificationSessionTest.java')],{timeout:30000,stdio:'pipe'});
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.alphacompute.alphaphone.NativeNotificationSessionTest'],{encoding:'utf8',timeout:30000,stdio:'pipe'}),/^PASS NativeNotificationSession:/);
+  execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/SecureSlotPolicy.java'),...['CloudDeployment','RendererCredentialSlots','ResidentResultTransport','ResidentResultSession','HostedInbox','HostedResultNotices','HostedStorageFault','NativeNotificationSession'].map(name=>join(base,name+'.java')),...noticeSources(prepareNativeFixture(root,temporary).root,'NoticeOwner'),join(root,'test/fixtures/NativeNotificationSessionTest.java')],{timeout:scaledTimeout(30000),stdio:'pipe'});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.alphacompute.alphaphone.NativeNotificationSessionTest'],{encoding:'utf8',timeout:scaledTimeout(30000),stdio:'pipe'}),/^PASS NativeNotificationSession:/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

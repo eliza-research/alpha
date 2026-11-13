@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync,mkdirSync,writeFileSync} from 'node:fs';
@@ -145,7 +146,7 @@ public class ResetStartupTest {
  }
 }`);
   const sibling=join(dir,'other-app');mkdirSync(sibling);writeFileSync(join(sibling,'keep'),'x');
-  execFileSync(javaBinary('javac'),['--release','17','-d',join(dir,'classes'),...sources,...['DataReset','DataResetCopy'].map(name=>join(upstreamReset,`${name}.java`)),...['AlphaDataReset','AlphaApplication'].map(name=>join(root,`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`))],{timeout:60000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',join(dir,'classes'),'ai.alphacompute.alphaphone.ResetStartupTest',join(dir,'private-fixture'),sibling],{encoding:'utf8',timeout:60000}),/PASS reset startup/);
+  execFileSync(javaBinary('javac'),['--release','17','-d',join(dir,'classes'),...sources,...['DataReset','DataResetCopy'].map(name=>join(upstreamReset,`${name}.java`)),...['AlphaDataReset','AlphaApplication'].map(name=>join(root,`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`))],{timeout:scaledTimeout(60000)});
+  assert.match(execFileSync(javaBinary('java'),['-cp',join(dir,'classes'),'ai.alphacompute.alphaphone.ResetStartupTest',join(dir,'private-fixture'),sibling],{encoding:'utf8',timeout:scaledTimeout(60000)}),/PASS reset startup/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
