@@ -42,8 +42,10 @@ private static final class ResidentAttachDiagnostic {
  private final ExecutorService voiceWorkers=new java.util.concurrent.ThreadPoolExecutor(1,1,0L,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.SynchronousQueue<>());
  private final ExecutorService rendererWorkers=new java.util.concurrent.ThreadPoolExecutor(1,1,0L,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.SynchronousQueue<>());
  // Set only from in-process debug instrumentation (ResidentWorkflowCrashInstrumentedTest); no route,
- // intent or preference activation. It may adjust the launch environment of a debug build in a secondary user.
- static volatile java.util.function.BiConsumer<JSONObject,java.util.Map<String,String>> instrumentationLaunchEnvironment;
+ // intent or preference activation. In a debug build in a secondary user it may point the stored provider at a
+ // loopback model: only the keys below, and only http://127.0.0.1 base URLs.
+ static volatile java.util.function.Function<JSONObject,java.util.Map<String,String>> instrumentationLaunchEnvironment;
+ private static final java.util.Set<String> INSTRUMENTATION_LAUNCH_KEYS=java.util.Set.of("CEREBRAS_BASE_URL","OPENAI_BASE_URL","OPENAI_API_KEY","ELIZA_PROVIDER");
  private static String rootToken,ownerToken,ownerIdentity,notificationAgent;
  private static long expiresAt;
  private static final Object lifecycleLock=new Object(), enrollmentLock=new Object();
@@ -677,10 +679,16 @@ private static final class ResidentAttachDiagnostic {
   // Pseudonymize secrets and PII using the pinned upstream runtime.
   env.put("ELIZA_SECRET_SWAP_ENABLED","true");
   env.put("ELIZA_PII_SWAP_ENABLED","true");
-  java.util.function.BiConsumer<JSONObject,java.util.Map<String,String>> fixture=instrumentationLaunchEnvironment;
+  java.util.function.Function<JSONObject,java.util.Map<String,String>> fixture=instrumentationLaunchEnvironment;
   if(fixture!=null){
    if(!BuildConfig.DEBUG||android.os.Process.myUid()/100000<=0)throw new java.io.IOException("Invalid instrumentation launch environment");
-   fixture.accept(provider,env);
+   java.util.Map<String,String> changes=fixture.apply(provider);
+   for(java.util.Map.Entry<String,String> change:changes.entrySet()){
+    String key=change.getKey(),value=change.getValue();
+    if(!INSTRUMENTATION_LAUNCH_KEYS.contains(key)||value==null||key.endsWith("_BASE_URL")&&!value.matches("http://127\\.0\\.0\\.1:[1-9][0-9]{0,4}/v1"))
+     throw new java.io.IOException("Invalid instrumentation launch environment");
+   }
+   env.putAll(changes);
   }
   // Later surfaces attach only while the stored admission is the one this process launched with.
   synchronized(lifecycleLock){if(epoch!=lifecycleEpoch||!accepting||stopping||credentialMutationEpoch>=0)throw new java.io.IOException("Local provider changed");launchedGeneration=LocalAgentProviderAdmission.launchGeneration(saved,cloudSaved);}

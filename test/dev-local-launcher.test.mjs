@@ -9,6 +9,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {createServer} from 'node:net';
 import {spawn} from 'node:child_process';
+import {loadConfigFromFile} from 'vite';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 const stubs={
@@ -37,11 +38,12 @@ async function launch(overrides={}){
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 }
 const flags=stripTypeScriptTypes(fs.readFileSync('apps/app/src/build-flags.ts','utf8').replace(/^export /gm,'').replaceAll('import.meta.env','env'),{mode:'strip'});
-/** import.meta.env as Vite derives it from the launched process environment (vite.config.ts `define`). */
-function renderer(processEnv,DEV){
- const flagOn=processEnv.ELIZA_DEV_ALLOW_TEST_MOCKS==='1';
- const env={DEV,...Object.fromEntries(Object.entries(processEnv).filter(([key])=>key.startsWith('VITE_'))),VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:flagOn?'1':'',
-  VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:flagOn&&processEnv.VITE_LOCAL_AGENT==='1'&&processEnv.ALPHA_DEV_CONNECTION_TOOLS!=='1'?'1':''};
+/** import.meta.env as Vite derives it from the launched process environment, through the real vite.config.ts `define`. */
+async function renderer(processEnv,DEV){
+ const saved=process.env;process.env={...processEnv};
+ let define;try{define=(await loadConfigFromFile({command:'serve',mode:'development'},path.resolve('vite.config.ts'))).config.define;}finally{process.env=saved;}
+ const derived=Object.fromEntries(Object.entries(define).filter(([key])=>key.startsWith('import.meta.env.')).map(([key,value])=>[key.slice('import.meta.env.'.length),JSON.parse(value)]));
+ const env={DEV,...Object.fromEntries(Object.entries(processEnv).filter(([key])=>key.startsWith('VITE_'))),...derived};
  return vm.runInNewContext(flags+'\n({testMocksEnabled,devSurfacesEnabled,privateLocalPreviewEnabled})',{env});
 }
 
@@ -49,16 +51,22 @@ test('bun run dev opens the product connection sheet, on the development server 
  for(const tools of [undefined,'0','true']){
   const {stdout,vite}=await launch(tools===undefined?{}:{ALPHA_DEV_CONNECTION_TOOLS:tools});
   assert.equal(vite.env.VITE_LOCAL_AGENT,'1');assert.equal(vite.env.ELIZA_DEV_ALLOW_TEST_MOCKS,'1');
-  assert.deepEqual({...renderer(vite.env,true)},{testMocksEnabled:true,devSurfacesEnabled:true,privateLocalPreviewEnabled:true});
+  assert.equal(vite.env.ALPHA_DEV_CONNECTION_TOOLS,'0');
+  assert.deepEqual({...await renderer(vite.env,true)},{testMocksEnabled:true,devSurfacesEnabled:true,privateLocalPreviewEnabled:true});
   // A build from the same environment never admits it: the APK and production web builds are unchanged.
-  assert.equal(renderer(vite.env,false).privateLocalPreviewEnabled,false);
+  assert.equal((await renderer(vite.env,false)).privateLocalPreviewEnabled,false);
   assert.match(stdout,/Connection sheet: Alpha connection\. Set ALPHA_DEV_CONNECTION_TOOLS=1/);
  }
 });
 
 test('ALPHA_DEV_CONNECTION_TOOLS=1 restores the development connection sheet',async()=>{
  const {stdout,vite}=await launch({ALPHA_DEV_CONNECTION_TOOLS:'1'});
- assert.equal(vite.env.VITE_LOCAL_AGENT,'1');
- assert.deepEqual({...renderer(vite.env,true)},{testMocksEnabled:true,devSurfacesEnabled:true,privateLocalPreviewEnabled:false});
+ assert.equal(vite.env.VITE_LOCAL_AGENT,'1');assert.equal(vite.env.ALPHA_DEV_CONNECTION_TOOLS,'1');
+ assert.deepEqual({...await renderer(vite.env,true)},{testMocksEnabled:true,devSurfacesEnabled:true,privateLocalPreviewEnabled:false});
  assert.match(stdout,/Connection sheet: development tools/);
+});
+
+test('dev:ui with the local agent and no connection tools setting keeps the development sheet',async()=>{
+ const env={...process.env,ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_LOCAL_AGENT:'1',ALPHA_LOCAL_AGENT_ORIGIN:'http://127.0.0.1:1'};delete env.ALPHA_DEV_CONNECTION_TOOLS;
+ assert.deepEqual({...await renderer(env,true)},{testMocksEnabled:true,devSurfacesEnabled:true,privateLocalPreviewEnabled:false});
 });

@@ -149,14 +149,13 @@ public final class ResidentWorkflowCrashInstrumentedTest {
  private JSONObject owner()throws Exception {return ResidentTestFixture.owner(request("/api/auth/me",null),ownerBearer);}
  private JSONObject agent()throws Exception {return ResidentTestFixture.agent(request("/api/agents",null));}
  /** Points the synthetic provider the test stored at the held loopback model; refuses any other provider. */
- private static java.util.function.BiConsumer<JSONObject,java.util.Map<String,String>> recoveryEndpoint(java.net.ServerSocket server){
-  return (provider,env)->{
+ private static java.util.function.Function<JSONObject,java.util.Map<String,String>> recoveryEndpoint(java.net.ServerSocket server){
+  return provider->{
    if(server.isClosed()||!server.isBound()||!"127.0.0.1".equals(server.getInetAddress().getHostAddress())||server.getLocalPort()<=0
       ||provider==null||!"synthetic-resident-recovery-only".equals(provider.optString("key")))
     throw new IllegalStateException("Invalid resident recovery fixture endpoint");
    String endpoint="http://127.0.0.1:"+server.getLocalPort()+"/v1";
-   env.put("CEREBRAS_BASE_URL",endpoint);env.put("OPENAI_BASE_URL",endpoint);
-   env.put("OPENAI_API_KEY","synthetic-resident-recovery-only");env.put("ELIZA_PROVIDER","cerebras");
+   return java.util.Map.of("CEREBRAS_BASE_URL",endpoint,"OPENAI_BASE_URL",endpoint,"OPENAI_API_KEY","synthetic-resident-recovery-only","ELIZA_PROVIDER","cerebras");
   };
  }
  private static final class HeldModel implements AutoCloseable {

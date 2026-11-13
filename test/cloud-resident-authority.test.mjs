@@ -50,3 +50,10 @@ test('the development server reuses the email sign-in host without a Cloud resid
  const p=await protocol({DEV:true,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1',VITE_LOCAL_AGENT:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});assert.equal(typeof p.cloudSignIn?.status,'function');assert.equal(p.developmentCloudVoiceEnabled,false);const original=globalThis.fetch,calls=[];globalThis.fetch=async(url,input)=>{calls.push({url,body:JSON.parse(input.body)});return Response.json({inApp:true,email:true,google:false});};try{const ready=await p.cloudSignIn.status({environment:'production'});assert.equal(ready.email,true);assert.equal(ready.google,false);assert.equal(calls.length,1);assert.equal(calls[0].url,'/__alpha-browser-cloud');assert.equal(calls[0].body.operation,'signInStatus');assert.equal(calls[0].body.email,undefined);}finally{globalThis.fetch=original;}
  for(const flags of[{DEV:false,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1',VITE_LOCAL_AGENT:'1'},{DEV:true,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1'},{DEV:true,VITE_LOCAL_AGENT:'1'}])assert.equal((await protocol(flags)).cloudSignIn,undefined);
 });
+
+test('the browser Cloud bridge mounts nothing without test mocks or a Cloud resident',async()=>{
+ const {browserCloudDevBridge}=await import('../scripts/browser-cloud-dev-bridge.ts');
+ async function mount(env){const saved=process.env;process.env={...saved,...env};try{const mounted=[];await browserCloudDevBridge().configureServer({middlewares:{use:route=>mounted.push(route)},httpServer:{once(){}}});return mounted;}finally{process.env=saved;}}
+ assert.deepEqual(await mount({ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ALPHA_CLOUD_RESIDENT:''}),[]);
+ assert.deepEqual(await mount({ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ALPHA_CLOUD_RESIDENT:'',ALPHA_BROWSER_CLOUD_PROFILE:'/synthetic/cloud-profile'}),['/__alpha-browser-cloud']);
+});

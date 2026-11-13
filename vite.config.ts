@@ -107,8 +107,9 @@ export default defineConfig({
   plugins: [productionSurface(), localOcrAssets(), browserPdfAssets(), browserFullReload(), react(), localAgentDevBridge(), browserCloudDevBridge()],
   define: {
     'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify(flagOn ? '1' : ''),
-    // The local agent's product connection sheet (bun run dev); ALPHA_DEV_CONNECTION_TOOLS=1 keeps the development sheet.
-    'import.meta.env.VITE_ALPHA_PRIVATE_LOCAL_PREVIEW': JSON.stringify(flagOn && process.env.VITE_LOCAL_AGENT === '1' && process.env.ALPHA_DEV_CONNECTION_TOOLS !== '1' ? '1' : ''),
+    // The local agent's product connection sheet: only bun run dev (scripts/dev-local.ts) passes '0'.
+    // Unset (dev:ui and its browser lanes) or '1' keeps the development sheet.
+    'import.meta.env.VITE_ALPHA_PRIVATE_LOCAL_PREVIEW': JSON.stringify(flagOn && process.env.VITE_LOCAL_AGENT === '1' && process.env.ALPHA_DEV_CONNECTION_TOOLS === '0' ? '1' : ''),
     __APP_VERSION__: JSON.stringify(appVersion),
     'import.meta.env.VITE_ALPHA_DEV_CARTESIA':JSON.stringify(flagOn&&process.env.ALPHA_DEV_CARTESIA==='1'?'1':''),
   },
