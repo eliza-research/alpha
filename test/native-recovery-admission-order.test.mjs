@@ -7,6 +7,7 @@ import {JSDOM} from 'jsdom';
 const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const part=(a,b)=>{const start=source.indexOf(a),end=source.indexOf(b,start+a.length);assert.ok(start>=0&&end>start,a);return source.slice(start,end);};
 const declarations=[
+ part('let homePresentationRevision=','\n'),
  part('function update(','// P-43: where the resident'),
  part('function retire(','/** Test mocks only (the mock-mode exit'),
  part('async function work(','// Keep startup-error provenance'),

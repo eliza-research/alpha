@@ -11,7 +11,7 @@ test('automatic readiness retains existing and newer errors without restarting t
  const {transformSync}=await import('esbuild');
  const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
  const part=(a,b)=>{const from=ui.indexOf(a),to=ui.indexOf(b,from+a.length);assert.ok(from>=0&&to>from);return ui.slice(from,to);};
- const work=part('async function work(','/** Only an explicitly failed native start');
+ const work=part('let homePresentationRevision=','\n')+'\n'+part('async function work(','/** Only an explicitly failed native start');
  const begin=part('  async beginSignIn(','  /** Leaves the sign-in screen');
  const compiled=transformSync(`function make(){
   let planRecheck=null;let operation=null,residentStartInBackground=false,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,providerStatusGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true,release,starts=0;

@@ -137,7 +137,7 @@ test('a cancelled admission leaves the sign-in step and the agent to the caller 
 });
 
 test('a resident start ends with its operation in one update, so setup behind it never blinks',async()=>{
-  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Only an explicitly failed native start'),{mode:'transform'});
+  const work=stripTypeScriptTypes(between(ui,'let homePresentationRevision=','\n')+'\n'+between(ui,'async function work(','/** Only an explicitly failed native start'),{mode:'transform'});
   for(const fail of [false,true]){
     const seen=[],state={busy:false,open:false,residentStarting:false,error:'',message:''};
     const box={state,AbortController,active:null,cloud:{},testMocksEnabled:false,scheduleResidentAutoRetry:()=>{},

@@ -141,6 +141,7 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     class CodeExpiredError extends Error {constructor(){super('code-expired');}}
     const signInFailureMessage=code=>code,signInFailed=(environment,keep=false)=>{if(!keep)update({signIn:{step:'choose',environment}});};
     const signedIn=async()=>events.push({authenticated:true});
+    ${part('let homePresentationRevision=', '\n')}
     ${part('async function work(', '\n/** ')}
     const connectionController={
     ${part('  close() {', '  cancel() {')}

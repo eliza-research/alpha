@@ -8,7 +8,7 @@ import vm from 'node:vm';
 const source=await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const begin=source.indexOf('async function work('),end=source.indexOf('\n/** ',begin);
 assert.ok(begin>=0&&end>begin);
-const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'strip'});
+const code=stripTypeScriptTypes(source.match(/^let homePresentationRevision=.*$/m)[0]+'\n'+source.slice(begin,end),{mode:'strip'});
 function fixture(){
  const state={open:false,busy:false,purpose:'agent',message:'',error:''},updates=[];
  const context=vm.createContext({residentRecoveryReason,scheduleResidentAutoRetry:()=>{},residentStartInBackground:false,testMocksEnabled:false,AbortController,DOMException,state,signInReadinessOwner:null,operation:null,planRecheck:null,errorKindOf:()=>null,active:null,cloud:{},expired:()=>false,errorMessage:e=>e.message,residentCloudFlow:()=>false,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{},update:next=>{Object.assign(state,next);updates.push({...state});}});

@@ -23,7 +23,7 @@ function compile(text) {
   const visible = line('  useEffect(()=>{const visible=()=>{if(!document.hidden)');
   return stripTypeScriptTypes([
     line('export const PLAN_RECHECK_INTERVAL_MS').replace('export ', ''),
-    line('let lastPlanRecheck ='), line('let planManagementReturn ='),
+    line('let lastPlanRecheck ='), line('let planManagementReturn ='), line('let homePresentationRevision='),
     line('function planCheckScope()'), line('let networkLostUnder:'), line('let planRecheck:'),
     section('async function recheckResidentPlan()', '/** Bind or unbind'),
     section('async function work(', '/** Release only this operation'),
