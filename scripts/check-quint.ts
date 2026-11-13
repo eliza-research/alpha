@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { availableParallelism, tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
-import { boundedTlcSpec, detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, registeredQuintModelNames, repositoryRoot, runQuintChecker, type BoundedTlcEvidence, type CheckerResult, type QuintModel } from './quint-lib.ts';
+import { boundedTlcSpec, detectedCounterexample, fullTemporalTlcSpec, fullTemporalTlcViolation, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, registeredQuintModelNames, repositoryRoot, runQuintChecker, type BoundedTlcEvidence, type CheckerResult, type FullTemporalTlcEvidence, type QuintModel } from './quint-lib.ts';
 import { sha256 } from './sha256.ts';
 
 const args = process.argv.slice(2);
@@ -15,7 +15,7 @@ const command = selectedCommand;
 function value(name: string): string | undefined;
 function value(name: string, fallback: string): string;
 function value(name: string, fallback?: string) {return args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;}
-const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout', 'jobs'];
+const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout', 'jobs', 'tlc-liveness'];
 for (const arg of args) if (!allowedOptions.some(name => arg.startsWith(`--${name}=`))) throw Error(`Unknown option ${arg}`);
 const checking = ['verify', 'temporal', 'compare'].includes(command);
 const positiveInteger = (name: string, fallback: number = 1) => {
@@ -35,6 +35,12 @@ const requestedBackend = value('backend');
 const serverEndpoint = value('server-endpoint', '127.0.0.1:8845');
 if (requestedBackend !== undefined && requestedBackend !== 'apalache' && requestedBackend !== 'tlc' && requestedBackend !== 'tlc-bounded') throw Error('Verification backend must be apalache, tlc or tlc-bounded');
 const backendOption = requestedBackend;
+const requestedTlcLiveness = value('tlc-liveness');
+if (requestedTlcLiveness !== undefined && !['default', 'final'].includes(requestedTlcLiveness)) throw Error('TLC liveness scheduling must be default or final');
+if (requestedTlcLiveness !== undefined && (command !== 'temporal' || requestedBackend !== undefined && requestedBackend !== 'tlc')) {
+  throw Error('--tlc-liveness requires temporal checking with the full TLC backend');
+}
+const tlcLiveness = requestedTlcLiveness ?? 'default';
 const requested = value('models', '').split(',').filter(Boolean);
 if (requested.length) {
   const registered = new Set(registeredQuintModelNames());
@@ -73,6 +79,7 @@ type CheckEvidence = {
   modelSha256: string;
   output: string;
   boundedProof?: BoundedTlcEvidence;
+  fullTemporalProof?: FullTemporalTlcEvidence;
 };
 type Receipt = {
   schemaVersion: number;
@@ -87,6 +94,7 @@ type Receipt = {
   backend: string;
   jobs: number;
   timeoutSeconds: number;
+  tlcLiveness: string;
   modelOptions: Record<string, ReturnType<typeof quintModelOptions>>;
   scenarioCanary?: {detected: boolean; exitCode: number | null; signal: NodeJS.Signals | null; interruptedAttempt?: {exitCode: null; signal: NodeJS.Signals | null}; output: string};
   results: CheckEvidence[];
@@ -109,7 +117,7 @@ const receipt: Receipt = { schemaVersion: 1, startedAt: new Date().toISOString()
     typecheck: 'typechecking', test: 'scenario execution', simulate: 'sampled simulation',
   }[command],
   inputHashes, samples, steps, seed, modelOptions: Object.fromEntries(models.map(model => [model.module, quintModelOptions(model, command, overrides)])),
-  backend: receiptBackend, jobs, timeoutSeconds, results: [] };
+  backend: receiptBackend, jobs, timeoutSeconds, tlcLiveness, results: [] };
 const receiptPath = resolve(repositoryRoot, value('out', `test-results/quint/${command}.json`));
 mkdirSync(dirname(receiptPath), { recursive: true });
 writeFileSync(receiptPath, `${JSON.stringify({ ...receipt, status: 'running', passed: false }, null, 2)}\n`);
@@ -164,9 +172,8 @@ function runCommand(argv: string[], commandTimeoutSeconds = timeoutSeconds, exec
   });
 }
 
-async function runBoundedTlc(options: string[]): Promise<CheckerResult & {boundedProof?: BoundedTlcEvidence}> {
+async function runCompiledTlc(options: string[], finalTemporal = false, deadline = Date.now() + timeoutSeconds * 1000): Promise<CheckerResult & {boundedProof?: BoundedTlcEvidence; fullTemporalProof?: FullTemporalTlcEvidence}> {
   const depth = Number(options.find(option => option.startsWith('--max-steps='))?.slice('--max-steps='.length));
-  const deadline = Date.now() + timeoutSeconds * 1000;
   // Compilation may reuse a server with a different local cache. Provision TLC's
   // pinned distribution independently, within the same owned phase deadline.
   const bootstrap = await runCommand(['--eval', `
@@ -179,15 +186,22 @@ async function runBoundedTlc(options: string[]): Promise<CheckerResult & {bounde
   const compileOptions = options.slice(1).filter(option => !['--backend=', '--max-steps=', '--verbosity=', '--tlc-config='].some(prefix => option.startsWith(prefix)));
   const compiled = await runCommand([cli, 'compile', ...compileOptions, '--target=tlaplus', '--verbosity=0'], Math.max(0, (deadline - Date.now()) / 1000));
   if (compiled.status !== 0 || compiled.signal || compiled.error) return compiled;
-  const spec = boundedTlcSpec(compiled.stdout || '', depth);
+  const temporalSpec = finalTemporal ? fullTemporalTlcSpec(compiled.stdout || '') : undefined;
+  const boundedSpec = finalTemporal ? undefined : boundedTlcSpec(compiled.stdout || '', depth);
+  const spec = temporalSpec ?? boundedSpec!;
+  const label = finalTemporal ? 'Full temporal TLC' : 'Bounded TLC';
   const config = readJson<{workers: number | string; maxHeap: string; stackSize: string}>(join(repositoryRoot, 'specs/quint/tlc.json'));
-  if (!config.workers || !config.maxHeap || !config.stackSize) throw Error('Bounded TLC requires configured workers, maxHeap and stackSize');
+  if (!config.workers || !config.maxHeap || !config.stackSize) throw Error(`${label} requires configured workers, maxHeap and stackSize`);
   const require = createRequire(import.meta.url);
   const {apalacheDistDir} = require('@informalsystems/quint/dist/src/config.js') as {apalacheDistDir(version: string): string};
   const jar = join(apalacheDistDir('0.62.4'), 'apalache/lib/apalache.jar');
+  const jarSha256 = finalTemporal ? sha256(readFileSync(jar)) : undefined;
+  if (finalTemporal && jarSha256 !== 'e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262') {
+    throw Error('Full temporal TLC JAR does not match the pinned Apalache 0.62.4 artifact');
+  }
   const name = options.find(option => option.startsWith('--main='))?.slice('--main='.length);
-  if (!name || !/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) throw Error('Bounded TLC requires a module name');
-  const temporary = mkdtempSync(join(tmpdir(), 'alpha-quint-bounded-'));
+  if (!name || !/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) throw Error(`${label} requires a module name`);
+  const temporary = mkdtempSync(join(tmpdir(), finalTemporal ? 'quint-tlc-' : 'alpha-quint-bounded-'));
   const removeTemporary = () => rmSync(temporary, {recursive: true, force: true});
   process.once('exit', removeTemporary);
   try {
@@ -195,18 +209,21 @@ async function runBoundedTlc(options: string[]): Promise<CheckerResult & {bounde
     writeFileSync(file, spec.source);
     writeFileSync(join(temporary, `${name}.cfg`), spec.configuration);
     const java = process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin', process.platform === 'win32' ? 'java.exe' : 'java') : 'java';
-    const result = await runCommand([config.maxHeap, config.stackSize, `-Djava.io.tmpdir=${temporary}`, '-cp', jar,
-      'tlc2.TLC', '-deadlock', '-workers', String(config.workers), '-metadir', temporary, file],
-    Math.max(0, (deadline - Date.now()) / 1000), java);
+    const javaArgv = [config.maxHeap, config.stackSize, `-Djava.io.tmpdir=${temporary}`, '-cp', jar,
+      'tlc2.TLC', '-deadlock', ...(finalTemporal ? ['-lncheck', 'final'] : []),
+      '-workers', String(config.workers), '-metadir', temporary, file];
+    const result = await runCommand(javaArgv, Math.max(0, (deadline - Date.now()) / 1000), java);
     const output = `${result.stdout || ''}${result.stderr || ''}`;
     const complete = output.includes('Model checking completed. No error has been found.')
       && /[\d,]+ states generated, [\d,]+ distinct states found, 0 states left on queue\./.test(output);
-    if (result.status === 0 && !complete && !result.error) result.error = Error('TLC did not report a completed bounded graph');
-    const violation = result.status === 12 && !result.error && !result.signal && /Invariant q_inv is violated\./.test(output);
+    if (result.status === 0 && !complete && !result.error) result.error = Error(`TLC did not report a completed ${finalTemporal ? 'temporal' : 'bounded'} graph`);
+    const violation = finalTemporal ? fullTemporalTlcViolation(result, output)
+      : result.status === 12 && !result.error && !result.signal && /Invariant q_inv is violated\./.test(output);
     const conclusion = violation ? '[violation] Found an issue\nerror: found a counterexample\n'
-      : result.status !== 0 || result.error || result.signal ? '[failure] Bounded TLC did not complete successfully\n' : '';
+      : result.status !== 0 || result.error || result.signal ? `[failure] ${label} did not complete successfully\n` : '';
     return {...result, stdout: `${bootstrap.stdout || ''}${result.stdout || ''}${conclusion}`, stderr: `${bootstrap.stderr || ''}${compiled.stderr || ''}${result.stderr || ''}`,
-      boundedProof: spec.evidence};
+      boundedProof: boundedSpec?.evidence,
+      fullTemporalProof: temporalSpec ? {...temporalSpec.evidence, jarSha256: jarSha256!, javaExecutable: java, javaArgv} : undefined};
   } finally {
     process.removeListener('exit', removeTemporary);
     removeTemporary();
@@ -219,7 +236,10 @@ async function run(model: QuintModel, phase: string, options: string[], expected
   const modelSha256 = sha256(readFileSync(join(repositoryRoot, model.path)));
   const startedAt = new Date().toISOString();
   const backend = options[0] === 'verify' ? options.find(option => option.startsWith('--backend='))?.slice('--backend='.length) : undefined;
-  const {result, interruptedAttempt} = await runQuintChecker(() => backend === 'tlc-bounded' ? runBoundedTlc(options) : runCommand(argv));
+  const finalTemporal = tlcLiveness === 'final' && backend === 'tlc' && options.some(option => option.startsWith('--temporal='));
+  const finalTemporalDeadline = Date.now() + timeoutSeconds * 1000;
+  const {result, interruptedAttempt} = await runQuintChecker(() => backend === 'tlc-bounded' ? runCompiledTlc(options)
+    : finalTemporal ? runCompiledTlc(options, true, finalTemporalDeadline) : runCommand(argv));
   const output = `${result.stdout || ''}${result.stderr || ''}`;
   const violation = detectedCounterexample(output);
   const modelChanged = modelSha256 !== sha256(readFileSync(join(repositoryRoot, model.path)));
@@ -227,10 +247,11 @@ async function run(model: QuintModel, phase: string, options: string[], expected
   const missingScenarios = phase === 'scenarios' ? missingQuintScenarios(model.tests, output) : [];
   const passed = !modelChanged && completed && !missingScenarios.length && (expected === 'violation' ? result.status !== 0 && violation : result.status === 0);
   const boundedProof = 'boundedProof' in result ? result.boundedProof as BoundedTlcEvidence : undefined;
+  const fullTemporalProof = 'fullTemporalProof' in result ? result.fullTemporalProof as FullTemporalTlcEvidence : undefined;
   receipt.results.push({ model: model.module, phase, backend, expected, passed, exitCode: result.status,
     startedAt, finishedAt: new Date().toISOString(), signal: result.signal, interruptedAttempt,
     error: modelChanged ? 'Model changed while its checker was running' : result.error?.message,
-    argv: options, modelSha256, missingScenarios, output, boundedProof });
+    argv: options, modelSha256, missingScenarios, output, boundedProof, fullTemporalProof });
   console.log(`${passed ? 'PASS' : 'FAIL'} ${model.module} ${phase}${expected === 'violation' ? ' (counterexample required)' : ''}`);
   if (interruptedAttempt) console.log(`Retried ${model.module} ${phase} after checker signal ${interruptedAttempt.signal}`);
   if (!passed) {
