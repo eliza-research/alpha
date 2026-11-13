@@ -6,6 +6,11 @@ Their evidence class is `partial-source-contract`: compiling selected members do
 surrounding source file or its reconstructed enclosing class. Do not add new source slices or treat
 these receipts as whole-file implementation refinement.
 
+Existing raw receipts may retain `bounded-component` or `bounded-orchestration` scope values.
+Those values describe the recorded extent; this inventory and the actual source boundaries and
+exclusions establish the partial-source classification. This documentation does not relabel
+historical receipts.
+
 Each owner preserves its recorded scenarios and checks source and driver inputs before and after
 execution. Replacing a partial contract requires qualified coverage of its behavior. Pure source-text
 assertions, model restatements and duplicate aggregate runners are not substitutes.
