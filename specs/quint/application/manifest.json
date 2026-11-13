@@ -4047,15 +4047,22 @@
       "lateSavedCannotReplaceLiveTest",
       "refusedOldWindowStaysHiddenTest",
       "changedOwnerStaysHiddenTest",
-      "changedCredentialStaysHiddenTest"
+      "changedCredentialStaysHiddenTest",
+      "cachedDetailSurvivesRetryTest",
+      "savedMissingBodyBackKeepsCheckTest",
+      "acceptedGrantStillNeedsMissingBodyTest",
+      "refusedSavedDetailStaysHiddenTest"
     ],
     "sources": [
       "apps/app/src/runtime/agent-calendar.ts",
       "apps/app/src/prototype/agent-calendar-adapter.ts",
-      "apps/app/src/prototype/inbox-cloud-adapter.ts"
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "apps/app/src/runtime/service-read-cache.ts",
+      "apps/app/src/runtime/service-read-cache-store.ts"
     ],
     "abstractions": [
       "Two owners, credentials and windows, three ordered clock values and eight read generations. Saved rows never authorize writes and never replace a settled fresh read.",
+      "Inbox's selected Google grant stays fixed within a cache trace. Inbox starts with last-known readable cached mail. A transport failure keeps read-only rows, a definitive grant refusal retires them, and grant acceptance does not change the cached page's read time. Review and provider dispatch remain in InboxDelivery.",
       "Cache size/age policy is implemented by existing ServiceReadCache. Model scenarios and isolated implementation regressions do not prove live-provider or device behavior."
     ]
   },

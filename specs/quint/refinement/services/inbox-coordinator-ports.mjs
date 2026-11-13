@@ -32,6 +32,7 @@ async function bundle() {
       export {inboxDrafts} from './apps/app/src/prototype/inbox-drafts.ts';
       export {InboxOperation} from './apps/app/src/runtime/inbox-operation.ts';
       export {reviewMailAttachment as reviewAttachment} from './apps/app/src/runtime/inbox-attachment.ts';
+      export {serviceReadCache} from './apps/app/src/runtime/service-read-cache-store.ts';
       export {readInboxUnsaved} from './apps/app/src/runtime/inbox-unsaved-record.ts';`, resolveDir: root, sourcefile: "inbox-coordinator-entry.ts" },
     absWorkingDir: root,
     bundle: true,
@@ -57,6 +58,9 @@ async function bundle() {
 export async function inboxDriverSources() {
   return [...(await bundle()).sources, 'upstream.lock.json', 'scripts/prepare-client-features.ts',
     '.eliza/client-features/.source.json'];
+}
+export async function inboxDriverArtifact() {
+  return (await bundle()).code;
 }
 export function rebuildInboxDriver(expected) {
   compiled = undefined;
@@ -295,7 +299,7 @@ export async function createInboxFixture() {
       }, up() {
       } }), swallowed: () => false, get: () => shell.st, isActive: () => true, set: (patch) => shell.vset("inbox", patch), toast: (message) => toasts.push(message) };
       const render = () => views.inbox.render(shell.st, api);
-      return { shell, views, render, dispose: () => shell.componentWillUnmount() };
+      return { shell, views, api, render, dispose: () => shell.componentWillUnmount() };
     },
     createPair() {
       const provider = modules.inboxProviderControls(() => {
