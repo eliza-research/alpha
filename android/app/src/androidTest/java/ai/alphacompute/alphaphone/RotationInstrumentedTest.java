@@ -14,8 +14,8 @@ import org.junit.runner.RunWith;
 
 /**
  * Rotate on Home and with a composer draft: the active view and the draft survive and
- * the visible primary actions stay inside the viewport. The standalone app requires the
- * landscape layout; the launcher is portrait only, so there the same steps assert it stays put.
+ * the visible primary actions stay inside the viewport. The launcher is portrait only, so the
+ * same steps assert it stays put.
  * A flag-off build signed out of Eliza Cloud rotates its required sign-in page instead (P-43);
  * AccessibilityLifecycleInstrumentedTest rotates every retained view at 200% font.
  * Emulator evidence only.

@@ -6,7 +6,7 @@ import {checkRendererCoordinator} from '../specs/quint/refinement/native/rendere
 test('actual MainActivity recovery and handoff refine the native model', {timeout: scaledTimeout(300000)}, async () => {
   const receipt = await checkRendererCoordinator();
   assert.equal(receipt.passed, true);
-  assert.equal(receipt.traces, 27);
+  assert.equal(receipt.traces, 26);
   assert.equal(receipt.driverInputsBound, true);
   assert.equal(receipt.inputsUnchanged, true);
 });

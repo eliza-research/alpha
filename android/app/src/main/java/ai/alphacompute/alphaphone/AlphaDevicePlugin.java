@@ -116,7 +116,7 @@ public final class AlphaDevicePlugin extends Plugin {
  /**
   * Asks Android to open its own notification shade (#416, #417), only
   * while Alpha's window has focus, so a pull or button on visible Home is the only way to reach it.
-  * Resolves with {status}: opened, standalone, permission-missing, unsupported or not-in-front.
+  * Resolves with {status}: opened, permission-missing, unsupported or not-in-front.
   * Any status but opened leaves the renderer's truthful fallback to show.
   */
  @PluginMethod public void openNotificationShade(PluginCall call){
