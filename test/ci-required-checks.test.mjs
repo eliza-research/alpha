@@ -41,90 +41,113 @@ test('browser tests, the Quint gate, its node tests and the Lemma proofs run in 
   assert.deepEqual(promotion.jobs.browser.strategy.matrix.shard, [1, 2, 3, 4, 5, 6]);
 });
 
-test('promotion partitions every safety model and keeps comparisons and temporal checks independent', () => {
+const safetyCommand = 'bun scripts/check-quint.ts verify --steps=6 $' + '{MODELS:+--models=$MODELS}';
+const temporalCommand = 'bun scripts/check-quint.ts temporal --models="$MODELS"';
+const selector = (step, command, env, cwd = process.cwd()) => {
+  assert.equal(step.run.indexOf(command), step.run.lastIndexOf(command));
+  assert.ok(step.run.endsWith(command + '\n'));
+  return spawnSync('bash', ['-e', '-c', step.run.slice(0, step.run.indexOf(command)) + '\nprintf "%s" "$MODELS"'], {
+    cwd, env: {...process.env, ...env}, encoding: 'utf8', timeout: 30000,
+  });
+};
+const selectedNames = result => {
+  assert.ifError(result.error);assert.equal(result.status, 0, result.stderr);
+  assert.notEqual(result.stdout, '');return result.stdout.split(',');
+};
+
+test('promotion partitions every safety and temporal phase exactly once without changing proof options', () => {
   const jobs = YAML.parse(read('.github/workflows/promotion.yml')).jobs;
   const families = ['application', 'services', 'native', 'legacy'];
   const manifests = families.map(family => JSON.parse(read('specs/quint/' + family + '/manifest.json')));
-  const models = manifests.flat(), modules = models.map(model => model.module);
+  const models = manifests.flat(), byModule = new Map(models.map(model => [model.module, model]));
   assert.ok(manifests.every(models => Array.isArray(models) && models.length > 0));
-  assert.equal(new Set(modules).size, modules.length, 'The complete families are a disjoint registry partition');
-  const additionalInits = new Map(models.filter(model => model.additionalProofInit).map(model => [model.module, model.additionalProofInit]));
-  assert.equal(additionalInits.get('RendererRecovery'), 'budgetInit');
-  assert.equal(additionalInits.get('VadSegmentation'), 'counterInit');
-
-  const safety = jobs.symbolic;
+  assert.equal(byModule.size, models.length, 'Registry families must remain disjoint');
+  assert.equal(byModule.get('RendererRecovery').additionalProofInit, 'budgetInit');
+  assert.equal(byModule.get('VadSegmentation').additionalProofInit, 'counterInit');
+  const safety = jobs.symbolic, temporal = jobs.temporal;
   assert.equal(safety.strategy['fail-fast'], false);
-  assert.equal(safety.strategy.matrix.family, '$' + "{{ fromJSON(inputs.models && '" +
-    JSON.stringify(['selected']) + "' || '" + JSON.stringify(families) + "') }}");
+  assert.equal(safety.strategy.matrix.family, '$' + "{{ fromJSON(inputs.models && '" + JSON.stringify(['selected']) + "' || '" + JSON.stringify(families) + "') }}");
+  assert.deepEqual(safety.strategy.matrix.partition, [0, 1]);
+  assert.deepEqual(safety.strategy.matrix.exclude, [{family: 'selected', partition: 1}]);
   const verify = safety.steps.find(step => step.name === 'Bounded symbolic safety and additional proof inits');
-  assert.deepEqual(verify.env, {MODELS: '$' + '{{ inputs.models }}', MODEL_FAMILY: '$' + '{{ matrix.family }}'});
-  const originalCommand = 'bun scripts/check-quint.ts verify --steps=6 $' + '{MODELS:+--models=$MODELS}';
-  assert.ok(verify.run.endsWith(originalCommand + '\n'), 'Each partition uses the unchanged proof command and bounds');
+  assert.deepEqual(verify.env, {MODELS: '$' + '{{ inputs.models }}', MODEL_FAMILY: '$' + '{{ matrix.family }}', MODEL_PARTITION: '$' + '{{ matrix.partition }}'});
+  const phases = model => [[model.module, model.init, model.step, model.invariant, 6, model.verifyBackend ?? 'apalache'],
+    ...(model.additionalProofInit ? [[model.module, model.additionalProofInit, model.step, model.invariant, 1, model.verifyBackend ?? 'apalache']] : [])];
+  const actual = [];
+  for (const [index, family] of families.entries()) {
+    const expected = manifests[index].map(model => model.module), width = Math.ceil(expected.length / 2);
+    for (const partition of [0, 1]) {
+      const names = selectedNames(selector(verify, safetyCommand, {MODELS: '', MODEL_FAMILY: family, MODEL_PARTITION: String(partition)}));
+      assert.deepEqual(names, expected.slice(partition * width, (partition + 1) * width));
+      actual.push(...names.flatMap(name => phases(byModule.get(name))));
+    }
+  }
+  const phaseKeys = phases => phases.map(phase => JSON.stringify(phase)).sort();
+  const actualKeys = phaseKeys(actual);
+  assert.deepEqual(actualKeys, phaseKeys(models.flatMap(phases)), 'All base and additional-init phases retain their exact aliases, backend and CI depth');
+  assert.equal(new Set(actualKeys).size, actualKeys.length, 'No phase is duplicated across partitions');
 
-  for (const [id, command] of [['comparison', 'compare'], ['temporal', 'temporal']]) {
-    const job = jobs[id];
-    assert.equal(job.if, '$' + '{{ !inputs.models }}', 'Manual selection keeps its existing safety-only policy');
-    assert.deepEqual(job.steps.slice(0, 5), safety.steps.slice(0, 5), 'All original prerequisite actions, pins and environments remain');
-    assert.equal(job.steps[5].run, 'bun scripts/check-quint.ts ' + command);
-    assert.equal(job.steps[5].if, undefined);
+  assert.equal(temporal.if, '$' + '{{ !inputs.models }}');
+  assert.equal(temporal.strategy['fail-fast'], false);
+  assert.deepEqual(temporal.strategy.matrix.group, ['PhotosLibrary', 'NotesView', 'remaining']);
+  const temporalStep = temporal.steps.find(step => step.name === 'Fairness-guarded temporal properties');
+  assert.deepEqual(temporalStep.env, {TEMPORAL_GROUP: '$' + '{{ matrix.group }}'});
+  const temporalModels = models.filter(model => model.temporal?.length);
+  const temporalNames = temporal.strategy.matrix.group.flatMap(group => selectedNames(selector(temporalStep, temporalCommand, {TEMPORAL_GROUP: group})));
+  assert.deepEqual([...temporalNames].sort(), temporalModels.map(model => model.module).sort());
+  assert.equal(new Set(temporalNames).size, temporalNames.length, 'Every complete temporal property bundle has exactly one owner');
+  assert.deepEqual(temporalNames.flatMap(name => {
+    const model = byModule.get(name);return [[name, model.init, model.step, model.temporal]];
+  }).sort(), temporalModels.map(model => [model.module, model.init, model.step, model.temporal]).sort());
+  assert.equal(jobs.comparison.if, '$' + '{{ !inputs.models }}');
+  assert.equal(jobs.comparison.steps[5].run, 'bun scripts/check-quint.ts compare');
+  for (const job of [safety, jobs.comparison, temporal]) {
+    assert.deepEqual(job.steps.slice(0, 5), safety.steps.slice(0, 5), 'All pinned prerequisites remain identical');
+    assert.equal(job.needs, undefined);assert.equal(job['timeout-minutes'], 240);assert.equal(job['runs-on'], 'ubuntu-24.04');
+    assert.equal(job.steps.at(-1).if, 'always()');assert.equal(job.steps.at(-1).with.path, 'test-results/quint/');
   }
-  for (const job of [safety, jobs.comparison, jobs.temporal]) {
-    assert.equal(job.needs, undefined, 'A safety failure cannot suppress another proof family or comparison/temporal job');
-    assert.equal(job['timeout-minutes'], 240);
-    assert.equal(job['runs-on'], 'ubuntu-24.04');
-    assert.equal(job.steps.at(-1).if, 'always()');
-    assert.equal(job.steps.at(-1).with.path, 'test-results/quint/');
-  }
-  const familyArtifact = safety.steps.at(-1).with.name;
-  assert.equal(familyArtifact, 'quint-symbolic-$' + '{{ matrix.family }}');
-  const artifacts = families.map(family => familyArtifact.replace('$' + '{{ matrix.family }}', family));
-  artifacts.push(jobs.comparison.steps.at(-1).with.name, jobs.temporal.steps.at(-1).with.name);
-  assert.equal(new Set(artifacts).size, 6, 'Every independent job retains its own complete receipt artifact');
+  const safetyArtifact = safety.steps.at(-1).with.name, temporalArtifact = temporal.steps.at(-1).with.name;
+  assert.equal(safetyArtifact, 'quint-symbolic-$' + '{{ matrix.family }}-$' + '{{ matrix.partition }}');
+  assert.equal(temporalArtifact, 'quint-temporal-$' + '{{ matrix.group }}');
+  const artifacts = families.flatMap(family => [0, 1].map(partition => safetyArtifact.replace('$' + '{{ matrix.family }}', family).replace('$' + '{{ matrix.partition }}', String(partition))));
+  artifacts.push(jobs.comparison.steps.at(-1).with.name, ...temporal.strategy.matrix.group.map(group => temporalArtifact.replace('$' + '{{ matrix.group }}', group)));
+  assert.equal(new Set(artifacts).size, 12);
 });
 
-test('the actual promotion selector preserves manual filters and refuses an empty family fallback', () => {
-  const safety = YAML.parse(read('.github/workflows/promotion.yml')).jobs.symbolic;
-  const run = safety.steps.find(step => step.name === 'Bounded symbolic safety and additional proof inits').run;
-  const command = 'bun scripts/check-quint.ts verify --steps=6 $' + '{MODELS:+--models=$MODELS}';
-  assert.equal(run.indexOf(command), run.lastIndexOf(command));
-  const prefix = run.slice(0, run.indexOf(command));
-  const select = (family, models = '', cwd = process.cwd()) => spawnSync('bash', ['-e', '-c', prefix + '\nprintf "%s" "$MODELS"'], {
-    cwd, env: {...process.env, MODEL_FAMILY: family, MODELS: models}, encoding: 'utf8', timeout: 30000,
-  });
-  for (const family of ['application', 'services', 'native', 'legacy']) {
-    const result = select(family);
-    assert.ifError(result.error);
-    assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(result.stdout.split(','), JSON.parse(read('specs/quint/' + family + '/manifest.json')).map(model => model.module));
-  }
+test('the actual promotion selectors preserve manual filters and refuse empty or invalid partitions', () => {
+  const jobs = YAML.parse(read('.github/workflows/promotion.yml')).jobs;
+  const safety = jobs.symbolic.steps.find(step => step.name === 'Bounded symbolic safety and additional proof inits');
+  const temporal = jobs.temporal.steps.find(step => step.name === 'Fairness-guarded temporal properties');
+  const select = (family, partition = '0', models = '', cwd) => selector(safety, safetyCommand, {MODEL_FAMILY: family, MODEL_PARTITION: partition, MODELS: models}, cwd);
   for (const models of ['NavigationProgress', 'NavigationProgress,PreviousNotesSourceOpening',
     'NavigationProgress,NavigationProgress', ',,', 'UnknownPromotionPartitionProbe', ' NavigationProgress']) {
-    const result = select('selected', models);
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout, models, 'The singleton selected lane passes the original raw filter to global CLI validation');
+    const result = select('selected', '0', models);
+    assert.equal(result.status, 0, result.stderr);assert.equal(result.stdout, models, 'The sole selected lane delegates the original raw filter to the CLI');
   }
   const refused = (result, reason) => {
-    assert.ifError(result.error);
-    assert.notEqual(result.status, null);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, reason);
+    assert.ifError(result.error);assert.notEqual(result.status, null);assert.notEqual(result.status, 0);assert.match(result.stderr, reason);
   };
   refused(select('selected'), /Unknown safety model family/);
-  const scratch = fs.mkdtempSync(join(tmpdir(), 'alpha-promotion-family-'));
+  for (const partition of ['', '2', '-1', 'unknown']) refused(select('application', partition), /Invalid safety model partition/);
+  refused(selector(temporal, temporalCommand, {TEMPORAL_GROUP: 'unknown'}), /Unknown temporal model group/);
+  const scratch = fs.mkdtempSync(join(tmpdir(), 'alpha-promotion-partition-'));
   try {
-    fs.mkdirSync(join(scratch, 'specs/quint/application'), {recursive: true});
-    for (const [malformed, reason] of [[[], /Safety model family must not be empty/],
-      [[{}], /Safety model family contains an invalid module/], [[{module: ''}], /Safety model family contains an invalid module/]]) {
-      fs.writeFileSync(join(scratch, 'specs/quint/application/manifest.json'), JSON.stringify(malformed));
-      refused(select('application', '', scratch), reason);
+    for (const family of ['application', 'services', 'native', 'legacy']) {
+      fs.mkdirSync(join(scratch, 'specs/quint', family), {recursive: true});fs.writeFileSync(join(scratch, 'specs/quint', family, 'manifest.json'), '[]');
     }
+    for (const [malformed, reason] of [[[], /Safety model family must not be empty/], [[{}], /Safety model family contains an invalid module/],
+      [[{module: ''}], /Safety model family contains an invalid module/]]) {
+      fs.writeFileSync(join(scratch, 'specs/quint/application/manifest.json'), JSON.stringify(malformed));refused(select('application', '0', '', scratch), reason);
+    }
+    fs.writeFileSync(join(scratch, 'specs/quint/application/manifest.json'), JSON.stringify([{module: 'OnlyOne'}]));
+    refused(select('application', '1', '', scratch), /Safety model partition must not be empty/);
+    fs.writeFileSync(join(scratch, 'specs/quint/application/manifest.json'), JSON.stringify([{module: 'PhotosLibrary', temporal: ['Checked']}, {module: 'NotesView', temporal: ['Checked']}]));
+    refused(selector(temporal, temporalCommand, {TEMPORAL_GROUP: 'remaining'}, scratch), /Temporal model group must not be empty/);
+    fs.writeFileSync(join(scratch, 'specs/quint/application/manifest.json'), '[]');
+    refused(selector(temporal, temporalCommand, {TEMPORAL_GROUP: 'PhotosLibrary'}, scratch), /Temporal model group must not be empty/);
   } finally {fs.rmSync(scratch, {recursive: true, force: true});}
-  const unknown = spawnSync('bun', ['scripts/check-quint.ts', 'verify', '--models=UnknownPromotionPartitionProbe'], {
-    encoding: 'utf8', timeout: 30000,
-  });
-  assert.ifError(unknown.error);
-  assert.notEqual(unknown.status, 0);
-  assert.match(unknown.stderr, /Unknown model UnknownPromotionPartitionProbe/, 'The real CLI rejects unknown names before starting a solver');
+  const unknown = spawnSync('bun', ['scripts/check-quint.ts', 'verify', '--models=UnknownPromotionPartitionProbe'], {encoding: 'utf8', timeout: 30000});
+  assert.ifError(unknown.error);assert.notEqual(unknown.status, 0);assert.match(unknown.stderr, /Unknown model UnknownPromotionPartitionProbe/);
 });
 
 test('committed ruleset requires exactly the verify job', () => {
