@@ -185,7 +185,8 @@ def candidate_evidence(data, pin, apk_manifest, source_root=None):
                        "android/paradee-voice/asr-inputs.json", "scripts/native-build-inputs.ts",
                        "scripts/build-embedding-host.ts", "scripts/prepare-embedding-host.ts",
                        "scripts/embedding-native-contract.ts", "scripts/embedding-build-remap.ts",
-                       "scripts/android-stage-voice-models.ts", "scripts/local-agent-source.ts"}
+                       "scripts/android-stage-voice-models.ts", "scripts/local-agent-source.ts",
+                       "scripts/voice-host.ts", "scripts/paradee-runtime.ts", "scripts/android-abis.ts", "scripts/copy-file-clone.ts", "scripts/stage-embedding-host.ts"}
     require(isinstance(recipe["productInputs"], dict) and expected_inputs == recipe["productInputs"].keys() and
             all(matches(SHA, value) and value == files.get(name) for name, value in recipe["productInputs"].items()),
             "Candidate native recipe differs from frozen product inputs")

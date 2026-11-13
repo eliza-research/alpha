@@ -38,7 +38,7 @@ export function nativeRecipe(root:string) {
   const sourceTrees=Object.fromEntries(sources.map((name,index)=>[name,ids[index]]));
   git('diff','--quiet','HEAD','--',...sources,'plugins/plugin-local-inference/native/llama.cpp');
   const engineCommit=git('rev-parse',`${pin}:plugins/plugin-local-inference/native/llama.cpp`);
-  const inputFiles=['android/embedding-host/build-toolchain.json',NATIVE_BUILD_REQUIREMENTS,'android/embedding-host/bootstrap-requirements.txt','android/paradee-voice/asr-inputs.json','scripts/build-embedding-host.ts','scripts/prepare-embedding-host.ts','scripts/embedding-native-contract.ts','scripts/embedding-build-remap.ts','scripts/native-build-inputs.ts','scripts/android-stage-voice-models.ts','scripts/local-agent-source.ts'];
+  const inputFiles=['android/embedding-host/build-toolchain.json',NATIVE_BUILD_REQUIREMENTS,'android/embedding-host/bootstrap-requirements.txt','android/paradee-voice/asr-inputs.json','scripts/build-embedding-host.ts','scripts/prepare-embedding-host.ts','scripts/embedding-native-contract.ts','scripts/embedding-build-remap.ts','scripts/native-build-inputs.ts','scripts/android-stage-voice-models.ts','scripts/local-agent-source.ts','scripts/voice-host.ts','scripts/paradee-runtime.ts','scripts/android-abis.ts','scripts/copy-file-clone.ts','scripts/stage-embedding-host.ts'];
   const productInputs=Object.fromEntries(inputFiles.map(name=>[name,fileDigest(path.join(root,name))]));
   const voice=json(root,'android/voice-host/qualified-voice-host.json');
   return {schema:'alpha-native-recipe/v1',identity:json(root,'app.config.json').appId,engineCommit,sourceTrees,productInputs,models:voice.models,asrSlot:voice.asrSlot,toolchain:json(root,'android/embedding-host/build-toolchain.json'),python:NATIVE_PYTHON};

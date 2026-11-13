@@ -47,7 +47,7 @@ export function candidateFixture(t) {
   write('android/embedding-host/bootstrap-requirements.txt', 'synthetic pinned bootstrap==1');
   write('android/paradee-voice/asr-inputs.json', '{}');
   for (const name of ['build-embedding-host', 'prepare-embedding-host', 'embedding-native-contract',
-    'embedding-build-remap', 'native-build-inputs', 'android-stage-voice-models', 'local-agent-source']) write(`scripts/${name}.ts`, 'synthetic recipe input');
+    'embedding-build-remap', 'native-build-inputs', 'android-stage-voice-models', 'local-agent-source', 'voice-host', 'paradee-runtime', 'android-abis', 'copy-file-clone', 'stage-embedding-host']) write(`scripts/${name}.ts`, 'synthetic recipe input');
   git(directory, ['init', '-q']); git(directory, ['add', 'app.config.json', 'upstream.lock.json', 'android', 'scripts']); commit(directory);
   const env = {...process.env, GITHUB_REPOSITORY: repository.full_name, GITHUB_EVENT_NAME: 'push',
     GITHUB_REPOSITORY_ID: String(repository.id),
