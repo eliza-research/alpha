@@ -111,7 +111,7 @@ function fixture(root) {
   const sourceStamp = '{ "base": "synthetic pinned source", "id": "first" }\n';
   const voiceHost = () => {
     if (voice === 'missing') throw Error('synthetic voice input missing');
-    return {};
+    return {qualified: false};
   };
   const classify = problem => {
     const row = kinds.find(([pattern]) => pattern.test(problem));
@@ -190,7 +190,7 @@ export async function checkAndroidBuildInputReadiness(extraSources = []) {
     sources, driverHashes, traces: cases.map(([name, actions]) => trace(name, actions)),
     assumptions: [
       'The real report, formatter, Git pin comparison and preflight gate execute on a private fixture.',
-      'Voice verification returns a controlled admission outcome. Reported embedding byte readiness uses the real staged-library digest checks on synthetic bytes.',
+      'Voice verification returns a controlled integrity admission outcome with qualified:false. Its automatic producer is reported as script-supplied; only release signing needs human custody. Reported embedding byte readiness uses the real staged-library digest checks on synthetic bytes.',
       'Report presence and build admission are separate. Staging, the Gradle verify tasks, verify-apks, Android builds, real artifact and signing qualification and concurrent staging remain outside this projection.',
     ]});
 }
