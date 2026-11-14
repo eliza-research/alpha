@@ -2149,10 +2149,10 @@
     }
   ],
   "currentUpstream": {
-    "revision": "0c53e54b2c3ac0cd64ca88fa532448d2ffa5d494",
+    "revision": "be0654df50621c8e2bde2d40de7c4fe9dcebbb8a",
     "classification": "current-upstream-formal-specifications",
     "models": [],
-    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation. The retained Maps sidecars include their implementation checkers; live provider and device acceptance remain separate. StorageWatch and PhotoCopyRecovery model and case sidecars are catalogued as source bytes only; this inventory records no new model verdict or device acceptance.",
+    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation. The retained Maps sidecars include their implementation checkers; live provider and device acceptance remain separate. StorageWatch and PhotoCopyRecovery model and case sidecars are catalogued as source bytes only; this inventory records no new model verdict or device acceptance. Maps credit funding sidecars record the reviewed upstream settlement model and conformance checker.",
     "quintSidecars": [
       {
         "path": "plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.cases.json",
@@ -2233,6 +2233,21 @@
         "path": "plugins/plugin-native-media/quint/PhotoCopyRecovery.qnt",
         "gitObject": "28c5ec6fc5ce3045fc96d40603b841a96e8c11a6",
         "sha256": "3697d40623e7b45464ddbb09bc9e6ac35c66c77336b0609e7ceec3b768e92076"
+      },
+      {
+        "path": "packages/cloud/quint/maps_credit_funding.qnt",
+        "gitObject": "19ed08470befdf69cbed156042b2b0f15c81380f",
+        "sha256": "f2914bdc1391e2dda06c4a4bdeecde0dee79193312866deca8d304d1b6080172"
+      },
+      {
+        "path": "packages/cloud/quint/maps_credit_funding.cases.json",
+        "gitObject": "9c703b118d89842c4a2a78d51bfac44cada8096e",
+        "sha256": "2c25e44fdfcc22302898c093ee0e2f2c5170f0afebcdcdc1f2bc8012840c2366"
+      },
+      {
+        "path": "packages/cloud/quint/check-maps-credit-funding.mjs",
+        "gitObject": "ec923635b6be10883f1692b4595cf08a1a5c8842",
+        "sha256": "203e32f00ef94269a4e9d732f6bf3c191763a69dfd1430cffad05020845326e8"
       }
     ]
   }

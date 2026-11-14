@@ -573,7 +573,7 @@ and the [2.0.6 release cohort](https://github.com/elizaOS/eliza/pull/39483).
 Phonon model provenance and hash diagnostics to that `0f4b3b0b0` baseline. Its
 engine pin `5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd` canonicalizes zero mel
 weights so the source-built model is byte-identical on ARM64 and x86_64.
-The current SDK pin `0c53e54b2c3ac0cd64ca88fa532448d2ffa5d494` is upstream develop
+The SDK pin `0c53e54b2c3ac0cd64ca88fa532448d2ffa5d494` came from upstream develop
 with that change squash-merged as [eliza#39562](https://github.com/elizaOS/eliza/pull/39562)
 (the same engine gitlink and `voice-model-versions.json`, so the admitted `407c02ab`
 Phonon model is unchanged) and the upstream cleanups: two Android targets with the SMS
@@ -591,10 +591,12 @@ It also includes the Cloud Maps credit funding change
 [eliza#39594](https://github.com/elizaOS/eliza/pull/39594)), which touch no Alpha input.
 #39562 was squash-merged, but [eliza#39589](https://github.com/elizaOS/eliza/pull/39589)
 merged `442586ce66` into develop history, so the previous pin is an ancestor of this one.
-The sources in Alpha's pin-bound core catalog retain their recorded hashes;
-other upstream core and runtime sources include the merged upstream changes.
-SDK preparation and
-native receipt admission run again for the new source recipe.
+The current pin `be0654df50621c8e2bde2d40de7c4fe9dcebbb8a` adds Maps credit recovery
+and settlement fixes ([eliza#39591](https://github.com/elizaOS/eliza/pull/39591)) and
+checkout fixes ([eliza#39602](https://github.com/elizaOS/eliza/pull/39602) and
+[eliza#39603](https://github.com/elizaOS/eliza/pull/39603)). It retains the existing
+core catalog hashes and native build recipe. SDK preparation still runs for the
+new pin, and staging verifies the cached native files against that recipe.
 Historical native measurements retain their original source attribution.
 New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
