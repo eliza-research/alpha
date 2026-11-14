@@ -22,11 +22,12 @@ After changing the pin, refresh its recorded develop comparison with
 Review the pin-bound core source catalog, mobile build policy and current formal-source
 inventory too; verify every recorded target hash before advancing their revisions.
 `apps/app` owns this product's renderer; `android` owns its Android packaging.
-Run `bun run verify` and the Android build: `bun run android:build:local` (input check,
+Run `bun run verify` and the Android build: `bun run android:build:local -- --release` (input check,
 `agent:build-embedding-host`, `agent:prepare`, `agent:build-workflow-worker`, `agent:stage-android`,
 `licenses:packaged-runtime`, `android:build`; see README). There is one Android product/flavor:
 the launcher, with the resident runtime and on-device voice always packaged. Verify its debug
-and release artifacts with `bun run android:verify`; instrumentation APKs are test artifacts,
+and release artifacts with `bun run android:verify`. Omitting `-- --release` builds debug and
+instrumentation APKs only; release validation and CI must include it. Instrumentation APKs are test artifacts,
 not a second distribution. Browser mocks and developer surfaces require
 `ELIZA_DEV_ALLOW_TEST_MOCKS=1`; APK builds always clear that flag and pass
 `scripts/audit-production-bundle.ts`.
