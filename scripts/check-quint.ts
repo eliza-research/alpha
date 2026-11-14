@@ -58,6 +58,8 @@ if (command === 'compare' && !models.some(model => model.currentChecks?.length |
 const cli = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
 const version = readJson<{version: string}>(join(repositoryRoot, 'node_modules/@informalsystems/quint/package.json')).version;
 const inputPaths = [...new Set(['bun.lock', 'scripts/check-quint.ts', 'scripts/quint-lib.ts', 'scripts/sha256.ts', 'scripts/upstream-pin.ts', 'specs/quint/tlc.json',
+  ...(models.some(model => model.module === 'NativeCrashJournal')
+    ? ['scripts/ci/native-crash-completion-factor.json', '.github/workflows/promotion.yml'] : []),
   ...allModels.map(model => model.path),
   ...['application', 'services', 'native', 'legacy'].map(family => `specs/quint/${family}/manifest.json`),
   ...allModels.flatMap(model => model.sources || [])])];
@@ -77,6 +79,7 @@ type CheckEvidence = {
   argv: string[];
   missingScenarios?: string[];
   modelSha256: string;
+  timeoutSeconds: number;
   output: string;
   boundedProof?: BoundedTlcEvidence;
   fullTemporalProof?: FullTemporalTlcEvidence;
@@ -236,10 +239,14 @@ async function run(model: QuintModel, phase: string, options: string[], expected
   const modelSha256 = sha256(readFileSync(join(repositoryRoot, model.path)));
   const startedAt = new Date().toISOString();
   const backend = options[0] === 'verify' ? options.find(option => option.startsWith('--backend='))?.slice('--backend='.length) : undefined;
+  // The complete six-step journal proof needs the qualified three-hour budget.
+  // Explicit --timeout values remain authoritative; every phase records its own limit.
+  const phaseTimeoutSeconds = model.module === 'NativeCrashJournal' && backend === 'apalache'
+    && options.includes('--max-steps=6') && value('timeout') === undefined ? 10800 : timeoutSeconds;
   const finalTemporal = tlcLiveness === 'final' && backend === 'tlc' && options.some(option => option.startsWith('--temporal='));
   const finalTemporalDeadline = Date.now() + timeoutSeconds * 1000;
   const {result, interruptedAttempt} = await runQuintChecker(() => backend === 'tlc-bounded' ? runCompiledTlc(options)
-    : finalTemporal ? runCompiledTlc(options, true, finalTemporalDeadline) : runCommand(argv));
+    : finalTemporal ? runCompiledTlc(options, true, finalTemporalDeadline) : runCommand(argv, phaseTimeoutSeconds));
   const output = `${result.stdout || ''}${result.stderr || ''}`;
   const violation = detectedCounterexample(output);
   const modelChanged = modelSha256 !== sha256(readFileSync(join(repositoryRoot, model.path)));
@@ -251,7 +258,7 @@ async function run(model: QuintModel, phase: string, options: string[], expected
   receipt.results.push({ model: model.module, phase, backend, expected, passed, exitCode: result.status,
     startedAt, finishedAt: new Date().toISOString(), signal: result.signal, interruptedAttempt,
     error: modelChanged ? 'Model changed while its checker was running' : result.error?.message,
-    argv: options, modelSha256, missingScenarios, output, boundedProof, fullTemporalProof });
+    argv: options, modelSha256, timeoutSeconds: phaseTimeoutSeconds, missingScenarios, output, boundedProof, fullTemporalProof });
   console.log(`${passed ? 'PASS' : 'FAIL'} ${model.module} ${phase}${expected === 'violation' ? ' (counterexample required)' : ''}`);
   if (interruptedAttempt) console.log(`Retried ${model.module} ${phase} after checker signal ${interruptedAttempt.signal}`);
   if (!passed) {
@@ -277,7 +284,10 @@ async function runModel(model: QuintModel) {
     }
   }
   if (command === 'verify') {
-    await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, backend.startsWith('tlc') ? '--verbosity=5' : '--verbosity=1']);
+    const completionFactor = model.module === 'NativeCrashJournal' && backend === 'apalache';
+    await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`,
+      ...(completionFactor ? [`--apalache-config=${join(repositoryRoot, 'scripts/ci/native-crash-completion-factor.json')}`] : []),
+      backend.startsWith('tlc') || completionFactor ? '--verbosity=5' : '--verbosity=1']);
     if (model.additionalProofInit) await run(model, `${backend}-additional-init`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
   }
   if (command === 'temporal' && model.temporal?.length) {

@@ -88,22 +88,30 @@ module NativeCrashJournal {
         rows:if (id==2) doc.rows else doc.rows.append(exitRow(id)) }
       else doc)
 
+  pure def replacementDisk(previous: Disk, doc: Disk, now: int, fault: str): Disk =
+    if (fault.in(Set("before","staged"))) previous
+    else pruned({ ...doc,format:"valid" },now)
   pure def complete(state: State, actor: int, fault: str, history: Set[int]): State = {
     val req=pending(state,actor)
     val base=withPending(state,actor,noRequest)
     val doc=decoded(state.disk)
-    if (req.op=="record" and not(kinds.contains(req.kind))) response(base,actor,"rejected")
-    else if (req.op=="record") response(replaced(base,{ ...doc,rows:doc.rows.append(renderer(state.now,req.kind,req.cls)) },fault),
-      actor,if (fault=="none") "ok" else "rejected")
-    else if (req.op=="clear") response(replaced(base,{ ...doc,rows:List(),fillers:0 },fault),
-      actor,if (fault=="none") "ok" else "rejected")
-    else {
-      val collected=harvested(doc,history)
-      val read=if (collected==doc) base else replaced(base,collected,fault)
-      val visible=pruned(decoded(read.disk),state.now)
-      val rows=visible.rows.foldl(List(),(acc,row)=>if (row.stamp=="safe") acc.append({ ...row,extra:false }) else acc)
-      { ...read,reply:{owner:actor,outcome:"read",fillers:visible.fillers,rows:rows,exitHistory:state.historyMode!="old"} }
-    }
+    val rejected=req.op=="record" and not(kinds.contains(req.kind))
+    val nextDisk=if (rejected) state.disk
+      else if (req.op=="record") replacementDisk(state.disk,
+        { ...doc,rows:doc.rows.append(renderer(state.now,req.kind,req.cls)) },state.now,fault)
+      else if (req.op=="clear") replacementDisk(state.disk,{ ...doc,rows:List(),fillers:0 },state.now,fault)
+      else {
+        val collected=harvested(doc,history)
+        if (collected==doc) state.disk else replacementDisk(state.disk,collected,state.now,fault)
+      }
+    val nextReply=if (req.op=="record" or req.op=="clear")
+      { ...noReply,owner:actor,outcome:if (rejected or fault!="none") "rejected" else "ok" }
+      else {
+        val visible=pruned(decoded(nextDisk),state.now)
+        val rows=visible.rows.foldl(List(),(acc,row)=>if (row.stamp=="safe") acc.append({ ...row,extra:false }) else acc)
+        {owner:actor,outcome:"read",fillers:visible.fillers,rows:rows,exitHistory:state.historyMode!="old"}
+      }
+    { ...base,disk:nextDisk,reply:nextReply }
   }
   action settle(actor: int, fault: str): bool = all {
     lanes.contains(actor), faults.contains(fault), s.held!=actor, pending(s,actor).op!="none",
@@ -141,10 +149,8 @@ module NativeCrashJournal {
   val ExactHeldRead = if (s.held==0) s.captured==Set() else
     lanes.contains(s.held) and pending(s,s.held).op=="read" and s.captured.subseteq(s.history)
   val KnownExitWatermark = s.disk.watermark==0 or s.history.contains(s.disk.watermark)
-  val BridgeRowsAllowlisted = s.reply.rows.indices().forall(index=> {
-    val row=s.reply.rows.nth(index)
-    not(row.extra) and row.stamp=="safe"
-  })
+  val BridgeRowsAllowlisted = s.reply.rows.foldl(true,(allowed,row)=>
+    allowed and not(row.extra) and row.stamp=="safe")
   val safety = BoundedJournal and ExactHeldRead and KnownExitWatermark and BridgeRowsAllowlisted
 
   action step = any {

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { availableParallelism, tmpdir } from 'node:os';
@@ -77,6 +77,53 @@ test('verification backend honors explicit overrides and preserves other proof d
   }
   assert.throws(() => validateQuintModelMetadata({module: 'Fixture', tests: ['exampleTest'], verifyBackend: 'unknown'}, ''),
     /Invalid verifyBackend/);
+});
+
+test('crash verification retains step six, detects its boundary violation and respects explicit deadlines', {timeout: scaledTimeout(600000)}, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'alpha-quint-crash-owner-'));
+  const write = (path, contents) => {const target = join(root, path);mkdirSync(dirname(target), {recursive: true});writeFileSync(target, contents);};
+  const source = "module NativeCrashJournal { var n: int action init = n' = 0 action step = n' = n + 1 val safety = n <= 6 run exampleTest = init }\n";
+  const model = {module: 'NativeCrashJournal', path: 'specs/quint/native/NativeCrashJournal.qnt',
+    init: 'init', step: 'step', invariant: 'safety', tests: ['exampleTest']};
+  try {
+    for (const name of ['check-quint.ts', 'quint-lib.ts', 'sha256.ts', 'upstream-pin.ts']) {
+      mkdirSync(join(root, 'scripts'), {recursive: true});copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    }
+    symlinkSync(join(repositoryRoot, 'node_modules'), join(root, 'node_modules'), 'dir');
+    write('upstream.lock.json', JSON.stringify({commit: 'fixture'}));write('bun.lock', '{}');write(model.path, source);
+    write('specs/quint/tlc.json', readFileSync(join(repositoryRoot, 'specs/quint/tlc.json')));
+    write('scripts/ci/native-crash-completion-factor.json', readFileSync(join(repositoryRoot, 'scripts/ci/native-crash-completion-factor.json')));
+    write('.github/workflows/promotion.yml', 'name: controlled verification fixture\n');
+    for (const family of ['application', 'services', 'native', 'legacy'])
+      write(`specs/quint/${family}/manifest.json`, JSON.stringify(family === 'native' ? [model] : []));
+    const run = async (steps, expected, extra = [], environment = {}) => {
+      const listener = createServer();listener.listen(0, '127.0.0.1');await once(listener, 'listening');
+      const endpoint = `127.0.0.1:${listener.address().port}`;await new Promise(resolve => listener.close(resolve));
+      const child = spawnSync(process.env.ALPHA_BUN ?? process.execPath,
+        ['scripts/check-quint.ts', 'verify', '--models=NativeCrashJournal', `--steps=${steps}`, `--server-endpoint=${endpoint}`, '--out=proof.json', ...extra],
+        {cwd: root, env: {...process.env, ...environment}, encoding: 'utf8', timeout: scaledTimeout(120000)});
+      assert.ifError(child.error);assert.equal(child.status, expected === 'pass' ? 0 : 1, child.stdout + child.stderr);
+      const proof = readJson(join(root, 'proof.json')), phase = proof.results[0];
+      assert.equal(proof.results.length, 1);assert.equal(proof.steps, steps);assert.deepEqual(proof.finalInputErrors, []);
+      assert.equal(phase.timeoutSeconds, extra.length ? 1 : steps === 6 ? 10800 : 1800);
+      assert.ok(phase.argv.includes(`--max-steps=${steps}`));assert.ok(phase.argv.includes('--invariant=safety'));
+      assert.ok(phase.argv.includes(`--apalache-config=${join(root, 'scripts/ci/native-crash-completion-factor.json')}`));
+      assert.equal(proof.inputHashes['scripts/ci/native-crash-completion-factor.json'], sha256(readFileSync(join(root, 'scripts/ci/native-crash-completion-factor.json'))));
+      assert.equal(phase.passed, expected === 'pass');
+      if (expected === 'pass') assert.match(phase.output, /The outcome is: NoError/);
+      if (expected === 'violation') {assert.equal(detectedCounterexample(phase.output), true);assert.match(phase.output, /n = 6/);}
+      if (expected === 'deadline') {assert.match(phase.error, /Checker exceeded 1 seconds/);assert.equal(detectedCounterexample(phase.output), false);}
+      const evidence = join(repositoryRoot, 'test-results/quint/native-crash-owner');mkdirSync(evidence, {recursive: true});
+      writeFileSync(join(evidence, `${steps}-${expected}.json`), JSON.stringify(proof, null, 2) + '\n');
+    };
+    await run(6, 'pass');await run(4, 'pass');
+    write(model.path, source.replace('n <= 6', 'n < 6'));await run(6, 'violation');
+    // Delay the owned Java tool so this checks an actual deadline, independent of CPU speed.
+    write('slow-java/bin/java', '#!/bin/sh\nsleep 5\nexec "$ALPHA_REAL_JAVA" "$@"\n');chmodSync(join(root, 'slow-java/bin/java'), 0o755);
+    await run(6, 'deadline', ['--timeout=1'], {JAVA_HOME: join(root, 'slow-java'),
+      PATH: `${join(root, 'slow-java/bin')}:${process.env.PATH}`,
+      ALPHA_REAL_JAVA: process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin/java') : '/usr/bin/java'});
+  } finally {rmSync(root, {recursive: true, force: true});}
 });
 
 test('bounded TLC preserves original declarations and refuses invalid bounds or namespaces', () => {

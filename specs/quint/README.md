@@ -58,6 +58,15 @@ SettingsNav uses full `tlc` exploration of its finite historical design model.
 Its original row inventories, initializer, transition relation and invariants are
 retained; this historical comparison does not establish current runtime behavior.
 
+NativeCrashJournal keeps its seven original initial states, raw timestamp values,
+actions and safety obligations. Its completion helper factors the installed disk
+and reply independently, and the row predicate checks the same ordered rows.
+The [six-step qualification](https://github.com/eliza-research/alpha/actions/runs/43537851333)
+completed all seven verification conditions at states zero through six with
+`NoError`. It used the pinned Z3 backend, a 4 GiB heap, `after` invariant scheduling
+and a three-hour phase deadline. The default model depth remains four. Its
+configuration is recorded in `scripts/ci/native-crash-completion-factor.json`.
+
 NotesView's selected Design proof requires the three history assertions on all
 paths. Its original fairness still guards progress. One stronger ASR obligation
 covers both recording and saved states: each original antecedent implies the
@@ -107,8 +116,10 @@ simulation and typecheck workers. The default is one worker. Each model keeps
 its ordered phases, and the receipt lists results in registry order. Use
 `ALPHA_QUINT_JOBS=3 bun run quint:check` to apply this to the standard gate. Model
 checking remains serial within one server endpoint.
-`--timeout` sets the per-check timeout in seconds, with 1800 for model checking
-and 120 for the default gate. The checker saves parameters, model hashes,
+`--timeout` sets the per-check timeout in seconds. Defaults are 1800 for model
+checking and 120 for the default gate; the qualified six-step NativeCrashJournal
+Apalache phase receives 10800 seconds. An explicit `--timeout` overrides that
+exception too. Each phase records its actual `timeoutSeconds`. The checker saves parameters, model hashes,
 complete checker output, exit status and evidence class under
 `test-results/quint/` by default. Temporal/compare commands reject a selection
 that has no corresponding checks. Full `tlc` exploration ignores the symbolic
