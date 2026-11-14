@@ -591,7 +591,9 @@ It also includes the Cloud Maps credit funding change
 [eliza#39594](https://github.com/elizaOS/eliza/pull/39594)), which touch no Alpha input.
 #39562 was squash-merged, but [eliza#39589](https://github.com/elizaOS/eliza/pull/39589)
 merged `442586ce66` into develop history, so the previous pin is an ancestor of this one.
-Renderer and core implementation sources are unchanged. SDK preparation and
+The sources in Alpha's pin-bound core catalog retain their recorded hashes;
+other upstream core and runtime sources include the merged upstream changes.
+SDK preparation and
 native receipt admission run again for the new source recipe.
 Historical native measurements retain their original source attribution.
 New builds use the current source recipe and generated

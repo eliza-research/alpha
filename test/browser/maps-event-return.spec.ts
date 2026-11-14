@@ -38,6 +38,8 @@ async function systemBack(page: Page) {
 }
 /** Two events that share one location text, so a return to the wrong one would be visible. */
 async function setup(page: Page) {
+  // Keep the default one-hour events within one civil day in every test timezone.
+  await page.clock.setFixedTime(new Date(2026, 10, 13, 10, 0));
   await page.addInitScript(() => { if (!localStorage.getItem('alpha.connection.selection.v1')) localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({kind: 'offline'})); });
   await page.goto('/?mode=dev&tools=1');
   await installMaps(page);
