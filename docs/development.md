@@ -626,9 +626,12 @@ retirement of upstream Cloud native registry migration tooling
 ([eliza#39630](https://github.com/elizaOS/eliza/pull/39630)). Alpha consumes the
 same native producer and browser projection inputs. Cloud binding retirement
 has its own deployment and operator steps.
-The current pin `76c80623c5ee782fbb9893943455d3dafd74befb` includes the upstream
+The pin `76c80623c5ee782fbb9893943455d3dafd74befb` includes the upstream
 resident assistant's current-time reply fix ([eliza#39629](https://github.com/elizaOS/eliza/pull/39629)).
 The upstream browser projections and native producer recipe retain the same bytes.
+The current pin `f86b5038f897094df686da9d5a8d901f60b1e20e` preserves years stated
+before Calendar dates in the resident runtime ([eliza#39632](https://github.com/elizaOS/eliza/pull/39632)).
+Upstream verified the parser and saved event interval with the Calendar owning tests.
 Historical native measurements retain their original source attribution.
 New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
