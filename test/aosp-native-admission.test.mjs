@@ -45,7 +45,8 @@ test('native admission retains the admitted launcher grants and priv-app library
  const blueprint = fs.readFileSync(path.join(f.output, 'Android.bp'), 'utf8');
  assert.ok(blueprint.endsWith(f.overlay.blueprint.slice(f.overlay.launcher.length)));
  assert.match(blueprint, /privileged: true/);
- assert.match(blueprint, /prebuilt_priv_app/);
+ assert.match(blueprint, /^prebuilt_priv_app_native\s*\{/m);
+ assert.doesNotMatch(blueprint, /^prebuilt_priv_app\s*\{/m);
  assert.equal(fs.readFileSync(path.join(f.output, 'default-permissions.xml'), 'utf8'), f.overlay.permissions);
  assert.equal(fs.readFileSync(path.join(f.output, 'privapp-permissions.xml'), 'utf8'), f.overlay.privilegedPermissions);
  assert.equal(fs.existsSync(path.join(f.output, 'Android.mk')), false);

@@ -606,11 +606,15 @@ hashes remain unchanged. The native recipe changes because its complete app scri
 input tree changed; normal native preparation must produce and admit receipts for
 that recipe. SDK preparation still runs for the new pin. The selected formal source
 inventory records current bytes without carrying a prior verdict onto changed inputs.
-The current pin `85e18191eed30319a8c47d02609902e1313ac470` includes the native IPC body framing
+The next pin `85e18191eed30319a8c47d02609902e1313ac470` included the native IPC body framing
 repair ([eliza#39620](https://github.com/elizaOS/eliza/pull/39620)) and the speech
 bootstrap connection reuse fix ([eliza#39619](https://github.com/elizaOS/eliza/pull/39619)).
 The speech bridge and app scripts changed the native recipe again. Rebuild those
 inputs through the normal Android command; the engine and voice model pins are unchanged.
+The current pin `a9bec04c25f6e157a64e266d4b5322a6c62e19ee` consumes the reviewed privileged
+launcher Soong rule ([eliza#39623](https://github.com/elizaOS/eliza/pull/39623)). Both
+launcher install paths require the bound Soong patch. This SDK update changes
+image staging, while the native APK producer recipe is unchanged.
 Historical native measurements retain their original source attribution.
 New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
