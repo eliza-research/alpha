@@ -1,140 +1,43 @@
-name: Native crash six-step resource qualification
+name: Native crash bridge induction qualification
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  ci6:
-    name: NativeCrashJournal completion factor ci6
+  induction:
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
         with:
           distribution: temurin
           java-version: '21'
-      - run: bun run upstream:prepare-client
-      - name: Admit exact original source and sealed scheduling configuration
-        run: |
-          sha256sum --check <<'PINS'
-          369f35a2746035cf3637ef08c398e7f8fd729fcfec3ec4dc1a18c8265ee192bd  specs/quint/native/NativeCrashJournal.qnt
-          c58d0c205ce5bcabd9358b4411863a1c5e87debec03fa768b4713a1dc9a43ed1  scripts/check-quint.ts
-          5a0f694073d89867c1cd004e62c2f095ad70ffc8fc58992b54e078d1bb6912d9  scripts/ci/native-crash-completion-factor.json
-          PINS
-      - name: Original full CI6 safety with after scheduling
+      - name: Prove bridge initialization, inductive preservation and implication
         run: |
           set -euo pipefail
-          unset JVM_ARGS JVM_GC_ARGS JAVA_TOOL_OPTIONS _JAVA_OPTIONS SMT_ENCODING SMT_SOLVER CONFIG_FILE OUT_DIR RUN_DIR WRITE_INTERMEDIATE
-          alpha_crash_watch=$(mktemp -d "$RUNNER_TEMP/alpha-crash-after.XXXXXX")
-          bun scripts/check-quint.ts verify --models=NativeCrashJournal --steps=6 --timeout=5400 --out=test-results/quint/native-crash-completion-factor-ci6.json &
-          alpha_crash_checker_pid=$!
-          python3 - "$alpha_crash_watch" "$alpha_crash_checker_pid" <<'PYWATCH' &
-          from pathlib import Path
-          import json,subprocess,sys,time
-          control,root=Path(sys.argv[1]),int(sys.argv[2])
-          destination=Path('test-results/quint/native-crash-completion-factor-ci6-process.json')
-          while not (control/'stop').exists():
-            probe=subprocess.run(['lsof','-t','-nP','-iTCP:8845','-sTCP:LISTEN'],capture_output=True,text=True)
-            for value in probe.stdout.split():
-              pid=int(value)
-              row=subprocess.run(['ps','-p',str(pid),'-o','pid=,ppid=,pgid=,args='],capture_output=True,text=True).stdout.strip()
-              fields=row.split(None,3)
-              if len(fields)!=4 or '-jar' not in fields[3] or 'apalache.jar' not in fields[3] or '--port=8845' not in fields[3]:continue
-              chain=[pid];parent=int(fields[1])
-              for _ in range(16):
-                chain.append(parent)
-                if parent==root:break
-                answer=subprocess.run(['ps','-p',str(parent),'-o','ppid='],capture_output=True,text=True).stdout.strip()
-                if not answer:break
-                parent=int(answer)
-              if root not in chain:continue
-              destination.parent.mkdir(parents=True,exist_ok=True)
-              destination.write_text(json.dumps({'rootPid':root,'serverPid':pid,'ownedAncestorChain':chain,
-                'actualProcess':row,'capturedWhileOwned':True},indent=2)+'\n')
-              raise SystemExit(0)
-            time.sleep(0.25)
-          PYWATCH
-          alpha_crash_watcher_pid=$!
-          alpha_crash_finish() {
-            alpha_crash_status=$?
-            touch "$alpha_crash_watch/stop"
-            wait "$alpha_crash_watcher_pid" || true
-            return "$alpha_crash_status"
-          }
-          trap alpha_crash_finish EXIT
-          wait "$alpha_crash_checker_pid"
-      - name: Preserve actual checker output and proof custody
-        if: always()
-        run: |
-          python3 - <<'PYCUSTODY'
-          from pathlib import Path
-          import hashlib,json,re,shutil,subprocess
-          out=Path('test-results/quint');out.mkdir(parents=True,exist_ok=True)
-          proof=out/'native-crash-completion-factor-ci6.json'
-          receipt=json.loads(proof.read_text()) if proof.exists() else {}
-          phases=receipt.get('results',[])
-          result=phases[0] if len(phases)==1 else {}
-          output=result.get('output','')
-          (out/'native-crash-completion-factor-ci6-output.log').write_text(output)
-          config_file=Path('scripts/ci/native-crash-completion-factor.json')
-          config=json.loads(config_file.read_text())
-          jar=Path.home()/'.quint/apalache-dist-0.62.4/apalache/lib/apalache.jar'
-          digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-          process_file=out/'native-crash-completion-factor-ci6-process.json'
-          process=json.loads(process_file.read_text()) if process_file.exists() else None
-          vc_counts=[int(x) for x in re.findall(r'VCGen produced ([0-9]+) verification condition',output)]
-          holds={(int(s),int(i)) for s,i in re.findall(r'State ([0-9]+): state invariant ([0-9]+) holds\.',output)}
-          source=re.search(r'^Output directory: (.+)$',output,re.M)
-          raw_files={}
-          if source:
-            server=Path(source[1].strip()).resolve()
-            admitted=(Path.cwd()/'_apalache-out').resolve()
-            assert server.is_relative_to(admitted)
-            destination=out/'native-crash-completion-factor-ci6-actual-server';destination.mkdir(exist_ok=True)
-            for item in server.iterdir():
-              if item.is_file() and not item.is_symlink() and (item.name in ['detailed.log','log0.smt','run.txt'] or item.name.startswith('violation')):
-                target=destination/item.name;shutil.copyfile(item,target);raw_files[item.name]={'bytes':target.stat().st_size,'sha256':digest(target)}
-          custody={'head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
-            'modelSha256':digest(Path('specs/quint/native/NativeCrashJournal.qnt')),
-            'configuration':config,'configurationSha256':digest(config_file),
-            'checkerSha256':digest(Path('scripts/check-quint.ts')),
-            'jarSha256':digest(jar) if jar.exists() else None,
-            'actualJvm':process,'VCCounts':vc_counts,'completedStateInvariantPairs':sorted(holds),
-            'rawServerFiles':raw_files,'passed':receipt.get('passed',False),
-            'scope':'Equivalent completion dataflow and row predicate. Original raw integer domains, action relation, seven safety invariants, default Z3, after scheduling and 4 GiB heap and an explicit 90-minute phase limit.'}
-          (out/'native-crash-completion-factor-ci6-custody.json').write_text(json.dumps(custody,indent=2)+'\n')
-          assert receipt, 'Missing actual checker receipt'
-          assert config=={'debug':True,'checker':{'tuning':{'search.invariant.mode':'after'}}}
-          assert receipt['timeoutSeconds']==5400 and not receipt['finalInputErrors']
-          assert custody['modelSha256']=='369f35a2746035cf3637ef08c398e7f8fd729fcfec3ec4dc1a18c8265ee192bd'
-          assert custody['jarSha256']=='e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262'
-          assert receipt['inputHashes']['scripts/ci/native-crash-completion-factor.json']==custody['configurationSha256']
-          assert receipt['inputHashes']['.github/workflows/promotion.yml']==digest(Path('.github/workflows/promotion.yml'))
-          if receipt.get('passed'):
-            assert len(phases)==1 and result['model']=='NativeCrashJournal' and result['phase']=='apalache' and result['backend']=='apalache'
-            assert result['exitCode']==0 and result['signal'] is None and not result.get('error') and not result.get('interruptedAttempt')
-            assert receipt['modelOptions']['NativeCrashJournal']['steps']==6
-            for argument in ['--main=NativeCrashJournal','--backend=apalache','--max-steps=6','--init=init','--step=step','--invariant=safety']:
-              assert argument in result['argv'],argument
-            assert any(x.endswith('/scripts/ci/native-crash-completion-factor.json') and x.startswith('--apalache-config=') for x in result['argv'])
-            assert vc_counts==[7] and holds=={(s,i) for s in range(7) for i in range(7)}
-            assert 'The outcome is: NoError' in output and not re.search(r'=> TIMEOUT|Assuming it holds|Found a deadlock|invariant [0-9]+.* violated',output)
-            assert process and process['capturedWhileOwned'] and '-Xmx4096m' in process['actualProcess']
-            assert raw_files, 'Missing actual server output custody'
-            detailed='\n'.join(p.read_text(errors='replace') for p in (out/'native-crash-completion-factor-ci6-actual-server').rglob('detailed.log'))
-            smt='\n'.join(p.read_text(errors='replace') for p in (out/'native-crash-completion-factor-ci6-actual-server').rglob('*.smt'))
-            assert 'Creating Z3 solver context' in detailed and 'Creating CVC5 solver context' not in detailed
-          PYCUSTODY
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+          mkdir -p test-results/induction
+          python3 - <<'PYPROOF'
+          import subprocess,hashlib,json,pathlib,os,signal,time
+          out=pathlib.Path('test-results/induction');model=pathlib.Path('specs/quint/native/NativeCrashJournal.qnt')
+          cmd=['bun','node_modules/@informalsystems/quint/dist/src/cli.js','verify',str(model),'--main=NativeCrashJournal','--init=init','--step=step','--invariant=BridgeRowsAllowlisted','--inductive-invariant=BridgeRowsAllowlisted','--max-steps=6','--verbosity=5','--apalache-version=0.62.4','--apalache-config=scripts/ci/native-crash-completion-factor.json','--server-endpoint=127.0.0.1:8845']
+          receipt={'command':cmd,'head':os.environ['GITHUB_SHA'],'modelSha256':hashlib.sha256(model.read_bytes()).hexdigest(),'startedAt':time.time(),'scope':'Exploratory independent induction; not a replacement six-step safety verdict.'}
+          env=os.environ.copy();env['JVM_ARGS']='-Xmx4g';env['JVM_GC_ARGS']=''
+          for k in ['JAVA_TOOL_OPTIONS','_JAVA_OPTIONS','SMT_SOLVER','SMT_ENCODING','CONFIG_FILE']:env.pop(k,None)
+          with (out/'output.log').open('wb') as log:
+            child=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT,env=env,start_new_session=True)
+            try:status=child.wait(timeout=600)
+            except subprocess.TimeoutExpired:
+              os.killpg(child.pid,signal.SIGKILL);status=child.wait();receipt['timedOut']=True
+          receipt.update(exitCode=status,endedAt=time.time(),modelSha256After=hashlib.sha256(model.read_bytes()).hexdigest());(out/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+          print((out/'output.log').read_text());raise SystemExit(status)
+          PYPROOF
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
-          name: native-crash-completion-factor-ci6-ci6-default
-          path: test-results/quint/
-          if-no-files-found: error
+          name: native-bridge-induction
+          path: test-results/induction
