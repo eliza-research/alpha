@@ -615,12 +615,20 @@ The pin `a9bec04c25f6e157a64e266d4b5322a6c62e19ee` consumes the reviewed privile
 launcher Soong rule ([eliza#39623](https://github.com/elizaOS/eliza/pull/39623)). Both
 launcher install paths require the bound Soong patch. This SDK update changes
 image staging, while the native APK producer recipe is unchanged.
-The current pin `82ade0626816519e896c6f5d4ba44fcb23a3eb8f` consumes the reviewed
+The pin `82ade0626816519e896c6f5d4ba44fcb23a3eb8f` consumes the reviewed
 retirement of temporary checkout diagnostics and the resident assistant's
 ordinal travel return-date fix ([eliza#39622](https://github.com/elizaOS/eliza/pull/39622),
 [eliza#39627](https://github.com/elizaOS/eliza/pull/39627)). Prepare the resident
 runtime and package the launcher at this pin. The native producer recipe and
 browser projection inputs retain the same bytes.
+The pin `aa399fbdd7837d5fdd5940c3ad4ea70462d7601b` includes the reviewed
+retirement of upstream Cloud native registry migration tooling
+([eliza#39630](https://github.com/elizaOS/eliza/pull/39630)). Alpha consumes the
+same native producer and browser projection inputs. Cloud binding retirement
+has its own deployment and operator steps.
+The current pin `76c80623c5ee782fbb9893943455d3dafd74befb` includes the upstream
+resident assistant's current-time reply fix ([eliza#39629](https://github.com/elizaOS/eliza/pull/39629)).
+The upstream browser projections and native producer recipe retain the same bytes.
 Historical native measurements retain their original source attribution.
 New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
