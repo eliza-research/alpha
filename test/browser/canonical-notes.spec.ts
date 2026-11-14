@@ -412,7 +412,8 @@ test('Notes keeps previous device data behind an explicit recovery route without
  await openCanonicalNotes(page);
  await expect(page.getByRole('button',{name:'Open Previous local note',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Record voice note',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Notes options',exact:true})).toBeVisible();
  await expect(page.getByRole('group',{name:'Folders',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Canonical only');

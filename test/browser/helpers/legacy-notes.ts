@@ -24,7 +24,8 @@ export async function selectLegacyNotes(page:Page){
 export async function selectLegacyNotesSource(page:Page){
  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
  if(await page.getByRole('heading',{name:'Previous notes',exact:true}).isVisible())return;
- const previous=page.getByRole('button',{name:'Previous notes',exact:true});
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
+ const previous=page.getByRole('button',{name:'On this phone',exact:true});
  await expect(previous).toBeVisible();
  await previous.click();
  await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
