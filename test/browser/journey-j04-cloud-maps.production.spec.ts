@@ -196,6 +196,8 @@ test('a cancelled search shows nothing late, a place outside coverage is named, 
   });
 
   await test.step('a 429 with Retry-After is worded with its wait and nothing is retried automatically', async () => {
+    const cooldownStart = new Date();
+    await page.clock.setFixedTime(cooldownStart);
     await page.evaluate(() => { (window as any).residentStub.maps.limit = '30'; });
     await search.fill(LOCATION);
     await search.press('Enter');
@@ -203,7 +205,13 @@ test('a cancelled search shows nothing late, a place outside coverage is named, 
     const searches = (await mapsRequests(page)).filter(row => row.route === 'places/search').length;
     await page.waitForTimeout(1_000);
     expect((await mapsRequests(page)).filter(row => row.route === 'places/search')).toHaveLength(searches);
-    // An explicit retry by the user is a new request, and it succeeds.
+    // A user retry also honors Cloud's account-wide pause.
+    await search.press('Enter');
+    await expect(maps).toContainText('Maps request limit reached. Try again in about 30 seconds.');
+    expect((await mapsRequests(page)).filter(row => row.route === 'places/search')).toHaveLength(searches);
+    // Expiry alone does not replay the search. The next explicit retry succeeds.
+    await page.clock.setFixedTime(new Date(cooldownStart.getTime() + 30_001));
+    expect((await mapsRequests(page)).filter(row => row.route === 'places/search')).toHaveLength(searches);
     await search.press('Enter');
     await expect(page.getByRole('button', { name: /^Port Hercule fuel dock/ }).first()).toBeVisible();
   });
