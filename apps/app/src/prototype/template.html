@@ -2104,7 +2104,7 @@
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{notes.notesTitle}}</h1>
     <sc-if value="{{notes.canRecord}}"><button class="ib" data-agent-id="notes-record" aria-label="Record voice note" disabled="{{notes.createDisabled}}" onClick="{{notes.record}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.mic}}"></path></svg></button></sc-if>
       <sc-if value="{{notes.canCreate}}"><button class="ib" data-agent-id="notes-new" aria-label="New note" disabled="{{notes.createDisabled}}" onClick="{{notes.newNote}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.plus}}"></path></svg></button></sc-if>
-    <button class="ib" aria-label="Notes options" disabled="{{notes.createDisabled}}" aria-haspopup="dialog" aria-expanded="{{notes.listMenuOpen}}" onClick="{{notes.listMenu}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button>
+    <button class="ib" aria-label="Notes options" aria-haspopup="dialog" aria-expanded="{{notes.listMenuOpen}}" onClick="{{notes.listMenu}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button>
   </div>
   <sc-if value="{{notes.selectingNotes}}"><div class="notes-selection-bar" role="group" aria-label="Selected notes">
     <button onClick="{{notes.endSelection}}" aria-label="Close selection"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button><span>{{notes.selectedCount}} selected</span>
@@ -2115,8 +2115,8 @@
   <sc-if value="{{notes.listMenuOpen}}"><div ref="{{notes.listMenuModal}}" data-alpha-popup>
     <button aria-hidden="true" tabindex="-1" onClick="{{notes.closeListMenu}}" style="position:absolute;inset:0;z-index:11;background:transparent"></button>
     <div class="notes-menu" role="dialog" aria-label="Notes options">
-      <button onClick="{{notes.startSelection}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg>Select notes</button>
-      <button onClick="{{notes.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg>Create folder</button>
+      <button disabled="{{notes.createDisabled}}" onClick="{{notes.startSelection}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg>Select notes</button>
+      <button disabled="{{notes.createDisabled}}" onClick="{{notes.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg>Create folder</button>
       <sc-if value="{{notes.currentFolder}}"><button onClick="{{notes.renameCurrentFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.edit}}"></path></svg>Rename folder</button><button onClick="{{notes.deleteCurrentFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg>Delete folder</button></sc-if>
       <button onClick="{{notes.openTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg>Recently deleted</button>
       <sc-if value="{{notes.olderNotesAction}}"><button onClick="{{notes.olderNotesAction}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>On this phone</button></sc-if>
