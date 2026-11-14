@@ -107,7 +107,8 @@ test('notification projection changes fixed product presentation while preservin
  assert.ok(generated.includes('.setSmallIcon(R.drawable.notification_icon)')&&!generated.includes('R.mipmap.ic_launcher'));
  assert.doesNotMatch(generated,/"Eliza agent|"Eliza Agent"|"Local Eliza agent runtime status"|"On-device agent ready"/,'no upstream product text reaches Alpha notifications');
  assert.ok(generated.includes('case "running":')&&generated.includes('case "stop-failed":'));
- assert.ok(generated.includes('.addAction(0, "Stop", stopPending)'));
+ assert.match(generated,/NOTIFICATION_PRIMARY_ACTION = "none";/);
+ assert.match(generated,/setShowBadge\(false\)/);
  assert.equal((generated.match(/\.setColor\(0xff0000ff\)/g)||[]).length,2);
  // Suspend the previous transport atomically before exposing a rotated root. Upstream now
  // shares markRunning between its startup and watchdog probes; detached adoption has its own
