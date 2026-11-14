@@ -2143,7 +2143,7 @@
     }
   ],
   "currentUpstream": {
-    "revision": "8ef6cce96348f993d041eaa6d83cd32ab4b2ffdf",
+    "revision": "b6ff92d85cb7990ed8b357f5bf6c29381b5c9804",
     "classification": "current-upstream-formal-specifications",
     "models": [],
     "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The four DeletionOwnerAdmission Quint sidecars below catalogue the upstream partial owner-admission model and checker at this current revision; downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate. Any future TLA/TLC source requires separate allocation. CloudSpeechSuccessor is retained as an upstream source-owned model; its separate semantic, scenario and transport tests do not constitute device or live-provider proof.",
@@ -2180,13 +2180,13 @@
       },
       {
         "path": "packages/host/quint/CloudSpeechConsentDeadline.qnt",
-        "gitObject": "a5a304c61fb45361d54b16c1abb7bb1104ef7a11",
-        "sha256": "6c3b2963c3cc9e2cf671c0c87aa8ff65ab75762adfb8da1918e92934026fc302"
+        "gitObject": "d6c4eaf3e8d8b7aeb8ae3e26706a70f01f90164c",
+        "sha256": "00c5ee1be92c57eb0f0f323805700cd068835d51363933213016f46ad5969881"
       },
       {
         "path": "packages/host/quint/CloudSpeechConsentDeadline.cases.json",
-        "gitObject": "6ae2d4c0470bb735849d07e3be068cae642d0b0c",
-        "sha256": "9a08234647201df9629802310eea11bd525ba3a46ed70734a306983d210f9b57"
+        "gitObject": "6cafa735b3f07cc2cfa7b554458efc17a7b4c990",
+        "sha256": "3b803b8e37a6616a88bd7428b5b7eb526fbbc4fadbda8870235cde6eda820f6e"
       },
       {
         "path": "packages/agent/quint/TriggerRecovery.qnt",

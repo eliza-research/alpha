@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "c7b84cba420be6b9fb94056fa1684cd8599ecf8f",
-  "head": "8ef6cce96348f993d041eaa6d83cd32ab4b2ffdf",
-  "recordedAt": "2026-11-13",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...8ef6cce96348f993d041eaa6d83cd32ab4b2ffdf",
+  "baseCommit": "be0654df50621c8e2bde2d40de7c4fe9dcebbb8a",
+  "head": "b6ff92d85cb7990ed8b357f5bf6c29381b5c9804",
+  "recordedAt": "2026-11-14",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...b6ff92d85cb7990ed8b357f5bf6c29381b5c9804",
   "status": "diverged",
-  "aheadBy": 92,
-  "behindBy": 1097,
+  "aheadBy": 97,
+  "behindBy": 1136,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -374,6 +374,26 @@
     {
       "sha": "8ef6cce96348f993d041eaa6d83cd32ab4b2ffdf",
       "subject": "fix(host): recover a reset before speech session admission"
+    },
+    {
+      "sha": "63992224fa4bc2a6e153c17bb265e5a68794e6c6",
+      "subject": "Keep updater controls below system bars on Android 17"
+    },
+    {
+      "sha": "2e3d8379cef8c37d74ddb9361da8b971a4ae0578",
+      "subject": "Keep active OS update status visible and prevent duplicate checks"
+    },
+    {
+      "sha": "074f365638439cf52b1bc1243d6c66f6cb37f482",
+      "subject": "Start explicit system update checks as expedited jobs"
+    },
+    {
+      "sha": "bc38218c845b09abd6dc3bb40e71dfa754074bce",
+      "subject": "Show live OS installation progress in system settings"
+    },
+    {
+      "sha": "b6ff92d85cb7990ed8b357f5bf6c29381b5c9804",
+      "subject": "Frame legacy request bodies on the Android IPC path"
     }
   ],
   "pullRequests": []
