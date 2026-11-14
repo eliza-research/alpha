@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Reviewed v71 Cloud launcher for Android schedule edits and retained-data QA. Preserve the existing signer and lineage.",
+  "description": "Reviewed v72 Cloud launcher with Android schedule repair and removal of the permanent workflow notification shortcut and a clean Notes menu. Preserve the current signer and lineage.",
   "signerSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
   "lastRelease": {
     "versionCode": null,
@@ -11,32 +11,32 @@
     "schema": 1,
     "approval": "approved",
     "fromVersionCode": 49,
-    "versionCode": 71,
+    "versionCode": 72,
     "previousSignerSha256": "0438dccb2d5e83fc2ad1ab11cbb882f837d97c4aee7cba72af9229c39b149b80",
     "lineageSha256": "bca212509a83e8f2e60d2b9b744b1e0a4a014b780be058dcf81ff88a5d593759",
     "apksignerSha256": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
     "verifierJarSha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
     "unsignedApkSHA256": {
-      "launcher": "c024842b85cb2b0dc56eccb80547ac4c8bd094a7a2961c4bfe72b0efdf1ae4ee"
+      "launcher": "7b71a4ca2836b2c5b41f8ccf09858d326a107e450cb2d9cb81b3d9f757807b44"
     },
     "preserveSignaturePermissions": true
   },
   "privateProducerApproval": {
-    "approval": "approved",
-    "alphaCommit": "80791cd7a9551e6edd3634b742c8ca5cf34132dd",
+    "alphaCommit": "152f28caf0a07991840a060f1003ef7c2d66be1a",
     "sdkCommit": "b6ff92d85cb7990ed8b357f5bf6c29381b5c9804",
-    "versionCode": 71,
+    "versionCode": 72,
+    "archiveSHA256": "e3b012fb14da4ff6a16116a5db2d33fbf2f45a891b03945433cd8293f33c39b5",
+    "archiveBytes": 633879659,
+    "producerManifestSHA256": "9d9e638baa3f47a07207660c213c9518bff48eebe13ced3959cb70b47936e7c3",
+    "privateProducerReceiptSHA256": "11ba3b77f4ca522664f2e99780e368e31748cfc284cc8f419714ccc1bef3215f",
+    "unsignedApkSHA256": {
+      "standalone": "a7ae7ba8f02f07642fed5bcae7682b164cccdfc85fea878e61aacc4b12fc9437",
+      "launcher": "7b71a4ca2836b2c5b41f8ccf09858d326a107e450cb2d9cb81b3d9f757807b44"
+    },
     "updateChannel": {
       "kind": "public",
       "manifestUrlSha256": "8e54b15a945c0fe1fd18bca9b4f4389249c5260bd72c912bccb6cd98e10308db"
     },
-    "archiveBytes": 633876815,
-    "archiveSHA256": "21d5aa7be266b69ae8b58eb004e345f39a493f6850a509082eed2e2157fe16ba",
-    "producerManifestSHA256": "984217fa0c246d76e10b6239b25ccec8d37db68a97328560e670a6a5c5464c2e",
-    "privateProducerReceiptSHA256": "b9c5d879bcc3320cb31ac07a3929bbba5321d7f0de0638a7c72a2a81c9a8d241",
-    "unsignedApkSHA256": {
-      "standalone": "265d701e4f22a3c62c1ccfe149a72d695c41682edfbe592b778e73a77aba0d7b",
-      "launcher": "c024842b85cb2b0dc56eccb80547ac4c8bd094a7a2961c4bfe72b0efdf1ae4ee"
-    }
+    "approval": "approved"
   }
 }
