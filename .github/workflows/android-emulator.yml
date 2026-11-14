@@ -19,8 +19,6 @@ jobs:
   emulator:
     name: Launcher APKs on the emulator
     runs-on: ubuntu-24.04
-    env:
-      XDG_CACHE_HOME: ${{ runner.temp }}/alpha-emulator-cache
     # Preserve the former build180 + instrumentation90 + browser90 job budgets.
     timeout-minutes: 360
     steps:
@@ -59,6 +57,8 @@ jobs:
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: bun install --frozen-lockfile
+      - name: Select the native input cache
+        run: echo "XDG_CACHE_HOME=$RUNNER_TEMP/alpha-emulator-cache" >> "$GITHUB_ENV"
       - name: Resolve the current native build recipe
         id: native-recipe
         run: |
