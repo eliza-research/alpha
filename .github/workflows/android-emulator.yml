@@ -19,6 +19,8 @@ jobs:
   emulator:
     name: Launcher APKs on the emulator
     runs-on: ubuntu-24.04
+    env:
+      XDG_CACHE_HOME: ${{ runner.temp }}/alpha-emulator-cache
     # Preserve the former build180 + instrumentation90 + browser90 job budgets.
     timeout-minutes: 360
     steps:
@@ -57,6 +59,15 @@ jobs:
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: bun install --frozen-lockfile
+      - name: Resolve the current native build recipe
+        id: native-recipe
+        run: |
+          echo "sha256=$(bun -e 'import {nativeRecipe,nativeRecipeDigest} from "./scripts/native-build-inputs.ts"; process.stdout.write(nativeRecipeDigest(nativeRecipe(process.cwd())))')" >> "$GITHUB_OUTPUT"
+      - name: Restore the exact native source recipe
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ env.XDG_CACHE_HOME }}/alpha/native-inputs
+          key: alpha-native-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-recipe.outputs.sha256 }}
       - name: Acquire hash-pinned Android Bun with step-only authentication
         timeout-minutes: 12
         env:

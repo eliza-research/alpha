@@ -112,7 +112,7 @@ test('crash verification retains step six, detects its boundary violation and re
       assert.equal(proof.inputHashes['scripts/ci/native-crash-completion-factor.json'], sha256(readFileSync(join(root, 'scripts/ci/native-crash-completion-factor.json'))));
       assert.equal(phase.passed, expected === 'pass');
       if (expected === 'pass') assert.match(phase.output, /The outcome is: NoError/);
-      if (expected === 'violation') {assert.equal(detectedCounterexample(phase.output), true);assert.match(phase.output, /n = 6/);}
+      if (expected === 'violation') {assert.equal(detectedCounterexample(phase.output), true);assert.match(phase.output.replace(/\u001b\[[0-9;]*m/g, ''), /\bn:\s*6\b/);}
       if (expected === 'deadline') {assert.match(phase.error, /Checker exceeded 1 seconds/);assert.equal(detectedCounterexample(phase.output), false);}
       const evidence = join(repositoryRoot, 'test-results/quint/native-crash-owner');mkdirSync(evidence, {recursive: true});
       writeFileSync(join(evidence, `${steps}-${expected}.json`), JSON.stringify(proof, null, 2) + '\n');

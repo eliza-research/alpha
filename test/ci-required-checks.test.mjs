@@ -56,6 +56,14 @@ test('consolidated lanes retain required operation budgets and exact APK custody
     ALPHA_LOCAL_AGENT_SOURCE_DIR: '$' + '{{ github.workspace }}/vendor/eliza'});
   assert.ok(emulator.steps.indexOf(emulatorAcquisition) < emulator.steps.findIndex(step => step.id === 'build'));
   assert.notEqual(emulatorAcquisition['continue-on-error'], true);
+  const cache = emulator.steps.find(step => step.uses?.startsWith('actions/cache/restore@'));
+  const residentCache = resident.steps.find(step => step.id === 'native-cache');
+  assert.equal(cache.uses, residentCache.uses);assert.equal(cache.with.key, residentCache.with.key);
+  assert.equal(cache.with.path, residentCache.with.path);assert.equal(cache.with['restore-keys'], undefined);
+  assert.equal(emulator.steps.find(step => step.id === 'native-recipe').run, resident.steps.find(step => step.id === 'native-recipe').run);
+  const build = emulator.steps.find(step => step.id === 'build');
+  assert.equal(build.if, undefined, 'A cache hit still runs the normal input, ABI and build checks');
+  assert.equal(build.run, 'bun run android:build:local -- --release');
   assert.equal(emulator['timeout-minutes'], 360);
   assert.equal(emulator.steps.find(step => step.id === 'build')['timeout-minutes'], 180);
   const anchor = emulator.steps.find(step => step.id === 'freeze');
