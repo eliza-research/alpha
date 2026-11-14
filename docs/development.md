@@ -51,7 +51,7 @@ missing backend fail. A generation-only run records a skipped proof. Promotion C
 hash-pinned backend and requires proofs.
 
 A pull request runs one CI job, `bun run verify` (`verify.yml`). The Android build
-(`android.yml`: `bun run android:build:local`, then the digest restart check) also runs when a
+(`android.yml`: `bun run android:build:local -- --release`, then the digest restart check) also runs when a
 pull request changes Android, renderer, script, lockfile or upstream-pin paths; documentation-only
 changes do not run it. The browser tests are not run by PR CI: run `bun run test:browser` and
 `bun run test:browser:production` before finalising a PR and say so in its description. CI runs
@@ -137,13 +137,17 @@ tool, which is not merged upstream yet.
 
 ```sh
 bun run android:build:inputs       # report missing build inputs
-bun run android:build:local        # prepare, build worker, stage runtime and build
+bun run android:build:local        # prepare, build worker, stage runtime and build (debug only)
+bun run android:build:local -- --release   # the same, also building the release APK (CI)
 bun run android:verify            # inspect APK contents and signatures
 ```
 
-There is one launcher product/flavor. The build produces a debug APK and one
-release APK under `artifacts/`, plus an instrumentation APK under
-`artifacts/instrumentation/`. Debug and instrumentation are test/build evidence,
+There is one launcher product/flavor. A local build produces the debug APK under
+`artifacts/` and an instrumentation APK under `artifacts/instrumentation/`; it uses
+upstream's debug-only consumer build (`release: false`), records `release: false` in
+`build-config.json`, and cannot be archived. `--release` also builds one release APK and
+its R8 mapping; CI (`android.yml`, `android-emulator.yml`) and `scripts/build-archive.ts`
+always pass it. Debug and instrumentation are test/build evidence,
 not additional release distributions. The same launcher APK can be installed on
 stock Android or preinstalled in the Alpha image. It declares HOME.
 Phone, Contacts and SMS/MMS require an admitted AOSP image capability.
@@ -565,10 +569,28 @@ The reviewed batch through `0f4b3b0b0` adds [markdown-it 15](https://github.com/
 [MapLibre development dependencies](https://github.com/elizaOS/eliza/pull/39350),
 the [native dependency installer cleanup](https://github.com/elizaOS/eliza/pull/39484)
 and the [2.0.6 release cohort](https://github.com/elizaOS/eliza/pull/39483).
-The current SDK pin `442586ce66abf43ff382a951b8d439efd400af84` adds the reviewed
+`442586ce66abf43ff382a951b8d439efd400af84` added the reviewed
 Phonon model provenance and hash diagnostics to that `0f4b3b0b0` baseline. Its
 engine pin `5c5d6163c81cfc2f85ce3c12f10adbec5ae165cd` canonicalizes zero mel
 weights so the source-built model is byte-identical on ARM64 and x86_64.
+The current SDK pin `0c53e54b2c3ac0cd64ca88fa532448d2ffa5d494` is upstream develop
+with that change squash-merged as [eliza#39562](https://github.com/elizaOS/eliza/pull/39562)
+(the same engine gitlink and `voice-model-versions.json`, so the admitted `407c02ab`
+Phonon model is unchanged) and the upstream cleanups: two Android targets with the SMS
+gateway removed ([eliza#39503](https://github.com/elizaOS/eliza/pull/39503)); one env
+name per setting, so the mobile platform is read from `ELIZA_PLATFORM` only
+([eliza#39506](https://github.com/elizaOS/eliza/pull/39506)); no Electrobun desktop
+product ([eliza#39510](https://github.com/elizaOS/eliza/pull/39510)); one trajectory
+store ([eliza#39511](https://github.com/elizaOS/eliza/pull/39511)); dead settings
+removed ([eliza#39512](https://github.com/elizaOS/eliza/pull/39512)); test sign-in out
+of shipped code ([eliza#39519](https://github.com/elizaOS/eliza/pull/39519)); and the
+debug-only consumer build ([eliza#39547](https://github.com/elizaOS/eliza/pull/39547)).
+It also includes the Cloud Maps credit funding change
+([eliza#39582](https://github.com/elizaOS/eliza/pull/39582)) and the Cloud checkout fixes
+([eliza#39586](https://github.com/elizaOS/eliza/pull/39586) and
+[eliza#39594](https://github.com/elizaOS/eliza/pull/39594)), which touch no Alpha input.
+#39562 was squash-merged, but [eliza#39589](https://github.com/elizaOS/eliza/pull/39589)
+merged `442586ce66` into develop history, so the previous pin is an ancestor of this one.
 Renderer and core implementation sources are unchanged. SDK preparation and
 native receipt admission run again for the new source recipe.
 Historical native measurements retain their original source attribution.

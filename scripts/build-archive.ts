@@ -51,7 +51,8 @@ for(const command of ['verify','android:build']){
  const log=fs.openSync(path.join(destination,command.replace(':','-')+'.log'),'wx');
  // Full verification includes the real staged JVM/runtime campaigns. Retain a
  // finite two-hour verification budget and the existing twenty-minute APK budget.
- try{execFileSync('bun',['run',command],{stdio:['ignore',log,log],timeout:command==='verify'?7200000:1200000,env:command==='verify'?verifyEnv:buildEnv});}
+ // An archive retains the release APK, so the Android build is never debug-only here.
+ try{execFileSync('bun',['run',command,...(command==='android:build'?['--release']:[])],{stdio:['ignore',log,log],timeout:command==='verify'?7200000:1200000,env:command==='verify'?verifyEnv:buildEnv});}
  finally{fs.closeSync(log);}
  console.log(command+': passed');
 }

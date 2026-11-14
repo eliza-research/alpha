@@ -3,6 +3,8 @@
  *
  *   bun scripts/verify-apks.ts [--signer-api-level=N] [--cloud-voice-evidence=FILE]
  *
+ * It verifies the debug APK, and the release APK unless the build record says the build was
+ * debug-only (`release: false`, a local `bun run android:build:local`).
  * The APKs in artifacts/ must be flag-off (testMocks:false), pass the shared production
  * bundle audit, carry no development hooks and package the authenticated resident runtime
  * and on-device voice.
@@ -64,6 +66,7 @@ interface BuildRecord {
   localEmbeddings?: boolean;
   testMocks?: boolean;
   mapsProvider?: string;
+  release?: boolean;
 }
 type ApkInspection = ReturnType<typeof validateApk>;
 type RuntimeVoiceHost = ReturnType<typeof voiceHostAdmission>;
@@ -92,7 +95,6 @@ type VerificationRow = Omit<ApkInspection, "badging" | "xml" | "names" | "dexCla
   distributable?: boolean;
 };
 const variant: ApkVariant = "launcher";
-const modes = ["debug", "release"] as const;
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 const args = process.argv.slice(2);
 for (const arg of args)
@@ -139,6 +141,11 @@ if(updateChannel.manifestUrlSha256!==sha256(identity.updateManifestUrl))throw Er
 if((buildRecord?.runtimeProfile||"native")!==runtimeProfile||buildRecord?.localEmbeddings!==undefined)throw Error("Build record names a removed runtime profile; rebuild (there is one profile now)");
 if (buildRecord.testMocks !== false)
   throw new Error(`${buildRecordFile} records testMocks=${buildRecord.testMocks}; an APK build is always flag-off`);
+
+if (buildRecord.release !== undefined && typeof buildRecord.release !== "boolean")
+  throw new Error(`${buildRecordFile} records release=${buildRecord.release}; expected a boolean`);
+// A debug-only build (upstream consumer `release: false`) has no release APK to verify.
+const modes: ApkMode[] = buildRecord.release === false ? ["debug"] : ["debug", "release"];
 
 const admittedNativePatches = preparePatchedNative();
 
@@ -393,7 +400,8 @@ fs.writeFileSync(
       updateChannel,
       version: { code: versionCode, name: versionName },
       signing: {
-        release: release.every(row => row.signed) ? { signed: true, signerSha256: release[0].signerSha256 } : { signed: false },
+        // null for a debug-only build, which assembled no release APK.
+        release: release.length === 0 ? null : release.every(row => row.signed) ? { signed: true, signerSha256: release[0].signerSha256 } : { signed: false },
         debugSignerSha256: results.find(row => row.mode === "debug")?.signerSha256 ?? null,
         apksigner: apksignerVersion,
         apiLevel: signerApiLevel ?? null,

@@ -166,7 +166,7 @@ export function signingTargets({ artifacts = "artifacts", apk, out }: {artifacts
   return VARIANTS.map(variant => {
     const input = path.join(artifacts, `${variant}-release-unsigned.apk`), output = path.join(artifacts, `${variant}-release.apk`);
     if (fs.existsSync(output)) throw new Error(`${output} already exists: that release is already signed (Gradle signing or an earlier run)`);
-    if (!fs.existsSync(input)) throw new Error(`${input} is missing; build the release without ELIZAOS_KEYSTORE_* first (bun run android:build:local)`);
+    if (!fs.existsSync(input)) throw new Error(`${input} is missing; build the release without ELIZAOS_KEYSTORE_* first (bun run android:build:local -- --release)`);
     return { input, output, removeInput: true };
   });
 }

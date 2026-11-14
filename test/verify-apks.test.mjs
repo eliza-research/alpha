@@ -257,7 +257,8 @@ if(args[1]==='android:build'){
   assert.equal(calls[1].mocks, false);
   assert.equal(calls[0].mocks, false);
   assert.equal(calls[2].mocks, false);
-  assert.deepEqual(calls[2].args, ['run', 'android:build']);
+  // An archive keeps the release APK: the build is never debug-only here.
+  assert.deepEqual(calls[2].args, ['run', 'android:build', '--release']);
   const configuration = JSON.parse(fs.readFileSync(path.join(archive, 'configuration.json')));
   assert.equal(configuration.runtimeProfile, 'native');
   assert.equal(configuration.testMocks, false);

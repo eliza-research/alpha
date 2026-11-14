@@ -1,7 +1,12 @@
 /**
- * Build and verify the launcher APKs (debug and release).
+ * Build and verify the launcher APKs.
  *
- *   bun run android:build
+ *   bun run android:build              the debug APK and its instrumentation APK
+ *   bun run android:build --release    also the release APK and its R8 mapping
+ *
+ * A local build (`bun run android:build:local`) assembles only the debug APK; CI and
+ * scripts/build-archive.ts pass --release (`bun run android:build:local -- --release`).
+ * A debug-only build cannot be archived and records `release: false` for verify-apks.
  *
  * Inputs are checked first (scripts/android-build-preflight.ts): the pinned
  * checkout and the staged on-device voice outputs. `bun run android:build:local` prepares and
@@ -41,10 +46,15 @@ export const SIGNING_ENV = (() => {
     throw new Error("android/consumer-host.json must name four release-signing environment variables");
   return Object.freeze(names);
 })();
-const USAGE = "Usage: bun run android:build";
+const USAGE = "Usage: bun run android:build [--release]";
 
 export function parseBuildArgs(argv: readonly string[]) {
-  for (const arg of argv) throw new Error(`Unknown option ${arg}. ${USAGE}`);
+  let release = false;
+  for (const arg of argv) {
+    if (arg !== "--release" || release) throw new Error(`Unknown option ${arg}. ${USAGE}`);
+    release = true;
+  }
+  return { release };
 }
 
 /** Child environment for a build: the browser development mock switch never reaches it. */
@@ -146,7 +156,7 @@ export function sbomArgs(outDir: string, root = process.cwd()) {
 const OUTPUT = "artifacts";
 
 async function main() {
-  parseBuildArgs(process.argv.slice(2));
+  const { release } = parseBuildArgs(process.argv.slice(2));
   const channel=publicUpdateChannel(JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl);
   // A partial signing set would silently produce unsigned releases; refuse it up front.
   const partial = partialSigningProblem(process.env);
@@ -165,7 +175,7 @@ async function main() {
     execFileSync(cmd, args, { stdio: "inherit", env, ...extra });
   // The upstream JS default of null for androidTestOutput is inferred too narrowly.
   const buildConsumer = buildAndroidConsumer as unknown as (options: ReturnType<typeof consumerBuildOptions>) => unknown;
-  console.log(`Android build: launcher, test mocks off -> ${OUTPUT}/`);
+  console.log(`Android build: launcher ${release ? "debug and release" : "debug only"}, test mocks off -> ${OUTPUT}/`);
 
   run("bun", ["scripts/verify-upstream.ts"]);
   // The pinned upstream generator writes the Gradle host from android/consumer-host.json.
@@ -176,17 +186,23 @@ async function main() {
   if (flags.testMocks !== false) throw new Error(`web-dist/build-flags.json records testMocks=${flags.testMocks}; the APK packages only a flag-off bundle`);
 
   const root = fs.realpathSync(path.resolve(import.meta.dirname, ".."));
-  buildConsumer(consumerBuildOptions(env, root, channel));
+  buildConsumer(consumerBuildOptions(env, root, channel, { release }));
+  // Only after a successful debug-only build (its record says release:false) are an earlier
+  // build's release APK and mapping removed; a failed build keeps the previous APKs and record.
+  if (!release)
+    for (const name of [`launcher-release.apk`, `launcher-release-unsigned.apk`, `mapping/launcher-release-mapping.txt`])
+      fs.rmSync(path.join(root, OUTPUT, name), { force: true });
   run("bun", ["scripts/generate-sbom.ts", ...sbomArgs(OUTPUT, root)]);
 }
 
 /**
  * What the upstream consumer build receives. Upstream owns the Gradle invocation and artifact
- * collection: the debug and release launcher APKs (a signed release keeps `launcher-release.apk`),
- * the instrumentation APK and the R8 mapping. Alpha supplies the output directory, signing variable
- * names, build record and its own APK verification.
+ * collection: the debug launcher APK and the instrumentation APK, and with `release` the release
+ * APK (a signed release keeps `launcher-release.apk`) and its R8 mapping. Alpha supplies the output
+ * directory, signing variable names, build record and its own APK verification.
  */
-export function consumerBuildOptions(env: NodeJS.ProcessEnv, root: string, updateChannel: UpdateChannel = publicUpdateChannel(JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl)) {
+export function consumerBuildOptions(env: NodeJS.ProcessEnv, root: string, updateChannel: UpdateChannel = publicUpdateChannel(JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl),
+  { release = false }: { release?: boolean } = {}) {
   return {
     root,
     environment: env,
@@ -196,8 +212,10 @@ export function consumerBuildOptions(env: NodeJS.ProcessEnv, root: string, updat
     // The instrumentation APK lives in a subdirectory so artifacts/*.apk stays the app APKs
     // (scripts/android-instrumentation.ts).
     androidTestOutput: "instrumentation",
+    // Upstream's debug-only build (`release: false`) assembles no release APK and cannot be archived.
+    release,
     signing: { environment: [...SIGNING_ENV] },
-    mappings: true,
+    mappings: release,
     // verify-apks compares this record with the APKs it verifies. Upstream writes it only after
     // every APK of this build is in place, so a failed build keeps the previous APKs and record.
     record: {
@@ -206,6 +224,8 @@ export function consumerBuildOptions(env: NodeJS.ProcessEnv, root: string, updat
         createdAt: new Date().toISOString(),
         // Constant fields that verify-apks, build archives and release admission compare.
         testMocks: false,
+        // verify-apks verifies a release APK exactly when this build assembled one.
+        release,
         runtimeProfile: "native",
         updateChannel,
         mapsProvider: "cloud",
