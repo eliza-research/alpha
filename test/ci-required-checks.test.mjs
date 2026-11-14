@@ -75,11 +75,11 @@ test('browser tests, the Quint gate, its node tests and the Lemma proofs run in 
 });
 
 const safetyCommand = 'bun scripts/check-quint.ts verify --steps=6 $' + '{MODELS:+--models=$MODELS}';
-const temporalCommand = 'bun scripts/check-quint.ts temporal --models="$MODELS" "${TLC_OPTIONS[@]}"';
-const selector = (step, command, env, cwd = process.cwd(), output = '"$MODELS"') => {
+const temporalCommand = 'bun scripts/check-quint.ts temporal --models="$MODELS" --tlc-liveness="$LIVENESS"';
+const selector = (step, command, env, cwd = process.cwd(), output = '$MODELS') => {
   assert.equal(step.run.indexOf(command), step.run.lastIndexOf(command));
   assert.ok(step.run.endsWith(command + '\n'));
-  return spawnSync('bash', ['-e', '-c', step.run.slice(0, step.run.indexOf(command)) + '\nprintf "%s" ' + output], {
+  return spawnSync('bash', ['-e', '-c', step.run.slice(0, step.run.indexOf(command)) + '\nprintf "%s" "' + output + '"'], {
     cwd, env: {...process.env, ...env}, encoding: 'utf8', timeout: scaledTimeout(30000),
   });
 };
@@ -129,11 +129,12 @@ test('promotion partitions every safety and temporal phase exactly once without 
   const temporalNames = temporal.strategy.matrix.group.flatMap(group => selectedNames(selector(temporalStep, temporalCommand, {TEMPORAL_GROUP: group})));
   assert.deepEqual([...temporalNames].sort(), temporalModels.map(model => model.module).sort());
   assert.equal(new Set(temporalNames).size, temporalNames.length, 'Every complete temporal property bundle has exactly one owner');
-  for (const group of temporal.strategy.matrix.group) {
-    const result = selector(temporalStep, temporalCommand, {TEMPORAL_GROUP: group}, process.cwd(), '"${TLC_OPTIONS[*]}"');
-    assert.ifError(result.error);assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout, group === 'remaining' ? '' : '--tlc-liveness=final');
-  }
+  const liveness = group => {
+    const result = selector(temporalStep, temporalCommand, {TEMPORAL_GROUP: group}, process.cwd(), '$LIVENESS');
+    assert.equal(result.status, 0, result.stderr);return result.stdout;
+  };
+  assert.deepEqual(temporal.strategy.matrix.group.map(liveness), ['final', 'final', 'default'],
+    'Notes and Photos schedule liveness after complete graph exploration; the remaining group keeps the default');
   assert.deepEqual(temporalNames.flatMap(name => {
     const model = byModule.get(name);return [[name, model.init, model.step, model.temporal]];
   }).sort(), temporalModels.map(model => [model.module, model.init, model.step, model.temporal]).sort());
