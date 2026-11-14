@@ -1,11 +1,15 @@
-name: Native crash six-step resource qualification
+name: Native crash original initialization cover with after scheduling
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   ci6:
-    name: NativeCrashJournal completion factor ci6
+    name: NativeCrashJournal original seed ${{ matrix.seed }} ci6
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [empty, capacity, ages, legacy, unsafe, corrupt, oversize]
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     steps:
@@ -25,7 +29,7 @@ jobs:
         run: |
           sha256sum --check <<'PINS'
           369f35a2746035cf3637ef08c398e7f8fd729fcfec3ec4dc1a18c8265ee192bd  specs/quint/native/NativeCrashJournal.qnt
-          c58d0c205ce5bcabd9358b4411863a1c5e87debec03fa768b4713a1dc9a43ed1  scripts/check-quint.ts
+          b50d33f5e2a56c72cd6a8096c9fd96f2688783662581722e691230fe6bcdcdfd  scripts/check-quint.ts
           5a0f694073d89867c1cd004e62c2f095ad70ffc8fc58992b54e078d1bb6912d9  scripts/ci/native-crash-completion-factor.json
           PINS
       - name: Original full CI6 safety with after scheduling
@@ -33,7 +37,7 @@ jobs:
           set -euo pipefail
           unset JVM_ARGS JVM_GC_ARGS JAVA_TOOL_OPTIONS _JAVA_OPTIONS SMT_ENCODING SMT_SOLVER CONFIG_FILE OUT_DIR RUN_DIR WRITE_INTERMEDIATE
           alpha_crash_watch=$(mktemp -d "$RUNNER_TEMP/alpha-crash-after.XXXXXX")
-          bun scripts/check-quint.ts verify --models=NativeCrashJournal --steps=6 --timeout=5400 --out=test-results/quint/native-crash-completion-factor-ci6.json &
+          bun scripts/check-quint.ts verify --models=NativeCrashJournal --steps=6 --timeout=5400 --native-crash-seed=${{ matrix.seed }} --out=test-results/quint/native-crash-completion-factor-ci6.json &
           alpha_crash_checker_pid=$!
           python3 - "$alpha_crash_watch" "$alpha_crash_checker_pid" <<'PYWATCH' &
           from pathlib import Path
@@ -135,6 +139,6 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: native-crash-completion-factor-ci6-ci6-default
+          name: native-crash-completion-factor-ci6-${{ matrix.seed }}
           path: test-results/quint/
           if-no-files-found: error

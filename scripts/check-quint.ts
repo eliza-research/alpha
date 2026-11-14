@@ -15,7 +15,7 @@ const command = selectedCommand;
 function value(name: string): string | undefined;
 function value(name: string, fallback: string): string;
 function value(name: string, fallback?: string) {return args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;}
-const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout', 'jobs'];
+const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout', 'jobs', 'native-crash-seed'];
 for (const arg of args) if (!allowedOptions.some(name => arg.startsWith(`--${name}=`))) throw Error(`Unknown option ${arg}`);
 const checking = ['verify', 'temporal', 'compare'].includes(command);
 const positiveInteger = (name: string, fallback: number = 1) => {
@@ -43,6 +43,15 @@ if (requested.length) {
 const allModels = loadModels();
 for (const name of requested) if (!allModels.some(model => model.module === name)) throw Error(`Unknown model ${name}`);
 const models = requested.length ? allModels.filter(model => requested.includes(model.module)) : allModels;
+// Qualification only: each job proves one member of the original finite init disjunction.
+const nativeCrashSeed = value('native-crash-seed');
+if (nativeCrashSeed !== undefined) {
+  const seeds = ['empty', 'capacity', 'ages', 'legacy', 'unsafe', 'corrupt', 'oversize'];
+  if (command !== 'verify' || models.length !== 1 || models[0].module !== 'NativeCrashJournal' || !seeds.includes(nativeCrashSeed))
+    throw Error('Native initialization cover only admits one original seed and the complete crash safety model');
+  models[0] = { ...models[0], init: `initWith("${nativeCrashSeed}")` };
+}
+
 const jobs = Math.min(requestedJobs, availableParallelism(), Math.max(1, models.length));
 const modelOrder = new Map(models.map((model, index) => [model.module, index]));
 const backends = new Set(models.map(model => quintProofBackend(model, command, backendOption)));
@@ -85,6 +94,7 @@ type Receipt = {
   samples: number;
   steps: number;
   seed: string;
+  initializations: Record<string, string>;
   backend: string;
   jobs: number;
   timeoutSeconds: number;
@@ -109,7 +119,7 @@ const receipt: Receipt = { schemaVersion: 1, startedAt: new Date().toISOString()
     check: 'typecheck, scenarios and sampled simulation',
     typecheck: 'typechecking', test: 'scenario execution', simulate: 'sampled simulation',
   }[command],
-  inputHashes, samples, steps, seed, modelOptions: Object.fromEntries(models.map(model => [model.module, quintModelOptions(model, command, overrides)])),
+  inputHashes, samples, steps, seed, initializations: Object.fromEntries(models.map(model => [model.module, model.init])), modelOptions: Object.fromEntries(models.map(model => [model.module, quintModelOptions(model, command, overrides)])),
   backend: receiptBackend, jobs, timeoutSeconds, results: [] };
 const receiptPath = resolve(repositoryRoot, value('out', `test-results/quint/${command}.json`));
 mkdirSync(dirname(receiptPath), { recursive: true });
