@@ -126,32 +126,32 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   this.openView('workflows');
   void open(workflowId).then(()=>{if(this!==owner||this.S().view!=='workflows'||detail?.id!==workflowId)return;const run=runs.find(r=>r.id===runId&&r.workflowId===workflowId);if(run)void read(run);else api?.toast('This run isn’t in the workflow’s history yet. Check again shortly.');});
  };
- let tapBusy=false,tapRequested:{request:'event'|'user';current:()=>boolean}|null=null;
+ let tapBusy=false,tapRequested=false;
  // A tap this session cannot open: toasted once per token, and offered to the owner to dismiss so older taps can surface.
  let toastedTap:string|null=null,heldTap:{token:string;question:boolean}|null=null;
  const notificationNative=()=>registerPlugin<WorkflowTapNative>('AlphaNotifications');
- async function checkNotice(request:'poll'|'event'|'user'='poll'){
+ async function checkNotice(request:'poll'|'event'='poll'){
   if(noticeQuestion||!owner?.live)return;
   const shell=owner,selected=connectionController.getWorkflowClient(),session=connectionController.getSnapshot().session,epoch=generation,initialView=shell.S().view;
   const current=()=>owner===shell&&!authoring.active&&!editor&&shell.live&&!document.hidden&&!connectionController.getSnapshot().open&&!alphaClient.getState().context.sensitive&&generation===epoch&&shell.S().view===initialView&&selected?.sessionId===connectionController.getWorkflowClient()?.sessionId;
-  if(tapBusy){if(request!=='poll'&&(request==='user'||tapRequested?.request!=='user'||!tapRequested.current()))tapRequested={request,current};return;}
+  if(tapBusy){if(request==='event')tapRequested=true;return;}
   if(!Capacitor.isNativePlatform()||operation||authoring.active||editor||document.hidden||connectionController.getSnapshot().open||alphaClient.getState().context.sensitive)return;
   tapBusy=true;const signal=new AbortController().signal;
   try{
    const native=notificationNative();
    const bound=selected?.scope&&session?{scope:selected.scope,origin:session.origin,ownerId:session.ownerId,agentId:session.agentId,current,receipt:(id:string,workflowId:string,s:AbortSignal)=>selected.client.receipt(id,workflowId,s),detail:(id:string,s:AbortSignal)=>selected.client.detail(id,s)}:null;
    // The agent is still starting or busy: nothing is consumed and the next connection update checks again.
-   if(!bound){if(request==='user')shell.toast('Your agent isn’t ready yet. Try again shortly.');return;}
+   if(!bound)return;
    let peeked:{token?:string;question?:boolean}={};
    const result=await resolveWorkflowTap({pendingWorkflowTap:async()=>{const tap=await native.pendingWorkflowTap();peeked=tap;return tap;}},bound,signal);
    if(!current())return;
    if(result.kind==='none'){heldTap=null;return;}
    // A failed native probe establishes no retained notification. Resume may precede window focus.
-   if(result.kind==='lookup-unavailable'){if(request==='user')shell.toast('Couldn’t check workflow notifications. Try again.');return;}
+   if(result.kind==='lookup-unavailable')return;
    if(result.kind!=='ready'){
     const token=peeked.token??null;heldTap=token?{token,question:!!peeked.question}:null;publish();
-    // A new tap is news even on a background check; the same tap is not repeated unless the owner asks.
-    if(request==='user'||token!==toastedTap){toastedTap=token;shell.toast(result.kind==='other-account'?'This notice belongs to a different agent connection.':'This run is no longer available. Check Workflows.');}
+    // A new tap is news even on a background check; avoid repeating the same message.
+    if(token!==toastedTap){toastedTap=token;shell.toast(result.kind==='other-account'?'This notice belongs to a different agent connection.':'This run is no longer available. Check Workflows.');}
     return;
    }
    heldTap=null;
@@ -167,8 +167,8 @@ export function installWorkflowAdapter(Component:any,views:Bag){
    await native.consumeWorkflowTap({token:result.token});
    try{await intents.load(signal);}catch{intents.invalidate();}
    if(intentStore===intents)publish();
-  }catch{if(current()&&request!=='poll')shell.toast('Couldn’t open the workflow notification. It’s kept; try again from Workflows.');}
-  finally{tapBusy=false;if(tapRequested){const requested=tapRequested;tapRequested=null;queueMicrotask(()=>void checkNotice(requested.request==='user'&&requested.current()?'user':'event'));}}
+  }catch{if(current()&&request!=='poll')shell.toast('Couldn’t open the workflow notification. Tap the notification to try again.');}
+  finally{tapBusy=false;if(tapRequested){tapRequested=false;queueMicrotask(()=>void checkNotice('event'));}}
  }
  const dismissTap=()=>{
   const held=heldTap;if(!held)return;heldTap=null;publish();
@@ -401,7 +401,6 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  const cards:Bag[]=flows.map(f=>({name:f.name,short:f.description||'Agent workflow',statusLabel:f.removed?'Removed':poster.waiting(waitingSession,f.id)?'Waiting for you':f.active?'Active':'Paused',on:f.active,track:track(f.active),kx:kx(f.active),dim:'',failed:false,open:()=>void open(f.id),toggle:()=>{void open(f.id);current.toast('Open the workflow to review it before pausing.');}}));
  cards.unshift({name:phase==='busy'?'Loading workflows…':binding?status:(agentAvailabilityNotice(connectionController.getSnapshot(),'Agent connection required')||'Workflows'),short:binding?'Tap to refresh from this agent':residentAlwaysPresent||!testMocksEnabled?'Workflows appear when your agent is running':'Connect your remote agent to manage workflows',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>binding?void refresh():connectionController.open(),toggle:()=>binding?void refresh():connectionController.open()});
  for(const id of operation||phase==='scheduled'?[]:pendingLifecycle())if(!flows.some(f=>f.id===id))cards.push({name:'Pending workflow change',short:'Tap to reconcile this exact removal or restore',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>void open(id),toggle:()=>{}});
- if(Capacitor.isNativePlatform())cards.push({name:'Saved workflow notification',short:'Open the exact execution from a notification tap',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>void checkNotice('user'),toggle:()=>{}});
  if(Capacitor.isNativePlatform()&&heldTap)cards.push({name:'Dismiss',short:'Clear the saved notification this connection can’t open',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:dismissTap,toggle:()=>{}});
  const hasDeviceSteps=!!receipt&&runHasDeviceSteps(receipt,detail,phoneReview);
  const phonePending=!!receipt&&!receipt.finished&&(phoneSteps.length>0||(hasDeviceSteps&&receipt.status==='waiting-approval'));
