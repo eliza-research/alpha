@@ -108,7 +108,7 @@ module NativeCrashJournal {
       { ...noReply,owner:actor,outcome:if (rejected or fault!="none") "rejected" else "ok" }
       else {
         val visible=pruned(decoded(nextDisk),state.now)
-        val rows=visible.rows.foldl(List(),(acc,row)=>if (row.stamp=="safe") acc.append({ ...row,extra:false }) else acc)
+        val rows=visible.rows.select(row=>row.stamp=="safe").foldl(List(),(acc,row)=>acc.append({ ...row,stamp:"safe",extra:false }))
         {owner:actor,outcome:"read",fillers:visible.fillers,rows:rows,exitHistory:state.historyMode!="old"}
       }
     { ...base,disk:nextDisk,reply:nextReply }
