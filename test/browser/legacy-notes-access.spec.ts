@@ -11,7 +11,8 @@ test('retained previous notes have a visible route and return to the current col
   await store.replace([{id:'retained-note',kind:'text',title:'Retained note',body:'Previously saved text'}]);
  });
  await openCanonicalNotes(page);
- await page.getByRole('button',{name:'Previous notes',exact:true}).click();
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
+ await page.getByRole('button',{name:'On this phone',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Open Retained note',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Previously saved text');
@@ -33,7 +34,8 @@ test('a fresh collection keeps previous notes absent without initializing legacy
  await openCanonicalNotes(page);
  await expect.poll(()=>page.evaluate(()=>(window as any).previousNotesReads)).toBe(1);
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
- await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
+ await expect(page.getByRole('button',{name:'On this phone',exact:true})).toHaveCount(0);
  expect(await page.evaluate(async()=>(await import('/src/runtime/browser-notes-document.ts')).browserNotesPort.read())).toBeNull();
 });
 
@@ -44,7 +46,8 @@ test('an unreadable previous collection offers recovery without initializing or 
   browserNotesPort.read=async()=>{throw Error('Closed fixture cannot read retained Notes');};
  });
  await openCanonicalNotes(page);
- await page.getByRole('button',{name:'Previous notes',exact:true}).click();
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
+ await page.getByRole('button',{name:'On this phone',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
  await expect(page.getByText('Previous notes need a recovery review. Nothing was moved or changed.',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'New note',exact:true})).toBeDisabled();
@@ -73,6 +76,7 @@ test('a delayed old-owner storage read cannot expose a recovery entry to the nex
  });
  await expect.poll(()=>page.evaluate(()=>(window as any).finishedNotesReads)).toBe(2);
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
- await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Notes options',exact:true}).click();
+ await expect(page.getByRole('button',{name:'On this phone',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Open Current note',exact:true})).toBeVisible();
 });
