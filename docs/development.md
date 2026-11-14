@@ -591,12 +591,21 @@ It also includes the Cloud Maps credit funding change
 [eliza#39594](https://github.com/elizaOS/eliza/pull/39594)), which touch no Alpha input.
 #39562 was squash-merged, but [eliza#39589](https://github.com/elizaOS/eliza/pull/39589)
 merged `442586ce66` into develop history, so the previous pin is an ancestor of this one.
-The current pin `be0654df50621c8e2bde2d40de7c4fe9dcebbb8a` adds Maps credit recovery
+The subsequent pin `be0654df50621c8e2bde2d40de7c4fe9dcebbb8a` added Maps credit recovery
 and settlement fixes ([eliza#39591](https://github.com/elizaOS/eliza/pull/39591)) and
 checkout fixes ([eliza#39602](https://github.com/elizaOS/eliza/pull/39602) and
-[eliza#39603](https://github.com/elizaOS/eliza/pull/39603)). It retains the existing
-core catalog hashes and native build recipe. SDK preparation still runs for the
-new pin, and staging verifies the cached native files against that recipe.
+[eliza#39603](https://github.com/elizaOS/eliza/pull/39603)). That revision retained the existing
+core catalog hashes and native build recipe. The current pin `358ea1210e7039a6761fb2717756d9ff452785f3`
+includes the reviewed voice ownership and renewal, Maps state recovery, managed
+Inbox reads, Calendar source clocks and listener absence fixes
+([eliza#39585](https://github.com/elizaOS/eliza/pull/39585)), the selected OTA
+certificate and progress fixes ([eliza#39600](https://github.com/elizaOS/eliza/pull/39600)),
+and the Cloud payment evidence repairs ([eliza#39612](https://github.com/elizaOS/eliza/pull/39612)
+and [eliza#39614](https://github.com/elizaOS/eliza/pull/39614)). The 13 bound core source
+hashes remain unchanged. The native recipe changes because its complete app scripts
+input tree changed; normal native preparation must produce and admit receipts for
+that recipe. SDK preparation still runs for the new pin. The selected formal source
+inventory records current bytes without carrying a prior verdict onto changed inputs.
 Historical native measurements retain their original source attribution.
 New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
