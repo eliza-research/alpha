@@ -611,10 +611,16 @@ repair ([eliza#39620](https://github.com/elizaOS/eliza/pull/39620)) and the spee
 bootstrap connection reuse fix ([eliza#39619](https://github.com/elizaOS/eliza/pull/39619)).
 The speech bridge and app scripts changed the native recipe again. Rebuild those
 inputs through the normal Android command; the engine and voice model pins are unchanged.
-The current pin `a9bec04c25f6e157a64e266d4b5322a6c62e19ee` consumes the reviewed privileged
+The pin `a9bec04c25f6e157a64e266d4b5322a6c62e19ee` consumes the reviewed privileged
 launcher Soong rule ([eliza#39623](https://github.com/elizaOS/eliza/pull/39623)). Both
 launcher install paths require the bound Soong patch. This SDK update changes
 image staging, while the native APK producer recipe is unchanged.
+The current pin `82ade0626816519e896c6f5d4ba44fcb23a3eb8f` consumes the reviewed
+retirement of temporary checkout diagnostics and the resident assistant's
+ordinal travel return-date fix ([eliza#39622](https://github.com/elizaOS/eliza/pull/39622),
+[eliza#39627](https://github.com/elizaOS/eliza/pull/39627)). Prepare the resident
+runtime and package the launcher at this pin. The native producer recipe and
+browser projection inputs retain the same bytes.
 Historical native measurements retain their original source attribution.
 New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
