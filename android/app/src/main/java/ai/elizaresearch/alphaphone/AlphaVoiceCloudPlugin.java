@@ -198,9 +198,14 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   c.setInstanceFollowRedirects(false);c.setConnectTimeout(20000);c.setReadTimeout(120000);c.setUseCaches(false);c.setRequestMethod("POST");c.setDoOutput(true);c.setRequestProperty("Authorization","Bearer "+token);
   requireCloudSpeechAuthority(call,epoch);if(request.cancelled)throw new IOException();return c;
  }
+ // Capacitor getLong only accepts Long; Android JSON stores small integers as Integer.
+ private static Long recordingWindowNumber(PluginCall call,String key){
+  Object value=call.getData().opt(key);
+  return value instanceof Integer||value instanceof Long?((Number)value).longValue():null;
+ }
  private RecordingWindow savedRecording(PluginCall call,SpeechRequestGate.Request request)throws Exception{
   if(!call.getData().has("savedNoteId"))return null;
-  return RecordingWindow.open(AlphaNoteAudioPlugin.recordings(getContext()),getContext().getCacheDir(),"noteId",call.getString("recordingId"),call.getString("savedNoteId"),call.getLong("offsetMs"),call.getLong("savedDurationMs"),()->request.cancelled||destroyed());
+  return RecordingWindow.open(AlphaNoteAudioPlugin.recordings(getContext()),getContext().getCacheDir(),"noteId",call.getString("recordingId"),call.getString("savedNoteId"),recordingWindowNumber(call,"offsetMs"),recordingWindowNumber(call,"savedDurationMs"),()->request.cancelled||destroyed());
  }
  @PluginMethod public void transcribeRecording(PluginCall call){final long epoch=AlphaLocalAgentPlugin.credentialAuthorityEpoch();submit(call,request->{
   requireCloudSpeechAuthority(call,epoch);
