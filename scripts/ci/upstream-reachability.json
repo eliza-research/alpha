@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "be0654df50621c8e2bde2d40de7c4fe9dcebbb8a",
-  "head": "b6ff92d85cb7990ed8b357f5bf6c29381b5c9804",
+  "baseCommit": "314238e41c0959d185b3a185001d498a46cd3e11",
+  "head": "98518de8c7737cfce9db88c028c5129829e0b9f8",
   "recordedAt": "2026-11-14",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...b6ff92d85cb7990ed8b357f5bf6c29381b5c9804",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...98518de8c7737cfce9db88c028c5129829e0b9f8",
   "status": "diverged",
-  "aheadBy": 97,
-  "behindBy": 1136,
+  "aheadBy": 98,
+  "behindBy": 1240,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -394,6 +394,10 @@
     {
       "sha": "b6ff92d85cb7990ed8b357f5bf6c29381b5c9804",
       "subject": "Frame legacy request bodies on the Android IPC path"
+    },
+    {
+      "sha": "98518de8c7737cfce9db88c028c5129829e0b9f8",
+      "subject": "Reuse the speech bootstrap connection for the WebSocket upgrade"
     }
   ],
   "pullRequests": []
