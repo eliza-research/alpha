@@ -595,8 +595,8 @@ The subsequent pin `be0654df50621c8e2bde2d40de7c4fe9dcebbb8a` added Maps credit 
 and settlement fixes ([eliza#39591](https://github.com/elizaOS/eliza/pull/39591)) and
 checkout fixes ([eliza#39602](https://github.com/elizaOS/eliza/pull/39602) and
 [eliza#39603](https://github.com/elizaOS/eliza/pull/39603)). That revision retained the existing
-core catalog hashes and native build recipe. The current pin `358ea1210e7039a6761fb2717756d9ff452785f3`
-includes the reviewed voice ownership and renewal, Maps state recovery, managed
+core catalog hashes and native build recipe. The next pin `358ea1210e7039a6761fb2717756d9ff452785f3`
+included the reviewed voice ownership and renewal, Maps state recovery, managed
 Inbox reads, Calendar source clocks and listener absence fixes
 ([eliza#39585](https://github.com/elizaOS/eliza/pull/39585)), the selected OTA
 certificate and progress fixes ([eliza#39600](https://github.com/elizaOS/eliza/pull/39600)),
@@ -606,6 +606,11 @@ hashes remain unchanged. The native recipe changes because its complete app scri
 input tree changed; normal native preparation must produce and admit receipts for
 that recipe. SDK preparation still runs for the new pin. The selected formal source
 inventory records current bytes without carrying a prior verdict onto changed inputs.
+The current pin `85e18191eed30319a8c47d02609902e1313ac470` includes the native IPC body framing
+repair ([eliza#39620](https://github.com/elizaOS/eliza/pull/39620)) and the speech
+bootstrap connection reuse fix ([eliza#39619](https://github.com/elizaOS/eliza/pull/39619)).
+The speech bridge and app scripts changed the native recipe again. Rebuild those
+inputs through the normal Android command; the engine and voice model pins are unchanged.
 Historical native measurements retain their original source attribution.
 New builds use the current source recipe and generated
 output receipts; neither a source update nor a successful APK build qualifies
