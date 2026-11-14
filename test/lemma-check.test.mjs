@@ -186,10 +186,12 @@ test('every source owns a generation check, verifier result, and manifest option
   let result = run({DAFNY: backend});
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.receipt.verifiedConditions, 4);
-  assert.deepEqual(commands(result, 'gen-check'), [['--backend=dafny', SOURCE], ['--backend=dafny', other]]);
+  const config = `--config=${path.join(root, 'lemmascript.json')}`;
+  assert.deepEqual(commands(result, 'extract'), [[config, SOURCE], [config, other]]);
+  assert.deepEqual(commands(result, 'gen-check'), [['--backend=dafny', config, SOURCE], ['--backend=dafny', config, other]]);
   assert.deepEqual(commands(result, 'check'), [
-    ['--backend=dafny', '--time-limit=30', SOURCE],
-    ['--backend=dafny', '--extra-flags=--verification-time-limit 20', other],
+    ['--backend=dafny', config, '--time-limit=30', SOURCE],
+    ['--backend=dafny', config, '--extra-flags=--verification-time-limit 20', other],
   ]);
 
   result = run({DAFNY: backend, STUB_EMPTY_PROOF: other});
