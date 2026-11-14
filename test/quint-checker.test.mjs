@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { availableParallelism, tmpdir } from 'node:os';
@@ -107,7 +107,8 @@ test('crash verification retains step six, detects its boundary violation and re
       assert.equal(proof.results.length, 1);assert.equal(proof.steps, steps);assert.deepEqual(proof.finalInputErrors, []);
       assert.equal(phase.timeoutSeconds, extra.length ? 1 : steps === 6 ? 10800 : 1800);
       assert.ok(phase.argv.includes(`--max-steps=${steps}`));assert.ok(phase.argv.includes('--invariant=safety'));
-      assert.ok(phase.argv.includes(`--apalache-config=${join(root, 'scripts/ci/native-crash-completion-factor.json')}`));
+      const configuration = phase.argv.find(arg => arg.startsWith('--apalache-config='));assert.ok(configuration);
+      assert.equal(realpathSync(configuration.slice('--apalache-config='.length)), realpathSync(join(root, 'scripts/ci/native-crash-completion-factor.json')));
       assert.equal(proof.inputHashes['scripts/ci/native-crash-completion-factor.json'], sha256(readFileSync(join(root, 'scripts/ci/native-crash-completion-factor.json'))));
       assert.equal(phase.passed, expected === 'pass');
       if (expected === 'pass') assert.match(phase.output, /The outcome is: NoError/);

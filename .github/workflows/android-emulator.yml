@@ -57,6 +57,12 @@ jobs:
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: bun install --frozen-lockfile
+      - name: Acquire hash-pinned Android Bun with step-only authentication
+        timeout-minutes: 12
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALPHA_LOCAL_AGENT_SOURCE_DIR: ${{ github.workspace }}/vendor/eliza
+        run: python3 scripts/ci/acquire-resident-bun.py
       - name: Build the launcher APKs with their instrumentation APK
         id: build
         timeout-minutes: 180

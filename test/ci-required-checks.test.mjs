@@ -51,6 +51,11 @@ test('consolidated lanes retain required operation budgets and exact APK custody
     assert.equal(step.env.ALPHA_REQUIRE_PREPARED_SDK, '1');
   }
   const emulator = YAML.parse(read('.github/workflows/android-emulator.yml')).jobs.emulator;
+  const emulatorAcquisition = emulator.steps.find(step => step.run === 'python3 scripts/ci/acquire-resident-bun.py');
+  assert.deepEqual(emulatorAcquisition.env, {GH_TOKEN: '$' + '{{ github.token }}',
+    ALPHA_LOCAL_AGENT_SOURCE_DIR: '$' + '{{ github.workspace }}/vendor/eliza'});
+  assert.ok(emulator.steps.indexOf(emulatorAcquisition) < emulator.steps.findIndex(step => step.id === 'build'));
+  assert.notEqual(emulatorAcquisition['continue-on-error'], true);
   assert.equal(emulator['timeout-minutes'], 360);
   assert.equal(emulator.steps.find(step => step.id === 'build')['timeout-minutes'], 180);
   const anchor = emulator.steps.find(step => step.id === 'freeze');
