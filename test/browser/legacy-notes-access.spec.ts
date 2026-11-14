@@ -78,5 +78,6 @@ test('a delayed old-owner storage read cannot expose a recovery entry to the nex
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
  await page.getByRole('button',{name:'Notes options',exact:true}).click();
  await expect(page.getByRole('button',{name:'On this phone',exact:true})).toHaveCount(0);
+ await page.getByRole('dialog',{name:'Notes options',exact:true}).locator('..').locator(':scope > button').click({position:{x:4,y:4}});
  await expect(page.getByRole('button',{name:'Open Current note',exact:true})).toBeVisible();
 });
