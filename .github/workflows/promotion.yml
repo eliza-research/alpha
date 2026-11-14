@@ -1,4 +1,4 @@
-name: Native crash six-step resource qualification
+name: Native crash reply normalization qualification
 on:
   workflow_dispatch:
 permissions:
@@ -24,7 +24,7 @@ jobs:
       - name: Admit exact original source and sealed scheduling configuration
         run: |
           sha256sum --check <<'PINS'
-          369f35a2746035cf3637ef08c398e7f8fd729fcfec3ec4dc1a18c8265ee192bd  specs/quint/native/NativeCrashJournal.qnt
+          44166214dd066a963efe93cbb1557468304b2d2aa5bbb04fb7d98cbf09bf00b5  specs/quint/native/NativeCrashJournal.qnt
           c58d0c205ce5bcabd9358b4411863a1c5e87debec03fa768b4713a1dc9a43ed1  scripts/check-quint.ts
           5a0f694073d89867c1cd004e62c2f095ad70ffc8fc58992b54e078d1bb6912d9  scripts/ci/native-crash-completion-factor.json
           PINS
@@ -108,12 +108,12 @@ jobs:
             'jarSha256':digest(jar) if jar.exists() else None,
             'actualJvm':process,'VCCounts':vc_counts,'completedStateInvariantPairs':sorted(holds),
             'rawServerFiles':raw_files,'passed':receipt.get('passed',False),
-            'scope':'Equivalent completion dataflow and row predicate. Original raw integer domains, action relation, seven safety invariants, default Z3, after scheduling and 4 GiB heap and an explicit 90-minute phase limit.'}
+            'scope':'Equivalent completion, explicit normalized reply stamp and row predicate. Original raw integer domains, action relation, seven safety invariants, default Z3, after scheduling and 4 GiB heap and an explicit 90-minute phase limit.'}
           (out/'native-crash-completion-factor-ci6-custody.json').write_text(json.dumps(custody,indent=2)+'\n')
           assert receipt, 'Missing actual checker receipt'
           assert config=={'debug':True,'checker':{'tuning':{'search.invariant.mode':'after'}}}
           assert receipt['timeoutSeconds']==5400 and not receipt['finalInputErrors']
-          assert custody['modelSha256']=='369f35a2746035cf3637ef08c398e7f8fd729fcfec3ec4dc1a18c8265ee192bd'
+          assert custody['modelSha256']=='44166214dd066a963efe93cbb1557468304b2d2aa5bbb04fb7d98cbf09bf00b5'
           assert custody['jarSha256']=='e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262'
           assert receipt['inputHashes']['scripts/ci/native-crash-completion-factor.json']==custody['configurationSha256']
           assert receipt['inputHashes']['.github/workflows/promotion.yml']==digest(Path('.github/workflows/promotion.yml'))
