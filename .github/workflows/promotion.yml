@@ -1,4 +1,4 @@
-name: Native crash six-step resource qualification
+name: Native crash six-step extended qualification
 on:
   workflow_dispatch:
 permissions:
@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           unset JVM_ARGS JVM_GC_ARGS JAVA_TOOL_OPTIONS _JAVA_OPTIONS SMT_ENCODING SMT_SOLVER CONFIG_FILE OUT_DIR RUN_DIR WRITE_INTERMEDIATE
           alpha_crash_watch=$(mktemp -d "$RUNNER_TEMP/alpha-crash-after.XXXXXX")
-          bun scripts/check-quint.ts verify --models=NativeCrashJournal --steps=6 --timeout=5400 --out=test-results/quint/native-crash-completion-factor-ci6.json &
+          bun scripts/check-quint.ts verify --models=NativeCrashJournal --steps=6 --timeout=10800 --out=test-results/quint/native-crash-completion-factor-ci6.json &
           alpha_crash_checker_pid=$!
           python3 - "$alpha_crash_watch" "$alpha_crash_checker_pid" <<'PYWATCH' &
           from pathlib import Path
@@ -108,11 +108,11 @@ jobs:
             'jarSha256':digest(jar) if jar.exists() else None,
             'actualJvm':process,'VCCounts':vc_counts,'completedStateInvariantPairs':sorted(holds),
             'rawServerFiles':raw_files,'passed':receipt.get('passed',False),
-            'scope':'Equivalent completion dataflow and row predicate. Original raw integer domains, action relation, seven safety invariants, default Z3, after scheduling and 4 GiB heap and an explicit 90-minute phase limit.'}
+            'scope':'Equivalent completion dataflow and row predicate. Original raw integer domains, action relation, seven safety invariants, default Z3, after scheduling and 4 GiB heap and an explicit three-hour phase limit.'}
           (out/'native-crash-completion-factor-ci6-custody.json').write_text(json.dumps(custody,indent=2)+'\n')
           assert receipt, 'Missing actual checker receipt'
           assert config=={'debug':True,'checker':{'tuning':{'search.invariant.mode':'after'}}}
-          assert receipt['timeoutSeconds']==5400 and not receipt['finalInputErrors']
+          assert receipt['timeoutSeconds']==10800 and not receipt['finalInputErrors']
           assert custody['modelSha256']=='369f35a2746035cf3637ef08c398e7f8fd729fcfec3ec4dc1a18c8265ee192bd'
           assert custody['jarSha256']=='e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262'
           assert receipt['inputHashes']['scripts/ci/native-crash-completion-factor.json']==custody['configurationSha256']
