@@ -76,7 +76,10 @@ async function connect(page:Page){
 async function openDigests(page:Page){
  await returnToApps(page);
  await page.getByRole('button',{name:'Workflows',exact:true}).click();
- await page.getByRole('button',{name:/^Scheduled digests\b/}).click();
+ // The management rows can move when the removed-workflows inventory arrives.
+ const entry=page.getByRole('button',{name:'Scheduled digests',exact:true});
+ await expect(entry).toBeEnabled();
+ await entry.click();
  const panel=panelOf(page);await expect(panel).toBeVisible();return panel;
 }
 async function createSchedules(page:Page){

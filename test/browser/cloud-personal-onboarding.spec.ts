@@ -108,8 +108,10 @@ for(const scenario of ['decline','accepted-reload','lost-activation','quote-chan
   if(scenario==='lost-cutover'){await expect(page.getByRole('button',{name:'Continue setup',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Refresh agent status',exact:true}).click();await expect(page.getByRole('button',{name:'Continue setup',exact:true})).toHaveCount(0);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('fixture.cloud.setup')!))).toMatchObject({activation:1,cutover:1,ready:false});return;}
   await expect(page.getByRole('button',{name:'Connect this agent',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('fixture.cloud.setup')!))).toMatchObject({activation:scenario==='stopped-resume'?2:1,cutover:1,ready:true});
-  await page.getByRole('button',{name:'Connect this agent',exact:true}).click();await expect(page.getByRole('dialog',{name:'Your agent. Your phone.'})).toHaveCount(0);
-  const selection=await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha.connection.selection.v1')!));expect(selection).toMatchObject({kind:'cloud',agentId:'33333333-3333-4333-8333-333333333333',ownerId:'11111111-1111-4111-8111-111111111111'});
+  await page.getByRole('button',{name:'Connect this agent',exact:true}).click();
+  // During verification the chooser can change its accessible name before the owner is saved.
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('alpha.connection.selection.v1')!))).toMatchObject({kind:'cloud',agentId:'33333333-3333-4333-8333-333333333333',ownerId:'11111111-1111-4111-8111-111111111111'});
+  await expect(page.getByRole('dialog',{name:'Your agent. Your phone.'})).toHaveCount(0);
  });
 }
 

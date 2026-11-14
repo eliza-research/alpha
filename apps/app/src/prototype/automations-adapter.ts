@@ -210,11 +210,11 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   const empty=state==='ready'&&!cards.length&&!issues.length;
   const managementCards:Bag[]=[...(workflow.managementCards||[])];
   managementCards.push({
-   name:'Scheduled digests',short:'',open:()=>window.dispatchEvent(new Event('alpha:hosted-digests')),
+   id:'scheduled-digests',name:'Scheduled digests',short:'',open:()=>window.dispatchEvent(new Event('alpha:hosted-digests')),
   });
 
   if(intentStore&&!Capacitor.isNativePlatform())managementCards.push({
-   name:'Recovery',short:'Back up or reset',open:recoverRequests,
+   id:'automation-recovery',name:'Recovery',short:'Back up or reset',open:recoverRequests,
   });
   // A tap during a refresh is dropped; the row says so instead of looking live.
   for(const card of managementCards){
