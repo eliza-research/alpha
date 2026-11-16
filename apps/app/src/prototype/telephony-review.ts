@@ -1,8 +1,9 @@
 /**
  * The on-phone confirmation of an agent-proposed call, text or contact change (telephony-executor.ts).
  * It shows exactly what will happen: the contact's name and the number that will be called or
- * texted, or a contact's fields before and after. One tap on a row chooses it; dismissing, leaving
- * the app or a cancelled request chooses nothing. Rows exist only while the sheet is open.
+ * texted, or a contact's fields before and after. One tap on a row chooses it; "Not now", leaving
+ * the app or a cancelled request chooses nothing. The rows render inside the chat card whose
+ * approval is running (AP-16 D8: the proposal card is the one approval surface, never a modal).
  */
 import type {ContactDraft, ContactRecord, TelephonyReview} from '../runtime/telephony-executor';
 import {displayNumber, initials} from './telephony-presenters';
@@ -11,7 +12,7 @@ type Pending = {review: TelephonyReview; settle: (choice: number | null) => void
 let pending: Pending | null = null, repaint: () => void = () => {};
 const ICON = {
   call: 'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z',
-  message: 'M12 19V5M6 11l6-6 6 6', save: 'M5 12l5 5 9-10', delete: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+  message: 'M12 19V5M6 11l6-6 6 6', dismiss: 'M6 6l12 12M18 6L6 18', save: 'M5 12l5 5 9-10', delete: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
 };
 /** Shows the review and resolves with the chosen option's index, or null when nothing was chosen. */
 export function askTelephonyReview(review: TelephonyReview, signal: AbortSignal): Promise<number | null> {
@@ -51,10 +52,37 @@ export function presentTelephonyReview(entry: Pending | null) {
   });
   return {open: true, rows, body: review.kind === 'message' ? review.body : '', hasBody: review.kind === 'message', dismiss: () => settle(null)};
 }
-/** Adds `telephonyReview` to the shell's template values and closes an open sheet when the app is hidden. */
+type Review = ReturnType<typeof presentTelephonyReview>;
+type Row = {id?: unknown; c?: {proposalId?: unknown} & Record<string, unknown>; cProposal?: boolean; cDigest?: boolean; [key: string]: unknown};
+/**
+ * Puts an open review into the chat card being approved (`approving` is its proposal id), or, when
+ * that card is not in the transcript window, into the newest card that carries a proposal. A
+ * proposal card shows the rows instead of its button; an action digest shows them as its rows.
+ * Null when no card can show it: the caller then dismisses the review, so nothing is chosen unseen.
+ */
+export function placeTelephonyReview(msgs: Row[], review: Review, approving: unknown): Row[] | null {
+  if (!review.open) return msgs;
+  const carries = (m: Row) => !!m.c && typeof m.c.proposalId === 'string' && !!(m.cProposal || m.cDigest);
+  let at = msgs.findIndex(m => carries(m) && m.c!.proposalId === approving);
+  if (at < 0) at = msgs.map(carries).lastIndexOf(true);
+  if (at < 0) return null;
+  return msgs.map((m, index) => {
+    if (index !== at) return m;
+    if (m.cProposal) return {...m, c: {...m.c, reviewing: review}, proposalAsk: false};
+    return {...m, rows: [...review.rows.map(row => ({ini: row.ini, who: row.name, text: row.lines.map(line => line.text).join(' · '), icon: row.icon, open: row.choose, label: row.label})),
+      {ini: '', who: 'Not now', text: 'Nothing is called, sent or changed.', icon: ICON.dismiss, open: review.dismiss}]};
+  });
+}
+/** Adds `telephonyReview` to the shell's template values, shows it in its chat card, and dismisses it when the app is hidden. */
 export function installTelephonyReview(Component: any) {
   const p = Component.prototype, render = p.renderVals, mount = p.componentDidMount, unmount = p.componentWillUnmount;
-  p.renderVals = function () { return {...render.call(this), telephonyReview: presentTelephonyReview(pending)}; };
+  p.renderVals = function () {
+    const out = render.call(this), telephonyReview = presentTelephonyReview(pending);
+    if (!telephonyReview.open) return {...out, telephonyReview};
+    const msgs = placeTelephonyReview(out.msgs || [], telephonyReview, this.pendingActionApprovalProposalId);
+    if (!msgs) { const entry = pending; queueMicrotask(() => { if (pending === entry) entry?.settle(null); }); return {...out, telephonyReview: presentTelephonyReview(null)}; }
+    return {...out, msgs, telephonyReview};
+  };
   p.componentDidMount = function () {
     mount?.call(this);
     repaint = () => this.setState({telephonyReviewRevision: Date.now()});

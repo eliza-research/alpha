@@ -87,7 +87,8 @@ test.describe('touch',()=>{
 
 test('Shrink chat returns to the height the person left, and Minimize collapses',async({page})=>{
  await sheet(page);
- await slow(page,120);
+ // The open sheet fits its chat (AC-04): an empty chat opens at 38% of the screen, so it is raised.
+ await slow(page,-90);
  const rested=await height(page);
  // Toolbar taps are ignored for 350ms after a drag, as a compatibility click may follow one.
  await page.waitForTimeout(400);

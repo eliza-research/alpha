@@ -4,7 +4,7 @@ module ResidentStartCancel {
   // acknowledged, "confirmed" an acknowledged one. native is the resident service process.
   type State = {
     epoch: int, accepting: bool, stopping: bool, mutationEpoch: int, retryEpoch: int, shutdown: str,
-    startRequest: int, startRequestEpoch: int, startOwnsLaunch: bool,
+    startRequest: int, startRequestEpoch: int, startOwnsLaunch: bool, heldStart: int,
     cancelledStarts: Set[int], attachedStarts: Set[int],
     native: str, launchedBy: int, launches: int, commits: int, outcome: str,
     foreignStop: bool, launchDuringShutdown: bool, commitWhileRunning: bool, cancelledStartLaunched: bool
@@ -13,7 +13,7 @@ module ResidentStartCancel {
   action check(condition: bool): bool = all {assert(condition), s' = s}
   action init = s' = {
     epoch: 0, accepting: true, stopping: false, mutationEpoch: -1, retryEpoch: -1, shutdown: "none",
-    startRequest: 0, startRequestEpoch: 0, startOwnsLaunch: false,
+    startRequest: 0, startRequestEpoch: 0, startOwnsLaunch: false, heldStart: 0,
     cancelledStarts: Set(), attachedStarts: Set(),
     native: "stopped", launchedBy: 0, launches: 0, commits: 0, outcome: "none",
     foreignStop: false, launchDuringShutdown: false, commitWhileRunning: false, cancelledStartLaunched: false
@@ -44,6 +44,15 @@ module ResidentStartCancel {
     else if (attachable and s.native == "running" and s.accepting and not(s.stopping) and s.shutdown == "none")
       s' = {attachedStarts: s.attachedStarts.union(Set(request)), outcome: "attached", ...s}
     else s' = launched(s, request)
+  }
+  // Directed boundary for a start that has read its epoch but has not consumed the service snapshot.
+  action holdStartProbe(request: int): bool = all {
+    request.in(Set(1, 2)), s.heldStart == 0, not(retryRequired(s)), s.mutationEpoch < 0,
+    s' = s.with("heldStart", request)
+  }
+  action resumeStartProbe = all {
+    s.heldStart != 0, s.mutationEpoch == s.epoch,
+    s' = { ...s, heldStart: 0, outcome: "provider-changing" }
   }
   // Only the request that owns the current launch retires it. An attached start retires nothing;
   // an unknown request is remembered so its start is refused when it arrives.
@@ -131,7 +140,7 @@ module ResidentStartCancel {
     any {start(request, flag), cancelStart(request), stop, statusPolled, nativeStopped,
       acknowledgeShutdown, retryShutdown(request, flag), finishRetry(flag), rearm, s' = s}
   }
-  val TypeOK = s.epoch.in(0.to(6)) and s.launches.in(0.to(3)) and
+  val TypeOK = s.epoch.in(0.to(6)) and s.launches.in(0.to(3)) and s.heldStart.in(0.to(2)) and
     s.native.in(Set("stopped", "running", "stopping")) and s.shutdown.in(Set("none", "unconfirmed", "confirmed"))
   val CancelRetiresOnlyItsOwnLaunch = not(s.foreignStop)
   val NoLaunchDuringCredentialShutdown = not(s.launchDuringShutdown)
@@ -191,6 +200,14 @@ module ResidentStartCancel {
     .then(finishMutation(true)).then(retryShutdown(2, true)).then(nativeStopped).then(cancelStart(2))
     .then(finishRetry(true))
     .then(check(safety and s.native == "stopped" and s.outcome == "retry-unconfirmed" and s.launches == 1))
+  run staleStartProbeCannotOvertakeMutationTest = init.then(start(1, false)).then(holdStartProbe(2))
+    .then(beginMutation).then(resumeStartProbe)
+    .then(check(safety and s.outcome == "provider-changing" and s.launches == 1 and s.commits == 0))
+    .then(nativeStopped).then(acknowledgeShutdown).then(finishMutation(false))
+    .then(check(safety and s.launches == 1 and s.commits == 1 and s.outcome == "committed"))
+  run stoppedResidentNeedsExactMutationAcknowledgementTest = init.then(start(1, false)).then(beginMutation)
+    .then(nativeStopped).then(finishMutation(true))
+    .then(check(safety and s.native == "stopped" and s.shutdown == "unconfirmed" and s.commits == 0))
   run rearmWaitsForExplicitStartAfterStopTest = init.then(rearm).then(stop).then(nativeStopped)
     .then(check(safety and not(rearmAdmitted(s)))).then(statusPolled)
     .then(check(safety and not(rearmAdmitted(s)))).then(start(1, false))

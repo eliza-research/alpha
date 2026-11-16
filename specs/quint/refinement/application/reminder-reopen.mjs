@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {actionCounts, modelTraces, sameState} from './calendar-itf.mjs';
+import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {buildReminderAdapter, reminderAdapterFixture} from './reminder-adapter-fixture.mjs';
 
 const model = {path: 'specs/quint/application/ReminderReopen.qnt', module: 'ReminderReopen',
@@ -190,4 +191,61 @@ export async function checkReminderReopen(mutate) {
   let steps = 0;
   for (const trace of traces) steps += await replay(compiled, trace);
   return {traces: traces.length, steps, actions: actionCounts(traces), sources: compiled.sources};
+}
+
+/** Replays the missing wall time separately from the ordinary valid-time schedules. */
+export async function checkReminderReopenDstGap(extraSources = [], mutate) {
+  const compiled = await buildReminderAdapter(mutate);
+  const sources = [...compiled.sources, 'specs/quint/refinement/application/reminder-adapter-fixture.mjs',
+    'specs/quint/refinement/application/reminder-reopen.mjs', ...extraSources];
+  const driverHashes = captureInputs(sources);
+  const priorZone = process.env.TZ;
+  const f = reminderAdapterFixture(compiled);
+  let shell;
+  process.env.TZ = 'America/New_York';
+  try {
+    // Saturday afternoon. The reminder's original 02:30 is valid on Saturday
+    // but tomorrow's clocks advance directly from 01:59 to 03:00.
+    f.state.now = Date.parse('2027-03-13T17:00:00Z');
+    const dueAt = Date.parse('2027-03-13T07:30:00Z');
+    assert.equal(new Date(dueAt).getHours(), 2);
+    assert.equal(new Date(dueAt).getMinutes(), 30);
+    assert.equal(new Date(2027, 2, 14, 2, 30).getHours(), 3);
+    const target = {sourceId: 'closed-store', sourceRevision: 'a'.repeat(64), reminderId: 'd1',
+      occurrenceId: 'occurrence-1', revision: 'b'.repeat(64), timingVersion: 2};
+    Object.assign(f.handlers, {
+      listReminders: () => ({reminders: [{id: 'd1', title: 'Dated', body: '', at: dueAt, dueAt,
+        alertMinutes: 0, mode: 'inexact', status: 'completed', occurrenceId: target.occurrenceId, target}]}),
+      surfaceInfo: () => ({reminderTodoVersion: 1, reminderTapVersion: 1, reminderTimingVersion: 2}),
+      pendingReminderTap: () => ({}),
+    });
+    let reviews = 0;
+    Object.defineProperty(f.state, 'confirm', {get() { reviews++; return false; }});
+    shell = new f.Shell();
+    shell.componentDidMount();
+    await f.idle();
+    f.calendar.open = open;
+    const observe = () => ({
+      's.selected': f.calendar.open === open, 's.completed': f.calendar.events.find(item => item.id === open)?.reminderStatus === 'completed',
+      's.saving': !!shell.reminderSaving, 's.operates': f.count('operateReminder'),
+      's.journal': Object.keys(f.journal(actions)).length === 0 ? 'none' : 'tomorrow',
+      's.outcome': f.toasts.at(-1) === 'Time skipped (DST)' ? 'dst-gap' : 'none',
+    });
+    const detail = f.render().ev;
+    assert.equal(detail.reminderReopenable, true);
+    const before = observe(), calls = f.calls.length;
+    await detail.reminderReopenTomorrow();
+    await f.idle();
+    assert.equal(reviews, 0, 'A missing civil time never reaches confirmation');
+    assert.equal(f.calls.length, calls, 'A missing civil time never reads the journal or calls native');
+    return await checkTraces({model: model.module, id: 'ReminderReopenDstGap', sources, driverHashes, scope: 'bounded-component',
+      traces: [{name: 'missing local reminder time tomorrow', expect: before, steps: [
+        {label: 'Reopen tomorrow refuses before review or admission', action: {name: 'refuseTomorrowInGap'}, expect: observe()},
+      ]}], assumptions: ['The actual reminder adapter and pinned schedule helper execute under an injected clock in New York.',
+        'Reminder rows, native calls and durable storage use closed fixture ports. The device calendar and other time zones are outside this replay.']});
+  } finally {
+    shell?.componentWillUnmount();
+    if (priorZone === undefined) delete process.env.TZ;
+    else process.env.TZ = priorZone;
+  }
 }

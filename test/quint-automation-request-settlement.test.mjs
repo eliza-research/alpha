@@ -21,12 +21,13 @@ const own = fileURLToPath(import.meta.url);
 test("partial source contract: actual automation journal settlement matches complete and partial source schedules", {timeout: scaledTimeout(180000)}, async () => {
   const {receipt} = await checkAutomationRequestSettlement([own]);
   assert.equal(receipt.passed, true);assert.equal(receipt.inputsUnchanged, true);assert.equal(receipt.driverInputsBound, true);
-  assert.equal(receipt.traces, 6);assert.equal(receipt.checkpoints, 35);
-  for (const name of ['change', 'serverTake', 'unknownReply', 'okReply', 'refresh', 'allowAnother', 'switchConnection'])
+  assert.equal(receipt.traces, 7);assert.equal(receipt.checkpoints, 45);
+  for (const name of ['change', 'serverTake', 'unknownReply', 'okReply', 'refusedReply', 'refresh', 'allowAnother', 'switchConnection'])
     assert.ok(receipt.actions[name] > 0, name);
 });
 
 for (const [name, rewrite, expected] of [
+  ['a definite 404 refusal is wrongly treated as unknown', source => source.replace('403,404,405', '403,405'), /Definite refusal must release the journal before readback/],
   ['a partial source is wrongly allowed to settle a deletion', source => source.replace("&&complete('automations')", ''), /Partial source must retain unknown deletion/],
   ['a list is wrongly allowed to prove an earlier run', source => source.replace('  return false;\n });', "  return intent.method==='POST';\n });"), /Complete list cannot prove prior run/],
 ]) test('settlement oracle rejects actual-source mutation: ' + name, {timeout: scaledTimeout(180000)}, async () => {

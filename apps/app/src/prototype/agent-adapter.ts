@@ -27,6 +27,9 @@ import {executeTelephonyAction,type TelephonyPorts} from '../runtime/telephony-e
 import {normalizePhoneNumber,reviewSms} from '../runtime/aosp-telephony';
 import {parseContactDetail,parseContactRemove,parseContactSave} from '../../../../.eliza/client-features/packages/contracts/src/native-address-book.ts';
 import {askTelephonyReview} from './telephony-review';
+import {displayNumber} from './telephony-presenters';
+import {proposalCanAct,type CommsProposal,type CommsProposeResult} from '../runtime/comms-bar';
+import {activeCommsSpec} from './comms-alpha';
 import {openSmsThread,openSmsThreadSelection,placeAskedSmsDraft} from './sms-adapter';
 import {deleteOpenVoicemail,openVoicemailRead,openVoicemailSelection} from './phone-adapter';
 import {receiptLabel} from '../runtime/image-sms';
@@ -265,11 +268,6 @@ export async function declineProposal(id:string):Promise<{ok:boolean;message:str
   if(after.error)return {ok:false,message:after.error};
   return {ok:true,message:'Declined. No phone action was performed.'};
 }
-/**
- * The composer is measured again only when its text or width changed since it was last sized, or
- * when a render put back a height other than the one sizing set.
- */
-export function composerNeedsSizing(sized:{value:string;width:number;height:string}|undefined,value:string,width:number,height:string){return !sized||sized.value!==value||sized.width!==width||sized.height!==height;}
 export function installAgentAdapter(Component: Shell, views: Shell) {
   const p = Component.prototype;
   let activeShell:Shell|null=null,notesRecovery:AbortController|null=null;
@@ -295,17 +293,6 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   // Navigation resets transient view state, but must retain the actual storage receipt.
   views.notes.persist = [...new Set([...(views.notes.persist || []), 'storageStatus'])];
 
-  // Sizing writes a height and reads scrollHeight, which lays the page out twice. Every update of
-  // the shell runs this (each streamed reply chunk included), so an unchanged composer is skipped.
-  const sizedComposers=new WeakMap<HTMLTextAreaElement,{value:string;width:number;height:string}>();
-  function sizeComposer(){
-    for(const input of document.querySelectorAll<HTMLTextAreaElement>('textarea[data-alpha-composer]')){
-      const value=input.value,width=input.clientWidth;
-      if(!composerNeedsSizing(sizedComposers.get(input),value,width,input.style.height))continue;
-      input.style.height='44px';input.style.height=`${Math.max(44,input.scrollHeight)}px`;
-      sizedComposers.set(input,{value,width,height:input.style.height});
-    }
-  }
   const notesDataset=(name:'notesStorageState'|'notesDraftState',value:string)=>{document.documentElement.dataset[name]=value;};
   /** Status for a Notes save that did not complete. `kept` reports a confirmed encrypted draft. */
   function failedNotesStatus(shell:Shell,kept:boolean){
@@ -407,6 +394,46 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const home=proposal.reviewDestination==='home',notes=proposal.reviewDestination==='notes',calendar=proposal.reviewDestination==='calendar';
     return {type:'generic',icon:'check',title:home?'Review Notes on Home':notes?'Review note':calendar?'Choose event in Calendar':proposal.title,sub:home?'Open Home to choose and review a note. Nothing is shared yet.':notes?'Open the matching note to review this request. Nothing changes until you approve it.':calendar?'Choose the matching event, then review what to share. Nothing changes yet.':proposal.description,proposalId:proposal.id,privateNotesRead:proposal.privateNotesRead,reviewDestination:proposal.reviewDestination,reviewNoteTarget:proposal.reviewNoteTarget,expiresAt:proposal.expiresAt};
   }
+  /**
+   * AP-16 D8/AC-26: on a Phone, Messages or Contacts screen a pending action is one proposal card
+   * with one button (comms-bar.ts CommsProposal). The card keeps the proposal's review fields, so
+   * approval, decline, expiry and recovery below are unchanged; `state` is what the card shows.
+   * A call to a number names the formatted number: that card is the approval before the dial.
+   */
+  function commsProposal(proposal:import('../runtime/alpha-client').ActionProposal):CommsProposal&Record<string,unknown>{
+    const {type:_type,title:_title,...review}=proposalCard(proposal);
+    const lines=proposal.description.split('\n'),first=lines[0]||'',call=proposal.title==='Place call';
+    const number=call&&first.startsWith('Number: ')?first.slice(8).trim():null,contact=call&&first.startsWith('Contact: ')?first.slice(9).trim():null;
+    const detail=number!==null?displayNumber(number):contact!==null?contact:proposal.description;
+    return {...review,id:proposal.id,kind:call?'call':'other',title:call?`Call ${number!==null?displayNumber(number):contact||'contact'}`:proposal.title,detail,sub:detail,button:call?'Call':'Approve',acts:true,act:{mod:'alpha',fn:'execute'},args:{proposalId:proposal.id}};
+  }
+  /** A card update that also moves a proposal card's shown detail and state. */
+  function cardWith(card:Shell,patch:Shell){
+    const next={...card,...patch};
+    if(card?.type!=='proposal')return next;
+    if(typeof patch.sub==='string')next.detail=patch.sub;
+    if(patch.done)next.state='done';
+    return next;
+  }
+  /** One pending action in the chat: a proposal card on a comms screen, otherwise the action review card. */
+  function sayProposal(shell:Shell,proposal:import('../runtime/alpha-client').ActionProposal,belongs?:()=>boolean){
+    if(!activeCommsSpec(shell,views)){shell.agentSay(proposal.description,proposalCard(proposal),undefined,belongs);return;}
+    if(belongs&&!belongs())return;
+    // Recovery and a chat reply can publish the same pending action; one card keeps it.
+    if((shell.S().msgs||[]).some((message:Shell)=>message.card?.proposalId===proposal.id))return;
+    const result:CommsProposeResult=shell.propose(commsProposal(proposal),proposal.description);
+    // AC-26: a replaced proposal is declined, so it can never be approved later.
+    for(const replaced of result.replaced){const id=replaced.args?.proposalId;if(typeof id==='string'&&id)void declineProposal(id);}
+  }
+  /**
+   * AC-26: alphaClient drops its pending proposals when the screen's subject changes. Open proposal
+   * cards for them are then replaced and never act. Visibility and lock changes do not replace them:
+   * the existing recovery offers them again when the same screen returns.
+   */
+  function retireProposalCards(shell:Shell){
+    if(!(shell.S().msgs||[]).some((message:Shell)=>message.card?.type==='proposal'&&message.card.state==='open'&&message.card.args?.proposalId))return;
+    shell.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>message.card?.type==='proposal'&&message.card.state==='open'&&message.card.args?.proposalId?{...message,card:{...message.card,state:'replaced'}}:message)}));
+  }
   p.cancelReadReplyCompletions=function(onlyProposalId?:string){
     for(const [proposalId,lease] of this.readReplyLeases||[]){
       if(onlyProposalId!==undefined&&proposalId!==onlyProposalId)continue;
@@ -458,7 +485,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         if(!bound())return;
         shell.setState((previous:Shell)=>{
           if(!bound())return null;
-          return {msgs:previous.msgs.map((message:Shell)=>message.card?.proposalId&&!message.card.done&&!message.card.reviewUnavailable&&message.card.expiresAt<=Date.now()?{...message,card:{...message.card,reviewUnavailable:true,title:'Review expired',sub:'This review has expired. Request a new action if still needed.'}}:message)};
+          return {msgs:previous.msgs.map((message:Shell)=>message.card?.proposalId&&!message.card.done&&!message.card.reviewUnavailable&&message.card.expiresAt<=Date.now()?{...message,card:cardWith(message.card,{reviewUnavailable:true,title:'Review expired',sub:'This review has expired. Request a new action if still needed.'})}:message)};
         },()=>{
           if(!bound())return;
           // A failed read cannot erase known expiries or start retry polling.
@@ -475,19 +502,20 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const pending=new Map(proposals.map(proposal=>[proposal.id,proposal]));
         const msgs=previous.msgs.map((message:Shell)=>{
           const card=message.card;
-          if(!card?.proposalId||card.done)return message;
+          if(!card?.proposalId||card.done||card.type==='proposal'&&card.state!=='open')return message;
           const proposal=pending.get(card.proposalId);
           if(proposal){
             if(card.recovered&&!card.reviewUnavailable&&card.expiresAt===proposal.expiresAt&&card.privateNotesRead===proposal.privateNotesRead&&card.reviewDestination===proposal.reviewDestination&&JSON.stringify(card.reviewNoteTarget)===JSON.stringify(proposal.reviewNoteTarget)&&JSON.stringify(card.proposalSession)===JSON.stringify(connection.session))return message;
-            return {...message,card:{...card,...proposalCard(proposal),recovered:true,proposalSession:connection.session,reviewUnavailable:false}};
+            return {...message,card:{...card,...(card.type==='proposal'?commsProposal(proposal):proposalCard(proposal)),recovered:true,proposalSession:connection.session,reviewUnavailable:false}};
           }
           // Absence can also mean different source preconditions. It proves no
           // rejection or execution; preserve the history and disable only review.
           if(card.reviewUnavailable)return message;
-          return {...message,card:{...card,reviewUnavailable:true,title:'Review unavailable',sub:'This request is no longer available to review. Check action history before trying again.'}};
+          return {...message,card:cardWith(card,{reviewUnavailable:true,title:'Review unavailable',sub:'This request is no longer available to review. Check action history before trying again.'})};
         });
         const existing=new Set(msgs.map((message:Shell)=>message.card?.proposalId));
-        const recovered=proposals.filter(proposal=>!existing.has(proposal.id)).map(proposal=>({id:crypto.randomUUID(),from:'agent',text:proposal.description,card:{...proposalCard(proposal),recovered:true,proposalSession:connection.session}}));
+        const comms=!!activeCommsSpec(shell,views);
+        const recovered=proposals.filter(proposal=>!existing.has(proposal.id)).map(proposal=>({id:crypto.randomUUID(),from:'agent',text:proposal.description,card:{...(comms?{...commsProposal(proposal),type:'proposal',state:'open'}:proposalCard(proposal)),recovered:true,proposalSession:connection.session}}));
         return recovered.length||msgs.some((message:Shell,index:number)=>message!==previous.msgs[index])?{msgs:[...msgs,...recovered]}:null;
       },()=>{if(current())scheduleExpiry();});
     }).catch(()=>{
@@ -705,6 +733,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       sensitive: view === 'wallet' || (view === 'settings' && passwordSurfaceOpen(shell.vget('settings'))) || s.secure === true || s.screen === 'lock' || s.screen === 'off' || document.hidden || shell.pageSuspended === true || connectionController.getSnapshot().open,
       ...(view==='notes'&&shell.notesSelection ? { selectedObject: shell.notesSelection } : previousNotesScope ? { selectedObject:previousNotesScope } : providerSelection ? { selectedObject: providerSelection } : ['files','photos'].includes(view) && shell.vget(view).open === '__native_selected_document' && shell.selectedContext ? { selectedObject: shell.selectedContext } : {}),
     },telephonySelection);
+    const published=alphaClient.getState().context;
+    if(!published.sensitive){const key=JSON.stringify([published.view,published.selectedObject??null,telephonySelection]);if(shell.proposalContextKey!==undefined&&shell.proposalContextKey!==key)retireProposalCards(shell);shell.proposalContextKey=key;}
     if(alphaClient.getState().context.sensitive||[...(shell.readReplyLeases?.values()||[])].some((lease:any)=>lease.phase!=='cancelled'&&lease.phase!=='done'&&!connectionController.readReplyCurrent(lease.binding)))shell.cancelReadReplyCompletions?.();
     updateBackAvailability(shell);
     recoverPendingActions(shell);
@@ -951,8 +981,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
             finally{sendSignal.removeEventListener('abort',cancel);}
           },
           openThread:openSmsThread,openVoicemail:openVoicemailRead,deleteOpenVoicemail,
-          // A placed draft is the answer: the conversation comes back in front so the owner sees it in the field.
-          draftInOpenThread:(body,number)=>{const placed=placeAskedSmsDraft(body,number);if(placed==='drafted'&&this.S().chat!=='hidden')this.setState({chat:'hidden'});return placed;},
+          // AC-14: the draft lands in the thread's slot and the chat stays open over it; nothing is sent.
+          draftInOpenThread:(body,number)=>placeAskedSmsDraft(body,number),
         };
         return executeTelephonyAction(operation,operationId,ports,signal);
       }
@@ -1261,7 +1291,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if (this.notesSourceMode === 'legacy' && store) await store.assertCurrent();
     if (!exact()) throw Error('Notes changed');
   };
-  p.componentDidUpdate = function (prev: Shell) { originalUpdate.call(this, prev); const notesView=this.S().view==='notes';if(notesView&&!this.wasCanonicalNotesView&&this.notesSourceMode==='canonical')void this.canonicalNotesUi?.refresh().catch(()=>{});this.wasCanonicalNotesView=notesView; context(this); void connectionController.observeCommittedView(); sizeComposer();this.composerDraft?.edit(String(this.S().draft||''));const shade=!!this.S().shade;if(shade&&!this.shadeWasOpen)this.refreshTileFacts();this.shadeWasOpen=shade;const chatOpen=this.S().chat==='sheet'||this.S().chat==='full',drafting=!!String(this.S().draft||'').trim();if((chatOpen&&!this.chatWasOpen)||(drafting&&!this.wasDrafting))connectionController.warmInference();this.chatWasOpen=chatOpen;this.wasDrafting=drafting;const selected=this.messageReplyTarget||this.messageEditTarget;if(selected&&(JSON.stringify(selected.session)!==JSON.stringify(connectionController.getSnapshot().session)||!this.S().msgs.some((m:Shell)=>m.id===selected.messageId&&m.text===selected.text))){cancelMessageContext(this);this.setState({});} };
+  p.componentDidUpdate = function (prev: Shell) { originalUpdate.call(this, prev); const notesView=this.S().view==='notes';if(notesView&&!this.wasCanonicalNotesView&&this.notesSourceMode==='canonical')void this.canonicalNotesUi?.refresh().catch(()=>{});this.wasCanonicalNotesView=notesView; context(this); void connectionController.observeCommittedView();this.composerDraft?.edit(String(this.S().draft||''));const shade=!!this.S().shade;if(shade&&!this.shadeWasOpen)this.refreshTileFacts();this.shadeWasOpen=shade;const chatOpen=this.S().chat==='sheet'||this.S().chat==='full',drafting=!!String(this.S().draft||'').trim();if((chatOpen&&!this.chatWasOpen)||(drafting&&!this.wasDrafting))connectionController.warmInference();this.chatWasOpen=chatOpen;this.wasDrafting=drafting;const selected=this.messageReplyTarget||this.messageEditTarget;if(selected&&(JSON.stringify(selected.session)!==JSON.stringify(connectionController.getSnapshot().session)||!this.S().msgs.some((m:Shell)=>m.id===selected.messageId&&m.text===selected.text))){cancelMessageContext(this);this.setState({});} };
   p.componentWillUnmount = function () {
     this.chatImageModal?.ref(null);
     this.chatAttachmentAbort?.abort();this.chatAttachmentPicker?.dispose();
@@ -1446,7 +1476,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   }
   function cancelMessageContext(shell:Shell){if(shell.messageEditTarget)messageReviews.cancel('edit-message-'+shell.messageEditTarget.messageId);shell.messageEditTarget=undefined;shell.messageReplyTarget=undefined;}
   function messageTarget(message:Shell):ConversationMessageTarget|undefined {
-    if(!message.messageBinding||message.streaming||message.interrupted||message.card)return;
+    // AC-31: Alpha's local lines (briefings, "Sent to" notes) are never a reply or edit target sent to the agent.
+    if(message.local||!message.messageBinding||message.streaming||message.interrupted||message.card)return;
     return {...message.messageBinding,messageId:message.id,text:message.text,from:message.from};
   }
   p.canReplyMessage=function(message:Shell){const target=messageTarget(message);return !!target&&!this.S().typing&&!this.draftSendPending&&connectionController.messageTargetCurrent(target);};
@@ -1764,7 +1795,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       const awaiting=reply.proposals?.filter(proposal=>proposal.readReply?.origin.requestId===turnId&&proposal.readReply.origin.conversationId===identity.conversationId&&proposal.readReply.origin.inReplyTo===reply.userMessageId);
       if(awaiting&&awaiting.length>1)throw Error('More than one Notes review was returned. Use action history.');
-      for(const proposal of reply.proposals||[]){retainReadReply(this,proposal,identity,reply.userMessageId);this.agentSay(proposal.description,proposalCard(proposal),undefined,belongs);}
+      for(const proposal of reply.proposals||[]){retainReadReply(this,proposal,identity,reply.userMessageId);sayProposal(this,proposal,belongs);}
       for(const completed of reply.completedReads||[]){
         current();retainReadReply(this,completed.proposal,identity,reply.userMessageId);
         await completeReadReply(this,completed.receipt);current();
@@ -1945,7 +1976,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(this.messageReplyTarget===replyTarget)this.messageReplyTarget=undefined;
       let cameraOpened=false,cameraReceipts=0;
       if(sourceDraft&&sourceSession&&JSON.stringify(sourceSession)===JSON.stringify(connectionController.getSnapshot().session))this.agentSay('Review this answer before saving it with its source.',{type:'generic',icon:'note',title:'Review summary note',sub:sourceDraft.name,sourceSummary:{source:sourceDraft,text:reply.text,session:sourceSession}});
-      for (const proposal of reply.proposals || []) {retainReadReply(this,proposal,identity,reply.userMessageId);this.agentSay(proposal.description,proposalCard(proposal));}
+      for (const proposal of reply.proposals || []) {retainReadReply(this,proposal,identity,reply.userMessageId);sayProposal(this,proposal);}
       for(const completed of reply.completedReads||[]){
         retainReadReply(this,completed.proposal,identity,reply.userMessageId);
         try{await completeReadReply(this,completed.receipt);}catch{if(this.live&&sameChat())this.agentSay('The note was shared, but its answer is unconfirmed. Check conversation history before trying again.');}
@@ -2061,7 +2092,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   p.reply = function () { return { text: agentPendingText() }; };
   p.declineCard = async function (message: Shell) {
     const card = message.card || {};
-    if(!card.proposalId||card.done||this.pendingActionApproval||this.decliningProposal)return;
+    if(!card.proposalId||card.done||!proposalCanAct(card)||this.pendingActionApproval||this.decliningProposal)return;
     if(card.recovered&&JSON.stringify(card.proposalSession)!==JSON.stringify(connectionController.getSnapshot().session)){this.agentSay('The agent changed. Review this action again.');return;}
     const sessionId=connectionController.getSnapshot().session?.sessionId;
     this.decliningProposal=card.proposalId;this.setState({});
@@ -2069,10 +2100,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     try{result=await declineProposal(card.proposalId);}finally{this.decliningProposal=null;}
     if(!this.live)return;
     if(!result.ok||connectionController.getSnapshot().session?.sessionId!==sessionId){this.setState({});this.agentSay(result.ok?'The agent changed. Check phone action history.':result.message);return;}
-    this.setState({ msgs: this.S().msgs.map((m: Shell) => m.id === message.id ? { ...m, card: { ...m.card, done: true, declined: true, title: 'Declined', sub: result.message } } : m) });
+    this.setState({ msgs: this.S().msgs.map((m: Shell) => m.id === message.id ? { ...m, card: cardWith(m.card, { done: true, declined: true, title: 'Declined', sub: result.message }) } : m) });
   };
+  const originalCardAct=p.cardAct;
   p.cardAct = async function (message: Shell) {
     const card = message.card || {};
+    // AC-26: a replaced or finished proposal never acts. A view's own proposal (a fixture call or
+    // "Screen it") is dispatched by the shell to that view's action; live ones are approved below.
+    if(!proposalCanAct(card))return;
+    if(card.type==='proposal'&&card.act?.mod!=='alpha')return originalCardAct.call(this,message);
     if(card.systemNotice)return;
     if(card.managePlan){void connectionController.residentManagePlan();return;}
     // The running agent has no Eliza Cloud AI: open the plan panel (Redeem code, Choose a plan),
@@ -2132,7 +2168,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if (card.proposalId && !card.done) {
       if(card.reviewUnavailable||this.pendingActionApproval||this.decliningProposal)return;
       if(card.expiresAt<=Date.now()){
-        this.setState((previous:Shell)=>({msgs:previous.msgs.map((m:Shell)=>m.id===message.id?{...m,card:{...m.card,reviewUnavailable:true,title:'Review expired',sub:'This review has expired. Request a new action if still needed.'}}:m)}));return;
+        this.setState((previous:Shell)=>({msgs:previous.msgs.map((m:Shell)=>m.id===message.id?{...m,card:cardWith(m.card,{reviewUnavailable:true,title:'Review expired',sub:'This review has expired. Request a new action if still needed.'})}:m)}));return;
       }
       try {
         context(this);
@@ -2175,7 +2211,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           if (!receipt) throw error;
         }
         if (!this.live || JSON.stringify(connectionController.getSnapshot().session)!==JSON.stringify(session)||readLease&&!connectionController.readReplyCurrent(readLease.binding)) return;
-        this.setState((previous:Shell)=>this.live&&JSON.stringify(connectionController.getSnapshot().session)===JSON.stringify(session)&&(!readLease||connectionController.readReplyCurrent(readLease.binding))?{ msgs: previous.msgs.map((m: Shell) => m.id === message.id ? { ...m, card: { ...m.card, done: true, sub: receipt.summary, title: receipt.status === 'succeeded' ? 'Completed' : 'Not completed' } } : m) }:null);
+        this.setState((previous:Shell)=>this.live&&JSON.stringify(connectionController.getSnapshot().session)===JSON.stringify(session)&&(!readLease||connectionController.readReplyCurrent(readLease.binding))?{ msgs: previous.msgs.map((m: Shell) => m.id === message.id ? { ...m, card: cardWith(m.card, { done: true, sub: receipt.summary, title: receipt.status === 'succeeded' ? 'Completed' : 'Not completed' }) } : m) }:null);
         if(receipt.readReply&&this.readReplyLeases?.has(receipt.proposalId)){
           try{await completeReadReply(this,receipt);}
           catch{if(this.live&&readLease?.phase==='unconfirmed')this.setState((previous:Shell)=>this.live&&readLease.phase==='unconfirmed'&&connectionController.readReplyCurrent(readLease.binding)?{msgs:previous.msgs.map((m:Shell)=>m.id===message.id?{...m,card:{...m.card,sub:receipt.summary+' The answer is unconfirmed. Check conversation history before trying again.'}}:m)}:null);}

@@ -64,7 +64,6 @@ export const ALPHA_PRODUCT_REGISTRATION = {
       "--alpha-blue": "#0000FF",
       "--alpha-blue-deep": "#0000B8",
       "--alpha-blue-glow": "#3D47FF",
-      "--alpha-call-accent": "#8A93FF",
       "--alpha-call-green": "#1E9E4A",
       "--alpha-call-red": "#E5383B",
       "--alpha-desktop-backdrop": "#E9E9ED",

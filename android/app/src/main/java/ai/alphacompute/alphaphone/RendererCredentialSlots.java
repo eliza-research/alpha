@@ -27,7 +27,11 @@ final class RendererCredentialSlots {
   "connected-read-cache:v1:[a-f0-9]{64}", "workflow-draft:v1:[a-f0-9]{64}", "assistant-draft:v1:[a-f0-9]{64}",
   "notes-records:v1:device", "reminder-deletions:v1:device", "reminder-creations:v1:device", "clock-handoff:v1:device",
   "notes-audio-deletions:v1:device", "notes-trash:v1:device", "notes-draft:v1:device", "note-origins:v1:device", "notes-folders:v1:device",
-  "sms-draft:v1:(new|thread:[1-9][0-9]{0,18})", "cloud-delegation:v1:[a-f0-9]{64}"
+  "sms-draft:v1:(new|thread:[1-9][0-9]{0,18})", "cloud-delegation:v1:[a-f0-9]{64}",
+  // AP-16 AC-30: the open comms proposal card (data only) and the last briefed subject.
+  "alpha-proposal:v1",
+  // AP-16 AC-10: one SMS draft slot per hashed thread (runtime/sms-draft-store.ts).
+  "sms-draft:v1:[a-f0-9]{64}"
  };
  /** Cloud sign-in credentials: renderer writes and removals reserve a credential intent (AlphaLocalAgentPlugin). */
  private static final String[] CREDENTIAL_SLOTS = { "cloud:production", "cloud:staging" };

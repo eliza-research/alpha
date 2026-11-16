@@ -108,6 +108,13 @@ module AutomationRequestSettlement {
     .then(serverTake({ id: 1, kind: "delete", target: false })).then(okReply).then(refresh(true))
     .expect(not(s.knownExists) and s.retained == none and safety)
     .then(change("fire", false).fail())
+  run definiteRefusalBeforeReadbackTest = init.then(change("delete", false))
+    .then(unknownReply).then(refresh(true)).then(allowAnother)
+    .then(change("fire", false))
+    .then(serverTake({ id: 1, kind: "delete", target: false }))
+    .then(serverTake({ id: 2, kind: "fire", target: false })).then(refusedReply)
+    .expect(s.retained == none and s.lastRelease == "refused" and s.runs == 0 and s.knownExists and safety)
+    .then(refresh(true)).expect(not(s.knownExists) and s.lastRelease == "refused" and safety)
   run unreadConnectionBlocksChangeTest = init.then(switchConnection).then(change("enable", true).fail())
   /// The list shows the requested value because someone else set it. The delayed request is
   /// released, and later overrides a newer choice.

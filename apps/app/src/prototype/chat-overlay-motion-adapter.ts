@@ -7,8 +7,9 @@ import {
 	DEFAULT_PULL_DISTANCE,
 	TAP_SLOP,
 } from "../../../../.eliza/client-features/packages/ui/src/gestures/constants";
-import { isEditing, keyboardFreeHeight } from "../runtime/canvas-geometry";
-import { visibleDocks } from "../runtime/dock-clearance";
+import { isEditing, keyboardFreeHeight, stageMinimum } from "../runtime/canvas-geometry";
+import { sizeComposers } from "../runtime/composer-sizing";
+import { publishSheetHeight, visibleDocks } from "../runtime/dock-clearance";
 
 const SHEET_EASE = `cubic-bezier(${OVERLAY_EASE.join(",")})`;
 const PANEL_TRANSITION = `height .42s ${SHEET_EASE}, border-radius .42s, opacity .2s`;
@@ -137,6 +138,45 @@ export function clampSheetHeight(rounded: number, full: number, half: number): n
 	return Math.min(full, Math.max(rounded, Math.min(SHEET_MIN_HEIGHT, half)));
 }
 
+/** AC-04: the open sheet fits its chat between these shares of the viewport. */
+export const SHEET_FIT_LOW = 0.38,
+	SHEET_FIT_HIGH = 0.6;
+/**
+ * The measured inputs of the fitted open height, in canvas pixels. `content` is the sheet header,
+ * transcript and bar; `floor` the sheet header, Alpha's latest line and the bar (AC-13, D14);
+ * `stageNeed` what a waiting draft needs above the sheet; `stageMin` what the stage keeps at the
+ * largest text size (AC-29).
+ */
+type SheetFit = {
+	viewport: number;
+	low: number;
+	high: number;
+	full: number;
+	content: number;
+	floor: number;
+	draft: boolean;
+	stageNeed: number;
+	stageMin: number;
+};
+/**
+ * AC-04/AC-13 open height. Without a waiting draft the sheet fits its content between `low` and
+ * `high`; with one, the sheet gives the stage what the draft needs. Either way the stage keeps
+ * `stageMin` and the sheet never drops below its floor or rises above full.
+ */
+export function fitSheetHeight(o: SheetFit): number {
+	//@ verify
+	//@ requires o.viewport > 0 && o.full > 0 && o.floor >= 0 && o.stageMin >= 0 && o.stageNeed >= 0
+	//@ requires o.low <= o.high && o.high <= o.full
+	//@ ensures \result <= o.full
+	//@ ensures o.floor <= o.full ==> \result >= o.floor
+	//@ ensures o.floor > o.full ==> \result >= o.full
+	//@ ensures !o.draft && o.floor <= o.low && o.stageMin <= o.viewport - o.high ==> o.low <= \result && \result <= o.high
+	const sheetMin = Math.min(o.floor, o.full);
+	const fitted = Math.min(o.high, Math.max(o.low, o.content));
+	const wanted = o.draft ? Math.min(fitted, o.viewport - o.stageNeed) : fitted;
+	return Math.max(sheetMin, Math.min(Math.min(wanted, o.viewport - o.stageMin), o.full));
+}
+
 /**
  * Where a released chat goes. An open chat stays at the released height unless it is near the
  * collapsed form or the top; a flick jumps. From the collapsed form a pull down dismisses, and a
@@ -212,6 +252,8 @@ type Drag = {
 	/** The sheet opacity last rendered, which a direct paint must be restored to. */
 	renderedOpacity?: string;
 	tap?: () => void;
+	/** AC-12: holding an Alpha button starts a voice turn instead of the tap. */
+	hold?: ReturnType<typeof setTimeout>;
 };
 /** The sheet never paints shorter than its composer, which stays where the bar rests. */
 function paintedHeight(d: Drag): number {
@@ -227,7 +269,7 @@ function collapseShare(d: Drag): number {
 	return clamp01((d.floor + zone - d.height) / Math.max(1, zone));
 }
 /** Sheet rows above the composer that appear only once the sheet has room for all of them. */
-const SHEET_ROWS = "[data-alpha-chat-header],[data-alpha-chat-suggestions]";
+const SHEET_ROWS = "[data-alpha-chat-header]";
 /** Travel over which a row that has just fit fades in, in canvas pixels. */
 const ROW_REVEAL = 16;
 /**
@@ -316,6 +358,72 @@ function scrollParent(element: HTMLElement): HTMLElement | null {
 	}
 	return null;
 }
+/** An element's height with its vertical margins, in canvas pixels. */
+function outerHeight(element: HTMLElement): number {
+	const style = getComputedStyle(element);
+	if (style.position === "absolute" || style.position === "fixed" || style.display === "none") return 0;
+	return element.offsetHeight + (parseFloat(style.marginTop) || 0) + (parseFloat(style.marginBottom) || 0);
+}
+/** The sheet's composer block while the sheet is not drawing one: the panel composer's own size. */
+const CLOSED_COMPOSER_BLOCK = 98;
+/**
+ * What the open sheet needs, in canvas pixels, measured from what is drawn: `content` is the sheet
+ * header and rows, the transcript's own height and the bar; `floor` the same with only Alpha's
+ * latest line (AC-13; the header stays reachable, D14).
+ */
+function measureSheet(): { content: number; floor: number } | null {
+	const panel = document.querySelector<HTMLElement>('[data-alpha-layer="conversation"]');
+	const transcript = panel?.querySelector<HTMLElement>("[data-alpha-transcript]");
+	if (!panel || !transcript) return null;
+	let others = 0,
+		bar = 0;
+	for (const child of Array.from(panel.children) as HTMLElement[]) {
+		if (child === transcript || child.matches("[data-alpha-strip]")) continue;
+		// The spacer under the status bar is 4px on the open sheet, whatever it is at full height.
+		if (child.matches("[data-alpha-chat-top]")) others += 4;
+		else if (child.matches(".alpha-chat-composer")) bar = outerHeight(child);
+		else others += outerHeight(child);
+	}
+	const style = getComputedStyle(transcript),
+		pad = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+	const rows = (Array.from(transcript.children) as HTMLElement[]).filter((row) => row.offsetHeight > 0);
+	const first = rows[0],
+		last = rows[rows.length - 1];
+	const own = first && last ? last.offsetTop + last.offsetHeight - first.offsetTop : 0;
+	const agents = transcript.querySelectorAll<HTMLElement>('[data-alpha-agent-row="true"]');
+	const latest = agents.length ? agents[agents.length - 1].offsetHeight : 0;
+	const base = others + (bar || CLOSED_COMPOSER_BLOCK) + pad;
+	// The full voice recorder (dictation, transcript review) fills the sheet (flex: 1) instead of
+	// sizing to its content, so its drawn height is only what the sheet gave it. It opens at the
+	// high fit, so its transcript, Send and Discard are never squeezed under the chat history.
+	const fills = !!panel.querySelector(":scope > [data-alpha-chat-recorder]:not(.alpha-chat-composer)");
+	return { content: fills ? Number.POSITIVE_INFINITY : base + own, floor: base + latest };
+}
+/** AC-29: at the largest text size the stage keeps its header and the element above the sheet. */
+function measureStageMin(): number {
+	const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--alpha-text-scale")) || 1;
+	const layer = document.querySelector<HTMLElement>('[data-alpha-layer="app"]');
+	const header = layer?.querySelector<HTMLElement>("[data-alpha-stage-header]")?.offsetHeight ?? 0;
+	const last = layer?.querySelector<HTMLElement>("[data-alpha-stage-last]")?.offsetHeight ?? 0;
+	return stageMinimum(scale, header, last);
+}
+/**
+ * AC-02: the element that must stay visible above the sheet (the newest inbound message, the call
+ * controls, the contact actions) is scrolled back into the stage whenever the stage shrinks under it.
+ */
+function keepStageLast(scale: number) {
+	const layer = document.querySelector<HTMLElement>('[data-alpha-layer="app"][data-alpha-stage="true"]');
+	const last = layer?.querySelector<HTMLElement>("[data-alpha-stage-last]");
+	if (!layer || !last) return;
+	const scroller = scrollParent(last);
+	if (!scroller || !layer.contains(scroller)) return;
+	const bottom = Math.min(scroller.getBoundingClientRect().bottom, layer.getBoundingClientRect().bottom);
+	const over = last.getBoundingClientRect().bottom - bottom;
+	if (over > 0.5) scroller.scrollTop += over / (scale || 1);
+}
+function reducedMotion() {
+	return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 /** Product gesture binding over shared pure geometry; never owns transcript or editable-control gestures. */
 export function installChatOverlayMotion(Component: Shell) {
 	const p = Component.prototype,
@@ -345,12 +453,49 @@ export function installChatOverlayMotion(Component: Shell) {
 		}).panelMaxH;
 		return {
 			full,
+			viewport: viewportH,
 			half: Math.min(inset, Math.max(200, Math.round(viewportH * 0.6))),
 			scale: screen ? screen.getBoundingClientRect().height / viewportH : 1,
 		};
 	}
+	/**
+	 * The open sheet's height (AC-04, AC-13): a waiting draft's fit first; else the height the owner
+	 * dragged it to while it was open; else the chat's own content between 38% and 60% of the screen.
+	 * A stage switch holds the height it found (AC-05) until a draft starts or changes there.
+	 */
 	function sheetHeight(shell: Shell, geometry: ReturnType<typeof bounds>) {
-		return restingHeight(shell.chatSheetShare, geometry.full, geometry.half);
+		const spec = shell.commsRendered;
+		let need: number | null = null;
+		try {
+			const fit = spec?.fit ? spec.fit() : null;
+			need = typeof fit === "number" && Number.isFinite(fit) ? fit : null;
+		} catch {
+			need = null;
+		}
+		const hold = shell.stageHold;
+		if (hold) {
+			if (!("need" in hold)) hold.need = need;
+			if (hold.need === need) return hold.height;
+			shell.stageHold = null;
+		}
+		if (need === null && shell.chatSheetShare)
+			return restingHeight(shell.chatSheetShare, geometry.full, geometry.half);
+		const measured = measureSheet();
+		const viewport = geometry.viewport,
+			high = Math.min(geometry.full, Math.round(SHEET_FIT_HIGH * viewport)),
+			low = Math.min(Math.round(SHEET_FIT_LOW * viewport), high);
+		if (!measured) return restingHeight(undefined, geometry.full, geometry.half);
+		return fitSheetHeight({
+			viewport,
+			low,
+			high,
+			full: geometry.full,
+			content: measured.content,
+			floor: measured.floor,
+			draft: need !== null,
+			stageNeed: Math.max(0, need ?? 0),
+			stageMin: spec ? measureStageMin() : 0,
+		});
 	}
 	/**
 	 * A tap between the bar and the sheet resizes the sheet from or to the bar's own place, with
@@ -374,6 +519,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			panel.getBoundingClientRect();
 			panel.style.transition = RESIZE_TRANSITION;
 			panel.style.height = target;
+			publishSheetHeight(parseFloat(target) || 0);
 			setTimeout(() => {
 				if (shell.chatResizeToken === token)
 					panel.style.transition = PANEL_TRANSITION;
@@ -391,16 +537,64 @@ export function installChatOverlayMotion(Component: Shell) {
 				shell.chatClosingUntil = 0;
 				// Back to the template's closed values before the composer leaves.
 				panel.style.height = "0px";
+				publishSheetHeight(0);
 				panel.style.transition = PANEL_TRANSITION;
 				shell.setState({});
 			}, CLOSE_MS);
 		}
 		revealWhileResizing(shell, scale);
 	}
+	/**
+	 * The stage keeps its last element above the sheet as the stage resizes (a finished opening,
+	 * the keyboard), and the sheet re-fits when its bar grows. One observer per shell.
+	 */
+	function watchStage(shell: Shell) {
+		const layer = document.querySelector<HTMLElement>('[data-alpha-layer="app"]');
+		const composers = Array.from(document.querySelectorAll<HTMLElement>(".alpha-chat-composer,[data-alpha-input-bar]"));
+		const watched = [layer, ...composers].filter((element): element is HTMLElement => !!element);
+		const key = shell.chatStageWatched as HTMLElement[] | undefined;
+		if (typeof ResizeObserver === "undefined" || key && key.length === watched.length && key.every((element, index) => element === watched[index])) return;
+		shell.chatStageObserver?.disconnect();
+		shell.chatStageWatched = watched;
+		let frame = 0,
+			grew = false;
+		shell.chatStageObserver = new ResizeObserver((entries) => {
+			if (entries.some((entry) => entry.target !== layer)) grew = true;
+			if (frame) return;
+			frame = requestAnimationFrame(() => {
+				frame = 0;
+				if (shell.live === false || shell.chatStageObserver === undefined) return;
+				keepStageLast(bounds().scale);
+				const mode = shell.S().chat,
+					refit = grew;
+				grew = false;
+				if (refit && (mode === "sheet" || mode === "full") && !shell.chatMotion) shell.setState({});
+			});
+		});
+		for (const element of watched) shell.chatStageObserver.observe(element);
+	}
+	/** AC-05: across a stage switch the avatar travels from where it was to where it lands. */
+	function carryStageAvatar(shell: Shell, switched: boolean, scale: number) {
+		const from: DOMRect | null | undefined = shell.stageAvatarFrom;
+		if (!from || !switched) return;
+		shell.stageAvatarFrom = null;
+		const avatar = document.querySelector<HTMLElement>('[data-alpha-layer="app"] [data-alpha-stage-avatar]');
+		if (!avatar || reducedMotion() || typeof avatar.animate !== "function") return;
+		const to = avatar.getBoundingClientRect();
+		if (!to.width || !to.height) return;
+		const dx = (from.left - to.left) / (scale || 1),
+			dy = (from.top - to.top) / (scale || 1),
+			size = from.width / to.width;
+		avatar.animate(
+			[{ transform: `translate(${dx}px, ${dy}px) scale(${size})`, transformOrigin: "0 0" }, { transform: "none", transformOrigin: "0 0" }],
+			{ duration: 420, easing: SHEET_EASE },
+		);
+	}
 	function retire(shell: Shell, redraw = true) {
 		const drag: Drag | undefined = shell.chatMotion;
 		shell.chatMotion = undefined;
 		if (!drag) return;
+		clearTimeout(drag.hold);
 		if (drag.moved) {
 			shell.chatDraggedAt = Date.now();
 			shell.swallow = Date.now();
@@ -411,8 +605,12 @@ export function installChatOverlayMotion(Component: Shell) {
 				),
 				geometry = bounds(),
 				mode = shell.S().chat;
+			const resting = mode === "full" ? geometry.full : mode === "sheet" ? sheetHeight(shell, geometry) : 0;
+			// The drag was the stage's only writer; the resting height is handed back with the sheet's.
+			publishSheetHeight(resting);
+			document.querySelector<HTMLElement>("[data-screen]")?.removeAttribute("data-alpha-chat-dragging");
 			if (panel) {
-				panel.style.height = `${mode === "full" ? geometry.full : mode === "sheet" ? sheetHeight(shell, geometry) : 0}px`;
+				panel.style.height = `${resting}px`;
 				if (drag.renderedOpacity !== undefined)
 					panel.style.opacity = drag.renderedOpacity;
 				panel.style.transition = PANEL_TRANSITION;
@@ -509,7 +707,8 @@ export function installChatOverlayMotion(Component: Shell) {
 			drag &&
 			(s.view !== drag.view ||
 				s.screen !== drag.screen ||
-				s.chat !== drag.mode ||
+				// A comms view's hidden chat rests on its bar (D2), the mode the drag started from.
+				(s.chat === "hidden" && this.isCommsView(s.view) ? "input" : s.chat) !== drag.mode ||
 				s.voice !== "off")
 		)
 			retire(this);
@@ -518,8 +717,25 @@ export function installChatOverlayMotion(Component: Shell) {
 			change.pending = false;
 			resizeForTap(this, change);
 		}
+		// AC-11: every bar grows with its text up to min(168px, 28dvh), then scrolls inside.
+		sizeComposers();
+		watchStage(this);
+		const geometry = bounds();
+		// A sheet that no longer fits its chat, draft or bar (a new message, a grown bar, a draft that
+		// changed length) re-fits once what changed has been drawn.
+		if (s.chat === "sheet" && !drag && this.renderedSheetHeight !== undefined) {
+			const next = sheetHeight(this, geometry);
+			if (Math.abs(next - this.renderedSheetHeight) > 1) {
+				this.chatRefits = (this.chatRefits || 0) + 1;
+				if (this.chatRefits <= 3) this.setState({});
+			} else this.chatRefits = 0;
+		}
+		keepStageLast(geometry.scale);
+		carryStageAvatar(this, previousView !== s.view, geometry.scale);
 	};
 	p.componentWillUnmount = function () {
+		this.chatStageObserver?.disconnect();
+		this.chatStageObserver = undefined;
 		clearScrimPress(this);
 		retire(this, false);
 		window.removeEventListener("resize", this.cancelChatMotion);
@@ -562,6 +778,12 @@ export function installChatOverlayMotion(Component: Shell) {
 			'[data-alpha-layer="conversation"]',
 		);
 		const share = collapseShare(d);
+		if (firstMove) clearTimeout(d.hold);
+		// While a finger moves the sheet, this paint is the stage's only writer (AC-02).
+		const screen = document.querySelector<HTMLElement>("[data-screen]");
+		if (screen) screen.dataset.alphaChatDragging = "true";
+		publishSheetHeight(paintedHeight(d));
+		keepStageLast(d.scale);
 		if (panel) {
 			panel.style.transition = "none";
 			panel.style.height = `${paintedHeight(d)}px`;
@@ -628,6 +850,19 @@ export function installChatOverlayMotion(Component: Shell) {
 					? sheetHeight(shell, geometry)
 					: 0);
 		out.panelTransition = drag?.moved ? "none" : PANEL_TRANSITION;
+		if (s.chat === "sheet" && !drag) shell.renderedSheetHeight = out.panelH;
+		out.chatDragging = !!drag?.moved;
+		// A drag that raises the sheet over a comms view stages the view above it as it goes (AC-02).
+		const spec = shell.commsRendered;
+		if (drag?.moved && drag.height > 0 && spec && !spec.emergency && out.stage && !out.stage.full &&
+			!document.documentElement.classList.contains("alpha-landscape"))
+			out.stage = { ...out.stage, on: true };
+		// The bar addressing Alpha binds the Alpha request draft, as refined by later adapters.
+		if (out.barTarget === "alpha") {
+			out.barValue = out.draft;
+			out.barOnText = out.onDraft;
+			out.barOnKey = out.onKey;
+		}
 		// As in OG's scroll clearance, reserve the resting sheet's footprint and
 		// reveal focused app controls without changing the sheet or focus owner.
 		// The same holds for the floating dock (composer bar or pill): a control
@@ -686,14 +921,16 @@ export function installChatOverlayMotion(Component: Shell) {
 			if (isOpen(s.chat)) {
 				shell.chatDockShown = false;
 				shell.chatClosingUntil = 0;
+			} else {
+				// A dragged height belongs to the open session it was dragged in (AC-04).
+				shell.chatSheetShare = undefined;
+				shell.renderedSheetHeight = undefined;
 			}
 		} else if (!drag) shell.chatSettledByDrag = false;
-		if (isOpen(s.chat)) shell.chatSuggestions = out.showSugg;
 		// A tap close keeps the sheet's composer while the sheet shrinks onto the bar, which is
 		// already in place under it and so skips its entrance.
 		if (s.chat === "input" && Date.now() < (shell.chatClosingUntil || 0)) {
 			out.panelComposer = true;
-			out.showSugg = shell.chatSuggestions;
 			shell.chatDockShown = true;
 		}
 		const dock = drag?.moved
@@ -722,6 +959,11 @@ export function installChatOverlayMotion(Component: Shell) {
 		const binding = shell.props.chatPullBinding;
 		const handlers = {
 			down(event: PointerEvent) {
+				out.faintSw?.down(event);
+				// A press on a new control is never the end of an earlier hold.
+				shell.chatHoldFired = false;
+				// The strip's own controls (Mute, End, Answer…) act on their tap; the strip itself drags.
+				if (event.target instanceof Element && event.target.closest("[data-alpha-strip-action]")) return;
 				if (
 					shell.chatMotion ||
 					event.isPrimary === false ||
@@ -734,9 +976,9 @@ export function installChatOverlayMotion(Component: Shell) {
 				const emptyInput =
 					event.target instanceof HTMLTextAreaElement &&
 					event.target.value.length === 0 &&
-					String(out.draft || "").length === 0;
+					String(out.barValue ?? out.draft ?? "").length === 0;
 				if (
-					shell.S().chat === "input" &&
+					(out.chatMode ?? shell.S().chat) === "input" &&
 					!emptyInput &&
 					(!(event.target instanceof Element) ||
 						!event.target.closest(
@@ -754,18 +996,19 @@ export function installChatOverlayMotion(Component: Shell) {
 				event.stopPropagation();
 				if (emptyInput) event.preventDefault();
 				const g = bounds(),
-					mode = shell.S().chat as Mode,
+					// A comms view rests on its bar even when the chat state says hidden (D2).
+					mode = (out.chatMode ?? shell.S().chat) as Mode,
 					rest = sheetHeight(shell, g),
 					floor =
 						(document.querySelector<HTMLElement>("[data-alpha-input-bar]")
 							?.clientHeight || 62) + 28,
 					owner = event.currentTarget as HTMLElement,
-					label = (event.target as Element)
-						?.closest("button")
-						?.getAttribute("aria-label"),
+					target = event.target instanceof Element ? event.target : null,
+					label = target?.closest("button")?.getAttribute("aria-label"),
+					alpha = !!target?.closest("[data-alpha-input-drag-alpha],[data-alpha-pill-alpha]"),
 					tap = emptyInput
 						? () => owner.focus()
-						: label === "Open conversation"
+						: alpha || label === "Open conversation"
 							? out.openSheet
 							: label === "Type"
 								? out.toInput
@@ -773,7 +1016,9 @@ export function installChatOverlayMotion(Component: Shell) {
 									? out.startVoice
 									: label === "Resize chat"
 										? () => out.grabTap({ detail: 1 })
-										: undefined;
+										: target?.closest("[data-alpha-strip]")
+											? out.strip?.tap
+											: undefined;
 				shell.swallow = 0;
 				shell.chatMotion = {
 					id: event.pointerId,
@@ -800,6 +1045,17 @@ export function installChatOverlayMotion(Component: Shell) {
 					moved: false,
 					tap,
 				} satisfies Drag;
+				// AC-12: holding the Alpha button (550ms, unmoved) starts a voice turn with Alpha, and
+				// the tap that would have opened the chat does not follow.
+				if (alpha) {
+					const drag: Drag = shell.chatMotion;
+					drag.hold = setTimeout(() => {
+						if (shell.chatMotion !== drag || drag.moved) return;
+						drag.tap = undefined;
+						shell.chatHoldFired = true;
+						out.holdVoice?.();
+					}, 550);
+				}
 				shell.props.configureChatPull({ scale: g.scale || 1 });
 				binding.onPointerDown(event);
 			},
@@ -812,6 +1068,9 @@ export function installChatOverlayMotion(Component: Shell) {
 				binding.onPointerMove(event);
 			},
 			up(event: PointerEvent) {
+				out.faintSw?.up(event);
+				// The release of a hold may still click the button: that click is ignored briefly.
+				if (shell.chatHoldFired) setTimeout(() => { shell.chatHoldFired = false; }, 400);
 				if (shell.chatMotion?.id !== event.pointerId) return;
 				event.stopPropagation();
 				// A browser can coalesce every move into release. Supply the product's
@@ -837,21 +1096,28 @@ export function installChatOverlayMotion(Component: Shell) {
 		out.pillSw = handlers;
 		out.inputSw = handlers;
 		out.inputComposerTouchAction =
-			String(out.draft || "").length === 0 ? "none" : "pan-y";
+			String(out.barValue ?? out.draft ?? "").length === 0 ? "none" : "pan-y";
 		out.inputComposerPointer = (event: PointerEvent) => {
 			if (
 				event.target instanceof HTMLTextAreaElement &&
 				event.target.value.length === 0 &&
-				String(out.draft || "").length === 0
+				String(out.barValue ?? out.draft ?? "").length === 0
 			)
 				handlers.down(event);
 			else out.composerPointer(event);
 		};
 		// A captured drag may end over a former pill button. It must not synthesize
 		// a second action (including Type/Talk) after committing its detent.
+		const startVoice = out.startVoice;
+		out.holdVoice = () => startVoice?.();
 		for (const name of ["openSheet", "toInput", "startVoice"]) {
 			const action = out[name];
 			out[name] = (...args: unknown[]) => {
+				// The click that ends a hold on the Alpha button is not a tap.
+				if (name === "openSheet" && shell.chatHoldFired) {
+					shell.chatHoldFired = false;
+					return;
+				}
 				if (!shell.swallowed()) return action?.(...args);
 			};
 		}
@@ -890,7 +1156,9 @@ export function installChatOverlayMotion(Component: Shell) {
 		};
 		out.inputComposerFocus = () => setInputFocus(true);
 		out.inputComposerBlur = () => setInputFocus(false);
-		const dockScrim =
+		// A comms view's bar is the app's own field (D3): the app stays live while it is typed in, so a
+		// filtered list, the thread accessories and Back keep their taps.
+		const dockScrim = !out.comms &&
 			s.chat === "input" && !!out.showComposer && !s.shade &&
 			s.voice === "off" && !shell.props.assistantSurface &&
 			(shell.chatInputFocused || shell.rest() === "hidden");
@@ -918,9 +1186,10 @@ export function installChatOverlayMotion(Component: Shell) {
 		};
 		// An outside tap lowers the sheet or dock without activating what it uncovers.
 		// A drag has no click, so it collapses on release. Assistive technology can
-		// still activate app controls directly.
+		// still activate app controls directly. A comms view stays live above the sheet (staged, or an emergency call): its
+		// controls (draft Send, the call card, list chips) take their own taps (AC-02).
 		out.scrimPE =
-			dockScrim || s.chat === "sheet" && s.voice === "off" && !shell.props.assistantSurface
+			dockScrim || s.chat === "sheet" && s.voice === "off" && !shell.props.assistantSurface && !out.comms
 				? "auto"
 				: "none";
 		const ownedPress = (event: PointerEvent) => {

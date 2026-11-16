@@ -146,6 +146,18 @@ module WorkflowLifecycleChange {
     not(s.busy), s.review or s.resendReview,
     s' = { ...s, review: false, unknownReview: false, resendReview: false }
   }
+  /// An account switch clears the old view while the same verified agent stays connected.
+  /// An unsent admission is refused. An already-sent request keeps its exact journal.
+  action switchAccount = all {
+    s.opened, s.stage.in(Set("admitted", "sent")),
+    s' = { ...settled(s), opened: false, review: false, unknownReview: false, offer: false,
+      resendReview: false, checked: false, intent: s.stage == "sent" and s.intent }
+  }
+  /// The retired operation can settle its own exact receipt without reopening the screen.
+  action retiredSuccessReply = all {
+    not(s.opened or s.busy), s.intent, s.wire == 0, appliedThis(s),
+    s' = { ...s, intent: false, seen: true }
+  }
   /// The app stops. What it knew about receipts is gone; the journal entry is not.
   action restart = all {
     s.busy or s.intent or s.review or s.checked,
@@ -281,4 +293,12 @@ module WorkflowLifecycleChange {
     .then(lifecycleTap.fail())
   run abortBeforeDispatchReleasesTest = init.then(lifecycleTap).then(lifecycleTap)
     .then(abortBeforeDispatch).expect(not(s.intent) and s.sent == 0 and s.wire == 0 and safety)
+  run accountSwitchRefusesUnsentRemovalTest = init.then(lifecycleTap).then(lifecycleTap).then(switchAccount)
+    .expect(not(s.opened or s.busy or s.review or s.intent) and s.sent == 0 and s.applications == 0 and safety)
+  run accountSwitchRetiresSentRemovalViewTest = init.then(lifecycleTap).then(lifecycleTap).then(dispatch)
+    .then(switchAccount).expect(not(s.opened or s.busy or s.review) and s.intent and s.wire == 1 and safety)
+    .then(serverApply).expect(s.removed and not(s.knownRemoved) and s.intent and safety)
+    .then(retiredSuccessReply)
+    .expect(not(s.opened or s.busy or s.intent or s.knownRemoved) and s.seen and s.applications == 1 and safety)
+
 }

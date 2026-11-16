@@ -295,6 +295,18 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 /* The mark overscans its circle so the rays run off the rim instead of sitting inside a blue ring. */
 .alpha-mark-fill{overflow:hidden}
 .alpha-mark-fill .alpha-compute-mark{width:118%;height:118%;mask-image:url('/logo-symbol.svg');-webkit-mask-image:url('/logo-symbol.svg')}
+/* AP-16 comms surfaces (docs/agentic-comms.md): classes shared by the shell and the three apps. */
+.alpha-mark-18{width:18px;height:18px;border-radius:9px;flex-shrink:0;background:var(--acc);color:var(--alpha-white);display:inline-flex;align-items:center;justify-content:center}
+.alpha-draft-bubble{align-self:flex-end;max-width:84%;box-sizing:border-box;padding:10px 14px;border-radius:20px 20px 6px 20px;border:1.5px dashed var(--acct);background:var(--bg);color:var(--fg);display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
+.alpha-draft-bubble[data-alpha-draft-bubble="owner"]{border-color:var(--mut);background:var(--s2)}
+.alpha-draft-bubble[data-alpha-draft-sent="true"]{border-style:solid;background:var(--fg);color:var(--bg)}
+.alpha-draft-label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut)}
+.alpha-draft-actions{position:sticky;bottom:0;display:flex;gap:8px;justify-content:flex-end;background:inherit}
+.alpha-filter-chip{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 0 0 12px;border-radius:16px;background:var(--s2);color:var(--fg);font-size:13px}
+.alpha-filter-chip>button{min-width:44px;min-height:44px;margin:-6px 0;display:inline-flex;align-items:center;justify-content:center}
+.alpha-end-button{width:44px;height:44px;min-width:44px;border-radius:22px;background:var(--alpha-call-red);color:var(--alpha-white);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.alpha-live-dot{width:8px;height:8px;border-radius:4px;background:var(--alpha-call-green);display:inline-block;flex-shrink:0}
+.alpha-stage-header{display:flex;align-items:center;gap:4px;min-height:56px;padding:0 8px;box-sizing:border-box;flex-shrink:0}
 /* Before startup decides between sign-in, access setup and Home: the mark alone, after a pause (main.tsx). */
 .alpha-startup-loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:56px;animation:fade .7s .3s both}
 .alpha-update-startup{position:fixed;inset:0;display:grid;align-content:center;justify-items:center;gap:16px;width:100%;height:100%;max-width:none;max-height:none;box-sizing:border-box;margin:0;border:0;padding:24px;background:var(--alpha-white);color:var(--alpha-black);font:16px 'Public Sans',sans-serif}
@@ -379,6 +391,51 @@ html.alpha-text-xl:not(.standalone-app) [data-alpha-app-header="main"]:not([data
  padding-bottom:calc(var(--alpha-chat-clearance,0px) + 16px)!important;
  scroll-padding-bottom:calc(var(--alpha-chat-clearance,0px) + 16px);
 }
+/* AP-16 stage (docs/agentic-comms.md AC-02/AC-05): with the chat open on a comms view the app is laid
+   out above the sheet, bottom-anchored, never covered. --alpha-sheet-height has one writer at a time:
+   the shell's render at rest, the drag's paint while a finger moves (then nothing animates behind it). */
+[data-alpha-layer="app"][data-alpha-stage="true"]{bottom:var(--alpha-sheet-height,0px)!important;transition:bottom .42s cubic-bezier(.22,1,.36,1)}
+/* The staged app ends at the sheet, so nothing inside it reserves room for the closed bar. */
+[data-alpha-layer="app"][data-alpha-stage="true"]{--alpha-dock-reserve:12px}
+[data-screen][data-alpha-chat-dragging="true"] [data-alpha-layer="app"][data-alpha-stage="true"]{transition:none}
+[data-screen][data-alpha-chat-half="true"] [data-alpha-layer="app"][data-alpha-stage="true"] :is([data-alpha-app-scroll],.calendar-timeline,.calendar-draft-fields){padding-bottom:16px!important;scroll-padding-bottom:16px}
+[data-alpha-layer="app"][data-alpha-stage-enter="left"]{animation:alpha-stage-left .42s cubic-bezier(.22,1,.36,1) both}
+[data-alpha-layer="app"][data-alpha-stage-enter="right"]{animation:alpha-stage-right .42s cubic-bezier(.22,1,.36,1) both}
+@keyframes alpha-stage-left{from{transform:translateX(18%);opacity:.4}to{transform:none;opacity:1}}
+@keyframes alpha-stage-right{from{transform:translateX(-18%);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){[data-alpha-layer="app"][data-alpha-stage="true"]{transition:none}[data-alpha-layer="app"][data-alpha-stage-enter]{animation:none}}
+/* AC-09: the field that addresses Alpha has a 1.5dp outline; the person's field is plain. */
+.alpha-bar-field-alpha{box-shadow:inset 0 0 0 1.5px var(--acct)!important}
+.alpha-bar-field-wrap{flex-grow:1;min-width:0;display:flex;align-items:center;position:relative}
+.alpha-chat-composer:has(> [data-alpha-bar-left]){padding-left:6px}
+.alpha-bar-left{width:44px;height:44px;min-width:44px;border-radius:22px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--s3);color:var(--fg)}
+.alpha-bar-avatar{font-size:14px;font-weight:700;letter-spacing:.02em}
+.alpha-bar-hint{margin:0 0 6px 12px;display:inline-block;padding:4px 10px;border-radius:12px;background:var(--bg);color:var(--fg);font-size:12px;box-shadow:0 4px 14px var(--shc)}
+/* AC-24: one faint suggestion inside the empty field; a tap or a swipe right puts it there, unsent. */
+.alpha-faint{position:absolute;left:8px;top:0;bottom:0;max-width:calc(100% - 16px);display:inline-flex;align-items:center;gap:6px;min-height:44px;color:var(--mut);font-size:15px;text-align:left;z-index:2}
+.alpha-faint .alpha-mark-18{width:16px;height:16px;opacity:.75}
+.alpha-faint-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* AC-28: Alpha's 18dp mark beside its chat lines; quiet local notes read muted. */
+[data-alpha-agent-line]{display:flex;gap:10px;align-items:flex-start}
+[data-alpha-agent-line]>[data-alpha-message-text]{flex:1;min-width:0}
+[data-alpha-agent-line]>.alpha-mark-18{margin-top:3px}
+.alpha-agent-line-quiet>[data-alpha-message-text]{font-size:14px!important;color:var(--mut)}
+.alpha-sheet-context{font-size:13px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alpha-stage-return-row{display:flex;padding:0 12px 4px;flex-shrink:0}
+.alpha-stage-return{min-height:44px;padding:0 14px;border-radius:22px;background:var(--s2);color:var(--fg);font-size:14px;font-weight:600}
+/* AC-04: the 52dp live strip at full height. */
+.alpha-strip{display:flex;align-items:center;gap:6px;height:52px;margin:0 12px 6px;padding:0 6px 0 4px;border-radius:18px;background:var(--s2);color:var(--fg);flex-shrink:0;touch-action:none;box-sizing:border-box}
+.alpha-strip-main{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;gap:8px;padding:0 6px;text-align:left;border-radius:14px}
+.alpha-strip-avatar{width:32px;height:32px;border-radius:16px;background:var(--s3);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.alpha-strip-text{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.alpha-strip-text b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alpha-strip-text span{font-size:12px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alpha-strip-action{width:44px;height:44px;min-width:44px;border-radius:22px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--s3);color:var(--fg)}
+.alpha-strip-action[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.alpha-strip-action.alpha-end-button{background:var(--alpha-call-red);color:var(--alpha-white)}
+.alpha-strip-action.alpha-end-button svg{transform:rotate(135deg)}
+.alpha-answer-button{background:var(--alpha-call-green);color:var(--alpha-white)}
+.alpha-strip-send{background:var(--acc);color:var(--alpha-white)}
 /* An open note's text field and checklist end above the half chat, so the owner keeps typing beside it. */
 [data-screen][data-alpha-chat-half="true"] .note-editor { padding-bottom:calc(var(--alpha-chat-clearance,0px) + 16px)!important; }
 [data-screen][data-alpha-chat-half="true"] .note-editor > .note-checklist-column { padding-bottom:16px!important; }

@@ -91,6 +91,7 @@ import { startAccessibilityTimeout } from './runtime/accessibility-timeout';
 import { installViewFocus } from './runtime/view-focus';
 import './prototype/prototype.css';
 import './prototype/phone.css';
+import { installCommsAlpha } from './prototype/comms-alpha';
 installGlobalErrorRecovery();
 // Registration has completed; this injected source cannot form a register→connection cycle.
 if(!Capacitor.isNativePlatform())ownerReminderNotifications.bind({binding:()=>connectionController.getOwnerReminderNotificationBinding(),subscribeBinding:listener=>connectionController.subscribe(listener)});
@@ -178,6 +179,7 @@ if(developmentAgentWorkflows){installWorkflowAdapter(Component,VIEWS);installAut
 installSubviewAccessibility(VIEWS);
 installCalendarMonthFocus(Component, VIEWS);
 installChatOverlayMotion(Component);
+installCommsAlpha(Component, VIEWS);
 installReplyAnnouncer(Component);
 installSystemShade(Component,{native:isAndroid});
 installSystemBarAppearance(Component,isAndroid,registerPlugin<SystemBars>('AlphaDevice'));

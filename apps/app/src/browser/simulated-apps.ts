@@ -20,7 +20,7 @@ function installDevelopmentApps(Component:any,views:Bag,original:Bag){
  if(!devSurfacesEnabled||!browserDevProfile)return;
  original.wallet.persist=[...original.wallet.persist,'workflowReceipts'];original.wallet.state.workflowReceipts={};
  original.workflows.persist=[...original.workflows.persist,'localRuns','triggerState'];original.workflows.state.localRuns={};original.workflows.state.triggerState={cursors:[],queue:[]};
- original.messages.persist=[...original.messages.persist,'localDrafts'];original.messages.state.localDrafts={};
+ original.messages.persist=[...original.messages.persist,'drafts'];original.messages.state.drafts={};
  original.inbox.persist=[...original.inbox.persist,'localDrafts'];original.inbox.state.localDrafts=[];
  const snapshots=new Map<string,string|null>();
  for(const name of names){Object.assign(views[name],original[name]);views[name].state={...views[name].state,...loadSimulatedState(name,original[name],raw=>snapshots.set('alpha.dev.app.'+name,raw))};}
@@ -38,7 +38,7 @@ function installDevelopmentApps(Component:any,views:Bag,original:Bag){
   out.startAdd=()=>{const cards=api.get('wallet').cards||[];api.set({cards:[...cards,{id:crypto.randomUUID(),name:'Development card',last4:'0000',kind:'Test',bg:'#355caa',fg:'#fff',def:cards.length===0,locked:false,tx:[]}]});};return out;
  };
  const mount=Component.prototype.componentDidMount,unmount=Component.prototype.componentWillUnmount;
- Component.prototype.componentDidMount=function(){mount?.call(this);this.devIncomingData=(event:CustomEvent)=>{if(event.detail==='message'||event.detail==='email')openIncomingSimulation(event.detail,this.api('workflows'));};window.addEventListener('alpha:dev-incoming-data',this.devIncomingData);disposeWorkflows.connect(()=>this.api('workflows'),()=>writer.ready&&!simulatorNeedsRecovery('workflows'));this.devIncomingCall=()=>{const state=this.vget('phone');if(state.incoming||state.callWho||state.call||state.num){this.openView('phone');return;}this.openView('phone',{incoming:'maya',ring:'ring',scrN:0,rs:false});};window.addEventListener('alpha:dev-incoming-call',this.devIncomingCall);};
+ Component.prototype.componentDidMount=function(){mount?.call(this);this.devIncomingData=(event:CustomEvent)=>{if(event.detail==='message'||event.detail==='email')openIncomingSimulation(event.detail,this.api('workflows'));};window.addEventListener('alpha:dev-incoming-data',this.devIncomingData);disposeWorkflows.connect(()=>this.api('workflows'),()=>writer.ready&&!simulatorNeedsRecovery('workflows'));this.devIncomingCall=()=>{const state=this.vget('phone');if(state.incoming||state.callWho||state.call||state.num){this.openView('phone');return;}views.phone.actions.ring({args:{pid:'maya'}},this.api(this.S().view||'phone'));};window.addEventListener('alpha:dev-incoming-call',this.devIncomingCall);};
  Component.prototype.componentWillUnmount=function(){window.removeEventListener('alpha:dev-incoming-data',this.devIncomingData);disposeWorkflows();disposeMessages();disposeVoicemail();window.removeEventListener('alpha:dev-incoming-call',this.devIncomingCall);unmount?.call(this);};
  const open=Component.prototype.openView;
  Component.prototype.openView=function(name:string,...args:any[]){if(simulatorNeedsRecovery(name)){showSimulatorRecovery();return;}return open.call(this,name,...args);};

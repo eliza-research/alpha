@@ -38,8 +38,9 @@ export type TelephonyPorts = {
   /** The native reviewed send of one SMS under `operationId`; a repeated id never sends twice. */
   sendSms(number: string, body: string, operationId: string, signal: AbortSignal): Promise<SmsComposeResult['status']>;
   /**
-   * Puts a draft in the text field of the conversation the owner has open (only the one with exactly
-   * `number`, when given). Nothing is sent: Send there stays the owner's tap.
+   * Puts a draft in the draft slot of the conversation the owner has open (only the one with exactly
+   * `number`, when given), replacing any unsent text, which is kept for one Undo. `occupied`: a
+   * message is being sent or has pictures attached there. Nothing is sent: Send stays the owner's tap.
    */
   draftInOpenThread(body: string, number?: string): 'drafted' | 'none-selected' | 'occupied' | 'unavailable';
   openThread(): {participant: string | null; messages: {direction: 'in' | 'out'; date: number; body: string}[]; truncated: boolean} | null;
@@ -49,9 +50,16 @@ export type TelephonyPorts = {
 export type TelephonyExecution = {status: 'succeeded' | 'failed' | 'unknown'; summary: string; telephonyResult: TelephonyActionResult};
 
 const LOOKUP_LIMIT = 10;
+/**
+ * AP-16 D5: an Alpha draft now replaces the owner's unsent text (kept for one Undo), so `occupied`
+ * means only that a message is being sent or has pictures attached. The shared contract's sentence
+ * still describes the old rule until ap16-alpha-sms-reply-occupied-text lands upstream.
+ */
+export const SMS_DRAFT_OCCUPIED_TEXT = 'A message is being sent or has pictures attached in that conversation. Nothing was changed.';
+const resultText = (result: TelephonyActionResult) => result.kind === 'sms-reply' && result.status === 'occupied' ? SMS_DRAFT_OCCUPIED_TEXT : telephonyActionResultText(result);
 const finish = (result: TelephonyActionResult): TelephonyExecution => {
   const outcome = result.kind === 'sms-compose' ? smsComposeReceiptOutcome(result) : telephonyActionReceiptOutcome(result);
-  return {status: outcome === 'applied' ? 'succeeded' : outcome === 'unknown' ? 'unknown' : 'failed', summary: telephonyActionResultText(result), telephonyResult: result};
+  return {status: outcome === 'applied' ? 'succeeded' : outcome === 'unknown' ? 'unknown' : 'failed', summary: resultText(result), telephonyResult: result};
 };
 /** Every dialable number of every matching contact, one option per number. */
 async function numbers(query: string, ports: TelephonyPorts): Promise<ContactMatch[]> {

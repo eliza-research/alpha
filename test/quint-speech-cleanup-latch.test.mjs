@@ -13,3 +13,11 @@ test('partial source contract: app speech and Cloud app speech follow every Spee
   for (const action of ['speak', 'finishPlayback', 'cleanupSettled', 'recoveryStopSettled', 'restart'])
     assert.ok(receipt.actions[action] > 0, `${action} was replayed`);
 });
+
+test('whole voice and note read-aloud controllers own their speech cleanup latch', {timeout: scaledTimeout(120000)}, async () => {
+  const {checkSpeechSurfaceCleanup} = await import('../specs/quint/refinement/native/speech-cleanup-surface.mjs');
+  const receipt = await checkSpeechSurfaceCleanup(import.meta.filename);
+  assert.equal(receipt.traces, 4);
+  assert.equal(receipt.checkpoints, 28);
+  assert.equal(receipt.passed && receipt.driverInputsBound, true);
+});

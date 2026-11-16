@@ -2,7 +2,7 @@
 // Telecom is involved: this proves the renderer's fences and handoff wording, not a device read.
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {pathToFileURL} from 'node:url';
 const dir=mkdtempSync(join(tmpdir(),'phone-adapter-'));
-const output=await build({entryPoints:[resolve('apps/app/src/prototype/phone-adapter.ts')],bundle:true,format:'esm',platform:'node',write:false,external:['@capacitor/core'],plugins:[{name:'stubs',setup(b){b.onResolve({filter:/^(\.\.\/runtime\/aosp-image|\.\/native-adapter|\.\/mvp-features|\.\.\/platform-plugins)$/},a=>({path:a.path,namespace:'stub'}));b.onLoad({filter:/.*/,namespace:'stub'},a=>({contents:a.path.includes('aosp-image')?'export const aospImage=false;':a.path.includes('native-adapter')?'export function watchReturnToApp(){return ()=>{};}':a.path.includes('mvp-features')?'export function isMvpView(view){return (globalThis.mvpViews||[]).includes(view);}':'export function registerPlugin(){return {};}',loader:'js'}));}}]});
+const output=await build({entryPoints:[resolve('apps/app/src/prototype/phone-adapter.ts')],bundle:true,format:'esm',platform:'node',write:false,external:['@capacitor/core'],plugins:[{name:'stubs',setup(b){b.onResolve({filter:/^(\.\.\/runtime\/aosp-image|\.\.\/runtime\/comms-bar|\.\/native-adapter|\.\/mvp-features|\.\.\/platform-plugins)$/},a=>({path:a.path,namespace:'stub'}));b.onLoad({filter:/.*/,namespace:'stub'},a=>({contents:a.path.includes('aosp-image')?'export const aospImage=false;':a.path.includes('native-adapter')?'export function watchReturnToApp(){return ()=>{};}':a.path.includes('mvp-features')?'export function isMvpView(view){return (globalThis.mvpViews||[]).includes(view);}':a.path.includes('comms-bar')?'export function setListFilterHandler(view,handler){(globalThis.listFilters||={})[view]=handler;}export function clearListFilter(view){globalThis.listFilters?.[view]?.clear();}':'export function registerPlugin(){return {};}',loader:'js'}));}}]});
 writeFileSync(join(dir,'adapter.mjs'),output.outputFiles[0].text);process.on('exit',()=>rmSync(dir,{recursive:true,force:true}));
 const {installPhoneAdapter,phoneRows,openVoicemailRead,deleteOpenVoicemail}=await import(pathToFileURL(join(dir,'adapter.mjs')));
 const {createAospTelephony}=await import('../apps/app/src/runtime/aosp-telephony.ts');
@@ -134,6 +134,24 @@ test('Contacts opens only where Contacts is admitted',async()=>{
  globalThis.mvpViews=['contacts'];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,['contacts']);globalThis.mvpViews=[];
 });
 test('rows without a dialable number cannot dial',()=>{const rows=phoneRows([{...call,number:'',cachedName:null}],()=>{throw Error('dialed');});assert.equal(rows[0].noDial,true);rows[0].dial();assert.match(rows[0].label,/Unknown caller/);});
+test('the image bar filters Recents in memory, keeps an Alpha filter as a clearable chip and briefs from new rows only',async()=>{
+ const other={...call,id:'5',number:'+16465550100',cachedName:'Ben Ode',type:'outgoing',isNew:false};
+ const {views,calls}=mount({status:status('granted'),listRecentCalls:{calls:[call,other]}});await settle();
+ const shown=()=>views.phone.render({},{}).recents.map(row=>row.name),reads=calls.length;
+ const spec=views.phone.bar();
+ assert.deepEqual([spec.target.kind,spec.closed.kind,spec.closed.placeholder,spec.left.label,spec.contextKey,spec.end,spec.incoming],['recents','filter','Call or ask','Back to the keypad','phone:recents:',null,null]);
+ assert.match(spec.briefing,/^Ada called .* and you missed it\.$/);
+ spec.closed.onText('ben');assert.deepEqual(shown(),['Ben Ode']);assert.equal(views.phone.bar().closed.value,'ben');
+ views.phone.bar().closed.onText('646');assert.deepEqual(shown(),['Ben Ode'],'digits match numbers');
+ views.phone.bar().closed.onText('5550100');assert.deepEqual(shown(),['Ada','Ben Ode']);
+ assert.equal(views.phone.render({},{}).filterChip,null,'an owner filter shows no chip');
+ assert.equal(globalThis.listFilters.phone.apply({query:'ada',label:'Ada',by:'alpha'}),true);
+ assert.deepEqual(views.phone.render({},{}).filterChip,{label:'Ada',clearLabel:'Clear filter Ada'});assert.deepEqual(shown(),['Ada']);
+ views.phone.bar().closed.onText('');assert.deepEqual(shown(),['Ada'],'clearing the sent text keeps the Alpha filter');
+ views.phone.render({},{}).clearFilter();assert.deepEqual(shown(),['Ada','Ben Ode']);
+ views.phone.bar().left.run();assert.equal(views.phone.render({},{}).isKeypad,true);
+ assert.equal(calls.length,reads,'filtering reads nothing from the device');
+});
 
 test('voicemail observer replacement waits for old cleanup and shares one parallel start',async()=>{
  let removeOld,enableFirst;

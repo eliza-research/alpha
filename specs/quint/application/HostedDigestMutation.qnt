@@ -6,7 +6,7 @@ module HostedDigestMutation {
   var s: State
   pure val Owners = Set(1, 2)
   pure val JournalPhases = Set("", "review", "dispatched", "legacy")
-  pure val Replies = Set("saved", "rejected", "unconfirmed")
+  pure val Replies = Set("saved", "rejected", "schedule-rejected", "unconfirmed")
   pure def idle(x: State, owner: int): State = {...x, stage: x.stage.set(owner, "")}
 
   action initFor(first: str, second: str): bool = all {
@@ -57,15 +57,22 @@ module HostedDigestMutation {
       journal: if (ok) s.journal.set(owner, "") else s.journal}
     s' = if (owner != s.owner) idle(returned, owner)
       else if (not(ok)) {...idle(returned, owner), busy: false,
-        notice: if (phase == "discard") "discardRefused" else if (phase == "rejected") "clearRefused" else "unconfirmed"}
+        notice: if (phase == "discard") "discardRefused"
+          else if (phase == "rejected") "clearRefused"
+          else if (phase == "schedule-rejected") "scheduleClearRefused" else "unconfirmed"}
       else if (phase == "discard") {...idle(returned, owner), pending: "", notice: "discarded"}
-      else {...returned, pending: "", stage: s.stage.set(owner, if (phase == "rejected") "refresh-rejected" else "refresh-saved"), refreshes: s.refreshes.union(Set(owner))},
+      else {...returned, pending: "", stage: s.stage.set(owner,
+        if (phase == "rejected") "refresh-rejected"
+        else if (phase == "schedule-rejected") "refresh-schedule-rejected" else "refresh-saved"),
+        refreshes: s.refreshes.union(Set(owner))},
   }
   action refreshReply(owner: int): bool = all {
     s.refreshes.contains(owner),
     val settled = idle({...s, refreshes: s.refreshes.exclude(Set(owner))}, owner)
     s' = if (owner != s.owner) settled
-      else {...settled, busy: false, notice: if (s.stage.get(owner) == "refresh-rejected") "sourceRejected" else ""},
+      else {...settled, busy: false,
+        notice: if (s.stage.get(owner) == "refresh-rejected") "sourceRejected"
+          else if (s.stage.get(owner) == "refresh-schedule-rejected") "scheduleRejected" else ""},
   }
   action step = any {
     { nondet owner = Owners.oneOf(); attach(owner) },
@@ -95,6 +102,10 @@ module HostedDigestMutation {
   run lateRejectionCannotPublishToReplacementTest = initFor("dispatched", "dispatched").then(attach(1))
     .then(restore(1)).then(retry(1)).then(mutationReply(1, "rejected")).then(removeReply(1, true))
     .then(attach(2)).then(refreshReply(1)).expect(s.notice == "" and s.journal.get(2) == "dispatched" and safety)
+  run currentScheduleRefusalClearsExactJournalTest = initFor("dispatched", "legacy").then(attach(1))
+    .then(restore(1)).then(retry(1)).then(mutationReply(1, "schedule-rejected")).then(removeReply(1, true))
+    .then(refreshReply(1)).expect(s.notice == "scheduleRejected" and s.journal.get(1) == ""
+      and s.journal.get(2) == "legacy" and s.calls.get(1) == 1 and safety)
   run unconfirmedRemoteKeepsExactRetryTest = initFor("review", "").then(attach(1)).then(restore(1))
     .then(retry(1)).then(mutationReply(1, "unconfirmed"))
     .expect(s.pending == "dispatched" and s.journal.get(1) == "dispatched" and not(s.busy) and safety)

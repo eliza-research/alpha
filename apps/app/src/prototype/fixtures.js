@@ -123,13 +123,6 @@ export const MSG_SEED = {
   ]
 };
 export const MSG_UNREAD = { maya: 1, priya: 3 };
-export const MSG_SMART = {
-  maya: [["See you at 3", "Yes, see you at 3. Bring the prototype!"], ["Bring it", "Yes, bring it. Can't wait to try it."], ["Running 5 late", "Running 5 late, start without me."]],
-  priya: [["These are great", "These are great, thank you!"], ["Send the rest?", "Love these. Send the rest?"], ["Tuesday still on?", "Still on for Tuesday at 1?"]],
-  jordan: [["Works", "Works for me."], ["Can we do 5?", "Can we push to 5?"]],
-  dad: [["Love you too", "Love you too, Dad."], ["Call Sunday?", "Call you Sunday?"]],
-  sam: [["No worries", "No worries."], ["Thanks", "Thanks!"]]
-};
 export const MSG_BOT = {
   maya: ["Perfect. See you at 3.", "Bringing the new build too, it's much faster.", "Ha, ok. On my way."],
   priya: ["Glad you like them!", "More coming tonight."],
@@ -590,6 +583,8 @@ export const COPY = {
   messages: {
     presetThread: "maya",
     suggestions: ["Text Maya I'm running late", "What did Priya send?", "Any new texts?"],
+    threadSuggestions: ["What did {first} say?", "Tell {first} I'm 5 min late"],
+    replyDraft: "Sounds good, see you then.",
     voicePhrase: "Text Maya I'm running five minutes late"
   },
   inbox: {

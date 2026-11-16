@@ -24,6 +24,8 @@ module CalendarEditorDraft {
     stored: str, synced: bool, savedCopy: str,
     // The controller call or event save being awaited.
     stage: str,
+    // The review or recovery modal owns the editor while its answer is outstanding.
+    review: str, reviewStoreCurrent: bool, recovery: str, recoveryCurrent: bool, recoveryReset: bool,
     // The controls as last published.
     inert: bool, disabled: bool, canRestore: bool, canReplace: bool, canDiscard: bool, canRetry: bool,
     // saves: event saves that committed. saveResult: how the last Save press ended.
@@ -32,6 +34,8 @@ module CalendarEditorDraft {
   }
   var s: State
   pure val Copies = Set("none", "fresh", "stale")
+  pure val Reviews = Set("none", "discard", "replace")
+  pure val Recoveries = Set("none", "notice", "capturing", "unreadable", "ready", "confirm", "resetting", "reloading")
   pure val Stages = Set("idle", "opening", "retrying", "discarding", "committing", "clearing")
   // publish(): nothing is drawn once the editor has closed.
   pure def published(st: State): State = if (not(st.alive)) st else {
@@ -53,6 +57,7 @@ module CalendarEditorDraft {
     s' = { alive: true, opened: false, offered: false, invalid: false, saving: false, latch: false,
       conflict: false, error: false, text: "none", revision: "fresh", form: "baseline",
       shape: "baseline", stored: copy, synced: copy == "none", savedCopy: "none", stage: "opening",
+      review: "none", reviewStoreCurrent: true, recovery: "none", recoveryCurrent: false, recoveryReset: false,
       inert: true, disabled: true, canRestore: false, canReplace: false, canDiscard: false, canRetry: false,
       saves: 0, saveResult: "none", staleSave: false, unreviewedSave: false }
   }
@@ -108,12 +113,13 @@ module CalendarEditorDraft {
   }
   action discardDone(outcome: str): bool = all {
     s.stage == "discarding", outcome.in(Set("cleared", "conflict", "error")),
-    s' = if (not(s.alive)) { ...s, stage: "idle" }
+    (outcome == "cleared") implies s.reviewStoreCurrent,
+    s' = if (not(s.alive)) { ...s, stage: "idle", reviewStoreCurrent: true }
       else if (outcome == "cleared")
-        published({ ...applied(s, "none", "baseline"), stage: "idle", text: "none", shape: "baseline", stored: "none",
+        published({ ...applied(s, "none", "baseline"), stage: "idle", reviewStoreCurrent: true, text: "none", shape: "baseline", stored: "none",
           synced: true, offered: false })
-      else if (outcome == "conflict") published({ ...s, stage: "idle", conflict: true, savedCopy: s.stored })
-      else published({ ...s, stage: "idle", error: true })
+      else if (outcome == "conflict") published({ ...s, stage: "idle", reviewStoreCurrent: true, conflict: true, savedCopy: s.stored })
+      else published({ ...s, stage: "idle", reviewStoreCurrent: true, error: true })
   }
   // Retry after a storage error reads the copy again. Text typed meanwhile stays in the form
   // and is offered like a retained copy; a different stored copy is a conflict.
@@ -163,8 +169,64 @@ module CalendarEditorDraft {
   }
   // Cancel, Back, a hidden page or a locked screen. The controller is detached and forgets what
   // it reported; the controls are not drawn again.
-  action close = all { s.alive, s' = { ...s, alive: false, conflict: false, error: false } }
-  action step = {
+  action close = all {
+    s.alive, s' = { ...s, alive: false, conflict: false, error: false,
+      review: "none", reviewStoreCurrent: true, recovery: "none", recoveryCurrent: false }
+  }
+
+  // The review opens before the owner answers. Its owner is the modal editor.
+  action openReview(kind: str): bool = all {
+    s.alive, s.stage == "idle", s.review == "none", s.recovery == "none",
+    (kind == "discard" and s.canDiscard) or (kind == "replace" and s.canReplace),
+    s' = { ...s, review: kind, reviewStoreCurrent: true }
+  }
+  // Another editor can replace durable bytes while this review is waiting.
+  // The visible draft stays selected. Confirm is still subject to the store's CAS.
+  action reviewStoreChanged(copy: str): bool = all {
+    s.alive, s.review != "none", Copies.contains(copy), s.reviewStoreCurrent or copy != s.stored,
+    s' = { ...s, stored: copy, synced: false, reviewStoreCurrent: false }
+  }
+  action answerReview(confirmed: bool): bool = all {
+    s.alive, s.review != "none",
+    val closed = { ...s, review: "none", reviewStoreCurrent: true }
+    s' = if (not(confirmed)) closed
+      else if (s.review == "discard" and s.offered and not(s.error))
+        { ...closed, stage: "discarding", reviewStoreCurrent: s.reviewStoreCurrent }
+      else if (s.review == "replace" and s.conflict and s.reviewStoreCurrent)
+        published({ ...closed, conflict: false, error: false, stored: s.text, synced: true })
+      else if (s.review == "replace" and s.conflict)
+        published({ ...closed, savedCopy: s.stored })
+      else closed
+  }
+
+  // Production opens the retained-data notice. In development, a read of the
+  // exact saved snapshot can admit a separately confirmed reset.
+  action openRecovery(development: bool): bool = all {
+    s.alive, s.error, s.stage == "idle", s.review == "none", s.recovery == "none", not(s.recoveryReset),
+    s' = s.with("recovery", if (development) "capturing" else "notice")
+  }
+  action recoveryCaptured(ok: bool): bool = all {
+    s.recovery == "capturing",
+    s' = { ...s, recovery: if (ok) "ready" else "unreadable", recoveryCurrent: ok }
+  }
+  // Any intervening write invalidates even a capture with identical raw bytes.
+  action recoverySuperseded = all {
+    s.recovery.in(Set("ready", "confirm", "resetting")), s.recoveryCurrent,
+    s' = s.with("recoveryCurrent", false)
+  }
+  action requestReset = all { s.recovery == "ready", s' = s.with("recovery", "confirm") }
+  action confirmReset = all { s.recovery == "confirm", s' = s.with("recovery", "resetting") }
+  action recoverySettled(ok: bool): bool = all {
+    s.recovery == "resetting",
+    s' = if (ok and s.recoveryCurrent)
+      { ...s, recovery: "reloading", recoveryCurrent: false, recoveryReset: true, stored: "none", synced: s.text == "none" }
+      else s.with("recovery", "ready")
+  }
+  action closeRecovery = all {
+    s.recovery != "none", s.recovery != "reloading",
+    s' = { ...s, recovery: "none", recoveryCurrent: false }
+  }
+  action draftStep = {
     nondet flag = Bool.oneOf()
     nondet copy = Copies.oneOf()
     nondet outcome = Set("cleared", "conflict", "error").oneOf()
@@ -173,6 +235,25 @@ module CalendarEditorDraft {
       discardDone(outcome), retry, retryDone(flag), save, commitDone(flag), clearDone(outcome), close, s' = s
     }
   }
+
+  action step = {
+    nondet flag = Bool.oneOf()
+    nondet copy = Copies.oneOf()
+    nondet outcome = Set("cleared", "conflict", "error").oneOf()
+    nondet reviewKind = Set("discard", "replace").oneOf()
+    if (s.review == "none" and s.recovery == "none") any {
+      openDone(flag), edit(flag), reportConflict(copy), reportError, restore, replace(flag), discard(flag),
+      discardDone(outcome), retry, retryDone(flag), save, commitDone(flag), clearDone(outcome), close, s' = s,
+      openReview(reviewKind), openRecovery(flag)
+    } else any {
+      reviewStoreChanged(copy), answerReview(flag), recoveryCaptured(flag), recoverySuperseded,
+      requestReset, confirmReset, recoverySettled(flag), closeRecovery, close, s' = s
+    }
+  }
+  val ModalsOwned = (s.review == "none" or s.recovery == "none") and
+    (not(s.alive) implies (s.review == "none" and s.recovery == "none"))
+  val ResetNeedsRecovery = (s.recovery == "reloading" implies s.recoveryReset) and
+    (s.recoveryReset implies s.stored == "none")
 
   // The controls shown are the ones the editor's state allows.
   val PublishedMatchesState = s.alive implies (
@@ -197,10 +278,11 @@ module CalendarEditorDraft {
   val TypeOK = Copies.contains(s.text) and Copies.contains(s.stored) and Copies.contains(s.savedCopy)
     and s.revision.in(Set("fresh", "stale")) and s.form.in(Set("baseline", "retained", "edits"))
     and s.shape.in(Set("baseline", "retained", "edits"))
-    and Stages.contains(s.stage) and s.saves.in(0.to(1))
+    and Stages.contains(s.stage) and Reviews.contains(s.review) and Recoveries.contains(s.recovery) and s.saves.in(0.to(1))
     and s.saveResult.in(Set("none", "stale", "started", "failed", "saved", "kept"))
   val safety = TypeOK and PublishedMatchesState and NoStaleSave and SaveWaitsForReview and OneSave
     and LatchFollowsSave and OfferedHasText and NoTextNoShape and StaleEditsAreRetained and SavedThenClearedOrKept
+    and ModalsOwned and ResetNeedsRecovery
 
   val OfferedWitness = s.alive and s.opened and s.offered and s.inert
   val StaleRefusedWitness = s.saveResult == "stale" and s.alive
@@ -263,4 +345,37 @@ module CalendarEditorDraft {
     .then(retry).expect(s.inert).then(retryDone(true))
     .expect(OwnEditsOfferedWitness and s.stored == "fresh" and not(s.error))
     .then(restore).expect(not(s.offered) and not(s.disabled) and safety)
+  run closingEditorRetiresReviewTest = opening("fresh").then(openDone(true)).then(openReview("discard"))
+    .expect(s.review == "discard" and s.stored == "fresh")
+    .then(close).expect(not(s.alive) and s.review == "none" and s.stored == "fresh" and safety)
+    .then(answerReview(true).fail())
+  run heldReviewDiscardsOnlyAfterApprovalTest = opening("fresh").then(openDone(true)).then(openReview("discard"))
+    .then(answerReview(false)).expect(s.review == "none" and s.offered and s.stored == "fresh")
+    .then(openReview("discard")).then(answerReview(true)).then(discardDone("cleared"))
+    .expect(not(s.offered) and s.stored == "none" and safety)
+  run heldReplaceKeepsCopyWithoutApprovalTest = opening("none").then(openDone(true)).then(edit(true))
+    .then(reportConflict("stale")).then(openReview("replace")).then(answerReview(false))
+    .expect(s.conflict and s.stored == "stale" and s.review == "none" and safety)
+  run productionRecoveryOnlyKeepsDataTest = opening("none").then(openDone(false)).then(openRecovery(false))
+    .expect(s.recovery == "notice" and not(s.recoveryReset) and safety).then(requestReset.fail())
+  run staleRecoverySnapshotRefusesResetTest = opening("none").then(openDone(false))
+    .then(openRecovery(true)).then(recoveryCaptured(true)).then(requestReset).then(recoverySuperseded)
+    .then(confirmReset).then(recoverySettled(false))
+    .expect(s.recovery == "ready" and not(s.recoveryCurrent) and not(s.recoveryReset) and safety)
+  run confirmedRecoveryUsesCapturedDraftTest = opening("none").then(openDone(false)).then(edit(true))
+    .then(openRecovery(true)).then(recoveryCaptured(true)).then(requestReset).then(confirmReset).then(recoverySettled(true))
+    .expect(s.recovery == "reloading" and s.recoveryReset and s.text == "fresh" and s.saves == 0 and safety)
+  run closingEditorCancelsRecoveryTest = opening("none").then(openDone(false)).then(openRecovery(true))
+    .then(close).expect(not(s.alive) and s.recovery == "none" and not(s.recoveryReset) and safety)
+    .then(recoveryCaptured(true).fail())
+  run staleDiscardReviewPreservesNewerCopyTest = opening("fresh").then(openDone(true)).then(openReview("discard"))
+    .then(reviewStoreChanged("stale")).then(answerReview(true)).then(discardDone("conflict"))
+    .expect(s.conflict and s.stored == "stale" and s.text == "fresh" and safety)
+  run approvedReplaceClearsConflictTest = opening("none").then(openDone(true)).then(edit(true))
+    .then(reportConflict("stale")).then(openReview("replace")).then(answerReview(true))
+    .expect(not(s.conflict) and s.stored == "fresh" and s.review == "none" and safety)
+  run closingEditorRetiresPendingResetTest = opening("none").then(openDone(false)).then(openRecovery(true))
+    .then(recoveryCaptured(true)).then(requestReset).then(confirmReset).then(close)
+    .expect(not(s.alive) and s.recovery == "none" and not(s.recoveryReset) and safety)
+    .then(recoverySettled(true).fail())
 }

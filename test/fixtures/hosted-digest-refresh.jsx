@@ -2,6 +2,7 @@ import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {HostedDigestPanel} from '../../apps/app/src/runtime/hosted-digest-ui.tsx';
 import {HostedSourceRejected, latestRetainedDigest} from '../../apps/app/src/runtime/hosted-digests.ts';
+import {WorkflowHttpError} from '../../.eliza/client-features/packages/contracts/src/workflow-client.ts';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const subscribers = new Set(), intervals = new Map(), requests = [], capabilities = [], releases = [], visited = [];
@@ -56,8 +57,13 @@ const storageOwner = key => {
   if (!id) throw Error('Digest storage requires a fixture owner slot');
   return id;
 };
-const pendingValue = (id, phase) => ({path: 'sources', body: {id: 'fixture-mutation-'+id},
-  summary: 'Fixture saved request '+id, ...(phase ? {phase} : {})});
+const loopEdit = id => ({id: 'fixture-loop-'+id, mutationId: 'fixture-mutation-'+id, expectedVersionId: 'fixture-version-'+id});
+const pendingValue = (id, phase, kind) => ({
+  path: kind === 'loop' ? 'loops' : 'sources',
+  body: kind === 'loop' ? {...loopEdit(id), confirmed: true} : {id: 'fixture-mutation-'+id},
+  ...(kind === 'renewal' ? {rebind: [{...loopEdit(id), spec: {}}]} : {}),
+  summary: 'Fixture saved request '+id, ...(phase ? {phase} : {}),
+});
 
 const client = id => ({
   fixtureId: id,
@@ -66,7 +72,9 @@ const client = id => ({
   async loops() {return [];},
   mutate(path, body, signal) {
     signal.throwIfAborted();
-    if (path !== 'sources' || body.id !== 'fixture-mutation-'+id) throw Error('Mutation must match the exact reviewed fixture tuple');
+    const expected = path === 'loops' ? loopEdit(id) : {id: 'fixture-mutation-'+id};
+    if (!['sources', 'loops'].includes(path) || Object.entries(expected).some(([key, value]) => body[key] !== value))
+      throw Error('Mutation must match the exact reviewed fixture tuple');
     mutations.push(id);
     return request('mutation', id, signal);
   },
@@ -107,7 +115,9 @@ globalThis.hostedDigestRefreshPorts = {
   async read(key) {return structuredClone(stored.get(storageOwner(key)) ?? null);},
   async write(key, value) {
     const id = storageOwner(key);
-    if (value.body?.id !== 'fixture-mutation-'+id) throw Error('Journal write must match its owner');
+    const expected = value.path === 'loops' ? loopEdit(id) : {id: 'fixture-mutation-'+id};
+    if (Object.entries(expected).some(([field, valueAtField]) => value.body?.[field] !== valueAtField))
+      throw Error('Journal write must match its owner');
     writes.push([id, value.phase]);
     stored.set(id, structuredClone(value));
   },
@@ -158,10 +168,17 @@ globalThis.hostedDigestRefresh = {
   }),
   history: (id, row = 0, refuse = false) => perform(() => reply('history', id, row ? [payload(row)] : [], refuse)),
   sync: (id, row = 0, refuse = false) => perform(() => reply('sync', id, row ? [payload(row)] : [], refuse)),
-  seed: (id, phase = 'dispatched') => perform(() => {stored.set(id, pendingValue(id, phase));}),
+  seed: (id, phase = 'dispatched', kind = 'source') => perform(() => {stored.set(id, pendingValue(id, phase, kind));}),
   retry: () => perform(() => press('Retry')),
   discard: () => perform(() => press('Discard')),
-  mutate: (id, outcome = 'ok') => perform(() => reply('mutation', id, {}, outcome === 'rejected' ? new HostedSourceRejected() : outcome === 'refused')),
+  mutate: (id, outcome = 'ok') => perform(() => {
+    const {id: workflowId, mutationId, expectedVersionId} = loopEdit(id);
+    const receipt = outcome === 'renewed' ? {source: {id: 'fixture-mutation-'+id, revision: 'renewed'}} : {};
+    const error = typeof outcome === 'object'
+      ? new WorkflowHttpError(outcome.status ?? 409, {code: 'WORKFLOW_TYPED_NOT_APPLIED', workflowId, mutationId, expectedVersionId, ...outcome.fields})
+      : outcome === 'rejected' ? new HostedSourceRejected() : outcome === 'refused';
+    reply('mutation', id, receipt, error);
+  }),
   remove: (id, refuse = false) => perform(() => reply('remove', id, undefined, refuse)),
   status: (id, backgroundEnabled = true) => perform(() => {
     holdStatus = false;

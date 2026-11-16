@@ -4,11 +4,12 @@ import { nextDefaultNoteTitle } from '../runtime/note-default-title';
 import { accessibilityTimeoutScale } from '../runtime/accessibility-timeout';
 import { recordRendererFailure } from '../runtime/crash-log';
 import iconCatalog from '../icon-catalog.json';
+import { callsBriefing, matchesCallQuery } from "./telephony-presenters";
 /* Seeds, scripted replies and fixture images. Production builds resolve this
    specifier to ./fixtures.empty.js (same names, empty values). */
 import {
   IMG, PEOPLE, PN_REC, PN_VM, PN_SCRIPT, PN_SCREEN, PN_REPLIES, MSG_PHOTOS, MSG_SEED, MSG_UNREAD,
-  MSG_SMART, MSG_BOT, INBOX_ACCTS, INBOX_SEED, CAL_SEED, CAL_PREP, BR_START, BR_PAGES, BR_ME,
+  MSG_BOT, INBOX_ACCTS, INBOX_SEED, CAL_SEED, CAL_PREP, BR_START, BR_PAGES, BR_ME,
   PH_SEED, PH_DESC, PH_SHARE, MAPS_PLACES, MAPS_FAR, MAPS_MATCH, MAPS_SAVED, NOTES_SEED,
   CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
   WAL_MERCH, WAL_PASSES, WF_SEED, ST_ACCOUNTS, ST_NETS, ST_BT, ST_PERM0, ST_MODELS, ST_LOG,
@@ -16,15 +17,19 @@ import {
   ATTENTION_ROWS, HOME_DEFAULTS
 } from "./fixtures.js";
 import { isMvpView, DEFERRED_MVP_VIEWS, deferredMvpPrompt } from "./mvp-features";
+import { isAskSentence, openSuggestion, proposalCanAct } from "../runtime/comms-bar";
+import { stageSessionStore } from "../runtime/stage-session-store";
 import { ALPHA_PRODUCT, alphaPaletteColor, alphaThemeVariables } from "../product/alpha-product";
 import { navigateMobileShell, resolveMobileShellSwipe } from "@elizaos/ui/mobile-shell/core";
 import { emptyHomeShadePull, pullStart, shadeFallback } from "./system-shade";
 import React from "react";
 import { DCLogic } from "./dc-lite.js";
+import { askedDraftPlaced, draftAdopted, draftStageFit, draftUndone, emptyDraft, typed } from "../runtime/message-draft";
 import { calendarDayColumns, calendarDayCount, calendarReturnDay, markVisibleWeek, visibleCalendarDays } from "./calendar-days";
 import { calendarFormInputs, calendarFormInputPatch, calendarDefaultEventStart, calendarGuestEmail } from "./calendar-form-inputs";
 import { filterNotes, sortNotes, notePreview, noteDateLabel, notesFilterLabel } from "../runtime/notes-view";
 import { WEEKDAYS, MONTHS, formatTime, formatClock, formatHours, formatHoursRange, formatHour, weekdayName, formatShortDate, formatLongDate, formatMonthDay, formatMonthTitle } from "./locale-time";
+import { applyListFilter, clearListFilter, setListFilterHandler } from "../runtime/comms-bar";
 
 
 var IC = {
@@ -139,7 +144,8 @@ function restoreById(list, item, at) {
 
 /* ===== module: phone ===== */
 /* Phone (dialer). Holes are {{phone.*}}. Tabs: Recents (with favorites row), Keypad, Voicemail.
-   Call screen + incoming screen are immersive overlays. Recents/voicemail persist. */
+   The call and incoming cards follow the theme and compact into the stage while the chat is open
+   (AP-16). Recents/voicemail persist. */
 IC.phoneIn = IC.phoneIn || "M17 7L7 17M7 10v7h7";
 IC.phoneOut = IC.phoneOut || "M7 17L17 7M10 7h7v7";
 IC.phoneVm = IC.phoneVm || "M10 12a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0zM21 12a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0zM6.5 15.5h11";
@@ -228,6 +234,8 @@ function pnEnd(api, opt) {
   PN.live = null; api.stopBg();
   if (opt.quiet) return;
   if (note) api.toast(api.name + " saved notes from the call");
+  /* a call Alpha staged over another view (AC-06/AC-20) returns there with the chat still open */
+  if (api.isActive() && api.stageBack()) return;
   /* started from another app's detail (e.g. a contact): hang up returns there, and drop it from the back stack */
   if (s.ret && api.isActive()) { var stack = (api.S.stack || []).slice(); if (stack[stack.length - 1] === s.ret.view) stack.pop(); api.open(s.ret.view, s.ret.patch); api.shell({ stack: stack }); }
 }
@@ -236,6 +244,38 @@ function pnRingEnd(api, entry, patch) {
   if (!s.incoming) return;
   api.set(Object.assign({}, patch || {}, { incoming: null, ring: null, rs: false, scrN: 0, recents: [Object.assign({ id: "r" + crypto.randomUUID(), pid: s.incoming, at: Date.now(), dur: 0 }, entry)].concat(s.recents || []) }));
   api.stopBg();
+  /* AC-21: a call that rang over another stage hands it back */
+  if (api.isActive()) api.stageBack();
+}
+/* A call rings (fixture only: on the Alpha image the system call screen owns ringing). With the chat
+   open the stage turns into the incoming card and the sheet keeps its height (AC-21). */
+function pnRing(api, pid) {
+  if (!pid) return;
+  var patch = { incoming: pid, ring: "ring", rs: false, scrN: 0 };
+  if (api.S.chat === "sheet" || api.S.chat === "full") api.stage("phone", patch, null);
+  else api.open("phone", patch);
+}
+function pnAnswer(api) {
+  var s = api.get("phone");
+  if (!s.incoming) return;
+  PN.lastTab = s.tab === "favorites" ? "recents" : (s.tab || "recents");
+  pnStart(api, s.incoming, "", { dir: "in", live: true });
+}
+/* "Screen it": Alpha answers the ringing call and relays what the caller says. */
+function pnScreen(api) {
+  var s = api.get("phone");
+  if (!s.incoming || s.ring === "screen") return;
+  api.stopBg(); api.set({ ring: "screen", scrN: 1 });
+  api.everyBg(function () { var s2 = api.get("phone"); if (s2.ring !== "screen") return; if ((s2.scrN || 0) < PN_SCREEN.length) api.set({ scrN: (s2.scrN || 0) + 1 }); }, 1900);
+}
+function pnEndScreen(api) {
+  if (!api.get("phone").incoming) return;
+  pnRingEnd(api, { dir: "in", screened: true, dur: (api.get("phone").scrN || 0) * 2, note: copy("phone").screenSummary || "" });
+  api.toast(api.name + " saved the message");
+}
+/* AC-19: emergency short codes keep the full-screen call and no acting proposal. */
+function pnEmergency(num) {
+  return ["112", "911", "999", "000", "08", "100", "101", "102", "108", "110", "118", "119", "120", "122", "15", "17", "18"].indexOf(pnDigits(num)) >= 0;
 }
 function pnDecline(api, why) {
   var s = api.get("phone"); var pid = s.incoming;
@@ -249,7 +289,7 @@ function pnDecline(api, why) {
 
 registerView("phone", {
   title: "Phone", icon: "phone", aliases: ["dialer", "calls", "recents", "voicemail", "keypad"],
-  state: { tab: "recents", dial: "", recents: PN_REC, vms: PN_VM, vmOpen: null, playing: null, vpos: 0, call: null, num: "", callWho: null, incoming: null, ring: null, rs: false, scrN: 0, min: false },
+  state: { tab: "recents", dial: "", recents: PN_REC, vms: PN_VM, vmOpen: null, playing: null, vpos: 0, call: null, num: "", callWho: null, incoming: null, ring: null, rs: false, scrN: 0, min: false, q: "", qBy: "owner", qLabel: "" },
   persist: ["recents", "vms"],
   jumps: [[null, "Phone"], ["keypad", "Keypad"], ["voicemail", "Voicemail"], ["call", "In call"], ["incoming", "Incoming call"]],
   preset: function (sub) {
@@ -260,7 +300,6 @@ registerView("phone", {
     if (sub === "incoming") return who ? { incoming: who, ring: "ring" } : null;
   },
   badge: function (st) { return (st.vms || []).some(function (v) { return !v.heard; }); },
-  immersive: function (st) { return (pnWant(st) && !st.min) || st.incoming ? { dark: true, noPill: true } : null; },
   back: function (st, api) {
     if (st.incoming) { if (st.rs) api.set({ rs: false }); return true; }
     if (pnWant(st) && !st.min) { if (st.kp) api.set({ kp: false }); else api.set({ min: true }); return true; }
@@ -283,13 +322,19 @@ registerView("phone", {
   },
   suggestions: function (st) {
     var sg = copy("phone").suggestions || {};
-    if (st.tab === "voicemail") return sg.voicemail || ["Summarize my voicemail", "Who called?"];
+    if (st.tab === "voicemail") return sg.voicemail || [];
     if (st.tab === "keypad") return sg.keypad || [];
-    return sg.recents || ["Who called?", "Check voicemail"];
+    return sg.recents || [];
   },
   voicePhrase: copy("phone").voicePhrase,
   actions: {
-    hangup: function (card, api) { pnEnd(api); }
+    hangup: function (card, api) { pnEnd(api); },
+    /* AC-20: the owner's tap on the proposal card is the only path from Alpha to a dial. The stage
+       switches to the call and the sheet keeps its height; Back or End returns to the stage before. */
+    callApproved: function (card, api) { api.stage("phone", { call: card.args.pid || null, num: card.args.pid ? "" : card.args.num }, null); },
+    screenIncoming: function (card, api) { pnScreen(api); },
+    /* fixture only: a call rings, over the open chat when it is open */
+    ring: function (card, api) { pnRing(api, card.args && card.args.pid); }
   },
   reply: function (t, raw, api) {
     var st = api.st;
@@ -303,6 +348,15 @@ registerView("phone", {
       var lp = pnWho(api, lead.pid);
       var txt = (nu.length ? (nu.length === 1 ? "One new, from " : nu.length + " new. Latest from ") : "Nothing new. Last one from ") + (lp ? pnFirst(lp) : lead.label || lead.num) + ": " + (lead.gist || lead.text) + ".";
       return { text: txt, card: { type: "digest", go: { view: "phone", patch: { tab: "voicemail", vmOpen: lead.id } }, rows: vms.slice(0, 3).map(function (v) { var p = pnWho(api, v.pid); return { ini: pnIni(p), who: p ? p.name : v.label || v.num, text: v.text }; }) } };
+    }
+    /* AC-22: a question about one person's calls answers by filtering Recents to them */
+    var fp = /\b(calls? (from|with|to)|did .+ (call|ring)|ha(s|ve) .+ called)\b/.test(t) ? pnFind(t, api) : null;
+    if (fp) {
+      var count = (st.recents || []).filter(function (e) { return e.pid === fp.id; }).length;
+      var filter = { query: fp.name, label: fp.name, by: "alpha" };
+      var text = count ? (count === 1 ? "One call with " : count + " calls with ") + pnFirst(fp) + "." : "No calls with " + pnFirst(fp) + ".";
+      return api.isActive() ? { text: text, then: function () { applyListFilter("phone", filter); } }
+        : { text: text, nav: { view: "phone", patch: { tab: "recents", vmOpen: null, q: filter.query, qBy: "alpha", qLabel: filter.label } } };
     }
     if (/who (called|rang)|missed call|recent calls|call log/.test(t)) {
       var now = api.now.getTime();
@@ -325,9 +379,54 @@ registerView("phone", {
       else { var v3 = (st.vms || []).filter(function (v) { return v.label && rest.indexOf(v.label.toLowerCase().split(" ")[1] || "~") >= 0; })[0]; if (v3) num = v3.num; }
     }
     if (!p && !num) return null;
+    /* AC-20: never dials. The owner approves on the card, which names the number. */
     var who = p ? p.name : num;
-    return { text: "Calling " + (p ? pnFirst(p) : num) + ".", card: { type: "call", who: who, ini: p ? p.ini : "#", act: { mod: "phone", fn: "hangup" } },
-      nav: { view: "phone", patch: p ? { call: p.id, num: "" } : { call: null, num: num }, chat: "hidden" } };
+    return { text: "Call " + who + "?", proposal: { id: "call:" + crypto.randomUUID(), kind: "call", title: "Call " + who, detail: pnFmt(p ? p.phone : num), button: "Call", acts: true,
+      act: { mod: "phone", fn: "callApproved" }, args: { pid: p ? p.id : null, num: p ? "" : num } } };
+  },
+  /* AP-16 bar: Recents, Keypad and Voicemail filter the calls; a call or a ringing call addresses Alpha. */
+  bar: function (st, api) {
+    var now = api.now.getTime();
+    var ask = { kind: "alpha", placeholder: "Ask during call", value: "", onText: null, submit: null, canSubmit: false, maxLength: null, suggestion: null, acceptSuggestion: null };
+    var left = { icon: "call", label: "Back to the call", initials: null, run: null };
+    var none = { end: null, incoming: null, emergency: false, fit: null, briefing: null };
+    if (st.incoming) {
+      var ip = pnWho(api, st.incoming), rn = ip ? ip.name : "Unknown", screening = st.ring === "screen";
+      var decline = screening ? function () { pnEndScreen(api); } : function () { pnDecline(api); };
+      var answer = function () { pnAnswer(api); };
+      return Object.assign({}, none, {
+        target: { kind: "incoming", app: "Phone", name: rn, first: ip ? pnFirst(ip) : rn, initials: ip ? ip.ini : "#" },
+        closed: ask, left: left, context: rn + " · Incoming call", contextKey: "phone:incoming:" + st.incoming,
+        strip: { title: rn, subtitle: "Incoming call", initials: ip ? ip.ini : "#", live: false, actions: [{ id: "answer", label: "Answer", run: answer }, { id: "decline", label: "Decline", run: decline }] },
+        incoming: { answer: answer, decline: decline, screen: screening ? null : function () { pnScreen(api); } }
+      });
+    }
+    var want = pnWant(st);
+    if (want && !st.min) {
+      var cp = pnWho(api, st.call), cn = cp ? cp.name : (st.num || ""), hang = function () { pnEnd(api); };
+      return Object.assign({}, none, {
+        target: { kind: "call", app: "Phone", name: cn, first: cp ? pnFirst(cp) : cn, initials: cp ? cp.ini : "#" },
+        closed: ask, left: left, context: cn + " · Call", contextKey: "phone:call:" + want,
+        strip: { title: cn + " · " + pnClock(st.liveAt ? (now - st.liveAt) / 1000 : 0), subtitle: "On call", initials: cp ? cp.ini : "#", live: true, actions: [
+          { id: "mute", label: st.mute ? "Unmute" : "Mute", pressed: !!st.mute, run: function () { api.set({ mute: !api.get("phone").mute }); } },
+          { id: "end", label: "End call", run: hang }] },
+        end: hang, emergency: pnEmergency(cp ? cp.phone : st.num)
+      });
+    }
+    /* Recents, Keypad and Voicemail: typing filters Recents on the device (AC-22); a typed sentence or
+       Enter goes to Alpha through the shell. An Alpha filter shows as a chip and survives the cleared field. */
+    var day = now - 864e5;
+    var missed = (st.recents || []).filter(function (e) { return e.dir === "missed" && pnAt(e, now) >= day; }).map(function (e) { var p = pnWho(api, e.pid); return { name: p ? p.name : (e.num || "Unknown"), date: pnAt(e, now) }; });
+    var fresh = (st.vms || []).filter(function (v) { return !v.heard; }).map(function (v) { var p = pnWho(api, v.pid); return { name: p ? p.name : (v.label || v.num) }; });
+    return Object.assign({}, none, {
+      target: { kind: "recents", app: "Phone", name: null, first: null, initials: null },
+      closed: { kind: "filter", placeholder: "Call or ask", value: st.qBy === "alpha" ? "" : (st.q || ""), submit: null, canSubmit: false, maxLength: null, suggestion: null, acceptSuggestion: null,
+        onText: function (text) { if (!text && api.get("phone").qBy === "alpha") return; api.set({ q: text, qBy: "owner", qLabel: "" }); } },
+      left: { icon: "keypad", label: "Back to the keypad", initials: null, run: function () { pnStop(api); api.set({ tab: "keypad", vmOpen: null, playing: null, vpos: 0 }); } },
+      context: "Phone", contextKey: "phone:recents:",
+      strip: { title: "Phone", subtitle: "", initials: null, live: false, actions: [] },
+      briefing: callsBriefing(missed, fresh, now)
+    });
   },
   render: function (st, api) {
     var now = api.now.getTime();
@@ -347,11 +446,18 @@ registerView("phone", {
         pick: function () { pnStop(api); api.set({ tab: d[0], vmOpen: null, playing: null, vpos: 0 }); } };
     });
 
-    /* recents */
-    var favs = pnPeople(api).filter(function (p) { return p.fav; }).map(function (p) { return { ini: p.ini, first: pnFirst(p), label: "Call " + p.name, call: callFrom(p.id) }; });
-    var recents = (st.recents || []).map(function (e) {
+    /* recents: the bar's query (AC-22) filters them in memory; Keypad and Voicemail only keep it */
+    setListFilterHandler("phone", {
+      apply: function (f) { api.set(Object.assign({ q: f.query, qBy: f.by, qLabel: f.label }, f.by === "alpha" ? { tab: "recents", vmOpen: null, playing: null } : {})); return true; },
+      clear: function () { api.set({ q: "", qBy: "owner", qLabel: "" }); },
+      current: function () { var s = api.get("phone"); return s.q ? { query: s.q, label: s.qLabel || s.q, by: s.qBy === "alpha" ? "alpha" : "owner" } : null; }
+    });
+    var q = st.q || "";
+    var favs = q ? [] : pnPeople(api).filter(function (p) { return p.fav; }).map(function (p) { return { ini: p.ini, first: pnFirst(p), label: "Call " + p.name, call: callFrom(p.id) }; });
+    var recents = (st.recents || []).filter(function (e) { var p = pnWho(api, e.pid); return matchesCallQuery({ name: p ? p.name : "", number: p ? p.phone : (e.num || "") }, q); }).map(function (e, i) {
       var p = pnWho(api, e.pid); var missed = e.dir === "missed";
       return {
+        last: i === 0 && !favs.length ? true : undefined,
         ini: pnIni(p), who: p ? p.name : e.num, nameCss: missed ? "color:var(--acct)" : "",
         dirD: e.dir === "out" ? IC.phoneOut : IC.phoneIn, dirCss: missed ? "color:var(--acct)" : "color:var(--mut)",
         sub: pnRel(pnAt(e, now), now) + (e.dur ? " · " + pnDur(e.dur) : ""),
@@ -422,29 +528,34 @@ registerView("phone", {
     var status = !live ? "Calling…" : (st.hold ? "On hold · " : "") + pnClock(el);
     var sc = pnScript(st.call);
     var themName = cp ? pnFirst(cp) : "Caller";
-    var lines = sc.lines.slice(0, st.aiN || 0).map(function (l) { return { who: l[0] === "you" ? "You" : themName, text: l[1], css: l[0] === "you" ? "color:var(--alpha-gray-8f)" : "color:var(--alpha-white)" }; }).slice(-5);
-    var ctrl = function (key, d, label, on, extra) {
-      return { d: d, label: label, on: !!on, css: on ? (key === "ai" ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--alpha-white);color:var(--alpha-black)") : "background:rgba(255,255,255,.12);color:var(--alpha-white)", glyph: key === "ai", icon: key !== "ai",
-        toggle: function () { var s = api.get("phone"); var p = {}; p[key] = !s[key]; if (key === "ai" && p.ai) p.kp = false; api.set(p); if (testMocksEnabled && key === "ai" && p.ai) api.toast(api.name + " is taking notes"); } };
+    var lines = sc.lines.slice(0, st.aiN || 0).map(function (l) { return { who: l[0] === "you" ? "You" : themName, text: l[1], css: l[0] === "you" ? "color:var(--mut)" : "color:var(--fg)" }; }).slice(-5);
+    var toggle = function (key) {
+      return function () { var s = api.get("phone"); var p = {}; p[key] = !s[key]; if (key === "ai" && p.ai) p.kp = false; api.set(p); if (testMocksEnabled && key === "ai" && p.ai) api.toast(api.name + " is taking notes"); };
+    };
+    /* AC-03: mute, keypad, speaker, hold, then End as the right-most control (template) */
+    var ctrl = function (key, d, label, text, on) {
+      return { d: d, label: label, text: text, on: !!on, css: on ? "background:var(--fg);color:var(--bg)" : "background:var(--s2);color:var(--fg)", toggle: toggle(key) };
     };
     var controls = inCall ? [
-      ctrl("mute", IC.phoneMute, st.mute ? "Unmute" : "Mute", st.mute),
-      ctrl("kp", IC.dial, st.kp ? "Hide keypad" : "Show keypad", st.kp),
-      ctrl("spk", IC.phoneSpk, "Speaker", st.spk),
-      ctrl("hold", IC.pause, st.hold ? "Resume" : "Hold", st.hold),
-      ctrl("ai", null, st.ai ? api.name + " notes off" : api.name + " takes notes", st.ai)
+      ctrl("mute", IC.phoneMute, st.mute ? "Unmute" : "Mute", st.mute ? "Unmute" : "Mute", st.mute),
+      ctrl("kp", IC.dial, st.kp ? "Hide keypad" : "Show keypad", "Keypad", st.kp),
+      ctrl("spk", IC.phoneSpk, "Speaker", "Speaker", st.spk),
+      ctrl("hold", IC.pause, st.hold ? "Resume" : "Hold", st.hold ? "Resume" : "Hold", st.hold)
     ] : [];
 
     /* incoming */
     var ip = st.incoming ? pnWho(api, st.incoming) : null;
     var screening = st.ring === "screen";
-    var scrLines = PN_SCREEN.slice(0, st.scrN || 0).map(function (l) { return { who: l[0] === "alpha" ? api.name : (ip ? pnFirst(ip) : "Caller"), text: l[1].replace("{name}", api.name), css: l[0] === "alpha" ? "color:var(--alpha-gray-8f)" : "color:var(--alpha-white)" }; });
+    var scrLines = PN_SCREEN.slice(0, st.scrN || 0).map(function (l) { return { who: l[0] === "alpha" ? api.name : (ip ? pnFirst(ip) : "Caller"), text: l[1].replace("{name}", api.name), css: l[0] === "alpha" ? "color:var(--mut)" : "color:var(--fg)" }; });
     var scrDone = screening && (st.scrN || 0) >= PN_SCREEN.length;
 
     return {
       nativePrototype: true,
       tab: tab, title: tab === "keypad" ? "Keypad" : (tab === "voicemail" ? "Voicemail" : "Recents"),
       tabs: tabs, isRecents: tab === "recents", isKeypad: tab === "keypad", isVm: tab === "voicemail",
+      showList: !(inCall && !st.min) && !st.incoming,
+      filterChip: q && st.qBy === "alpha" ? { label: st.qLabel || q, clearLabel: "Clear filter " + (st.qLabel || q) } : null,
+      clearFilter: function () { clearListFilter("phone"); },
       favs: favs, hasFavs: favs.length > 0, recents: recents, noRecents: recents.length === 0,
       addContact: function () { api.open("contacts", { add: true }); },
       dial: pnFmt(dial) || dial, hasDial: dial.length > 0, noDial: dial.length === 0, dialSize: dial.length > 11 ? 30 : 38,
@@ -463,10 +574,12 @@ registerView("phone", {
       },
       vms: vms, noVms: vms.length === 0,
 
-      inCall: inCall, callFull: inCall && !st.min, banner: inCall && !!st.min,
-      cName: cp ? cp.name : cnum, cIni: cp ? cp.ini : "#", cStatus: status, calling: inCall && !live,
+      inCall: inCall, callFull: inCall && !st.min && !st.incoming, banner: inCall && !!st.min,
+      cName: cp ? cp.name : cnum, cIni: cp ? cp.ini : "#", cStatus: status, calling: inCall && !live, live: inCall && live,
+      emergency: inCall && pnEmergency(cp ? cp.phone : st.num),
       showAvatar: inCall && !st.kp && !(st.ai && lines.length), showLines: inCall && !st.kp && st.ai && lines.length > 0, lines: lines,
       aiOn: inCall && st.ai, aiWait: inCall && st.ai && !lines.length && !st.kp,
+      notesLabel: st.ai ? api.name + " notes off" : api.name + " takes notes", notesText: st.ai ? "Notes on" : "Take notes", toggleNotes: toggle("ai"),
       showDkp: inCall && !!st.kp, kpd: st.kpd || "", controls: controls,
       endCall: function () { pnEnd(api); },
       restore: function () { api.set({ min: false }); },
@@ -475,13 +588,10 @@ registerView("phone", {
       rCtx: copy("phone").ringContext || "", hasCtx: !!copy("phone").ringContext,
       isRing: !!st.incoming && !screening, isScreen: screening, scrLines: scrLines, scrDone: scrDone, scrLive: screening && !scrDone,
       scrSum: copy("phone").screenSummary || "",
-      accept: function () { var s = api.get("phone"); PN.lastTab = tab; pnStart(api, s.incoming, "", { dir: "in", live: true }); },
+      accept: function () { pnAnswer(api); },
       decline: function () { pnDecline(api); },
-      endScreen: function () { pnRingEnd(api, { dir: "in", screened: true, dur: (api.get("phone").scrN || 0) * 2, note: copy("phone").screenSummary || "" }); api.toast(api.name + " saved the message"); },
-      alphaAnswer: function () {
-        api.stopBg(); api.set({ ring: "screen", scrN: 1 });
-        api.everyBg(function () { var s = api.get("phone"); if (s.ring !== "screen") return; if ((s.scrN || 0) < PN_SCREEN.length) api.set({ scrN: (s.scrN || 0) + 1 }); }, 1900);
-      },
+      endScreen: function () { pnEndScreen(api); },
+      alphaAnswer: function () { pnScreen(api); },
       rsOpen: !!st.rs, openReply: function () { api.set({ rs: true }); }, closeReply: function () { api.set({ rs: false }); },
       replies: PN_REPLIES.map(function (r) { return { text: r, send: function () { var s = api.get("phone"); var pp = pnWho(api, s.incoming); pnDecline(api, "Replied: " + r); api.toast("Sent to " + (pp ? pnFirst(pp) : "caller")); } }; }),
       writeReply: function () { var s = api.get("phone"); var pid = s.incoming; pnDecline(api, "Declined with a message"); api.open("messages", { compose: pid }); }
@@ -490,10 +600,8 @@ registerView("phone", {
 });
 
 /* ===== module: messages ===== */
-/* Messages: SMS / RCS. Holes are {{messages.*}}. */
+/* Messages: SMS / RCS. Holes are {{messages.*}}. The one bottom bar is the composer (bar(), AP-16). */
 IC.msgUnread = IC.msgUnread || "M15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0z";
-
-var MSG_GENERIC = [["Sounds good", "Sounds good."], ["Thanks!", "Thanks!"]];
 
 function msgPeople(api) { var c = api.get("contacts") || {}; return (c.list && c.list.length) ? c.list : api.people; }
 function msgWho(api, pid, st) {
@@ -517,15 +625,17 @@ function msgFmt(k) {
 function msgMaxK(threads) { var mx = 0; Object.keys(threads).forEach(function (p) { threads[p].forEach(function (m) { if (m.k > mx) mx = m.k; }); }); return mx; }
 function msgNowK(api, threads) { var d = api.now; return Math.max(d.getHours() * 60 + d.getMinutes(), msgMaxK(threads) + 1); }
 function msgLastIn(list) { for (var i = list.length - 1; i >= 0; i--) if (!list[i].me && list[i].text) return list[i]; return null; }
+function msgOpen(st) { return st.thread || (typeof st.compose === "string" ? st.compose : null); }
 
-function msgPush(api, pid, msgs) {
+/* `extra` joins the same write, so a sent message and its cleared draft are saved together or not at all. */
+function msgPush(api, pid, msgs, extra) {
   var st = api.get("messages"); var th = Object.assign({}, st.threads);
   if (!Array.isArray(msgs)) msgs = [msgs];
   var k0 = msgNowK(api, st.threads);
   msgs = msgs.map(function (x) { return Object.assign({ k: k0 }, x); });
   var msg = msgs[msgs.length - 1];
   th[pid] = (th[pid] || []).concat(msgs);
-  var patch = { threads: th };
+  var patch = Object.assign({ threads: th }, extra);
   var viewing = api.get("messages").thread === pid && api.S.view === "messages";
   if (!msg.me && !viewing) { var u = Object.assign({}, st.unread); u[pid] = (u[pid] || 0) + 1; patch.unread = u; }
   api.set(patch);
@@ -534,37 +644,123 @@ function msgFiles(api, ids) {
   var fl = VIEWS.files ? ((api.get("files") || {}).files || []) : [];
   return (ids || []).map(function (id) { var f = fl.filter(function (x) { return x.id === id; })[0]; return f ? { id: f.id, name: f.name, size: f.size } : null; }).filter(Boolean);
 }
-function msgSend(api, pid, text, photo, files) {
+/* The id of the last message sent, or null when there was nothing to send. */
+function msgSend(api, pid, text, photo, files, extra) {
   var out = (files || []).map(function (f) { return { me: true, file: f.name, fid: f.id, size: f.size }; });
   var names = (files || []).map(function (f) { return f.name; }).join(", ");
   if (photo != null) out.push({ me: true, photo: photo });
   else if (text && text !== names) out.push({ me: true, text: text });
-  if (!out.length) return;
+  if (!out.length) return null;
   out = out.map(function (m) { return Object.assign({ id: crypto.randomUUID() }, m); });
   var sentId = out[out.length - 1].id;
-  msgPush(api, pid, out);
+  msgPush(api, pid, out, extra);
   var stillSent = function () { return (api.get("messages").threads[pid] || []).some(function (m) { return m.id === sentId; }); };
   var st = api.get("messages");
-  var bot = MSG_BOT[pid]; if (!bot) return;
-  var n = (st.botI || {})[pid] || 0; if (n >= bot.length) return;
+  var bot = MSG_BOT[pid]; if (!bot) return sentId;
+  var n = (st.botI || {})[pid] || 0; if (n >= bot.length) return sentId;
   var bi = Object.assign({}, st.botI); bi[pid] = n + 1; api.set({ botI: bi });
   api.later(function () { if (stillSent()) api.set({ typing: pid }); }, 900);
   api.later(function () { if (!stillSent()) return; api.set({ typing: null }); msgPush(api, pid, { me: false, text: bot[n] }); }, 2600);
+  return sentId;
 }
-function msgDraftCard(api, pid) {
-  var st = api.get("messages"); var p = msgWho(api, pid, st);
-  var sm = MSG_SMART[pid] || MSG_GENERIC;
-  return { type: "draft", to: p.name, body: sm[0][1], pid: pid, act: { mod: "messages", fn: "sendDraft" } };
+/* The draft slot of each thread (runtime/message-draft.ts): one pending text with its provenance and
+   one Undo. It is never sent from here except by the owner's Send (AC-14). */
+function msgDraft(st, pid) {
+  var d = ((st || {}).drafts || {})[pid];
+  return d ? Object.assign(emptyDraft(), { draft: d.draft, text: d.text, undo: d.undo || null }) : emptyDraft();
+}
+function msgDraftsPatch(st, pid, d) {
+  var all = Object.assign({}, st.drafts);
+  if (d.draft === "none" && !d.undo) delete all[pid]; else all[pid] = { draft: d.draft, text: d.text, undo: d.undo };
+  return { drafts: all };
+}
+function msgSetDraft(api, pid, d) { api.set(msgDraftsPatch(api.get("messages"), pid, d)); }
+/* The owner's Send for a thread: its draft and any picked files, in one write with the cleared slot. */
+function msgSubmit(api, pid) {
+  var s = api.get("messages"); var fs = msgFiles(api, s.attach); var d = msgDraft(s, pid);
+  var tx = String(d.text).trim(); if (!tx && !fs.length) return null;
+  return msgSend(api, pid, tx, null, fs, Object.assign(msgDraftsPatch(s, pid, emptyDraft()), { tray: false, attach: null }));
+}
+/* Send on the draft bubble (AC-15): the same Send, then the bubble shows as sent and Alpha notes it quietly. */
+function msgBubbleSend(api, pid) {
+  var id = VIEWS.messages.submit(api, pid); if (!id) return;
+  api.set({ sentDraft: id });
+  api.later(function () { if (api.get("messages").sentDraft === id) api.set({ sentDraft: null }); }, 1200);
+  api.note("Sent to " + msgWho(api, pid).name);
 }
 function msgOpenThread(api, pid, local) {
   var st = api.get("messages"); var u = Object.assign({}, st.unread); delete u[pid];
   api.set({ thread: pid, compose: null, unread: u, tray: false, q: "", local: local !== false });
 }
+/* A draft Alpha placed is shown where it will be sent: the stage moves to that thread with the chat
+   kept open (over the list, it returns with Back), or Messages opens on it from another app. */
+function msgDrafted(api, pid, text) {
+  if (api.S.view !== "messages") return { text: text, nav: { view: "messages", patch: { thread: pid }, chat: "sheet" } };
+  var tp = msgOpen(api.get("messages"));
+  if (tp === pid) return { text: text };
+  return { text: text, then: function () { api.stage("messages", { thread: pid }, { thread: tp }); } };
+}
+/* AC-22: Alpha answers a list question by filtering the same list, with a clearable chip. */
+function msgFiltered(api, filter, text) {
+  if (api.S.view !== "messages") return { text: text, nav: { view: "messages", patch: { thread: null, compose: null, filter: filter }, chat: "sheet" } };
+  var tp = msgOpen(api.get("messages"));
+  return { text: text, then: function () { if (tp) api.stage("messages", { thread: null, compose: null }, { thread: tp }); applyListFilter("messages", filter); } };
+}
+function msgMatches(api, st, id, q) {
+  var w = msgWho(api, id, st);
+  return (w.name + " " + (w.phone || "") + " " + st.threads[id].map(function (m) { return m.text || m.file || ""; }).join(" ")).toLowerCase().indexOf(q) >= 0;
+}
+function msgWhen(k) { return k < 0 ? "yesterday" : "at " + msgFmt(k); }
+/* AC-25: facts from the threads on this phone; null when there are none. */
+function msgBriefing(st, api, tp) {
+  var threads = st.threads || {};
+  if (tp) {
+    var list = threads[tp] || [], last = list[list.length - 1]; if (!last) return null;
+    var f = msgFirst(msgWho(api, tp, st));
+    return last.me ? "You last texted " + f + " " + msgWhen(last.k) + "." : f + " texted " + msgWhen(last.k) + " and hasn't had a reply.";
+  }
+  var ids = Object.keys(threads).filter(function (id) { return threads[id].length; }); if (!ids.length) return null;
+  var un = ids.filter(function (id) { return ((st.unread || {})[id] || 0) > 0; });
+  return !un.length ? "No unread conversations." : un.length === 1 ? msgWho(api, un[0], st).name + " sent an unread text." : un.length + " conversations have unread texts.";
+}
+/* AC-01: the one bottom bar. In a thread it addresses the person; on the list it filters (AC-22). */
+function msgBar(st, api) {
+  var tp = msgOpen(st);
+  if (tp) {
+    var w = msgWho(api, tp, st), f = msgFirst(w), d = msgDraft(st, tp);
+    var waits = (d.draft === "asked" || d.draft === "owner") && !!d.text.trim();
+    return {
+      target: { kind: "thread", app: "Messages", name: w.name, first: f, initials: w.ini },
+      closed: {
+        kind: "person", placeholder: "Text " + f, value: d.text,
+        onText: function (text) { msgSetDraft(api, tp, typed(msgDraft(api.get("messages"), tp), String(text))); },
+        submit: function () { VIEWS.messages.submit(api, tp); }, canSubmit: !!d.text.trim() || (st.attach || []).length > 0,
+        maxLength: 1600, suggestion: null, acceptSuggestion: null
+      },
+      left: { icon: "avatar", label: "Back to texting " + f, initials: w.ini, run: null },
+      context: w.name + " · Messages", contextKey: "messages:thread:" + tp,
+      strip: { title: w.name, subtitle: waits ? "Messages · draft waiting" : "Messages", initials: w.ini, live: false, actions: waits ? [{ id: "send", label: "Send draft", run: function () { msgBubbleSend(api, tp); } }] : [] },
+      end: null, incoming: null, emergency: false, fit: function () { return draftStageFit(); }, briefing: msgBriefing(st, api, tp)
+    };
+  }
+  var fl = st.filter;
+  return {
+    target: { kind: "list", app: "Messages", name: null, first: null, initials: null },
+    closed: {
+      kind: "filter", placeholder: "Search or ask", value: fl && fl.by === "owner" ? fl.query : "",
+      onText: function (text) { text = String(text); api.set({ filter: text.trim() ? { query: text, label: text.trim(), by: "owner" } : null }); },
+      submit: null, canSubmit: false, maxLength: null, suggestion: null, acceptSuggestion: null
+    },
+    left: { icon: "search", label: "Back to search", initials: null, run: null },
+    context: "Messages", contextKey: "messages:list:",
+    strip: { title: "Messages", subtitle: "", initials: null, live: false, actions: [] },
+    end: null, incoming: null, emergency: false, fit: null, briefing: msgBriefing(st, api, null)
+  };
+}
 
 registerView("messages", {
   title: "Messages", icon: "bubble", aliases: ["texts", "sms", "text"],
-  chat: "hidden",
-  state: { threads: MSG_SEED, unread: MSG_UNREAD, extra: [], botI: {}, thread: null, compose: null, text: "", attach: null, tray: false, typing: null, q: "", sq: null, local: false, slide: null },
+  state: { threads: MSG_SEED, unread: MSG_UNREAD, extra: [], botI: {}, thread: null, compose: null, text: "", drafts: {}, attach: null, tray: false, typing: null, q: "", filter: null, sentDraft: null, local: false, slide: null },
   persist: ["threads", "unread", "extra"],
   jumps: [[null, "Messages"], ["thread", "Thread"], ["new", "New message"]],
   preset: function (sub) {
@@ -572,43 +768,51 @@ registerView("messages", {
     if (sub === "new") return { compose: true };
   },
   badge: function (st) { var u = st.unread || {}; return Object.keys(u).some(function (k) { return u[k] > 0; }); },
-  immersive: function (st) { return (st.thread || typeof st.compose === "string") ? { noPill: true } : null; },
   back: function (st, api) {
     if (st.tray) { api.set({ tray: false }); return true; }
     // Opened from this app's list: back to the list. Deep-linked (contacts, shade, chat, share): hand back to the shell's stack.
     if (st.thread || st.compose) { var u = Object.assign({}, st.unread); var tp = st.thread || st.compose; if (typeof tp === "string") delete u[tp]; api.set({ thread: null, compose: null, text: "", attach: null, q: "", unread: u }); return !!st.local; }
-    if (st.sq != null) { api.set({ sq: null }); return true; }
+    if (st.filter) { api.set({ filter: null }); return true; }
     return false;
   },
   onLeave: function (api) {
-    var st = api.st; var tp = st.thread || (typeof st.compose === "string" ? st.compose : null);
+    var st = api.st; var tp = msgOpen(st);
     var p = latchPatch(st, ["typing"]);
     if (tp) { var u = Object.assign({}, st.unread); delete u[tp]; p = Object.assign(p || {}, { unread: u }); }
+    if (st.filter || st.sentDraft) p = Object.assign(p || {}, { filter: null, sentDraft: null });
     if (p) api.set(p);
   },
   suggestions: function (st, api) {
-    var tp = st.thread || (typeof st.compose === "string" ? st.compose : null);
-    if (tp) { var f = msgFirst(msgWho(api, tp, st)); return ["Reply for me", "What did " + f + " say?", "Tell " + f + " I'm 5 min late"]; }
-    return copy("messages").suggestions || ["Any new texts?"];
+    var tp = msgOpen(st), c = copy("messages");
+    if (tp) { var f = msgFirst(msgWho(api, tp, st)); return (c.threadSuggestions || []).map(function (s) { return s.replace(/\{first\}/g, f); }); }
+    return c.suggestions || [];
   },
   voicePhrase: copy("messages").voicePhrase,
   reply: function (t, raw, api) {
     var st = api.st; var m, p;
     var here = api.active;
-    var tp = st.thread || (typeof st.compose === "string" ? st.compose : null);
-    // text <person> <body> / tell <person> <body>
+    var tp = msgOpen(st);
+    var reply = copy("messages").replyDraft;
+    // text <person> <body> / tell <person> <body>: a draft in that thread's slot, never sent (AC-14)
     m = t.match(/^(?:text|message|sms|tell)\s+(\w+)[\s,:]*(?:that\s+|saying\s+)?(.*)$/);
     if (m && (p = msgFind(api, m[1]))) {
       var body = m[2] ? raw.trim().slice(raw.trim().length - m[2].length).trim() : "";
       if (!body) return { text: "Opening " + msgFirst(p) + ".", nav: { view: "messages", patch: { thread: p.id } } };
       body = cap(body.replace(/\bi'm\b/gi, "I'm").replace(/\bim\b/gi, "I'm"));
       if (!/[.!?]$/.test(body)) body += ".";
-      return { text: "Here's a text to " + msgFirst(p) + ".", card: { type: "draft", to: p.name, body: body, pid: p.id, act: { mod: "messages", fn: "sendDraft" } } };
+      msgSetDraft(api, p.id, askedDraftPlaced(msgDraft(api.get("messages"), p.id), body, true));
+      return msgDrafted(api, p.id, "Drafted a text to " + msgFirst(p) + ". It isn't sent.");
     }
     // reply for me (in thread) / reply to <person>
-    if (here && tp && /^(reply for me|draft a reply|reply|write (a )?reply)/.test(t)) return { text: "Here's a reply to " + msgFirst(msgWho(api, tp, st)) + ".", card: msgDraftCard(api, tp) };
+    if (here && tp && reply && /^(reply for me|draft a reply|reply|write (a )?reply)/.test(t)) {
+      msgSetDraft(api, tp, askedDraftPlaced(msgDraft(st, tp), reply, true));
+      return msgDrafted(api, tp, "Drafted a reply to " + msgFirst(msgWho(api, tp, st)) + ". It isn't sent.");
+    }
     m = t.match(/reply to (\w+)/);
-    if (m && (p = msgFind(api, m[1])) && (st.threads || {})[p.id] && !/e-?mail/.test(t)) return { text: "Here's a reply to " + msgFirst(p) + ".", card: msgDraftCard(api, p.id) };
+    if (reply && m && (p = msgFind(api, m[1])) && (st.threads || {})[p.id] && !/e-?mail/.test(t)) {
+      msgSetDraft(api, p.id, askedDraftPlaced(msgDraft(api.get("messages"), p.id), reply, true));
+      return msgDrafted(api, p.id, "Drafted a reply to " + msgFirst(p) + ". It isn't sent.");
+    }
     // what did <person> send/say
     m = t.match(/what did (\w+) (send|say|text|write|want)|(\w+)'s (texts|messages)/);
     if (m && (p = msgFind(api, m[1] || m[3])) && (st.threads || {})[p.id]) {
@@ -619,13 +823,13 @@ registerView("messages", {
       if (photos) txt += " Plus " + (photos === 1 ? "a photo" : photos + " photos") + ".";
       return { text: txt, card: { type: "generic", icon: "bubble", title: p.name, sub: last ? last.text : "", go: { view: "messages", patch: { thread: p.id } } } };
     }
-    // search texts
+    // search texts: Alpha filters the list (AC-22)
     m = t.match(/(?:find|search(?: for)?|look for)\s+(?:my\s+)?(?:texts?|messages)\s+(?:about|from|with|mentioning)\s+(.+)/);
     if (m) {
-      var q = m[1].replace(/[?.]$/, "").trim(); var qp = msgFind(api, q.split(" ")[0]);
-      var hits = Object.keys(st.threads || {}).filter(function (id) { return (qp && qp.id === id) || st.threads[id].some(function (x) { return (x.text || "").toLowerCase().indexOf(q) >= 0; }); });
+      var q = m[1].replace(/[?.]$/, "").trim();
+      var hits = Object.keys(st.threads || {}).filter(function (id) { return msgMatches(api, st, id, q); });
       if (!hits.length) return { text: "No texts match \u201c" + q + "\u201d." };
-      return { text: hits.length === 1 ? "One conversation." : hits.length + " conversations.", card: { type: "digest", rows: hits.map(function (id) { var w = msgWho(api, id, st); var x = st.threads[id].filter(function (y) { return (y.text || "").toLowerCase().indexOf(q) >= 0; }).pop() || msgLastIn(st.threads[id]) || {}; return { ini: w.ini, who: w.name, text: x.text || "Photo", go: { view: "messages", patch: { thread: id } } }; }), go: { view: "messages", patch: { sq: q } } } };
+      return msgFiltered(api, { query: q, label: q, by: "alpha" }, hits.length === 1 ? "One conversation." : hits.length + " conversations.");
     }
     // unread texts
     if (/(new|unread|any) (texts|messages|sms)|texts\?$/.test(t)) {
@@ -645,16 +849,21 @@ registerView("messages", {
       api.toast("Sent to " + msgFirst(msgWho(api, pid)));
     }
   },
+  bar: msgBar,
+  submit: msgSubmit,
   render: function (st, api) {
     var threads = st.threads || {};
     var unread = st.unread || {};
     var ids = Object.keys(threads).filter(function (id) { return threads[id].length; });
     ids.sort(function (a, b) { var la = threads[a][threads[a].length - 1].k, lb = threads[b][threads[b].length - 1].k; return lb - la; });
-    var sq = (st.sq || "").trim().toLowerCase();
-    if (sq) ids = ids.filter(function (id) {
-      var w = msgWho(api, id, st);
-      return (w.name + " " + (w.phone || "") + " " + threads[id].map(function (m) { return m.text || m.file || ""; }).join(" ")).toLowerCase().indexOf(sq) >= 0;
+    // AC-22: the list filters on this phone as the bar is typed in, or as Alpha answers.
+    setListFilterHandler("messages", {
+      apply: function (f) { var q0 = String(f.query || "").trim(); api.set({ filter: q0 ? { query: f.query, label: f.label || q0, by: f.by } : null }); return true; },
+      clear: function () { api.set({ filter: null }); },
+      current: function () { return api.get("messages").filter || null; }
     });
+    var sq = ((st.filter && st.filter.query) || "").trim().toLowerCase();
+    if (sq) ids = ids.filter(function (id) { return msgMatches(api, st, id, sq); });
     var convos = ids.map(function (id) {
       var w = msgWho(api, id, st); var l = threads[id][threads[id].length - 1];
       var un = (unread[id] || 0) > 0;
@@ -689,15 +898,21 @@ registerView("messages", {
         ini: w.ini, name: w.name, last: (l.me ? "You: " : "") + prev, time: msgFmt(l.k),
         nameW: un ? "700" : "500", lastCss: un ? "color:var(--fg);font-weight:600" : "color:var(--mut)", dot: un ? "var(--acct)" : "transparent",
         label: (un ? "Unread, " : "") + w.name,
-        down: s.down, up: s.up, tx: st.slide && st.slide.id === id ? st.slide.x : 0,
+        down: s.down, up: s.up, tx: st.slide && st.slide.id === id ? st.slide.x : 0, stageLast: undefined,
         open: function () { if (api.swallowed()) return; msgOpenThread(api, id); }
       };
     });
 
-    var tp = st.thread || (typeof st.compose === "string" ? st.compose : null);
+    var tp = msgOpen(st);
+    // Text handed over with the open (Maps, Notes, Files sharing) becomes the owner's draft in that thread's slot.
+    if (tp && typeof st.text === "string" && st.text) {
+      var handed = st.text;
+      queueMicrotask(function () { var s = api.get("messages"); if (s.text !== handed || msgOpen(s) !== tp) return; api.set(Object.assign(msgDraftsPatch(s, tp, typed(msgDraft(s, tp), handed)), { text: "" })); });
+    }
     var th = null;
     if (tp) {
       var w = msgWho(api, tp, st); var list = threads[tp] || [];
+      var lastIn = -1; list.forEach(function (m, i) { if (!m.me) lastIn = i; });
       var bubbles = list.map(function (m, i) {
         var prev = list[i - 1], next = list[i + 1];
         var sep = !prev || m.k - prev.k >= 60;
@@ -707,6 +922,8 @@ registerView("messages", {
         return {
           sep: sep, sepLabel: sep ? (m.k < 0 ? "Yesterday " : "") + msgFmt(m.k < 0 ? m.k + 1440 : m.k) : "",
           text: m.text || "", isText: !isPhoto && !isFile, isPhoto: isPhoto, isFile: isFile, file: m.file || "", size: m.size || "",
+          // The stage keeps the newest inbound message above the sheet, never the owner's own (AC-02).
+          stageLast: i === lastIn ? true : undefined, draftSent: st.sentDraft && m.id === st.sentDraft ? "true" : undefined,
           openFile: function () { if (VIEWS.files && m.fid) api.open("files", { open: m.fid }); else api.toast(m.file); },
           row: "justify-content:" + (m.me ? "flex-end" : "flex-start") + ";margin-top:" + (sep ? "4px" : (prev && prev.me === m.me ? "3px" : "12px")),
           css: (m.me ? "background:var(--acc);color:var(--alpha-white);" : "background:var(--s2);color:var(--fg);") + "border-radius:" + r,
@@ -714,28 +931,23 @@ registerView("messages", {
           openPhoto: function () { if (VIEWS.photos) api.open("photos"); else api.toast("Photo"); }
         };
       });
-      var lastIn = list.length && !list[list.length - 1].me ? list[list.length - 1] : null;
-      var sm = lastIn ? (MSG_SMART[tp] && (st.botI || {})[tp] ? MSG_GENERIC : (MSG_SMART[tp] || MSG_GENERIC)) : [];
       var atts = msgFiles(api, st.attach);
-      var send = function (text) {
-        var s2 = api.get("messages"); var fs = text != null ? [] : msgFiles(api, s2.attach);
-        var tx = String(text != null ? text : s2.text).trim(); if (!tx && !fs.length) return;
-        msgSend(api, tp, tx, null, fs); api.set({ text: "", tray: false, attach: text != null ? s2.attach : null });
-      };
+      // AC-14: the slot's draft shows in the stage while the chat is open: Alpha's dashed, the owner's grey.
+      var d = msgDraft(st, tp), open = api.S.chat === "sheet" || api.S.chat === "full";
+      var by = d.draft === "asked" ? "alpha" : d.draft === "owner" ? "owner" : null;
       th = {
         name: w.name, ini: w.ini, bubbles: bubbles, typing: st.typing === tp,
         who: function () { if (api.person(tp) || msgPeople(api).some(function (p) { return p.id === tp; })) api.open("contacts", { open: tp }); else api.open("contacts", { add: true }); },
         call: function () { api.open("phone", { call: tp }); },
-        smart: sm.map(function (s) { return { label: s[0], go: function () { send(s[1]); } }; }),
-        hasSmart: !st.tray && !atts.length,
-        ask: function () { api.say("Here's a reply to " + msgFirst(w) + ".", msgDraftCard(api, tp)); },
+        draftBubble: open && by && d.text.trim() ? {
+          by: by, alpha: by === "alpha", sent: undefined, text: d.text, canUndo: !!d.undo, canAct: true,
+          label: by === "alpha" ? api.name + "'s draft · not sent" : "Your draft", aria: by === "alpha" ? api.name + "'s draft, not sent" : "Your draft, not sent",
+          edit: function () { msgSetDraft(api, tp, draftAdopted(msgDraft(api.get("messages"), tp))); api.toPerson(); },
+          send: function () { msgBubbleSend(api, tp); },
+          undo: function () { msgSetDraft(api, tp, draftUndone(msgDraft(api.get("messages"), tp))); }
+        } : null,
         atts: atts.map(function (f) { return { name: f.name, rm: function () { api.set({ attach: (api.get("messages").attach || []).filter(function (x) { return x !== f.id; }) }); } }; }),
         hasAtts: atts.length > 0,
-        text: st.text || "", hasText: !!(st.text || "").trim(),
-        sendCss: ((st.text || "").trim() || atts.length) ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
-        onText: function (e) { api.set({ text: e.target.value }); },
-        onKey: function (e) { if (e.key === "Enter") { e.preventDefault(); send(); } },
-        send: function () { send(); },
         tray: !!st.tray, trayCss: st.tray ? "background:var(--fg);color:var(--bg);transform:rotate(45deg)" : "background:var(--s2);color:var(--fg)",
         toggleTray: function () { api.set({ tray: !api.get("messages").tray }); },
         camera: function () { api.open("camera", { mode: "photo" }); },
@@ -765,16 +977,17 @@ registerView("messages", {
       };
     }
 
+    // The list's stage markers apply only while the list is on screen, not under a thread or the picker.
+    var listStage = !th && !pick ? true : undefined;
+    if (listStage && convos[0]) convos[0].stageLast = true;
+    var fl = st.filter;
     return {
       nativePrototype: true,
-      convos: convos,
+      convos: convos, listStage: listStage,
       newMsg: function () { api.set({ compose: true, q: "", local: true }); },
-      searching: st.sq != null, notSearching: st.sq == null, sq: st.sq || "", hasSq: !!sq, empty: convos.length === 0,
+      filterChip: fl && fl.by === "alpha" ? { label: fl.label, clearLabel: "Clear filter " + fl.label, clear: function () { api.set({ filter: null }); } } : null,
+      empty: convos.length === 0,
       emptyIcon: sq ? IC.search : IC.bubble, emptyText: sq ? "No results" : "No messages",
-      openSearch: function () { api.set({ sq: "" }); },
-      closeSearch: function () { api.set({ sq: null }); },
-      onSq: function (e) { api.set({ sq: e.target.value }); },
-      askSq: function () { var q0 = (api.get("messages").sq || "").trim(); api.set({ sq: null }); api.send(/text|message|sent|said|say/i.test(q0) ? q0 : "Find texts about " + q0); },
       inThread: !!th, t: th,
       picking: !!pick, p: pick
     };
@@ -3335,6 +3548,62 @@ function ctGroups(people) {
   });
   return groups;
 }
+/* AC-22: the contacts a list query matches, read on this device only: the name, email or note, or
+   three or more digits of the number. */
+function ctHits(list, query) {
+  var q = String(query || "").trim().toLowerCase(), qd = q.replace(/\D/g, "");
+  return (list || []).filter(function (p) {
+    if (!q) return true;
+    if ((p.name + " " + (p.email || "") + " " + (p.note || "")).toLowerCase().indexOf(q) >= 0) return true;
+    return qd.length >= 3 && String(p.phone || "").replace(/\D/g, "").indexOf(qd) >= 0;
+  });
+}
+/* AC-22: what a question sent from the Contacts list asks the list to show ("Who do I know at Lumen?"
+   is "Lumen"). A short query sent with Enter is the filter itself; anything else is null. */
+function ctListAsk(raw) {
+  var text = String(raw || "").trim();
+  var m = text.match(/\b(?:who|show|find|list|filter|people|contacts|anyone|everyone)\b.*?\b(?:at|from|in|named|called|with)\s+(.+?)[\s?.!]*$/i);
+  if (m) return m[1].trim();
+  return text && !/\?$/.test(text) && text.split(/\s+/).length <= 3 ? text : null;
+}
+/* The list filter as runtime/comms-bar.ts reports it: the owner's typed query shows no chip, Alpha's
+   filter shows its chip label. */
+function ctFilterNow(s) { return s && s.q ? { query: s.q, label: s.chip || s.q, by: s.chip ? "alpha" : "owner" } : null; }
+function ctFilterHandler(api) {
+  return {
+    apply: function (f) { var query = String(f.query || ""); api.set({ q: query, chip: f.by === "alpha" && query.trim() ? String(f.label || query) : null, open: null }); return true; },
+    clear: function () { api.set({ q: "", chip: null }); },
+    current: function () { return ctFilterNow(api.get("contacts")); }
+  };
+}
+/* AP-16 bar (runtime/comms-bar.ts): on the list the bar searches it or asks Alpha; on a contact it
+   asks Alpha about that person. Contacts never addresses a person from the bar. */
+function ctBar(st, api) {
+  var p = st.open ? ctGet(st.list || CT_SEED, st.open) : null;
+  var field = { value: "", onText: null, submit: null, canSubmit: false, maxLength: null, suggestion: null, acceptSuggestion: null };
+  var rest = { end: null, incoming: null, emergency: false, fit: null };
+  if (p) {
+    var first = p.first || String(p.name || "").split(/\s+/)[0];
+    return Object.assign({
+      target: { kind: "contact", app: "Contacts", name: p.name, first: first, initials: p.ini },
+      closed: Object.assign({ kind: "alpha", placeholder: "Ask about " + first }, field),
+      left: { icon: "avatar", label: "Back to " + first + "'s card", initials: p.ini, run: null },
+      context: p.name + " · Contacts", contextKey: "contacts:contact:" + p.id,
+      strip: { title: p.name, subtitle: "Contacts", initials: p.ini, live: false, actions: [] },
+      briefing: ctContext(api, p) || null
+    }, rest);
+  }
+  return Object.assign({
+    target: { kind: "list", app: "Contacts", name: null, first: null, initials: null },
+    closed: Object.assign({}, field, { kind: "filter", placeholder: "Search or ask", value: st.chip ? "" : st.q || "",
+      // Emptying the field keeps a filter Alpha applied; its chip clears it.
+      onText: function (text) { if (!text && api.get("contacts").chip) return; applyListFilter("contacts", { query: text, label: text, by: "owner" }); } }),
+    left: { icon: "search", label: "Back to search", initials: null, run: null },
+    context: "Contacts", contextKey: "contacts:list:",
+    strip: { title: "Contacts", subtitle: "", initials: null, live: false, actions: [] },
+    briefing: null
+  }, rest);
+}
 function ctSave(api) {
   var s = api.get("contacts"); var l = s.list || CT_SEED;
   /* the contact being edited was deleted meanwhile: nothing is saved and the editor closes */
@@ -3347,7 +3616,7 @@ function ctSave(api) {
     api.set({ list: l.map(function (x) { return x.id === s.edit ? ctMake(Object.assign({}, x, clean)) : x; }), edit: null, add: null, form: null, open: s.edit });
   } else {
     var np = ctMake(Object.assign({ id: "contact-" + crypto.randomUUID(), fav: false }, clean));
-    api.set({ list: l.concat([np]), edit: null, add: null, form: null, open: np.id, q: "" });
+    api.set({ list: l.concat([np]), edit: null, add: null, form: null, open: np.id, q: "", chip: null });
   }
   api.toast("Saved");
   return true;
@@ -3365,7 +3634,7 @@ function ctDeleted(api, p, idx) {
 
 registerView("contacts", {
   title: "Contacts", icon: "user", aliases: ["people", "address book"],
-  state: { list: CT_SEED, q: "", searching: false, open: null, edit: null, add: null, form: null },
+  state: { list: CT_SEED, q: "", chip: null, open: null, edit: null, add: null, form: null },
   persist: ["list"],
   jumps: [[null, "Contacts"], ["detail", "Contact"], ["edit", "Edit contact"]],
   preset: function (sub) {
@@ -3376,18 +3645,27 @@ registerView("contacts", {
   back: function (st, api) {
     if (st.edit || st.add) { api.set({ edit: null, add: null, form: null, open: st.edit || st.open }); return true; }
     if (st.open) { api.set({ open: null }); return true; }
-    if (st.searching || st.q) { api.set({ q: "", searching: false }); return true; }
+    if (st.q || st.chip) { clearListFilter("contacts"); return true; }
     return false;
   },
+  bar: ctBar,
   suggestions: function (st, api) {
     var p = st.open ? ctGet(st.list || CT_SEED, st.open) : null;
     if (st.edit || st.add) return ["Save it", "Discard changes"];
     if (p) return ["Catch me up on " + p.first, "Text " + p.first, "Edit " + p.first + "'s email"];
-    return copy("contacts").suggestions || ["Add a contact"];
+    return copy("contacts").suggestions || [];
   },
   voicePhrase: copy("contacts").voicePhrase,
   reply: function (t, raw, api) {
     var st = api.st; var list = ctList(api);
+    /* AC-22: on the list Alpha answers a list question by filtering the list on screen. */
+    var ask = api.active && !st.open && !st.edit && !st.add ? ctListAsk(raw) : null;
+    var listAnswer = ask ? (function () {
+      var n = ctHits(list, ask).length;
+      if (!n) return { text: "No one in Contacts matches \u201c" + ask + "\u201d." };
+      return { text: n + (n === 1 ? " person matches" : " people match") + " \u201c" + ask + "\u201d. I filtered the list.",
+        then: function () { applyListFilter("contacts", { query: ask, label: ask, by: "alpha" }); } };
+    })() : null;
     if (api.active && (st.edit || st.add)) {
       if (/^(save|done|save it|looks good)\b/.test(t)) return { text: "Saved.", then: function () { ctSave(api); } };
       if (/^(discard|cancel|never ?mind)\b/.test(t)) return { text: "Discarded.", then: function () { var s = api.get("contacts"); api.set({ edit: null, add: null, form: null, open: s.edit || s.open }); } };
@@ -3404,7 +3682,7 @@ registerView("contacts", {
         then: function () { api.setView("contacts", { list: ctList(api).concat([np]) }); } };
     }
     var p = ctFind(t, list);
-    if (!p) return null;
+    if (!p) return listAnswer;
     var f = p.first || p.name;
     /* edits */
     var ed = t.match(/\b(edit|change|update|set|fix)\b.*?\b(email|e-mail|number|phone|address|birthday|note)\b/);
@@ -3434,30 +3712,31 @@ registerView("contacts", {
       var ctx = ctContext(api, p);
       return { text: (p.note && ctx.indexOf(p.note) < 0 ? p.note + ". " : "") + (ctx || "Nothing new from " + f + ".") , card: card("user", p.phone || p.email) };
     }
-    return null;
+    return listAnswer;
   },
   render: function (st, api) {
     var list = st.list || CT_SEED;
     var now = api.now.getTime();
-    var q = (st.q || "").trim().toLowerCase(); var qd = q.replace(/\D/g, "");
-    var hits = list.filter(function (p) {
-      if (!q) return true;
-      if ((p.name + " " + (p.email || "") + " " + (p.note || "")).toLowerCase().indexOf(q) >= 0) return true;
-      return qd.length >= 3 && String(p.phone || "").replace(/\D/g, "").indexOf(qd) >= 0;
-    });
-    var groups = ctGroups(hits).map(function (g) {
-      return { letter: g.letter, head:true, rows: g.people.map(function (p) { return { ini: p.ini, name: p.name, open: function () { api.set({ open: p.id }); } }; }) };
-    });
-    var favs = (q || st.searching) ? [] : list.filter(function (p) { return p.fav; }).map(function (p) { return { ini: p.ini, first: p.first || p.name, label: p.name, open: function () { api.set({ open: p.id }); } }; });
-
+    var filter = ctFilterHandler(api);
+    setListFilterHandler("contacts", filter);
+    var q = (st.q || "").trim();
+    var hits = ctHits(list, q);
     var p = st.open ? ctGet(list, st.open) : null;
+    /* The first row on screen stays above the Alpha sheet (data-alpha-stage-last), while no contact covers the list. */
+    var listMark = p ? undefined : "true";
+    var favs = q ? [] : list.filter(function (p) { return p.fav; }).map(function (p) { return { ini: p.ini, first: p.first || p.name, label: p.name, open: function () { api.set({ open: p.id }); } }; });
+    var groups = ctGroups(hits).map(function (g, gi) {
+      return { letter: g.letter, head:true, rows: g.people.map(function (p, ri) { return { ini: p.ini, name: p.name, last: !favs.length && !gi && !ri ? listMark : undefined, open: function () { api.set({ open: p.id }); } }; }) };
+    });
+
     var d = null;
     if (p) {
       var acts = [];
-      if (p.phone) acts.push({ d: IC.phone, label: "Call " + p.name, go: function () { api.open("phone", { call: p.id, ret: { view: "contacts", patch: { open: p.id } } }); } });
-      if (p.phone) acts.push({ d: IC.bubble, label: "Message " + p.name, go: function () { api.open("messages", { thread: p.id }); } });
-      if (p.email) acts.push({ d: IC.mail, label: "Email " + p.name, go: function () { api.open("inbox", { compose: { to: p.id } }); } });
-      if (p.address) acts.push({ d: IC.pin, label: "Directions to " + p.name, go: function () { api.open("maps", { query: p.address }); } });
+      /* AC-03: call, text, mail, directions, each only with its field and an admitted view to handle it. */
+      if (p.phone && isMvpView("phone")) acts.push({ d: IC.phone, label: "Call " + p.name, go: function () { api.open("phone", { call: p.id, ret: { view: "contacts", patch: { open: p.id } } }); } });
+      if (p.phone && isMvpView("messages")) acts.push({ d: IC.bubble, label: "Message " + p.name, go: function () { api.open("messages", { thread: p.id }); } });
+      if (p.email && isMvpView("inbox")) acts.push({ d: IC.mail, label: "Email " + p.name, go: function () { api.open("inbox", { compose: { to: p.id } }); } });
+      if (p.address && isMvpView("maps")) acts.push({ d: IC.pin, label: "Directions to " + p.name, go: function () { api.open("maps", { query: p.address }); } });
       var fields = [];
       if (p.phone) fields.push({ d: IC.phone, v: p.phone });
       if (p.email) fields.push({ d: IC.mail, v: p.email });
@@ -3466,7 +3745,7 @@ registerView("contacts", {
       if (p.note) fields.push({ d: IC.contactsNote, v: p.note });
       var ctx = ctContext(api, p);
       d = {
-        ini: p.ini, name: p.name, acts: acts, hasActs: acts.length > 0, fields: fields, hasFields: fields.length > 0,
+        ini: p.ini, name: p.name, acts: acts, hasActs: acts.length > 0, fields: fields, hasFields: fields.length > 0, canFav: true, canDelete: true, busy: false,
         ctx: ctx, hasCtx: !!ctx && ctx !== p.note,
         ask: function () { api.send("Catch me up on " + (p.first || p.name)); },
         fav: !!p.fav, favLabel: p.fav ? "Remove from favorites" : "Add to favorites", favCss: p.fav ? "color: var(--acct); fill: currentColor" : "",
@@ -3489,16 +3768,11 @@ registerView("contacts", {
     };
     var canSave = editing && !!(form.first.trim() || form.last.trim() || form.phone.trim());
     return {
-      nativePrototype: true,
-      q: st.q || "", hasQ: !!q, qRaw: (st.q || "").trim(),
-      searching: !!st.searching, notSearching: !st.searching,
-      openSearch: function () { api.set({ searching: true }); },
-      closeSearch: function () { api.set({ searching: false, q: "" }); },
-      searchRef: function (el) { if (el && document.activeElement !== el && !el.dataset.f) { el.dataset.f = "1"; try { el.focus(); } catch (e) {} } },
-      onQ: function (e) { api.set({ q: e.target.value }); },
-      askQ: function () { api.send((api.get("contacts").q || "").trim()); },
+      q: st.q || "", qRaw: q, addQ: !!q && !st.chip,
+      filter: filter, listMark: listMark, favsLast: favs.length ? listMark : undefined,
+      chip: st.chip && q ? { label: st.chip, count: hits.length, clearLabel: "Clear filter " + st.chip, clear: function () { clearListFilter("contacts"); } } : null,
       favs: favs, hasFavs: favs.length > 0, groups: groups, noHits: hits.length === 0 && !!q,
-      addNew: function () { var s0 = api.get("contacts"); var qq = s0.searching ? (s0.q || "").trim() : ""; api.set({ add: !qq ? true : (/\d{3}/.test(qq) ? { phone: qq } : { first: qq.charAt(0).toUpperCase() + qq.slice(1) }), form: null, q: "", searching: false }); },
+      addNew: function () { var s0 = api.get("contacts"); var qq = s0.chip ? "" : (s0.q || "").trim(); api.set({ add: !qq ? true : (/\d{3}/.test(qq) ? { phone: qq } : { first: qq.charAt(0).toUpperCase() + qq.slice(1) }), form: null, q: "", chip: null }); },
       detail: !!d, d: d,
       editing: editing,
       eIni: form ? ctIni(form.first, form.last) : "", eHasIni: !!form && ctIni(form.first, form.last) !== "#", eNoIni: !!form && ctIni(form.first, form.last) === "#",
@@ -5090,7 +5364,9 @@ var BASE = {
   q: Object.assign({}, QUICK_SETTINGS),
   nGone: [], nSlide: null, bright: 70, theme: null, fs: null, now: Date.now(),
   charName: ALPHA_PRODUCT.identity.characterName, vs: {}, secure: false, stack: [], toastUndo: false, drawer: false, drawerQ: "",
-  msgs: []
+  msgs: [],
+  // AP-16 stage history while the chat is open: where each Alpha stage switch came from (D11).
+  stageFrom: []
 };
 // A long conversation renders only its newest rows: enough for the closed bar, a page once chat
 // opens, and another page each time the owner scrolls to the top of what is shown.
@@ -5124,6 +5400,7 @@ class Component extends DCLogic {
     for (var kind of ["wheel", "pointerdown", "touchstart", "keydown"]) document.addEventListener(kind, this.chatReadingInput, true);
     this.chatWindowCommitted = this.chatWindowRows;
     this.preset(this.props.initial || "boot");
+    this.restoreStageSession();
   }
   transcriptWindow(msgs, open) {
     var key = msgs.length ? msgs[0].id : null;
@@ -5192,6 +5469,7 @@ class Component extends DCLogic {
   componentDidUpdate(prev) {
     if (prev && prev.initial !== this.props.initial) this.preset(this.props.initial || "boot");
     this.syncShadeFocus();
+    this.settleStageSession();
     var list = document.querySelector("[data-alpha-transcript]"), saved = this.chatScrollSnapshot;
     this.chatWindowCommitted = this.chatWindowRows;
     if (list && saved && saved.list === list && saved.fromBottom !== undefined) list.scrollTop = list.scrollHeight - saved.fromBottom;
@@ -5217,6 +5495,7 @@ class Component extends DCLogic {
     this.chatScrollSize = { height: list.scrollHeight, client: list.clientHeight };
   }
   componentWillUnmount() {
+    this.stageStore = null;
     this.chatScrollObserver?.disconnect();
     document.removeEventListener("scroll", this.chatWindowScroll, true);
     for (var kind of ["wheel", "pointerdown", "touchstart", "keydown"]) document.removeEventListener(kind, this.chatReadingInput, true);
@@ -5331,6 +5610,12 @@ class Component extends DCLogic {
       chat: function (draft) { self.setState({ chat: "sheet", draft: draft || "" }); },
       send: function (t) { self.send(t); },
       say: function (text, card) { self.agentSay(text, card); },
+      // AP-16 (runtime/comms-bar.ts): stage switches, the person target, quiet notes and proposals.
+      stage: function (view, patch, restorePatch) { self.stage(view, patch, restorePatch); },
+      stageBack: function () { return self.stageBack(); },
+      toPerson: function () { self.toPerson(); },
+      note: function (text, opts) { self.note(text, opts); },
+      propose: function (proposal, text) { return self.propose(proposal, text); },
       sw: function (fn, opts) { return self.sw(fn, opts); },
       swallowed: function () { return self.swallowed(); },
       later: function (fn, ms) { return self.later(fn, ms, "m_" + k); },
@@ -5341,8 +5626,124 @@ class Component extends DCLogic {
     };
   }
   mod(k) { return VIEWS[k] || {}; }
-  defaultChat(k) { return this.mod(k).chat === "input" ? "input" : "hidden"; }
+  defaultChat(k) { return this.isCommsView(k) || this.mod(k).chat === "input" ? "input" : "hidden"; }
   rest() { var v = this.S().view; return v ? this.defaultChat(v) : "input"; }
+  /* ---- AP-16 comms surfaces (docs/agentic-comms.md, runtime/comms-bar.ts) ----
+     A comms view declares one bottom bar (bar(st, api)); AP-08 keeps it unopened where it is not
+     admitted. Its bar replaces the pill: the chat rests on the bar, never on the pill (D2). */
+  isCommsView(k) { return !!k && !!VIEWS[k] && typeof VIEWS[k].bar === "function" && isMvpView(k); }
+  /** The view's bar for this render. A throw counts as no bar: the view is non-comms for that render. */
+  commsSpec(k) {
+    if (k === undefined) k = this.S().view;
+    if (!this.isCommsView(k)) return null;
+    try { return VIEWS[k].bar(this.vget(k), this.api(k)) || null; } catch (error) { return null; }
+  }
+  /** An agent row id after every row already shown. */
+  nextMessageId(msgs) {
+    var id = Date.now(), last = msgs.length ? Number(msgs[msgs.length - 1].id) : 0;
+    return Number.isFinite(last) && last >= id ? last + 1 : id;
+  }
+  /**
+   * AC-05/AC-06: the stage switches view while the chat stays open at its height. The switch keeps
+   * S.stack (history "keep"); stageFrom is the only way back while the chat is open (D11).
+   */
+  stage(view, patch, restorePatch) {
+    var S = this.S(), from = S.view;
+    if (from) {
+      var spec = this.commsSpec(from);
+      var entry = { view: from, title: (spec && spec.target && spec.target.app) || (VIEWS[from] && VIEWS[from].title) || "", patch: restorePatch == null ? null : restorePatch };
+      this.setState(function (prev) { return { stageFrom: (prev.stageFrom || []).concat([entry]) }; });
+    }
+    this.stageSwitched("left");
+    this.openView(view, patch, S.chat, { keepState: true });
+  }
+  /** Returns the stage to the view it came from; false when there is none. */
+  stageBack() {
+    var from = this.S().stageFrom || [];
+    if (!from.length) return false;
+    var entry = from[from.length - 1];
+    this.setState(function (prev) { return { stageFrom: (prev.stageFrom || []).slice(0, -1) }; });
+    this.stageSwitched("right");
+    this.openView(entry.view, entry.patch, this.S().chat, { keepState: true });
+    return true;
+  }
+  /** The sheet holds its height across a switch, and the stage slides in from that side (AC-05). */
+  stageSwitched(side) {
+    this.stageEnter = { side: side, at: Date.now() };
+    this.stageHold = this.renderedSheetHeight ? { height: this.renderedSheetHeight } : null;
+    var avatar = typeof document !== "undefined" ? document.querySelector('[data-alpha-layer="app"] [data-alpha-stage-avatar]') : null;
+    this.stageAvatarFrom = avatar ? avatar.getBoundingClientRect() : null;
+  }
+  /** AC-16: the bar addresses the person, keyboard up, caret after the text. */
+  toPerson() {
+    this.setState({ chat: "input", stageFrom: [] }, function () {
+      var field = document.querySelector('[data-alpha-bar-field="person"]');
+      if (!field) return;
+      field.focus();
+      var end = field.value.length; try { field.setSelectionRange(end, end); } catch (error) {}
+    });
+  }
+  /** A local line in the chat ("Sent to Maya", the briefing). It never moves the chat. */
+  note(text, opts) {
+    var self = this;
+    this.setState(function (prev) {
+      var msgs = (prev && prev.msgs) || [];
+      return { msgs: msgs.concat([{ id: self.nextMessageId(msgs), from: "agent", text: String(text), local: true, quiet: opts && opts.quiet !== undefined ? !!opts.quiet : true, briefing: !!(opts && opts.briefing) }]) };
+    });
+  }
+  /**
+   * AC-26: one open proposal at a time. A new one replaces every open one, which can never act again.
+   * AC-19: no acting proposal is shown over an emergency call.
+   */
+  propose(p, text) {
+    var spec = this.commsSpec();
+    if (p.acts && spec && spec.emergency === true) return { shown: false, replaced: [] };
+    var self = this, replaced = [], card = Object.assign({ type: "proposal" }, p, { state: "open" });
+    var close = function (msgs, found) {
+      return msgs.map(function (m) {
+        var c = m.card;
+        if (!c || c.type !== "proposal" || c.state !== "open") return m;
+        if (found) { var plain = Object.assign({}, c); delete plain.type; delete plain.state; delete plain.done; found.push(plain); }
+        return Object.assign({}, m, { card: Object.assign({}, c, { state: "replaced" }) });
+      });
+    };
+    close(this.S().msgs, replaced);
+    // Applied to the latest state, so a row queued in the same event is kept.
+    this.setState(function (prev) {
+      var msgs = close((prev && prev.msgs) || []);
+      return { chat: prev && prev.chat === "full" ? "full" : "sheet", msgs: msgs.concat([{ id: self.nextMessageId(msgs), from: "agent", text: text || p.title, card: card }]) };
+    });
+    return { shown: true, replaced: replaced };
+  }
+  /** Stage history exists only while the chat is open (D11); the comms stage is kept for AC-30. */
+  settleStageSession() {
+    var S = this.S(), open = S.chat === "sheet" || S.chat === "full";
+    if (!open && (S.stageFrom || []).length) this.setState({ stageFrom: [] });
+    if (!open) this.stageHold = null;
+    if (!this.stageStore || !this.stageSessionRead) return;
+    // Only an open stage is restored: a closed comms view reloads like any other app, onto Home.
+    var staged = open && S.screen === "home" && this.isCommsView(S.view);
+    var session = staged ? { chat: S.chat, sheetShare: this.chatSheetShare || null, view: S.view, stageFrom: S.stageFrom || [] } : null;
+    var key = JSON.stringify(session);
+    if (key === this.stageSessionKey) return;
+    this.stageSessionKey = key;
+    void this.stageStore.write(session).catch(function () {});
+  }
+  /** AC-30: back to the comms view, chat height and stage history that were left. Data only. */
+  restoreStageSession() {
+    var self = this, store = this.stageStore = stageSessionStore();
+    this.stageSessionRead = false;
+    store.read().then(function (saved) {
+      self.stageSessionRead = true;
+      var S = self.S();
+      if (self.stageStore !== store || self.live === false || !saved || S.screen !== "home" || S.view || !self.isCommsView(saved.view)) return;
+      self.stageSessionKey = undefined;
+      if (saved.sheetShare) self.chatSheetShare = saved.sheetShare;
+      self.openView(saved.view, null, saved.chat, { keepState: true });
+      var from = saved.chat === "input" ? [] : saved.stageFrom.filter(function (entry) { return self.isCommsView(entry.view); });
+      if (from.length) self.setState({ stageFrom: from });
+    }, function () { self.stageSessionRead = true; });
+  }
   leave() {
     var v = this.S().view;
     if (v) { this.clear("m_" + v); this.stopEvery("m_" + v); var m = this.mod(v); if (m.onLeave) m.onLeave(this.api(v)); }
@@ -5419,12 +5820,12 @@ class Component extends DCLogic {
     // keepState returns to a view exactly as it was left (open note, event, email or tab and its
     // selection revision): the target's state is not reset. A different current view still gets
     // its onLeave, so its camera, recording or timers stop exactly as on any other switch.
-    if (opts && opts.keepState && VIEWS[k]) { if (this.S().view !== k) this.leave(); if (patch) this.vpatch(k, patch); this.setState(Object.assign(this.shellNavigate({ type: "open", view: k, history: "keep", assistant: this.shellDetent(chat) }), { screen: "home", shade: false, heads: false })); return; }
+    if (opts && opts.keepState && VIEWS[k]) { if (this.S().view !== k) this.leave(); if (patch) this.vpatch(k, patch); this.setState(Object.assign(this.shellNavigate({ type: "open", view: k, history: "keep", assistant: this.shellDetent(chat, k) }), { screen: "home", shade: false, heads: false })); return; }
     // Back's stack pop: the caller already set the stack; only the view changes here.
     if (opts && opts.keepStack) { var S0 = this.S(); if (S0.view !== k) { this.leave(); } this.setState({ screen: "home", view: k, shade: false, heads: false, chat: chat || this.defaultChat(k) }); return; }
     if (!VIEWS[k]) return;
     var S = this.S(); opts = opts || {};
-    var nav = this.shellNavigate({ type: "open", view: k, history: opts.push ? "push" : "reset", assistant: this.shellDetent(chat) });
+    var nav = this.shellNavigate({ type: "open", view: k, history: opts.push ? "push" : "reset", assistant: this.shellDetent(chat, k) });
     if (S.view !== k) {
       this.leave();
       var m = this.mod(k), cur = this.vget(k);
@@ -5436,20 +5837,30 @@ class Component extends DCLogic {
   }
   /* ---- navigation: the shared mobile shell reducer owns view, Back stack, drawer and the
      assistant detent (Alpha's "hidden" chat is the shell's pill) ---- */
-  shellNav() { var S = this.S(); return { view: S.view || null, stack: S.stack || [], drawer: !!S.drawer, drawerQuery: S.drawerQ || "", assistant: this.shellDetent(S.chat) || "input" }; }
-  /** A chat state as a shell assistant detent; none for an absent request (the surface's rest). */
-  shellDetent(chat) { return chat === "hidden" ? "pill" : chat === "input" || chat === "sheet" || chat === "full" ? chat : undefined; }
+  shellNav() { var S = this.S(); return { view: S.view || null, stack: S.stack || [], drawer: !!S.drawer, drawerQuery: S.drawerQ || "", assistant: this.shellDetent(S.chat, S.view) || "input" }; }
+  /** A chat state as a shell assistant detent; none for an absent request (the surface's rest).
+      A comms view k has no pill: its bar is where the chat rests (D2). */
+  shellDetent(chat, k) {
+    if (chat === "hidden" && k && this.isCommsView(k)) chat = "input";
+    return chat === "hidden" ? "pill" : chat === "input" || chat === "sheet" || chat === "full" ? chat : undefined;
+  }
   shellNavigate(action) {
     var self = this, next = navigateMobileShell(this.shellNav(), action, { assistantRest: function (k) { return self.defaultChat(k) === "input" ? "input" : "pill"; } });
-    return { view: next.view, stack: next.stack.slice(), drawer: next.drawer, drawerQ: next.drawerQuery, chat: next.assistant === "pill" ? "hidden" : next.assistant };
+    var out = { view: next.view, stack: next.stack.slice(), drawer: next.drawer, drawerQ: next.drawerQuery, chat: next.assistant === "pill" ? "hidden" : next.assistant };
+    // Lowering the chat below the sheet ends its stage history and keeps the current view (D11).
+    if (out.chat !== "sheet" && out.chat !== "full") out.stageFrom = [];
+    return out;
   }
   back() {
     var S = this.S();
     if (S.shade) return this.setState({ shade: false });
     if (this.props && this.props.assistantSurface && !S.view && S.voice === "off") return this.closeAssistant();
     if (S.voice !== "off") return this.stopVoice();
-    // Alpha's assistant floats above the Apps drawer and the current view.
-    if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "assistant", detent: S.chat === "full" ? "sheet" : "rest" }));
+    // Alpha's assistant floats above the Apps drawer and the current view. Full lowers to the sheet;
+    // an open sheet first returns the stage to where Alpha switched it from (AC-06), then closes.
+    if (S.chat === "full") return this.setState(this.shellNavigate({ type: "assistant", detent: "sheet" }));
+    if (S.chat === "sheet" && (S.stageFrom || []).length && this.stageBack()) return;
+    if (S.chat === "sheet") return this.setState(this.shellNavigate({ type: "assistant", detent: "rest" }));
     if (S.drawer && !S.view) return this.setState(this.shellNavigate({ type: "back" }));
     // A bar raised from the pill lowers before Back leaves the view.
     if (S.chat === "input" && this.rest() === "hidden") return this.setState({ chat: "hidden" });
@@ -5586,7 +5997,9 @@ class Component extends DCLogic {
     this.setState({ msgs: S.msgs.concat([{ id: id, from: "user", text: text }]), draft: "", typing: true, chat: S.chat === "full" ? "full" : "sheet", shade: false });
     this.later(function () {
       var r = self.reply(text); var S2 = self.S();
-      self.setState({ typing: false, msgs: S2.msgs.concat([{ id: id + 1, from: "agent", text: r.text, card: r.card || null }]) });
+      // A view's reply never acts: an action comes back as a proposal the owner approves (D8).
+      if (r.proposal) { self.setState({ typing: false }); self.propose(r.proposal, r.text); }
+      else self.setState({ typing: false, msgs: S2.msgs.concat([{ id: id + 1, from: "agent", text: r.text, card: r.card || null }]) });
       if (r.nav) self.later(function () { var n = typeof r.nav === "string" ? { view: r.nav } : r.nav; self.openView(n.view, n.patch, n.chat || self.defaultChat(n.view)); }, 1300);
       if (r.then) self.later(function () { r.then(); }, 700);
     }, 800);
@@ -5597,13 +6010,15 @@ class Component extends DCLogic {
   }
   cardAct(m) {
     var S = this.S(); var c = m.card || {}; var self = this;
+    // AC-26: a replaced or finished proposal never acts, however it is reached.
+    if (!proposalCanAct(c)) return;
     if ((c.act && DEFERRED_MVP_VIEWS.has(c.act.mod)) || (c.go && DEFERRED_MVP_VIEWS.has(c.go.view))) return this.toast("This action is not available on this phone yet.");
-    var markDone = function () { self.setState({ msgs: self.S().msgs.map(function (x) { return x.id === m.id ? Object.assign({}, x, { card: Object.assign({}, x.card, m.card, { done: true }) }) : x; }) }); };
+    var markDone = function () { self.setState({ msgs: self.S().msgs.map(function (x) { return x.id === m.id ? Object.assign({}, x, { card: Object.assign({}, x.card, m.card, { done: true }, c.type === "proposal" ? { state: "done" } : null) }) : x; }) }); };
     if (c.act && VIEWS[c.act.mod] && VIEWS[c.act.mod].actions && VIEWS[c.act.mod].actions[c.act.fn]) {
-      if (c.done) { if (c.go) this.openView(c.go.view, c.go.patch, c.go.chat || "hidden"); return; }
+      if (c.done) { if (c.go) this.openView(c.go.view, c.go.patch, c.go.chat || self.defaultChat(c.go.view)); return; }
       markDone(); VIEWS[c.act.mod].actions[c.act.fn](c, this.api(c.act.mod)); return;
     }
-    if (c.go) return this.openView(c.go.view, c.go.patch, c.go.chat || "hidden");
+    if (c.go) return this.openView(c.go.view, c.go.patch, c.go.chat || self.defaultChat(c.go.view));
   }
 
   startVoice() {
@@ -5628,8 +6043,9 @@ class Component extends DCLogic {
           var S2 = self.S(); var lockedNow = S2.screen === "lock";
           var r = lockedNow ? { text: VOICE.lockedAnswer } : self.reply(phrase);
           var patch = { voice: "speaking", vcap: r.text };
-          if (!lockedNow) { var id = Date.now(); patch.msgs = S2.msgs.concat([{ id: id, from: "user", text: phrase }, { id: id + 1, from: "agent", text: r.text, card: r.card || null }]); }
+          if (!lockedNow) { var id = Date.now(); patch.msgs = S2.msgs.concat([{ id: id, from: "user", text: phrase }].concat(r.proposal ? [] : [{ id: id + 1, from: "agent", text: r.text, card: r.card || null }])); }
           self.setState(patch);
+          if (!lockedNow && r.proposal) self.propose(r.proposal, r.text);
           if (!lockedNow && r.then) r.then();
           if (!lockedNow && r.nav) self.later(function () { var n = typeof r.nav === "string" ? { view: r.nav } : r.nav; self.openView(n.view, n.patch, n.chat || self.defaultChat(n.view)); }, 2600, "v");
         }, 1500, "v");
@@ -5696,6 +6112,18 @@ class Component extends DCLogic {
     var is = {};
     ORDER.forEach(function (k) { is[k] = isView && v === k; });
     out.is = is;
+    // AP-16 (runtime/comms-bar.ts): a comms view's bar, stage and strip. Its chat rests on the bar,
+    // so a "hidden" chat shows the bar there, never the pill (D2).
+    var spec = isView ? this.commsSpec(v) : null;
+    this.commsRendered = spec;
+    var comms = !!spec;
+    var chatMode = S.chat === "hidden" && comms ? "input" : S.chat;
+    var commsOpen = comms && (chatMode === "sheet" || chatMode === "full");
+    var landscape = typeof document !== "undefined" && document.documentElement.classList.contains("alpha-landscape");
+    // Short landscape keeps its side-by-side layout: no stage compaction there (AC-29).
+    var stage = { on: isOn && comms && chatMode === "sheet" && !spec.emergency && !landscape, compact: false, full: isOn && comms && chatMode === "full" };
+    stage.compact = stage.on;
+    out.stage = stage;
     if (v === "inbox" && out.inbox && !out.inbox.folderTitle) out.inbox.folderTitle = "Inbox";
     // Compose attach copy follows the provider adapter's attachment limit (c.attachLabel); one
     // reviewed file until an adapter reports more.
@@ -5733,6 +6161,10 @@ class Component extends DCLogic {
       return {
         id: m.id, text: m.text, displayText: shown, hasCalendarText: true, calendarReviews: [], workflowRuns: [], mapsCards: [], hasMapsChoice: false, mapsChoices: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
         cAgenda: t === "agenda", cEvent: t === "event", cDigest: t === "digest", cNote: t === "note", cFlow: t === "flow", cSummary: t === "summary", cDraft: t === "draft", cCall: t === "call", cGeneric: t === "generic",
+        // AC-26: a proposal card's one button shows only while it is open; `state` is its one field.
+        cProposal: t === "proposal", proposalOpen: t === "proposal" && c.state === "open", proposalReplaced: t === "proposal" && c.state === "replaced", proposalDone: t === "proposal" && c.state === "done",
+        // A quiet local note ("Sent to Maya") reads as a muted line.
+        lineClass: m.from === "agent" && m.quiet ? "alpha-agent-line alpha-agent-line-quiet" : "alpha-agent-line",
         gIcon: IC[c.icon] || IC.spark, evIcon: c.act && !c.done ? IC.plus : IC.check, callIni: c.ini || ((c.who || "").split(" ").map(function (w) { return w.charAt(0); }).join("").slice(0, 2)),
         sumSave: t === "summary" && !c.done && !!c.act, sumOpen: t === "summary" && !c.act && !!c.go,
         draftActs: !c.done && S.editCard !== m.id,
@@ -5743,10 +6175,58 @@ class Component extends DCLogic {
         edit: function () { self.setState({ draft: c.body || "", editCard: m.id }); }
       };
     });
-    var baseSug = ["Plan my afternoon", "What needs me?", "Take a note: call the landlord Friday", "Every weekday at 6, wrap up my day"];
-    var sugList = (mod && mod.suggestions) ? mod.suggestions(st, this.api(v)) : baseSug;
-    // A suggestion is a prompt to send, or a { label, go } control that acts instead of sending.
-    var sugg = sugList.filter(function (s) { return typeof s !== "string" || !deferredMvpPrompt(s); }).map(function (s) { return typeof s === "string" ? { label: s, go: function () { self.send(s); } } : s; });
+    // AP-16 bar: the field addresses the closed bar's target (person, list filter or Alpha); the open
+    // bar always addresses Alpha. Nothing is sent while typing (AC-22, D9).
+    var onDraft = function (e) { self.setState(e.target.value ? { draft: e.target.value } : { draft: "", editCard: null }); };
+    var onKey = function (e) { if (e.key === "Enter") { e.preventDefault(); self.send(); } };
+    var closed = comms ? spec.closed : null;
+    var barTarget = comms && !commsOpen ? closed.kind : "alpha";
+    var heldFilter = barTarget === "filter" && this.barFilter && this.barFilter.key === spec.contextKey && isAskSentence(this.barFilter.text) ? this.barFilter.text : null;
+    var barValue = barTarget === "alpha" ? S.draft : heldFilter != null ? heldFilter : String(closed.value || "");
+    var barFilled = !!String(barValue || "").trim();
+    var barOnText = barTarget === "person" ? function (e) { if (closed.onText) closed.onText(e.target.value); }
+      : barTarget === "filter" ? function (e) {
+        // A sentence is a question for Alpha: the list keeps its last filter until Enter asks it.
+        var text = e.target.value; self.barFilter = { key: spec.contextKey, text: text };
+        if (!isAskSentence(text) && closed.onText) closed.onText(text);
+        self.setState({});
+      } : onDraft;
+    var barOnKey = barTarget === "filter" ? function (e) {
+      if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+      e.preventDefault();
+      var text = String(barValue || "").trim(); if (!text) return;
+      self.barFilter = null; self.send(text); if (closed.onText) closed.onText("");
+    } : barTarget === "person" ? undefined : onKey;
+    var barDictate = isOn && (barTarget === "filter" || barTarget === "person" && !barFilled && !closed.canSubmit);
+    // AC-24: one faint suggestion inside the bar, only while its field is empty and no reply runs.
+    var faint = null;
+    if (isOn && !voiceOn && !S.typing && !S.secure) {
+      if (panelOpen && !S.draft) {
+        var candidates = (mod && mod.suggestions ? mod.suggestions(st, this.api(v)) || [] : []).map(function (s) { return typeof s === "string" ? s : s && s.label; })
+          .filter(function (s) { return typeof s === "string" && s.trim() && !deferredMvpPrompt(s); });
+        var openText = openSuggestion({ view: v || null, spec: spec, candidates: candidates });
+        if (openText) faint = { text: openText, accept: function () { self.setState({ draft: openText }); } };
+      } else if (comms && !commsOpen && !barFilled && closed.suggestion && closed.acceptSuggestion) {
+        var accept = closed.acceptSuggestion;
+        faint = { text: closed.suggestion, accept: function () { accept(); } };
+      }
+    }
+    if (faint) faint.label = "Suggestion: " + faint.text + ", double-tap to use";
+    // A swipe right of more than 40 canvas pixels across the bar takes the suggestion; nothing is sent.
+    var faintSw = {
+      down: function (e) { self.faintPress = faint && e.isPrimary !== false ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null; },
+      up: function (e) {
+        var press = self.faintPress; self.faintPress = null;
+        if (!faint || !press || press.id !== e.pointerId) return;
+        var o = self.scale(e.currentTarget), dx = (e.clientX - press.x) / o.s, dy = (e.clientY - press.y) / o.s;
+        if (dx > 40 && Math.abs(dy) < dx) { self.swallow = Date.now(); faint.accept(); }
+      }
+    };
+    var left = commsOpen ? spec.left : null;
+    var LEFT_ICONS = { call: IC.phone, search: IC.search, keypad: IC.dial };
+    var stageFrom = S.stageFrom || [];
+    var stripSpec = comms ? spec.strip : null;
+    var STRIP_ICONS = { mute: IC.phoneMute, end: IC.phone, send: IC.send, answer: IC.phone, decline: IC.phone };
 
     var bars = []; for (var b = 0; b < 28; b++) bars.push({ h: 10 + ((b * 37) % 30), dl: ((b * 0.137) % 1).toFixed(2) });
     var vShow = S.voice === "speaking" ? S.vcap : (S.vtext || "…");
@@ -5771,8 +6251,8 @@ class Component extends DCLogic {
       [IC.lock, "Side key: tap · lock or wake"]
     ].map(function (l) { return { d: l[0], t: l[1] }; });
 
-    var showPill = isOn && S.chat === "hidden" && !voiceOn;
-    var showComposer = isOn && S.chat === "input" && !voiceOn;
+    var showPill = isOn && chatMode === "hidden" && !voiceOn;
+    var showComposer = isOn && chatMode === "input" && !voiceOn;
     var sbColor = isView && imm.dark && !S.shade && S.chat !== "full" && S.chat !== "sheet" ? "var(--alpha-white)" : "var(--fg)";
     if (S.secure) { showPill = false; showComposer = false; }
     var ongoing = null;
@@ -5818,21 +6298,51 @@ class Component extends DCLogic {
       shadeKey: function (event) { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); self.setState({ shade: false }); } }, clearAll: function () { self.setState({ nGone: NOTIFS.map(function (n) { return n.id; }), shade: false }); },
       // Policy P-23: the system Keyguard owns secure camera access. The preview
       // lock frame also requires Unlock before opening Camera or the media library.
-      msgs: msgs, typing: S.typing && !S.turnStatus, turnStatus: S.typing ? S.turnStatus || "" : "", sugg: sugg, showSugg: panelOpen && !S.draft && !S.typing && !voiceOn,
+      msgs: msgs, typing: S.typing && !S.turnStatus, turnStatus: S.typing ? S.turnStatus || "" : "",
       panelComposer: panelOpen && !voiceOn,
       panelH: !isOn ? 0 : (S.chat === "full" ? 915 : (S.chat === "sheet" ? 560 : 0)), panelR: S.chat === "full" ? "0px" : "30px 30px 0 0",
+      // AP-16 shell values (runtime/comms-bar.ts, docs/agentic-comms.md).
+      comms: comms, chatMode: chatMode, barTarget: barTarget, barAlphaLabel: comms ? "Open " + name : "Open conversation",
+      barFieldClass: comms && barTarget === "alpha" ? "alpha-bar-field-alpha" : "",
+      barValue: barValue, barOnText: barOnText, barOnKey: barOnKey, barMaxLength: barTarget === "person" && closed.maxLength ? closed.maxLength : undefined,
+      barPlaceholder: faint ? "" : comms ? closed.placeholder : (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
+      barAskHint: barTarget === "filter" && isAskSentence(barValue) ? "Enter asks " + name : "",
+      barAlphaControls: barTarget === "alpha", barPersonSend: barTarget === "person" && (barFilled || !!closed.canSubmit),
+      barSendDisabled: barTarget === "person" && !closed.canSubmit, barSubmit: function (e) { if (closed && closed.submit) closed.submit(e); },
+      barDictate: barDictate, barDictateLabel: barTarget === "person" ? "Dictate a text to " + (spec.target.first || spec.target.name || "them") : "Dictate a search or question",
+      barMic: function () { if (typeof self.startTranscription === "function") self.startTranscription({ commsTarget: barTarget }); else if (testMocksEnabled) self.toast("Voice input is not connected"); },
+      barLeft: left ? { label: left.label, initials: left.initials || "", avatar: left.icon === "avatar", glyph: left.icon === "avatar" ? null : LEFT_ICONS[left.icon] || IC.back,
+        // The left slot swaps the target: the chat closes onto the bar, then the view's own step runs.
+        tap: function () { var run = left.run; self.setState({ chat: "input", stageFrom: [] }, function () { if (run) run(); }); } } : null,
+      panelPlaceholder: faint ? "" : comms ? "Ask " + name : "Message " + name, panelLabel: comms ? "Ask " + name : "Message " + name,
+      panelFieldClass: comms ? "alpha-chat-composer alpha-bar-field-alpha" : "alpha-chat-composer",
+      faint: faint, faintSw: faintSw,
+      sheetContext: comms && isOn ? spec.context : "",
+      showEnd: isOn && comms && !commsOpen && !voiceOn && !S.secure && typeof spec.end === "function",
+      endCall: function () { if (spec && spec.end) spec.end(); },
+      // The closed bar makes room for End: 44 wide and 8 apart, centred on the 62 tall bar.
+      cmpRight: isOn && comms && !commsOpen && !voiceOn && !S.secure && typeof spec.end === "function" ? 68 : 16, endBottom: 37,
+      showStrip: stage.full && !voiceOn,
+      strip: stripSpec ? { title: stripSpec.title, subtitle: stripSpec.subtitle, initials: stripSpec.initials || "", hasInitials: !!stripSpec.initials, live: !!stripSpec.live,
+        tap: function () { if (self.swallowed()) return; self.setState({ chat: "sheet" }); },
+        actions: (stripSpec.actions || []).map(function (a) {
+          var tone = a.id === "end" || a.id === "decline" ? "alpha-strip-action alpha-end-button" : a.id === "answer" ? "alpha-strip-action alpha-answer-button" : a.id === "send" ? "alpha-strip-action alpha-strip-send" : "alpha-strip-action";
+          return { id: a.id, label: a.label, pressed: a.pressed === undefined ? undefined : !!a.pressed, cls: tone, glyph: STRIP_ICONS[a.id] || IC.right, run: function (e) { if (e) e.stopPropagation(); a.run(e); } };
+        }) } : null,
+      stageReturn: stageFrom.length && comms && chatMode === "sheet" ? { label: "‹ " + stageFrom[stageFrom.length - 1].title, aria: "Back to " + stageFrom[stageFrom.length - 1].title, go: function () { self.stageBack(); } } : null,
+      stageEnter: stage.on && this.stageEnter && Date.now() - this.stageEnter.at < 450 ? this.stageEnter.side : undefined,
       panelOp: panelOpen ? 1 : 0, panelPE: panelOpen ? "auto" : "none", panelTop: S.chat === "full" && this.props.systemShell !== false ? "var(--alpha-chat-full-top,60px)" : "4px",
       scrimOp: 0, scrimPE: "none", scrimZ: 45,
       showGrabber: S.chat !== "full", sizeIcon: S.chat === "full" ? IC.shrink : IC.expand, sizeLabel: S.chat === "full" ? "Shrink chat" : "Expand chat",
       showComposer: showComposer, showPill: showPill, cmpBottom: 28,
-      cmpPlaceholder: (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
+      cmpPlaceholder: comms ? closed.placeholder : (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
       draft: S.draft, hasDraft: !!S.draft, noDraft: !S.draft,
       // The composer template binds these; the agent adapter refines them for a live turn.
       sendVisible: !!S.draft && !S.typing, talkVisible: !S.draft && !S.typing, replyIdle: !S.typing,
       // The voice adapter replaces this while a voice conversation owns the pill; without it (mock mode) the pill keeps its controls.
       pillVoiceInactive: true,
-      onDraft: function (e) { self.setState(e.target.value ? { draft: e.target.value } : { draft: "", editCard: null }); },
-      onKey: function (e) { if (e.key === "Enter") { e.preventDefault(); self.send(); } },
+      onDraft: onDraft,
+      onKey: onKey,
       sendNow: function () { self.send(); },
       openSheet: function () { if (self.swallowed()) return; self.setState({ chat: "sheet" }); },
       /* Android raises the keyboard only for a focused field, so the Type button focuses the composer it reveals. */

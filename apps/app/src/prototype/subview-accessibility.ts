@@ -216,6 +216,7 @@ export function installReplyAnnouncer(Component: any) {
     if (!settled && !arrived) { if (!state.typing && !state.turnStatus) this.replyAnnounced = false; return; }
     const text = String(last.text || last.card?.title || '').trim();
     this.replyAnnouncedId = last.id; this.replyAnnounced = false;
-    if (text) say(bounded(text),this);
+    // A quiet local note ("Sent to Maya", AP-16) is logged in the chat, not read out as a reply.
+    if (text && !last.quiet) say(bounded(text),this);
   };
 }

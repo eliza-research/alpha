@@ -25,6 +25,8 @@ datatype Mode = hidden | input | sheet | full
 
 datatype Sample = Sample(y: int, t: int)
 
+datatype SheetFit = SheetFit(viewport: int, low: int, high: int, full: int, content: int, floor: int, draft: bool, stageNeed: int, stageMin: int)
+
 datatype ReleaseOptions = ReleaseOptions(mode: Mode, direction: string, height: int, floor: int, full: int, flick: bool, home: bool)
 
 datatype FlickSpanResult = FlickSpanResult(rise: int, run: int)
@@ -82,6 +84,36 @@ lemma clampSheetHeight_ensures(rounded: int, full: int, half: int)
   ensures ((half >= 200) ==> (clampSheetHeight(rounded, full, half) >= 200))
   ensures ((rounded >= 200) ==> (rounded <= full) ==> (clampSheetHeight(rounded, full, half) == rounded))
   ensures ((rounded > full) ==> (clampSheetHeight(rounded, full, half) == full))
+{
+}
+
+function fitSheetHeight(o: SheetFit): int
+  requires (o.viewport > 0)
+  requires (o.full > 0)
+  requires (o.floor >= 0)
+  requires (o.stageMin >= 0)
+  requires (o.stageNeed >= 0)
+  requires (o.low <= o.high)
+  requires (o.high <= o.full)
+{
+  var sheetMin := MathMin(o.floor, o.full);
+  var fitted := MathMin(o.high, MathMax(o.low, o.content));
+  var wanted := (if o.draft then MathMin(fitted, (o.viewport - o.stageNeed)) else fitted);
+  MathMax(sheetMin, MathMin(MathMin(wanted, (o.viewport - o.stageMin)), o.full))
+}
+
+lemma fitSheetHeight_ensures(o: SheetFit)
+  requires (o.viewport > 0)
+  requires (o.full > 0)
+  requires (o.floor >= 0)
+  requires (o.stageMin >= 0)
+  requires (o.stageNeed >= 0)
+  requires (o.low <= o.high)
+  requires (o.high <= o.full)
+  ensures (fitSheetHeight(o) <= o.full)
+  ensures ((o.floor <= o.full) ==> (fitSheetHeight(o) >= o.floor))
+  ensures ((o.floor > o.full) ==> (fitSheetHeight(o) >= o.full))
+  ensures (!(o.draft) ==> (o.floor <= o.low) ==> (o.stageMin <= (o.viewport - o.high)) ==> ((o.low <= fitSheetHeight(o)) && (fitSheetHeight(o) <= o.high)))
 {
 }
 

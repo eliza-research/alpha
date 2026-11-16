@@ -44,7 +44,7 @@ Individual owning receipts define the finite implementation schedules and enviro
 | `BrowserUnderlay` | [quint-browser-underlay-partial-contract.test.mjs](../../test/quint-browser-underlay-partial-contract.test.mjs) | [browser-underlay.mjs](refinement/native/browser-underlay.mjs) |
 | `NativeGmailBackground` | [quint-native-gmail-background.test.mjs](../../test/quint-native-gmail-background.test.mjs) | [gmail-background.mjs](refinement/native/gmail-background.mjs) |
 | `NativeDigestConsent` | [quint-native-digest-consent.test.mjs](../../test/quint-native-digest-consent.test.mjs) | [native-digest.mjs](refinement/native/native-digest.mjs) |
-| `SpeechCleanupLatch` | [quint-speech-cleanup-latch.test.mjs](../../test/quint-speech-cleanup-latch.test.mjs) | [speech-cleanup-latch.mjs](refinement/native/speech-cleanup-latch.mjs) |
+| `SpeechCleanupLatch` | [quint-speech-cleanup-latch.test.mjs](../../test/quint-speech-cleanup-latch.test.mjs) app and Cloud app case | [speech-cleanup-latch.mjs](refinement/native/speech-cleanup-latch.mjs) |
 | `NativeRequestWithdrawal` | [quint-native-request-withdrawal.test.mjs](../../test/quint-native-request-withdrawal.test.mjs) | [request-withdrawal.mjs](refinement/native/request-withdrawal.mjs) |
 
 The SMS and MMS owners retain 27 and 20 current-source schedules respectively, plus three

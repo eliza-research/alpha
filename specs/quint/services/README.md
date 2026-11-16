@@ -48,9 +48,11 @@ receipt again. It never rearms a send after an unknown outcome.
 
 `WorkflowExecution` models one reviewed manual submission and one effect through
 the exact-version protocol. A missing receipt offers a review of the original
-identity. Confirmation checks the receipt again before dispatch. An accepted run
-continues when the owner changes, and a current nonterminal receipt is required
-to cancel it. Legacy server admission and production schedules have separate
+identity. Confirmation checks the receipt again before dispatch. Switching
+accounts hides the previous account's receipt. For a recorded unfinished run on
+the same agent connection, the phone saves a claim before sending at most one
+best-effort cancellation. A current nonterminal receipt is required for manual
+cancellation. Legacy server admission and production schedules have separate
 contracts. The development browser queue can retain disabled or superseded jobs
 until a foreground tick, while their dispatch guard refuses them.
 

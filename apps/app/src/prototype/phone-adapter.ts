@@ -7,7 +7,8 @@ import {audioReplied,audioRequested,callStarted,closed,closedVoicemail,deleteAsk
 import {watchReturnToApp} from './native-adapter';
 import {isMvpView} from './mvp-features';
 import {formatDateTime} from './locale-time';
-import {callRow,clockLength,displayNumber,initials,numberKey,shortWhen} from './telephony-presenters';
+import {callKind,callRow,callsBriefing,clockLength,displayNumber,initials,matchesCallQuery,numberKey,shortWhen} from './telephony-presenters';
+import {clearListFilter,setListFilterHandler,type CommsBarSpec,type CommsListFilter} from '../runtime/comms-bar';
 type Bag=Record<string,any>;
 type Voicemail={id:string;number:string;cachedName:string|null;date:number;durationSeconds:number;isNew:boolean;hasAudio:boolean;carrierTranscript:string|null};
 const CALL_TYPE:Record<TelephonyCallLogEntry['type'],string>={incoming:'Incoming',outgoing:'Outgoing',missed:'Missed',voicemail:'Voicemail',rejected:'Declined',blocked:'Blocked',answered_externally:'Other device',unknown:'Call'};
@@ -87,6 +88,8 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
  if(!client)return;
  const p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount;
  let owner:any,api:Bag|null=null,calls:TelephonyCallLogEntry[]=[],number='',status='',notice='',reading=false,dialing=false,session=0,needsAccess=false,retryRecents=false,active=false,epoch=0,tab:PhoneTab='recents';
+ /* AC-22: the bar's query over Recents, held for the visit only; an Alpha filter also shows a chip. */
+ let filter:CommsListFilter|null=null;
  let voicemails:Voicemail[]=[],carrier:'ready'|'unconfigured'|'unsupported'|null=null,vm:OpenVoicemail=closedVoicemail();
  type Observation={session:number;stop:(()=>Promise<void>)|null;ready:Promise<void>};
  let observation:Observation|null=null,observationTail:Promise<void>=Promise.resolve();
@@ -116,7 +119,7 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
  const releaseAudio=()=>{work?.abort();work=null;if(audio){audio.pause();audio.removeAttribute('src');audio=null;}if(audioUrl){URL.revokeObjectURL(audioUrl);audioUrl='';}wav?.fill(0);wav=null;position=0;};
  const cancelDelete=()=>{const pending=pendingDelete;pendingDelete=null;pending?.detach();pending?.answer('cancelled');vm=deleteCancelled(vm);};
  const closeVoicemail=()=>{cancelDelete();releaseAudio();vm=closed(vm);};
- const clear=()=>{epoch++;session++;calls=[];voicemails=[];carrier=null;number='';status='';notice='';reading=false;dialing=false;needsAccess=false;retryRecents=false;names.clear();people.length=0;closeVoicemail();retireObservation();changed();};
+ const clear=()=>{epoch++;session++;filter=null;calls=[];voicemails=[];carrier=null;number='';status='';notice='';reading=false;dialing=false;needsAccess=false;retryRecents=false;names.clear();people.length=0;closeVoicemail();retireObservation();changed();};
  const sync=()=>{const next=available();if(next===active)return;active=next;if(next)void refresh();else clear();};
  async function refresh(request=false){
   const token=++epoch;if(!available())return;reading=true;retryRecents=false;changed();
@@ -221,6 +224,18 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
  views.phone.reply=()=>null;
  views.phone.suggestions=()=>[];
  views.phone.status=()=>undefined;
+ /* AP-16 bar. Recents, Keypad and Voicemail only: on the image the system call screen owns calls and
+    ringing, and the WebView is told nothing about them (the call-state contract is upstream). */
+ views.phone.bar=():CommsBarSpec=>{
+  const now=Date.now(),missed=calls.filter(entry=>entry.isNew&&callKind(entry.type)==='missed').map(entry=>({name:who(entry),date:entry.date}));
+  return {target:{kind:'recents',app:'Phone',name:null,first:null,initials:null},
+   closed:{kind:'filter',placeholder:'Call or ask',value:filter?.by==='owner'?filter.query:'',submit:null,canSubmit:false,maxLength:null,suggestion:null,acceptSuggestion:null,
+    onText:text=>{if(!text&&filter?.by==='alpha')return;filter=text?{query:text,label:'',by:'owner'}:null;changed();}},
+   left:{icon:'keypad',label:'Back to the keypad',initials:null,run:()=>selectPhoneTab('keypad')},
+   context:'Phone',contextKey:'phone:recents:',strip:{title:'Phone',subtitle:'',initials:null,live:false,actions:[]},
+   end:null,incoming:null,emergency:false,fit:null,
+   briefing:callsBriefing(missed,voicemails.filter(row=>row.isNew).map(row=>({name:who(row)})),now)};
+ };
  function selectPhoneTab(next: PhoneTab) {
    if (tab === next) return;
    if (tab === 'voicemail') closeVoicemail();
@@ -259,6 +274,10 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
    : viewApi.toast?.('Unavailable');
  const tabs = phoneTabs(tab, hasVoicemail, showContacts, voicemails.some(row => row.isNew),
    key => key === 'contacts' ? openContacts() : selectPhoneTab(key));
+ setListFilterHandler('phone',{current:()=>filter,clear:()=>{filter=null;changed();},
+  apply:next=>{filter=next;if(next.by==='alpha'&&tab!=='recents'){if(tab==='voicemail')closeVoicemail();tab='recents';}changed();return true;}});
+ const rows=calls.map(entry=>({entry,row:callRow(entry,names,now)})).filter(({row})=>matchesCallQuery(row,filter?.query??''));
+ const chip=filter?.by==='alpha'?filter.label||filter.query:'';
  const match=digits.length>=3?people.find(person=>person.number.replace(/\D/g,'').includes(digits)):undefined;
  const openRow=voicemails.find(row=>row.id===vm.id),length=openRow?openRow.durationSeconds:0;
  return {nativeManaged:true,nativePrototype:false,nativeStatus:status,nativeStatusDot:!status?'':status==='Couldn’t load'?'err':needsAccess?'warn':'',nativeBusy:busy(),nativeAccess:needsAccess,nativeNumber:number,nativeNotice:notice,hasNotice:!!notice,
@@ -267,7 +286,8 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
   nativeDial:()=>void call(number),nativeRefresh:()=>void refresh(),nativeRequest:()=>void refresh(true),
   nativeContacts:openContacts, tabs, phoneTabSelector:phoneTabSelector(tabs),
   isRecents:tab==='recents',isKeypad:tab==='keypad',isVoicemail:tab==='voicemail'&&hasVoicemail,
-  recents:calls.map(entry=>{const row=callRow(entry,names,now);return {...row,color:row.missed?'var(--alpha-call-red)':'var(--fg)',d:ARROW[row.kind],noCall:!row.canCall||busy(),call:()=>{if(entry.number)void call(entry.number);}};}),
+  filterChip:chip?{label:chip,clearLabel:`Clear filter ${chip}`}:null,clearFilter:()=>clearListFilter('phone'),
+  recents:rows.map(({entry,row},index)=>{return {...row,last:index===0||undefined,color:row.missed?'var(--alpha-call-red)':'var(--fg)',d:ARROW[row.kind],noCall:!row.canCall||busy(),call:()=>{if(entry.number)void call(entry.number);}};}),
   showRecentStatus:!!status&&!busy()&&!calls.length,retryRecents,
   shown:displayNumber(number),hasNumber:!!number,cannotCall:busy()||!number,
   keys:KEYS.map(([key,letters])=>({key,letters,press:()=>{if(busy()||number.length>=40)return;number+=key;notice='';changed();},plus:key==='0'?()=>{if(busy()||number)return;number='+';changed();}:undefined})),

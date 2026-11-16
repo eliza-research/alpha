@@ -4,8 +4,8 @@ import {fileURLToPath} from 'node:url';
 import test from 'node:test';
 import {withHostedDigestRefresh} from '../specs/quint/refinement/application/hosted-digest-refresh.mjs';
 
-async function prepare(run) {
-  await run('seed', 1);
+async function prepare(run, kind = 'source') {
+  await run('seed', 1, 'dispatched', kind);
   await run('seed', 2);
   await run('select', 1);
   await run('history', 1);
@@ -71,6 +71,54 @@ test('mounted digest save settlement keeps the exact journal and refresh owner',
       assert.deepEqual(replacement.stored.map(([id]) => id), [2]);
       await run('history', 2);
       await run('sync', 2, 2);
+    }));
+  }, [fileURLToPath(import.meta.url)]);
+});
+
+test('mounted schedule edits settle only an exact standalone refusal', {timeout: scaledTimeout(120000)}, async t => {
+  await withHostedDigestRefresh(async scenario => {
+    await t.test('the refusal clears the reviewed schedule request without a resend', () => scenario(async run => {
+      await prepare(run, 'loop');
+      await run('mutate', 1, {});
+      let current = await run('observe');
+      assert.ok(current.requests.some(row => row.kind === 'remove' && row.id === 1 && !row.done));
+      assert.deepEqual(current.mutations, [1]);
+      await run('remove', 1);
+      current = await run('observe');
+      assert.equal(current.pendingSummary, '');
+      assert.deepEqual(current.stored.map(([id]) => id), [2]);
+      await run('sync', 1, 1);
+      current = await run('observe');
+      assert.equal(current.message, 'Schedule changed before saving. Review it again.');
+      assert.deepEqual(current.mutations, [1]);
+    }));
+
+    for (const [name, outcome] of [
+      ['untyped conflict', {fields:{code: undefined}}],
+      ['wrong status', {status: 422}],
+      ['wrong schedule', {fields:{workflowId: 'other-loop'}}],
+      ['wrong mutation', {fields:{mutationId: 'other-mutation'}}],
+      ['missing version', {fields:{expectedVersionId: undefined}}],
+    ]) await t.test(name + ' retains the exact pending journal', () => scenario(async run => {
+      await prepare(run, 'loop');
+      await run('mutate', 1, outcome);
+      const current = await run('observe');
+      assert.equal(current.message, 'Save not confirmed. Retry.');
+      assert.equal(current.pendingSummary, 'Fixture saved request 1');
+      assert.deepEqual(current.stored.map(([id]) => id), [1, 2]);
+      assert.ok(!current.requests.some(row => row.kind === 'remove'));
+    }));
+
+    await t.test('a refused renewal child retains the partially applied parent journal', () => scenario(async run => {
+      await prepare(run, 'renewal');
+      await run('mutate', 1, 'renewed');
+      await run('mutate', 1, {});
+      const current = await run('observe');
+      assert.equal(current.message, 'Save not confirmed. Retry.');
+      assert.equal(current.pendingSummary, 'Fixture saved request 1');
+      assert.deepEqual(current.mutations, [1, 1]);
+      assert.deepEqual(current.stored.map(([id]) => id), [1, 2]);
+      assert.ok(!current.requests.some(row => row.kind === 'remove'));
     }));
   }, [fileURLToPath(import.meta.url)]);
 });

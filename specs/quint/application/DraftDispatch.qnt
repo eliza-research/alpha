@@ -1,14 +1,15 @@
 /// AssistantDraftController queues writes by conversation and retains held text until dispatch.
+/// The initial, switched and restarted bindings are observed after opening.
 module DraftDispatch {
-  type State = { active: int, ready: bool, failed: bool, draft: str, savedOne: str,
+  type State = { active: int, failed: bool, draft: str, savedOne: str,
     savedTwo: str, holding: bool, heldBinding: int, queuedBinding: int,
     queuedText: str, markedOne: bool, markedTwo: bool, unsettled: bool, dispatched: bool, error: bool, automaticRestore: bool, paintPending: bool, transportCalled: bool }
   var s: State
-  action init = s' = { active: 1, ready: true, failed: false, draft: "A", savedOne: "A",
+  action init = s' = { active: 1, failed: false, draft: "A", savedOne: "A",
     savedTwo: "", holding: false, heldBinding: 0, queuedBinding: 0, queuedText: "",
     markedOne: false, markedTwo: false, unsettled: false, dispatched: false, error: false, automaticRestore: false, paintPending: false, transportCalled: false }
   action storageFailed = s' = { ...s, failed: true, error: true }
-  action hold = all { not(s.holding or s.unsettled), s.ready, not(s.failed), s.draft == "A", s.queuedBinding == 0,
+  action hold = all { not(s.holding or s.unsettled), not(s.failed), s.draft == "A", s.queuedBinding == 0,
     s' = { ...s, holding: true, heldBinding: s.active, markedOne: s.active == 1 or s.markedOne, markedTwo: s.active == 2 or s.markedTwo,
       dispatched: false, automaticRestore: false, transportCalled: false } }
   action clearComposer = all { s.holding, s' = { ...s, draft: "", automaticRestore: false } }
@@ -20,7 +21,7 @@ module DraftDispatch {
     s' = if (s.active != s.heldBinding)
       { ...s, holding: false, queuedBinding: s.heldBinding, queuedText: "A" }
     else { ...s, holding: false, draft: if (s.draft == "B") "A+B" else "A",
-      queuedBinding: if (s.ready and not(s.failed)) s.active else 0,
+      queuedBinding: if (not(s.failed)) s.active else 0,
       queuedText: if (s.draft == "B") "A+B" else "A" } }
   action commit = all { s.holding,
     s' = { ...s, holding: false, dispatched: true,
@@ -36,14 +37,14 @@ module DraftDispatch {
   action saveConflict = all { s.queuedBinding != 0,
     s' = { ...s, queuedBinding: 0, failed: true, error: false } }
   action switchConversation = all { s.active != 2,
-    s' = { ...s, active: 2, ready: true, failed: false, draft: s.savedTwo, automaticRestore: true } }
+    s' = { ...s, active: 2, failed: false, draft: s.savedTwo, automaticRestore: true } }
   action reopenHeldConversation = all { s.holding, s.heldBinding == s.active,
     s' = { ...s, draft: "", automaticRestore: false } }
   action restart = all { s.queuedBinding == 0,
     s' = { ...s, holding: false, unsettled: if (s.active == 1) s.markedOne else s.markedTwo,
       draft: if ((s.active == 1 and s.markedOne) or (s.active == 2 and s.markedTwo)) ""
         else if (s.active == 1) s.savedOne else s.savedTwo,
-      automaticRestore: true, ready: true, failed: false } }
+      automaticRestore: true, failed: false } }
   action rejectedHold = all { s.failed or s.unsettled, s' = s }
   action step = any { queueComposerPaint, commitComposerPaint, tryDispatch, storageFailed, hold, rejectedHold, clearComposer, typeNew, release, commit,
     flush, saveFailed, saveConflict, switchConversation, reopenHeldConversation, restart, s' = s }

@@ -31,6 +31,17 @@ const HEADER_CLEARANCE_PROPERTY = '--alpha-header-clearance';
 const APP_HEADERS = '[data-alpha-app-header],[data-alpha-layer="drawer"] div:has(> h1),[role="dialog"][aria-modal="true"]:not([data-alpha-layer="drawer"]),.photo-import-menu[open] > div';
 const DOCK = '[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,.alpha-chat-composer';
 
+/**
+ * AP-16 stage (docs/agentic-comms.md AC-02): the height of the conversation sheet, published on the
+ * phone canvas. On a comms view the app layer ends there (phone.css), so the stage is laid out above
+ * the sheet instead of under it. The shell's render writes it at rest; while a finger drags the sheet,
+ * the drag's paint is the only writer, frame by frame, and hands it back on release.
+ */
+export const SHEET_HEIGHT_PROPERTY = '--alpha-sheet-height';
+export function publishSheetHeight(height: number, root: ParentNode = document): void {
+  root.querySelector<HTMLElement>('[data-screen]')?.style.setProperty(SHEET_HEIGHT_PROPERTY, `${Math.max(0, Math.round(height))}px`);
+}
+
 /** The dock elements on screen now: rendered, and not retired behind the shade or a voice session. */
 export function visibleDocks(root: ParentNode = document): HTMLElement[] {
   return sharedVisibleDocks(root, DOCK);

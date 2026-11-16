@@ -5,7 +5,7 @@ import {JSDOM} from 'jsdom';
 import {actionCounts, modelTraces, sameState} from './calendar-itf.mjs';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
-const model = {path: 'specs/quint/application/CalendarEditorDraft.qnt', module: 'CalendarEditorDraft', traces: 30, steps: 40,
+const model = {path: 'specs/quint/application/CalendarEditorDraft.qnt', module: 'CalendarEditorDraft', step: 'draftStep', traces: 30, steps: 40,
   witnesses: ['OfferedWitness', 'StaleRefusedWitness', 'LatchWitness', 'ClosedDuringSaveKeepsEditsWitness', 'ConflictWitness',
     'OwnEditsOfferedWitness', 'SavedWitness'],
   goals: {
@@ -150,7 +150,12 @@ async function replay(compiled, trace) {
       canReplace: !f.button('Replace saved editor').hidden, canDiscard: !f.button('Discard saved editor').hidden,
       canRetry: !f.button('Retry editor storage').hidden, saves, saveResult, staleSave, unreviewedSave};
   };
-  sameState(observe(), first, trace, 0);
+  const checkDraftOnly = (state, index) => {
+    const {review, reviewStoreCurrent, recovery, recoveryCurrent, recoveryReset, ...draft} = state;
+    assert.deepEqual([review, reviewStoreCurrent, recovery, recoveryCurrent, recoveryReset], ['none', true, 'none', false, false]);
+    sameState(observe(), draft, trace, index);
+  };
+  checkDraftOnly(first, 0);
   try {
     for (let index = 1; index < trace.steps.length; index++) {
       const {action, picks, state} = trace.steps[index], before = trace.steps[index - 1].state, draft = f.probe();
@@ -207,7 +212,7 @@ async function replay(compiled, trace) {
         else f.window.dispatchEvent(new f.window.Event(way === 1 ? 'alpha-back' : 'alpha:device-state', {cancelable: true}));
       } else assert.ok(!action, `unknown model action ${action}`);
       await idle();
-      sameState(observe(), state, trace, index);
+      checkDraftOnly(state, index);
       assert.equal(f.result(), state.alive ? 'open' : state.saveResult === 'saved' ? 'saved' : 'cancelled', `${trace.name} step ${index}: editor result`);
       if (state.alive && state.latch) assert.equal(f.status(), 'Saved');
       else if (state.alive && state.invalid) assert.equal(f.status(), 'Too large');

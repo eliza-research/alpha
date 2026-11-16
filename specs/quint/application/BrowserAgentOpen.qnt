@@ -12,13 +12,13 @@ module BrowserAgentOpen {
     presented: bool, claimedOpened: bool,
     // view command (back / forward / reload)
     command: str, native: bool, inBrowser: bool, overlay: bool, tabRevision: int,
-    boundRevision: int, sentRevision: int, commandAsked: bool, claims: int, sends: int, acks: int}
+    claimRevision: int, boundRevision: int, sentRevision: int, commandAsked: bool, claims: int, sends: int, acks: int}
   var s: State
   pure val schemes = Set("https", "http", "userinfo")
   action init = s' = {scheme: "https", typed: false, reviewFirst: "off", card: false, authority: "none",
     autoUsed: false, autoOpens: 0, tab: false, journal: "empty", receiptTried: false, synced: false,
     foreground: true, presented: false, claimedOpened: false,
-    command: "none", native: true, inBrowser: true, overlay: false, tabRevision: 0,
+    command: "none", native: true, inBrowser: true, overlay: false, tabRevision: 0, claimRevision: -1,
     boundRevision: -1, sentRevision: -1, commandAsked: false, claims: 0, sends: 0, acks: 0}
   val asks = s.reviewFirst != "off"
   val idle = s.authority == "none"
@@ -53,12 +53,14 @@ module BrowserAgentOpen {
     s' = {...s, native: native, inBrowser: inBrowser, overlay: overlay}}
   /// An interact frame for the current view is claimed once.
   action claim = all {s.command.in(Set("none", "done")), s.inBrowser, s.claims < 3,
-    s' = {...s, command: "claimed", claims: s.claims + 1, boundRevision: -1, sentRevision: -1, commandAsked: false}}
+    s' = {...s, command: "claimed", claims: s.claims + 1, claimRevision: s.tabRevision, boundRevision: -1, sentRevision: -1, commandAsked: false}}
+  /// A new navigation invalidates the original renderer context while its server claim waits.
+  action claimStale = all {s.command == "claimed", s.claimRevision != s.tabRevision, s' = {...s, command: "refused"}}
   /// "Review phone actions first" (or an unreadable choice) refuses the command after its claim.
-  action commandRefused = all {s.command == "claimed", asks, s' = {...s, command: "refused"}}
-  action commandBind = all {s.command == "claimed", not(asks), s.native, s.inBrowser, not(s.overlay),
+  action commandRefused = all {s.command == "claimed", s.claimRevision == s.tabRevision, asks, s' = {...s, command: "refused"}}
+  action commandBind = all {s.command == "claimed", s.claimRevision == s.tabRevision, not(asks), s.native, s.inBrowser, not(s.overlay),
     s' = {...s, command: "bound", boundRevision: s.tabRevision, commandAsked: asks}}
-  action commandUnavailable = all {s.command == "claimed", not(asks),
+  action commandUnavailable = all {s.command == "claimed", s.claimRevision == s.tabRevision, not(asks),
     not(s.native) or not(s.inBrowser) or s.overlay, s' = {...s, command: "refused"}}
   /// The native call names the admitted navigation; a tab that moved on refuses it.
   action commandSend = all {s.command == "bound", s.boundRevision == s.tabRevision,
@@ -74,7 +76,7 @@ module BrowserAgentOpen {
     newMessage, openDirect, openReviewed, execute, journalFinish, receipt(true), receipt(false),
     leaveForeground, present, presentSkipped, tabNavigates,
     place(true, true, false), place(false, true, false), place(true, false, false), place(true, true, true),
-    claim, commandRefused, commandBind, commandUnavailable, commandSend, commandStale,
+    claim, claimStale, commandRefused, commandBind, commandUnavailable, commandSend, commandStale,
     acknowledge(true), acknowledge(false)}
 
   val HttpsNoUserinfo = (s.card or s.tab) implies s.scheme == "https"
@@ -120,6 +122,8 @@ module BrowserAgentOpen {
     .then(acknowledge(true)).expect(safety and s.sends == 0)
   run commandSentOnceTest = init.then(claim).then(commandBind).then(commandSend).then(acknowledge(false))
     .expect(safety and s.sends == 1 and s.acks == 0 and s.command == "done")
+  run navigationDuringClaimRefusesCommandTest = init.then(claim).then(tabNavigates).then(claimStale)
+    .then(acknowledge(true)).expect(safety and s.sends == 0 and s.acks == 1)
   run browserBuildHasNoCommandTest = init.then(place(false, true, false)).then(claim)
     .then(commandUnavailable).then(acknowledge(true)).expect(safety and s.sends == 0)
 }

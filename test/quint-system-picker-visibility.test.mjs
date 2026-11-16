@@ -1,13 +1,14 @@
 import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
+import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 import {loadProductModule, modelTraces, replayTraces, settle} from '../specs/quint/refinement/application/notes-files-media-itf.mjs';
 
 // SystemPickerVisibility against duringSystemPicker and systemPickerActive
 // (apps/app/src/prototype/scan-pdf.ts) and runFilePicker (apps/app/src/browser/file-picker.ts).
-// The picker counter and the single owned browser file picker are observed. The five scan
-// dialogs of the model are DOM dialogs spread over four modules; their open and close steps
-// change nothing these two entry points hold and pass through the driver untouched.
+// The sampled driver observes the counter and owned browser chooser. The directed
+// driver in the last two tests owns the five mounted dialog implementations.
 
 async function replaySystemPickerVisibility({rewrite, ...options} = {}) {
   const traces = modelTraces({path: 'specs/quint/services/SystemPickerVisibility.qnt', main: 'SystemPickerVisibility', ...options});
@@ -77,4 +78,25 @@ test('a file picker that keeps an earlier consumer is rejected by the replay', {
 test('a picker counter that is not released when the picker throws or settles is rejected by the replay', {timeout: scaledTimeout(180000)}, async () => {
   await assert.rejects(replaySystemPickerVisibility({traces: 300, maxSteps: 20, rewrite: {'prototype/scan-pdf.ts': text =>
     text.replace('finally{systemPickers--;}', 'finally{}')}}), /trace \d+ step \d+ pickerEnd/);
+});
+
+
+const owningTest = fileURLToPath(import.meta.url);
+
+test('the mounted scan dialogs observe the SystemPickerVisibility lifecycle', {timeout:scaledTimeout(120000)}, async () => {
+  const {checkSystemPickerDialogs} = await import('../specs/quint/refinement/services/system-picker-dialogs.mjs');
+  const receipt = await checkSystemPickerDialogs(owningTest);
+  assert.equal(receipt.traces, 7);
+  assert.equal(receipt.checkpoints, 52);
+  assert.equal(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged, true);
+  assert.equal(verifyRefinementReceiptInputs(receipt), true);
+  assert.equal(receipt.actions.openSearchable, 2);
+  assert.equal(receipt.actions.openCapture, 1);
+  assert.equal(receipt.actions.pageHide, 4);
+});
+
+test('the mounted replay rejects losing the searchable dialog under an active picker', {timeout:scaledTimeout(120000)}, async () => {
+  const {checkSystemPickerDialogs} = await import('../specs/quint/refinement/services/system-picker-dialogs.mjs');
+  await assert.rejects(checkSystemPickerDialogs(owningTest, {removeSearchableException:true}),
+    /Source\/model trace mismatch in SystemPickerVisibility/);
 });

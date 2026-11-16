@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
+import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
 import {actionCounts, modelTraces, sameState} from './calendar-itf.mjs';
+import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 const model = {path: 'specs/quint/application/CalendarLinkedLocalPort.qnt', module: 'CalendarLinkedLocalPort', traces: 30, steps: 40,
@@ -15,10 +19,12 @@ const model = {path: 'specs/quint/application/CalendarLinkedLocalPort.qnt', modu
     stagedThenAborted: 's.lateAbort and s.pending and s.deletionNotices == 0',
   }};
 const sources = ['apps/app/src/browser/calendar-linked-local.ts', 'apps/app/src/browser/calendar-store.ts',
-  'apps/app/src/browser/calendar-deletions.ts', 'apps/app/src/browser/calendar-records.ts', 'apps/app/src/runtime/deletion-owner.ts'];
+  'apps/app/src/browser/calendar-deletions.ts', 'apps/app/src/browser/calendar-records.ts',
+  'apps/app/src/browser/calendar-sync-fields.ts', 'apps/app/src/runtime/deletion-owner.ts'];
 
 /** `mutate` rewrites the bundled port, for checks that the replay notices a changed implementation. */
 export async function buildCalendarLinkedLocalPort(mutate = code => code) {
+  const loadedHashes = new Map();
   const built = await build({absWorkingDir: root, stdin: {contents: `export {browserCalendarSyncPort} from './apps/app/src/browser/calendar-linked-local.ts';
 export {calendarDeletionPending, stageCalendarDeletion, undoCalendarDeletion} from './apps/app/src/browser/calendar-deletions.ts';
 export {calendarRecord, deleteCalendarRecord} from './apps/app/src/browser/calendar-records.ts';
@@ -29,10 +35,19 @@ export {bindBrowserDeletionOwner} from './apps/app/src/runtime/deletion-owner.ts
   plugins: [{name: 'calendar-document-port', setup(builder) {
     builder.onResolve({filter: /\/(documents|domain-document)$/}, ({path}) => ({path: path.split('/').at(-1), namespace: 'document-port'}));
     builder.onLoad({filter: /.*/, namespace: 'document-port'}, ({path}) => ({loader: 'js', contents: `module.exports = __ports[${JSON.stringify(path)}];`}));
+    builder.onLoad({filter: /\.[cm]?[jt]sx?$/, namespace: 'file'}, async ({path}) => {
+      if (path.includes('/node_modules/')) return;
+      const contents = await readFile(path);
+      loadedHashes.set(path, createHash('sha256').update(contents).digest('hex'));
+      const loader = path.match(/\.[cm]?([jt]sx?)$/)[1];
+      return {contents, loader, resolveDir: dirname(path)};
+    });
   }}]});
   const inputs = Object.keys(built.metafile.inputs);
   for (const needed of sources) assert.ok(inputs.includes(needed), needed);
-  return {code: mutate(built.outputFiles[0].text), sources: inputs.filter(path => !path.includes(':') && !path.startsWith('node_modules/'))};
+  const actualSources = inputs.filter(path => path !== '<stdin>' && !path.includes(':') && !path.startsWith('node_modules/'));
+  for (const path of actualSources) assert.ok(loadedHashes.has(resolve(root, path)), path);
+  return {code: mutate(built.outputFiles[0].text), sources: actualSources, loadedHashes};
 }
 
 const turn = () => new Promise(resolve => setImmediate(resolve));
@@ -53,13 +68,14 @@ function portFixture(compiled) {
   const {window} = dom;
   const state = {data: {sourceRevision: source, events: [structuredClone(event)]}, bound: true, owner: 'agent:owner-1',
     held: null, commit: null, writes: 0, documentNotices: 0, deletionNotices: 0,
-    staleWrite: false, unboundWrite: false, heldWrite: false};
+    staleWrite: false, unboundWrite: false, heldWrite: false, stagedScope: 'none'};
   let api;
   class BrowserDomainDocument {
     read() { return new Promise((resolve, reject) => { state.held = {run: async () => resolve(structuredClone(state.data)), reject}; }); }
     edit(initial, change) {
       return new Promise((resolve, reject) => { state.held = {run: async () => {
         const next = structuredClone(state.data), before = JSON.stringify(next);
+        const previousDeletions = new Set(Object.keys(next.deletions ?? {}));
         // What the document held when the port's change ran, read independently of the port.
         const row = api.calendarRecord(next.events, id), pending = api.calendarDeletionPending(next, id);
         let result;
@@ -69,6 +85,8 @@ function portFixture(compiled) {
           state.staleWrite ||= !row || row.revision !== state.expected;
           state.unboundWrite ||= !state.bound || next.sourceRevision !== source;
           state.heldWrite ||= pending;
+          const staged = Object.values(next.deletions ?? {}).find(entry => !previousDeletions.has(entry.id));
+          if (staged) state.stagedScope = staged.target.scope;
           state.data = next;
         }
         state.commit = () => resolve(result);
@@ -101,6 +119,8 @@ async function replay(compiled, trace) {
     if (stored) count(stored.revision);
     return {bound: state.bound, sourceSame: state.data.sourceRevision === source, exists: !!stored, revision: revisions.length - 1,
       pending: api.calendarDeletionPending(state.data, id) || unresolved(), known: known === null ? -1 : count(known),
+      series: !!stored?.repeat && stored.repeat !== 'none', guests: !!stored?.who?.length,
+      richUpdate: false, stagedScope: state.stagedScope,
       op: call?.kind ?? 'none', phase: !call ? 'idle' : state.commit ? 'written' : 'admitted',
       expected: call && call.kind !== 'get' ? count(call.expected) : -1, ownerCurrent,
       result: call && state.commit ? call.result() : 'none', wrote: call && state.commit && call.kind === 'apply' ? count(row().revision) - call.later : -1,
@@ -182,4 +202,102 @@ export async function checkCalendarLinkedLocalPort(mutate) {
   let steps = 0;
   for (const trace of traces) { await replay(compiled, trace); steps += trace.steps.length - 1; }
   return {traces: traces.length, steps, actions: actionCounts(traces), sources: compiled.sources};
+}
+
+/** A real linked-calendar update and re-read preserves a supported series and its guests. */
+export async function checkCalendarLinkedSeries(extraSources = [], mutate) {
+  const compiled = await buildCalendarLinkedLocalPort(mutate);
+  const inputs = [...compiled.sources, 'specs/quint/refinement/application/calendar-linked-local-port.mjs', ...extraSources];
+  const driverHashes = captureInputs(inputs);
+  for (const [path, hash] of compiled.loadedHashes) {
+    assert.equal(driverHashes[path], hash, `Calendar replay source changed after bundling: ${path}`);
+  }
+  const {state, api, port, window} = portFixture(compiled);
+  const rule = 'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
+  const exclusions = 'EXDATE:20270122T120000Z,20270129T120000Z';
+  const incoming = {...provider('Series update', true),
+    recurrence: ['RRULE:FREQ=WEEKLY;BYDAY=TH,FR,WE,MO,TU', 'EXDATE:20270129T120000Z,20270122T120000Z'],
+    attendees: [{email: 'Owner.Example@example.org', optional: false}, {email: 'Guest.Example@example.org', optional: true}]};
+  const expectedGuests = [{email: 'owner.example@example.org', optional: false}, {email: 'guest.example@example.org', optional: true}];
+  const row = () => api.calendarRecord(state.data.events, id);
+  const observe = () => ({
+    's.series': row().repeat === 'weekdays',
+    's.guests': row().who?.length === expectedGuests.length,
+    's.pending': api.calendarDeletionPending(state.data, id),
+    's.stagedScope': state.stagedScope,
+    's.writes': state.writes,
+    's.documentNotices': state.documentNotices,
+    's.deletionNotices': state.deletionNotices,
+  });
+  const trace = {name: 'provider series and attendees round-trip into one exact staged deletion', expect: observe(), steps: []};
+  const mark = (label, action, ...args) => trace.steps.push({label, action: {name: action, args}, expect: observe()});
+  const transact = async () => {
+    await idle();
+    const held = state.held;
+    assert.ok(held, 'Each port operation opens the real document guard');
+    state.held = null;
+    await held.run();
+  };
+  const finish = () => {
+    const complete = state.commit;
+    assert.ok(complete, 'The stored mutation is acknowledged separately');
+    state.commit = null;
+    complete();
+  };
+  const verifyEvent = snapshot => {
+    assert.equal(snapshot.eventId, id);
+    assert.deepEqual(snapshot.event.recurrence, [rule, exclusions], 'The series and exclusions round-trip');
+    assert.deepEqual(snapshot.event.attendees, expectedGuests, 'Attendee identity and optionality round-trip');
+  };
+
+  try {
+    const initialRead = port.get(id);
+    mark('Read the current event', 'begin', 'get', true);
+    await transact();
+    const before = await initialRead;
+    assert.equal(before.revision, event.revision);
+    mark('Observe the supplied local revision', 'transact');
+
+    state.expected = before.revision;
+    const update = port.applyProviderEvent(id, incoming, before.revision);
+    mark('Admit the provider series for the exact revision', 'beginSeriesUpdate');
+    await transact();
+    assert.deepEqual(row().excluded, [Date.parse('2027-01-22T12:00Z'), Date.parse('2027-01-29T12:00Z')]);
+    assert.deepEqual(row().attendeeOptions, {
+      'owner.example@example.org': {optional: false}, 'guest.example@example.org': {optional: true},
+    });
+    mark('Store the recurrence and attendees in the same revision', 'transact');
+    finish();
+    const updated = await update;
+    verifyEvent(updated);
+    assert.notEqual(updated.revision, before.revision);
+    mark('Publish the stored revision and its fields', 'finish');
+
+    const reread = port.get(id);
+    mark('Read the saved series again', 'begin', 'get', true);
+    await transact();
+    const saved = await reread;
+    verifyEvent(saved);
+    assert.equal(saved.revision, updated.revision);
+    mark('The current snapshot keeps the same exact series and guests', 'transact');
+
+    state.expected = saved.revision;
+    const deletion = port.delete(id, saved.revision);
+    mark('Stage removal for the exact saved revision', 'begin', 'delete', true);
+    await transact();
+    const journal = Object.values(state.data.deletions);
+    assert.equal(journal.length, 1);
+    assert.equal(journal[0].target.scope, 'series');
+    assert.deepEqual(journal[0].target.row, row(), 'Undo retains the exact series and attendees');
+    mark('Store a pending series deletion rather than dropping the event', 'transact');
+    finish();
+    await deletion;
+    mark('Publish the pending series deletion and calendar notices', 'finish');
+
+    return await checkTraces({model: model.module, id: 'CalendarLinkedLocalSeries', sources: inputs, driverHashes,
+      scope: 'bounded-component', traces: [trace], assumptions: [
+        'The actual browser sync port, recurrence and attendee codecs, and deletion journal execute over a controlled document port.',
+        'One supported timed series, two literal attendee addresses and its exact applied revision, re-read and staged deletion are observed. No provider or IndexedDB backend is called.',
+      ]});
+  } finally { window.close(); }
 }

@@ -4200,7 +4200,9 @@
       "ongoingRunBlocksRemovalTest",
       "unseenRunRefusedByAgentTest",
       "restartNeedsOpenWorkflowTest",
-      "abortBeforeDispatchReleasesTest"
+      "abortBeforeDispatchReleasesTest",
+      "accountSwitchRefusesUnsentRemovalTest",
+      "accountSwitchRetiresSentRemovalViewTest"
     ],
     "invariants": [
       "TypeOK",
@@ -4312,16 +4314,16 @@
       "busy/stage/reply": "the workflow operation in progress, how far it got (first send or resend), and the answer waiting for it",
       "wire/wireId/wireVersion/wireRemove": "copies of the newest request on the network, with the request, version and operation they name",
       "receipts": "the requests the agent applied and keeps a receipt for, by mutation identity",
-      "seen/sent/resends/admissions/applications": "whether this phone learned of the applied change, sends and reviewed resends per request (two stands for more), and totals",
+      "seen/sent/resends/admissions/applications": "whether the phone settled the exact applied change, sends and reviewed resends per request (two stands for more), and totals",
       "opened/knownOngoing/knownInterrupted": "whether the workflow is open on this phone, and the run history it last read: on opening, after a refusal and after a cancellation. The tap guards use this reading, not the agent's runs"
     },
     "abstractions": [
       "One workflow, three versions and three lifecycle requests. Name and description edits are modeled in WorkflowMetadataEdit.",
+      "Directed account-switch scenarios keep the same agent connection. The switch before durable admission refuses that request. An already-sent mutation can settle the exact agent-scoped journal receipt without publishing into the new account. Cross-account resend is outside the directed scenarios. The generated walks use one account.",
       "The agent applies a request once per mutation identity and only for the version it names, and refuses it while a run is unfinished; a change from elsewhere moves the version on. Whether an applied removal moves the version is not assumed, so a repeat is answered from the receipt alone.",
       "At most two copies of one request are in flight; a third send stands for the loss of one. Requests of an earlier change still in flight when a new one is sent are dropped: they name an older version or already have a receipt.",
       "The resend reads the receipt before posting and again after a refusal; both reads are folded into the resend and refusal steps.",
       "Pending trigger cleanup, which blocks a restore, and agents without reviewed removal are not modeled.",
-      "An account change resets the view; the retained request belongs to its account and is not modeled across accounts.",
       "The run history on screen is at most one run. A run that starts after the workflow was opened is unknown to the phone until the next read; the agent's refusal is what stops a change sent meanwhile."
     ],
     "sharedSources": [
@@ -4594,6 +4596,9 @@
     "tests": [
       "exportPickerKeepsDialogsTest",
       "correctionAlwaysClosesTest",
+      "captureAlwaysClosesTest",
+      "searchablePickerSettlementAndHideTest",
+      "pageHideClosesExemptDialogsUnderPickerTest",
       "realBackgroundUnderPickerTest",
       "lateFilePickerResultTest",
       "closedReviewClosesNestedDialogsTest",
@@ -4681,7 +4686,8 @@
     "abstractions": [
       "Three picker calls and three browser file pickers. pagehide closes every dialog and cancels the owned file picker.",
       "A picker that settles while the page stays hidden produces no further hidden event; the dialog then stays until the page is shown or unloaded.",
-      "Trace replay: test/quint-system-picker-visibility.test.mjs replays simulator traces step by step against duringSystemPicker, systemPickerActive and runFilePicker; the five scan dialogs are not mounted, so the hidden-page close rules are checked by the model only and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
+      "The sampled replay in test/quint-system-picker-visibility.test.mjs drives duringSystemPicker, systemPickerActive and the owned file chooser.",
+      "The directed dialog replay in the same suite compiles and mounts all five whole dialog sources. It drives actual scan controls and observes visibility and pagehide, nested close, and the ownership and cleanup of a late camera result. OCR, draft storage, PDF creation, native picker responses and Camera are closed ports. It does not establish Android Activity behavior."
     ],
     "bounds": {
       "pickers": 3,
@@ -4954,6 +4960,7 @@
       "partialListSettlesNothingTest",
       "runRequestNeedsOwnerTest",
       "refusedChangeReleasedTest",
+      "definiteRefusalBeforeReadbackTest",
       "unreadConnectionBlocksChangeTest",
       "lateEnableOverridesTest"
     ],

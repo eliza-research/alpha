@@ -61,6 +61,12 @@ module SpeechCleanupLatch {
     any { speak(c), recoveryStopSettled(c, confirmed), finishPlayback(c), cleanupSettled(c, confirmed), enterVoice, closeRecorder, restart, s' = s }
   }
 
+  // Observable projections for the installed voice and read-aloud controllers.
+  val VoiceStage = s.stage.get("voice")
+  val ReadingStage = s.stage.get("reading")
+  val ReadingWaiting = s.waiting.contains("reading")
+  val ReadingRefused = s.refused.contains("reading")
+
   val StagesKnown = Chains.forall(c => s.stage.get(c).in(Set("idle", "playing", "retiring", "recovering", "latched")))
   val SuccessorWaitsForCleanup = s.waiting.forall(c => s.stage.get(c) == "retiring")
   // A closed chain reopens only through a confirmed native stop, which only recoverable chains make.
@@ -111,4 +117,16 @@ module SpeechCleanupLatch {
     .expect(s.stage.get("cloud") == "recovering" and s.waiting == Set() and s.refused == Set() and safety)
   run restartOpensChainsTest = init.then(speak("app")).then(finishPlayback("app")).then(cleanupSettled("app", false))
     .then(restart).then(speak("app")).expect(s.stage.get("app") == "playing" and s.refused == Set() and safety)
+  run confirmedReadingStartsItsSuccessorTest = init.then(speak("reading")).then(speak("reading"))
+    .expect(ReadingWaiting and ReadingStage == "retiring" and safety)
+    .then(cleanupSettled("reading", true))
+    .expect(not(ReadingWaiting) and ReadingStage == "playing" and safety)
+  run confirmedVoiceCleanupAllowsEntryTest = init.then(enterVoice).then(speak("voice")).then(finishPlayback("voice"))
+    .then(enterVoice).expect(s.entryMessage == "finish-or-discard" and safety)
+    .then(cleanupSettled("voice", true)).then(closeRecorder).then(enterVoice)
+    .expect(s.recorderOpen and s.entryMessage == "none" and safety)
+  run dismissedVoiceFailureRequiresRestartTest = init.then(enterVoice).then(speak("voice")).then(finishPlayback("voice"))
+    .then(cleanupSettled("voice", false)).then(closeRecorder).then(enterVoice)
+    .expect(not(s.recorderOpen) and s.entryLatched and safety)
+    .then(restart).then(enterVoice).expect(s.recorderOpen and not(s.entryLatched) and safety)
 }

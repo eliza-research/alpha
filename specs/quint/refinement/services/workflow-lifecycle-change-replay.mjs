@@ -7,10 +7,11 @@ const {workflowAdapter, intentSlot, wait} = await import('./workflow-adapter-fix
 const {WorkflowLifecycleRejected} = await import('../../../../apps/app/src/runtime/workflow-protocol.ts');
 
 const model = 'specs/quint/services/WorkflowLifecycleChange.qnt', main = 'WorkflowLifecycleChange';
+const accountSwitchScenarios = ['accountSwitchRefusesUnsentRemovalTest', 'accountSwitchRetiresSentRemovalViewTest'];
 const scenarios = ['reviewedRemovalTest', 'lostReplyStaysRetainedTest', 'neverSentIsResentTest', 'delayedCopyAndResendApplyOnceTest', 'refusedResendStaysRetainedTest',
   'resendAfterEditReleasesTest', 'abandonedResendKeepsEntryTest', 'changedVersionReleasesTest', 'refusedChangeReleasesTest', 'interruptedRunsAreCancelledFirstTest',
   'unreadRetainedCannotResendTest', 'retainedBlocksAnotherChangeTest', 'appliedCopyCannotApplyAgainTest', 'ongoingRunBlocksRemovalTest', 'abortBeforeDispatchReleasesTest',
-  'unseenRunRefusedByAgentTest', 'restartNeedsOpenWorkflowTest'];
+  'unseenRunRefusedByAgentTest', 'restartNeedsOpenWorkflowTest', ...accountSwitchScenarios];
 // The run's start year tells which state of it the phone last read.
 const started = {ongoing: '2021', interrupted: '2022', finished: '2023'};
 const slot = intentSlot('flow', ':lifecycle');
@@ -23,7 +24,7 @@ const gate = () => { let open, refuse; const reached = new Promise((resolve, rej
  * before its journal write lands (only when the scenario leaves at that point), before it is sent,
  * and on its way to and from the agent.
  */
-async function subject(walk) {
+async function subject(walk, rewrite) {
   const agent = {edits: 0, removed: false, run: 'none', receipts: new Map(), applications: 0};
   const version = () => `e${agent.edits}a${agent.applications}`;
   const workflow = () => ({id: 'flow', name: 'Digest', description: 'Reads notes', versionId: version(), active: false, removed: agent.removed, triggerCleanup: agent.removed ? 'complete' : undefined, steps: [{label: 'Read', description: 'Read notes'}]});
@@ -31,29 +32,40 @@ async function subject(walk) {
     ...(agent.run === 'interrupted' ? {reconciliation: {state: 'outcome-unknown'}} : {})}];
   const posts = [], admitted = [];
   let wire = [], call = null, held = null, cancelling = null, opened = true, index = 0, serial = 0;
-  const leavesBeforeDispatch = () => walk.slice(index + 1).find(step => ['dispatch', 'abortBeforeDispatch', 'restart'].includes(step.action))?.action === 'abortBeforeDispatch';
-  const send = (mutationId, versionId, operation, resend) => new Promise((resolve, reject) => {
+  let detailReads = 0, readsAtSwitch = 0, toastsAtSwitch = 0, cancels = 0;
+  const hasAccountSwitch = walk.some(step => step.action === 'switchAccount');
+  const leavesBeforeDispatch = () => {
+    const next = walk.slice(index + 1).find(step => ['dispatch', 'abortBeforeDispatch', 'switchAccount', 'restart'].includes(step.action));
+    return next?.action === 'abortBeforeDispatch' || next?.action === 'switchAccount';
+  };
+  const send = (mutationId, versionId, operation, resend, signal) => new Promise((resolve, reject) => {
     posts.push({mutationId, versionId, operation, resend}); wire = [...wire.filter(copy => copy.mutationId === mutationId), {mutationId, versionId, operation}].slice(-2);
-    call = {resolve, reject, reply: null};
+    call = {resolve, reject, reply: null, signal};
   });
   const client = {lifecycleSupported: async () => true, supportsSubmissionReconciliation: async () => true, list: async () => agent.removed ? [] : [workflow()], removedWorkflows: async () => agent.removed ? [workflow()] : [],
-    detail: async () => workflow(), executions: async () => runs(), approvals: async () => null, phoneReview: async () => ({steps: []}), reconcile: async () => null,
+    detail: async () => { detailReads++; return workflow(); }, executions: async () => runs(), approvals: async () => null, phoneReview: async () => ({steps: []}), reconcile: async () => null,
     reconcileLifecycle: async (_id, _version, mutationId) => agent.receipts.get(mutationId) ?? null,
-    lifecycle: async (_id, versionId, operation, _signal, admit) => {
-      const mutationId = `00000000-0000-4000-8000-${String(++serial).padStart(12, '0')}`, stop = held = {...gate(), stage: leavesBeforeDispatch() ? 'journal' : 'admitted', mutationId, versionId, operation};
+    lifecycle: async (_id, versionId, operation, signal, admit) => {
+      const mutationId = `00000000-0000-4000-8000-${String(++serial).padStart(12, '0')}`, stop = held = {...gate(), stage: leavesBeforeDispatch() ? 'journal' : 'admitted', mutationId, versionId, operation, signal};
       admitted.push(mutationId);
-      if (stop.stage === 'journal') { stop.waiting = true; await stop.reached; await admit(mutationId); throw Error('The adapter went on to send a change its owner had left'); }
+      if (stop.stage === 'journal') {
+        stop.waiting = true;
+        await stop.reached;
+        try { await admit(mutationId); }
+        catch (error) { stop.refusedBeforeDispatch = true; throw error; }
+        throw Error('The adapter went on to send a change its owner had left');
+      }
       await admit(mutationId); stop.waiting = true; await stop.reached;
-      return send(mutationId, versionId, operation, false);
+      return send(mutationId, versionId, operation, false, signal);
     },
     resendLifecycle: async (_id, versionId, mutationId, operation) => {
       const stop = held = {...gate(), stage: 'resending', mutationId}; stop.waiting = true; await stop.reached;
       // The route client reads the receipt first and sends only without one.
       return agent.receipts.get(mutationId) ?? send(mutationId, versionId, operation, true);
     },
-    cancel: async () => { const stop = cancelling = {...gate(), waiting: true}; await stop.reached; }};
+    cancel: async () => { cancels++; const stop = cancelling = {...gate(), waiting: true}; await stop.reached; }};
   const storage = {};
-  const app = await workflowAdapter({client, storage});
+  const app = await workflowAdapter({client, storage, rewrite, account: hasAccountSwitch ? 'a' : null});
   const fd = () => app.render().fd;
   const idle = () => wait(() => app.render().detail && !fd().busy, 'the workflow did not settle');
   const open = async () => { app.render().openWorkflow('flow'); await idle(); opened = true; };
@@ -86,6 +98,35 @@ async function subject(walk) {
       const stop = held; app.leave(); opened = false; held = null; stop.open();
       await new Promise(resolve => setTimeout(resolve, 20));
       assert.equal(slot in storage, false, 'the unsent change was not released'); assert.equal(posts.length, 0);
+    } else if (action === 'switchAccount') {
+      const admitted = call ?? held;
+      const pending = storage[slot];
+      readsAtSwitch = detailReads;
+      toastsAtSwitch = app.toasts.length;
+      app.signIn('b');
+      assert.equal(app.render().detail, false, 'Account switch must retire the previous workflow drawing');
+      assert.ok(admitted.signal.aborted, 'Account switch must abort the previous lifecycle operation');
+      opened = false;
+      if (held) {
+        const beforeSend = held;
+        held = null;
+        beforeSend.open();
+        await wait(() => beforeSend.refusedBeforeDispatch, 'The old account admission was not refused');
+        assert.equal(slot in storage, false, 'An unsent lifecycle request does not stay retained');
+        assert.equal(posts.length, 0, 'The retired operation never reaches the agent');
+      } else assert.equal(storage[slot], pending, 'A sent lifecycle request retains its exact journal');
+      assert.equal(cancels, 0, 'No run exists to cancel in this lifecycle fixture');
+    } else if (action === 'retiredSuccessReply') {
+      const pending = call;
+      call = null;
+      assert.ok(pending.signal.aborted && pending.reply, 'The old request received an exact late receipt');
+      pending.resolve(pending.reply);
+      await wait(() => !(slot in storage), 'The exact late receipt did not settle its record');
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(app.render().detail, false, 'The late receipt must not reopen the workflow');
+      assert.equal(detailReads, readsAtSwitch, 'The retired result does not read into the new account');
+      assert.equal(app.toasts.length, toastsAtSwitch, 'The retired result does not present an old outcome');
+      assert.equal(posts.length, 1, 'No new mutation is sent on settlement');
     } else if (['serverApply', 'serverReplay', 'serverReject'].includes(action)) serve(action);
     else if (action === 'requestLost') wire = wire.slice(0, -1);
     else if (action === 'successReply') await answer(pending => pending.resolve(pending.reply));
@@ -128,8 +169,8 @@ const project = (s, opened) => ({agent: {removed: s.removed, edits: s.version, a
   offer: opened ? s.offer : false, resendReview: opened ? s.resendReview : false, knownRemoved: opened ? s.knownRemoved : null,
   knownRun: opened && !s.busy ? (s.knownOngoing ? 'ongoing' : s.knownInterrupted ? 'interrupted' : 'idle') : null});
 
-async function replay(walk, label, seen) {
-  const code = await subject(walk);
+async function replay(walk, label, seen, rewrite) {
+  const code = await subject(walk, rewrite);
   try {
     const initialObservation=code.observe(),initialProjection=project(walk[0].state, true);
   assert.deepEqual(initialObservation,initialProjection,`${label} initial state`);
@@ -161,7 +202,7 @@ export async function runWorkflowLifecycleChangeCase1(t, {canaries=true}={}) {
   const seen = actionCounter();
   for (const scenario of scenarios) await replay(modelScenario(model, scenario, {main}), scenario, seen);
   for (const action of ['lifecycleTap', 'cancelReply', 'dispatch', 'abortBeforeDispatch', 'serverApply', 'serverReplay', 'serverReject', 'requestLost', 'successReply', 'rejectedReply',
-    'unknownReply', 'refresh', 'resendTap', 'resendDispatch', 'abortResend', 'remoteEdit', 'runStarts', 'runFinishes', 'runInterrupted', 'back', 'restart']) assert.ok(seen.count(action) > 0, action);
+    'unknownReply', 'refresh', 'resendTap', 'resendDispatch', 'abortResend', 'remoteEdit', 'runStarts', 'runFinishes', 'runInterrupted', 'back', 'restart', 'switchAccount', 'retiredSuccessReply']) assert.ok(seen.count(action) > 0, action);
 }
 
 /** Random walks of the model's step, each replayed from a new adapter and journal. */
@@ -175,3 +216,10 @@ export async function runWorkflowLifecycleChangeWalks({traces = 300, steps = 40}
 }
 
 export async function runWorkflowLifecycleChangeReplay(){const beforeTraces=observedTraces,beforeCheckpoints=observedCheckpoints;await runWorkflowLifecycleChangeCase1(undefined,{canaries:false});return{traces:observedTraces-beforeTraces,checkpoints:observedCheckpoints-beforeCheckpoints};}
+
+export async function checkWorkflowLifecycleAccountSwitch(rewrite) {
+  const seen = actionCounter();
+  for (const scenario of accountSwitchScenarios) await replay(modelScenario(model, scenario, {main}), scenario, seen, rewrite);
+  assert.equal(seen.count('switchAccount'), 2);
+  assert.equal(seen.count('retiredSuccessReply'), 1);
+}

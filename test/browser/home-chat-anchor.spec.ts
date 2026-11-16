@@ -47,6 +47,9 @@ test('Home focus stays above chat when the opening animation finishes',async({pa
  await page.goto('/?shell=launcher&tools=1');
  const home=page.locator('[data-alpha-layer="home"]'),panel=page.locator('[data-alpha-layer="conversation"]'),settings=home.getByRole('button',{name:'Settings',exact:true});
  await expect(settings).toBeVisible();await page.evaluate(()=>document.fonts.ready);
+ // The open sheet fits its conversation (AP-16 AC-04): one long enough opens at the fitted maximum,
+ // which covers the tile.
+ await page.evaluate(()=>{const el=document.querySelector('[data-screen]') as any;let fiber=el[Object.keys(el).find(key=>key.startsWith('__reactFiber$'))!];while(fiber&&!(fiber.stateNode&&typeof fiber.stateNode.cardAct==='function'))fiber=fiber.return;fiber.stateNode.setState({msgs:Array.from({length:12},(_,i)=>({id:i+1,from:i%2?'agent':'user',text:'Line '+(i+1)+' of an earlier conversation'}))});});
  // Hold the real height transition at its start so focus arrives before the sheet covers the tile.
  await page.addStyleTag({content:'[data-alpha-layer="conversation"] {transition:height 10s linear!important}'});
  await page.getByRole('button',{name:'Open conversation',exact:true}).click();

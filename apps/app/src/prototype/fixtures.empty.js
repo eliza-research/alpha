@@ -19,7 +19,6 @@ export const PN_REPLIES = [];
 export const MSG_PHOTOS = [];
 export const MSG_SEED = {};
 export const MSG_UNREAD = {};
-export const MSG_SMART = {};
 export const MSG_BOT = {};
 
 export const INBOX_ACCTS = [];

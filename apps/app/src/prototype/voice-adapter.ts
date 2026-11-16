@@ -188,7 +188,9 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   let transcription: AbortController | undefined;
   let readiness: AbortController | undefined;
   let playback: AbortController | undefined, playing = false;
-  type ChatDestination={mode?:'dictation';shell:any;view:string|null;chat:string;draft:string;reply:unknown;edit:unknown;binding:string;opener?:HTMLElement};
+  // AP-16 AC-12: dictation from a comms bar fills the field that bar shows: the person's text, or a
+  // list question that is sent to Alpha when the owner confirms the transcript.
+  type ChatDestination={mode?:'dictation';comms?:'person'|'filter';shell:any;view:string|null;chat:string;draft:string;reply:unknown;edit:unknown;binding:string;opener?:HTMLElement};
   let chatDestination:ChatDestination|undefined;
   let ownedNavigation:{chat:ChatDestination;view:string;detent:string;applying:boolean;turnId:string;context?:import('../runtime/alpha-client').ContextEnvelope}|undefined;
   let conversationVoice:Pick<BatchVoiceConversation<Clip>,'start'|'stop'|'recheck'|'resume'>|Awaited<ReturnType<typeof developmentCartesiaConversation>>|undefined;
@@ -383,7 +385,14 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       if (!draft.trim()) return;
       if (chatDestination) {
         if(!chatCurrent()){cleanup(true,true,'foreground-check-failed');return;}
-        const { shell, chat, draft:previousDraft } = chatDestination;
+        const { shell, chat, draft:previousDraft, comms } = chatDestination;
+        if(comms){
+          const field=shell.commsSpec?.()?.closed;
+          cleanup();
+          if(comms==='person'){const before=String(field?.value||'');field?.onText?.(before?[before,draft].join(' '):draft);shell.setState({chat:'input',voice:'off'});}
+          else{shell.setState({voice:'off'});shell.send(draft);field?.onText?.('');}
+          return;
+        }
         const text=previousDraft?[previousDraft,draft].join('\n'):draft;
         cleanup();
         // If the dictated draft is sent exactly as placed, its turn is timed through the reply. The
@@ -914,18 +923,22 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   // The voice session speaks its own replies, so the screen-reader announcer stays quiet.
   Component.prototype.voiceConversationActive=function(){return retirement?.shell===this||chatDestination?.shell===this&&chatDestination?.mode!=='dictation'&&stage!=='closed';};
   function maybeStartDictation(){if(chatDestination?.mode==='dictation'&&chatCurrent()&&stage==='ready'&&onDeviceReady&&!busy)void primary();}
-  Component.prototype.startTranscription = function(){
+  Component.prototype.startTranscription = function(options?:{commsTarget?:string}){
     if(this.live===false||document.hidden||connectionController.getSnapshot().open||chatDestination?.shell===this)return;
     if(this.pendingActionApproval||document.querySelector('dialog[open]')){this.toast('Finish or cancel the current review before transcribing.');return;}
     // While the retirement panel is shown it already says so; once it was put away, say it again.
     if(mediaUnconfirmed&&!retirement){this.toast(MEDIA_UNCONFIRMED_NOTICE);return;}
     if(retirement||stage!=='closed'){this.toast('Finish or discard the current recording before transcribing.');return;}
-    const state=this.S(),chat:ChatDestination={mode:'dictation',shell:this,view:state.view||null,chat:state.chat,draft:String(state.draft||''),reply:this.messageReplyTarget,edit:this.messageEditTarget,binding:composerBinding(),...(document.activeElement instanceof HTMLElement?{opener:document.activeElement}:{})};
+    const target=options?.commsTarget,comms=target==='person'||target==='filter'?target:undefined;
+    const state=this.S(),chat:ChatDestination={mode:'dictation',...(comms?{comms}:{}),shell:this,view:state.view||null,chat:state.chat,draft:String(state.draft||''),reply:this.messageReplyTarget,edit:this.messageEditTarget,binding:composerBinding(),...(document.activeElement instanceof HTMLElement?{opener:document.activeElement}:{})};
     const readingStopped=stopLocalSpeechPlayback();enter(undefined,!Capacitor.isNativePlatform()&&connectionController.getSnapshot().residentInference==='direct'?'agent':'device',chat);
     stopping=Promise.all([stopping,Promise.resolve(readingStopped)]).then(()=>{}).catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});
     const token=generation;this.setState({chat:state.chat==='full'?'full':'sheet',voice:'off'},()=>{if(token!==generation||chatDestination!==chat)return;document.querySelector<HTMLElement>('[data-alpha-chat-recorder] button')?.focus({preventScroll:true});maybeStartDictation();});
   };
   Component.prototype.startVoice = async function () {
+    // AC-12: during a call the caller never hears Alpha: a voice turn is transcribed into the request only.
+    const callKind=this.commsSpec?.()?.target?.kind;
+    if(callKind==='call'||callKind==='incoming')return this.startTranscription();
     cancelSavedTranscription();
     if(this.live===false||document.hidden||connectionController.getSnapshot().open||chatDestination?.shell===this)return;
     if(this.pendingActionApproval||document.querySelector('dialog[open]')){this.toast('Finish or cancel the current review before starting voice.');return;}
@@ -1478,7 +1491,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     out.pillVoiceInactive=!pillVoice;out.pillVoice=pillVoice?{...recorder,activity:recorder.problem||recorder.connecting?null:React.createElement(VoiceActivity,{phase:recorder.connecting?'connecting':recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state,theme:this.S().theme==='dark'?'dark':'light',compact:true}),controlDown:(event:PointerEvent)=>event.stopPropagation(),stop:()=>retiring?hold():cancelChat()}:null;
     if(retiring&&!pillVoice){out.conversationHidden=false;out.panelOp=1;out.panelPE='auto';if(!out.panelH)out.panelH=560;}
     if(active){
-      out.panelComposer=false;out.showSugg=false;out.showComposer=false;out.showPill=!!pillVoice;out.canStopReply=false;
+      out.panelComposer=false;out.showComposer=false;out.showPill=!!pillVoice;out.canStopReply=false;
       out.closeChat=()=>retiring?hold():cancelChat();
     }
     return out;

@@ -82,3 +82,19 @@ test('two withheld missed calls are not merged into one caller', () => {
   assert.deepEqual(card.rows, [{title: 'Unknown', detail: 'Missed'}, {title: 'Unknown', detail: 'Missed'}]);
   assert.equal(card.count, '2');
 });
+
+test('"Call or ask" matches every word: digits against the number, other words against a name prefix', () => {
+  const row = {name: 'Priya Nair', number: '+1 (415) 555-0132'};
+  for (const query of ['', '  ', 'pri', 'NAIR', 'priya 0132', '415-555', '+1415']) assert.equal(P.matchesCallQuery(row, query), true, query);
+  for (const query of ['riya', 'priya 0199', 'dan', '9999', '-']) assert.equal(P.matchesCallQuery(row, query), false, query);
+  assert.equal(P.matchesCallQuery({name: '(628) 555-0177', number: '6285550177'}, '628'), true, 'a bare number row matches its digits');
+});
+
+test('the Phone briefing states the newest missed call and new voicemail, or nothing', () => {
+  assert.equal(P.callsBriefing([], [], now), null);
+  assert.equal(P.callsBriefing([{name: 'Priya Nair', date: now - 5 * 60000}], [], now), 'Priya Nair called 5 min ago and you missed it.');
+  assert.equal(P.callsBriefing([{name: 'Daniel Osei', date: at(7)}, {name: 'Priya Nair', date: at(8, 30)}], [{name: 'Daniel Osei'}], now),
+    '2 missed calls, the latest from Priya Nair at 8:30 AM. One new voicemail, from Daniel Osei.');
+  assert.equal(P.callsBriefing([], [{name: 'A'}, {name: 'B'}], now), '2 new voicemails.');
+  assert.equal(P.callsBriefing([{name: 'Priya Nair', date: at(9, 0, 9)}], [], now), 'Priya Nair called on Mon and you missed it.');
+});

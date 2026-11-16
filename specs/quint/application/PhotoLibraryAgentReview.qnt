@@ -5,7 +5,7 @@ module PhotoLibraryAgentReview {
   type Request = { phase: str, token: int, revision: int }
   type Confirm = { review: int, pending: bool }
   type State = {
-    visible: bool, hostReview: bool, epoch: int, disposed: bool, revision: int,
+    inPhotos: bool, hidden: bool, hostReview: bool, epoch: int, disposed: bool, revision: int,
     requests: int -> Request, review: int, reviewRevision: int, reviewEpoch: int, serial: int,
     confirms: int -> Confirm, acting: int, actingRevision: int,
     dispatched: List[int], applied: List[int],
@@ -17,16 +17,17 @@ module PhotoLibraryAgentReview {
   pure val unpressed: Confirm = { review: 0, pending: false }
   pure def bump(n: int): int = if (n < 2) n + 1 else 2
   action init = s' = {
-    visible: true, hostReview: false, epoch: 0, disposed: false, revision: 0,
+    inPhotos: true, hidden: false, hostReview: false, epoch: 0, disposed: false, revision: 0,
     requests: Slots.mapBy(_ => idle), review: 0, reviewRevision: 0, reviewEpoch: 0, serial: 0,
     confirms: Slots.mapBy(_ => unpressed), acting: 0, actingRevision: 0,
     dispatched: [], applied: [], refusedBusy: 0, refusedLeft: 0, staleClosed: 0, androidStale: 0, latePresses: 0
   }
+  val visible = s.inPhotos and not(s.hidden) and not(s.disposed)
   val reviewBusy = s.acting != 0 or s.review != 0 or s.hostReview
   /// An approved change request names the revision the assistant read. It is admitted only over
   /// the visible grid with no review open, then the provider is asked whether it is current.
   action request(slot: int, read: int): bool = all {
-    Slots.contains(slot), s.requests.get(slot).phase == "none", not(s.disposed), s.visible, not(reviewBusy),
+    Slots.contains(slot), s.requests.get(slot).phase == "none", not(s.disposed), visible, not(reviewBusy),
     read <= s.revision, read >= 0,
     s' = { ...s, requests: s.requests.set(slot, { phase: "validating", token: s.epoch, revision: read }) }
   }
@@ -37,7 +38,7 @@ module PhotoLibraryAgentReview {
     val settled = { ...s, requests: s.requests.set(slot, idle) }
     s' = if (asked.revision != s.revision) settled
       else if (asked.token != s.epoch or s.disposed) { ...settled, refusedLeft: bump(s.refusedLeft) }
-      else if (reviewBusy or not(s.visible)) { ...settled, refusedBusy: bump(s.refusedBusy) }
+      else if (reviewBusy or not(visible)) { ...settled, refusedBusy: bump(s.refusedBusy) }
       else { ...settled, review: s.serial + 1, serial: s.serial + 1, reviewRevision: asked.revision, reviewEpoch: s.epoch }
   }
   /// The owner presses Confirm; a second press can arrive before the first re-validation returns.
@@ -63,13 +64,19 @@ module PhotoLibraryAgentReview {
   }
   action cancel = all { s.review != 0, s' = { ...s, review: 0 } }
   /// Leaving Photos drops the open review and retires every request still being validated.
-  action leave = all { s.epoch < 3, s' = { ...s, review: 0, epoch: s.epoch + 1, visible: false, hostReview: false } }
-  action show = all { not(s.disposed), not(s.visible), s' = { ...s, visible: true } }
-  action hostReviewOpens = all { s.visible, not(reviewBusy), s' = { ...s, hostReview: true } }
+  action leave = all { s.epoch < 3, s' = { ...s, review: 0, epoch: s.epoch + 1, inPhotos: false, hostReview: false } }
+  action show = all { not(s.disposed), not(s.inPhotos), s' = { ...s, inPhotos: true } }
+  /// A hidden page ends an open review without leaving the Photos visit. A native request
+  /// already dispatched retains ownership; a held confirm can no longer use its old review.
+  action hidePage = all { not(s.disposed), not(s.hidden),
+    s' = { ...s, hidden: true, review: 0, hostReview: false } }
+  action showPage = all { not(s.disposed), s.hidden, s' = s.with("hidden", false) }
+  action hostReviewOpens = all { visible, not(reviewBusy), s' = { ...s, hostReview: true } }
   action hostReviewCloses = all { s.hostReview, s' = { ...s, hostReview: false } }
   action sourceChanges = all { s.revision < 2, s' = { ...s, revision: s.revision + 1 } }
   action dispose = all { not(s.disposed), s.epoch < 3,
-    s' = { ...s, disposed: true, epoch: s.epoch + 1, visible: false, hostReview: false } }
+    s' = { ...s, disposed: true, epoch: s.epoch + 1, inPhotos: false, hostReview: false } }
+  // Preserve the visit interleaving campaign. Visibility also runs in the directed schedules below.
   action step = {
     nondet slot = Slots.oneOf()
     nondet read = 0.to(2).oneOf()
@@ -80,7 +87,7 @@ module PhotoLibraryAgentReview {
   pure def unique(list: List[int]): bool =
     list.indices().forall(i => list.indices().forall(j => i == j or list.nth(i) != list.nth(j)))
   val SinglePendingReview = not(s.review != 0 and s.acting != 0) and not(s.review != 0 and s.hostReview)
-  val OpenReviewBelongsToCurrentVisit = (s.review != 0 and not(s.disposed)) implies (s.reviewEpoch == s.epoch and s.visible)
+  val OpenReviewBelongsToCurrentVisit = (s.review != 0 and not(s.disposed)) implies (s.reviewEpoch == s.epoch and visible)
   val EachReviewDispatchedOnce = unique(s.dispatched)
   val AppliedOnceAfterDispatch = unique(s.applied)
     and s.applied.indices().forall(i => s.dispatched.select(id => id == s.applied.nth(i)).length() == 1)
@@ -89,7 +96,7 @@ module PhotoLibraryAgentReview {
     and AppliedOnceAfterDispatch and ActingReviewWasDispatched
   val StaleReviewClosedWitness = s.staleClosed > 0 and s.dispatched.length() == 0
   val SecondRequestRefusedWitness = s.refusedBusy > 0 and s.review != 0
-  val LeftDuringValidationWitness = s.refusedLeft > 0 and s.visible and not(s.disposed)
+  val LeftDuringValidationWitness = s.refusedLeft > 0 and visible and not(s.disposed)
   val ChangedWhileAndroidAsksWitness = s.acting != 0 and s.actingRevision != s.revision
   val TwoReviewsAppliedWitness = s.applied.length() == 2
   val DoublePressWitness = s.confirms.get(1).pending and s.confirms.get(2).pending
@@ -101,6 +108,18 @@ module PhotoLibraryAgentReview {
   /// Photos is left and shown again while the provider checks: the answer opens no review.
   run leftDuringValidationOpensNothingTest = init.then(request(1, 0)).then(leave).then(show).then(validated(1))
     .expect(s.review == 0 and s.refusedLeft == 1 and safety)
+  run hideRetiresPendingConfirmTest = init.then(request(1, 0)).then(validated(1))
+    .then(confirmPress(1)).then(hidePage).then(showPage).then(confirmValidated(1))
+    .expect(s.review == 0 and s.latePresses == 1 and s.dispatched == [] and safety)
+    .then(request(2, 0)).then(validated(2)).expect(s.review == 2 and safety)
+  run confirmedChangeSettlesWhileHiddenTest = init.then(request(1, 0)).then(validated(1))
+    .then(confirmPress(1)).then(confirmValidated(1)).then(hidePage)
+    .expect(s.hidden and s.acting == 1 and safety)
+    .then(androidSettles(true)).then(showPage).expect(s.applied == [1] and s.review == 0 and safety)
+  run validationRefusesWhileHiddenTest = init.then(request(1, 0)).then(hidePage).then(validated(1))
+    .expect(s.review == 0 and s.refusedBusy == 1 and safety)
+  run validationMayFinishAfterShowingTest = init.then(request(1, 0)).then(hidePage).then(showPage)
+    .then(validated(1)).expect(s.review == 1 and s.epoch == 0 and safety)
   run concurrentRequestsOpenOneReviewTest = init.then(request(1, 0)).then(request(2, 0)).then(validated(1))
     .then(validated(2)).expect(s.review == 1 and s.serial == 1 and s.refusedBusy == 1 and safety)
   run changedItemClosesReviewTest = init.then(request(1, 0)).then(validated(1)).then(sourceChanges)

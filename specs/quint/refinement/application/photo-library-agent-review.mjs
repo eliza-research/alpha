@@ -1,11 +1,18 @@
 // PhotoLibraryAgentReview against createDeviceLibrary in
 // apps/app/src/prototype/photo-library-adapter.ts. Ports: the native library plugin (scope and
 // inspect answered at once; every validate and requestChange call answered by a model step, from
-// the revisions the call carries) and the main Photos Library host (visible, its own review).
+// the revisions the call carries) and the main Photos Library host (its active view and review).
+// The module registers its real visibility listener on a fixture document.
 import assert from 'node:assert/strict';
 import {loadProductModule, modelTraces, replayTraces, settle, witnessTraces} from './notes-files-media-itf.mjs';
+import {countListeners, installDocument, modelTraces as namedModelTraces} from './browser-model-traces.mjs';
 
 const source = 'apps/app/src/prototype/photo-library-adapter.ts';
+const model = {path:'specs/quint/application/PhotoLibraryAgentReview.qnt', main:'PhotoLibraryAgentReview'};
+const visibilityScenarios = ['hideRetiresPendingConfirmTest', 'confirmedChangeSettlesWhileHiddenTest',
+  'validationRefusesWhileHiddenTest', 'validationMayFinishAfterShowingTest'];
+const argumentNames = {request:['slot', 'read'], validated:['slot'], confirmPress:['slot'],
+  confirmValidated:['slot'], androidSettles:['approved']};
 const stubs = {
   '@capacitor/core': 'export const Capacitor={isNativePlatform:()=>true,isPluginAvailable:()=>true};',
   '../platform-plugins': 'export const registerPlugin=()=>({});',
@@ -15,13 +22,11 @@ const witnesses = ['StaleReviewClosedWitness', 'SecondRequestRefusedWitness', 'L
 const bump = count => Math.min(2, count + 1);
 
 export async function replayPhotoLibraryAgentReview({rewrite, ...options} = {}) {
-  const model = {path: 'specs/quint/application/PhotoLibraryAgentReview.qnt', main: 'PhotoLibraryAgentReview'};
   // A change Android refuses as stale needs the item to change between the owner's confirmation
   // and Android's answer; random walks find it rarely, so it is searched for with more samples.
   const traces = [...modelTraces({...model, ...options}), ...witnessTraces({...model, witnesses}),
     ...witnessTraces({...model, witnesses: ['s.androidStale>0'], maxSamples: 40000})];
-  const product = await loadProductModule(source, {rewrite, stubs});
-  return replayTraces(traces, {
+  return replayMountedLibrary(traces, {rewrite,
     required: ['request', 'validated', 'confirmPress', 'confirmValidated', 'androidSettles', 'cancel', 'leave', 'show', 'hostReviewOpens',
       'hostReviewCloses', 'sourceChanges', 'dispose'],
     reached: {
@@ -33,17 +38,38 @@ export async function replayPhotoLibraryAgentReview({rewrite, ...options} = {}) 
       'two confirm presses on one review': ({s}) => s.confirms['1'].pending && s.confirms['2'].pending,
       'a second press answered while Android has the change': ({s}) => s.latePresses > 0 && s.acting !== 0,
     },
+  });
+}
+
+export async function replayPhotoLibraryAgentVisibility({rewrite} = {}) {
+  const scenarios = rewrite ? visibilityScenarios.slice(0, 1) : visibilityScenarios;
+  const traces = namedModelTraces({path:model.path, module:model.main, scenarios}).map(trace => [
+    {state:{s:trace.init}},
+    ...trace.steps.map(({action, args, after}) => ({
+      action, state:{s:after},
+      picks:Object.fromEntries((argumentNames[action] ?? []).map((name, index) => [name, args[index]])),
+    })),
+  ]);
+  return replayMountedLibrary(traces, {rewrite});
+}
+
+async function replayMountedLibrary(traces, {rewrite, required, reached}) {
+  const product = await loadProductModule(source, {rewrite, stubs});
+  const page = await installDocument();
+  const visibilityListeners = countListeners(page.document, ['visibilitychange']);
+  return replayTraces(traces, {required, reached,
     // The revision and visit a review was opened under and the count of ignored presses are
     // closure state; they show in what the provider and Android are asked and in which answers
     // open, close or apply a review.
-    project: ({s}) => ({visible: s.visible, hostReview: s.hostReview, disposed: s.disposed, revision: s.revision,
+    project: ({s}) => ({inPhotos: s.inPhotos, hidden: s.hidden, hostReview: s.hostReview, disposed: s.disposed, revision: s.revision,
       validating: Object.entries(s.requests).filter(([, request]) => request.phase === 'validating').map(([slot]) => Number(slot)),
       review: s.review, serial: s.serial, confirming: Object.entries(s.confirms).filter(([, press]) => press.pending).map(([slot]) => Number(slot)),
       acting: s.acting, dispatched: s.dispatched, applied: s.applied, refusedBusy: s.refusedBusy, refusedLeft: s.refusedLeft,
       staleClosed: s.staleClosed, androidStale: s.androidStale}),
     async start() {
-      let visible = true, hostReview = false, disposed = false, revision = 0, serial = 0, open = 0, acting = 0, slot = 0, change, twice = false;
-      let refusedBusy = 0, refusedLeft = 0, staleClosed = 0, androidStale = 0;
+      page.setHidden(false);
+      let inPhotos = true, hostReview = false, disposed = false, revision = 0, serial = 0, open = 0, acting = 0, slot = 0, change, twice = false;
+      let refusedBusy = 0, refusedLeft = 0, staleClosed = 0, androidStale = 0, redraws = 0;
       const validating = new Map(), confirming = new Map(), dispatched = [], applied = [], read = new Map();
       const native = () => `1700000000:1000:${revision}`, id = at => `lib:i:${at + 1}:${(at + 1) * 10}`;
       const scope = {scope: 'full', images: true, videos: true, canSelectMore: false, canEditOthers: true, locked: false, version: 'v1'};
@@ -60,9 +86,15 @@ export async function replayPhotoLibraryAgentReview({rewrite, ...options} = {}) 
         requestChange({items}) { return new Promise((resolve, reject) => { if (change) twice = true;change = {items, resolve, reject}; }); },
         share() { assert.fail('no share review is opened'); },
       };
-      const release = product.setMainLibraryHost({visible: () => visible, reviewOpen: () => hostReview, reviewChanged() {}, trashed() {},
-        run() { assert.fail('the host runs no operation'); }});
+      const release = product.setMainLibraryHost({
+        visible: () => !disposed && !page.document.hidden && inPhotos,
+        reviewOpen: () => hostReview,
+        reviewChanged() { redraws++; },
+        trashed() {},
+        run() { assert.fail('the host runs no operation'); },
+      });
       const library = product.createDeviceLibrary(port, () => true), signal = new AbortController().signal;
+      assert.equal(visibilityListeners(), 1, 'The mounted bridge owns one visibility listener');
       /** The assistant reads the item at the revision current now; a request names such a read. */
       const assistantReads = async () => disposed || read.set(revision, (await library.agent.run({type: 'photo_library_inspect', id: id(revision)}, signal)).item);
       await assistantReads();
@@ -101,18 +133,26 @@ export async function replayPhotoLibraryAgentReview({rewrite, ...options} = {}) 
             status();
           },
           cancel() { library.reviewCard().cancel(); },
-          leave() { library.leave();visible = false;hostReview = false; },
-          show() { visible = true; },
+          leave() { library.leave();inPhotos = false;hostReview = false; },
+          show() { inPhotos = true; },
+          hidePage() {
+            const redrawAfterHide = redraws + Number(!!library.reviewCard());
+            page.setHidden(true);
+            // The real native host independently closes its own album and share reviews.
+            hostReview = false;
+            assert.equal(redraws, redrawAfterHide, 'A hidden open review requests a redraw');
+          },
+          showPage() { page.setHidden(false); },
           hostReviewOpens() { hostReview = true; },
           hostReviewCloses() { hostReview = false; },
           async sourceChanges() { revision++;await assistantReads(); },
-          dispose() { library.dispose();disposed = true;visible = false;hostReview = false; },
+          dispose() { library.dispose();disposed = true;inPhotos = false;hostReview = false; },
         },
         observe() {
           const card = library.reviewCard();
           assert.equal(twice, false, 'two changes handed to Android');
           if (!card) open = 0;
-          return {visible, hostReview, disposed, revision, validating: [...validating.keys()].sort(), review: open, serial,
+          return {inPhotos, hidden:page.document.hidden, hostReview, disposed, revision, validating: [...validating.keys()].sort(), review: open, serial,
             confirming: [...confirming.keys()].sort(), acting: change ? acting : 0, dispatched: [...dispatched], applied: [...applied],
             refusedBusy, refusedLeft, staleClosed, androidStale};
         },
@@ -120,8 +160,9 @@ export async function replayPhotoLibraryAgentReview({rewrite, ...options} = {}) 
           for (const answer of [...validating.values(), ...confirming.values()]) answer();
           change?.reject(Object.assign(Error('closed'), {code: 'LIBRARY_DECLINED'}));
           await settle();library.dispose();release();
+          assert.equal(visibilityListeners(), 0, 'Retiring Photos released its visibility listener');
         },
       };
     },
-  });
+  }).finally(() => page.restore());
 }

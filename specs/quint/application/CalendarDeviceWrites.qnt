@@ -2,11 +2,11 @@
 // write in progress, the unconfirmed-write latch on one event, and inspect-then-delete.
 module CalendarDeviceWrites {
   type State = {
-    // form: "none" | "new" | "edit". formEpoch changes whenever the form is replaced or closed,
-    // so a running save can tell that the form it submitted is no longer the one shown.
-    form: str, separate: bool, formEpoch: int,
+    // form: "none" | "new" | "edit". formEpoch distinguishes the submitted form
+    // identity from a replacement or a close. draftEpoch moves only for a new event.
+    form: str, separate: bool, formEpoch: int, draftEpoch: int,
     // saving: one create, edit or delete at a time. stage names the awaited step.
-    saving: bool, stage: str, opKind: str, opEpoch: int, opSeparate: bool,
+    saving: bool, stage: str, opKind: str, opEpoch: int, opDraftEpoch: int, opSeparate: bool,
     // The native creation journal. An entry is written "unknown" before the provider insert and
     // turns "saved" when the insert returns or a later read finds its event. Only a saved entry
     // can be acknowledged. unknownExists counts unknown entries whose event is in the provider.
@@ -27,8 +27,8 @@ module CalendarDeviceWrites {
   }
   var s: State
   pure val Stages = Set("idle", "receipts", "writing", "acknowledging", "inspecting", "deleting")
-  action init = s' = { form: "none", separate: false, formEpoch: 0,
-    saving: false, stage: "idle", opKind: "none", opEpoch: 0, opSeparate: false,
+  action init = s' = { form: "none", separate: false, formEpoch: 0, draftEpoch: 0,
+    saving: false, stage: "idle", opKind: "none", opEpoch: 0, opDraftEpoch: 0, opSeparate: false,
     unknownReceipts: 0, unknownExists: 0, savedReceipts: 0,
     pendingShown: false, recoveryFailed: false,
     uncertain: false, uncertainKind: "none", latchReached: false, latchReads: 0,
@@ -36,19 +36,22 @@ module CalendarDeviceWrites {
     selected: true, events: 1,
     blindDuplicate: false, latchedWrite: false }
   val Receipts = s.unknownReceipts + s.savedReceipts
-  val OwnsForm = s.opEpoch == s.formEpoch
+  val OwnsReceiptView = s.opDraftEpoch == s.draftEpoch
+  val OwnsForm = s.opEpoch == s.formEpoch and OwnsReceiptView
   pure def released(state: State): State =
     { ...state, saving: false, stage: "idle", opKind: "none" }
-  // Reading the journal lets native settle unknown entries whose event exists.
-  pure def journalRead(state: State): State =
+  // Native can settle unknown receipts even after the captured draft lost the
+  // right to publish its readback into the current recovery notice.
+  pure def journalRead(state: State, publish: bool): State =
     { ...state, savedReceipts: state.savedReceipts + state.unknownExists,
       unknownReceipts: state.unknownReceipts - state.unknownExists, unknownExists: 0,
-      pendingShown: state.unknownReceipts + state.savedReceipts > 0, recoveryFailed: false }
+      pendingShown: if (publish) state.unknownReceipts + state.savedReceipts > 0 else state.pendingShown,
+      recoveryFailed: if (publish) false else state.recoveryFailed }
 
   // A separate creation is offered only beside the recovery notice and needs explicit confirmation.
   action newForm(separate: bool): bool = all {
     s.formEpoch < 5, not(separate) or s.pendingShown,
-    s' = { ...s, form: "new", separate: separate, formEpoch: s.formEpoch + 1 }
+    s' = { ...s, form: "new", separate: separate, formEpoch: s.formEpoch + 1, draftEpoch: s.draftEpoch + 1 }
   }
   action openEdit = all {
     s.formEpoch < 5, s.selected, s.events > 0,
@@ -58,12 +61,17 @@ module CalendarDeviceWrites {
     s.formEpoch < 5, s.form != "none",
     s' = { ...s, form: "none", separate: false, formEpoch: s.formEpoch + 1 }
   }
+  // Field edits replace the form object without opening a new event.
+  action replaceForm = all {
+    s.formEpoch < 5, s.form != "none",
+    s' = s.with("formEpoch", s.formEpoch + 1)
+  }
   // Saving an existing event is refused while an earlier change is unconfirmed.
   action startSave = all {
     s.form != "none", not(s.saving), s.form == "new" or not(s.uncertain),
     s' = { ...s, saving: true, stage: if (s.form == "new") "receipts" else "writing",
       opKind: if (s.form == "new") "create" else "edit", opEpoch: s.formEpoch,
-      opSeparate: s.separate }
+      opDraftEpoch: s.draftEpoch, opSeparate: s.separate }
   }
   // Earlier receipts are read before a create. Any unacknowledged receipt stops a plain create;
   // a failed read stops it too and is reported as recovery being unavailable.
@@ -71,14 +79,14 @@ module CalendarDeviceWrites {
     s.stage == "receipts",
     s' = if (not(ok)) { ...released(s), recoveryFailed: if (OwnsForm) true else s.recoveryFailed,
         pendingShown: if (OwnsForm) false else s.pendingShown }
-      else if (not(OwnsForm)) released(journalRead(s))
-      else if (Receipts > 0 and not(s.opSeparate)) released(journalRead(s))
-      else { ...journalRead(s), stage: "writing" }
+      else if (not(OwnsForm)) released(journalRead(s, OwnsReceiptView))
+      else if (Receipts > 0 and not(s.opSeparate)) released(journalRead(s, true))
+      else { ...journalRead(s, true), stage: "writing" }
   }
   // Native refuses a plain create while another entry is unacknowledged.
   action createRefused = all {
     s.stage == "writing", s.opKind == "create", Receipts > 0, not(s.opSeparate),
-    s' = released(journalRead(s))
+    s' = released(journalRead(s, true))
   }
   action createSaved = all {
     s.stage == "writing", s.opKind == "create", Receipts == 0 or s.opSeparate,
@@ -110,7 +118,7 @@ module CalendarDeviceWrites {
   // event does not exist stays in the journal.
   action checkCreations(ok: bool): bool = all {
     not(s.saving),
-    s' = if (ok) { ...journalRead(s), savedReceipts: 0,
+    s' = if (ok) { ...journalRead(s, true), savedReceipts: 0,
         pendingShown: s.unknownReceipts - s.unknownExists > 0 }
       else { ...s, recoveryFailed: true }
   }
@@ -179,7 +187,7 @@ module CalendarDeviceWrites {
     nondet covers = Bool.oneOf()
     nondet outcome = Set("saved", "conflict", "lost", "queued", "deleted", "unknown").oneOf()
     any {
-      newForm(flag), openEdit, closeForm, startSave, readReceipts(flag), createRefused, createSaved,
+      newForm(flag), openEdit, closeForm, replaceForm, startSave, readReceipts(flag), createRefused, createSaved,
       createLost(flag), acknowledge(flag), checkCreations(flag), editResult(outcome), startDelete,
       inspect(flag), deleteOutcome(outcome, flag), readAgain(flag, covers), remount, s' = s
     }
@@ -207,7 +215,8 @@ module CalendarDeviceWrites {
     and s.savedReceipts >= 0 and s.unknownReceipts >= 0
   val TypeOK = Stages.contains(s.stage) and s.form.in(Set("none", "new", "edit"))
     and s.opKind.in(Set("none", "create", "edit", "delete")) and s.events.in(0.to(3))
-    and s.formEpoch.in(0.to(5)) and s.unknownReceipts.in(0.to(2)) and s.savedReceipts.in(0.to(5))
+    and s.formEpoch.in(0.to(5)) and s.draftEpoch.in(0.to(s.formEpoch))
+    and s.opDraftEpoch.in(0.to(s.draftEpoch)) and s.unknownReceipts.in(0.to(2)) and s.savedReceipts.in(0.to(5))
   val safety = TypeOK and NoBlindDuplicate and CreateWaitsForReceipts and SingleWrite
     and LatchBlocksWrites and LatchHoldsDelete and LatchKindSet and CoveringReadReleasesLatch
     and UnappliedDeleteKeepsEvent and OtherRangeReadsNeedLatch and JournalConsistent
@@ -284,6 +293,20 @@ module CalendarDeviceWrites {
   run supersededSaveTest = init.then(newForm(false)).then(startSave).then(newForm(false))
     .expect(SupersededSaveWitness).then(readReceipts(true))
     .expect(not(s.saving) and s.events == 1 and Receipts == 0 and safety)
+  // The first write was dispatched, then its editor was replaced before the
+  // reply. The durable saved receipt has not yet been shown by any read.
+  action unshownSavedReceipt = newForm(false).then(startSave).then(readReceipts(true))
+    .then(newForm(false)).then(createSaved)
+  run supersededReceiptDoesNotPublishTest = init.then(unshownSavedReceipt)
+    .expect(s.savedReceipts == 1 and not(s.pendingShown))
+    .then(startSave).then(newForm(false)).then(readReceipts(true))
+    .expect(s.savedReceipts == 1 and not(s.pendingShown) and not(s.saving) and safety)
+  run closedFormKeepsReceiptViewTest = init.then(unshownSavedReceipt)
+    .then(startSave).then(closeForm).then(readReceipts(true))
+    .expect(s.savedReceipts == 1 and s.pendingShown and not(s.saving) and safety)
+  run replacedFormKeepsReceiptViewTest = init.then(unshownSavedReceipt)
+    .then(startSave).then(replaceForm).then(readReceipts(true))
+    .expect(s.savedReceipts == 1 and s.pendingShown and not(s.saving) and safety)
   run changedEventNotDeletedTest = init.then(startDelete).then(inspect(false))
     .expect(not(s.saving) and s.events == 1 and not(s.uncertain) and safety)
 }

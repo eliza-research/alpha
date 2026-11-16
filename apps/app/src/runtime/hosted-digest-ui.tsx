@@ -28,6 +28,7 @@ import { secureConnectionStore } from "./native-connection";
 import { actionScope } from "./device-actions";
 import {
 	HostedSourceRejected,
+ digestLoopEditRefused,
  digestSummaryText,
  digestRenewals,
  digestLoopState,
@@ -485,7 +486,21 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
             await b.storage.write(b.pendingSlot, dispatched);
             if(binding.current!==b)return;
             setPending(dispatched);
-            const saved=await b.client.mutate(value.path, body, b.controller.signal);
+            let saved;
+            try {
+              saved=await b.client.mutate(value.path, body, b.controller.signal);
+            } catch (error) {
+              const sourceRejected=value.path==='sources'&&error instanceof HostedSourceRejected;
+              if(!sourceRejected&&(value.path!=='loops'||!digestLoopEditRefused(body,error)))throw error;
+              if(binding.current!==b)return;
+              try{await b.storage.remove(b.pendingSlot);}
+              catch{if(binding.current===b)setMessage(sourceRejected?'Source not saved. Retry to clear it.':'Schedule not saved. Couldn’t clear this request.');return;}
+              if(binding.current!==b)return;
+              setPending(null);setReview(null);
+              await refresh(true);
+              if(binding.current===b)setMessage(sourceRejected?error.message:'Schedule changed before saving. Review it again.');
+              return;
+            }
             if(binding.current!==b)return;
             if(value.rebind?.length){
               // One confirmed renewal: the reviewed source above, then each loop moves to its exact new revision.
@@ -506,11 +521,6 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 			setText("");
 			await refresh(true);
 		} catch (error) {
-      if(error instanceof HostedSourceRejected && binding.current===b){
-        try { await b.storage.remove(b.pendingSlot); } catch {if(binding.current===b)setMessage("Source not saved. Retry to clear it.");return;}
-        if(binding.current!==b)return;
-        setPending(null);setReview(null);await refresh(true);if(binding.current===b)setMessage(error.message);return;
-      }
 			if (binding.current === b)
 				setMessage("Save not confirmed. Retry.");
 		} finally {

@@ -13,6 +13,8 @@ const phases = ['review', 'dispatched'];
 const notices = new Map([
   ['Save not confirmed. Retry.', 'unconfirmed'],
   ['Source not saved. Retry to clear it.', 'clearRefused'],
+  ['Schedule not saved. Couldn’t clear this request.', 'scheduleClearRefused'],
+  ['Schedule changed before saving. Review it again.', 'scheduleRejected'],
   ['Source access changed before saving. Refresh accounts and review the source again.', 'sourceRejected'],
   ['Discarded', 'discarded'],
   ['Couldn’t discard', 'discardRefused'],
@@ -27,7 +29,7 @@ function observe(state) {
   const phase = owner => {
     const saved = state.stored.find(([id]) => id === owner)?.[1];
     if (!saved) return '';
-    assert.equal(saved.body.id, 'fixture-mutation-'+owner);
+    assert.equal(saved.path === 'loops' ? saved.body.mutationId : saved.body.id, 'fixture-mutation-'+owner);
     assert.ok(!saved.phase || phases.includes(saved.phase));
     return saved.phase ?? 'legacy';
   };
@@ -41,10 +43,10 @@ function observe(state) {
     's.dispatchWrites': qmap(owners.map(id => [id, count(id, 'dispatched')]))};
 }
 
-async function schedule(run, name, seeds, steps) {
+async function schedule(run, name, seeds, steps, firstKind) {
   for (const id of owners) {
     const phase = seeds[id-1];
-    if (phase) await run('seed', id, phase === 'legacy' ? null : phase);
+    if (phase) await run('seed', id, phase === 'legacy' ? null : phase, id === 1 ? firstKind : undefined);
   }
   const t = trace(name, observe(await run('observe')), call('initFor', ...seeds));
   for (const [transition, owner, reply] of steps) {
@@ -57,7 +59,8 @@ async function schedule(run, name, seeds, steps) {
         await run('sync', owner, owner);
       }
     } else if (transition === 'mutationReply') {
-      await run('mutate', owner, reply === 'saved' ? 'ok' : reply === 'unconfirmed' ? 'refused' : 'rejected');
+      const replyByKind = {saved: 'ok', unconfirmed: 'refused', rejected: 'rejected', 'schedule-rejected': {}};
+      await run('mutate', owner, replyByKind[reply]);
     } else if (transition === 'removeReply') await run('remove', owner, !reply);
     else if (transition === 'refreshReply') await run('sync', owner, owner);
     else await run(transition);
@@ -87,6 +90,8 @@ async function checkHostedDigestMutation(extraSources = []) {
       [...begin, mutation(1, 'rejected'), remove(1), attach(2), refreshed(1), restore(2)]],
     ['current-source-refusal-clears-and-reports', ['dispatched', ''],
       [...begin, mutation(1, 'rejected'), remove(1), refreshed(1)]],
+    ['exact-schedule-refusal-clears-and-reports', ['dispatched', 'legacy'],
+      [...begin, mutation(1, 'schedule-rejected'), remove(1), refreshed(1)], 'loop'],
     ['lost-reply-retains-the-dispatched-journal', ['review', ''],
       [...begin, mutation(1, 'unconfirmed'), retry(1), mutation(1), remove(1, false)]],
     ['only-an-unsent-review-can-discard', ['review', 'legacy'],
@@ -98,7 +103,7 @@ async function checkHostedDigestMutation(extraSources = []) {
   ];
   const {observations: traces, sources} = await withHostedDigestRefresh(async scenario => {
     const results = [];
-    for (const [name, seeds, steps] of cases) results.push(await scenario(run => schedule(run, name, seeds, steps)));
+    for (const [name, seeds, steps, firstKind] of cases) results.push(await scenario(run => schedule(run, name, seeds, steps, firstKind)));
     return results;
   }, [driver, ...extraSources]);
   return checkTraces(boundInputs({model, traces, sources, scope: 'bounded-orchestration', assumptions: [
@@ -110,7 +115,7 @@ async function checkHostedDigestMutation(extraSources = []) {
 
 test('mounted digest saves and discard preserve exact journal and publication ownership', {timeout: scaledTimeout(120000)}, async () => {
   const receipt = await checkHostedDigestMutation([fileURLToPath(import.meta.url)]);
-  assert.equal(receipt.traces, 8);
+  assert.equal(receipt.traces, 9);
   assert.equal(receipt.observedFields.length, 13);
   assert.deepEqual(Object.keys(receipt.actions).sort(),
     ['attach', 'discard', 'mutationReply', 'refreshReply', 'removeReply', 'restore', 'retry']);

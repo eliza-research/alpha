@@ -56,6 +56,41 @@ export function callRow(call: {id: string; number: string; cachedName: string | 
     canCall: !!call.number, label: `${call.number ? 'Call ' : ''}${name}, ${CALL_WORD[kind]} ${shortWhen(call.date, now)}`};
 }
 
+/**
+ * AC-22: whether a call row matches what the owner typed in "Call or ask". Every word of the query
+ * must match: a word with digits matches the row's number digits, any other word a word of the name
+ * (by prefix, ignoring case). An empty query matches every row.
+ */
+export function matchesCallQuery(row: {name: string; number: string}, query: string): boolean {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const digits = row.number.replace(/\D/g, ''), names = row.name.toLowerCase().split(/[\s,.-]+/).filter(Boolean);
+  return words.every(word => /\d/.test(word)
+    ? (word.replace(/\D/g, '') !== '' && digits.includes(word.replace(/\D/g, '')))
+    : names.some(name => name.startsWith(word)));
+}
+
+/** "just now", "5 min ago", "at 9:41", "on Mon", "on Oct 3": shortWhen as a phrase. */
+function whenPhrase(at: number, now: number): string {
+  const when = shortWhen(at, now), age = now - at;
+  if (when === 'now') return 'just now';
+  if (age >= 0 && age < 60 * MINUTE) return `${Math.floor(age / MINUTE)} min ago`;
+  return new Date(at).toDateString() === new Date(now).toDateString() ? `at ${when}` : `on ${when}`;
+}
+/**
+ * AC-25: the Phone briefing, one or two sentences of facts from the rows on this device: the newest
+ * missed calls and the new voicemail. Null when there is nothing to say.
+ */
+export function callsBriefing(missed: readonly {name: string; date: number}[], voicemail: readonly {name: string}[], now: number): string | null {
+  const latest = [...missed].sort((a, b) => b.date - a.date)[0];
+  const calls = !latest ? '' : missed.length === 1
+    ? `${latest.name} called ${whenPhrase(latest.date, now)} and you missed it.`
+    : `${missed.length} missed calls, the latest from ${latest.name} ${whenPhrase(latest.date, now)}.`;
+  const messages = !voicemail.length ? '' : voicemail.length === 1
+    ? `One new voicemail, from ${voicemail[0].name}.`
+    : `${voicemail.length} new voicemails.`;
+  return [calls, messages].filter(Boolean).join(' ') || null;
+}
+
 export type AttentionRow = {title: string; detail: string};
 export type AttentionCard = {count: string; rows: AttentionRow[]; status: string; label: string};
 const CARD_ROWS = 2;

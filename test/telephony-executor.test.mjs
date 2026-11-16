@@ -97,6 +97,8 @@ test('a reply for the open conversation is placed as a draft and never sent', as
     const result = await run({type: 'sms_reply_selected', body: 'Ten minutes away'}, p);
     assert.deepEqual(result.telephonyResult, {kind: 'sms-reply', status});
     assert.equal(result.status, status === 'drafted' ? 'succeeded' : 'failed');
+    // AP-16 D5: an Alpha draft replaces unsent owner text (kept for one Undo); occupied now means a send or pictures.
+    if (status === 'occupied') assert.equal(result.summary, 'A message is being sent or has pictures attached in that conversation. Nothing was changed.');
     assert.deepEqual(did(p, 'draft'), [['draft', 'Ten minutes away']], 'no recipient is named: it is the conversation on screen');
     assert.equal(did(p, 'sms').length + did(p, 'search').length + did(p, 'ask').length, 0, 'nothing is looked up, asked or sent');
   }
@@ -107,7 +109,7 @@ test('a text to the contact whose conversation is open becomes a draft there ins
   assert.deepEqual(result.telephonyResult, {kind: 'sms-compose', status: 'drafted'}); assert.equal(result.status, 'succeeded');
   assert.deepEqual(did(p, 'draft'), [['draft', 'On my way', '+14155550132']], 'only the conversation with exactly that number');
   assert.equal(did(p, 'sms').length, 0, 'the draft is not sent');
-  // The owner is typing there, or another conversation is open: the reviewed send is used as before.
+  // A message is being sent or has pictures there, or another conversation is open: the reviewed send is used as before.
   for (const status of ['occupied', 'none-selected', 'unavailable']) {
     p = ports({draftInOpenThread: () => status});
     result = await run({type: 'sms_compose', query: 'Priya', body: 'On my way'}, p, 'proposal-3');

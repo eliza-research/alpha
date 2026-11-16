@@ -140,7 +140,7 @@ for(const viewport of [{width:390,height:740},{width:800,height:1200},{width:128
  await page.getByRole('button',{name:'Open conversation',exact:true}).click();
  const panel=page.locator('[data-alpha-layer="conversation"]');
  const settle=()=>panel.evaluate(el=>Promise.all(el.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
- const box=()=>panel.locator('textarea[data-alpha-composer]').evaluate(el=>{const node=el.parentElement!,r=node.getBoundingClientRect(),s=getComputedStyle(node);return {x:r.x,y:r.y,width:r.width,height:r.height,radius:s.borderRadius};});
+ const box=()=>panel.locator('textarea[data-alpha-composer]').evaluate(el=>{const node=el.closest<HTMLElement>('.alpha-chat-composer')!,r=node.getBoundingClientRect(),s=getComputedStyle(node);return {x:r.x,y:r.y,width:r.width,height:r.height,radius:s.borderRadius};});
  const voiceBox=()=>voice(page).evaluate(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {x:r.x,y:r.y,width:r.width,height:r.height,radius:s.borderRadius};});
  for(const detent of ['half','full']){
   if(detent==='full')await panel.getByRole('button',{name:'Expand chat',exact:true}).click();await settle();

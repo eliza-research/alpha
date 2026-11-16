@@ -1,25 +1,36 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
-/**
- * Workflow device protocol this renderer registers: 2 adds foreground presentation, 3 adds the
- * selected-reminders read (served by the reminder list every presentation-capable build has).
- */
-export async function workflowDeviceProtocol(signal: AbortSignal): Promise<1 | 3> {
-  return (await workflowPresentationProtocol(signal)) === 2 ? 3 : 1;
+import { PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL } from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';
+
+export type WorkflowDeviceProtocol = 1 | 2 | 3 | 4 | typeof PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL;
+
+/** Presentation-capable phones can also verify a Calendar range against the persisted run time. */
+export async function workflowDeviceProtocol(signal: AbortSignal): Promise<1 | typeof PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL> {
+  return (await workflowPresentationProtocol(signal)) === 2 ? PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL : 1;
 }
-/**
- * Registers with `protocol`, and once more at protocol 2 when an agent that predates the
- * selected-reminders read refuses protocol 3 (its device routes answer a rejected request with
- * HTTP 409). Any other failure (sign-in, network, server, or an error carrying no HTTP status) is not retried, so a transient fault
- * never downgrades the enrollment. Registration is idempotent for the same device.
- */
-export async function registerWorkflowDevice<T>(protocol: 1 | 2 | 3, register: (protocol: 1 | 2 | 3) => Promise<T>, signal: AbortSignal): Promise<{ registered: T; workflowProtocol: 1 | 2 | 3 }> {
-  try { return { registered: await register(protocol), workflowProtocol: protocol }; }
-  catch (error) {
+
+const olderWorkflowProtocol: Partial<Record<WorkflowDeviceProtocol, WorkflowDeviceProtocol>> = {
+  [PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL]: 4,
+  4: 3,
+  3: 2,
+};
+
+/** HTTP 409 permits a compatibility attempt for the same device. Protocol 4 keeps older
+ * relative Calendar reviews available. Other failures leave the enrollment unresolved. */
+export async function registerWorkflowDevice<T>(protocol: WorkflowDeviceProtocol, register: (protocol: WorkflowDeviceProtocol) => Promise<T>, signal: AbortSignal): Promise<{ registered: T; workflowProtocol: WorkflowDeviceProtocol }> {
+  for (;;) {
     signal.throwIfAborted();
-    const status = error && typeof error === 'object' ? Reflect.get(error, 'status') : undefined;
-    if (protocol !== 3 || status !== 409) throw error;
-    return { registered: await register(2), workflowProtocol: 2 };
+    try {
+      const registered = await register(protocol);
+      signal.throwIfAborted();
+      return { registered, workflowProtocol: protocol };
+    } catch (error) {
+      signal.throwIfAborted();
+      const status = error && typeof error === 'object' ? Reflect.get(error, 'status') : undefined;
+      const older = olderWorkflowProtocol[protocol];
+      if (status !== 409 || older === undefined) throw error;
+      protocol = older;
+    }
   }
 }
 /** Probe installed bridge code, not permissions or model readiness. Older APKs, whose bridge lacks

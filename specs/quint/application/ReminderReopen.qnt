@@ -38,8 +38,11 @@ module ReminderReopen {
   // Reopen is offered on a completed reminder whose shown state is current, with no other write
   // running. The owner approves the reviewed time; when that time passed meanwhile nothing starts.
   // The review took long enough that a journaled schedule no longer matches either.
+  val canStart = not(s.saving or s.stale) and s.selected and s.completed
+  // The environment supplies a missing local wall time tomorrow. Nothing is reviewed or retained.
+  action refuseTomorrowInGap = all { canStart, s' = s.with("outcome", "dst-gap") }
   action start(mode: str, approved: bool, passed: bool): bool = all {
-    Modes.contains(mode), not(s.saving), not(s.stale), s.selected, s.completed, s.starts < 6,
+    Modes.contains(mode), canStart, s.starts < 6,
     s' = if (not(approved)) { ...s, outcome: "declined" }
       else if (passed) { ...s, outcome: "passed", journalFresh: s.journal == "none" }
       else { ...s, saving: true, stage: "lookup", mode: mode, starts: s.starts + 1,
@@ -151,7 +154,7 @@ module ReminderReopen {
   val TypeOK = s.stage.in(Set("idle", "lookup", "select", "retained", "operate", "receipt", "readback"))
     and s.mode.in(Modes.union(Set("none"))) and s.journal.in(Modes.union(Set("none")))
     and s.starts.in(0.to(6))
-    and s.outcome.in(Set("none", "declined", "passed", "conflict", "changed", "left", "unconfirmed", "unread",
+    and s.outcome.in(Set("none", "declined", "passed", "dst-gap", "conflict", "changed", "left", "unconfirmed", "unread",
       "reopened", "acknowledged"))
   val safety = TypeOK and RecordBeforeOperate and OneOperatePerRecord and OnlyOwnRecordSent and MutexHeld
     and UnconfirmedKeepsRecord and ReadbackAfterAcknowledge and AppliedHasRecord and FreshBeforeReopen
@@ -179,6 +182,9 @@ module ReminderReopen {
     .then(start("tomorrow", true, false).fail())
   run declinedReviewTest = init.then(start("tomorrow", false, false))
     .expect(s.outcome == "declined" and not(s.saving) and s.starts == 0 and safety)
+  run tomorrowInDstGapTest = init.then(refuseTomorrowInGap)
+    .expect(s.outcome == "dst-gap" and s.completed and not(s.saving)
+      and s.starts == 0 and s.retains == 0 and s.operates == 0 and safety)
   run timePassedDuringReviewTest = init.then(start("open", true, true))
     .expect(TimePassedWitness and not(s.saving) and s.retains == 0 and safety)
   // The answer was lost and native did nothing: the same press again only reads the receipt.

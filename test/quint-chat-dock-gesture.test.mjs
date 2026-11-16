@@ -68,6 +68,8 @@ function fixture() {
       if (done) done();
     }
     rest() { return this.state.view === 'pillView' ? 'hidden' : 'input'; }
+    // The ChatDock model has no comms views (Phone, Contacts, Messages), whose bar never hides.
+    isCommsView() { return false; }
     startVoice() { this.setState({voice: 'listening'}); }
     renderVals() { return {...baseControls(this, false), draft: '', showComposer: this.state.chat === 'input', showSugg: false}; }
   }

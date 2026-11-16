@@ -12,6 +12,8 @@ import {
   type RetainedDigestSummary,
 } from '../../../../.eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts';
 
+import {WorkflowHttpError} from '../../../../.eliza/client-features/packages/contracts/src/workflow-client.ts';
+
 export * from '../../../../.eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts';
 
 //@ skip
@@ -37,6 +39,14 @@ export function bindRetainedDigestScope(scope: string | null): void {
  * occurrence never replaces the last brief on Home. Returns false when `scope` is not the bound one. */
 export function rememberRetainedDigests(results: DigestResult[] | null, agent = 'Your agent', scope?: string): boolean {
   return retained.remember(results, {agent, ...(scope === undefined ? {} : {scope})});
+}
+/** A stale schedule edit is refused before mutation, with all three reviewed identities echoed. */
+export function digestLoopEditRefused(body: Record<string, unknown>, error: unknown): boolean {
+  return error instanceof WorkflowHttpError && error.status === 409
+    && error.code === 'WORKFLOW_TYPED_NOT_APPLIED'
+    && error.workflowId !== undefined && error.workflowId === body.id
+    && error.mutationId !== undefined && error.mutationId === body.mutationId
+    && error.expectedVersionId !== undefined && error.expectedVersionId === body.expectedVersionId;
 }
 /** A saved request still in review never reached the agent, so it may be discarded. Once dispatched
  * only Retry is safe; a record from an older build has no phase and counts as dispatched. */

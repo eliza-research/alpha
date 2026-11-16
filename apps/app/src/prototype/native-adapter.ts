@@ -118,6 +118,19 @@ export function installPrototypeNativeAdapters(
   const busy = new Set<string>();
   const notify = (api: Bag, message: string) => api.toast(message);
   const unavailable = (api: Bag, message = 'Unavailable') => () => notify(api, message);
+  /** Every control of a bar spec only says Unavailable; absent controls stay absent. */
+  const unavailableBar = (spec: Bag | null, api: Bag): Bag | null => {
+    if (!spec) return spec;
+    const off = (fn: unknown) => typeof fn === 'function' ? unavailable(api) : fn ?? null;
+    return {
+      ...spec,
+      closed: spec.closed && { ...spec.closed, onText: off(spec.closed.onText), submit: off(spec.closed.submit), acceptSuggestion: off(spec.closed.acceptSuggestion) },
+      left: spec.left && { ...spec.left, run: off(spec.left.run) },
+      strip: spec.strip && { ...spec.strip, actions: (spec.strip.actions || []).map((action: Bag) => ({ ...action, run: unavailable(api) })) },
+      end: off(spec.end),
+      incoming: spec.incoming && { answer: unavailable(api), decline: unavailable(api), screen: off(spec.incoming.screen) },
+    };
+  };
   async function perform(module: string, api: Bag, action: Action, payload: Bag = {}) {
     if (busy.has(module)) return;
     busy.add(module);
@@ -185,7 +198,7 @@ export function installPrototypeNativeAdapters(
     if (module === 'phone') {
       if (key === 'dialCall') return () => perform(module, api, 'phone', { query: text(api.get('phone').dial) });
       if (key === 'call' || key === 'play') return native('phone');
-      if (['accept', 'decline', 'endCall', 'endScreen', 'alphaAnswer', 'del'].includes(key) || path.includes('controls.') || path.includes('dkeys.')) return unavailable(api, 'Use Phone app');
+      if (['accept', 'decline', 'endCall', 'endScreen', 'alphaAnswer', 'toggleNotes', 'del'].includes(key) || path.includes('controls.') || path.includes('dkeys.')) return unavailable(api, 'Use Phone app');
       if (key === 'send') return native('messages', { body: text(row.text) });
     }
     if (module === 'messages') {
@@ -360,7 +373,7 @@ export function installPrototypeNativeAdapters(
   }
   for (const [module, definition] of Object.entries(views)) {
     if (!externalModules.has(module) || typeof definition.render !== 'function') continue;
-    const render = definition.render, actions = definition.actions, leave = definition.onLeave, ongoing = definition.ongoing;
+    const render = definition.render, actions = definition.actions, leave = definition.onLeave, ongoing = definition.ongoing, bar = definition.bar;
     definition.render = (state: Bag, api: Bag) => {
       // Rendering cannot start a fake phone call, navigation timer, capture or booking.
       const renderingApi = ['phone', 'browser', 'camera', 'maps'].includes(module)
@@ -368,9 +381,12 @@ export function installPrototypeNativeAdapters(
       return walk(render(state, renderingApi), module, state, api);
     };
     if (actions) definition.actions = Object.fromEntries(Object.keys(actions).map(key => [key, (_card: Bag, api: Bag) => notify(api, 'Unavailable')]));
+    // AP-16: a reference view's bar (runtime/comms-bar.ts) keeps its shape, but every control it
+    // offers only says it is unavailable. fit() only measures, so it stays.
+    if (typeof bar === 'function') definition.bar = (state: Bag, api: Bag) => unavailableBar(bar(state, api), api);
     if (['phone', 'camera', 'maps', 'workflows'].includes(module)) definition.ongoing = () => null;
     if (leave && ['phone', 'camera', 'maps'].includes(module)) definition.onLeave = () => {};
-    restore.push(() => { definition.render = render; definition.actions = actions; definition.onLeave = leave; definition.ongoing = ongoing; });
+    restore.push(() => { definition.render = render; definition.actions = actions; definition.onLeave = leave; definition.ongoing = ongoing; definition.bar = bar; });
   }
   const settings = views.settings;
   if (settings && typeof settings.render === 'function') {

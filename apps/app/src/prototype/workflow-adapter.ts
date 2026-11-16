@@ -454,6 +454,12 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   void work(async(client,signal,valid)=>{
    const context=phoneContext(selected),route=noticeRoute(selected),current=await client.phoneReview(selected,signal);signal.throwIfAborted();if(!valid())return;phoneContext(selected);
    if(current.finished||current.cancellationRequestedAt||current.specDigest!==reviewed.specDigest)throw new Error('Workflow execution changed; review again');
+   if(current.calendarAnchorAt!==reviewed.calendarAnchorAt){
+    phoneSteps=[];
+    phoneReview=current;
+    phoneStatus='The workflow run time changed. Review the device actions again.';
+    return;
+   }
    if(approved){const result=await connectionController.execute(proposal,context,signal);queueApprovalNotices(route,[],[proposal.id]);if(valid())phoneStatus=result.summary;}
    else{await connectionController.rejectWorkflowPhoneAction(proposal.id,current,context,signal);queueApprovalNotices(route,[],[proposal.id]);if(valid())phoneStatus='Denied';}
    if(valid()){phoneDiscovery=null;phoneSteps=[];phoneReview=null;phoneConfirm=null;}

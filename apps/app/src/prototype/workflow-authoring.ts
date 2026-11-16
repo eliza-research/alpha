@@ -11,6 +11,7 @@ import { agentPendingText, connectionController } from '../runtime/connection-ui
 import { normalizePhoneSpec, assertPhoneCapabilities, describePhoneTrigger, phoneTriggerClockChangeNote, type PhoneSpec, type PhoneStep, type PhoneCatalog, type PhoneTimeTrigger } from '../runtime/phone-workflow-authoring';
 import { workflowSha, workflowBytes } from '../runtime/workflow-device-contract';
 import { checkWorkflowScope, WORKFLOW_OPERATION_LABELS } from '../../../../.eliza/client-features/packages/contracts/src/workflow-scope.ts';
+import { PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL, phoneWorkflowRequiredProtocol, resolvePhoneCalendarRange, type PhoneCalendarRange, type PhoneRelativeCalendarRange } from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';
 import { WorkflowTypedRejected, type RemoteWorkflow } from '../runtime/workflow-protocol';
 import { projectNoteForModel, type StickyNote } from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 type Bag=Record<string,any>;
@@ -27,14 +28,19 @@ const supported=(id:string)=>known.has(id)&&(!['app_notification','read_aloud'].
 const WEEKDAYS:Array<[number,string]>=[[1,'Mon'],[2,'Tue'],[3,'Wed'],[4,'Thu'],[5,'Fri'],[6,'Sat'],[0,'Sun']];
 const TRIGGER_LABELS:Record<string,string>={manual:'Manual',time:'Time'};
 const deviceTimeZone=workflowDeviceTimeZone;
-function followDeviceClock(spec:PhoneSpec){const zone=deviceTimeZone();if(spec.trigger.kind==='time')spec.trigger.timeZone=zone;for(const step of spec.steps){if(step.operation==='selected_reminders')step.scope.timeZone=zone;if(step.operation==='calendar_range')step.range.timeZone=zone;}}
+function followDeviceClock(spec:PhoneSpec){const zone=deviceTimeZone();if(spec.trigger.kind==='time')spec.trigger.timeZone=zone;for(const step of spec.steps){if(step.operation==='selected_reminders')step.scope.timeZone=zone;}}
 const shiftLocalTime=(value:string,minutes:number)=>{const [h,m]=value.split(':').map(Number);const total=Math.min(23*60+59,Math.max(0,h*60+m+minutes));return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');};
 /** The owner-facing name of a step. Raw operation ids never reach the screen. */
 const stepName=(id:string)=>WORKFLOW_OPERATION_LABELS[id]??'Step';
-/** A Calendar step keeps the exact dates chosen for it (the shared workflow contract has no day-of-run range), so a
- * scheduled workflow reads those same dates at every run. Said before the owner saves one. */
-const FIXED_CALENDAR_DATES='Calendar step reads the dates you picked, not the day of each run.';
-const readsFixedDates=(spec:PhoneSpec)=>spec.trigger.kind==='time'&&spec.steps.some(step=>step.operation==='calendar_range');
+type CalendarRange=PhoneCalendarRange|PhoneRelativeCalendarRange;
+const calendarDays=[1,2,3,4,5,6,7];
+const canAuthorRunDay=()=>connectionController.getWorkflowDeviceProtocol()===PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL;
+const runDayUnavailable='This agent cannot save a Calendar range from the run day. Choose fixed dates or reconnect to an updated agent.';
+const FIXED_CALENDAR_DATES='Fixed Calendar ranges read the same dates on every run.';
+const readsFixedDates=(spec:PhoneSpec)=>spec.trigger.kind==='time'&&spec.steps.some(step=>step.operation==='calendar_range'&&!('days' in step.range));
+function assertCalendarAuthoring(spec:PhoneSpec){
+ if(phoneWorkflowRequiredProtocol(spec)===PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL&&!canAuthorRunDay())throw new Error(runDayUnavailable);
+}
 /** Typed local authoring. No prototype natural-language parser or arbitrary source is executed. */
 export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(id:string)=>Promise<unknown>){
  let active=false,draft:Draft|null=null,catalog:PhoneCatalog|null=null,sheet:string|null=null,busy=false,status='',review:string|null=null,discard=false,generation=0,controller:AbortController|null=null;
@@ -119,7 +125,11 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   if(id==='supplied_text')return {...common,text:''};
   if(id==='selected_notes'){ensureDevice();return {...common,notes:[]};}
   if(id==='selected_reminders'){ensureDevice();return {...common,scope:{window:'open_and_completed_today',timeZone:deviceTimeZone(),maximumItems:50}};}
-  if(id==='calendar_range'){ensureDevice();const start=new Date();start.setHours(0,0,0,0);const end=new Date(start);end.setDate(end.getDate()+1);return {...common,range:{calendarIds:[],start:start.toISOString(),end:end.toISOString(),timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,maximumEvents:100}};}
+  if(id==='calendar_range'){
+   ensureDevice();
+   const range={calendarIds:[],days:1,timeZone:deviceTimeZone(),maximumEvents:100};
+   return {...common,range:canAuthorRunDay()?range:resolvePhoneCalendarRange(range)};
+  }
   if(id==='contains')return {...common,source,text:'',caseSensitive:false};
   if(id==='compose_draft')return {...common,source,prefix:'',suffix:''};
   if(id==='model_draft')return {...common,source,instruction:''};
@@ -137,7 +147,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   if(host.notesSourceMode==='canonical'){const notes=host.canonicalNotesUi;if(!notes?.current)throw new Error('Notes is unavailable. Reconnect your agent, then try again.');const found=noteRows().filter(n=>n.id===id);if(found.length!==1)throw new Error('Note text is unavailable');const revision=await workflowSha([found[0].title,found[0].body]);if(expected!==generation||target!==selected()||locked()||host.canonicalNotesUi!==notes)return;change(()=>{ensureDevice();step.notes.push({id,revision});});return;}
   await host.notesStore?.assertCurrent();const raw=host.notesStore?.raw;if(host.notesStorageFailed||host.notesPending||host.notesRaw!==raw)throw new Error('Notes changed. Reopen Notes before selecting');const found=host.vget('notes').list.filter((n:Bag)=>n.id===id);if(found.length!==1||typeof found[0].title!=='string'||typeof found[0].body!=='string')throw new Error('Note text is unavailable');const revision=await workflowSha([found[0].title,found[0].body]);await host.notesStore.assertCurrent();if(expected!==generation||target!==selected()||locked()||host.notesStore.raw!==raw)return;change(()=>{ensureDevice();step.notes.push({id,revision});});}catch(error){toast((error as Error).message);}}
  async function loadCalendars(request=false){const step=selected();if(step?.operation!=='calendar_range'||locked())return;const token=generation;try{if(request&&(await calendar.requestWorkflowReadAccess()).status!=='granted')throw new Error('Calendar read permission was not granted');const result=await calendar.workflowCalendars();if(token!==generation||selected()!==step)return;if(result.status!=='ready')throw new Error('Choose Connect calendars to grant read access');calendars=result.calendars;status=calendars.length?'Select only the calendars this workflow may read':'No calendars are available on this phone';publish();}catch(error){if(token===generation){status=(error as Error).message;publish();}}}
- async function save(){if(describeOn||!draft||!catalog||locked())return;const binding=connectionController.getWorkflowClient(),session=connectionController.getSnapshot().session;if(!binding||!session)return;let spec:PhoneSpec;if(!draft.workflowId)followDeviceClock(draft.spec);const draftAtStart=draft,revisionAtStart=JSON.stringify(draft.spec),generationAtStart=generation;try{spec=normalizePhoneSpec(draft.spec);assertPhoneCapabilities(spec,catalog);await localSaved();if(draft!==draftAtStart||generation!==generationAtStart||JSON.stringify(draft.spec)!==revisionAtStart)return;}catch(error){status=(error as Error).message;publish();return;}const encoded=JSON.stringify(spec);if(review!==encoded){review=encoded;sheet=null;status='Review the steps, then tap Save again. It saves paused, and each phone step still needs your approval.'+(spec.trigger.kind==='time'?' Its schedule stays off until you turn it on.':'')+(readsFixedDates(spec)?' '+FIXED_CALENDAR_DATES:'');publish();return;}
+ async function save(){if(describeOn||!draft||!catalog||locked())return;const binding=connectionController.getWorkflowClient(),session=connectionController.getSnapshot().session;if(!binding||!session)return;let spec:PhoneSpec;if(!draft.workflowId)followDeviceClock(draft.spec);const draftAtStart=draft,revisionAtStart=JSON.stringify(draft.spec),generationAtStart=generation;try{spec=normalizePhoneSpec(draft.spec);assertPhoneCapabilities(spec,catalog);assertCalendarAuthoring(spec);await localSaved();if(draft!==draftAtStart||generation!==generationAtStart||JSON.stringify(draft.spec)!==revisionAtStart||connectionController.getWorkflowClient()?.sessionId!==binding.sessionId||document.hidden)return;assertCalendarAuthoring(spec);}catch(error){status=(error as Error).message;publish();return;}const encoded=JSON.stringify(spec);if(review!==encoded){review=encoded;sheet=null;status='Review the steps, then tap Save again. It saves paused, and each phone step still needs your approval.'+(spec.trigger.kind==='time'?' Its schedule stays off until you turn it on.':'')+(readsFixedDates(spec)?' '+FIXED_CALENDAR_DATES:'');publish();return;}
   const token=generation,expectedCatalog=catalog;controller=new AbortController();const signal=controller.signal;busy=true;publish();const valid=()=>token===generation&&!signal.aborted&&connectionController.getWorkflowClient()?.sessionId===binding.sessionId&&!document.hidden;
   try{const validation=await binding.client.validatePhone(spec,expectedCatalog,signal);if(!valid())return;const pending:Pending={mutationId:crypto.randomUUID(),specDigest:validation.specDigest,compilerRevision:expectedCatalog.compilerRevision,...(draft.workflowId?{workflowId:draft.workflowId,versionId:draft.versionId}:{})};draft.spec=validation.spec;draft.pending=pending;persist();await localSaved();if(!valid())return;const receipt=await binding.client.savePhone(validation.spec,expectedCatalog,pending,signal);if(!valid())return;await committed(receipt.workflowId,token);}
   catch(error){if(valid()){if(error instanceof WorkflowTypedRejected&&draft?.pending){await refused();}else status=draft?.pending?'Unknown':(error as Error).message;toast(status);}}finally{if(token===generation){busy=false;controller=null;publish();}}
@@ -150,8 +160,9 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
  async function resend(){
   if(!draft?.pending||busy||!unreceipted||!catalog)return;const binding=connectionController.getWorkflowClient();if(!binding)return;
   if(catalog.compilerRevision!==draft.pending.compilerRevision){unreceipted=false;resendReview=false;status='Agent updated · locked';publish();return;}
+  let spec:PhoneSpec;try{spec=normalizePhoneSpec(draft.spec);assertCalendarAuthoring(spec);}catch(error){status=(error as Error).message;publish();return;}
   if(!resendReview){resendReview=true;status='Resend once';publish();return;}
-  resendReview=false;const token=generation,pending=draft.pending,capabilities=catalog;let spec:PhoneSpec;try{spec=normalizePhoneSpec(draft.spec);}catch(error){status=(error as Error).message;publish();return;}
+  resendReview=false;const token=generation,pending=draft.pending,capabilities=catalog;
   controller=new AbortController();const signal=controller.signal;busy=true;publish();const valid=()=>token===generation&&!signal.aborted&&connectionController.getWorkflowClient()?.sessionId===binding.sessionId&&!document.hidden;
   try{const known=await binding.client.phoneSaveReceipt(pending,signal);if(!valid())return;const receipt=known??await binding.client.savePhone(spec,capabilities,pending,signal);if(!valid())return;await committed(receipt.workflowId,token);}
   catch(error){if(valid()){unreceipted=false;if(error instanceof WorkflowTypedRejected)await refused();else status='Unknown';toast(status);}}
@@ -181,14 +192,14 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   const operations=catalog.palette.flatMap(p=>p.operations.filter(o=>o.available&&offered(o.id)).map(o=>o.id));
   // Unsupported scope is refused on the phone; the request never reaches the agent or its model.
   const scope=checkWorkflowScope(prompt,operations);if(scope.refused){generated=null;status=scope.message;toast('Not supported');publish();return;}
-  let existing:PhoneSpec|undefined;try{if(draft.spec.steps.length)existing=normalizePhoneSpec(draft.spec);}catch(error){status=(error as Error).message;publish();return;}
+  let existing:PhoneSpec|undefined;try{if(draft.spec.steps.length){existing=normalizePhoneSpec(draft.spec);assertCalendarAuthoring(existing);}}catch(error){status=(error as Error).message;publish();return;}
   const capabilities=catalog;controller=new AbortController();const signal=controller.signal;busy=true;generating=true;generated=null;status='';publish();
   const valid=()=>active&&describeOn&&token===generation&&!signal.aborted&&!document.hidden&&binding.sessionId===connectionController.getWorkflowClient()?.sessionId&&JSON.stringify(draft?.spec)===baseline;
-  try{await localSaved();if(!valid())return;const spec=await binding.client.generatePhone(prompt,capabilities,operations,signal,existing,target);if(!valid())return;generated=spec;generatedBaseline=baseline;generatedSession=binding.sessionId;status='';}
+  try{await localSaved();if(!valid())return;const spec=await binding.client.generatePhone(prompt,capabilities,operations,signal,existing,target);if(!valid())return;assertCalendarAuthoring(spec);generated=spec;generatedBaseline=baseline;generatedSession=binding.sessionId;status='';}
   catch(error){if(valid()){const message=error instanceof Error?error.message:'Generation failed.';status=message.startsWith('Workflow needs clarification: ')?message.slice('Workflow needs clarification: '.length):error instanceof Error?error.message:'Failed';}}
   finally{if(token===generation){busy=false;generating=false;controller=null;publish();}}
  }
- function useGenerated(){if(!generated||locked()||!draft)return;if(generatedSession!==connectionController.getWorkflowClient()?.sessionId||generatedBaseline!==JSON.stringify(draft.spec)||JSON.stringify(generated.device)!==JSON.stringify(connectionController.getWorkflowDeviceTarget()??undefined)){generated=null;status='Changed';publish();return;}const spec=generated;change(()=>{draft!.spec={...spec,trigger:draft!.spec.trigger};generated=null;describeOn=false;sheet=null;});}
+ function useGenerated(){if(!generated||locked()||!draft)return;if(generatedSession!==connectionController.getWorkflowClient()?.sessionId||generatedBaseline!==JSON.stringify(draft.spec)||JSON.stringify(generated.device)!==JSON.stringify(connectionController.getWorkflowDeviceTarget()??undefined)){generated=null;status='Changed';publish();return;}const spec=generated;try{assertCalendarAuthoring(spec);}catch(error){generated=null;status=(error as Error).message;publish();return;}change(()=>{draft!.spec={...spec,trigger:draft!.spec.trigger};generated=null;describeOn=false;sheet=null;});}
  /** The owner sets when the workflow runs; generation never does. Only triggers this agent offers are selectable. */
  function chooseTrigger(kind:string){if(!draft||!catalog||locked())return;const offered=catalog.triggers.find(t=>t.kind===kind);if(!offered?.available||!['manual','time'].includes(kind)){toast('Not available yet');return;}if(draft.spec.trigger.kind===kind)return;change(()=>{draft!.spec.trigger=kind==='time'?{kind:'time',localTime:'08:00',timeZone:deviceTimeZone(),days:[1,2,3,4,5]}:{kind:'manual'};});}
  function editTime(edit:(trigger:PhoneTimeTrigger)=>PhoneTimeTrigger|null){const trigger=draft?.spec.trigger;if(!trigger||trigger.kind!=='time'||locked())return;const next=edit(trigger);if(next)change(()=>{draft!.spec.trigger=next;});}
@@ -199,13 +210,36 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
    days:time?WEEKDAYS.map(([day,label])=>{const on=time.days.includes(day);return {label,pressed:on,css:on?'background:var(--fg);color:var(--bg)':'background:var(--s2)',pick:()=>toggleDay(day)};}):[],
    time:'',clock:time?.localTime??'',onTime:(event:Bag)=>{const value=String(event.target.value);if(/^([01]\d|2[0-3]):[0-5]\d$/.test(value))editTime(t=>t.localTime===value?null:{...t,localTime:value});},tMinus:()=>editTime(t=>({...t,localTime:shiftLocalTime(t.localTime,-15)})),tPlus:()=>editTime(t=>({...t,localTime:shiftLocalTime(t.localTime,15)}))};}
  function field(label:string,value:string,onChange:(value:string)=>void,type='text',multiline=false){return {label,value,type,multiline,single:!multiline,change:(event:Bag)=>(()=>{try{change(()=>onChange(String(event.target.value)));}catch(error){toast(error instanceof Error?error.message:'Invalid time');}})()};}
+ function calendarRangeSummary(range:CalendarRange):string{
+  const period='days' in range
+   ? `From run day · ${range.days} ${range.days===1?'day':'days'}`
+   : `Fixed dates in phone time: ${workflowLocalInstant(range.start)} to ${workflowLocalInstant(range.end)}`;
+  const selected=range.calendarIds.map(id=>calendars.find(calendar=>calendar.id===id)?.name||id);
+  return [period,`Calendar time zone: ${range.timeZone}`,`Up to ${range.maximumEvents} events`,`Calendars: ${selected.join(', ')}`].join('\n');
+ }
+ function calendarRangeEditor(step:PhoneStep,range:CalendarRange){
+  const relative='days' in range,admitted=canAuthorRunDay();
+  const setMode=(useRunDay:boolean)=>{
+   if(step!==selected()||step.range!==range||relative===useRunDay||(useRunDay&&!canAuthorRunDay()))return;
+   const {calendarIds,timeZone,maximumEvents}=range;
+   const fromDay={calendarIds,timeZone,maximumEvents,days:1};
+   change(()=>{step.range=useRunDay?fromDay:resolvePhoneCalendarRange(fromDay);});
+  };
+  return {modes:admitted||relative?[
+   {label:'Fixed dates',pressed:!relative,css:!relative?'background:var(--acc);color:var(--alpha-white)':'background:var(--s2)',disabled:false,pick:()=>setMode(false)},
+   {label:'From run day',pressed:relative,css:relative?'background:var(--acc);color:var(--alpha-white)':'background:var(--s2)',disabled:!admitted,pick:()=>setMode(true)},
+  ]:[],relative,limited:relative&&!admitted,dayCount:relative?String(range.days):'',dayChoices:calendarDays.map(days=>({value:String(days),label:`${days} ${days===1?'day':'days'}`})),changeDays:(event:Bag)=>{
+   const days=Number(event.target.value);
+   if(relative&&step===selected()&&step.range===range&&canAuthorRunDay()&&calendarDays.includes(days))change(()=>{range.days=days;});
+  },timeZone:relative?`Calendar time zone: ${range.timeZone}`:'',limitMessage:runDayUnavailable};
+ }
  /** The owner-facing save review: where it saves, when it runs and each step. The full specification stays under Technical details. */
  function reviewSummary(spec:PhoneSpec):string{
   const target=draft?.workflowId?`Replaces ${targetName||spec.name}`:'';
   const when=spec.trigger.kind==='time'?describePhoneTrigger(spec.trigger):'Manual';
-  return [target,when,spec.trigger.kind==='time'?phoneScheduleTiming:'',...spec.steps.map((step,i)=>`${i+1}. ${stepName(step.operation)}`),readsFixedDates(spec)?FIXED_CALENDAR_DATES:''].filter(Boolean).join('\n');
+  return [target,when,spec.trigger.kind==='time'?phoneScheduleTiming:'',...spec.steps.map((step,i)=>`${i+1}. ${stepName(step.operation)}${step.operation==='calendar_range'?'\n'+calendarRangeSummary(step.range):''}`),readsFixedDates(spec)?FIXED_CALENDAR_DATES:''].filter(Boolean).join('\n');
  }
- function render(api:Bag){const step=selected(),index=step&&draft?draft.spec.steps.indexOf(step):-1,fields:Bag[]=[];if(step){
+ function render(api:Bag){const step=selected(),index=step&&draft?draft.spec.steps.indexOf(step):-1,fields:Bag[]=[];const calendarRange:CalendarRange|null=step?.operation==='calendar_range'?step.range:null;if(step){
   if(step.operation==='supplied_text')fields.push(field('Text',step.text,v=>step.text=v,'text',true));
   if(step.operation==='contains')fields.push(field('Text to match',step.text,v=>step.text=v));
   if(step.operation==='compose_draft')fields.push(field('Before',step.prefix,v=>step.prefix=v,'text',true),field('After',step.suffix,v=>step.suffix=v,'text',true));
@@ -213,7 +247,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   if(step.operation==='app_notification')fields.push(field('Notification title',step.title,v=>step.title=v));
   if(step.operation==='save_note')fields.push(field('New note title',step.title,v=>step.title=v));
   if(step.operation==='selected_reminders')fields.push(field('Max',String(step.scope.maximumItems),v=>step.scope.maximumItems=Number(v),'number'));
-  if(step.operation==='calendar_range'){fields.push(field('Range start',automationLocalDateInput(step.range.start),v=>step.range.start=localDate(v).toISOString(),'datetime-local'),field('Range end',automationLocalDateInput(step.range.end),v=>step.range.end=localDate(v).toISOString(),'datetime-local'),field('Max',String(step.range.maximumEvents),v=>step.range.maximumEvents=Number(v),'number'));}
+  if(calendarRange){if(!('days' in calendarRange))fields.push(field('Range start',automationLocalDateInput(calendarRange.start),v=>calendarRange.start=localDate(v).toISOString(),'datetime-local'),field('Range end',automationLocalDateInput(calendarRange.end),v=>calendarRange.end=localDate(v).toISOString(),'datetime-local'));fields.push(field('Max',String(calendarRange.maximumEvents),v=>calendarRange.maximumEvents=Number(v),'number'));}
  }
  const generatedSteps=generated?.steps.map((s,i)=>{
   const input=s.source?'Input: step '+(generated!.steps.findIndex(p=>p.id===s.source)+1)+'\n':'';
@@ -222,7 +256,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   if(s.operation==='supplied_text')text=s.text;
   else if(s.operation==='selected_notes')text=s.notes.map((n:Bag)=>noteRows().find(note=>note.id===n.id)?.title||n.id).join('\n');
   else if(s.operation==='selected_reminders')text='Due today\n'+'Up to '+s.scope.maximumItems+' reminders';
-  else if(s.operation==='calendar_range')text=workflowLocalInstant(s.range.start)+'–'+workflowLocalInstant(s.range.end)+'\nUp to '+s.range.maximumEvents+' events\nCalendars: '+s.range.calendarIds.map((id:string)=>calendars.find(c=>c.id===id)?.name||id).join(', ');
+  else if(s.operation==='calendar_range')text=calendarRangeSummary(s.range);
   else if(s.operation==='contains')text='Match: '+JSON.stringify(s.text)+'\n'+(s.caseSensitive?'Case-sensitive':'Ignore letter case');
   else if(s.operation==='compose_draft')text='Prefix: '+JSON.stringify(s.prefix)+'\nSuffix: '+JSON.stringify(s.suffix);
   else if(s.operation==='model_draft')text=s.instruction;
@@ -237,7 +271,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
    // describe() and generateDraft send the current draft as the existing one.
    empty:!!draft&&!describeOn&&!locked(),describe:()=>{if(locked()||!draft)return;if(catalog?.generationProtocol!==1){toast('Not on your agent');return;}describeOn=true;generated=null;review=null;status='Sent to your agent';publish();},describeOn,descriptionPrompt,onGenerationPrompt:(event:Bag)=>{if(generating){generation++;controller?.abort();controller=null;busy=false;generating=false;}descriptionPrompt=String(event.target.value);generated=null;status='';publish();},generateDraft,cancelGeneration,generating,generateLabel:generating?'Generating…':'Generate draft',generateCss:locked()||!descriptionPrompt.trim()?'background:var(--s2);color:var(--mut)':'background:var(--acc);color:#fff',generationOff:locked()||!descriptionPrompt.trim(),generatedName:generated?.name||'',generatedDescription:generated?.description||'',generatedSteps,generatedWhen:draft?.spec.trigger.kind==='time'?describePhoneTrigger(draft.spec.trigger):'Manual',generatedReview:generated?JSON.stringify(generated,null,2):'',hasGenerated:!!generated,useGenerated,sheetOn:!!sheet,closeSheet:()=>{sheet=null;publish();},isTrig:sheet==='trigger',isStep:!!step,
   tr:triggerSheet(api),
-  sp:step?{typed:true,freeTextStyle:"display:none",k:step.kind,d:api.ic[icons[step.kind]],up:()=>move(-1),down:()=>move(1),upCss:index===0?'opacity:.3':'',downCss:index===draft!.spec.steps.length-1?'opacity:.3':'',presets:enabledOptions.filter(o=>o.id===step.operation||(o.available&&offered(o.id))).map(o=>({label:o.label||WORKFLOW_OPERATION_LABELS[o.id]||'Step',css:o.id===step.operation?'background:var(--acc);color:#fff':o.available&&offered(o.id)?'background:var(--s2)':'background:var(--s2);opacity:.5',pick:()=>chooseOperation(o.id)})),text:'',onText:()=>{},fields,hasSource:!!step.source,sources:draft!.spec.steps.slice(0,index).map((s,i)=>({label:`${i+1}. ${stepName(s.operation)}`,selected:step.source===s.id,pick:()=>change(()=>{step.source=s.id;})})),caseMatch:step.operation==='contains',caseLabel:step.caseSensitive?'Case-sensitive match':'Ignore letter case',toggleCase:()=>change(()=>{step.caseSensitive=!step.caseSensitive;}),isNotes:step.operation==='selected_notes',notes:step.operation==='selected_notes'?noteRows().map((n:Bag)=>({label:n.title||'Untitled note',selected:step.notes.some((chosen:Bag)=>chosen.id===n.id),pick:()=>void chooseNote(n.id)})):[],isCalendar:step.operation==='calendar_range',connectCalendars:()=>void loadCalendars(true),calendars:step.operation==='calendar_range'?calendars.map(c=>({label:c.name+' · '+c.account,selected:step.range.calendarIds.includes(c.id),pick:()=>change(()=>{const chosen=step.range.calendarIds;step.range.calendarIds=chosen.includes(c.id)?chosen.filter((id:string)=>id!==c.id):chosen.length<16?[...chosen,c.id]:chosen;})})):[],del:remove}:null};
+  sp:step?{typed:true,freeTextStyle:"display:none",k:step.kind,d:api.ic[icons[step.kind]],up:()=>move(-1),down:()=>move(1),upCss:index===0?'opacity:.3':'',downCss:index===draft!.spec.steps.length-1?'opacity:.3':'',presets:enabledOptions.filter(o=>o.id===step.operation||(o.available&&offered(o.id))).map(o=>({label:o.label||WORKFLOW_OPERATION_LABELS[o.id]||'Step',css:o.id===step.operation?'background:var(--acc);color:#fff':o.available&&offered(o.id)?'background:var(--s2)':'background:var(--s2);opacity:.5',pick:()=>chooseOperation(o.id)})),text:'',onText:()=>{},fields,hasSource:!!step.source,sources:draft!.spec.steps.slice(0,index).map((s,i)=>({label:`${i+1}. ${stepName(s.operation)}`,selected:step.source===s.id,pick:()=>change(()=>{step.source=s.id;})})),calendarRange:calendarRange?calendarRangeEditor(step,calendarRange):null,caseMatch:step.operation==='contains',caseLabel:step.caseSensitive?'Case-sensitive match':'Ignore letter case',toggleCase:()=>change(()=>{step.caseSensitive=!step.caseSensitive;}),isNotes:step.operation==='selected_notes',notes:step.operation==='selected_notes'?noteRows().map((n:Bag)=>({label:n.title||'Untitled note',selected:step.notes.some((chosen:Bag)=>chosen.id===n.id),pick:()=>void chooseNote(n.id)})):[],isCalendar:step.operation==='calendar_range',connectCalendars:()=>void loadCalendars(true),calendars:step.operation==='calendar_range'?calendars.map(c=>({label:c.name+' · '+c.account,selected:step.range.calendarIds.includes(c.id),pick:()=>change(()=>{const chosen=step.range.calendarIds;step.range.calendarIds=chosen.includes(c.id)?chosen.filter((id:string)=>id!==c.id):chosen.length<16?[...chosen,c.id]:chosen;})})):[],del:remove}:null};
  }
  return {get active(){return active;},open,close,render,flushForAppUpdate};
 }

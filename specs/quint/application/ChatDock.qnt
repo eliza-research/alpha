@@ -7,7 +7,8 @@ module ChatDock {
     // "" is Home; one view rests on the composer bar and one on the pill.
     view: str, chat: str, voice: bool,
     drag: Drag,
-    // Whether a sheet height was left by a drag, and ticks since the last suppression stamp and
+    // Whether a sheet height was left by a drag in the current open session (a closed chat forgets
+    // it and reopens at its fitted height, AC-04), and ticks since the last suppression stamp and
     // the last real drag (Window or more is expired).
     remembered: bool, swallowAge: int, dragAge: int,
     // A click the platform still owes the last gesture, and the control it will land on.
@@ -43,13 +44,17 @@ module ChatDock {
     else if (zone == "top") ("full", false)
     else ("sheet", not(flick) and zone != "floor")
   pure def swallowed(v: State): bool = v.swallowAge < Window
+  pure def isOpen(chat: str): bool = chat == "sheet" or chat == "full"
+  /// A dragged height belongs to the open session it was dragged in (AC-04): any detent that is
+  /// not open forgets it.
+  pure def forgetClosed(v: State): State = if (isOpen(v.chat)) v else { ...v, remembered: false }
   /// What a control does when activated; "talk" starts voice and leaves the detent.
-  pure def activate(v: State, label: str): State =
+  pure def activate(v: State, label: str): State = forgetClosed(
     if (label == "open") { ...v, chat: "sheet" }
     else if (label == "type") { ...v, chat: "input" }
     else if (label == "talk") { ...v, voice: true }
     else if (label == "resize" or label == "toolbar") { ...v, chat: if (v.chat == "full") "sheet" else "full" }
-    else v
+    else v)
   pure def changed(before: State, after: State): int =
     if (before.chat != after.chat or before.voice != after.voice) 1 else 0
 
@@ -78,7 +83,7 @@ module ChatDock {
     val collapsed = s.drag.mode == "input" or s.drag.mode == "hidden"
     val target = release(s.drag.mode, direction, zone, flick, s.view == "")
     val chat = if (target._1 == "hidden" and not(collapsed)) rest(s.view) else target._1
-    val after = { ...s, drag: NoDrag, chat: chat, remembered: s.remembered or target._2,
+    val after = { ...s, drag: NoDrag, chat: chat, remembered: (s.remembered or target._2) and isOpen(chat),
       barKept: s.view == "" and s.drag.mode == "input" and direction == "down" }
     s' = { ...after, swallowAge: 0, dragAge: 0, ghost: over != "none", ghostLabel: over,
       effects: s.effects + changed(s, after) } }
@@ -97,11 +102,11 @@ module ChatDock {
     s' = { ...activate(s, "toolbar"), effects: 1 } }
   /// Closing retires a held drag; a moved one still suppresses its click.
   action closeChat = all { not(s.ghost), s.chat == "sheet" or s.chat == "full",
-    s' = { ...s, drag: NoDrag, chat: rest(s.view), effects: 1,
+    s' = { ...s, drag: NoDrag, chat: rest(s.view), effects: 1, remembered: false,
       swallowAge: if (s.drag.moved) 0 else s.swallowAge, dragAge: if (s.drag.moved) 0 else s.dragAge } }
   /// Navigation and voice change the shell under a held finger: the drag is retired.
   action navigate(view: str): bool = all { view.in(Surfaces), view != s.view,
-    s' = { ...s, view: view, chat: rest(view), barKept: false,
+    s' = { ...s, view: view, chat: rest(view), barKept: false, remembered: false,
       drag: NoDrag, swallowAge: if (s.drag.moved) 0 else s.swallowAge, dragAge: if (s.drag.moved) 0 else s.dragAge } }
   action voiceEnds = all { s.voice, s' = { ...s, voice: false } }
   action tick = s' = { ...s, swallowAge: if (s.swallowAge < Window) s.swallowAge + 1 else Window,
@@ -129,8 +134,10 @@ module ChatDock {
   /// A pending click is always inside the suppression window of the gesture that owes it.
   val GhostInsideWindow = s.ghost implies swallowed(s) or s.drag.active
   val ValidDetent = s.chat.in(Modes)
+  /// A remembered dragged height exists only while the chat it was dragged in is open (AC-04).
+  val RememberedOnlyWhileOpen = s.remembered implies isOpen(s.chat)
   val safety = OneEffectPerGesture and NoClickThrough and DragMatchesShell and HomeKeepsBar and
-    KeptBarIsHomeBar and GhostInsideWindow and ValidDetent
+    KeptBarIsHomeBar and GhostInsideWindow and ValidDetent and RememberedOnlyWhileOpen
 
   val HomeBarKeptWitness = s.barKept and s.swallowAge == 0
   val BarViewPillWitness = s.view == BarView and s.chat == "hidden"
@@ -174,6 +181,17 @@ module ChatDock {
     .then(settle("up", "top", false, "none").fail())
   run expiredClickIsDroppedTest = init.then(down("open")).then(tap).then(tick).then(tick)
     .expect(not(s.ghost) and safety).then(lateClick.fail())
+  // A dragged height lasts while the chat is open; closing it, or a collapse, forgets it (AC-04).
+  run closedChatForgetsDraggedHeightTest = init.then(down("open")).then(tap).then(tick).then(tick)
+    .then(down("none")).then(move).then(settle("up", "middle", false, "none"))
+    .expect(s.chat == "sheet" and s.remembered and safety)
+    .then(tick).then(tick).then(sizeButton).expect(s.chat == "full" and s.remembered and safety)
+    .then(closeChat).expect(s.chat == "input" and not(s.remembered) and safety)
+    .then(down("open")).then(tap).expect(s.chat == "sheet" and not(s.remembered) and safety)
+    .then(tick).then(tick).then(down("none")).then(move).then(settle("down", "middle", false, "none"))
+    .expect(s.chat == "sheet" and s.remembered and safety)
+    .then(tick).then(tick).then(down("none")).then(move).then(settle("down", "floor", false, "none"))
+    .expect(s.chat == "input" and not(s.remembered) and safety)
   run freshPressLiftsSuppressionTest = init.then(down("none")).then(move).then(settle("up", "middle", false, "none"))
     .then(down("resize")).then(tap).expect(s.chat == "full" and s.effects == 1 and safety)
 }

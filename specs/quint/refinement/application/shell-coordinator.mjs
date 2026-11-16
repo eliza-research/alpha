@@ -16,8 +16,8 @@ const stepTimeout = scaledTimeout(45_000);
 // Each fresh browser context loads the module graph before the shell can establish a session.
 const mountTimeout = scaledTimeout(120_000);
 
-/** Mount the real application and observe its installed shell/agent coordinator. */
-export async function generateShellCoordinatorTraces(extraSources = []) {
+/** Mount the actual application with a fresh, network-fenced native fixture per schedule. */
+export async function withMountedShell(names, run, {extraSources = [], install} = {}) {
   const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'bun.lock',
     'scripts/quint-lib.ts', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',
     'test/browser/helpers/native-navigation-protocol.ts', 'upstream.lock.json',
@@ -58,7 +58,7 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
     await server.listen();
     const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
     browser = await chromium.launch({headless: true});
-    for (const name of ['navigation', 'back-keeps-reply', 'view-retires-reply', 'hidden-retires-reply', 'pagehide-retires-reply']) {
+    for (const name of names) {
       console.log(`Checking mounted shell ${name}`);
       const page = await browser.newPage();
       page.setDefaultTimeout(stepTimeout);
@@ -80,6 +80,7 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
           }
         }
       });
+      await install?.(fixturePage, name);
       await page.addInitScript('const __name=(value,name)=>Object.defineProperty(value,"name",{value:name,configurable:true});\n' + initializers.join('\n'));
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
@@ -126,6 +127,22 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
         page.off('requestfinished', requestEnded);
         page.off('requestfailed', requestEnded);
       }
+      scenarios.push(await run({name, page, errors}));
+      assert.deepEqual(foreign, [], 'All external network requests must be fenced');
+      await page.close();
+    }
+    return {scenarios, sources: [...new Set([...sources, ...transformed])], driverHashes};
+  } finally {
+    await browser?.close();
+    await server?.close();
+  }
+}
+
+/** Observe the installed shell and its agent coordinator. */
+export async function generateShellCoordinatorTraces(extraSources = []) {
+  return withMountedShell(
+    ['navigation', 'back-keeps-reply', 'view-retires-reply', 'hidden-retires-reply', 'pagehide-retires-reply'],
+    async ({name, page, errors}) => {
       // These schedules exercise the installed shell and reply coordinator independently of Notes storage.
       const observations = [];
       const observe = async label => {
@@ -197,15 +214,10 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
         if (name === 'pagehide-retires-reply') await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
         await observe('visible again');
       }
-      assert.deepEqual(foreign, [], 'All external network requests must be fenced');
-      scenarios.push({name, observations, errors});
-      await page.close();
-    }
-    return {scenarios, sources: [...new Set([...sources, ...transformed])], driverHashes};
-  } finally {
-    await browser?.close();
-    await server?.close();
-  }
+      return {name, observations, errors};
+    },
+    {extraSources},
+  );
 }
 
 export async function checkShellCoordinator(extraSources = []) {

@@ -3353,7 +3353,10 @@
       "busyRecorderMessageTest",
       "waitingSuccessorRejectedTest",
       "waitingAppSuccessorStopsOnceTest",
-      "restartOpensChainsTest"
+      "restartOpensChainsTest",
+      "confirmedReadingStartsItsSuccessorTest",
+      "confirmedVoiceCleanupAllowsEntryTest",
+      "dismissedVoiceFailureRequiresRestartTest"
     ],
     "invariants": [
       "StagesKnown",
@@ -3450,9 +3453,10 @@
       "epoch": "The app process"
     },
     "abstractions": [
-      "Four independent chains, each idle, playing, retiring, recovering or closed; at most six requests and one restart.",
+      "Four modeled chains, each idle, playing, retiring, recovering or closed, with at most six requests and one restart. The installed replays exercise each chain on its own and leave cross-chain handoff separate.",
       "A request made while speech plays on its chain retires that speech and waits; who cancels the predecessor is not distinguished.",
       "The voice surface and read aloud stay closed until the app process restarts. App speech and Cloud app speech ask native to stop playback once per request on a closed chain: a confirmed stop admits the request, a refused one keeps the chain closed with the restart message.",
+      "The whole voice and note-read replay executes the actual reply and playback controllers with held native stop replies. The app and Cloud app playback members retain their separate partial-source regression.",
       "Native cancel and stop are one confirmed-or-unconfirmed settle step (see RendererSpeechChunk). Starting a voice conversation on a closed voice chain is refused the same way as Transcribe."
     ]
   },
@@ -4135,6 +4139,8 @@
       "credentialChangeCommitsAfterConfirmedStopTest",
       "unconfirmedShutdownNeedsRetryTest",
       "cancelDuringShutdownRetryPreventsStartTest",
+      "staleStartProbeCannotOvertakeMutationTest",
+      "stoppedResidentNeedsExactMutationAcknowledgementTest",
       "rearmWaitsForExplicitStartAfterStopTest",
       "startBeforeStatusRechecksShutdownTest"
     ],
@@ -4233,13 +4239,15 @@
       "mutationEpoch/retryEpoch/shutdown": "credentialMutationEpoch, credentialShutdownRetryEpoch and credentialShutdownRequest with the service acknowledgement of that exact request",
       "startRequest/startRequestEpoch/startOwnsLaunch": "startRequestId, startRequestEpoch and startOwnsLaunch (true only when the start found the service stopped)",
       "cancelledStarts/attachedStarts": "request ids cancelled before their start arrived, and starts that attached to an admitted running resident",
-      "native/launchedBy/launches/commits": "ElizaAgentService process state, the request whose start launched it, and committed credential mutations"
+      "native/launchedBy/launches/commits": "ElizaAgentService process state, the request whose start launched it, and committed credential mutations",
+      "heldStart": "A start request blocked at its boot-state read after capturing the old lifecycle epoch"
     },
     "abstractions": [
       "Two start requests, six lifecycle generations and three launches. Attach admission (root token, provider generation, owner) is one boolean.",
       "A start request while a stop is latched or a credential stop is unacknowledged is the strict recheck (shutdownRetryRequired): it reissues the stop under a new request and is modeled as reissuing in the same step it is admitted, although the plugin does that on its worker.",
       "Enrollment, pending bridge calls and the 128-entry cancellation bound are not modeled. The 15 s acknowledgement wait ends in one step; an uncertain commit is treated as an unconfirmed shutdown.",
-      "The replay in specs/quint/refinement/native/resident-start-cancel.mjs covers lifecycleStep, the machine without a credential mutation, on the whole plugin over service and Android ports; beginMutation and finishMutation are exercised only by the NativeCredentialMutation adapters."
+      "The sampled whole-plugin replay drives lifecycleStep. Named traces invoke AlphaLocalAgentPlugin.mutateCredentials and hold boot-state observations to interleave a stale start, a credential mutation and an exact stop acknowledgement.",
+      "The named replay observes actual refusal, synthetic commit and exact release or abandonment of the stop. Service boot/stop acknowledgements, clock, credential commit and Android focus are controlled ports. It does not operate a credential store, resident process or Android activity."
     ]
   },
   {

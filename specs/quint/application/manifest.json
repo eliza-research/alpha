@@ -436,7 +436,9 @@
     "sources": [
       "apps/app/src/browser/browser-surface.ts",
       "apps/app/src/prototype/browser-adapter.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java",
+      "android/app/src/main/res/values/eliza_passwords.xml",
+      "apps/app/src/passwords/password-manager.ts"
     ],
     "abstractions": [
       "Complementary current-source audit scope. The canonical model and its existing source-observation driver remain separate; this state model does not claim complete implementation refinement.",
@@ -446,12 +448,21 @@
       "damaged is the native key state together with the page's knowledge of it. Native encryption and device authentication are external inputs. A refused reset authentication is reported only while the password pages are open.",
       "The development provider dialog (browser/password-provider.ts) is modeled in PasswordProviderDialog.",
       "The password pages open only while the app is shown: a render while hidden (the change notice sent on hiding causes one) leaves them closed, and a hidden page starts no listing read. test/password-manager-hidden.test.mjs checks this on the real module.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "The native case in test/quint-vault-coordinator-refinement.test.mjs checks the native grant and retained-vault reset against whole pinned Java under synthetic platform ports. The renderer review and the OS authentication inputs are controlled.",
+      "Model safety checks do not establish complete implementation refinement or device acceptance."
     ],
     "sharedSources": [
       "plugins/plugin-native-passwords/src/client.ts",
       "plugins/plugin-native-passwords/src/bindings.ts",
-      "plugins/plugin-native-passwords/src/definitions.ts"
+      "plugins/plugin-native-passwords/src/definitions.ts",
+      "plugins/plugin-native-passwords/android/src/main/java/ai/eliza/plugins/passwords/PasswordsPlugin.java",
+      "plugins/plugin-native-passwords/android/src/main/java/ai/eliza/plugins/passwords/PasswordsConfig.java",
+      "plugins/plugin-native-passwords/android/src/main/java/ai/eliza/plugins/passwords/PasswordUnlock.java",
+      "plugins/plugin-native-passwords/android/src/main/java/ai/eliza/plugins/passwords/PasswordVaultAccess.java",
+      "plugins/plugin-native-passwords/android/src/main/res/values/eliza_passwords.xml",
+      "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordVaultStore.java",
+      "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordVaultFrame.java",
+      "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialAccessSession.java"
     ],
     "invariants": [
       "TypeOK",
@@ -3181,13 +3192,15 @@
       "retiredJournalClearDoesNotRefreshReplacementTest",
       "oldCleanupKeepsNewSaveBusyTest",
       "lateRejectionCannotPublishToReplacementTest",
+      "currentScheduleRefusalClearsExactJournalTest",
       "unconfirmedRemoteKeepsExactRetryTest",
       "discardClearsOnlyAnUnsentReviewTest"
     ],
     "sources": [
       "apps/app/src/runtime/hosted-digest-ui.tsx",
       "apps/app/src/runtime/hosted-digests.ts",
-      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts",
+      ".eliza/client-features/packages/contracts/src/workflow-client.ts"
     ],
     "abstractions": [
       "Actual mounted digest journal review, dispatch, cleanup and publication across two exact session bindings, including a legacy record without a phase.",
@@ -4270,23 +4283,28 @@
       "commandRefusedUnderReviewFirstTest",
       "commandBoundToTabTest",
       "commandSentOnceTest",
-      "browserBuildHasNoCommandTest"
+      "browserBuildHasNoCommandTest",
+      "navigationDuringClaimRefusesCommandTest"
     ],
     "sources": [
       "apps/app/src/prototype/browser-adapter.ts",
       "apps/app/src/runtime/view-navigation.ts",
       "apps/app/src/prototype/agent-adapter.ts",
-      "apps/app/src/runtime/action-message-presentation.ts"
+      "apps/app/src/runtime/action-message-presentation.ts",
+      "apps/app/src/runtime/device-actions.ts"
     ],
     "sharedSources": [
       "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts",
-      "packages/contracts/src/browser-request-grounding.ts"
+      "packages/contracts/src/browser-request-grounding.ts",
+      "plugins/plugin-browser/src/native-client-command.ts",
+      "plugins/plugin-native-browser-surface/src/tab-host.ts"
     ],
     "abstractions": [
       "One proposal at a time with a destination class (HTTPS, plain HTTP, credentials in the address) and whether the owner's message typed that address; one view command (back, forward or reload are not distinguished) bound to one tab's navigation revision, at most three claims.",
       "The direct open and its one-per-message rule are also replayed against the real coordinator by DeviceActionReview; this module adds the scheme rule, presentation after the journal and receipt attempt, and the unjournaled view-command path with its review-first refusal (an unreadable choice counts as on).",
       "KNOWN DIVERGENCE (app review AGENT-10): the receipt text says the address was opened once the tab exists, whether or not Browser is then shown. OpenedClaimMeansShown is registered under expectedViolations with the required witness OpenedButNotShown, not weakened.",
-      "Model-only: no refinement adapter drives the source. The rules were read from the listed source at the pinned revision; model safety checks do not establish implementation refinement or device acceptance. Proposal admission, journal reservation, claim and receipt are DeviceActionReview."
+      "The directed BrowserAgentOpen replay runs the whole view navigation client, installed Browser adapter and shared device action coordinator. It covers the exact tab bridge call, denied or stale commands, lost acknowledgment without a repeated effect, HTTPS admission and deferred presentation after the receipt attempt.",
+      "AGENT-10 is replayed with a hidden foreground. The actual receipt formatter says Opened after creating its background tab while Browser stays unselected. The property violation stays registered. Server, renderer journal persistence, agent adapter context wiring and Android navigation internals are separate evidence."
     ],
     "invariants": [
       "HttpsNoUserinfo",
@@ -4850,7 +4868,7 @@
       "Chat Transcribe only, the one route that reaches the recorder stages: one recorder with four generations, one task in flight per generation, and one flag each for an abandoned start and an abandoned stop or transcription.",
       "A stop that returns a clip, from the Stop control or the maximum-duration event, transcribes it in the same task; the recorded stage is reached only after a failed transcription.",
       "Transcribe does not open again while an abandoned microphone start has not settled; the retirement panel shown meanwhile and an unconfirmed stop are in VoiceSurfaceRetirement.",
-      "cleanup() cancels the driver recording within the step. A rejected stop, from the Stop control or the maximum-duration timer, releases the driver recording.",
+      "cleanup() cancels the driver recording within the step. The rejected Stop-control and duration-limit schedules presume a confirmed discard. The owning test separately replays those schedules through the whole pinned native live dictation and observes the already-recording refusal directly.",
       "Route selection, on-device speech readiness and its automatic start, playback of the clip, and the voice conversation are outside this model."
     ],
     "sharedSources": [
@@ -4964,9 +4982,12 @@
     "tests": [
       "clientRouteRunsOnceTest",
       "recoveredRouteRefetchesTest",
-      "crossRouteRunsOnceTest",
+      "sameSessionUnconfirmedResultReusedTest",
+      "newSessionMayReviewPendingTest",
       "executedActionIsNotOfferedAgainTest",
       "abortedFetchSendsNothingTest",
+      "absentRefetchSendsNothingTest",
+      "withdrawnLiveCardCannotCompleteTest",
       "staleLiveCardSendsNothingTest"
     ],
     "invariants": [
@@ -4976,21 +4997,33 @@
       "RecoveredRouteRefetches",
       "RequestsNeedTaps",
       "CompletedMeansExecuted",
-      "DoneCardIsInert"
+      "SettledCardIsInert",
+      "TrackedResultPreventsRedispatch"
     ],
     "witnesses": [
       "RepeatedRequestWitness",
       "RecoveredFetchWitness",
-      "UnavailableAfterExecutionWitness",
+      "NoReviewAfterExecutionWitness",
+      "AbsentReviewHasNoEffectWitness",
       "ConsumedAfterReloadWitness",
-      "LostResponseWitness"
+      "UnconfirmedAfterFetchWitness"
     ],
     "sources": [
       "apps/app/src/prototype/agent-adapter.ts",
       "apps/app/src/runtime/alpha-client.ts",
-      "apps/app/src/runtime/connection-ui.tsx"
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/device-actions.ts",
+      "vendor/eliza/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts"
     ],
     "symbols": [
+      {
+        "path": "apps/app/src/runtime/connection-ui.tsx",
+        "name": "actionReceipts"
+      },
+      {
+        "path": "vendor/eliza/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts",
+        "name": "approve"
+      },
       {
         "path": "apps/app/src/prototype/agent-adapter.ts",
         "name": "cardAct"
@@ -5039,14 +5072,15 @@
     "stateMapping": {
       "server/executions/requests/inFlight": "The agent pending record of one proposal and the execute requests sent to it",
       "clientProposal/consumed/attachmentDispatches": "AlphaClient.proposals, consumed and the approvals it dispatched for one session",
-      "card": "The review card in the transcript: live, recovered, unavailable or done",
+      "card": "The review card in the transcript: live, recovered, unavailable, unconfirmed or done",
       "tap/taps": "Shell.pendingActionApproval and the approve taps",
+      "unconfirmedAt": "The count of decision requests when connectionController.actionReceipts retained an unconfirmed result for this session",
       "reattachments": "History restores and session changes that reattach the client"
     },
     "abstractions": [
       "One proposal identity, at most three taps and two reattachments. A history restore or session change removes the cards of the old transcript; recovery brings a pending proposal back as a recovered card.",
-      "Assumption: the agent journals each proposal identity and executes it once; a repeated execute request returns the journaled receipt. The client consumed set survives a reload of the same session, but the recovered route does not consult it, so one execution across routes rests on this assumption.",
-      "A live card whose client no longer holds the proposal sends nothing; awaiting an earlier tracked receipt on that path is omitted.",
+      "Assumption: the agent journals each proposal identity and executes it once. The consumed set and tracked unconfirmed result survive a settled same-session history restore; the recovered route refetches and reuses that result without a second device approval.",
+      "A live card whose client no longer holds the proposal sends nothing. An aborted refetch represents screen or visibility retirement that also drops the live proposal lease. An effect arriving after transport retirement, restore during an active approval, and receipt delivery after that restore are outside the model.",
       "Expiry, decline, the Home review destination and read-reply completion are outside this model (see PendingActionRecovery and ReadReplyLease)."
     ]
   },
@@ -5061,7 +5095,9 @@
       "cancelledWhileCompletingTest",
       "bindingChangeLeavesUnconfirmedTest",
       "failedActionCancelsLeaseTest",
-      "staleReceiptLeavesLeasePendingTest"
+      "staleReceiptRetiresLeaseTest",
+      "mismatchedHintNeverStartsCompletionTest",
+      "failedCompletionRemainsUnconfirmedTest"
     ],
     "invariants": [
       "PhaseKnown",
@@ -5123,15 +5159,16 @@
     ],
     "stateMapping": {
       "lease": "The phase of one readReplyLeases entry",
-      "bindingCurrent": "readReplyCurrent(binding) with the origin, digest, visibility and sensitive-screen checks",
-      "approval/taps": "The approval in flight for the proposal",
-      "completions/answers/voiceResumed": "completeReadReply requests, answers added to the conversation and resumeReadReplyVoice calls",
+      "bindingCurrent": "Current original connection epoch and conversation, independent of the lease being cancelled",
+      "approval/taps": "The card approval remains in flight while the read answer is completing",
+      "completions/answers/voiceResumed": "Completion dispatch plus settlement, answer insertions and calls to the voice-resume boundary",
       "wasCancelled/cancelRequests": "cancelReadReplyCompletions and its cancelReadReply request"
     },
     "abstractions": [
-      "One lease. Session, conversation, origin, digest, visibility and sensitive-screen checks are one bindingCurrent predicate that never becomes true again.",
-      "A succeeded receipt stands for a receipt carrying the read-reply hint; any other receipt cancels the lease.",
-      "The answer text and message identity are omitted; the count of answers added to the conversation is tracked."
+      "One rendered lease, an exact synthetic proposal and its original user message. The source replay supplies the local connection epoch and conversation, while expiry, account credential checks and the voice-media implementation have separate scopes.",
+      "A successful approved read carries a hint. A mismatched digest or origin is refused before completion, and a failed approval without a hint cancels the lease.",
+      "After the approval settles, the shell context refresh retires a stale lease and requests exact cancellation.",
+      "The directed replay checks exact message identity and binding, cancellation while the reply is held, transport failure and retirement before the answer's renderer commit. The counter tracks answer insertions and voice callback calls."
     ]
   },
   {
@@ -5385,7 +5422,13 @@
       "changedDraftDroppedWhenStopFailsTest",
       "dismissedErrorKeepsVoiceClosedTest",
       "userPanelChoiceIsKeptTest",
-      "idleSurfaceLeavesNoHoldTest"
+      "idleSurfaceLeavesNoHoldTest",
+      "confirmedCloseReturnsToInputTest",
+      "preservingStopKeepsSheetTest",
+      "keyboardFromSheetReturnsToInputTest",
+      "keyboardFromFullKeepsFullTest",
+      "changedBindingSkipsPanelReturnTest",
+      "restoredBindingAllowsPanelReturnTest"
     ],
     "invariants": [
       "HoldTracksChain",
@@ -5412,6 +5455,10 @@
       {
         "path": "apps/app/src/prototype/voice-adapter.ts",
         "name": "retirement"
+      },
+      {
+        "path": "apps/app/src/prototype/voice-adapter.ts",
+        "name": "cancelChat"
       },
       {
         "path": "apps/app/src/prototype/voice-adapter.ts",
@@ -5455,13 +5502,15 @@
       "stoppingPending": "The stopping promise chain",
       "retirement": "The retirement record and its phase",
       "mediaUnconfirmed/everUnconfirmed": "mediaUnconfirmed, which nothing resets",
-      "panel/restores": "The chat panel state the retirement returns to",
+      "panel/panelBeforeVoice/heldPanel/returnPanel": "The shown chat detent, the original chat in chatDestination, and the exact held and return chat detents in retirement",
+      "panelBindingCurrent/restores": "The view and composer binding check for a confirmed panel return, and the number of panel return patches following a hold",
       "sendWaiting/asked/sends/staleSends/sentUnconfirmed": "A p.send call waiting on stopVoiceConversation(): whether it went on, was dropped because the screen, conversation or draft changed while it waited, or went on although the stop was never confirmed",
       "refusedStarts/holds": "Refused voice starts and retirements created"
     },
     "abstractions": [
       "One chat shell. The surface is closed, a voice conversation or Transcribe; what it holds is one media flag.",
-      "Leaving always closes the surface. The foreground-loss path that keeps the recorder open in its ready stage, the Notes recorder and reading aloud that is stopped at entry are outside this model.",
+      "The modeled cancelChat paths use the shown input, sheet and full detents, including a ready surface with no media, explicit keyboard and preserve-current stop. Hidden/Home-pill presentation and the unrelated Notes recorder are outside this model.",
+      "The whole voice adapter replay observes synthetic capture, held stop, the panel detent, and explicit Back after stop failure. The agent adapter typed dispatch remains a separate source obligation.",
       "A typed message that waited on a chain that failed is sent like any other; only the later checks of p.send (empty text, a reply in progress, a held draft) are outside this model.",
       "Whether the waiting message is still current (screen, conversation, draft, reply target) is one nondeterministic input."
     ]
@@ -6276,6 +6325,9 @@
       "remountClearsLatchTest",
       "latchBlocksEditSaveTest",
       "supersededSaveTest",
+      "supersededReceiptDoesNotPublishTest",
+      "closedFormKeepsReceiptViewTest",
+      "replacedFormKeepsReceiptViewTest",
       "changedEventNotDeletedTest"
     ],
     "invariants": [
@@ -6391,7 +6443,8 @@
       }
     ],
     "stateMapping": {
-      "form/separate/formEpoch/opEpoch": "Calendar form identity, creationDraftEpoch and the ownsForm check of a running save",
+      "form/separate/formEpoch/opEpoch": "Calendar form identity and the exact form object in ownsForm",
+      "draftEpoch/opDraftEpoch": "creationDraftEpoch and the draft epoch captured by readCreations",
       "saving/stage/opKind": "calendarSaving and the awaited step of the one create, edit or delete",
       "unknownReceipts/unknownExists/savedReceipts/pendingShown/recoveryFailed": "Native creation journal as read by readCreations, creationPending and creationRecoveryFailed",
       "selected/events": "The selected device event and the provider event count",
@@ -6399,7 +6452,8 @@
     },
     "abstractions": [
       "One form, one selected event and at most two unknown creation receipts stand for the journal and the event list.",
-      "formEpoch merges creationDraftEpoch with the form object identity that ownsForm compares; any replacement or close of the form changes it.",
+      "A new event increments creationDraftEpoch, which fences publication of a previous journal read. Form close or a replacement object can retire ownsForm without advancing creationDraftEpoch. A native read can settle the journal without publishing its response to the recovery notice.",
+      "The exact read-token and owner checks are outside this single outstanding save-read projection. The whole adapter replay uses held native replies and a synthetic CalendarProvider/journal.",
       "The permission request, the option-event readback and note-origin linking are folded into the write step; a failed readback is a lost answer.",
       "The native creation journal (written unknown before the insert, settled to saved by a later read, acknowledged only when saved) lives in the shared calendar plugin and is modeled at its contract.",
       "checkCreations is modeled only while no save runs; the code has no such guard, and the check only reads and acknowledges saved receipts.",
@@ -7843,6 +7897,10 @@
     "tests": [
       "doubleConfirmDispatchesOnceTest",
       "leftDuringValidationOpensNothingTest",
+      "hideRetiresPendingConfirmTest",
+      "confirmedChangeSettlesWhileHiddenTest",
+      "validationRefusesWhileHiddenTest",
+      "validationMayFinishAfterShowingTest",
       "concurrentRequestsOpenOneReviewTest",
       "changedItemClosesReviewTest",
       "changedAfterConfirmRefusedByAndroidTest",
@@ -7898,16 +7956,17 @@
       }
     ],
     "stateMapping": {
-      "visible/hostReview/epoch/disposed": "The mounted Photos host, its own album or share review, and the adapter epoch bumped on leave and dispose",
+      "inPhotos/hidden/hostReview/epoch/disposed": "The active Photos host, document visibility, the host album or share review, and the adapter epoch bumped on leave and dispose",
       "requests": "Agent change requests waiting for provider validation, with the epoch and revision they captured",
       "review/reviewRevision/reviewEpoch": "The single pending review and the revisions it binds",
       "confirms/acting/actingRevision/latePresses": "Owner confirmations being re-validated, the change handed to Android, and confirmations whose review was gone when their re-validation returned",
       "dispatched/applied": "Reviews handed to Android and changes Android applied"
     },
     "abstractions": [
-      "One item with three revisions, two concurrent requests, two confirm presses and three visits. Search, inspect, select and view requests are outside this model, as is the review ended by hiding the app.",
+      "One item with three revisions, two concurrent requests, two confirm presses and three visits. Search, inspect, select and view requests are outside this model.",
       "Android re-checks the reviewed revision before applying; its dialog is one settle step.",
-      "Trace replay: test/quint-photo-library-agent-review.test.mjs replays simulator traces step by step against createDeviceLibrary with the native library plugin and the main Photos host as ports, every validate and requestChange call answered by a model step. The revision and visit a review binds are compared through what the provider and Android are asked and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
+      "The whole adapter is mounted over a document with visibilitychange events. Hiding closes the in-app review and prevents its pending confirmation from dispatching, while an already dispatched Android request may finish. The pre-open validation checks current visibility on return without retiring the Photos visit.",
+      "The owning test replays the sampled visit interleavings and the named visibility schedules against createDeviceLibrary, with native library responses and the main Photos host as ports. It observes hosted redraw, the pending card, validation and native dispatch; the host reset and Android device behavior are outside the source correspondence."
     ]
   },
   {
@@ -8318,6 +8377,7 @@
       "dragOverToolbarIsSuppressedTest",
       "navigationRetiresDragTest",
       "expiredClickIsDroppedTest",
+      "closedChatForgetsDraggedHeightTest",
       "freshPressLiftsSuppressionTest"
     ],
     "invariants": [
@@ -8327,7 +8387,8 @@
       "HomeKeepsBar",
       "KeptBarIsHomeBar",
       "GhostInsideWindow",
-      "ValidDetent"
+      "ValidDetent",
+      "RememberedOnlyWhileOpen"
     ],
     "witnesses": [
       "HomeBarKeptWitness",
@@ -10660,6 +10721,8 @@
       "unloadedPageRefusesEveryEgressTest",
       "insecurePageIsNotBookmarkedTest",
       "privateTabEgressTest",
+      "bookmarkCommitAndRemoveTest",
+      "privateBookmarkOutsideHistoryTest",
       "copyLinkNeedsShownPageTest",
       "insecurePageFailureIsExplainedTest",
       "failedShareIsReportedTest"
@@ -10684,7 +10747,9 @@
       "InsecurePageFailedWitness"
     ],
     "sources": [
-      "apps/app/src/prototype/browser-adapter.ts"
+      "apps/app/src/prototype/browser-adapter.ts",
+      "apps/app/src/browser/browser-surface.ts",
+      "apps/app/src/browser/preference-documents.ts"
     ],
     "symbols": [
       {
@@ -10738,7 +10803,7 @@
     "abstractions": [
       "One tab is selected throughout; it loads one HTTPS and one plain-HTTP address. Revisions are bounded at 5 and each kind of egress at 3.",
       "The clipboard answers a copy before anything else happens; the source checks the page again after that answer. The bookmark store applies a write at once (BookmarksHydration models its queue and hydration).",
-      "On the web build a page that can only be opened externally may also be bookmarked; the model covers the native build.",
+      "The native port replay covers all page actions. The mounted web replay covers bookmark admission and persistent bookmark storage for committed HTTPS, pending loads, HTTP and private tabs. The shipped web surface emits committed pages, pending loads or errors; the retained externalOnly event compatibility is outside these traces.",
       "PrivatePageBookmarkedWitness, PrivatePageEmailedWitness and PrivatePageCopiedWitness record current behavior: a private page's address can be bookmarked, put in an email draft and copied by the user's own action without a further confirmation. PageMovedUnderShareSheetWitness records that a page may navigate while the native sheet is open.",
       "test/quint-browser-page-egress.test.mjs replays this model's scenario, witness and random traces against the installed Browser adapter's rendered Share, Share by email, Copy link and Bookmark controls over the shared tab session in a jsdom document, with a controlled native plugin, clipboard and menu-close delay, and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance."
     ],
@@ -10986,7 +11051,17 @@
       "tooLargeCannotSaveTest",
       "conflictNeedsChoiceTest",
       "conflictBlocksSaveTest",
-      "retryOffersTypedTextTest"
+      "retryOffersTypedTextTest",
+      "closingEditorRetiresReviewTest",
+      "heldReviewDiscardsOnlyAfterApprovalTest",
+      "heldReplaceKeepsCopyWithoutApprovalTest",
+      "productionRecoveryOnlyKeepsDataTest",
+      "staleRecoverySnapshotRefusesResetTest",
+      "confirmedRecoveryUsesCapturedDraftTest",
+      "closingEditorCancelsRecoveryTest",
+      "staleDiscardReviewPreservesNewerCopyTest",
+      "approvedReplaceClearsConflictTest",
+      "closingEditorRetiresPendingResetTest"
     ],
     "invariants": [
       "TypeOK",
@@ -10998,7 +11073,9 @@
       "OfferedHasText",
       "NoTextNoShape",
       "StaleEditsAreRetained",
-      "SavedThenClearedOrKept"
+      "SavedThenClearedOrKept",
+      "ModalsOwned",
+      "ResetNeedsRecovery"
     ],
     "witnesses": [
       "OfferedWitness",
@@ -11012,7 +11089,15 @@
     "sources": [
       "apps/app/src/browser/calendar-editor-draft.ts",
       "apps/app/src/browser/calendar-editor.ts",
-      "apps/app/src/browser/review.ts"
+      "apps/app/src/browser/review.ts",
+      "apps/app/src/browser/domain-recovery.ts",
+      "apps/app/src/browser/retained-data-notice.ts",
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts"
+    ],
+    "sharedSources": [
+      "packages/ui/src/state/durable-draft-controller.ts",
+      "packages/ui/src/state/durable-draft.ts"
     ],
     "symbols": [
       {
@@ -11095,6 +11180,8 @@
       "form": "The fields the editor shows: the event's own, a stored copy's or ones typed here",
       "stored/synced/savedCopy": "The stored draft copy, whether it equals the editor's text, and the copy a conflict offers",
       "stage": "The awaited controller.open, retry, consume or event commit",
+      "review/reviewStoreCurrent": "Outstanding BrowserReviews approval of discard or replace and the shared controller’s exact expected durable draft row",
+      "recovery/recoveryCurrent/recoveryReset": "The installed recovery dialog, captured browser document revision and observed reset receipt",
       "inert/disabled/canRestore/canReplace/canDiscard/canRetry": "form.inert, save.disabled and the hidden state of the four draft buttons as publish() last set them",
       "saves/saveResult": "Event commits that resolved, and how the last Save event press ended",
       "staleSave/unreviewedSave": "History of an event commit started from older-revision edits or while the retained edits were unreviewed"
@@ -11102,8 +11189,9 @@
     "abstractions": [
       "One event with two revisions: the one being edited and an older one. Retained copies are classed by the revision they carry; field contents are not modeled.",
       "The draft controller is an input: it answers the open, the retry and the clear, and reports a conflict or a storage error. Its own storage protocol is the shared durable draft controller's.",
-      "The Replace and Discard reviews are answered in the same step they open; a review left open while the controller reports is not modeled.",
-      "Editor storage recovery, the size and shape limits of readCalendarEditorDraft beyond too-large fields, and date validation of the event save are not modeled.",
+      "The broad draft-only replay uses draftStep and folds immediate review answers into the operation. The directed installed replay holds actual BrowserReviews and checks owner retirement before a stale approval.",
+      "Production recovery only opens the retained-data notice. The development workflow uses a captured browser document revision and separate confirmation. The host ports control storage, downloads and reload. The held review assumes the visible editor text is current. A differing persisted copy is resolved by the controller's storage checks.",
+      "Extended field limits and event date validation remain separate.",
       "This is the browser Calendar's modal editor; the prototype Calendar's retained forms are modeled separately."
     ]
   },
@@ -11115,6 +11203,7 @@
     "invariant": "safety",
     "tests": [
       "readThenApplyTest",
+      "seriesAndGuestsRoundTripTest",
       "staleUpdateRefusedTest",
       "pendingDeletionBlocksTest",
       "deleteIsStagedTest",
@@ -11150,6 +11239,7 @@
       "apps/app/src/browser/calendar-store.ts",
       "apps/app/src/browser/calendar-deletions.ts",
       "apps/app/src/browser/calendar-records.ts",
+      "apps/app/src/browser/calendar-sync-fields.ts",
       "apps/app/src/runtime/deletion-owner.ts"
     ],
     "symbols": [
@@ -11225,6 +11315,7 @@
     "stateMapping": {
       "bound/sourceSame": "current() of the controller's binding, and the stored sourceRevision compared with the one the port was created for",
       "exists/revision/pending": "The event row in the stored calendar document, its revision, and calendarDeletionPending for it",
+      "series/guests/richUpdate/stagedScope": "Stored recurrence and attendee presence, the dedicated provider payload, and the most recent deletion scope staged by this port",
       "known/expected": "The revision the controller last received from get or applyProviderEvent, and the expectedRevision of the running call",
       "op/phase/result/wrote": "The running get, applyProviderEvent or delete: before the document step, or after it with only the closing check left; what the document step did and the revision it stored",
       "ownerCurrent": "browserDeletionOwnerCurrent for the owner captured when delete started",
@@ -11236,7 +11327,8 @@
     "abstractions": [
       "One stored event and one call at a time; the sync controller serializes its port calls. Revisions are counted; the stored ones are opaque strings.",
       "A provider event is valid or not; the checks behind that (title, dates, whole all-day dates, time zone) are one input. A stored event that needs recovery before syncing is not modeled.",
-      "Recurring series, attendees and the fields an update carries are not modeled; a deletion is staged for the event with the owner's Undo window and is undone or finished by the owner's steps.",
+      "A dedicated provider round trip tracks whether a supported series and a nonempty attendee list survive applying, reading, and staging a series deletion. The source replay checks literal recurrence, exclusions and optionality.",
+      "The generated schedules use single events without attendees. Unsupported recurrence and guest forms are outside this scenario. Deletion uses the owner's Undo window and is undone or finished by the owner's steps.",
       "The step weights its choices so sampled walks complete calls; every action stays enabled in every state its guard allows.",
       "CalendarLinkedSync (services) models the shared sync controller and assumes this port's contract."
     ]
@@ -11251,6 +11343,7 @@
       "reopenedTest",
       "declinedReviewTest",
       "timePassedDuringReviewTest",
+      "tomorrowInDstGapTest",
       "retryReadsBackTest",
       "otherModeWaitsTest",
       "movedScheduleWaitsTest",
@@ -11401,7 +11494,8 @@
     },
     "abstractions": [
       "One completed one-off reminder and the revision its detail shows. Completing it again is one step that shows the new completed revision; the completion itself is ReminderDecision.",
-      "The review is answered in the step that opens it; the clock may pass the reviewed time during it. A local time skipped by a time-zone change is not modeled.",
+      "The review is answered in the step that opens it; the clock may pass the reviewed time during it.",
+      "A dedicated scenario models a nonexistent local time tomorrow and refuses that press before review. The source replay supplies New York's real spring-forward gap; the ordinary generated campaign uses valid wall times.",
       "The reopen schedule depends on the time of the press; time moving is one step after which a press computes a different operation from a journaled one.",
       "The binding hash, the record write and the outcome validation of the shared journal are one retained step; a full or unreadable journal is not modeled.",
       "Native applies or ignores an update atomically and keeps a receipt for every applied one; that contract is assumed. A change elsewhere keeps the reminder completed."

@@ -125,7 +125,10 @@ export async function checkAutomationRequestSettlement(extraSources = [], {rewri
         task.applied = true;
         task.reply = exists ? 'ok' : 'rejected';
         if (exists) {if (task.method === 'DELETE') exists = false;else if (task.method === 'PUT') enabled = task.body.enabled;}
-        mark('Controlled agent applies the exact received request', action('serverTake', {id: task.id, kind: task.method === 'DELETE' ? 'delete' : task.method === 'PUT' ? 'enable' : 'fire', target: task.method === 'PUT' ? task.body.enabled : false}));
+        const label = task.reply === 'rejected'
+          ? 'Controlled agent refuses the request for the removed row'
+          : 'Controlled agent applies the exact received request';
+        mark(label, action('serverTake', {id: task.id, kind: task.method === 'DELETE' ? 'delete' : task.method === 'PUT' ? 'enable' : 'fire', target: task.method === 'PUT' ? task.body.enabled : false}));
       };
       const answer = async (task, unknown = false) => {
         if (unknown) task.reject(Error('Synthetic reply lost after dispatch'));
@@ -167,6 +170,25 @@ export async function checkAutomationRequestSettlement(extraSources = [], {rewri
     const task = await c.change('delete');c.take(task);await c.answer(task);await c.refresh(true);
     assert.equal(c.observe()['s.retained'].kind, 'none');assert.equal(c.requests.length, 1);
   });
+  await scenario('a definite refusal releases a newer request before list readback', async c => {
+    const deletion = await c.change('delete');
+    await c.answer(deletion, true);
+    await c.refresh(true);
+    assert.equal(c.observe()['s.retained'].kind, 'delete');
+    c.app.render().automation.allowAnother();
+    await until(() => c.observe()['s.retained'].kind === 'none' && !c.app.inspect().busy, 'actual owner release');
+    c.mark('Owner releases the deletion while its application remains uncertain', action('allowAnother'));
+
+    const run = await c.change('fire');
+    c.take(deletion);
+    c.take(run);
+    assert.equal(run.reply, 'rejected');
+    await c.answer(run);
+    assert.equal(c.observe()['s.retained'].kind, 'none', 'Definite refusal must release the journal before readback');
+    await c.refresh(true);
+    assert.equal(c.observe()['s.knownExists'], false);
+    assert.equal(c.requests.length, 2, 'Release and refresh must not resend either request');
+  });
   await scenario('a replacement connection cannot change an unread row', async c => {
     c.app.retire();c.mark('The actual connection observer retires the old read', action('switchConnection'));
     const before = c.requests.length, controls = c.app.render().automation;
@@ -181,7 +203,7 @@ export async function checkAutomationRequestSettlement(extraSources = [], {rewri
   const receipt = await checkTraces({model: 'AutomationRequestSettlement', sources: [...sources], driverHashes, traces, out,
     scope: 'bounded-orchestration', assumptions: [
       'The actual Automations renderer, AutomationsProtocol and owner-isolated WorkflowIntentStore execute through the owning functional fixture. The observer reads closure state and durable slot bytes only.',
-      'Six selected complete/partial-list, lost-reply, known-reply, owner release, unread-connection and delayed-server schedules use one prompt and at most two mutations. Remote application and reply timing are controlled ports, not an upstream-agent refinement claim.',
+      'Seven selected schedules cover complete and partial reads, lost and definitive replies, owner release, unread connections and delayed server application. Each uses one prompt and at most two mutations. Remote application and reply timing are controlled ports, not an upstream-agent refinement claim.',
       'Retained request IDs are equality classes assigned to actual admitted raw journal bytes. Release reasons, every remote engine counter, reminders and arbitrary interleavings remain unobserved obligations.']});
   return {receipt, obligations: [{model: receipt.model, obligation: 'Unrestricted source scheduling and agent execution',
     reason: 'The bounded projection observes real local journal/lock/list behavior; remote engine effects, full flight-state ghosts and all mutation histories remain outside this source campaign.'}]};

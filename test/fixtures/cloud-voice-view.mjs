@@ -64,8 +64,8 @@ export function cloudVoiceViewFixture(options={}){
  // These scenarios exercise the batch port; native streaming has its own owning drivers.
  box.nativeCloudStreamingAvailable=()=>false;
  load('../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts',box);
- load('prototype/local-speech-playback.ts',box,['installLocalSpeechPlayback','stopLocalSpeechPlayback','currentNoteReading','stopSpeaking','speakNote','readNoteAloud']);
  load('runtime/voice-states.ts',box,['voiceFailure','transcriptProvenance','deniedSettingsChoice','DENIED_SETTINGS_LABEL','MEDIA_UNCONFIRMED_NOTICE','speechCleanupNotice']);
+ load('prototype/local-speech-playback.ts',box,['installLocalSpeechPlayback','stopLocalSpeechPlayback','currentNoteReading','stopSpeaking','speakNote','readNoteAloud']);
  // Issue #395 native stage bridge: a no-op outside the phone.
  box.installNativeVoiceTurnMarks=()=>{};
  box.alphaViewPath=alphaViewPath;box.cloudServiceName=cloudServiceName;box.cloudVoiceLimitOf=cloudVoiceLimitOf;box.readServiceLimit=readServiceLimit;box.retryDuration=retryDuration;

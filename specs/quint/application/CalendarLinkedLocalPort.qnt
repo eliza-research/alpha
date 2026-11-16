@@ -9,6 +9,8 @@ module CalendarLinkedLocalPort {
     bound: bool, sourceSame: bool,
     // The event in the stored calendar: present, its revision, and an unresolved deletion.
     exists: bool, revision: int, pending: bool,
+    // Whether the stored event keeps the reviewed repeat/guests, and what scope was staged.
+    series: bool, guests: bool, richUpdate: bool, stagedScope: str,
     // known: the revision the controller last read (-1 before any read).
     known: int,
     // The call in progress. phase: "admitted" after the first check, "written" once the
@@ -27,11 +29,12 @@ module CalendarLinkedLocalPort {
   pure val Outcomes = Set("none", "snapshot", "missing", "applied", "staged", "absent", "aborted", "pending",
     "changed", "invalid")
   action init = s' = { bound: true, sourceSame: true, exists: true, revision: 0, pending: false, known: -1,
+    series: false, guests: false, richUpdate: false, stagedScope: "none",
     op: "none", phase: "idle", expected: -1, ownerCurrent: true, result: "none", wrote: -1, outcome: "none",
     documentNotices: 0, deletionNotices: 0, finished: 0, writes: 0,
     staleWrite: false, unboundWrite: false, heldWrite: false, lateAbort: false }
   pure def ended(st: State, outcome: str): State =
-    { ...st, op: "none", phase: "idle", expected: -1, result: "none", wrote: -1, outcome: outcome }
+    { ...st, op: "none", phase: "idle", expected: -1, result: "none", wrote: -1, richUpdate: false, outcome: outcome }
   // A stored write, with what it found recorded.
   pure def wrote(st: State, result: str): State = {
     ...st, phase: "written", result: result, writes: st.writes + 1,
@@ -42,12 +45,16 @@ module CalendarLinkedLocalPort {
   // The call starts: an unbound controller is refused before anything is read, and a provider
   // event that cannot be stored without losing fields before anything is written. An update or
   // deletion names the revision the controller holds.
-  action begin(kind: str, valid: bool): bool = all {
+  action beginWithFields(kind: str, valid: bool, richUpdate: bool): bool = all {
     s.op == "none", Ops.contains(kind), kind == "get" or s.known >= 0,
     s' = if (not(s.bound)) ended(s, "aborted")
       else if (kind == "apply" and not(valid)) ended(s, "invalid")
-      else { ...s, op: kind, phase: "admitted", expected: if (kind == "get") -1 else s.known, ownerCurrent: true }
+      else { ...s, op: kind, phase: "admitted", expected: if (kind == "get") -1 else s.known,
+        ownerCurrent: true, richUpdate: richUpdate }
   }
+  action begin(kind: str, valid: bool): bool = beginWithFields(kind, valid, false)
+  // A valid provider patch carries a supported series with a nonempty guest list.
+  action beginSeriesUpdate = beginWithFields("apply", true, true)
   // The person the deletion would be attributed to changed while it waited for the calendar.
   action ownerChanged = all {
     s.op == "delete", s.phase == "admitted", s.ownerCurrent, s' = { ...s, ownerCurrent: false }
@@ -62,10 +69,11 @@ module CalendarLinkedLocalPort {
           finished: s.finished + 1 }
       else if (s.op == "apply")
         if (not(s.exists) or s.revision != s.expected) ended(s, "changed")
-        else { ...wrote(s, "applied"), revision: s.revision + 1, wrote: s.revision + 1 }
+        else { ...wrote(s, "applied"), revision: s.revision + 1, wrote: s.revision + 1,
+          series: s.richUpdate, guests: s.richUpdate }
       else if (not(s.exists)) { ...s, phase: "written", result: "absent" }
       else if (s.revision != s.expected or not(s.ownerCurrent)) ended(s, "changed")
-      else { ...wrote(s, "staged"), pending: true }
+      else { ...wrote(s, "staged"), pending: true, stagedScope: if (s.series) "series" else "event" }
   }
   // The closing check: a controller unbound meanwhile gets no result and the page no notice,
   // though a write already made stays.
@@ -83,7 +91,7 @@ module CalendarLinkedLocalPort {
   }
   action ownerStagesDeletion = all { s.exists, not(s.pending), s' = { ...s, pending: true } }
   action undoDeletion = all { s.pending, s' = { ...s, pending: false } }
-  action finalizeDeletion = all { s.pending, s' = { ...s, pending: false, exists: false } }
+  action finalizeDeletion = all { s.pending, s' = { ...s, pending: false, exists: false, series: false, guests: false } }
   action sourceReplaced = all { s.sourceSame, s' = { ...s, sourceSame: false } }
   action unbind = all { s.bound, s' = { ...s, bound: false } }
   action step = {
@@ -116,6 +124,7 @@ module CalendarLinkedLocalPort {
   val KnownWasRead = s.known <= s.revision
   val TypeOK = s.op.in(Ops.union(Set("none"))) and s.phase.in(Set("idle", "admitted", "written"))
     and Outcomes.contains(s.outcome) and s.result.in(Set("none", "applied", "staged", "absent"))
+    and s.stagedScope.in(Set("none", "event", "series")) and (s.richUpdate implies s.op == "apply")
     and s.revision.in(0.to(40)) and s.known >= -1 and s.expected >= -1 and s.wrote >= -1 and s.wrote <= s.revision
   val safety = TypeOK and NoStaleWrite and WritesAreFenced and PendingDeletionHolds and OneCall
     and NoticesFollowCompletion and WritesAreCounted and KnownWasRead
@@ -133,6 +142,12 @@ module CalendarLinkedLocalPort {
     .expect(s.outcome == "snapshot" and s.known == 0)
     .then(begin("apply", true)).then(transact).expect(s.phase == "written" and s.revision == 1)
     .then(finish).expect(AppliedWitness and s.documentNotices == 1 and s.deletionNotices == 0 and safety)
+  run seriesAndGuestsRoundTripTest = init.then(begin("get", true)).then(transact)
+    .then(beginSeriesUpdate).then(transact).expect(s.series and s.guests and s.phase == "written")
+    .then(finish).then(begin("get", true)).then(transact)
+    .expect(s.outcome == "snapshot" and s.series and s.guests and safety)
+    .then(begin("delete", true)).then(transact).then(finish)
+    .expect(s.pending and s.series and s.guests and s.stagedScope == "series" and safety)
   // The owner edited the event after the controller read it: the update is refused, nothing written.
   run staleUpdateRefusedTest = init.then(begin("get", true)).then(transact).then(localEdit)
     .then(begin("apply", true)).then(transact)

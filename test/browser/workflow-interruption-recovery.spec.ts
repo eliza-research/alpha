@@ -246,15 +246,19 @@ test('editing while a run awaits approval leaves that run on its reviewed versio
  expect(await posts(page,'/lifecycle')).toHaveLength(0);expect(await posts(page,'/run')).toHaveLength(1);
 });
 
-test('the assistant offers current actions without prototype automation suggestions',async({page})=>{
- // The reference model still carries the design prototype's "Every weekday at 6, …" chip text. The connected
- // product shows no suggestion chips, on Home or inside Workflows.
+test('the assistant offers no suggestion chips and no prototype automation suggestion',async({page})=>{
+ // The reference model still carries the design prototype's "Every weekday at 6, …" text. The chip row is gone
+ // (AP-16 AC-23): on Home and inside Workflows the sheet shows no chips, and the one faint suggestion in the bar
+ // is never prototype automation text. The owner asks by typing into the bar.
  await setup(page);
- await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js');const values=Component.prototype.renderVals,seen=(window as any).chipLists={} as Record<string,string[]>;Component.prototype.renderVals=function(){const out=values.call(this);seen[this.S().view||'home']=(out.sugg||[]).map((chip:any)=>String(chip.label));return out;};});
- await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await newWorkflow(page);await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back')));await returnToApps(page);
- const lists=await page.evaluate(()=>(window as any).chipLists as Record<string,string[]>);
- expect(Object.keys(lists)).toEqual(expect.arrayContaining(['home','workflows']));
- const currentActions=new Set(['Create a note','Set a reminder','Open Calendar','Open Notes']);
- for(const [view,chips] of Object.entries(lists))for(const chip of chips)expect(currentActions.has(chip),view+': '+chip).toBe(true);
+ await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js');const values=Component.prototype.renderVals,seen=(window as any).offers={} as Record<string,{chips:unknown;faint:string}>;Component.prototype.renderVals=function(){const out=values.call(this);seen[this.S().view||'home']={chips:out.sugg,faint:String(out.faint?.text||'')};return out;};});
+ await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await newWorkflow(page);
+ await page.getByRole('button',{name:'Open conversation',exact:true}).click();
+ await expect(page.locator('[data-alpha-chat-suggestions]')).toHaveCount(0);
+ await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
+ await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back')));await returnToApps(page);
+ const offers=await page.evaluate(()=>(window as any).offers as Record<string,{chips:unknown;faint:string}>);
+ expect(Object.keys(offers)).toEqual(expect.arrayContaining(['home','workflows']));
+ for(const [view,offer] of Object.entries(offers)){expect(offer.chips,view).toBeUndefined();expect(offer.faint,view).not.toMatch(/every weekday|wrap up my day/i);}
  expect(await posts(page,'/run')).toHaveLength(0);
 });

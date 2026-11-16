@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
-const { canvasGeometry, keyboardFreeHeight, surfaceLayout, WIDE_CANVAS } = await import('../apps/app/src/runtime/canvas-geometry.ts');
+const { canvasGeometry, keyboardFreeHeight, stageMinimum, surfaceLayout, WIDE_CANVAS } = await import('../apps/app/src/runtime/canvas-geometry.ts');
 
 const input = (width, height, extra = {}) => ({ width, layoutHeight: height, available: height, desktop: false, fluid: true, launcher: false, screenShort: Math.min(width, height), editing: false, ...extra });
 const fit = (width, height, extra) => canvasGeometry(input(width, height, extra), height);
@@ -94,4 +94,12 @@ test('wide Calendar leads with the previous day from three columns and keeps tho
   const open = () => {};
   assert.deepEqual(JSON.parse(JSON.stringify(days.calendarAgendaRows([{ title: 'Trip', open }], [{ title: 'Late', top: 300, time: '3:00', agendaTime: '3:00 PM', open }, { title: 'Early', top: 100, time: '9:00', agendaTime: '9:00 AM', open }]))),
     [{ title: 'Trip', time: 'All day' }, { title: 'Early', time: '9:00 AM' }, { title: 'Late', time: '3:00 PM' }]);
+});
+
+test('at the largest text size the comms stage keeps its header and its last element above the sheet', () => {
+  assert.equal(stageMinimum(1, 56, 120), 0, 'at default text the stage may shrink freely');
+  assert.equal(stageMinimum(1.49, 56, 120), 0);
+  assert.equal(stageMinimum(1.5, 56, 120), 176);
+  assert.equal(stageMinimum(2, 64, 0), 64, 'a list without a marked row keeps its header');
+  assert.equal(stageMinimum(2, -4, 10), 10);
 });

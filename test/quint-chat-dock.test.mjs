@@ -47,8 +47,10 @@ test("partial source contract: every settled drag in simulated ChatDock traces t
       if (home) assert.notEqual(next.chat, 'hidden', label);
       assert.equal(step.state.barKept, home && mode === 'input' && direction === 'down', label);
       assert.equal(step.state.chat, next.chat === 'hidden' && !collapsed ? rest(before.view) : next.chat, label);
-      // A released height is remembered; a snap or a flick leaves the remembered height alone.
-      assert.equal(step.state.remembered, before.remembered || next.height !== undefined, label);
+      // A released height is remembered; a snap or a flick leaves the remembered height alone,
+      // and a collapse forgets it: it belongs to the open session it was dragged in (AC-04).
+      assert.equal(step.state.remembered, (before.remembered || next.height !== undefined) &&
+        (step.state.chat === 'sheet' || step.state.chat === 'full'), label);
       seen.add(label);
     }
   }
