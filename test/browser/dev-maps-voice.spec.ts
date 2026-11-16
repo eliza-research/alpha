@@ -22,7 +22,7 @@ test('Maps keeps visual guidance with centered ETA and one End control',async({p
  const offset=()=>controls.evaluate(el=>{const a=el.getBoundingClientRect(),b=el.querySelector(':scope > div')!.getBoundingClientRect();return Math.abs((a.left+a.right-b.left-b.right)/2);});
  await expect.poll(offset).toBeLessThan(1);expect(await spoken(page)).toEqual([]);
  await page.screenshot({path:info.outputPath('maps-centered-visual-guidance.png'),animations:'disabled'});
- await fix(page,43.75);await expect(page.getByRole('status').filter({hasText:'Off route'})).toBeVisible();
+ await fix(page,43.75);await expect(page.getByRole('status').filter({hasText:'Off route'})).toBeVisible();await expect(page.getByRole('status').filter({hasText:'Off route'})).toContainText('End navigation');await expect(page.getByRole('status').filter({hasText:'Off route'})).not.toContainText('Reroute');
  await expect(controls.getByRole('button')).toHaveCount(1);expect(await spoken(page)).toEqual([]);
  await page.setViewportSize({width:915,height:412});await expect(page.locator('html')).toHaveClass(/alpha-landscape/);await setTextScale(page,2);
  await expect.poll(offset).toBeLessThan(1);

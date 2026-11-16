@@ -85,6 +85,16 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   );
   const navigationTransport=registerPlugin<NavigationBridge & {consumeNavigationOpen():Promise<{open:boolean}>;clearNavigationOpen():Promise<unknown>}>('AlphaMapsTransport');
   const background=new BackgroundNavigation(navigationTransport,()=>Capacitor.isNativePlatform());
+  // Alpha's navigation sheet has no Reroute control; the shared off-route copy names one. Point only
+  // at the End control that remains (the screen-off notification keeps its own Stop action).
+  const offRouteCopy=(text:string)=>text==='Off route. Tap Reroute from here.'?'Off route. End navigation to plan a new route.'
+    :text==='Open Maps to reroute from here or stop.'?'Open Maps to end navigation.':text;
+  const navigationBackground={
+    active:()=>background.active(),
+    start:(title:string,text:string,onStopped:(reason:string)=>void)=>background.start(title,offRouteCopy(text),onStopped),
+    update:(title:string,text:string)=>background.update(title,offRouteCopy(text)),
+    stop:()=>background.stop(),
+  };
   // A Cloud read already made or under way for this account is not repeated: a second read would
   // uninstall the provider an open Maps search is using. An account change retires it first (cloud-maps.ts).
   const readCloudMaps = () => cloudMapsCoverage() ? Promise.resolve() : initializeCloudMaps();
@@ -107,7 +117,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     agentLocation: new NativeMapsLocation(),
     locationGranted: locationPermissionGranted,
     voice: navigationVoice,
-    background,
+    background: navigationBackground,
     share: (data, signal) => {
       signal.throwIfAborted();
       const view = screen.view();
@@ -282,7 +292,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const cloudFailure = cloudMapsDiagnostics();
     const statusText = !regionalMapsConfigured && cloudFailure.error === 'unconfigured' &&
       (status.text.startsWith('Connect a Maps provider') || status.text === cloudFailure.message)
-      ? 'Maps unavailable' : status.text;
+      ? 'Maps unavailable' : offRouteCopy(status.text);
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
     const isPlace = view.mode === 'place', isResults = view.mode === 'results' || view.mode === 'origin', isNav = view.mode === 'navigation';
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;

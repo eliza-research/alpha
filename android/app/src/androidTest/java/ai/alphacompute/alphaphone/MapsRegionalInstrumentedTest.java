@@ -76,7 +76,7 @@ public final class MapsRegionalInstrumentedTest {
    waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
    navigationPhase("origin");startNavigation();watches(1);
    waitFor("!!document.querySelector('[data-map-position]')");
-   navigationPhase("off-route");waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Off route. Tap Reroute from here.')");
+   navigationPhase("off-route");waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Off route. End navigation to plan a new route.')");
    navigationPhase("arrival");waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Destination reached.')");watches(0);
    click("End navigation");watches(0);
    navigationPhase("origin-again");startNavigation();watches(1);
