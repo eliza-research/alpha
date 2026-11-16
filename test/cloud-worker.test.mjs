@@ -8,9 +8,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {workerDeployment,deployResources,edgeConfig,prepare,preparedTree,completeSecrets,secretProblems,componentSecrets,readEnvFile,smoke,
+import {workerDeployment,deployResources,databaseAuthority,reportDatabaseIdentity,migrate,edgeConfig,prepare,preparedTree,completeSecrets,secretProblems,componentSecrets,readEnvFile,smoke,
  WORKER_SECRETS,LOGIN_SECRETS,OPERATOR_SECRETS,GENERATED_SECRETS} from '../scripts/cloud-worker.ts';
-import {registrationRows,registrationFor,registrationAppId,colonFingerprint,releaseSignerFingerprints} from '../scripts/cloud-registration.ts';
+import {registrationRows,registrationFor,registrationAppId,colonFingerprint,releaseSignerFingerprints,seedRegistration} from '../scripts/cloud-registration.ts';
 import {edgeRoute} from '../cloud/edge/worker.ts';
 import {validateCloudDeployment,storageFingerprint,STORAGE_NAMESPACES} from '../scripts/cloud-deployment.ts';
 import {leakedElizaHost} from '../scripts/local-cloud.ts';
@@ -19,6 +19,10 @@ const read=file=>JSON.parse(fs.readFileSync(file,'utf8'));
 const example={policy:read('cloud/policy.example.json'),resources:read('cloud/resources.example.json')};
 const alpha={policy:read('cloud/policy.json'),resources:read('cloud/resources.json')};
 const identity=read('app.config.json');
+const reviewedDatabaseReceipts={
+ DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256:'a'.repeat(64),
+ DATABASE_IDENTITY_EXPECTED_AUTHORITY_SHA256:'b'.repeat(64),
+};
 const legalDocument=title=>({title,revision:'synthetic-1',sections:[{title:'Fixture',paragraphs:['Only synthetic text.']}]});
 
 test('the committed Alpha Cloud policy is ai.alphacompute.alphaphone on alphacompute.ai',()=>{
@@ -176,7 +180,7 @@ test('secrets: operator names are named, internal ones are generated once and ne
  assert.deepEqual(completeSecrets(first,environment),first);
  const missing=secretProblems(first,environment);
  for(const name of OPERATOR_SECRETS.required)assert.ok(missing.includes(`${name} is missing`),name);
- const operator={DATABASE_URL:'postgresql://cloud@db.internal/alpha',STEWARD_DATABASE_URL:'postgresql://steward@db.internal/steward',KV_REST_API_URL:'https://kv.internal',
+ const operator={...reviewedDatabaseReceipts,DATABASE_URL:'postgresql://cloud@db.internal/alpha',STEWARD_DATABASE_URL:'postgresql://steward@db.internal/steward',KV_REST_API_URL:'https://kv.internal',
   KV_REST_API_TOKEN:'t',CEREBRAS_API_KEY:'c',RESEND_API_KEY:'r',GOOGLE_CLIENT_ID:'g.apps.googleusercontent.com',GOOGLE_CLIENT_SECRET:'s',STRIPE_SECRET_KEY:'sk_test_x',
   STRIPE_WEBHOOK_SECRET:'w',STRIPE_PLUS_MONTHLY_PRICE_ID:'price_p',STRIPE_PLUS_PRODUCT_ID:'prod_p',STRIPE_PRO_MONTHLY_PRICE_ID:'price_q',STRIPE_PRO_PRODUCT_ID:'prod_q',
   CLOUD_PUBLIC_SERVICE_TERMS_JSON:JSON.stringify(legalDocument('Terms')),CLOUD_PUBLIC_SERVICE_PRIVACY_JSON:JSON.stringify(legalDocument('Privacy'))};
@@ -201,7 +205,86 @@ test('secrets: operator names are named, internal ones are generated once and ne
   assert.equal(login[name],undefined);
  }
  for(const name of ['STEWARD_MASTER_PASSWORD','STEWARD_KDF_SALT','STEWARD_AUDIT_HMAC_KEY'])assert.equal(api[name],undefined);
+ for(const name of Object.keys(reviewedDatabaseReceipts))assert.equal(api[name]??login[name],undefined);
  assert.equal(api.STEWARD_JWT_SECRET,login.STEWARD_JWT_SECRET);
+});
+
+test('the operator reads a receipt without trusting it and enforces the reviewed pair during migration',()=>{
+ const tree=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-database-migrate-'));
+ const originalBun=process.env.BUN, originalReceipt=process.env.DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256;
+ try {
+  const shared=path.join(tree,'packages/cloud/shared');
+  fs.mkdirSync(shared,{recursive:true});
+  fs.writeFileSync(path.join(tree,'package.json'),JSON.stringify({packageManager:'bun@1.99.0'}));
+  const bun=path.join(tree,'bun');
+  fs.writeFileSync(bun,`#!/bin/sh
+if [ "$1" = --version ]; then echo 1.99.0; exit; fi
+printf '%s\\n' "$1" "$2" "$DATABASE_IDENTITY_ENVIRONMENT" "$DATABASE_IDENTITY_GATE_MODE" "\${DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256-unset}" "\${DATABASE_IDENTITY_EXPECTED_AUTHORITY_SHA256-unset}" > "${tree}/call"
+if [ "$1" = run ] && [ ! -f "${tree}/hold" ]; then printf '%s\\n' '[db:migrate] migrations complete'; fi
+`,{mode:0o700});
+  process.env.BUN=bun;
+  process.env.DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256='ambient';
+  const values={DATABASE_URL:'postgresql://fixture@db.example.invalid/cloud'};
+  assert.throws(()=>migrate(tree,values,'staging'),/reviewed lowercase SHA-256/);
+  assert.equal(fs.existsSync(path.join(tree,'call')),false);
+  reportDatabaseIdentity(tree,{...values,...reviewedDatabaseReceipts},'staging');
+  const invocation=()=>fs.readFileSync(path.join(tree,'call'),'utf8').trim().split('\n');
+  assert.deepEqual(invocation(),['--conditions=eliza-source',path.join(tree,'packages/cloud/scripts/admin/preflight-database-identity.ts'),'staging','report','unset','unset']);
+  migrate(tree,{...values,...reviewedDatabaseReceipts},'production');
+  assert.deepEqual(invocation(),['run','--cwd','production','enforce',...Object.values(reviewedDatabaseReceipts)]);
+  fs.writeFileSync(path.join(tree,'hold'),'');
+  assert.throws(()=>migrate(tree,{...values,...reviewedDatabaseReceipts},'production'),/migrator did not confirm completion/);
+ } finally {
+  if(originalBun===undefined)delete process.env.BUN;else process.env.BUN=originalBun;
+  if(originalReceipt===undefined)delete process.env.DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256;else process.env.DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256=originalReceipt;
+  fs.rmSync(tree,{recursive:true,force:true});
+ }
+});
+
+test('seeding checks the review receipt on its own transaction and refuses a mismatch before app writes',()=>{
+ const tree=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-database-seed-'));
+ try {
+  const shared=path.join(tree,'packages/cloud/shared');
+  const upstream=path.join(tree,'packages/cloud/scripts/admin');
+  const trace=path.join(tree,'seed.log');
+  fs.mkdirSync(shared,{recursive:true});
+  fs.mkdirSync(upstream,{recursive:true});
+  fs.writeFileSync(path.join(shared,'package.json'),'{}');
+  fs.writeFileSync(path.join(upstream,'preflight-database-identity.ts'),`
+   import {appendFileSync} from 'node:fs';
+   const record=value=>appendFileSync(${JSON.stringify(trace)},value+'\\n');
+   const client={connect:()=>record('connected'),end:()=>record('closed'),query:async text=>{
+    record(text);
+    if(text.startsWith('select column'))return {rows:['id','client_id','app_url','redirect_uri'].map(column_name=>({column_name}))};
+    if(text.startsWith('select id'))return {rows:[{id:'fixture'}]};
+    return {rows:[{inserted:true}]};
+   }};
+   export const readDatabaseIdentityConfig=authority=>authority;
+   export const createRuntimePgClient=async ()=>client;
+   export async function runDatabaseIdentityPreflight(authority,database){
+    if(client!==database||authority.DATABASE_IDENTITY_GATE_MODE!=='enforce')throw Error('wrong database session');
+    await database.query('identity');
+    return {status:authority.DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256===${JSON.stringify(reviewedDatabaseReceipts.DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256)}?'match':'mismatch'};
+   }
+  `);
+  const databaseUrl='postgresql://fixture@db.example.invalid/cloud';
+  const rows=[registrationRows(alpha.policy,'production')];
+  const run=authority=>seedRegistration({tree,databaseUrl,rows,bun:process.execPath,authority});
+  const rejected=spawnSync(process.execPath,['scripts/cloud-seed-registration.ts'],{encoding:'utf8',env:{...process.env,
+   SEED_PACKAGE_JSON:path.join(shared,'package.json'),SEED_DATABASE_URL:databaseUrl,SEED_ROWS:JSON.stringify(rows),SEED_DATABASE_AUTHORITY:undefined}});
+  assert.equal(rejected.status,1);
+  assert.match(rejected.stderr,/requires reviewed database identity receipts/);
+  assert.equal(fs.existsSync(trace),false);
+  const authority=databaseAuthority(reviewedDatabaseReceipts,'production');
+  assert.throws(()=>run({...authority,DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256:'c'.repeat(64)}),/Seeding the app registration failed/);
+  assert.deepEqual(fs.readFileSync(trace,'utf8').trim().split('\n'),['connected','begin','identity','rollback','closed']);
+  fs.writeFileSync(trace,'');
+  assert.equal(run(authority).seeded[0].clientId,identity.appId);
+  const calls=fs.readFileSync(trace,'utf8').trim().split('\n');
+  assert.deepEqual(calls.slice(0,3),['connected','begin','identity']);
+  assert.equal(calls.filter(line=>line.startsWith('insert into')).length,2);
+  assert.deepEqual(calls.slice(-2),['commit','closed']);
+ } finally { fs.rmSync(tree,{recursive:true,force:true}); }
 });
 
 test('the secrets file must be private and outside the checkout',()=>{

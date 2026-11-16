@@ -25,6 +25,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SEED_SCRIPT = path.join(root, 'scripts/cloud-seed-registration.ts');
 
 export interface AppIdentity { appId: string; appName: string; slug: string }
+export interface CloudDatabaseAuthority {
+  DATABASE_IDENTITY_ENVIRONMENT: CloudEnvironment;
+  DATABASE_IDENTITY_GATE_MODE: 'enforce';
+  DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256: string;
+  DATABASE_IDENTITY_EXPECTED_AUTHORITY_SHA256: string;
+}
 export interface RegistrationRows {
   /** The owning organization (created on first seed when absent). */
   owner: {organizationSlug: string; organizationName: string; email: string};
@@ -90,9 +96,10 @@ export function registrationRows(policy: CloudDeploymentConfig, environment: Clo
  * Upsert the rows into a Cloud database. `tree` is an installed upstream tree (its `pg` is used);
  * `databaseUrl` is the Cloud's Postgres (never logged). Returns the seed script's JSON report.
  */
-export function seedRegistration({tree, databaseUrl, rows, bun}: {tree: string; databaseUrl: string; rows: RegistrationRows[]; bun: string}) {
-  const result = spawnSync(bun, [SEED_SCRIPT], {cwd: path.join(tree, 'packages/cloud/shared'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], env: {
-    ...process.env, SEED_PACKAGE_JSON: path.join(tree, 'packages/cloud/shared/package.json'), SEED_DATABASE_URL: databaseUrl, SEED_ROWS: JSON.stringify(rows)}});
+export function seedRegistration({tree, databaseUrl, rows, bun, authority}: {tree: string; databaseUrl: string; rows: RegistrationRows[]; bun: string; authority?: CloudDatabaseAuthority}) {
+  const result = spawnSync(bun, ['--conditions=eliza-source', SEED_SCRIPT], {cwd: path.join(tree, 'packages/cloud/shared'), encoding: 'utf8', stdio: ['ignore', 'pipe', authority ? 'pipe' : 'inherit'], env: {
+    ...process.env, SEED_PACKAGE_JSON: path.join(tree, 'packages/cloud/shared/package.json'), SEED_DATABASE_URL: databaseUrl, SEED_ROWS: JSON.stringify(rows),
+    SEED_DATABASE_AUTHORITY: authority ? JSON.stringify(authority) : undefined}});
   if (result.status !== 0) throw new Error('Seeding the app registration failed');
   return JSON.parse(result.stdout.trim().split('\n').at(-1) ?? '{}');
 }

@@ -1,16 +1,40 @@
 // Upserts Alpha Phone's native App Auth registration (scripts/cloud-registration.ts) into a Cloud
 // database. Run with the working directory inside an installed upstream tree, so `pg` is upstream's.
-// Inputs: SEED_PACKAGE_JSON (a package.json in that tree), SEED_DATABASE_URL, SEED_ROWS (JSON array).
+// Inputs: SEED_PACKAGE_JSON (a package.json in that tree), SEED_DATABASE_URL, SEED_ROWS (JSON array),
+// and SEED_DATABASE_AUTHORITY for a deployed database.
 // Output: one JSON line describing what was created or updated. Never prints the database URL.
 import {createRequire} from "node:module";
+import {pathToFileURL} from "node:url";
+import type {CloudDatabaseAuthority} from "./cloud-registration.ts";
 
 type Row = Record<string, any>;
 interface PgClient { connect(): Promise<void>; query(text: string, values?: unknown[]): Promise<{rows: Row[]}>; end(): Promise<void> }
-const {Client} = createRequire(process.env.SEED_PACKAGE_JSON ?? '')("pg") as {Client: new (options: {connectionString?: string}) => PgClient};
+interface DatabaseIdentityTools {
+  createRuntimePgClient(databaseUrl: string): Promise<PgClient>;
+  readDatabaseIdentityConfig(authority: CloudDatabaseAuthority): unknown;
+  runDatabaseIdentityPreflight(config: unknown, database: PgClient): Promise<{status: string}>;
+}
+const packageJson = process.env.SEED_PACKAGE_JSON;
+const databaseUrl = process.env.SEED_DATABASE_URL;
+if (!packageJson || !databaseUrl) throw new Error("The seed package and database URL are required");
 const rows = JSON.parse(process.env.SEED_ROWS ?? "[]");
 if (!Array.isArray(rows) || !rows.length) throw new Error("SEED_ROWS is empty");
-const database = new Client({connectionString: process.env.SEED_DATABASE_URL});
-await database.connect();
+const authority = process.env.SEED_DATABASE_AUTHORITY ? JSON.parse(process.env.SEED_DATABASE_AUTHORITY) as CloudDatabaseAuthority : undefined;
+const local = URL.parse(databaseUrl);
+if (!authority && (!local || !["127.0.0.1", "[::1]"].includes(local.hostname))) {
+  throw new Error("Registration seeding requires reviewed database identity receipts for a deployed database");
+}
+if (authority && authority.DATABASE_IDENTITY_GATE_MODE !== "enforce") throw new Error("Registration seeding requires database identity enforcement");
+const identityTools = authority
+  ? await import(new URL("../scripts/admin/preflight-database-identity.ts", pathToFileURL(packageJson)).href) as DatabaseIdentityTools
+  : undefined;
+const config = authority && identityTools?.readDatabaseIdentityConfig(authority);
+let database: PgClient;
+if (identityTools) database = await identityTools.createRuntimePgClient(databaseUrl);
+else {
+  const {Client} = createRequire(packageJson)("pg") as {Client: new (options: {connectionString: string}) => PgClient};
+  database = new Client({connectionString: databaseUrl});
+}
 const sql = async (text: string, values: unknown[] = []): Promise<Row[]> => (await database.query(text, values)).rows;
 const columns = async (table: string) => new Set((await sql("select column_name from information_schema.columns where table_schema = 'public' and table_name = $1", [table])).map(r => r.column_name));
 const quote = (name: string) => '"' + name.replaceAll('"', '""') + '"';
@@ -28,7 +52,11 @@ async function upsert(table: string, row: Row, conflict: string, present: Set<st
 
 const report: Row[] = [];
 try {
+  await database.connect();
   await sql("begin");
+  if (identityTools && (await identityTools.runDatabaseIdentityPreflight(config, database)).status !== "match") {
+    throw new Error("The deployed registration database does not match its reviewed identity");
+  }
   const apps = await columns("apps"), clients = await columns("mobile_app_auth_clients"), users = await columns("users");
   if (!apps.size || !clients.size) throw new Error("apps or mobile_app_auth_clients missing: apply the Cloud migrations first");
   for (const {owner, app, client} of rows as Row[]) {

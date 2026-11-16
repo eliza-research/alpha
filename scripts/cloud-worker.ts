@@ -18,7 +18,8 @@
  *   bun scripts/cloud-worker.ts registration --environment ENV            print the app's registration rows
  *   bun scripts/cloud-worker.ts secrets  --environment ENV --env-file F [--apply] [--frozen]   complete, verify, push
  *   bun scripts/cloud-worker.ts provision --environment ENV --env-file F [--write]  KV, R2, Hyperdrive, DNS
- *   bun scripts/cloud-worker.ts preflight --environment ENV             check required deploy inputs before writes
+ *   bun scripts/cloud-worker.ts preflight --environment ENV [--env-file F] check live resource ownership before writes
+ *   bun scripts/cloud-worker.ts database-identity --environment ENV --env-file F   read redacted database receipts
  *   bun scripts/cloud-worker.ts migrate  --environment ENV --env-file F   apply the Cloud database migrations
  *   bun scripts/cloud-worker.ts seed     --environment ENV --env-file F   register the app (apps + client rows)
  *   bun scripts/cloud-worker.ts deploy   --environment ENV --env-file F [--component api|login|edge|all]
@@ -40,9 +41,10 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {nativeAuthCallbackRegistration, validateCloudDeployment, type CloudDeploymentConfig} from './cloud-deployment.ts';
-import {registrationRows, seedRegistration, readIdentity, releaseSignerFingerprints} from './cloud-registration.ts';
+import {registrationRows, seedRegistration, readIdentity, releaseSignerFingerprints, type CloudDatabaseAuthority} from './cloud-registration.ts';
 import {cloudEnvironments, type CloudEnvironment} from './cloud-sdk-authority.ts';
 import {leakedElizaHost} from './local-cloud.ts';
+import {provisionedId, reconcileCloudResources, writeProvisionedResources} from './cloud-provision.ts';
 import {publishedAssetLinksCheck} from './render-assetlinks.ts';
 import {PLAN_KEYS, parsePlans} from '../apps/app/src/runtime/cloud-plans.ts';
 import {parseCloudServiceInfo} from '../apps/app/src/runtime/cloud-service-info.ts';
@@ -56,12 +58,13 @@ export interface CloudResources {
 }
 
 const SERVICE_DOCUMENT_BINDINGS = ['CLOUD_PUBLIC_SERVICE_TERMS_JSON', 'CLOUD_PUBLIC_SERVICE_PRIVACY_JSON'] as const;
+const DATABASE_RECEIPTS = ['DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256', 'DATABASE_IDENTITY_EXPECTED_AUTHORITY_SHA256'] as const;
 
 /** Values the operator supplies, including the approved public documents. */
 export const OPERATOR_SECRETS = Object.freeze({
   required: ['DATABASE_URL', 'STEWARD_DATABASE_URL', 'KV_REST_API_URL', 'KV_REST_API_TOKEN', 'CEREBRAS_API_KEY', 'RESEND_API_KEY',
     'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET',
-    'STRIPE_PLUS_MONTHLY_PRICE_ID', 'STRIPE_PLUS_PRODUCT_ID', 'STRIPE_PRO_MONTHLY_PRICE_ID', 'STRIPE_PRO_PRODUCT_ID', ...SERVICE_DOCUMENT_BINDINGS],
+    'STRIPE_PLUS_MONTHLY_PRICE_ID', 'STRIPE_PLUS_PRODUCT_ID', 'STRIPE_PRO_MONTHLY_PRICE_ID', 'STRIPE_PRO_PRODUCT_ID', ...SERVICE_DOCUMENT_BINDINGS, ...DATABASE_RECEIPTS],
   optional: ['CARTESIA_API_KEY', 'CARTESIA_STT_USD_PER_CREDIT', 'OPENROUTER_API_KEY', 'GOOGLE_MAPS_API_KEY', 'STRIPE_PUBLISHABLE_KEY', 'STEWARD_GOOGLE_NATIVE_CLIENT_IDS'],
 });
 /** Secrets this tool generates once and keeps in the env file. */
@@ -86,7 +89,6 @@ const PLATFORM_SCOPES = ['platform:read', 'platform:write', 'platform:tenant:cre
 
 const loadJson = <T>(file: string): T => JSON.parse(fs.readFileSync(file, 'utf8')) as T;
 const say = (message: string) => console.log(`[cloud] ${message}`);
-const provisionedId = (value: string) => /^[0-9a-f]{32}$/.test(value) && !/^0{30}[0-9]{2}$/.test(value);
 
 export function deployResources(policy: CloudDeploymentConfig, resources: Record<CloudEnvironment, CloudResources>, environment: CloudEnvironment, env = process.env) {
   workerDeployment(policy, resources);
@@ -367,6 +369,7 @@ export function secretProblems(values: Record<string, string>, environment: Clou
   if (stripe && environment === 'production' && !/^(sk|rk)_live_/.test(stripe)) problems.push('STRIPE_SECRET_KEY must be a live key in production');
   if (stripe && environment === 'staging' && !/^(sk|rk)_test_/.test(stripe)) problems.push('STRIPE_SECRET_KEY must be a test key in staging');
   for (const name of ['DATABASE_URL', 'STEWARD_DATABASE_URL']) if (values[name] && !/^postgres(ql)?:\/\//.test(values[name])) problems.push(`${name} must be a postgres:// URL`);
+  for (const name of DATABASE_RECEIPTS) if (values[name] && !validDatabaseReceipt(values[name])) problems.push(`${name} must be a lowercase SHA-256 digest`);
   if (values.DATABASE_URL && values.DATABASE_URL === values.STEWARD_DATABASE_URL) problems.push('STEWARD_DATABASE_URL must be a separate database from DATABASE_URL');
   if (values.KV_REST_API_URL && !/^https:\/\//.test(values.KV_REST_API_URL)) problems.push('KV_REST_API_URL must be https');
   if (values.STEWARD_GOOGLE_NATIVE_CLIENT_IDS) { try { JSON.parse(values.STEWARD_GOOGLE_NATIVE_CLIENT_IDS); } catch { problems.push('STEWARD_GOOGLE_NATIVE_CLIENT_IDS must be JSON'); } }
@@ -392,43 +395,57 @@ export function componentSecrets(values: Record<string, string>, component: 'api
 }
 
 // ---------------------------------------------------------------------------------------------
-// Cloudflare operations (wrangler from the tree, credentials from CLOUDFLARE_API_TOKEN or wrangler login).
+// Worker deployment and secret upload use Wrangler from the prepared tree.
 
-function wrangler(tree: string, args: string[], {input, cwd, accountId, capture = false}: {input?: string; cwd?: string; accountId?: string; capture?: boolean} = {}) {
-  const result = spawnSync(wranglerIn(tree), args, {cwd: cwd ?? tree, input, encoding: 'utf8', stdio: [input === undefined ? 'inherit' : 'pipe', capture ? 'pipe' : 'inherit', 'inherit'],
+function wrangler(tree: string, args: string[], {input, cwd, accountId}: {input?: string; cwd?: string; accountId?: string} = {}) {
+  const result = spawnSync(wranglerIn(tree), args, {cwd: cwd ?? tree, input, encoding: 'utf8', stdio: [input === undefined ? 'inherit' : 'pipe', 'inherit', 'inherit'],
     env: {...process.env, ...(accountId ? {CLOUDFLARE_ACCOUNT_ID: accountId} : {}), WRANGLER_SEND_METRICS: 'false'}});
   if (result.status !== 0) throw new Error(`wrangler ${args.slice(0, 3).join(' ')} failed`);
-  return result.stdout ?? '';
-}
-
-async function cloudflareApi(pathname: string, init: RequestInit = {}) {
-  const token = process.env.CLOUDFLARE_API_TOKEN;
-  if (!token) throw new Error('CLOUDFLARE_API_TOKEN (Zone DNS edit on the zone) is required for DNS records');
-  const response = await fetch(`https://api.cloudflare.com/client/v4${pathname}`, {...init, headers: {Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...init.headers}});
-  const body = await response.json() as {success: boolean; result: any; errors?: unknown};
-  if (!body.success) throw new Error(`Cloudflare API ${pathname} failed: ${JSON.stringify(body.errors)}`);
-  return body.result;
-}
-
-/** Proxied placeholder records so zone routes (api, blob) reach the Worker. Custom-domain hosts need none. */
-export async function ensureDnsRecords(zone: string, hosts: string[]) {
-  const [found] = await cloudflareApi(`/zones?name=${encodeURIComponent(zone)}`);
-  if (!found) throw new Error(`Zone ${zone} is not in this Cloudflare account`);
-  for (const host of hosts) {
-    const existing = await cloudflareApi(`/zones/${found.id}/dns_records?name=${encodeURIComponent(host)}`);
-    if (existing.length) { say(`DNS ${host}: present (${existing.map((r: any) => r.type).join(', ')})`); continue; }
-    await cloudflareApi(`/zones/${found.id}/dns_records`, {method: 'POST', body: JSON.stringify({type: 'AAAA', name: host, content: '100::', proxied: true, comment: 'Alpha Cloud Worker route'})});
-    say(`DNS ${host}: created proxied AAAA 100::`);
-  }
 }
 
 // ---------------------------------------------------------------------------------------------
 // Database.
 
+const validDatabaseReceipt = (value: string | undefined) => !!value && /^[a-f0-9]{64}$/.test(value);
+
+function cloudDatabaseUrl(values: Record<string, string>): string {
+  const url = values.DATABASE_URL;
+  if (!url || !/^postgres(ql)?:\/\//.test(url) || !URL.canParse(url)) throw new Error('DATABASE_URL must be a PostgreSQL connection URL');
+  return url;
+}
+
+export function databaseAuthority(values: Record<string, string>, environment: CloudEnvironment): CloudDatabaseAuthority {
+  const [clusterName, authorityName] = DATABASE_RECEIPTS;
+  for (const name of DATABASE_RECEIPTS) {
+    if (!validDatabaseReceipt(values[name])) throw new Error(`${name} must be a reviewed lowercase SHA-256 digest`);
+  }
+  return {
+    DATABASE_IDENTITY_GATE_MODE: 'enforce', DATABASE_IDENTITY_ENVIRONMENT: environment,
+    [clusterName]: values[clusterName], [authorityName]: values[authorityName],
+  };
+}
+
+export function reportDatabaseIdentity(tree: string, values: Record<string, string>, environment: CloudEnvironment) {
+  const databaseUrl = cloudDatabaseUrl(values);
+  const script = path.join(tree, 'packages/cloud/scripts/admin/preflight-database-identity.ts');
+  const result = spawnSync(pinnedBun(tree), ['--conditions=eliza-source', script], {cwd: path.join(tree, 'packages/cloud/shared'), stdio: 'inherit', env: {
+    ...process.env, DATABASE_URL: databaseUrl, DATABASE_IDENTITY_ENVIRONMENT: environment, DATABASE_IDENTITY_GATE_MODE: 'report',
+    DATABASE_IDENTITY_EXPECTED_CLUSTER_SHA256: undefined, DATABASE_IDENTITY_EXPECTED_AUTHORITY_SHA256: undefined}});
+  if (result.status !== 0) throw new Error('Could not read the database identity receipt');
+}
+
 export function migrate(tree: string, values: Record<string, string>, environment: CloudEnvironment) {
-  const result = spawnSync(pinnedBun(tree), ['run', '--cwd', 'packages/cloud/shared', 'db:migrate'], {cwd: tree, stdio: 'inherit', env: {
-    ...process.env, DATABASE_URL: values.DATABASE_URL, DATABASE_IDENTITY_ENVIRONMENT: environment, DATABASE_IDENTITY_GATE_MODE: 'off'}});
+  const databaseUrl = cloudDatabaseUrl(values);
+  const authority = databaseAuthority(values, environment);
+  const result = spawnSync(pinnedBun(tree), ['run', '--cwd', 'packages/cloud/shared', 'db:migrate'], {cwd: tree,
+    stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8', env: {
+    ...process.env, DATABASE_URL: databaseUrl, ...authority}});
+  process.stdout.write(result.stdout ?? '');
   if (result.status !== 0) throw new Error('Cloud database migration failed');
+  // The pinned migrator returns zero when it intentionally pauses before a compatibility barrier.
+  if (!result.stdout.split(/\r?\n/).includes('[db:migrate] migrations complete')) {
+    throw new Error('The pinned migrator did not confirm completion; resolve its release barrier before seeding or deploying');
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -509,12 +526,15 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     tree: {type: 'string'}, out: {type: 'string'}, environment: {type: 'string'}, 'env-file': {type: 'string'}, component: {type: 'string', default: 'all'},
     apply: {type: 'boolean', default: false}, frozen: {type: 'boolean', default: false}, write: {type: 'boolean', default: false}, json: {type: 'boolean', default: false}}});
   const command = positionals[0];
-  const usage = () => { console.error('Usage: bun scripts/cloud-worker.ts prepare|deployment|render|check|registration|secrets|provision|preflight|migrate|seed|deploy|tenant|smoke [options] (see the header of this file)'); process.exit(2); };
+  const usage = () => { console.error('Usage: bun scripts/cloud-worker.ts prepare|deployment|render|check|registration|secrets|provision|preflight|database-identity|migrate|seed|deploy|tenant|smoke [options] (see the header of this file)'); process.exit(2); };
   const environment = () => { const value = o.environment as CloudEnvironment; if (!cloudEnvironments.includes(value)) usage(); return value; };
   const envFile = () => { if (!o['env-file']) usage(); return path.resolve(o['env-file']!); };
   const policy = () => loadJson<CloudDeploymentConfig>(o.policy!);
   const resources = () => loadJson<Record<CloudEnvironment, CloudResources>>(o.resources!);
   const out = () => outsideVendor(o.out ?? path.join(defaultTree(), '..', `render-${lock().commit.slice(0, 12)}`));
+  const reconcile = (cloud: CloudDeploymentConfig, configured: Record<CloudEnvironment, CloudResources>, env: CloudEnvironment, databaseUrl?: string, create = false) =>
+    reconcileCloudResources({ids: configured[env], sibling: configured[env === 'staging' ? 'production' : 'staging'], apiHost: new URL(cloud[env].api).host,
+      databaseUrl, accountId: process.env.CLOUDFLARE_ACCOUNT_ID, token: process.env.CLOUDFLARE_API_TOKEN, create});
   try {
     switch (command) {
       case 'prepare': await prepare(o.tree ? path.resolve(o.tree) : undefined); break;
@@ -549,39 +569,35 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         break;
       }
       case 'provision': {
-        const env = environment(), ids = resources()[env], row = validateCloudDeployment(policy())[env];
-        const values = readEnvFile(envFile()), tree = preparedTree(o.tree ? path.resolve(o.tree) : undefined);
-        const next = structuredClone(resources());
-        const target = next[env];
-        target.accountId = process.env.CLOUDFLARE_ACCOUNT_ID ?? ids.accountId;
-        const listed = (args: string[]) => wrangler(tree, args, {capture: true, accountId: target.accountId});
-        if (!provisionedId(ids.kvNamespaceId)) {
-          const created = listed(['kv', 'namespace', 'create', `${ids.workerName}-cache`]);
-          target.kvNamespaceId = /"?id"?\s*[:=]\s*"([0-9a-f]{32})"/.exec(created)?.[1] ?? (() => { throw new Error('Could not read the new KV namespace id'); })();
-        }
-        try { listed(['r2', 'bucket', 'create', ids.r2Bucket]); } catch { say(`R2 bucket ${ids.r2Bucket}: exists or could not be created (check the dashboard)`); }
-        if (!provisionedId(ids.hyperdriveId)) {
-          if (!values.DATABASE_URL) throw new Error('DATABASE_URL is needed to create the Hyperdrive configuration');
-          const created = listed(['hyperdrive', 'create', `${ids.workerName}-db`, '--connection-string', values.DATABASE_URL]);
-          target.hyperdriveId = /"?id"?\s*[:=]\s*"([0-9a-f]{32})"/.exec(created)?.[1] ?? (() => { throw new Error('Could not read the new Hyperdrive id'); })();
-        }
-        if (process.env.CLOUDFLARE_API_TOKEN) await ensureDnsRecords(ids.zone, [new URL(row.api).host, ids.blobHost]);
-        else say('CLOUDFLARE_API_TOKEN unset: create proxied DNS records for the API and blob hosts yourself (docs/alpha-cloud.md)');
-        if (o.write) { fs.writeFileSync(o.resources!, JSON.stringify(next, null, 2) + '\n'); say(`wrote ${o.resources}`); }
-        else console.log(JSON.stringify(next[env], null, 1));
+        const env = environment(), targetPolicy = policy(), configured = resources();
+        const writePath = o.write ? outsideVendor(o.resources!) : undefined;
+        workerDeployment(targetPolicy, configured);
+        const verified = await reconcile(targetPolicy, configured, env, readEnvFile(envFile()).DATABASE_URL, true);
+        if (writePath) {
+          writeProvisionedResources(writePath, env, configured[env], verified);
+          say(`wrote ${o.resources}`);
+        } else console.log(JSON.stringify(verified, null, 1));
         break;
       }
       case 'preflight': {
-        const env = environment();
-        deployResources(policy(), resources(), env);
-        say(`deploy inputs configured for ${env}`);
+        const env = environment(), targetPolicy = policy(), targetResources = resources();
+        deployResources(targetPolicy, targetResources, env);
+        const databaseUrl = o['env-file'] ? readEnvFile(envFile()).DATABASE_URL : undefined;
+        if (o['env-file'] && !databaseUrl) throw new Error('DATABASE_URL is missing from the env file');
+        await reconcile(targetPolicy, targetResources, env, databaseUrl);
+        say(`Cloudflare resource ownership verified for ${env}`);
         break;
       }
-      case 'migrate': { const env = environment(); migrate(preparedTree(o.tree ? path.resolve(o.tree) : undefined), readEnvFile(envFile()), env); break; }
+      case 'database-identity': case 'migrate': {
+        const env = environment(), tree = preparedTree(o.tree ? path.resolve(o.tree) : undefined), values = readEnvFile(envFile());
+        const operation = command === 'migrate' ? migrate : reportDatabaseIdentity;
+        operation(tree, values, env);
+        break;
+      }
       case 'seed': {
         const env = environment(), values = readEnvFile(envFile()), tree = preparedTree(o.tree ? path.resolve(o.tree) : undefined);
-        if (!values.DATABASE_URL) throw new Error('DATABASE_URL is missing from the env file');
-        console.log(JSON.stringify(seedRegistration({tree, databaseUrl: values.DATABASE_URL, rows: [registrationRows(policy(), env)], bun: pinnedBun(tree)})));
+        const databaseUrl = cloudDatabaseUrl(values), authority = databaseAuthority(values, env);
+        console.log(JSON.stringify(seedRegistration({tree, databaseUrl, authority, rows: [registrationRows(policy(), env)], bun: pinnedBun(tree)})));
         break;
       }
       case 'deploy': {
@@ -591,6 +607,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         const values = readEnvFile(envFile());
         const problems = [...secretProblems(values, env), ...GENERATED_SECRETS.filter(name => !values[name]).map(name => `${name} is missing`)];
         if (problems.length) throw new Error(`Secrets incomplete; run \`secrets\` first:\n  ${problems.join('\n  ')}`);
+        await reconcile(targetPolicy, targetResources, env, values.DATABASE_URL);
         const directory = render({policy: targetPolicy, resources: targetResources, tree, out: out(), environments: [env]});
         const components = o.component === 'all' ? CLOUD_COMPONENTS : [o.component as CloudComponent];
         if (!components.every(component => CLOUD_COMPONENTS.includes(component))) usage();
