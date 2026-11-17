@@ -226,7 +226,7 @@ async function saveAttachment(session:VerifiedSession,conversationId:string,mess
 async function restoreAttachments(messages:Shell[],session:VerifiedSession,conversationId:string){
   return Promise.all(messages.map(async message=>{
     if(message.from!=='user')return message;
-    const saved=await browserDocuments.read(attachmentKey(session,conversationId,message.clientMessageId||message.id));
+    const saved=await browserDocuments.read(attachmentKey(session,conversationId,message.clientMessageId||message.id))||(message.forkAttachmentMessageId&&message.forkAttachmentConversationId?await browserDocuments.read(attachmentKey(session,message.forkAttachmentConversationId,message.forkAttachmentMessageId)):null);
     if(!saved?.raw)return message;
     const attachment=JSON.parse(saved.raw);
     const transcript=attachment?.transcriptAttachment;
@@ -1598,7 +1598,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   p.canReplyMessage=function(message:Shell){const target=messageTarget(message);return !!target&&!this.S().typing&&!this.draftSendPending&&connectionController.messageTargetCurrent(target);};
   p.canEditMessage=function(message:Shell){return message.from==='user'&&this.canReplyMessage(message)&&connectionController.canEditMessages();};
   p.replyToMessage=function(message:Shell){if(!this.canReplyMessage(message))return;this.messageEditTarget=undefined;this.messageReplyTarget=messageTarget(message);this.setState({chat:'full'},()=>document.querySelector<HTMLTextAreaElement>('[data-alpha-layer="conversation"] textarea[data-alpha-composer]')?.focus());};
-  p.editMessage=function(message:Shell){if(!this.canEditMessage(message))return;if(this.S().draft.trim()){this.toast('Finish or clear your current draft before editing a message.');return;}this.messageReplyTarget=undefined;this.messageEditTarget=messageTarget(message);this.setState({draft:message.text,chat:'full'},()=>document.querySelector<HTMLTextAreaElement>('[data-alpha-layer="conversation"] textarea[data-alpha-composer]')?.focus());};
+  p.editMessage=function(message:Shell){if(!this.canEditMessage(message))return;if(this.S().draft.trim()){this.toast('Finish or clear your current draft before editing a message.');return;}this.messageReplyTarget=undefined;this.messageEditTarget=messageTarget(message);this.messageEditRequestId=crypto.randomUUID();this.setState({draft:message.text,chat:'full'},()=>document.querySelector<HTMLTextAreaElement>('[data-alpha-layer="conversation"] textarea[data-alpha-composer]')?.focus());};
   function typedSendBinding(){return JSON.stringify([connectionController.getSnapshot().session,connectionController.getSnapshot().history?.conversationId,connectionController.getCloudEnvironment?.(),connectionController.getCloudClient()?.sessionId,connectionController.getCloudClient()?.credentialId]);}
   function attachmentBinding(){return JSON.stringify([typedSendBinding(),connectionController.getSelectedConversationId()]);}
   function attachmentBatchFits(files:ReadonlyArray<Pick<ChatFile,'data'>>,cameraImage?:string){
@@ -1684,6 +1684,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     out.removeTranscript=()=>{this.transcriptAttachment=null;this.setState({});};
     out.messageComposeContext=composeTarget&&!this.S().typing?(this.messageEditTarget?'Editing message':'Replying to '+(composeTarget.from==='user'?'your message':out.name))+': '+composeTarget.text.replace(/\s+/g,' ').slice(0,160):'';
     out.cancelMessageContext=()=>{cancelMessageContext(this);this.setState({});};
+    const originalConversation=connectionController.getSnapshot().history?.sourceConversationId;
+    out.originalConversation=!!originalConversation;
+    out.openOriginalConversation=()=>{if(originalConversation&&!this.S().typing)void connectionController.restoreHistory(originalConversation);};
     const draft=this.composerDraft?.state;
     out.draftRecovery=!!draft?.error&&!!this.composerDraft?.recovery();
     out.recoverDraft=()=>{const recovery=this.composerDraft?.recovery();if(!recovery)return;this.draftRecoveryAbort?.abort();const controller=this.draftRecoveryAbort=new AbortController();openDomainRecovery({capture:async signal=>{const captured=await recovery.capture(signal);return {...captured,raw:JSON.stringify({saved:captured.raw,currentDraft:String(this.S().draft||'')})};},reset:recovery.reset},'assistant draft','Assistant draft recovery','Download the saved bytes and current text before resetting this conversation’s draft. Reset does not delete messages or send anything. Reloading discards the current unsaved text.',controller.signal,undefined,Capacitor.getPlatform()==='android'?'device':'browser');};
@@ -1956,9 +1959,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       try {
         // The owner explicitly submits the edited draft with Send; no second confirmation.
         if(!this.live||document.hidden||String(this.S().draft)!==text||!connectionController.messageTargetCurrent(editTarget))throw Error('The draft or conversation changed. Nothing was replaced.');
-        await connectionController.truncateMessage(editTarget);this.messageEditTarget=undefined;s=this.S();
-        if(!this.live||document.hidden||s.view!==editView||String(s.draft)!==text)throw Error('History was replaced. Your draft changed, so nothing was resent.');
-      } catch(error){if(error&&typeof error==='object'&&'historyChanged' in error)this.messageEditTarget=undefined;this.toast(errorNotice(error,'Couldn’t replace the message. Nothing was sent.'),ERROR_TOAST);return;}
+        await connectionController.forkMessage(editTarget,this.messageEditRequestId??=crypto.randomUUID());this.messageEditTarget=undefined;this.messageEditRequestId=undefined;if(!this.live||document.hidden||this.S().view!==editView||String(this.S().draft).trim())throw Error("The edited conversation opened. Review your draft before sending.");await new Promise<void>(resolve=>this.setState({draft:text},resolve));s=this.S();
+        if(!this.live||document.hidden||s.view!==editView||String(s.draft)!==text)throw Error('The branch opened, but your draft changed. Nothing was sent.');
+      } catch(error){if(error&&typeof error==='object'&&'historyChanged' in error)this.messageEditTarget=undefined;this.toast(errorNotice(error,'Couldn’t open the edited conversation. Nothing was sent.'),ERROR_TOAST);return;}
       finally{this.draftSendPending=false;}
     }
     let sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;

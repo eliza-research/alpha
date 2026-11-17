@@ -779,3 +779,5 @@ Cloud deployment source is `scripts/cloud-deployment-policy.ts`; regenerate its
 renderer and Android bindings with `bun scripts/cloud-deployment.ts`.
 `bun scripts/cloud-deployment.ts --pages-registration` prints the public Pages
 callback registration for an operator without creating a `config/` directory.
+
+The reviewed pin `1803ea88c9460f2e3cb779abe31cd77cfc6f64c5` includes original-preserving message forks and the corrected Pixel source inventory ([eliza#39808](https://github.com/elizaOS/eliza/pull/39808), [eliza#39810](https://github.com/elizaOS/eliza/pull/39810), [eliza#39813](https://github.com/elizaOS/eliza/pull/39813)). The conversation-route catalog hash and three native-message formal sidecar hashes changed and were checked against the selected Git objects. The mobile builder, dependency lock and 23 UUID package files retain their reviewed bytes. This pin does not itself qualify an APK or image.

@@ -15,7 +15,7 @@ const [{createLocalAgentDevHandler,localAgentPathAllowed},{localAgentStorage},{L
 const directory=mkdtempSync(join(tmpdir(),'alpha-local-contract-'));
 const root='a'.repeat(64),token='synthetic-machine-secret';
 const tokenFile=join(directory,'token');writeFileSync(tokenFile,root,{mode:0o600});
-let pairs=0,sends=0,truncates=0,approvalReads=0,trajectoryReads=0,mode='ok';
+let pairs=0,sends=0,truncates=0,forks=0,approvalReads=0,trajectoryReads=0,mode='ok';
 const metadataPath='/api/trajectories/11111111-1111-4111-8111-111111111111?includePayloads=0';
 const metadataDetail={trajectory:{id:'11111111-1111-4111-8111-111111111111',llmCallCount:2},llmCalls:[{id:'call-a',trajectoryId:'11111111-1111-4111-8111-111111111111',purpose:'action-extraction',promptTokens:12,completionTokens:4},{id:'call-b',trajectoryId:'11111111-1111-4111-8111-111111111111',purpose:'response',promptTokens:20,completionTokens:8}]};
 const trajectoryPaths: string[] = [];
@@ -32,6 +32,7 @@ const host=http.createServer(async(req,res)=>{
  } else {
   assert.equal(auth,`Bearer ${token}`);
   if(url==='/api/auth/me')value={identity:{id:'owner',kind:'owner'},access:{role:'OWNER',mode:'session'},session:{id:token,expiresAt:Date.now()+60000}};
+  else if(url.endsWith('/fork')){forks++;assert.equal(req.method,'POST');assert.equal(JSON.parse(raw).messageId,'11111111-1111-4111-8111-111111111111');value={conversation:{id:'forked-thread'}};}
   else if(url==='/api/approvals?state=all&limit=500'){approvalReads++;assert.equal(req.method,'GET');value={approvals:[]};}
   else if(url.startsWith('/api/trajectories')){trajectoryReads++;trajectoryPaths.push(url);assert.equal(req.method,'GET');value=url===metadataPath?metadataDetail:{trajectories:[]};}
   else if(url==='/api/agents')value={agents:[{id:'agent',name:'Fixture',status:'running'}]};
@@ -110,6 +111,8 @@ try{
  assert.equal((await invoke({path:'/api/conversations/thread/messages/truncate',method:'GET',ownerId:'owner'})).status,400);
  await client.truncateMessages('thread','11111111-1111-4111-8111-111111111111',signal);assert.equal(truncates,1);
  mode='unconfirmed';await assert.rejects(client.truncateMessages('thread','11111111-1111-4111-8111-111111111111',signal),/not confirmed/);assert.equal(truncates,2);mode='ok';
+ assert.equal((await client.forkConversation('thread','11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','Hello',signal)).id,'forked-thread');assert.equal(forks,1);
+ assert.equal((await invoke({path:'/api/conversations/thread/fork',method:'GET',ownerId:'owner'})).status,400);
  mode='unauthorized';await assert.rejects(client.send('thread','Do not replay'),{status:401});assert.equal(sends,2);
  mode='ok';await client.connect(signal);assert.equal(pairs,2);
  chmodSync(tokenFile,0o644);assert.equal((await invoke({path:'/api/agents',method:'GET'})).status,503);chmodSync(tokenFile,0o600);

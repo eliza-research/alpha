@@ -43,6 +43,9 @@ for(const [group,entry] of Object.entries(OWNER_ROUTE_TABLE.groups))for(const ro
 }
 const search='/api/conversations/messages/search?q=Alice%20Example%2F%26%F0%9F%98%80&limit=50&offset=0';
 nativeCases.push(
+ request('fork owner POST','/api/conversations/room/fork','POST','owner',true,'{}'),
+ request('fork rejects GET','/api/conversations/room/fork','GET','owner',false),
+ request('fork needs owner','/api/conversations/room/fork','POST',null,false,'{}'),
  request('ordinary status GET','/api/status','GET',null),
  request('ordinary conversation POST','/api/conversations','POST','owner',true,'{}'),
  request('ordinary message GET','/api/conversations/room/messages'),

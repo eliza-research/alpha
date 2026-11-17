@@ -150,12 +150,38 @@ class ImagePacket(unittest.TestCase):
                 str(image), str(aosp), str(assets), stage.digest((assets/'branding-assets.json').read_bytes())))
             provision = {'src/com/android/provision/DefaultActivity.java': b'class DefaultActivity {\n    void onCreate() {\n        finishSetup();\n    }\n\n    private void finishSetup() {}\n}\n',
                          'AndroidManifest.xml': b'<manifest>\n    <application>\n    </application>\n</manifest>\n'}
+            controller_path = 'PermissionController/role-controller/java/com/android/role/controller/service/RoleControllerServiceImpl.java'
+            controller = b'''class RoleControllerServiceImpl {
+    private RoleManager mUserRoleManager;
+    void defaults() {
+        mUserRoleManager.setRoleNamesFromController(roleNames);
+    }
+    @Override
+    @WorkerThread
+    public boolean onAddRoleHolder(String roleName) {
+        boolean added = false;
+    }
+    public boolean onRemoveRoleHolder(String roleName) {
+        boolean dontKillApp = hasFlag(flags, 0);
+    }
+    public boolean onClearRoleHolders(String roleName) {
+        boolean dontKillApp = hasFlag(flags, 0);
+    }
+}
+'''
             real_pinned = stage.pinned
             def pinned(project, path):
                 row = real_pinned(project, path)
+                if project == 'packages/modules/Permission' and path == controller_path:
+                    return {**row, 'sha256': stage.digest(controller)}
                 return {**row, 'sha256': stage.digest(provision[path])} if project == 'packages/apps/Provision' and path in provision else row
             def git_show(args, **kwargs):
-                self.assertEqual(args[:4], ['git', '-C', str((aosp/'packages/apps/Provision').resolve()), 'show'])
+                project = Path(args[2]).relative_to(aosp.resolve())
+                self.assertIn(str(project), ['packages/apps/Provision', 'packages/modules/Permission'])
+                self.assertEqual(args[:2], ['git', '-C']); self.assertEqual(args[3], 'show')
+                if str(project) == 'packages/modules/Permission':
+                    self.assertEqual(args[4].split(':', 1)[1], controller_path)
+                    return controller
                 return provision[args[4].split(':', 1)[1]]
             identity = {'schema': 1, 'packageName': CANONICAL}
             def admitted(path, aapt, apksigner):

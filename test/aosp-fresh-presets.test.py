@@ -85,8 +85,10 @@ public class FreshTest {
     if args[0]==bun:return run(args,**kwargs)
     if args[0]=='git':
      # Pinned Provision objects from the source checkout; only `git show REV:path` is expected.
-     self.assertEqual(args[1:3],['-C',str(aosp/'packages/apps/Provision')]);self.assertEqual(args[3],'show')
-     return (INPUT/'packages/apps/Provision'/args[4].split(':',1)[1]).read_bytes()
+     self.assertEqual(args[1],'-C');self.assertEqual(args[3],'show')
+     project=Path(args[2]).resolve().relative_to(aosp.resolve())
+     self.assertIn(str(project),['packages/apps/Provision','packages/modules/Permission'])
+     return (INPUT/project/args[4].split(':',1)[1]).read_bytes()
     self.assertEqual(args[0],'aapt-fixture')
     if args[2]=='xmltree':return manifest['tree']
     return "package: name='"+selected+"' versionCode='80'\n"
@@ -159,8 +161,8 @@ boot-animation-copies:
  def test_guarded_staging_roundtrip_preserves_enterprise_and_completed_paths(self):
   with tempfile.TemporaryDirectory(prefix='alpha-brand-stage-')as d,patch.object(stage,'check_revision')as revision:
    root=Path(d)/'aosp';root.mkdir();plan,rows=self.plan(root)
-   self.assertEqual(revision.call_count,2)
-   self.assertTrue(all(name.startswith(('vendor/alphaphone/','packages/apps/Provision/','frameworks/base/'))for name in plan))
+   self.assertEqual(revision.call_count,3)
+   self.assertTrue(all(name.startswith(('vendor/alphaphone/','packages/apps/Provision/','packages/modules/Permission/','frameworks/base/'))for name in plan))
    core=json.loads((CORE/'manifest.json').read_text())
    for row in core['files']:self.assertEqual(stage.digest(plan['frameworks/base/'+row['path']]),row['afterSha256'])
    before=(INPUT/'packages/apps/Provision/src/com/android/provision/DefaultActivity.java').read_text()

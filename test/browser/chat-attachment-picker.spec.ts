@@ -55,8 +55,23 @@ async function setup(page:Page,documentBytes=0) {
  return {picker,outbound};
 }
 
-test('reviewed Files and Photos send exact bytes only on explicit attachment-only Send',async({page})=>{
+test('reviewed Files and Photos send exact bytes only on explicit attachment-only Send',async({page},testInfo)=>{
  const {picker,outbound}=await setup(page);
+ // The picker replaces the full bottom surface rather than reserving space for the
+ // underlying composer. Check both normal and shortened (keyboard) viewports.
+ for(const height of [915,600]){
+  await page.setViewportSize({width:412,height});
+  await expect.poll(async()=>{
+   const sheet=await picker.boundingBox(),screen=await page.locator('[data-screen]').boundingBox();
+   return sheet&&screen?Math.abs(sheet.y+sheet.height-screen.y-screen.height):Infinity;
+  }).toBeLessThan(1);
+  expect(await picker.evaluate(el=>{
+   const rect=el.getBoundingClientRect();
+   return el.contains(document.elementFromPoint(rect.x+rect.width/2,rect.bottom-2));
+  })).toBe(true);
+ }
+ await page.screenshot({path:testInfo.outputPath('attachment-picker-bottom.png')});
+ await page.setViewportSize({width:412,height:915});
  const effects=()=>page.evaluate(()=>{const {reads,photoReads,sends}=(window as any).attachmentFixture;return {reads,photoReads,sends};});
  await picker.getByRole('button',{name:'Photos',exact:true}).click();
  await picker.getByRole('button',{name:'Photo.jpg',exact:true}).click();

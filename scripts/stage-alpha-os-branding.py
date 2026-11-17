@@ -47,6 +47,46 @@ def project_manifest(original):
         '    <application android:label="@string/alpha_name" android:icon="@drawable/alpha_mark" android:theme="@android:style/Theme.Material.NoActionBar">\n'
         '        <activity android:name="AlphaAppearance" android:exported="true" android:label="@string/alpha_name"/>',1)
 
+def project_role_controller(original):
+    field = '    private RoleManager mUserRoleManager;'
+    assert original.count(field) == 1, 'Role controller field changed'
+    candidate = original.replace(field, field + '\n    private boolean mAlphaRoleUpgradeRunning;', 1)
+    start = '        mUserRoleManager.setRoleNamesFromController(roleNames);'
+    assert candidate.count(start) == 1, 'Role initialization changed'
+    candidate = candidate.replace(start, start + '''
+
+        mAlphaRoleUpgradeRunning = true;
+        try {
+            if (!AlphaRoleUpgrade.run(new AlphaRoleUpgradeAndroid(
+                    mContext, mUser, mUserRoleManager, this))) return false;
+        } finally {
+            mAlphaRoleUpgradeRunning = false;
+        }
+''', 1)
+    end = '\n    @Override\n    @WorkerThread\n    public boolean onAddRoleHolder'
+    assert candidate.count(end) == 1, 'Role default completion changed'
+    candidate = candidate.replace(end, '''
+
+    private boolean keepAlphaOwnerChoice(String roleName) {
+        if (mAlphaRoleUpgradeRunning) return true;
+        AlphaRoleUpgradeAndroid upgrade = new AlphaRoleUpgradeAndroid(
+                mContext, mUser, mUserRoleManager, this);
+        return !upgrade.eligible() || upgrade.keepOwnerChoice(roleName);
+    }
+    @Override
+    @WorkerThread
+    public boolean onAddRoleHolder''', 1)
+    # These three entry points share the same worker as default-role grants. Mark explicit
+    # requests before mutation so a retry cannot undo a later owner choice.
+    for start, anchor in [
+            ('public boolean onAddRoleHolder', '        boolean added = false;'),
+            ('public boolean onRemoveRoleHolder', '        boolean dontKillApp = hasFlag'),
+            ('public boolean onClearRoleHolders', '        boolean dontKillApp = hasFlag')]:
+        begin = candidate.index(start)
+        point = candidate.index(anchor, begin)
+        candidate = candidate[:point] + '        if (!keepAlphaOwnerChoice(roleName)) return false;\n\n' + candidate[point:]
+    return candidate
+
 def core_policy_plan(root, read_baseline=None):
     """Materialize the reviewed policy packet in scratch space, never in the build checkout."""
     packet = BRAND / 'core-launcher'
@@ -192,6 +232,17 @@ def build_plan(root, assets, report_hash, source_inputs, prior=None, product_mk_
     for name in ['AlphaWelcome.java','AlphaAppearance.java','AlphaFreshPresets.java','AlphaFreshSetupPolicy.java']:
         target = project+'/src/com/android/provision/'+name
         put(target,(BRAND/'provision'/name).read_bytes(),previous.get(name,[]))
+    role_project = 'packages/modules/Permission'
+    role_path = 'PermissionController/role-controller/java/com/android/role/controller/service/'
+    role_file = role_path + 'RoleControllerServiceImpl.java'
+    role_input = pinned(role_project, role_file)
+    check_revision(root, role_project)
+    original = safe(source_inputs, role_project+'/'+role_file).read_bytes()
+    assert digest(original) == role_input['sha256'], 'Role controller preimage drift'
+    put(role_project+'/'+role_file, project_role_controller(original.decode()).encode(),
+        [role_input['sha256']])
+    for name in ['AlphaRoleUpgrade.java', 'AlphaRoleUpgradeAndroid.java']:
+        put(role_project+'/'+role_path+name, (BRAND/'provision'/name).read_bytes())
     put(project+'/res/values/alpha.xml',(BRAND/'provision/strings.xml').read_bytes(),previous.get('strings.xml',[]))
     # Reuse the already reviewed product icon, including its blue circle, inset and clipping.
     # Generating a bare logo vector here would silently change the installed setup identity.
@@ -260,11 +311,14 @@ def main():
     with tempfile.TemporaryDirectory(prefix='alpha-provision-inputs-') as temporary:
         inputs = args.source_inputs.resolve(strict=True) if args.source_inputs else Path(temporary)
         if not args.source_inputs:
-            for filename in ['src/com/android/provision/DefaultActivity.java', 'AndroidManifest.xml']:
-                row=pinned('packages/apps/Provision', filename)
-                data=subprocess.check_output(['git','-C',str(root/'packages/apps/Provision'),'show',row['revision']+':'+filename])
+            for project, filename in [
+                    ('packages/apps/Provision', 'src/com/android/provision/DefaultActivity.java'),
+                    ('packages/apps/Provision', 'AndroidManifest.xml'),
+                    ('packages/modules/Permission', 'PermissionController/role-controller/java/com/android/role/controller/service/RoleControllerServiceImpl.java')]:
+                row=pinned(project, filename)
+                data=subprocess.check_output(['git','-C',str(root/project),'show',row['revision']+':'+filename])
                 assert digest(data)==row['sha256'], 'Pinned Provision source drift'
-                output=safe(inputs, 'packages/apps/Provision/'+filename);output.parent.mkdir(parents=True,exist_ok=True);output.write_bytes(data)
+                output=safe(inputs, project+'/'+filename);output.parent.mkdir(parents=True,exist_ok=True);output.write_bytes(data)
         plan,rows=build_plan(root,args.assets_dir.resolve(strict=True),args.assets_report_sha256,inputs,prior,args.product_mk_sha256,
                           image_stage=args.image_stage.resolve(strict=True) if args.packet_output else None)
     args.receipt.parent.mkdir(parents=True,exist_ok=True)

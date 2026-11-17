@@ -17,6 +17,19 @@ Development images and devices without
 telephony require Home only. Completed, managed, profile and secondary-user setups are
 ineligible for the first-run assignments.
 
+An existing primary-user setup uses the Permission Controller's serialized default-role
+pass for the package identity transition. The image must advertise the canonical features,
+preinstall the enabled release app and pass Android's normal role qualification. Only a
+role held solely by the former Alpha package is moved. Each role records a durable pending
+intent before the grant and a completion marker after readback. A failed grant attempts to restore
+the old holder when Android left the role empty. A later explicit role request retires
+that role's migration before it changes the holder. Custom choices, managed users and
+secondary users retain their assignments. No credential or application data is copied.
+
+Run `python3 test/aosp-role-upgrade.test.py` for the complete patched-controller JVM test
+and the failure/recovery policy cases. The tests compile the actual controller and adapter
+with Android boundary doubles. A real signed image upgrade remains the device gate.
+
 A rejected request, timeout, unavailable role, or failed readback leaves setup open for
 retry. The recovery button opens Home, Default apps, Input method, or ordinary Settings
 according to the failure. Each callback and timeout belongs to one attempt and one step.

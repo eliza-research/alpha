@@ -22,7 +22,7 @@ only on Alpha AOSP and stay hidden and capability-gated elsewhere.
 | Sheet | The Alpha conversation surface. Heights: closed (bar only), open, full. |
 | Live strip | The 52 dp summary of the stage shown at the top when the sheet is full. |
 | Draft slot | One pending outgoing text per thread, written by the owner or by Alpha. |
-| Faint suggestion | One suggested next input, shown as placeholder-style text inside the bar. |
+| Suggested input | Deferred. The input shows only its target placeholder until the owner types. |
 | Briefing | Alpha's first line when the chat opens on a new context. |
 | Proposal | One action card with one button, for example "Move" or "Call". |
 
@@ -79,7 +79,7 @@ only on Alpha AOSP and stay hidden and capability-gated elsewhere.
 
 | ID | Requirement | Acceptance |
 | --- | --- | --- |
-| AC-23 | Remove the suggestion chip row (`data-alpha-chat-suggestions`, `template.html` around line 4426) from the conversation sheet. Per-view suggestions feed AC-24 instead. | No chip row renders in any state. |
+| AC-23 | Remove the suggestion chip row (`data-alpha-chat-suggestions`, `template.html` around line 4426) from the conversation sheet. Automatic suggestions are deferred under AC-24. | No chip row renders in any state. |
 | AC-24 | Automatic suggestions are deferred by owner request. Do not generate suggested replies, show suggestion chips or faint text, or expose a suggestion setting. Explicit requests for draft help remain available. | Opening a thread or chat makes no suggestion request and leaves the input editable. |
 | AC-25 | The briefing is one or two sentences of facts from actual sources about the current screen, shown as Alpha's first line when the chat opens on a new context. It isn't repeated when nothing has changed. With nothing known (production builds have no fixtures), it is absent. | Reopening the chat on an unchanged thread adds no new briefing. |
 | AC-26 | At most one open proposal at a time, with one button, executed through the existing approval path (AP-04, AP-11). An ignored proposal stays in history and is never executed later. | A second proposal replaces the first; neither executes without a tap. |
@@ -90,7 +90,7 @@ only on Alpha AOSP and stay hidden and capability-gated elsewhere.
 | ID | Requirement | Acceptance |
 | --- | --- | --- |
 | AC-28 | The Alpha mark fills its blue circle at every size, using `.alpha-mark-fill` (mark at 118%, clipped), including the 18 dp mark beside Alpha's chat lines. All three apps, the stage, sheet and strip use theme tokens in light and dark. Text contrast is at least 4.5:1 and controls at least 3:1. | Automated contrast audit passes in light and dark. |
-| AC-29 | TalkBack: the left slot names its action ("Open Alpha", "Back to texting Maya", "Back to the call"); the faint suggestion reads "Suggestion: <text>, double-tap to use"; a draft bubble reads "<author>'s draft, not sent"; focus order is stage, then sheet, then bar. With the largest text size, the stage keeps at least the header and the last message. Short landscape uses the existing short-landscape layout. | AP-15 checks for each requirement above. |
+| AC-29 | TalkBack: the left slot names its action ("Open Alpha", "Back to texting Maya", "Back to the call"); no suggestion control or announcement is exposed; a draft bubble reads "<author>'s draft, not sent"; focus order is stage, then sheet, then bar. With the largest text size, the stage keeps at least the header and the last message. Short landscape uses the existing short-landscape layout. | AP-15 checks for each requirement above. |
 | AC-30 | Process death and permission loss restore the sheet height, stage view, both drafts and any open proposal, without executing it (AP-05, AP-15). | Kill and relaunch in each state; nothing is sent or dialed on restore. |
 
 ### Privacy and safety
@@ -116,7 +116,7 @@ only on Alpha AOSP and stay hidden and capability-gated elsewhere.
 Change existing code; no flags or parallel versions (CONTRIBUTING.md).
 
 - `apps/app/src/prototype/template.html`: Messages composer and dock become the bar; compact stage headers; call card; draft bubble; strip; chip row removed.
-- `apps/app/src/prototype/model.js`: Phone `immersive` without forced dark (line 259); Messages `immersive` (line 571) no longer hides the bar; per-view suggestions feed the faint suggestion.
+- `apps/app/src/prototype/model.js`: Phone `immersive` without forced dark (line 259); Messages `immersive` (line 571) no longer hides the bar; automatic suggestion generation and controls remain disabled.
 - `apps/app/src/prototype/chat-overlay-motion-adapter.ts`: draft-fit and content-fit open height, stage slide, strip.
 - `apps/app/src/runtime/dock-clearance.ts`, `canvas-geometry.ts`: stage height ownership.
 - `apps/app/src/runtime/message-draft.ts`, `prototype/sms-adapter.ts`: two drafts per thread, Alpha draft provenance, one Undo, send from the bubble.

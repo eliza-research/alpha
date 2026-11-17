@@ -89,7 +89,7 @@ type Selection = {kind:'development';profile:DevelopmentProfile;account?:string}
 export interface CloudServiceSession { environment: CloudEnvironment; userId: string; organizationId?: string; sessionId: string; credentialId: string; email?: string;
   /** When this phone's Cloud sign-in key expires (from the in-app sign-in), if Cloud reported it. */
   expiresAt?: number }
-export interface RestoredMessage { clientMessageId?:string; id: string; from: 'user' | 'agent'; text: string; deviceReceipt?:true; browserDestination?:string; inReplyTo?:string;
+export interface RestoredMessage { forkAttachmentMessageId?:string;forkAttachmentConversationId?:string;forkSourceMessageId?:string; forkSourceRoomId?:string; clientMessageId?:string; id: string; from: 'user' | 'agent'; text: string; deviceReceipt?:true; browserDestination?:string; inReplyTo?:string;
   systemNotice?:SystemNoticeKind;
   /** Trusted service presentation; original text remains the copy/reply source. */
   displayText?:string;
@@ -144,7 +144,7 @@ export interface ConnectionSnapshot {
   cloudPersonal?: PersonalSetupState;
   phoneActionsAvailable: boolean; phoneCapabilityReason: string;
   conversations: Array<{ id: string; title: string }>;
-  history: { sessionId: string; conversationId: string; revision: number; messages: RestoredMessage[]; automatic: boolean; deliveryRevisionAtStart?:number } | null;
+  history: { sessionId: string; conversationId: string; revision: number; messages: RestoredMessage[]; automatic: boolean; deliveryRevisionAtStart?:number; sourceConversationId?:string } | null;
   historyError?: string;
   /** One transient delivery batch; the visible transcript remains the only message collection. */
   conversationDelivery?:{sessionId:string;conversationId:string;messages:RestoredMessage[];revision:number};
@@ -1745,7 +1745,7 @@ function restoredMessages(items:Record<string,unknown>[]):RestoredMessage[] {
     const failureKind=item.role==='assistant'&&item.interrupted!==true&&failureKindOf(item)&&!calendarRefusalKept(item)?failureKindOf(item):undefined;
     if(failureKind)return {id:item.id,from:'agent',text:Object.hasOwn(RESTORED_FAILURES,failureKind)?RESTORED_FAILURES[failureKind]:'This reply couldn’t be completed.',unfinished:true,failureKind};
     const displayText=item.source==='lifeops-checkin'?checkinDisplayText(item):undefined;
-    return {id:item.id,...(typeof item.clientMessageId==='string'?{clientMessageId:item.clientMessageId}:{}),from:item.role==='user'?'user':'agent',text:item.role==='user'?restoredText(item.text,item.userTextFormat):item.interrupted===true&&!item.text?'This reply did not finish.':item.text,...(item.role==='assistant'&&item.interrupted===true?{unfinished:true as const}:{}),...(displayText===undefined?{}:{displayText})};
+    return {id:item.id,...(typeof item.forkSourceMessageId==='string'&&typeof item.forkSourceRoomId==='string'?{forkSourceMessageId:item.forkSourceMessageId,forkSourceRoomId:item.forkSourceRoomId,...(typeof item.forkAttachmentMessageId==='string'&&typeof item.forkAttachmentConversationId==='string'?{forkAttachmentMessageId:item.forkAttachmentMessageId,forkAttachmentConversationId:item.forkAttachmentConversationId}:{})}:{}),...(typeof item.clientMessageId==='string'?{clientMessageId:item.clientMessageId}:{}),from:item.role==='user'?'user':'agent',text:item.role==='user'?restoredText(item.text,item.userTextFormat):item.interrupted===true&&!item.text?'This reply did not finish.':item.text,...(item.role==='assistant'&&item.interrupted===true?{unfinished:true as const}:{}),...(displayText===undefined?{}:{displayText})};
   });
 }
 /** Eliza Cloud's API answers credentialed browser requests only from Eliza's own origins
@@ -1931,7 +1931,7 @@ function scheduleStoppedReply(selected: Active, session: VerifiedSession, conver
 }
 async function conversationList(selected: Active, signal: AbortSignal) {
   const list = selected.kind === 'cloud' ? await selected.cloud.listConversations(selected.agentId, signal) : await selected.remote.listConversations(signal);
-  return list.map(item => ({ id: item.id, title: typeof item.title === 'string' && item.title ? item.title : 'Conversation' }));
+  return list.map(item => ({ id: item.id, title: typeof item.title === 'string' && item.title ? item.title : 'Conversation',sourceConversationId:typeof (('metadata' in item?item.metadata:undefined) as {sourceConversationId?:unknown}|undefined)?.sourceConversationId==='string'?(('metadata' in item?item.metadata:undefined) as {sourceConversationId:string}).sourceConversationId:undefined }));
 }
 
 async function restoreConversationHistory(id:string,signal:AbortSignal,automatic:boolean,afterConnect=false,fallbackExpected?:ConversationChoice,canCommit?:()=>boolean,around?:string) {
@@ -1977,7 +1977,7 @@ async function restoreConversationHistory(id:string,signal:AbortSignal,automatic
   conversationMemory.set(key,id);
   // An explicit reload already shows whether a stopped reply finished; the pending check is retired.
   if(!automatic)cancelStoppedReply();
-  update({history:{sessionId:session.sessionId,conversationId:id,revision:(state.history?.revision||0)+1,messages,automatic,deliveryRevisionAtStart:result.deliveryRevisionAtStart},historyError:'',historyPartial:result.partial,...(automatic?{}:{open:false,replyNotice:''}),message:automatic?'':saved?'Restored':'Restored · not saved'});
+  update({history:{sessionId:session.sessionId,conversationId:id,revision:(state.history?.revision||0)+1,messages,automatic,deliveryRevisionAtStart:result.deliveryRevisionAtStart,...(list.find(item=>item.id===id)?.sourceConversationId?{sourceConversationId:list.find(item=>item.id===id)!.sourceConversationId}:{})},historyError:'',historyPartial:result.partial,...(automatic?{}:{open:false,replyNotice:''}),message:automatic?'':saved?'Restored':'Restored · not saved'});
   const last=result.messages.at(-1);
   if(afterConnect&&selected.kind==='resident'&&last?.role==='user'&&typeof last.text==='string'&&typeof last.timestamp==='number'&&last.timestamp>Date.now()-RESTORED_REPLY_WINDOW_MS)
     scheduleStoppedReply(selected,session,id,{text:restoredText(last.text,last.userTextFormat),sentAt:last.timestamp,...(typeof last.clientMessageId==='string'?{clientMessageId:last.clientMessageId}:{})},STOPPED_REPLY_CHECK_MS,false);
@@ -3429,21 +3429,18 @@ export const connectionController = {
     return !!active&&!!state.session&&!state.open&&!state.busy&&!sending&&!operation&&validateUuid(target.messageId)&&target.conversationId===conversationMemory.get(conversationKey(state.session))&&JSON.stringify(target.session)===JSON.stringify(state.session);
   },
   canEditMessages(){return !!active&&active.kind!=='cloud';},
-  async truncateMessage(target:ConversationMessageTarget):Promise<void> {
+  async forkMessage(target:ConversationMessageTarget,requestId:string):Promise<void> {
     if(!this.messageTargetCurrent(target)||target.from!=='user'||!active||active.kind==='cloud'||document.hidden)throw Error('This message cannot be edited in the current connection.');
-    const selected=active,session=state.session!,generation=epoch,controller=new AbortController(),contextKey=JSON.stringify(navigationContext?.());cancelStoppedVoiceRead();signInReadinessOwner=null;operation=controller;update({busy:true});let dispatched=false;
+    const selected=active,session=state.session!,generation=epoch,controller=new AbortController(),contextKey=JSON.stringify(navigationContext?.());cancelStoppedVoiceRead();signInReadinessOwner=null;operation=controller;update({busy:true});
     const current=()=>{controller.signal.throwIfAborted();if(document.hidden||state.open||generation!==epoch||selected!==active||JSON.stringify(state.session)!==JSON.stringify(session)||conversationMemory.get(conversationKey(session))!==target.conversationId)throw Error('The conversation changed.');};
-    try {
+    try{
       const history=await selected.remote.messages(target.conversationId,controller.signal);current();
       const row=history.messages.find(row=>row.id===target.messageId);
       if(!row||row.role!=='user'||row.source==='local_command'||typeof row.text!=='string'||restoredText(row.text,row.userTextFormat)!==target.text)throw Error('Changed · reload');
-      if(JSON.stringify(navigationContext?.())!==contextKey)throw Error('The active screen changed. Nothing was replaced.');
-      dispatched=true;await selected.remote.truncateMessages(target.conversationId,target.messageId,controller.signal);current();
-      await restoreConversationHistory(target.conversationId,controller.signal,true);current();
-    } catch(error) {
-      if(dispatched){if(generation===epoch)update({historyError:'Reload to check'});throw Object.assign(new Error('Reload this conversation to check your edit.'),{historyChanged:true,cause:error});}
-      throw error;
-    } finally {releaseOperation(controller);}
+      if(JSON.stringify(navigationContext?.())!==contextKey)throw Error('The active screen changed. Nothing was sent.');
+      const branch=await selected.remote.forkConversation(target.conversationId,target.messageId,requestId,row.text,controller.signal);current();
+      await restoreConversationHistory(branch.id,controller.signal,false);
+    }finally{releaseOperation(controller);}
   },
   async voiceReplyForTurn(binding:VoiceConversationBinding,turnId:string,signal:AbortSignal):Promise<{id:string;text:string}|undefined>{
     const selected=active;

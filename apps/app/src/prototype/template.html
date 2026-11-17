@@ -4401,6 +4401,7 @@
     </div>
   </sc-if>
   <div class="alpha-chat-notices">
+  <sc-if value="{{originalConversation}}"><button aria-label="Back to original conversation" onClick="{{openOriginalConversation}}" style="align-self:flex-start;min-height:36px;padding:4px 16px;color:var(--mut)">Original conversation</button></sc-if>
   <sc-if value="{{panelComposer}}">
   <sc-if value="{{draftStatus}}"><div style="max-height:24dvh;overflow:auto;padding:6px 16px;background:var(--bg);color:var(--fg);border-radius:16px;font-size:12px"><p role="status" aria-label="Assistant draft status" style="margin:0">{{draftStatus}}</p><sc-if value="{{draftConflict}}"><p style="white-space:pre-wrap;max-height:80px;overflow:auto">Saved: {{draftSavedText}}</p><button aria-label="Restore saved draft" onClick="{{restoreSavedDraft}}" style="min-height:44px;padding:8px">Restore</button><button aria-label="Replace saved draft with this text" onClick="{{keepCurrentDraft}}" style="min-height:44px;padding:8px">Replace</button></sc-if><sc-if value="{{draftRetry}}"><button aria-label="Retry draft storage" onClick="{{retryDraft}}" style="min-height:44px;padding:8px;display:inline-flex;align-items:center;gap:6px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="{{ic.phRotate}}"></path></svg>Retry</button></sc-if><sc-if value="{{draftRecovery}}"><button aria-label="Recover assistant draft" onClick="{{recoverDraft}}" style="min-height:44px;padding:8px">Recover</button></sc-if></div></sc-if>
   </sc-if>

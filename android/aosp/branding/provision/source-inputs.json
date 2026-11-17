@@ -70,6 +70,20 @@
       "path": "services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java",
       "sha256": "1207287f2d0e143bceb9dafeb6827a2be52669179a155da25d4fb8cd974c6ad2",
       "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/services/devicepolicy/java/com/android/server/devicepolicy/DevicePolicyManagerService.java"
+    },
+    {
+      "project": "packages/modules/Permission",
+      "revision": "1093eca7407576c72e51b1a88550ee0667a6e5dc",
+      "path": "PermissionController/role-controller/java/com/android/role/controller/service/RoleControllerServiceImpl.java",
+      "sha256": "a29db10b18799b3231954b4350b417acd3e6d1c9ac1e83477cae25aa1635ce14",
+      "url": "https://android.googlesource.com/platform/packages/modules/Permission/+/1093eca7407576c72e51b1a88550ee0667a6e5dc/PermissionController/role-controller/java/com/android/role/controller/service/RoleControllerServiceImpl.java"
+    },
+    {
+      "project": "packages/modules/Permission",
+      "revision": "1093eca7407576c72e51b1a88550ee0667a6e5dc",
+      "path": "framework-s/java/android/app/role/RoleControllerService.java",
+      "sha256": "62d81bfb935aecf76eaebe2e0c7224b921cbaeb5d49bb685f788a650409518f9",
+      "url": "https://android.googlesource.com/platform/packages/modules/Permission/+/1093eca7407576c72e51b1a88550ee0667a6e5dc/framework-s/java/android/app/role/RoleControllerService.java"
     }
   ],
   "settingsUpdateAuthority": "Pinned InputMethodManager.java 4380-4429 recommends direct secure-setting updates; input service 3129-3132 requires selected and enabled methods kept in sync",

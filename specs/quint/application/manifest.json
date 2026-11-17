@@ -11896,5 +11896,28 @@
       "One read request and three owner generations; no provider or carrier effects.",
       "Whole adapter runs with controlled shell, search transport, timer and modal ports. History restoration, DOM and Android route authority remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/OSRoleUpgrade.qnt",
+    "module": "OSRoleUpgrade",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "completeAndRestartTest",
+      "failureRetryTest",
+      "partialFailureRestoreTest",
+      "ownerChoiceWinsTest",
+      "ownerReturnsLegacyTest",
+      "crashAfterGrantTest"
+    ],
+    "sources": [
+      "android/aosp/branding/provision/AlphaRoleUpgrade.java",
+      "android/aosp/branding/provision/AlphaRoleUpgradeAndroid.java",
+      "scripts/stage-alpha-os-branding.py"
+    ],
+    "abstractions": [
+      "One of three independent roles, durable intent and completion receipt, primary unmanaged system-image identity and role qualification as checked inputs. The Android controller serializes role requests. Source compilation tests exercise all three roles, partial failure restoration and owner request paths. Device reboot persistence, other privileged controller clients and real role grants require image qualification. Progress needs stable eligibility, qualified APK, successful durable writes and fair successful role grants."
+    ]
   }
 ]

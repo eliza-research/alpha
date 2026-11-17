@@ -41,7 +41,7 @@ Keep prototype styling and identity separate from real data/capability claims.
 | AP-13 | Wallet | Deferred: removed from MVP; views, native adapters and agent actions remain disabled on stock Android and the Alpha image |
 | AP-14 | Pixel 10a Android 17 image, signing, listening and unattended update/recovery (P-75) | Release gate; exact input/signer lock; release keys as GitHub Actions secrets for a CI signing job, certificates for Alpha Compute, first versionName 0.1.0 (P-58); Cuttlefish boot and physical hardware/OTA/user qualification separate; unlocked pilot units are not production-representative (P-70); Shaw release owner |
 | AP-15 | Accessibility and resilience across intentional responsive layouts | P0; large text, TalkBack, keyboard, rotation, process death, permission loss, offline and repeated HOME |
-| AP-16 | Agentic Phone, Contacts and Messages: one bottom bar addresses the person or Alpha; opening Alpha moves the app into a stage above the sheet instead of covering it ([requirements](agentic-comms.md)) | P0 AOSP; AC-01 to AC-32: one input per screen, nothing acted on is covered, End never covered, drafts shown in full and never sent without a tap, suggestions in the bar instead of chips, call screens follow the theme |
+| AP-16 | Agentic Phone, Contacts and Messages: one bottom bar addresses the person or Alpha; opening Alpha moves the app into a stage above the sheet instead of covering it ([requirements](agentic-comms.md)) | P0 AOSP; AC-01 to AC-32: one input per screen, nothing acted on is covered, End never covered, drafts shown in full and never sent without a tap, automatic suggestions deferred, call screens follow the theme |
 
 ## Explicit limits and decisions
 
