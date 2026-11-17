@@ -9,6 +9,11 @@ import {fileURLToPath} from 'node:url';
 import {javaBinary} from './jvm-tools.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
+const repositories = [
+  'https://repo.maven.apache.org/maven2',
+  'https://repo1.maven.org/maven2',
+  'https://maven-central.storage-download.googleapis.com/maven2',
+];
 const modules = [
   ['org.jetbrains.kotlin', 'kotlin-compiler-embeddable', '2.2.20'],
   ['org.jetbrains.kotlin', 'kotlin-stdlib', '2.2.20'],
@@ -35,11 +40,22 @@ export function kotlinJars({prepare = false} = {}) {
       mkdirSync(output, {recursive: true});
       const temporary = join(output, `${file}.${process.pid}.part`);
       try {
-        execFileSync('curl', ['--fail', '--location', '--retry', '3', '--max-time', '90', '--output', temporary,
-          `https://repo.maven.apache.org/maven2/${group.replaceAll('.', '/')}/${name}/${version}/${file}`], {stdio: 'inherit', timeout: scaledTimeout(300000)});
-        if (!valid(temporary)) throw Error(`Kotlin compiler dependency checksum differs: ${file}`);
-        found = join(output, file);
-        renameSync(temporary, found);
+        const artifact = `${group.replaceAll('.', '/')}/${name}/${version}/${file}`;
+        let lastFailure;
+        for (const repository of repositories) {
+          try {
+            execFileSync('curl', ['--fail', '--location', '--connect-timeout', '5', '--retry', '1', '--max-time', '90', '--output', temporary,
+              `${repository}/${artifact}`], {stdio: 'inherit', timeout: scaledTimeout(200000)});
+          } catch (error) {
+            lastFailure = error;
+            continue;
+          }
+          if (!valid(temporary)) throw Error(`Kotlin compiler dependency checksum differs: ${file}`);
+          found = join(output, file);
+          renameSync(temporary, found);
+          break;
+        }
+        if (!found) throw Error(`Could not download the pinned Kotlin compiler dependency: ${file}`, {cause: lastFailure});
       } finally {rmSync(temporary, {force: true});}
     }
     if (!found) throw Error(`Prepare the pinned host Kotlin compiler: bun test/fixtures/kotlin-tools.mjs --prepare (${file})`);
