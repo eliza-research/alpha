@@ -1955,7 +1955,7 @@
     "step": "step",
     "invariant": "safety",
     "sources": [
-      "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInClient.java",
       "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
       "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java",
       "vendor/eliza/packages/auth/android/build.gradle",
@@ -3082,6 +3082,7 @@
     "sources": [
       "android/app/src/main/java/ai/alphacompute/alphaphone/GmailBackground.java",
       "android/app/src/main/java/ai/alphacompute/alphaphone/GmailDeliveryWorker.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/GmailNoticePoster.java",
       "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaGmailPlugin.java",
       "android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java",
       "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",

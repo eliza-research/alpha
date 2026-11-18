@@ -46,7 +46,7 @@ const observationPorts = `
 export async function checkGoogleBrowserReturnClaim(extraSources = []) {
   const native = preparePatchedNative({root});
   const java = join(native.root, javaPackage);
-  const plugin = join(java, 'CloudSignInPlugin.java');
+  const plugin = join(root, 'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInClient.java');
   const pure = readdirSync(java).filter(name => name.endsWith('.java') &&
     !['CloudSignInPlugin.java', 'NativeGoogleCredential.java'].includes(name)).map(name => join(java, name));
   const registration = join(native.root, 'packages/auth/android/test/ai/eliza/auth/cloud/TestRegistration.java');
@@ -72,7 +72,7 @@ export async function checkGoogleBrowserReturnClaim(extraSources = []) {
     rmSync(temporary, {recursive: true, force: true});
   }
   return checkTraces({model, sources, driverHashes, traces, scope: 'bounded-orchestration', assumptions: [
-    'Authenticated pinned CloudSignInPlugin callback, browser pause/resume, scoped cancel, retirement and completion methods execute in the same plain-JVM chain fixture used by the packaged source regression.',
+    'Selected AlphaCloudSignInClient callback, browser pause/resume, scoped cancel, retirement and completion methods execute in a plain-JVM fixture with pinned shared auth helpers.',
     'The scope starts with a prepared browser attempt in the host task, or a stored pending record without a live attempt or an adoptable credential generation. It bounds one owner, four FIFO worker entries and four main grace timers. Typed observations label actual enqueued Runnable instances and inspect actual attempt and port state.',
     'A full worker dispatch is one transition. The campaign uses controlled queue, credential store and HTTPS ports, a valid success response, and fixed representative expiry classes. Actual Android lifecycle delivery, secure-store durability, intra-worker interleavings, new attempt setup and OAuth provider behavior remain outside this projection.',
   ]});

@@ -31,6 +31,7 @@ public final class Intent {
  private final Map<String,String> extras=new HashMap<>();
  private String action;
  private Uri data;
+ public Intent(){this((String)null);}
  public Intent(Context context,Class<?> component){this.component=component;}
  public Intent(String action){this.component=null;this.action=action;}
  public Intent(Intent from){component=from.component;action=from.action;data=from.data;extras.putAll(from.extras);}
@@ -140,6 +141,7 @@ public final class PendingIntent {
  public final Intent intent;
  private final String identity;
  private PendingIntent(String identity,Intent intent){this.identity=identity;this.intent=new Intent(intent);}
+ public void cancel(){registry.remove(identity,this);}
  public static void reboot(){registry.clear();}
  private static PendingIntent get(String kind,Context context,int code,Intent intent,int flags){
   if((flags&FLAG_IMMUTABLE)==0)throw new AssertionError("Reminder routes are immutable");
@@ -202,9 +204,10 @@ import android.content.Context;
 import java.util.*;
 public final class Notification {
  public static final int VISIBILITY_PRIVATE=0;
- public static final String CATEGORY_REMINDER="reminder";
+ public static final String CATEGORY_REMINDER="reminder",CATEGORY_EMAIL="email";
  public final String channel;
- public String title,text,category;
+ public String title,text,category,group;
+ public long timeout;
  public int visibility;
  public boolean autoCancel,onlyAlertOnce;
  public Notification publicVersion;
@@ -238,6 +241,8 @@ public final class Notification {
   public Builder setOnlyAlertOnce(boolean value){notice.onlyAlertOnce=value;return this;}
   public Builder setAutoCancel(boolean value){notice.autoCancel=value;return this;}
   public Builder setCategory(String value){notice.category=value;return this;}
+  public Builder setTimeoutAfter(long ms){notice.timeout=ms;return this;}
+  public Builder setGroup(String value){notice.group=value;return this;}
   public Builder addAction(Action action){actions.add(action);return this;}
   public Notification build(){notice.actions=actions.toArray(Action[]::new);return notice;}
  }

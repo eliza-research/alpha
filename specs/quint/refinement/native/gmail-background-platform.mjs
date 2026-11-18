@@ -19,7 +19,8 @@ export function gmailBackgroundPlatform() {
     const end=provider.indexOf(' private static JSONObject cloudIdentity(JSONObject selected)',start);
     assert.ok(start>=0&&end>start&&provider.slice(start,end).includes('verifiedCloudIdentity'));
     const androidNotifications=['android/Manifest.java','android/os/Build.java','android/content/pm/PackageManager.java',
-      'android/net/Uri.java','android/app/NotificationChannel.java','android/service/notification/StatusBarNotification.java'];
+      'android/net/Uri.java','android/content/Intent.java','android/app/PendingIntent.java','android/app/Notification.java',
+      'android/app/NotificationChannel.java','android/service/notification/StatusBarNotification.java'];
     const files={
       ...Object.fromEntries(androidNotifications.map(name=>[name,reminderPlatform[name]])),
       'android/content/Context.java':`package android.content;
@@ -31,14 +32,6 @@ public class Context {
  public int checkSelfPermission(String name){return android.content.pm.PackageManager.PERMISSION_GRANTED;}
  public <T>T getSystemService(Class<T> type){return type.cast(type==android.app.NotificationManager.class?notices:keyguard);}
 }`,
-      'android/content/Intent.java':reminderPlatform['android/content/Intent.java'].replace(
-        ' public Intent(String action)', ' public Intent(){this((String)null);}\n public Intent(String action)'),
-      'android/app/PendingIntent.java':reminderPlatform['android/app/PendingIntent.java'].replace(
-        ' public static void reboot()', ' public void cancel(){registry.remove(identity);}\n public static void reboot()'),
-      'android/app/Notification.java':reminderPlatform['android/app/Notification.java']
-        .replace(' public final String channel;',' public static final String CATEGORY_EMAIL="email";\n public final String channel;')
-        .replace(' public String title,text,category;',' public String title,text,category,group;\n public long timeout;')
-        .replace('  public Notification build()', '  public Builder setTimeoutAfter(long ms){notice.timeout=ms;return this;}\n  public Builder setGroup(String group){notice.group=group;return this;}\n  public Notification build()'),
       'android/app/NotificationManager.java':`package android.app;
 import ai.alphacompute.alphaphone.GmailBackgroundTraces;
 import android.service.notification.StatusBarNotification;

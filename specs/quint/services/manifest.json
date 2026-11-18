@@ -4,6 +4,7 @@
       "apps/app/src/runtime/cloud-sign-in.ts",
       "apps/app/src/runtime/cloud-sign-in-ui.tsx",
       "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInClient.java",
       "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
       "apps/app/src/runtime/connection-ui.tsx"
     ],
@@ -79,12 +80,12 @@
       "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
       "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudEmailCode.java",
       "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSmsCode.java",
-      "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
       "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
       "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInEnvironment.java",
       "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
       "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
       "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java",
+      "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRenewal.java",
       "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRevocation.java"
     ]
   },

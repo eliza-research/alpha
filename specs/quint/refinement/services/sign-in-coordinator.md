@@ -1,7 +1,7 @@
 # Native sign-in coordinator refinement
 
-The standalone adapter executes Alpha's registration and the explicitly patched
-shared `CloudSignInPlugin`, `CloudSignInFlow`, `CloudSignInReadiness`, `CloudEmailCode`,
+The standalone adapter executes Alpha's registration and `AlphaCloudSignInClient`
+with the shared `CloudSignInFlow`, `CloudSignInReadiness`, `CloudEmailCode`,
 `CloudSmsCode` and `CloudKeyRevocation` on a JVM. It uses the actual plugin constructor, executor,
 public start/cancel methods, callback handler, completion routine and startup
 acknowledgement recovery. Each schedule has a fresh JVM so its HTTPS URL factory
@@ -11,14 +11,15 @@ cannot affect another test. Unknown authorities and routes fail the fixture.
 bun specs/quint/refinement/services/sign-in-coordinator.mjs
 ```
 
-The adapter runs in the services aggregate and also has a standalone command. Its seventeen schedules
+The adapter runs through the owning sign-in test and also has a standalone command. Its 21 schedules
 cover initial successful sign-in, successful replacement, retryable acknowledgement,
 pre-commit cancellation, post-commit cancellation, acknowledgement after restart,
 failed live callback retirement, cold-return refusal, failed cancellation
 followed by restart, owned cancellation racing with replacement, cancellation
 without an active attempt racing with replacement, cancellation during callback consumption,
 failed receipt persistence, stale callback reads followed by a new Google attempt,
-queued cancellation followed by email or phone, and callback ownership conflicts.
+queued cancellation followed by email or phone, callback ownership conflicts,
+email and SMS code attempt limits, and an email-to-MFA transition.
 Several schedules cover more than one of these transitions.
 
 ## Implementation and model mapping
@@ -43,7 +44,7 @@ that self-revocation before Steward logout, followed by the saved key's successf
 acknowledgement and receipt removal after restart. The source can publish an
 unscoped completion when the recovered key still matches the saved slot.
 
-A callback after process recreation has no live credential intent. The shared
+A callback after process recreation has no live credential intent. The Alpha
 coordinator retains pending bytes, emits its incomplete-sign-in notice, and
 performs no exchange or credential write. Failed removal in the live attempt
 cannot reach the exchange endpoint. Failed cancellation retains the pending
@@ -90,9 +91,9 @@ Keystore, process termination, cross-process writers and provider responses rema
 separate integration obligations. No real credentials or network calls are used.
 
 The native authorization routine executes with a controlled affirmative dialog
-result. Arbitrary authorization timing, negative authorization, email/phone verification and MFA schedules,
-all receipt-removal failure outcomes, expiry and all combinations of concurrent
-callbacks remain outside these seventeen schedules. The existing finite model limits
+result. Arbitrary authorization timing, negative authorization, live email/SMS delivery,
+other receipt-removal failures, expiry and unrestricted concurrent
+callbacks remain outside these schedules. The existing finite model limits
 attempts to two and acknowledgement rounds to three. The source fixture exercises
 a full successful initial sign-in before every credential-replacement flow, so its stored
 credential is produced by the implementation.
