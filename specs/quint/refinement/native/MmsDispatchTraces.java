@@ -25,7 +25,7 @@ import org.json.JSONArray;
 public final class MmsDispatchTraces {
  static boolean historicalListeners;
  static final String OP="synthetic-mms", SLOT="sms-send-ledger:v1:device", BODY="Synthetic message";
- static final long NOW=1_760_000_000_000L;
+ public static final long NOW=1_760_000_000_000L;
  static final int SUB=7;
  static final String[] RECIPIENTS={"+15555550100","+15555550101"};
  static final byte[][] IMAGES={ {}, {1,2,3}, {1,2,4} };
@@ -49,7 +49,7 @@ public final class MmsDispatchTraces {
  static final class Fixture {
   final Context context=new Context();
   final AlphaSmsSendReceiver receiver=new AlphaSmsSendReceiver();
-  final TelephonyPlugin[] plugins=new TelephonyPlugin[3];
+  final AlphaTelephonyPlugin[] plugins=new AlphaTelephonyPlugin[3];
   final PluginCall[] reviewCalls=new PluginCall[3];
   final int[] reviews=new int[3];
   final boolean[] reviewSims=new boolean[3];
@@ -69,7 +69,7 @@ public final class MmsDispatchTraces {
      :SmsSendJournal.bindingText(to,BODY,SUB);
     bindings.put(SmsSendJournal.sha256(text),binding);
    }
-   load();config=plugins[1].telephonyConfiguration();
+   load();config=(SmsTelephonyConfiguration)Trace.read(plugins[1],"config");
    context.radio.beforeMms=this::beforeMms;
    trace=new Trace(name,observe());trace.value.put("init",Trace.action("initWith",groupRecipients));
   }
@@ -191,9 +191,9 @@ public final class MmsDispatchTraces {
     check(dialog.message.contains(BODY)&&dialog.message.contains(to[0])&&dialog.message.contains("Synthetic SIM")&&
      (dialog.getWindow().flags&android.view.WindowManager.LayoutParams.FLAG_SECURE)!=0&&dialog.getButton(-1).filtered,
      "Reviewed message is private and obscured tap is filtered");
-    if(group(binding))check(dialog.message.contains("Attachment: synthetic.png")&&dialog.preview.images.size()==1&&
+    if(group(binding))check(dialog.message.contains(historicalListeners?"Attachment: synthetic.png":"Picture: synthetic.png")&&dialog.preview.images.size()==1&&
      Arrays.equals(dialog.preview.images.getFirst().image.bytes(),IMAGES[binding])&&
-     (to.length==1||dialog.message.contains("every recipient sees all the others")),"Exact attachment preview and group disclosure");
+     (to.length==1||dialog.message.contains(historicalListeners?"every recipient sees all the others":"everyone sees who else it went to")),"Exact attachment preview and group disclosure");
    }
    classify(call);point("request",actor,binding,input);
   }
@@ -323,7 +323,7 @@ public final class MmsDispatchTraces {
   void point(String name,Object... args)throws Exception{trace.step(name,observe(),args);}
 
   void close()throws Exception{
-   Looper.runMain(()->{for(int i=1;i<=2;i++)plugins[i].handleOnDestroy();});
+   Looper.runMain(()->{for(int i=1;i<=2;i++)plugins[i].fixtureDestroy();});
    SmsTelephony.WORK.shutdown();SmsTelephony.WORK.awaitTermination(5,TimeUnit.SECONDS);
    try(var entries=Files.walk(context.noBackup.toPath())){
     for(var entry:entries.sorted(Comparator.reverseOrder()).toList())Files.delete(entry);

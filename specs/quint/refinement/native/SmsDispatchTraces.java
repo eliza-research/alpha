@@ -48,7 +48,7 @@ public final class SmsDispatchTraces {
 
  static final class Fixture {
   final Context context=new Context();
-  final TelephonyPlugin[] plugins=new TelephonyPlugin[3];
+  final AlphaTelephonyPlugin[] plugins=new AlphaTelephonyPlugin[3];
   final PluginCall[] reviewCalls=new PluginCall[3];
   final int[] reviewedBinding=new int[3], reviewedSim=new int[3];
   final AlphaSmsSendReceiver receiver=new AlphaSmsSendReceiver();
@@ -67,7 +67,7 @@ public final class SmsDispatchTraces {
     bindings.put(SmsSendJournal.sha256(SmsSendJournal.bindingText(numbers(),BODY[id],SUB)),id);
     plugins[id]=new AlphaTelephonyPlugin();plugins[id].attach(context);plugins[id].load();drain();
    }
-   config=plugins[1].telephonyConfiguration();
+   config=(SmsTelephonyConfiguration)Trace.read(plugins[1],"config");
    context.radio.before=this::beforeSend;
    trace=new Trace(name,observe());trace.value.put("init",Trace.action("initWith",recipients,parts,role));
   }
@@ -278,9 +278,9 @@ public final class SmsDispatchTraces {
    var off=(android.content.BroadcastReceiver)Trace.read(plugin,"screenOff");
    Looper.runMain(()->{
     switch(mode){
-     case "pause" -> plugin.handleOnPause();
-     case "resume" -> plugin.handleOnResume();
-     case "destroy" -> plugin.handleOnDestroy();
+     case "pause" -> plugin.fixturePause();
+     case "resume" -> plugin.fixtureResume();
+     case "destroy" -> plugin.fixtureDestroy();
      case "screen" -> off.onReceive(context,new Intent(Intent.ACTION_SCREEN_OFF));
      default -> throw new AssertionError();
     }
@@ -376,7 +376,7 @@ public final class SmsDispatchTraces {
   void point(String name,Object... args)throws Exception{trace.step(name,observe(),args);}
 
   void close()throws Exception{
-   Looper.runMain(()->{for(int bridge=1;bridge<=2;bridge++)if(!plugins[bridge].activity.destroyed)plugins[bridge].handleOnDestroy();});
+   Looper.runMain(()->{for(int bridge=1;bridge<=2;bridge++)if(!plugins[bridge].activity.destroyed)plugins[bridge].fixtureDestroy();});
    SmsTelephony.WORK.shutdown();SmsTelephony.WORK.awaitTermination(5,TimeUnit.SECONDS);
    Files.delete(context.noBackup.toPath());
   }

@@ -20,8 +20,11 @@ const shared='plugins/plugin-native-messages/android/src/main/java/ai/eliza/plug
 const extracted=['TelephonyPlugin','MmsStore','SmsProviderReader'];
 const compiled=['SmsTelephony','SmsTelephonyConfiguration','SmsSendJournal','MmsPdu'];
 const historicalProduct=['AlphaTelephony','AlphaSmsSendReceiver'].map(name=>app+name+'.java');
-const product=[...historicalProduct,app+'AlphaTelephonyPlugin.java',app+'SmsNoticeOpenRequest.java'];
+const appBase=app+'AlphaTelephonyBase.java';
+const product=[...historicalProduct,app+'AlphaTelephonyPlugin.java',app+'AlphaTelephonyReview.java',
+  app+'SmsNoticeOpenRequest.java','android/app/src/main/java/ai/eliza/plugins/messages/AlphaTelephonyAccess.java'];
 const paths=[...extracted,...compiled].map(name=>shared+name+'.java');
+const roleSource=shared+'SmsRoleConfiguration.java';
 const launcherManifest='android/app/src/launcher/AndroidManifest.xml';
 const harness='MmsDispatchTraces.java';
 const historicalInventory='specs/quint/refinement/native/mms-historical-sources.json';
@@ -39,16 +42,19 @@ async function campaign(scenarios, extraSources, check, {historicalProbe=false} 
     const staged=prepareNativeFixture(root,temporary);
     const history=historicalProbe?materializeHistoricalSources(root,paths.map(path=>'vendor/eliza/'+path),historicalInventory):null;
     const resolveSource=path=>history?history.resolveSource('vendor/eliza/'+path):join(staged.root,path);
+    const stagedPaths=historicalProbe?paths:[...paths,roleSource];
     const read=name=>readFileSync(resolveSource(shared+name+'.java'),'utf8');
-    const fixture={...mmsPlatform(...extracted.map(read),{historical:historicalProbe}),...(historicalProbe?historicalTelephonyHost:{})};
+    const plugin=historicalProbe?read(extracted[0]):readFileSync(join(root,appBase),'utf8');
+    const fixture={...mmsPlatform(plugin,read('MmsStore'),read('SmsProviderReader'),{historical:historicalProbe}),
+      ...(historicalProbe?historicalTelephonyHost:{})};
     const files=Object.entries(fixture).map(([path,contents])=>{
       const target=join(temporary,'driver',path);
       mkdirSync(dirname(target),{recursive:true});writeFileSync(target,contents);return target;
     });
     const receiptPath=join(staged.root,'.source.json');
-    const generatedSources=[...paths.map(path=>join(staged.root,path)),receiptPath,...files,...(history?paths.map(path=>resolveSource(path)):[])];
+    const generatedSources=[...stagedPaths.map(path=>join(staged.root,path)),receiptPath,...files,...(history?paths.map(path=>resolveSource(path)):[])];
     const productSources=historicalProbe?historicalProduct:product;
-    const sources=[...productSources,...paths.map(path=>'vendor/eliza/'+path),launcherManifest,'android/consumer-host.json',
+    const sources=[...(historicalProbe?[]:[appBase]),...productSources,...stagedPaths.map(path=>'vendor/eliza/'+path),launcherManifest,'android/consumer-host.json',
       'android/upstream-native-sources.json','upstream.lock.json',
       'scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts','test/fixtures/native-source.mjs','test/fixtures/jvm-tools.mjs',
       app+'AlphaImageCapability.java',join(directory,harness),join(directory,'Trace.java'),join(directory,'java.mjs'),
@@ -58,18 +64,19 @@ async function campaign(scenarios, extraSources, check, {historicalProbe=false} 
     const driverHashes=captureInputs(sources);
     verifyNativePatchReceipt(readFileSync(receiptPath,'utf8'),staged);
     const pinned=upstreamNativeSource(root).read(shared);
-    for(const path of paths){
+    for(const path of stagedPaths){
       assert.equal(driverHashes[join(root,'vendor/eliza',path)],pinned.get(path).sha256);
       assert.equal(driverHashes[join(staged.root,path)],staged.files[path]);
     }
     // The reviewed upstream source now includes the former local MMS repair.
-    for(const path of paths)assert.equal(staged.files[path],pinned.get(path).sha256);
+    for(const path of stagedPaths)assert.equal(staged.files[path],pinned.get(path).sha256);
     const host=JSON.parse(readFileSync(join(root,'android/consumer-host.json'),'utf8'));
     assert.deepEqual(host.profile.modules.find(module=>module.name==='eliza-messages'),{
       name:'eliza-messages',source:{root:'patchedNative',path:'plugins/plugin-native-messages/android'},relocateBuild:true,
     });
     assert.match(readFileSync(join(root,launcherManifest),'utf8'),/<receiver\s+android:name="\.AlphaSmsSendReceiver"\s+android:exported="false"/);
     const complete=compiled.map(name=>resolveSource(shared+name+'.java'));
+    if(!historicalProbe)complete.push(resolveSource(roleSource));
     let traces;
     try {traces=javaTraceCampaign(harness,[...productSources,...complete,...files],scenarios.map(name=>historicalProbe?[name,'historical']:[name]),'ai.eliza.plugins.messages.MmsDispatchTraces');}
     finally {assert.deepEqual(captureInputs(sources),driverHashes,'MMS inputs changed during replay');}

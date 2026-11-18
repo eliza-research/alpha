@@ -11,9 +11,12 @@ function member(source, regex) {
   return value;
 }
 
-export function smsMembers(plugin, mms, provider, {includeMms=false}={}) {
+export function smsMembers(plugin, mms, provider, {includeMms=false, appOwned=false}={}) {
+  const namespace=appOwned?'ai.alphacompute.alphaphone':'ai.eliza.plugins.messages';
+  const name=appOwned?'AlphaTelephonyBase':'TelephonyPlugin';
   return {
-    'ai/eliza/plugins/messages/TelephonyPlugin.java': `package ai.eliza.plugins.messages;
+    [namespace.replaceAll('.','/')+'/'+name+'.java']: `package ${namespace};
+${appOwned?'import ai.eliza.plugins.messages.*;':''}
 import android.telephony.*;
 import android.content.Intent;
 import com.getcapacitor.*;
@@ -22,7 +25,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
-public abstract class TelephonyPlugin extends Plugin {
+public abstract class ${name} extends Plugin {
  ${between(plugin,' public static final Pattern NUMBER',' /** Runs a request that launches')}
  ${between(plugin,' private android.app.AlertDialog review;',' // ---- Reviewed native MMS')}
  ${includeMms?'':'protected final void sendOwnerApprovedMms(PluginCall call,SmsTelephony.DispatchGuard guard){throw new AssertionError("MMS outside SMS fixture");}'}
@@ -42,9 +45,11 @@ import android.provider.Telephony;
 import java.io.File;
 import java.util.List;
 public final class MmsStore {
+ ${appOwned?'static final int NOTICE_ID=1;':''}
  ${between(mms,' public static boolean isDefaultSmsApp',' /** Inserts one incoming SMS')}
  ${between(mms,' public static long persistOutgoingSms',' /**\n  * Marks one conversation')}
  static String newFileName(){throw new AssertionError("MMS outside SMS fixture");}
+ ${appOwned&&!includeMms?'static boolean validFileName(String name){throw new AssertionError("MMS download outside SMS fixture");}':''}
  static File file(Context c,String name){throw new AssertionError("MMS outside SMS fixture");}
  static Uri fileUri(String authority,String name){throw new AssertionError("MMS outside SMS fixture");}
  static void delete(Context c,String name){throw new AssertionError("MMS outside SMS fixture");}
@@ -79,6 +84,24 @@ import com.getcapacitor.annotation.Permission;
 public final class AlphaTelephonyPlugin extends TelephonyPlugin {
  @Override protected SmsTelephonyConfiguration configuration(){return AlphaTelephony.CONFIGURATION;}
  @Override protected String unavailableMessage(){return AlphaImageCapability.UNAVAILABLE;}
+}`,
+};
+
+
+/** Downloaded-message receivers never run in the confirmed send campaigns. */
+export const appOwnedTelephonyReadPorts={
+  'ai/eliza/plugins/messages/MmsWapPushReceiver.java': `package ai.eliza.plugins.messages;
+final class MmsWapPushReceiver {
+ static final String EXTRA_FILE="eliza.mms.file",EXTRA_TRANSACTION="eliza.mms.transaction",
+  EXTRA_LOCATION="eliza.mms.location",EXTRA_SUBSCRIPTION="eliza.mms.subscription";
+}`,
+  'ai/eliza/plugins/messages/MmsResultReceiver.java': `package ai.eliza.plugins.messages;
+final class MmsResultReceiver {
+ static final String ACTION_MARK_READ="ai.eliza.plugins.messages.action.MARK_THREAD_READ",
+  EXTRA_THREAD="thread",EXTRA_THROUGH="through",EXTRA_NOTICE="notice";
+ static void respond(android.content.Context context,SmsRoleConfiguration config,String transaction,int sub) {
+  throw new AssertionError("MMS download outside dispatch fixture");
+ }
 }`,
 };
 
@@ -198,6 +221,9 @@ public class Activity {
   'ai/alphacompute/alphaphone/AlphaContactLookup.java': `package ai.alphacompute.alphaphone;
 final class AlphaContactLookup {
  static String name(android.content.Context context, String number, android.os.CancellationSignal cancel) { return null; }
+ static org.json.JSONArray searchRows(org.json.JSONArray contacts,java.util.function.Function<String,String> clip) {
+  throw new AssertionError("Contacts outside SMS fixture");
+ }
 }`,
   'ai/alphacompute/alphaphone/MainActivity.java': `package ai.alphacompute.alphaphone;
 import android.app.Activity;
@@ -440,6 +466,9 @@ public abstract class Plugin {
  public PermissionState getPermissionState(String alias){return context.checkSelfPermission(alias)==0?PermissionState.GRANTED:PermissionState.DENIED;}
  public void load(){}
  protected void handleOnPause(){}protected void handleOnResume(){}protected void handleOnDestroy(){activity.destroyed=true;}
+ public final void fixturePause(){handleOnPause();}
+ public final void fixtureResume(){handleOnResume();}
+ public final void fixtureDestroy(){handleOnDestroy();}
  protected void notifyListeners(String event,JSObject body){
   if(!event.equals("smsSendUpdated")||!body.keySet().equals(Set.of("operationId")))throw new AssertionError("Only opaque SMS update may cross bridge");
   notices.add(body);

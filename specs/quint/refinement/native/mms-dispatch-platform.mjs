@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {smsMembers, smsPlatform} from './sms-dispatch-platform.mjs';
+import {appOwnedTelephonyReadPorts, smsMembers, smsPlatform} from './sms-dispatch-platform.mjs';
 
 function slice(source, first, last) {
   const start=source.indexOf(first), end=source.indexOf(last,start+first.length);
@@ -13,11 +13,12 @@ function replace(source, first, replacement) {
 }
 
 export function mmsPlatform(plugin, store, provider, {historical=false}={}) {
-  const files={...smsPlatform,...smsMembers(plugin,store,provider,{includeMms:true})};
+  const files={...smsPlatform,...smsMembers(plugin,store,provider,{includeMms:true,appOwned:!historical}),
+    ...(historical?{}:appOwnedTelephonyReadPorts)};
   const pkg='ai/eliza/plugins/messages/';
   const product='ai/alphacompute/alphaphone/';
   function edit(path, from, to) {files[path]=replace(files[path],from,to);}
-  const telephony=pkg+'TelephonyPlugin.java';
+  const telephony=historical?pkg+'TelephonyPlugin.java':product+'AlphaTelephonyBase.java';
   edit(telephony,'import android.content.Intent;','import android.content.Intent;\nimport org.json.JSONObject;');
   const destroy=' @Override protected void handleOnDestroy()';
   edit(telephony,destroy,slice(plugin,' // ---- Reviewed native MMS',destroy)+destroy);
@@ -35,6 +36,8 @@ import java.util.UUID;`);
 
   files[pkg+'SmsFixtureSupport.java']=`package ai.eliza.plugins.messages;
 final class System {static long currentTimeMillis(){return MmsDispatchTraces.NOW;}}`;
+  if(!historical)files[product+'DispatchClock.java']=`package ai.alphacompute.alphaphone;
+final class System {static long currentTimeMillis(){return ai.eliza.plugins.messages.MmsDispatchTraces.NOW;}}`;
   edit(product+'SmsFixtureSupport.java','SmsDispatchTraces.write','MmsDispatchTraces.write');
   edit('com/getcapacitor/Plugin.java','!event.equals("smsSendUpdated")','!event.equals("mmsSendUpdated")');
   edit('android/content/Context.java',' public File getNoBackupFilesDir()',` public File getCacheDir(){return noBackup;}
