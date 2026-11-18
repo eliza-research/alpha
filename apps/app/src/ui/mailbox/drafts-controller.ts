@@ -2089,6 +2089,42 @@ export function createMailDraftsController(
       const proposal = controller.proposal();
       return draft && proposal ? { draftId: draft.id, proposal } : null;
     },
+    prepareSelection: setAside,
+    async removeSelection(
+      selected: ReadonlyMap<string, string>,
+      current: () => boolean,
+    ): Promise<boolean> {
+      if (!current() || !ready || busy || !shelf || draft || saved || retained?.available)
+        return false;
+      if (!selected.size || [...selected].some(([id, revision]) =>
+        !shelf?.items.some(row => row.draft.id === id && row.draft.revision === revision)
+      )) return false;
+      const token = epoch;
+      const next = {
+        ...shelf,
+        items: shelf.items.filter(row => !selected.has(row.draft.id)),
+      };
+      busy = true;
+      publish();
+      try {
+        try {
+          await saveShelf(next);
+        } catch {
+          if (token !== epoch) return false;
+          const readback = await store.read<Shelf>(shelfSlot());
+          if (token !== epoch || (readback !== null && !shelfValid(readback))) return false;
+          shelf = readback;
+          // A peer can edit another draft after our write. Only the selected IDs need to be absent.
+          if (readback?.items.some(row => selected.has(row.draft.id))) return false;
+        }
+        return current();
+      } finally {
+        if (token === epoch) {
+          busy = false;
+          publish();
+        }
+      }
+    },
     chips<T extends Bag>(
       chip: (label: string, action: () => void) => T,
     ): Bag[] {
@@ -2125,7 +2161,8 @@ export function createMailDraftsController(
                   () => void openShelved(row),
                 ),
                 subject: row.draft.subject || "(No subject)",
-                snippet: row.draft.body.slice(0, 160) || "Draft on this device",
+                snippet: row.draft.body.slice(0, 160),
+                selection: {id: row.draft.id, revision: row.draft.revision},
               })) || []),
             ...(retained?.error
               ? [chip("Recover email edits", () => retained?.recover(draft))]
@@ -2133,10 +2170,7 @@ export function createMailDraftsController(
           ].map((row: Bag) => ({
             ...row,
             subject: row.subject || local?.subject || "(No subject)",
-            snippet:
-              row.snippet ||
-              local?.body?.slice(0, 160) ||
-              "Draft on this device",
+            snippet: row.snippet ?? local?.body?.slice(0, 160) ?? "",
             recovery: row.label === "Recover email edits",
           }))
         : [];

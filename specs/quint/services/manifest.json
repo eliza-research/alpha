@@ -1186,6 +1186,54 @@
     ]
   },
   {
+    "path": "specs/quint/services/MailSelection.qnt",
+    "module": "MailSelection",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "distinctMessagesApplyOnce",
+      "unknownStopsLaterMessages",
+      "receiptRecoveryDoesNotResend",
+      "refusalStopsLaterMessages",
+      "leavingStopsLaterMessages"
+    ],
+    "sources": [
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/ui/mailbox/review-controller.ts",
+      "test/browser/gmail-mvp-scope.spec.ts"
+    ],
+    "abstractions": [
+      "Two selected messages and one existing journal entry in flight. Unknown and rejected outcomes stop the remaining selection. Checking the saved receipt never resumes the batch.",
+      "The browser fixture executes the real Inbox adapter and journal with a synthetic provider. Native role, real mailbox effects, and additional Gmail grants are outside this model."
+    ]
+  },
+  {
+    "path": "specs/quint/services/MailDraftSelection.qnt",
+    "module": "MailDraftSelection",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "selectedVersionRemoved",
+      "changedVersionRefused",
+      "concurrentChangeRefused",
+      "lostReplyResolvedWithoutReplay",
+      "retiredOwnerCannotWrite"
+    ],
+    "sources": [
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/ui/mailbox/drafts-controller.ts",
+      "test/browser/gmail-mvp-scope.spec.ts"
+    ],
+    "abstractions": [
+      "A selected draft revision and an unrelated saved draft share the account shelf. The current owner can commit only the version they reviewed.",
+      "The real controller compares and exchanges the shelf. Later readback sees the committed shelf. This model does not issue provider calls or authorize deletion of a Gmail draft."
+    ]
+  },
+  {
     "path": "specs/quint/services/InboxCoordinator.qnt",
     "module": "InboxCoordinator",
     "init": "init",

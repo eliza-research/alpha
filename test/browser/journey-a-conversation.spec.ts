@@ -258,11 +258,11 @@ test('journey A: a proposed phone action is declined from the conversation and n
  expect(state.proposals.map((p:any)=>[p.payload.operation.type,p.state,p.receipt??null])).toEqual([['create_note','rejected',null]]);
  expect(state.journal).toEqual([]);
  // The conversation continues: one reply per accepted request, and the declined action stays declined.
- // The chat's field is found by its name, not its layer: a send from Home keeps the focused editor
- // in the dock's slot, positioned over the chat field, until that editing session ends (#1298).
+ // Clicking Decline can move the shared editor from the dock into the conversation.
  const message=page.getByRole('textbox',{name:'Message Alpha',exact:true});
  await message.fill('Journey A request after declining');
  await message.press('Enter');
+ await expect(bubble(page,'Journey A request after declining')).toHaveCount(1);
  await expect(bubble(page,REPLY)).toHaveCount(2);
  await expect(approve).toHaveCount(0);
 

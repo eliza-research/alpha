@@ -86,7 +86,7 @@ for(const mode of ['capture','lost-ack','old-message','ask-first','proposal-only
  if(mode==='stop'){
   // A photo waiting for its preview can be stopped: nothing is taken and the request ends as a failure.
   await page.getByRole('button',{name:'Stop reply',exact:true}).click();
-  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Cancelled\. No photo was taken\./})).toHaveCount(1);
+  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Cancelled\. No photo was taken\.$/})).toHaveCount(1);
   const f=await fixture();expect(f.captures).toBe(0);expect(f.receipts.map((receipt:any)=>receipt.outcome)).not.toContain('applied');
   await expect(page.getByRole('button',{name:'Stop reply',exact:true})).toHaveCount(0);
   return;

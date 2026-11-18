@@ -26,19 +26,32 @@ ANDROID_DOUBLES = {
     'android/util/ArrayMap.java': 'package android.util; public class ArrayMap<K,V> extends java.util.LinkedHashMap<K,V>{public V valueAt(int i){return new java.util.ArrayList<>(values()).get(i);} }',
     'android/util/ArraySet.java': 'package android.util; public class ArraySet<T> extends java.util.HashSet<T>{ public T valueAt(int i){return new java.util.ArrayList<>(this).get(i);} }',
     'android/util/Log.java': 'package android.util; public class Log { public static int i(String a,String b){return 0;} public static int e(String a,String b){return 0;} public static int e(String a,String b,Throwable t){return 0;} public static int w(String a,String b){return 0;} }',
-    'android/content/SharedPreferences.java': '''package android.content; public class SharedPreferences {
-     public java.util.Map<String,String> values=new java.util.HashMap<>(); public boolean fail;
-     public String getString(String k,String v){return values.getOrDefault(k,v);} public Editor edit(){return new Editor();}
-     public class Editor {String k,v; public Editor putString(String k,String v){this.k=k;this.v=v;return this;} public boolean commit(){if(fail)return false;values.put(k,v);return true;} }
-    }''',
+    'android/content/ApexEnvironment.java': '''package android.content; import java.io.*;
+     public class ApexEnvironment {
+      public static File directory;
+      public static ApexEnvironment getApexEnvironment(String module){if(!module.equals("com.android.permission"))throw new AssertionError(module);return new ApexEnvironment();}
+      public File getDeviceProtectedDataDirForUser(android.os.UserHandle user){if(user!=android.os.UserHandle.SYSTEM)throw new AssertionError();return directory;}
+     }
+    ''',
+    'android/util/AtomicFile.java': '''package android.util; import java.io.*; import java.nio.file.*;
+     public class AtomicFile {
+      public static boolean denyWrites, denyReads; private final File file, pending;
+      public AtomicFile(File path){file=path;pending=new File(path+".new");}
+      public File getBaseFile(){return file;}
+      public byte[] readFully()throws IOException{if(denyReads)throw new FileNotFoundException("read denied");try(FileInputStream in=new FileInputStream(file)){return in.readAllBytes();}}
+      public FileOutputStream startWrite()throws IOException{if(denyWrites)throw new IOException("write denied");return new FileOutputStream(pending);}
+      public void finishWrite(FileOutputStream out){try{out.close();Files.move(pending.toPath(),file.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);}catch(IOException e){throw new UncheckedIOException(e);}}
+      public void failWrite(FileOutputStream out){try{out.close();Files.deleteIfExists(pending.toPath());}catch(IOException e){throw new UncheckedIOException(e);}}
+     }
+    ''',
     'android/content/Context.java': '''package android.content; public class Context {
      public android.app.role.RoleManager roles=new android.app.role.RoleManager();
      public android.os.UserManager users=new android.os.UserManager();
      public android.app.admin.DevicePolicyManager policy=new android.app.admin.DevicePolicyManager();
      public android.content.pm.PackageManager packages=new android.content.pm.PackageManager();
-     public SharedPreferences prefs=new SharedPreferences(); public int complete=1; public static final int MODE_PRIVATE=0;
+     public int complete=1; public String packageName="android";
      public <T>T getSystemService(Class<T> c){if(c==android.app.role.RoleManager.class)return c.cast(roles);if(c==android.os.UserManager.class)return c.cast(users);return c.cast(policy);}
-     public Context createDeviceProtectedStorageContext(){return this;} public SharedPreferences getSharedPreferences(String n,int m){return prefs;}
+     public String getPackageName(){return packageName;}
      public android.content.pm.PackageManager getPackageManager(){return packages;} public Context getContentResolver(){return this;}
     }''',
     'android/content/pm/ApplicationInfo.java': 'package android.content.pm; public class ApplicationInfo { public static final int FLAG_SYSTEM=1,FLAG_DEBUGGABLE=2,FLAG_SUSPENDED=4; public boolean enabled=true;public int flags=FLAG_SYSTEM; }',
@@ -154,23 +167,23 @@ public class RoleControllerServiceImpl extends RoleControllerService {
 # the role's migration is still unfinished ("" or "pending"), so without the hook the next
 # default-role pass would move the role to the Alpha package over the owner's explicit choice.
 OWNER_CHOICE_TEST = '''package com.android.role.controller.service;
-import android.content.Context;import android.content.pm.ApplicationInfo;import android.os.UserHandle;import java.util.*;
+import android.content.ApexEnvironment;import android.content.Context;import android.content.pm.ApplicationInfo;import android.os.UserHandle;import android.util.AtomicFile;import java.io.*;import java.nio.file.*;import java.util.*;
 public class OwnerChoiceTest {
  static final String HOME=AlphaRoleUpgrade.ROLES.get(0),DIALER=AlphaRoleUpgrade.ROLES.get(1),SMS=AlphaRoleUpgrade.ROLES.get(2),A=AlphaRoleUpgrade.ALPHA,L=AlphaRoleUpgrade.PREVIOUS;
  static void check(boolean b,String what){if(!b)throw new AssertionError(what);}
- static Context context(){Context c=new Context();for(String r:AlphaRoleUpgrade.ROLES)c.roles.holders.put(r,new ArrayList<>(List.of(L)));return c;}
+ static Context context()throws IOException{AtomicFile.denyWrites=false;AtomicFile.denyReads=false;ApexEnvironment.directory=Files.createTempDirectory(Path.of("."),"permission-data").toFile();Context c=new Context();for(String r:AlphaRoleUpgrade.ROLES)c.roles.holders.put(r,new ArrayList<>(List.of(L)));return c;}
  static RoleControllerServiceImpl failedDialer(Context c){
   c.roles.failAdd=DIALER;RoleControllerServiceImpl p=new RoleControllerServiceImpl(UserHandle.SYSTEM,c);
   check(p.onGrantDefaultRoles(),"default pass continues after a failed grant");
   check(c.roles.getRoleHolders(DIALER).equals(List.of(L)),"failed grant restores the previous holder");
-  check(AlphaRoleUpgrade.PENDING.equals(c.prefs.values.get(DIALER)),"failed grant leaves the migration pending");
+  check(AlphaRoleUpgrade.PENDING.equals(new AlphaRoleUpgradeAndroid(c,UserHandle.SYSTEM,c.roles,p).state(DIALER)),"failed grant leaves the migration pending");
   return p;
  }
- public static void main(String[] args){
+ public static void main(String[] args)throws IOException{
   // Pending after a failed grant, the owner explicitly re-selects the previous package.
   Context add=context();RoleControllerServiceImpl p=failedDialer(add);
-  check(p.onAddRoleHolder(DIALER,L,0),"owner add accepted");check(AlphaRoleUpgrade.DONE.equals(add.prefs.values.get(DIALER)),"owner add retires the migration");
-  check(p.onGrantDefaultRoles(),"next default pass");check(add.roles.getRoleHolders(DIALER).equals(List.of(L)),"owner add survives the next default pass");
+  check(p.onAddRoleHolder(DIALER,L,0),"owner add accepted");check(AlphaRoleUpgrade.DONE.equals(new AlphaRoleUpgradeAndroid(add,UserHandle.SYSTEM,add.roles,p).state(DIALER)),"owner add retires the migration");
+  p=new RoleControllerServiceImpl(UserHandle.SYSTEM,add);check(p.onGrantDefaultRoles(),"next default pass");check(add.roles.getRoleHolders(DIALER).equals(List.of(L)),"owner add survives the next default pass");
   check(add.roles.getRoleHolders(HOME).equals(List.of(A))&&add.roles.getRoleHolders(SMS).equals(List.of(A)),"other roles still migrate");
   // Pending after a failed grant, the owner clears the role: an empty pending role must not be recovered.
   Context clear=context();p=failedDialer(clear);
@@ -189,14 +202,21 @@ public class OwnerChoiceTest {
   check(suspended.roles.getRoleHolders(HOME).equals(List.of(L)),"choice made while ineligible survives eligibility returning");
   check(suspended.roles.getRoleHolders(DIALER).equals(List.of(A)),"unchosen roles migrate once eligible");
   // An eligible device refuses the request when it cannot record the choice, and changes nothing.
-  Context unwritable=failedContextAfterFailure();p=new RoleControllerServiceImpl(UserHandle.SYSTEM,unwritable);unwritable.prefs.fail=true;
+  Context unwritable=failedContextAfterFailure();p=new RoleControllerServiceImpl(UserHandle.SYSTEM,unwritable);AtomicFile.denyWrites=true;
   check(!p.onAddRoleHolder(DIALER,"owner.dialer",0),"unrecorded owner choice refused");check(unwritable.roles.getRoleHolders(DIALER).equals(List.of(L)),"refused request changes nothing");
+  // An unreadable marker refuses the eligible owner request instead of throwing on the role worker.
+  Context unreadable=failedContextAfterFailure();p=new RoleControllerServiceImpl(UserHandle.SYSTEM,unreadable);AtomicFile.denyReads=true;
+  check(!p.onAddRoleHolder(DIALER,"owner.dialer",0),"unreadable owner choice refused");check(unreadable.roles.getRoleHolders(DIALER).equals(List.of(L)),"unreadable refusal changes nothing");
+  AtomicFile.denyReads=false;
   // An ineligible device never refuses an owner request over the marker.
-  Context ineligibleUnwritable=context();ineligibleUnwritable.complete=0;ineligibleUnwritable.prefs.fail=true;p=new RoleControllerServiceImpl(UserHandle.SYSTEM,ineligibleUnwritable);
+  Context ineligibleUnwritable=context();ineligibleUnwritable.complete=0;AtomicFile.denyWrites=true;p=new RoleControllerServiceImpl(UserHandle.SYSTEM,ineligibleUnwritable);
   check(p.onAddRoleHolder(SMS,"owner.sms",0)&&ineligibleUnwritable.roles.getRoleHolders(SMS).equals(List.of("owner.sms")),"ineligible owner request proceeds");
+  Context remote=context();remote.packageName="com.android.permissioncontroller";AtomicFile.denyWrites=true;p=new RoleControllerServiceImpl(UserHandle.SYSTEM,remote);
+  check(p.onGrantDefaultRoles()&&remote.roles.removes==0,"remote controller never migrates roles");
+  check(p.onAddRoleHolder(SMS,"owner.sms",0)&&remote.roles.getRoleHolders(SMS).equals(List.of("owner.sms")),"remote owner request does not depend on marker access");
   System.out.println("PASS owner requests retire unfinished migrations");
  }
- static Context failedContextAfterFailure(){Context c=context();failedDialer(c);c.roles.failAdd=null;return c;}
+ static Context failedContextAfterFailure()throws IOException{Context c=context();failedDialer(c);c.roles.failAdd=null;return c;}
 }
 '''
 
@@ -210,7 +230,7 @@ def compile_and_run(files, main):
             file.write_text(content)
         sources = [str(file) for file in root.rglob('*.java')]
         subprocess.run(['javac', '--release', '11', '-d', str(root), *sources], check=True)
-        return subprocess.check_output(['java', '-cp', str(root), main], text=True)
+        return subprocess.check_output(['java', '-cp', str(root), main], cwd=root, text=True)
 
 
 class RoleUpgrade(unittest.TestCase):
@@ -236,11 +256,11 @@ class RoleUpgrade(unittest.TestCase):
             'com/android/role/controller/service/AlphaRoleUpgrade.java': POLICY.read_text(),
             'com/android/role/controller/service/AlphaRoleUpgradeAndroid.java': POLICY.with_name('AlphaRoleUpgradeAndroid.java').read_text(),
             'com/android/role/controller/service/ControllerTest.java': '''package com.android.role.controller.service;
-             import android.content.Context;import android.os.UserHandle;import java.util.*;
+             import android.content.ApexEnvironment;import android.content.Context;import android.os.UserHandle;import android.util.AtomicFile;import java.io.*;import java.nio.file.*;import java.util.*;
              public class ControllerTest {
               static void check(boolean b){if(!b)throw new AssertionError();}
-              static Context context(){Context c=new Context();for(String r:AlphaRoleUpgrade.ROLES)c.roles.holders.put(r,new ArrayList<>(List.of(AlphaRoleUpgrade.PREVIOUS)));return c;}
-              public static void main(String[]args){
+              static Context context()throws IOException{AtomicFile.denyWrites=false;AtomicFile.denyReads=false;ApexEnvironment.directory=Files.createTempDirectory(Path.of("."),"permission-data").toFile();Context c=new Context();for(String r:AlphaRoleUpgrade.ROLES)c.roles.holders.put(r,new ArrayList<>(List.of(AlphaRoleUpgrade.PREVIOUS)));return c;}
+              public static void main(String[]args)throws IOException{
                Context c=context();RoleControllerServiceImpl p=new RoleControllerServiceImpl(UserHandle.SYSTEM,c);
                check(p.onGrantDefaultRoles());for(String r:AlphaRoleUpgrade.ROLES)check(c.roles.getRoleHolders(r).equals(List.of(AlphaRoleUpgrade.ALPHA)));
                check(p.onAddRoleHolder(AlphaRoleUpgrade.ROLES.get(0),AlphaRoleUpgrade.PREVIOUS,0));check(p.onGrantDefaultRoles());check(c.roles.getRoleHolders(AlphaRoleUpgrade.ROLES.get(0)).equals(List.of(AlphaRoleUpgrade.PREVIOUS)));

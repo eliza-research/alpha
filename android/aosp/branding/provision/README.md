@@ -18,9 +18,11 @@ telephony require Home only. Completed, managed, profile and secondary-user setu
 ineligible for the first-run assignments.
 
 An existing primary-user setup uses the Permission Controller's serialized default-role
-pass for the package identity transition. The image must advertise the canonical features,
-preinstall the enabled release app and pass Android's normal role qualification. Only a
-role held solely by the former Alpha package is moved. Each role records a durable pending
+pass in the Android system process for the package identity transition. Its pending and
+completion markers use Permission's device-protected APEX data directory. The image must
+advertise the canonical features, preinstall the enabled release app and pass Android's normal
+role qualification. Only a role held solely by the former Alpha package is moved. Each role
+records a durable pending
 intent before the grant and a completion marker after readback. A failed grant attempts to restore
 the old holder when Android left the role empty. A later explicit role request retires
 that role's migration before it changes the holder, including a request made while the

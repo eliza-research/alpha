@@ -2,18 +2,26 @@ package com.android.role.controller.service;
 
 import android.app.admin.DevicePolicyManager;
 import android.app.role.RoleManager;
+import android.content.ApexEnvironment;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Settings;
+import android.util.AtomicFile;
 
 import com.android.role.controller.model.Role;
 import com.android.role.controller.model.Roles;
 import com.android.role.controller.util.UserUtils;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.util.List;
 
 /** Runs only on RoleControllerService's serialized worker. */
@@ -22,7 +30,6 @@ final class AlphaRoleUpgradeAndroid implements AlphaRoleUpgrade.Port {
     private final UserHandle user;
     private final RoleManager roles;
     private final RoleControllerServiceImpl controller;
-    private final SharedPreferences state;
 
     AlphaRoleUpgradeAndroid(Context context, UserHandle user, RoleManager roles,
             RoleControllerServiceImpl controller) {
@@ -30,12 +37,12 @@ final class AlphaRoleUpgradeAndroid implements AlphaRoleUpgrade.Port {
         this.user = user;
         this.roles = roles;
         this.controller = controller;
-        state = UserUtils.getUserContext(context, user).createDeviceProtectedStorageContext()
-                .getSharedPreferences("alpha_role_identity_upgrade_v1", Context.MODE_PRIVATE);
     }
 
     @Override public boolean eligible() {
-        if (!UserHandle.SYSTEM.equals(user)
+        // The in-process role controller owns Permission's per-user system data.
+        // The remote app keeps Android's regular role behavior.
+        if (!ownsMarkers()
                 || !context.getPackageManager().hasSystemFeature(AlphaRoleUpgrade.ALPHA + ".aosp_image")
                 || !context.getPackageManager().hasSystemFeature(AlphaRoleUpgrade.ALPHA + ".fresh_telephony_setup")) {
             return false;
@@ -64,9 +71,55 @@ final class AlphaRoleUpgradeAndroid implements AlphaRoleUpgrade.Port {
     }
 
     @Override public List<String> holders(String role) { return roles.getRoleHolders(role); }
-    @Override public String state(String role) { return state.getString(role, ""); }
+
+    private boolean ownsMarkers() {
+        return UserHandle.SYSTEM.equals(user) && "android".equals(context.getPackageName());
+    }
+
+    private AtomicFile stateFile(String role) {
+        File directory = ApexEnvironment.getApexEnvironment("com.android.permission")
+                .getDeviceProtectedDataDirForUser(user);
+        return new AtomicFile(new File(directory, "alpha_role_identity_upgrade_v1_" + role));
+    }
+
+    @Override public String state(String role) {
+        AtomicFile file = stateFile(role);
+        try {
+            String value = new String(file.readFully(), StandardCharsets.UTF_8);
+            if (AlphaRoleUpgrade.PENDING.equals(value) || AlphaRoleUpgrade.DONE.equals(value)) {
+                return value;
+            }
+            throw new IllegalStateException("Invalid Alpha role transition state for " + role);
+        } catch (IOException error) {
+            // FileInputStream also throws FileNotFoundException for access errors. Only a
+            // confirmed missing marker allows the default pass to start a fresh migration.
+            if (error instanceof FileNotFoundException
+                    && Files.notExists(file.getBaseFile().toPath(), LinkOption.NOFOLLOW_LINKS)) {
+                return "";
+            }
+            throw new IllegalStateException("Cannot read Alpha role transition state", error);
+        }
+    }
+
     @Override public boolean save(String role, String value) {
-        return state.edit().putString(role, value).commit();
+        AtomicFile file = stateFile(role);
+        FileOutputStream output = null;
+        try {
+            output = file.startWrite();
+            output.write(value.getBytes(StandardCharsets.UTF_8));
+            output.getFD().sync();
+        } catch (IOException error) {
+            if (output != null) file.failWrite(output);
+            return false;
+        }
+        file.finishWrite(output);
+        // Owner requests reach save() outside the default pass's catch, on the system
+        // server's role worker: an unreadable marker refuses the write instead of throwing.
+        try {
+            return value.equals(state(role));
+        } catch (IllegalStateException unreadable) {
+            return false;
+        }
     }
     @Override public boolean adopt(String role) {
         return controller.onAddRoleHolder(role, AlphaRoleUpgrade.ALPHA, 0);
@@ -76,6 +129,7 @@ final class AlphaRoleUpgradeAndroid implements AlphaRoleUpgrade.Port {
     }
 
     boolean keepOwnerChoice(String role) {
-        return !AlphaRoleUpgrade.ROLES.contains(role) || save(role, AlphaRoleUpgrade.DONE);
+        return !ownsMarkers() || !AlphaRoleUpgrade.ROLES.contains(role)
+                || save(role, AlphaRoleUpgrade.DONE);
     }
 }

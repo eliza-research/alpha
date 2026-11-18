@@ -404,3 +404,105 @@ test('Share to email preserves earlier edits when local preservation conflicts',
  await page.getByRole('button',{name:'Other mail folders',exact:true}).click();await page.getByRole('menuitemradio',{name:'Drafts',exact:true}).click();await page.getByRole('button',{name:'Local draft, Conflict protected email',exact:true}).click();await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Conflict protected email');await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Protected exact body');
  expect((await gm(page)).prepares).toEqual([]);expect((await gm(page)).dispatches).toEqual([]);
 });
+
+async function mailOption(page: Page, name: string) {
+ await page.getByLabel('Mail options',{exact:true}).click();
+ await page.getByRole('menuitem',{name,exact:true}).click();
+}
+
+test('Inbox selection changes only the confirmed visible emails once',async({page})=>{
+ await setup(page,{pages:{inbox:2}});
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Unread, Sender in-0-a, Subject in-0-a',exact:true})).toBeVisible();
+ await mailOption(page,'Select emails');
+ await mailOption(page,'Select all shown');
+ await expect(page.getByRole('heading',{name:'2 selected',exact:true})).toBeVisible();
+ await mailOption(page,'Move to Trash');
+ const review=page.getByRole('dialog',{name:'Move to Trash 2 emails?',exact:true});
+ await review.getByRole('button',{name:'No',exact:true}).click();
+ expect((await gm(page)).prepares).toEqual([]);
+ expect((await gm(page)).dispatches).toEqual([]);
+ await mailOption(page,'Move to Trash');
+ await review.getByRole('button',{name:'Yes',exact:true}).click();
+ const exact=['in-0-a','in-0-b'].map(messageId=>({kind:'trash',messageId,expectedHistoryId:'h-'+messageId}));
+ await expect.poll(async()=>(await gm(page)).dispatches).toEqual(exact);
+ expect((await gm(page)).prepares).toEqual(exact);
+ await expect(page.getByRole('status').filter({hasText:'Emails updated.'})).toBeVisible();
+});
+
+test('Inbox selection stops after an uncertain result and keeps its receipt',async({page})=>{
+ await setup(page);
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Unread, Sender in-0-a, Subject in-0-a',exact:true})).toBeVisible();
+ await page.evaluate(()=>(window as any).gm.dispatchState='outcome-unknown');
+ await mailOption(page,'Select emails');
+ await mailOption(page,'Select all shown');
+ await mailOption(page,'Archive');
+ await page.getByRole('dialog',{name:'Archive 2 emails?',exact:true}).getByRole('button',{name:'Yes',exact:true}).click();
+ const receipt=page.getByRole('dialog',{name:'Review mail operation',exact:true});
+ await expect(receipt).toContainText(/outcome of this change is unknown/i);
+ await expect(receipt.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);
+ await receipt.getByRole('button',{name:'Check saved receipt',exact:true}).click();
+ expect((await gm(page)).prepares).toEqual([{kind:'archive',messageId:'in-0-a',expectedHistoryId:'h-in-0-a'}]);
+ expect((await gm(page)).dispatches).toHaveLength(1);
+});
+
+test('Inbox selection retires after switching accounts during the first dispatch',async({page})=>{
+ await setup(page,{accounts:['first@example.test','second@example.test']});
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Unread, Sender in-0-a, Subject in-0-a',exact:true})).toBeVisible();
+ await page.evaluate(()=>{
+  const f=(window as any).gm;
+  f.gate=new Promise<void>(resolve=>f.releaseDispatch=resolve);
+ });
+ await mailOption(page,'Select emails');
+ await mailOption(page,'Select all shown');
+ await mailOption(page,'Move to Trash');
+ await page.getByRole('dialog',{name:'Move to Trash 2 emails?',exact:true}).getByRole('button',{name:'Yes',exact:true}).click();
+ await expect.poll(async()=>(await gm(page)).dispatches.length).toBe(1);
+ await page.getByRole('button',{name:'second@example.test',exact:true}).click();
+ await expect.poll(async()=>(await gm(page)).searches.at(-1)?.grant).toBe('grant-1');
+ await page.evaluate(()=>(window as any).gm.releaseDispatch());
+ await expect(page.getByRole('heading',{name:'Inbox',exact:true})).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:'Updating emails…'})).toHaveCount(0);
+ expect((await gm(page)).dispatches).toEqual([{kind:'trash',messageId:'in-0-a',expectedHistoryId:'h-in-0-a'}]);
+});
+
+for (const conflict of [false,true])test(
+ conflict?'Draft selection refuses a concurrently changed revision':'Draft selection deletes only the confirmed local copy',
+ async({page})=>{
+ await setup(page);
+ await seedLegacyOwnerDraft(page,'Keep this draft','Keep this body');
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Compose',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:'Compose',exact:true}).click();
+ await page.getByRole('textbox',{name:'Subject',exact:true}).fill('Delete this draft');
+ await page.getByRole('textbox',{name:'Message',exact:true}).fill('Delete this local copy');
+ await page.getByRole('button',{name:'Back from draft',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Other mail folders',exact:true}).click();
+ await page.getByRole('menuitemradio',{name:'Drafts',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Local draft, Keep this draft',exact:true})).toBeVisible();
+ await mailOption(page,'Select drafts');
+ await page.getByRole('checkbox',{name:'Local draft, Delete this draft',exact:true}).click();
+ await mailOption(page,'Delete drafts');
+ if(conflict)await page.evaluate(()=>{
+  const shelf=Object.entries((window as any).gmSlots).find(([key])=>key.startsWith('inbox-drafts:v1:shelf:'))?.[1] as {items:Array<{draft:{subject:string;body:string;revision:string}}>};
+  const chosen=shelf.items.find(row=>row.draft.subject==='Delete this draft')!;
+  chosen.draft.body='Edited in the other window';
+  chosen.draft.revision='other-window-revision';
+ });
+ await page.getByRole('dialog',{name:'Delete 1 draft?',exact:true}).getByRole('button',{name:'Yes',exact:true}).click();
+ if(conflict){
+  await expect(page.getByRole('status').filter({hasText:'These drafts changed.'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Local draft, Keep this draft',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Local draft, Delete this draft',exact:true}).click();
+  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Edited in the other window');
+ }else{
+  await expect(page.getByRole('button',{name:'Local draft, Delete this draft',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Local draft, Keep this draft',exact:true}).click();
+  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Keep this body');
+ }
+ expect((await gm(page)).prepares).toEqual([]);
+ expect((await gm(page)).dispatches).toEqual([]);
+});

@@ -36,7 +36,7 @@ import {BrowserReviews} from '../browser/review';
 import {testMocksEnabled} from '../build-flags';
 import {createPhotoViewport} from './photo-viewport';
 
-type CameraCaptureAttempt={status:'succeeded'|'failed'|'unknown';summary:string;cameraResult?:CameraCaptureResult};
+type CameraCaptureAttempt={status:'succeeded'|'failed'|'unknown';summary:string;cameraResult?:CameraCaptureResult;cancelledBeforeCapture?:true};
 let requestedPhoto:((operationId:string,signal:AbortSignal,current:()=>void,lens?:'front'|'back')=>Promise<CameraCaptureAttempt>)|undefined;
 /** `lens` names the camera the photo must be taken with; without it the current camera is used. */
 export async function captureAgentPhoto(operationId:string,signal:AbortSignal,current:()=>void,lens?:'front'|'back'):Promise<CameraCaptureAttempt>{
@@ -1142,7 +1142,11 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
         return {status:'succeeded',summary:'Saved',cameraResult};
       });
       return attempt.status==='busy'?busy:attempt.value;
-    }catch{return {status:dispatched?'unknown':'failed',summary:dispatched?'Save unconfirmed':signal.aborted?'Cancelled. No photo was taken.':'The screen changed before the photo. Ask again.'};}
+    }catch{
+      if(dispatched)return {status:'unknown',summary:'Save unconfirmed'};
+      if(signal.aborted)return {status:'failed',summary:'Cancelled. No photo was taken.',cancelledBeforeCapture:true};
+      return {status:'failed',summary:'The screen changed before the photo. Ask again.'};
+    }
     finally{
       if(request){
         request.cancelReveal?.();

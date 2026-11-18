@@ -902,7 +902,7 @@
         <div aria-hidden="true" style="position: absolute; inset: 0; display: flex; justify-content: flex-end; align-items: center; padding: 0 24px; background: var(--s2); color: var(--mut)">
           <svg class="i" viewBox="0 0 24 24"><path d="{{ic.archive}}"></path></svg>
         </div>
-        <button role="{{it.rowRole}}" aria-checked="{{it.checked}}" aria-label="{{it.label}}" aria-current="{{it.current}}" onClick="{{it.open}}" style="position: relative; width: 100%; display: flex; gap: 14px; padding: 13px 20px; align-items: flex-start; background: var(--bg); transform: translateX({{it.tx}}px); transition: transform .28s cubic-bezier(.19,1,.22,1); box-sizing: border-box">
+        <button role="{{it.rowRole}}" aria-checked="{{it.checked}}" aria-label="{{it.label}}" aria-current="{{it.current}}" disabled="{{it.selectionDisabled}}" onClick="{{it.open}}" style="position: relative; width: 100%; display: flex; gap: 14px; padding: 13px 20px; align-items: flex-start; background: var(--bg); transform: translateX({{it.tx}}px); transition: transform .28s cubic-bezier(.19,1,.22,1); box-sizing: border-box">
           <sc-if value="{{it.selecting}}"><span class="mail-selection-check" aria-hidden="true" data-checked="{{it.checked}}"><sc-if value="{{it.selected}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg></sc-if></span></sc-if>
           <span class="mail-sender-avatar"><span>{{it.ini}}</span><sc-if value="{{it.senderImage}}"><img src="{{it.senderImage}}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onError="{{it.hideSenderImage}}"></sc-if></span>
           <div style="flex-grow: 1; min-width: 0">

@@ -13,12 +13,17 @@ export async function canonicalNotesFixture(page:Page,{path='/',notes=[],trash=[
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto(path);
  await preloadPageModules(page,['/src/runtime/connection-ui.tsx','/src/prototype/canonical-notes-controller.ts','/src/browser/daily.ts']);
+ await page.waitForFunction(()=>{
+  const state=(window as any).__alphaModules['/src/runtime/connection-ui.tsx'].connectionController.getSnapshot();
+  return state.startupResolved&&!state.busy;
+ });
  await page.evaluate(async({notes,trash,failReads})=>{
-  const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
+  const loaded=(window as any).__alphaModules;
+  const {connectionController:c}=loaded['/src/runtime/connection-ui.tsx'];
   const f=(window as any).canonicalNotesFixture={state:{notes,trash,revision:notes.length||trash.length?1:0},requests:[],otherRequests:[],fail:false,failReads,failAfterApplied:false};
   f.acceptedReads=[];
   // Observe the SAME canonical class used by the real UI; never replace its controller.
-  const {CanonicalNotesController}=await import('/src/prototype/canonical-notes-controller.ts');
+  const {CanonicalNotesController}=loaded['/src/prototype/canonical-notes-controller.ts'] as typeof import('/src/prototype/canonical-notes-controller.ts');
   const refresh=CanonicalNotesController.prototype.refresh;
   CanonicalNotesController.prototype.refresh=async function(this:InstanceType<typeof CanonicalNotesController>){
    const result=await refresh.call(this);
@@ -28,7 +33,7 @@ export async function canonicalNotesFixture(page:Page,{path='/',notes=[],trash=[
    }
    return result;
   };
-  const {BrowserDaily}=await import('/src/browser/daily.ts'),perform=BrowserDaily.prototype.perform;
+  const {BrowserDaily}=loaded['/src/browser/daily.ts'],perform=BrowserDaily.prototype.perform;
   BrowserDaily.prototype.perform=async function(input:any){if(input?.action!=='voice'||!f.dictation)return perform.call(this,input);f.heard=(f.heard??0)+1;return {status:'selected',action:'voice',transcript:f.dictation.shift()??''};};
   const identity={ownerId:'canonical-fixture-owner',agentId:'canonical-fixture-agent',sessionId:'canonical-fixture-session',origin:location.origin};
   c.getAppRecordClient=()=>({sessionId:identity.sessionId,identity,current:()=>true,request:async(path:string,method:string,body:any,signal:AbortSignal)=>{

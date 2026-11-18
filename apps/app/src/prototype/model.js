@@ -5967,8 +5967,8 @@ class Component extends DCLogic {
     var nav = this.shellNavigate({ type: "open", view: k, history: staged ? "keep" : opts.push ? "push" : "reset", assistant: this.shellDetent(chat, k) });
     if (S.view !== k) {
       this.leave();
-      var m = this.mod(k), cur = this.vget(k);
-      var busy = m.ongoing && m.ongoing(cur, this.api(k));
+      var m = this.mod(k), cur = this.vget(k), api = this.api(k);
+      var busy = (m.ongoing && m.ongoing(cur, api)) || (m.callBar && m.callBar(cur, api));
       if (busy || opts.restore) { if (patch) this.vpatch(k, patch); } else this.vreset(k, patch);
     } else if (patch) { this.vpatch(k, patch); }
     this.setState(Object.assign(nav, { screen: "home", shade: false, heads: false }));
