@@ -1,5 +1,6 @@
 import {openLegacyNotes} from './helpers/legacy-notes';
 import {returnToApps} from './app-navigation';
+import {preloadPageModules} from './helpers/page-modules';
 import {guardCalendarFixture as guardNoMedia} from './calendar-draft-readiness';
 import {test,expect,type Page} from '@playwright/test';
 test.beforeEach(async({context,page})=>{await guardNoMedia(context);await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,route=>route.abort());});
@@ -9,14 +10,25 @@ async function setup(page:Page,options:Options={}){
  // Provider fixtures use local apps; they do not perform resident/Cloud onboarding.
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
- await page.evaluate(async options=>{
-  const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
-  const {inboxLocalStore:s}=await import('/src/runtime/inbox-local-store.ts');
-  const {CloudProtocolError}=await import('/src/runtime/cloud-protocol.ts');
-  const w=window as any,slots:Record<string,unknown>={};w.gmSlots=slots;
+ await preloadPageModules(page,['/src/runtime/connection-ui.tsx','/src/runtime/inbox-local-store.ts','/src/runtime/cloud-protocol.ts']);
+ await page.evaluate(options=>{
+  const w=window as any,loaded=w.__alphaModules,slots:Record<string,unknown>={};w.gmSlots=slots;
+  const {connectionController:c}=loaded['/src/runtime/connection-ui.tsx'];
+  const {inboxLocalStore:s}=loaded['/src/runtime/inbox-local-store.ts'];
+  const {CloudProtocolError}=loaded['/src/runtime/cloud-protocol.ts'];
   s.read=async(key:string)=>structuredClone(slots[key]??null) as any;
-  s.compareExchange=async(key:string,prior:unknown,next:unknown)=>{if(JSON.stringify(slots[key]??null)!==JSON.stringify(prior))return {status:'conflict'};if(next===null)delete slots[key];else slots[key]=structuredClone(next);return {status:'saved'};};
+  s.compareExchange=async(key:string,prior:unknown,next:unknown)=>{
+   if(f.dispatchSaveGate&&(next as {phase?:string}|null)?.phase==='dispatching'){
+    f.dispatchSaveHeld=true;
+    await f.dispatchSaveGate;
+    f.dispatchSaveHeld=false;
+   }
+   if(JSON.stringify(slots[key]??null)!==JSON.stringify(prior))return {status:'conflict'};
+   if(next===null)delete slots[key];else slots[key]=structuredClone(next);
+   return {status:'saved'};
+  };
   const f=w.gm={searches:[] as any[],prepares:[] as any[],dispatches:[] as any[],disconnects:[] as string[],fail:null as any,failCursor:false,stale:false,gate:null as Promise<void>|null,dispatchState:'succeeded',accountReads:0,accountGate:null as Promise<void>|null,accountFailure:false,
+   dispatchSaveGate:null as Promise<void>|null,dispatchSaveHeld:false,hiddenIds:[] as string[],
    accounts:(options.accounts||['owner@example.test']).map((label,i)=>({connectionId:'grant-'+i,label,configured:true,connected:true,reason:'connected',grantedCapabilities:['google.gmail.triage','google.gmail.send','google.gmail.mailbox']}))};
   const mail=(id:string,extra:Record<string,unknown>={})=>({id,threadId:'thread-'+id,subject:'Subject '+id,from:'Sender '+id,fromEmail:'sender@example.test',to:['owner@example.test'],cc:[],replyTo:null,snippet:'Preview '+id,receivedAt:'2026-10-06T12:00:00Z',unread:false,...extra});
   const inbox=Array.from({length:options.pages?.inbox??1},(_,page)=>[mail('in-'+page+'-a',{unread:page===0}),mail('in-'+page+'-b')]);
@@ -34,7 +46,7 @@ async function setup(page:Page,options:Options={}){
     if(f.fail){const kind=f.fail;f.fail=null;if(kind==='offline')throw new TypeError('Failed to fetch');throw new CloudProtocolError('http',kind);}
     if(pageToken&&f.failCursor){f.failCursor=false;throw new CloudProtocolError('http',400,{error:'Invalid Gmail page token.'});}
     const pages=store[query]||[[]],index=pageToken?Number(pageToken.split(':')[1]):0;
-    return {messages:pages[index]||[],syncedAt:'sync',nextPageToken:index+1<pages.length?'cursor:'+(index+1):null};
+    return {messages:(pages[index]||[]).filter(message=>!f.hiddenIds.includes(message.id)),syncedAt:'sync',nextPageToken:index+1<pages.length?'cursor:'+(index+1):null};
    },
    gmailRead:async(_grant:string,id:string)=>({message:all().find(m=>m.id===id),bodyText:'Body of '+id,historyId:'h-'+id,attachments:[]}),
    gmailThread:async(_grant:string,threadId:string)=>{const message=all().find(m=>m.threadId===threadId);return {messages:[{message,bodyText:'Body of '+message.id,historyId:'h-'+message.id,attachments:[]}],total:1,offset:0,historyId:'thread-history',nextOffset:null};},
@@ -428,6 +440,63 @@ test('Inbox selection changes only the confirmed visible emails once',async({pag
  await expect.poll(async()=>(await gm(page)).dispatches).toEqual(exact);
  expect((await gm(page)).prepares).toEqual(exact);
  await expect(page.getByRole('status').filter({hasText:'Emails updated.'})).toBeVisible();
+});
+
+test('Inbox does not retain a selection across a refreshed first page',async({page})=>{
+ await setup(page);
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByText('Subject in-0-b',{exact:true})).toBeVisible();
+ await mailOption(page,'Select emails');
+ await mailOption(page,'Select all shown');
+ await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeDisabled();
+
+ await page.evaluate(()=>{
+  (window as any).gm.hiddenIds=['in-0-b'];
+  window.dispatchEvent(new Event('alpha:google-accounts-changed'));
+ });
+ await expect(page.getByText('Subject in-0-b',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Inbox',exact:true})).toBeVisible();
+ await mailOption(page,'Select emails');
+ await mailOption(page,'Select all shown');
+ await mailOption(page,'Archive');
+ await page.getByRole('dialog',{name:'Archive 1 email?',exact:true}).getByRole('button',{name:'Yes',exact:true}).click();
+ await expect.poll(async()=>(await gm(page)).dispatches).toEqual([{kind:'archive',messageId:'in-0-a',expectedHistoryId:'h-in-0-a'}]);
+ expect((await gm(page)).prepares).toEqual([{kind:'archive',messageId:'in-0-a',expectedHistoryId:'h-in-0-a'}]);
+});
+
+for(const retirement of ['leave Inbox','withdraw Gmail changes'] as const)test(
+ `Inbox stops an Archive held at the journal write when the owner can ${retirement}`,async({page})=>{
+ await setup(page);
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Unread, Sender in-0-a, Subject in-0-a',exact:true})).toBeVisible();
+ await page.evaluate(()=>{
+  const f=(window as any).gm;
+  f.dispatchSaveGate=new Promise<void>(resolve=>f.releaseDispatchSave=resolve);
+ });
+ await mailOption(page,'Select emails');
+ await mailOption(page,'Select all shown');
+ await mailOption(page,'Archive');
+ await page.getByRole('dialog',{name:'Archive 2 emails?',exact:true}).getByRole('button',{name:'Yes',exact:true}).click();
+ await expect.poll(async()=>(await gm(page)).dispatchSaveHeld).toBe(true);
+
+ if(retirement==='leave Inbox'){
+  await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
+  await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
+ }else{
+  const reads=(await gm(page)).accountReads;
+  await page.evaluate(()=>{
+   const f=(window as any).gm;
+   f.accounts[0].grantedCapabilities=['google.gmail.triage'];
+   window.dispatchEvent(new Event('alpha:google-accounts-changed'));
+  });
+  await expect.poll(async()=>(await gm(page)).accountReads).toBeGreaterThan(reads);
+ }
+ await page.evaluate(()=>(window as any).gm.releaseDispatchSave());
+ await expect.poll(async()=>(await gm(page)).dispatchSaveHeld).toBe(false);
+ if(retirement==='leave Inbox')await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeEnabled();
+ expect((await gm(page)).prepares).toEqual([{kind:'archive',messageId:'in-0-a',expectedHistoryId:'h-in-0-a'}]);
+ expect((await gm(page)).dispatches).toEqual([]);
 });
 
 test('Inbox selection stops after an uncertain result and keeps its receipt',async({page})=>{
