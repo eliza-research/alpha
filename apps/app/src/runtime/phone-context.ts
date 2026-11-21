@@ -1,6 +1,6 @@
 import {NOTE_ID_REGEXP} from '../../../../.eliza/client-features/plugins/plugin-notes/src/note-id.ts';
 import {canonicalNotesListContextAllowed,NOTES_LIST_FILTER_CAPABILITY} from '../../../../.eliza/client-features/packages/contracts/src/device-reviews.ts';
-import {parseClientTurnObservation,parseClientCalendarDayObservation} from '../../../../.eliza/client-features/packages/contracts/src/client-turn-observation.ts';
+import {parseClientTurnObservation,parseClientCalendarDayObservation,parseClientLocationObservation} from '../../../../.eliza/client-features/packages/contracts/src/client-turn-observation.ts';
 import {clockHandoffCapabilities,clockTimeZone} from './clock-contract.ts';
 import {CAMERA_CAPTURE_CAPABILITY,CAMERA_LENS_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
 import {FILES_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts';
@@ -37,6 +37,8 @@ export function sanitizePhoneContext(input: ContextEnvelope): ContextEnvelope {
     if(input.view!=='calendar'||day.timeZone!==result.timeZone)throw Error('The Calendar day observation changed.');
     result.calendarDay=day;
   }
+  // The phone's own position, not a record; it travels with any non-sensitive screen.
+  if(input.location!==undefined)result.location=parseClientLocationObservation(input.location);
   if (input.selectedObject) {
     const selected = input.selectedObject;
     if (!kinds.has(selected.kind)) throw new Error('This selected object cannot share agent context.');

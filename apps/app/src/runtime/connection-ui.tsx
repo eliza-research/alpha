@@ -38,6 +38,7 @@ import { negotiateEnabledViews } from './device-view-profile';
 import { chatNotesFolders } from './notes-folders';
 import { registerWorkflowDevice, workflowDeviceProtocol, type WorkflowDeviceProtocol } from './workflow-presentation';
 import {ClientObservationSupportSession} from './client-observation-support';
+import {phoneLocationReader} from './phone-location';
 import {developmentIdentity,readDevelopmentIdentity,verifyDevelopmentIdentity,developmentOwnerRecovery,assertDevelopmentIdentity,developmentProfiles,type DevelopmentProfile} from '../browser/development-identity';
 import {developmentCloudKey} from '../browser/development-cloud';
 import {DevelopmentCloudSetup} from '../browser/development-cloud-ui';
@@ -3512,7 +3513,7 @@ export const connectionController = {
     const authoredRequestText=text;
     const attachmentOnly=channelType==='DM'&&!!images?.length&&!text.trim();
     const turnMessage=(input:ContextEnvelope)=>attachmentOnly?{text:'',context:sanitizePhoneContext(input)}:phoneContextMessage(text,input);
-    let message = turnMessage({...context,calendarDay:undefined});
+    let message = turnMessage({...context,calendarDay:undefined,location:undefined});
     if (sending) throw new Error('Wait for the current reply before sending another message.');
     const selected = active, session = state.session, generation = epoch;
     requestedCameraContinuation=undefined;
@@ -3543,10 +3544,16 @@ export const connectionController = {
         if (!selected.remote.session || selected.remote.session.expiresAt <= Date.now()) throw Object.assign(new Error('Your session has expired. Pair again.'), { code: 'session_expired' });
       }
       const observationSession=clientObservationSession;
-      // Legacy text/alphaPhone projections remain day-free; plain-v1 alone never admits the field.
-      if(context.calendarDay&&selected.userTextFormatVersion===1&&observationSession){
-        const admitted=await observationSession.context(context,requestSignal);assertCurrent();
-        message=turnMessage(admitted);
+      // Legacy text/alphaPhone projections remain day- and position-free; plain-v1 alone never admits a field.
+      if(selected.userTextFormatVersion===1&&observationSession){
+        // The launcher's location permission is the agent's: while it is granted, every
+        // ordinary turn carries the phone's last known position. Nothing is ever requested here.
+        const location=context.sensitive?undefined:await phoneLocationReader().read(requestSignal);assertCurrent();
+        const observed={...context,location};
+        if(observed.calendarDay||observed.location){
+          const admitted=await observationSession.context(observed,requestSignal);assertCurrent();
+          message=turnMessage(admitted);
+        }
       }
       const id=await ensureSelectedConversation(selected,session,requestSignal,assertCurrent);
       if(expectedConversationId!==undefined&&id!==expectedConversationId)throw Error('The voice conversation changed.');

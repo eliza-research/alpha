@@ -1,4 +1,4 @@
-import {readClientTurnObservationPeerSupport,type ClientTurnObservationSupport} from '../../../../.eliza/client-features/packages/contracts/src/client-turn-observation.ts';
+import {readClientTurnObservationPeerSupport,type ClientTurnObservationOptionalField,type ClientTurnObservationSupport} from '../../../../.eliza/client-features/packages/contracts/src/client-turn-observation.ts';
 import {normalizeRemoteAgentPairingInstanceId} from '../../../../.eliza/client-features/packages/contracts/src/contracts/remote-agent-pairing.ts';
 import type {VerifiedSession,ContextEnvelope} from './alpha-client';
 
@@ -24,14 +24,18 @@ export class ClientObservationSupportCache {
   if(!support)return false;
   this.binding=key;this.support=support;return true;
  }
- calendarDaySupported(binding:ClientObservationBinding):boolean {
-  const key=this.key(binding);return key!==undefined&&key===this.binding&&this.support?.optionalFields.includes('calendarDay')===true;
+ supports(binding:ClientObservationBinding,field:ClientTurnObservationOptionalField):boolean {
+  const key=this.key(binding);return key!==undefined&&key===this.binding&&this.support?.optionalFields.includes(field)===true;
  }
+ calendarDaySupported(binding:ClientObservationBinding):boolean {return this.supports(binding,'calendarDay');}
 }
-/** Strip an unsupported optional field without changing the ordinary observation. */
+const OPTIONAL_FIELDS=['calendarDay','location'] as const;
+/** Strip each unsupported optional field without changing the ordinary observation. */
 export function contextForObservationSupport(context:ContextEnvelope,cache:ClientObservationSupportCache,binding:ClientObservationBinding|undefined):ContextEnvelope {
- const {calendarDay,...ordinary}=context;
- return calendarDay&&binding&&cache.calendarDaySupported(binding)?{...ordinary,calendarDay:{...calendarDay}}:ordinary;
+ const {calendarDay,location,...ordinary}=context;
+ return {...ordinary,
+  ...(calendarDay&&binding&&cache.supports(binding,'calendarDay')?{calendarDay:{...calendarDay}}:{}),
+  ...(location&&binding&&cache.supports(binding,'location')?{location:{...location}}:{})};
 }
 
 /** One verified session handshake, followed by a fresh comparison before optional-field use. */
@@ -74,13 +78,14 @@ export class ClientObservationSupportSession {
    if(this.cache.admit(status,binding))this.known=Object.freeze(binding);
   }catch{this.known=undefined;this.cache.clear();this.check(signal);}
  }
- /** An old/unreadable peer omits only the optional field; ordinary context remains intact. */
+ /** An old/unreadable peer omits only the optional fields; ordinary context remains intact. */
  async context(context:ContextEnvelope,signal:AbortSignal):Promise<ContextEnvelope>{
   const ordinary=contextForObservationSupport(context,this.cache,undefined);
-  this.check(signal);if(!context.calendarDay)return ordinary;
+  const wanted=OPTIONAL_FIELDS.filter(field=>context[field]!==undefined);
+  this.check(signal);if(!wanted.length)return ordinary;
   await this.joined(signal);this.check(signal);
   const binding=this.known;
-  if(!binding||!this.cache.calendarDaySupported(binding))return ordinary;
+  if(!binding||!wanted.some(field=>this.cache.supports(binding,field)))return ordinary;
   try{
    const status=await this.status(signal);this.check(signal);
    if(!this.cache.admit(status,binding)){this.known=undefined;return ordinary;}

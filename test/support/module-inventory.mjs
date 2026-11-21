@@ -689,6 +689,7 @@ export const moduleInventory = {
     "apps/app/src/runtime/permanent-voice-deletion.ts",
     "apps/app/src/runtime/phone-context.ts",
     "apps/app/src/runtime/phone-dial-contract.ts",
+    "apps/app/src/runtime/phone-location.ts",
     "apps/app/src/runtime/phone-workflow-authoring.ts",
     "apps/app/src/runtime/photo-library.ts",
     "apps/app/src/runtime/power-launch-state.ts",

@@ -2,15 +2,20 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "6e2a09477545dcfb4257d4719356b3df858d7143",
-  "head": "6e2a09477545dcfb4257d4719356b3df858d7143",
+  "baseCommit": "0fc3586dce354d2c84f7b54da90cf5fcd29f71fc",
+  "head": "c2eb617570aee6f240074c4695ba3b3af392653c",
   "recordedAt": "2026-11-21",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...6e2a09477545dcfb4257d4719356b3df858d7143",
-  "status": "identical",
-  "aheadBy": 0,
+  "command": "gh api repos/elizaOS/eliza/compare/develop...c2eb617570aee6f240074c4695ba3b3af392653c",
+  "status": "ahead",
+  "aheadBy": 1,
   "behindBy": 0,
-  "mergeBase": "6e2a09477545dcfb4257d4719356b3df858d7143",
-  "pinOnlyCommits": [],
+  "mergeBase": "0fc3586dce354d2c84f7b54da90cf5fcd29f71fc",
+  "pinOnlyCommits": [
+    {
+      "sha": "c2eb617570aee6f240074c4695ba3b3af392653c",
+      "subject": "Let a phone report its position with each message, and search near it"
+    }
+  ],
   "pullRequests": [
     "https://github.com/elizaOS/eliza/pull/39247",
     "https://github.com/elizaOS/eliza/pull/39244",
@@ -68,6 +73,7 @@
     "https://github.com/elizaOS/eliza/pull/39920",
     "https://github.com/elizaOS/eliza/pull/39921",
     "https://github.com/elizaOS/eliza/pull/39942",
-    "https://github.com/elizaOS/eliza/pull/39957"
+    "https://github.com/elizaOS/eliza/pull/39957",
+    "https://github.com/elizaOS/eliza/pull/39989"
   ]
 }
