@@ -5,6 +5,7 @@ import * as Alarms from "../../gen/app__clock__alarms.effect.vibe"
 import type { Alarm, Event } from "../../gen/app__clock__alarms.effect.vibe"
 import type * as Toasts from "../../gen/app__notices__toasts.effect.vibe"
 import { type Said, offer, withdraw } from "../notices/index.vibe"
+import { clockRecordId } from "../platform/index.vibe"
 import { contained, due, reacting, started, together, untimed } from "../runtime/index.vibe"
 import { Time } from "../runtime/index.vibe"
 import { activeClockRecords, metaStoreKey } from "./shelf.vibe"
@@ -53,7 +54,9 @@ export effect function createAlarm(draft: AlarmDraft): number!!(Alarms.Machine |
   const fireAt = nextAlarmFireAt(draft.hour, draft.minute, draft.daysMask, now)
   const hadPrior = records.snapshot().alarms.has(nextId)
   const prior = records.alarm(nextId)
-  records.setAlarm(nextId, { label: draft.label.trim(), sound: draft.sound, remoteId: `alarm-${nextId}`, updatedAtMs: now })
+  const unique = clockRecordId()
+  if (unique === undefined) return 0
+  records.setAlarm(nextId, { label: draft.label.trim(), sound: draft.sound, remoteId: `alarm-${unique}`, updatedAtMs: now })
   const sent = try contained(
     machine.send({
       type: "create",

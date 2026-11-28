@@ -16,6 +16,7 @@ afterEach(async () => {
   await closeAll();
   remindersStore.reset();
   document.documentElement.style.removeProperty("font-size");
+  document.documentElement.style.removeProperty("--alpha-native-inset-top");
 });
 
 it('Opens timed and all-day events in another column when the selected day is empty (spec/app/calendar/index.md, "Story: Look at an event")', async () => {
@@ -71,6 +72,28 @@ it('Opens timed and all-day events in another column when the selected day is em
   await until(alpha, view, View, (state) => !state.wide);
   await expect.element(anyHoliday).not.toBeInTheDocument();
   expect((await current()).anchor).toBe(today);
+
+  document.documentElement.style.setProperty("--alpha-native-inset-top", "58px");
+  const topOffset = (selector: string) => {
+    const element = document.querySelector(selector);
+    if (!element) throw new Error(`Missing element ${selector}`);
+    return Math.round(element.getBoundingClientRect().top - main.getBoundingClientRect().top);
+  };
+  await vi.waitFor(() => expect(topOffset("header[data-host-chrome]")).toBe(58));
+  await page.getByRole("button", { name: /^Choose date:/ }).click();
+  await expect.element(page.getByRole("dialog", { name: "Choose calendar date" })).toBeVisible();
+  expect(topOffset('[role="dialog"]')).toBeGreaterThanOrEqual(102);
+  await page.getByRole("dialog", { name: "Choose calendar date" }).getByRole("button", { name: "Close month" }).click();
+  await page.getByRole("button", { name: "New event", exact: true }).click();
+  await expect.element(page.getByRole("button", { name: "Save event", exact: true })).toBeVisible();
+  await expect.poll(() => topOffset('[data-alpha-subview="calendar-form"] [data-host-chrome]')).toBe(58);
+  await page.getByRole("button", { name: "Back to calendar", exact: true }).click();
+  main.setAttribute("data-alpha-launcher", "");
+  try {
+    expect(topOffset("header[data-host-chrome]")).toBe(58);
+  } finally {
+    main.removeAttribute("data-alpha-launcher");
+  }
 });
 
 it('Shows the selected day across a wide canvas and at large text (spec/app/calendar/index.md, "Story: See my days"; spec/app/shell/keyboard.md, "Story: Read everything at the text size I chose")', async () => {
@@ -129,4 +152,9 @@ it('Shows the selected day across a wide canvas and at large text (spec/app/cale
   await expect.element(agenda.getByRole("button", { name: /^Agenda reminder,/ })).toBeVisible();
   await agenda.getByRole("button", { name: /^Overnight source,/ }).click();
   await expect.element(page.getByRole("heading", { name: "Overnight source", exact: true })).toBeVisible();
+  document.documentElement.style.setProperty("--alpha-native-inset-top", "58px");
+  await expect.poll(() => {
+    const detailHeader = document.querySelector('[data-alpha-subview="calendar-detail"] [data-host-chrome]');
+    return detailHeader ? Math.round(detailHeader.getBoundingClientRect().top - main.getBoundingClientRect().top) : -1;
+  }).toBe(58);
 });

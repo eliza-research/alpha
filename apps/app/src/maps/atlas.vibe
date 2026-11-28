@@ -72,12 +72,15 @@ export interface Seen {
   readonly credited: View | undefined
   /** How many times "Use my location" asked the map to show the phone. */
   readonly showings: number
+  /** Whether Cloud Maps refused tiles or requests because the account has insufficient credits. */
+  readonly insufficientCredits: boolean
 }
 
 const maxCached = 12
+const maxCachedTiles = 4
 
 const empty = (): Seen => ({
-  spots: new Map(), results: [], origins: [], ways: new Map(), here: undefined, coverages: new Map(), view: undefined, credited: undefined, showings: 0,
+  spots: new Map(), results: [], origins: [], ways: new Map(), here: undefined, coverages: new Map(), view: undefined, credited: undefined, showings: 0, insufficientCredits: false,
 })
 
 // spec/app/maps/places.md, "A saved place keeps its name, its coordinates and the provider's identity of it, and nothing else"
@@ -130,6 +133,9 @@ export service Atlas {
   readonly showMe: () => void
   readonly covered: (ticket: number, coverage: Coverage) => void
   readonly coverage: (ticket: number) => Coverage | undefined
+  readonly setInsufficientCredits: (needed: boolean) => void
+  readonly putTile: (key: string, bytes: Uint8Array) => void
+  readonly takeTile: (key: string) => Uint8Array | undefined
   readonly viewed: (view: View) => void
   readonly creditedFor: (credited: View) => void
   readonly accountOf: (id: string) => number
@@ -150,6 +156,7 @@ function createAtlas(): AtlasStore & { readonly reset: () => void } {
   const accounts = new Map<string, number>()
   const byProvider = new Map<string, number>()
   const handles = new Map<number, string>()
+  const tiles = new Map<string, Uint8Array>()
   let next = 1
 
   const change = (patch: Partial<Seen>): void => {
@@ -204,6 +211,23 @@ function createAtlas(): AtlasStore & { readonly reset: () => void } {
       shelf.update((current) => ({ ...current, coverages: boundedMap(current.coverages, ticket, coverage, maxCached) }))
     },
     coverage: (ticket: number): Coverage | undefined => shelf.get().coverages.get(ticket),
+    setInsufficientCredits(needed: boolean): void {
+      if (shelf.get().insufficientCredits !== needed) change({ insufficientCredits: needed })
+    },
+    putTile(key: string, bytes: Uint8Array): void {
+      tiles.delete(key)
+      while (tiles.size >= maxCachedTiles) {
+        const oldest = tiles.keys().next()
+        if (oldest.done) break
+        tiles.delete(oldest.value)
+      }
+      tiles.set(key, bytes)
+    },
+    takeTile(key: string): Uint8Array | undefined {
+      const found = tiles.get(key)
+      if (found !== undefined) tiles.delete(key)
+      return found
+    },
     viewed(view: View): void {
       change({ view })
     },
@@ -233,6 +257,7 @@ function createAtlas(): AtlasStore & { readonly reset: () => void } {
     forget(): void {
       byProvider.clear()
       handles.clear()
+      tiles.clear()
       shelf.update((current) => {
         const kept = new Map<number, Spot>()
         for (const [place, spot] of current.spots) {
@@ -248,6 +273,7 @@ function createAtlas(): AtlasStore & { readonly reset: () => void } {
       accounts.clear()
       byProvider.clear()
       handles.clear()
+      tiles.clear()
       next = 1
       shelf.reset()
     },
@@ -271,6 +297,9 @@ export const atlas: AtlasStore = {
   showMe: () => active.showMe(),
   covered: (ticket, coverage) => active.covered(ticket, coverage),
   coverage: (ticket) => active.coverage(ticket),
+  setInsufficientCredits: (needed) => active.setInsufficientCredits(needed),
+  putTile: (key, bytes) => active.putTile(key, bytes),
+  takeTile: (key) => active.takeTile(key),
   viewed: (view) => active.viewed(view),
   creditedFor: (credited) => active.creditedFor(credited),
   accountOf: (id) => active.accountOf(id),

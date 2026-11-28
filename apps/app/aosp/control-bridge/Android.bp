@@ -1,0 +1,28 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+android_app {
+    name: "AlphaControlBridge",
+    manifest: "AndroidManifest.xml",
+    srcs: [
+        "src/**/*.java",
+        "aidl/**/*.aidl",
+    ],
+    aidl: {
+        local_include_dirs: ["aidl"],
+    },
+    privileged: true,
+    product_specific: true,
+    certificate: "platform",
+    platform_apis: true,
+    required: ["AlphaControlBridgePrivappPermissions"],
+}
+
+prebuilt_etc {
+    name: "AlphaControlBridgePrivappPermissions",
+    src: "privapp-permissions-alpha-control.xml",
+    sub_dir: "permissions",
+    filename_from_src: true,
+    product_specific: true,
+}

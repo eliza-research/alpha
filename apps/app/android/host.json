@@ -50,7 +50,10 @@
     { "module": "browser-surface" }
   ],
   "modules": [
-    { "name": "capacitor-android", "source": { "root": "dependencies", "path": "@capacitor/android/capacitor" } }
+    { "name": "capacitor-android", "source": { "root": "dependencies", "path": "@capacitor/android/capacitor" } },
+    { "name": "alpha-ipc", "source": { "root": "consumer", "path": "android/alpha-ipc" }, "appDependency": true },
+    { "name": "alpha-control", "source": { "root": "consumer", "path": "android/alpha-control" }, "appDependency": true },
+    { "name": "alpha-local-llm", "source": { "root": "consumer", "path": "android/alpha-local-llm" }, "appDependency": true }
   ],
   "dependencies": [
     { "configuration": "implementation", "module": "androidx.appcompat:appcompat", "toolchainVersion": "androidxAppCompatVersion" },

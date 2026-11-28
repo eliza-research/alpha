@@ -176,6 +176,7 @@ export service MessagingBridge {
   stageDraft(draft: MessagingDraftProposal): void
   editDraft(id: string, body: string): void
   declineDraft(id: string): void
+  clearDrafts(platform: MessagingPlatform): void
   sendDraft(id: string): void!!
   openDraftInApp(id: string): void!!
   registerHandler(platform: MessagingPlatform, handler: MessagingPlatformHandler): () => void
@@ -238,6 +239,7 @@ export function createMessagingBridge() {
         return { ...draft, body, revision: draft.revision + 1, status: "draft", error: undefined }
       })
     },
+    clearDrafts: (platform: MessagingPlatform) => emit({ ...state, drafts: state.drafts.filter((draft) => draft.platform !== platform) }),
     declineDraft: (id: string) => {
       const target = state.drafts.find((one) => one.id === id)
       if (target === undefined || target.status === "sent") return
@@ -254,7 +256,7 @@ export function createMessagingBridge() {
         return
       }
       const outcome = handler.sendDraft(sending) catch () => ({ status: "unknown" as const, error: `Delivery unconfirmed — check ${sending.platform} before sending again` })
-      updateDraft(id, (draft) => ({
+      updateDraft(id, (draft) => draft !== sending ? draft : ({
         ...draft,
         status: outcome.status,
         error: outcome.error,

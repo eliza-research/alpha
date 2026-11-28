@@ -1,5 +1,8 @@
 // spec/app/calendar/index.md, "Rows shown are for the day the calendar is anchored to, from a source it may read"; spec/app/calendar/presentation.md, "A read for a day covers the month before it through the month after next"
+import type { AndroidCalendarDeletionScope, CalendarPick } from "@elizaos/os-bridges";
 import type { Source } from "../../gen/app__calendar.ts";
+import type { Reach } from "../../gen/app__calendar__deletions.ts";
+import type { Scope } from "../../gen/app__calendar__editor.ts";
 import { rowShown } from "../../gen/app__calendar__presentation.ts";
 import type { Cancellation, OwnAnswer } from "../../gen/app__calendar__writing.ts";
 import { createShelf } from "../runtime/store.ts";
@@ -93,6 +96,24 @@ export function matchesSearch(row: Pick<Row, "title" | "place" | "notes">, words
   return words.every((word) => text.includes(word));
 }
 
+/** An event of the phone as eliza's calendar review picks it. @throws {never} */
+export function pickOf(row: Row): CalendarPick {
+  return {
+    event: { id: row.key, calendarId: row.calendarId, title: row.title, body: row.notes, location: row.place, ...androidWindowOf(row), allDay: row.allDay, recurring: row.recurring },
+    calendar: { id: row.calendarId, writable: true, local: true },
+  };
+}
+
+/** Which occurrences a deletion of `reach` names to the editor. @throws {never} */
+export function scopeOf(reach: Reach): Scope {
+  return reach === "WholeSeries" ? "WholeSeries" : reach === "FromThisOn" ? "ThisAndFollowing" : "ThisOne";
+}
+
+/** Which occurrences eliza's deletion review takes; it has no "this and following". @throws {never} */
+export function deletionScope(scope: Scope, recurring: boolean): AndroidCalendarDeletionScope | undefined {
+  return scope === "ThisOne" ? (recurring ? "occurrence" : "event") : scope === "WholeSeries" ? "series" : undefined;
+}
+
 /** Android stores an all-day event's civil dates at UTC midnight. @throws {never} */
 export function androidWindowOf({ begin, end, allDay }: Pick<Row, "begin" | "end" | "allDay">): { begin: number; end: number } {
   return allDay ? { begin: utcStart(civilDay(begin)), end: utcStart(civilDay(end)) } : { begin, end };
@@ -152,12 +173,14 @@ export interface ShownStore {
 
 /**
  * The numbers events were given, kept on the phone so that an event keeps its number across a restart and no other
- * event is given it: the last number given, and each event's `source:key` with its number and the start it was last
- * seen at.
+ * event is given it: the last number given, each event's `source:key` with its number, and in `seen`, which a build that
+ * reads only numbers leaves alone, the start each was last seen at. A third place in a number, which one build wrote,
+ * is read as that start too.
  */
 export interface KeptNumbers {
   readonly last: number;
   readonly numbers: ReadonlyArray<readonly [name: string, id: number, begin?: number]>;
+  readonly seen?: ReadonlyArray<readonly [name: string, begin: number]>;
 }
 
 /** How far numbering moves on at each start past the last number kept, so a number given after the last one kept is never given again. */
@@ -183,8 +206,21 @@ function timeFloor(now: number): number {
 /** Whether `read` holds only whole numbers a JavaScript number holds exactly, none past its `last`, so that numbering on from it gives no number twice. @throws {never} */
 export function exactNumbers(read: KeptNumbers): KeptNumbers | undefined {
   const exact = Number.isSafeInteger(read.last) && read.last > 0
-    && read.numbers.every(([, id, begin]) => Number.isSafeInteger(id) && id > 0 && id <= read.last && (begin === undefined || Number.isFinite(begin)));
+    && read.numbers.every(([, id, begin]) => Number.isSafeInteger(id) && id > 0 && id <= read.last && (begin === undefined || Number.isFinite(begin)))
+    && (read.seen ?? []).every(([, begin]) => Number.isFinite(begin));
   return exact ? read : undefined;
+}
+
+/**
+ * What a start at `now` that could not read the kept numbers numbers from, keeping none: `timeFloor`, and past 2109,
+ * where every start that can read them goes afresh from the floor, a place of its own above the floor's, a thousand and
+ * twenty-four numbers past an earlier such start for each millisecond between them, so that no event it numbers is given
+ * a number a record made before or after it names.
+ * @throws {never}
+ */
+export function unreadAt(now: number): KeptNumbers {
+  const at = timeFloor(now);
+  return { last: at === restartFloor ? ceiling + (Math.floor(now) % 2 ** 29) * 2 ** 10 : at, numbers: [] };
 }
 
 /**
@@ -194,7 +230,7 @@ export function exactNumbers(read: KeptNumbers): KeptNumbers | undefined {
  */
 export function startAt(read: KeptNumbers | undefined, now: number): KeptNumbers {
   const from = Math.max(read?.last ?? 0, timeFloor(now));
-  return from + startGap <= ceiling ? { last: from, numbers: read?.numbers ?? [] } : { last: restartFloor, numbers: [] };
+  return from + startGap <= ceiling ? { last: from, numbers: read?.numbers ?? [], seen: read?.seen ?? [] } : { last: restartFloor, numbers: [] };
 }
 
 /** How many events' numbers are kept: those seen least lately go first, and a deletion or form that named one then names no event. */
@@ -216,7 +252,10 @@ let fallbackStore: ShownStore | undefined;
 
 function makeShownStore(onReset?: () => void, kept?: KeptNumbers, keepNumbers?: (numbers: KeptNumbers) => void): ShownStore {
   const numbers = new Map<string, number>((kept?.numbers ?? []).map(([name, id]) => [name, id] as const));
-  const begins = new Map<string, number>((kept?.numbers ?? []).flatMap(([name, , begin]) => (begin === undefined ? [] : [[name, begin] as const])));
+  const begins = new Map<string, number>([
+    ...(kept?.numbers ?? []).flatMap(([name, , begin]) => (begin === undefined ? [] : [[name, begin] as const])),
+    ...(kept?.seen ?? []),
+  ]);
   const named = new Map<number, string>([...numbers].map(([name, id]) => [id, name] as const));
   const given = new Set(numbers.values());
   const trusted = keepNumbers !== undefined;
@@ -244,10 +283,14 @@ function makeShownStore(onReset?: () => void, kept?: KeptNumbers, keepNumbers?: 
       named.delete(id);
       given.delete(id);
     }
-    keepNumbers?.({ last: nextNumber, numbers: [...numbers].map(([name, id]) => {
-      const begin = begins.get(name);
-      return begin === undefined ? [name, id] as const : [name, id, begin] as const;
-    }) });
+    keepNumbers?.({
+      last: nextNumber,
+      numbers: [...numbers],
+      seen: [...numbers.keys()].flatMap((name) => {
+        const begin = begins.get(name);
+        return begin === undefined ? [] : [[name, begin] as const];
+      }),
+    });
   }
 
   /** @throws {never} */

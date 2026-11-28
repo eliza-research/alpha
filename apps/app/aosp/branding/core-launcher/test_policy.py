@@ -197,6 +197,7 @@ public class StorageProbe {
             self.assertIn('else when (backgroundRestrictionExemptionReason)',fgs)
             self.assertIn('ACTION_PREFERRED_ACTIVITY_CHANGED',fgs)
             self.assertIn('user = UserHandle.ALL',fgs)
+            self.assertIn('userTracker.userContext.registerReceiverAsUser(',fgs)
             self.assertIn('ACTION_PACKAGES_SUSPENDED',fgs)
             self.assertNotIn('|| packageName == AlphaCoreLauncherPolicy.PACKAGE',fgs)
             repo=(d/'packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt').read_text()

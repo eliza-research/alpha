@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<permissions>
+    <privapp-permissions package="ai.alphacompute.playinstaller">
+        <permission name="android.permission.INSTALL_PACKAGES"/>
+        <permission name="android.permission.DELETE_PACKAGES"/>
+        <permission name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/>
+    </privapp-permissions>
+</permissions>

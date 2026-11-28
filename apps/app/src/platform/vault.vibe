@@ -21,7 +21,8 @@ import { client } from held
  */
 export type SmsDraftSlot = "sms-draft:v2:new" | `sms-draft:v2:thread:${number}` | `sms-draft:v2:recipients:${string}`
 export type SmsOutgoingSlot = "sms-outgoing:v2:device"
-export type Slot = `notes-${"draft" | "folders"}:${number}` | "inbox-saved-bodies" | SmsDraftSlot | SmsOutgoingSlot
+export type MessagingSlot = `messaging-sessions:${"slack" | "telegram"}:v2`
+export type Slot = MessagingSlot | `notes-${"draft" | "folders"}:${number}` | "inbox-saved-bodies" | SmsDraftSlot | SmsOutgoingSlot
 
 /** The secure store refused, or there is none, as in a browser. `code` is the store's own word for why, such as `denied`. */
 export error VaultFailed { slot: string; code: ElizaSecureStoreError | ElizaSecureStoreReadError | "malformed" | "absent"; cause: unknown }

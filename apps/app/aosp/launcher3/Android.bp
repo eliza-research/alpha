@@ -1,0 +1,27 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+runtime_resource_overlay {
+    name: "AlphaLauncher3Overlay",
+    manifest: "overlay/AndroidManifest.xml",
+    resource_dirs: ["overlay/res"],
+    product_specific: true,
+    certificate: "platform",
+    sdk_version: "current",
+}
+
+android_app {
+    name: "AlphaPartnerCustomization",
+    manifest: "partner/AndroidManifest.xml",
+    resource_dirs: ["partner/res"],
+    product_specific: true,
+    certificate: "platform",
+    sdk_version: "current",
+    dex_preopt: {
+        enabled: false,
+    },
+    optimize: {
+        enabled: false,
+    },
+}

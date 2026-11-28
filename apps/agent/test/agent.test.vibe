@@ -3,9 +3,10 @@
 import { ConversationRecord, TurnController, createRuntimeJsonClient, defineRoutes } from "@elizaos/agent"
 import { describe, expect, it } from "@effect/vitest"
 import { CleanupReceipt } from "@elizaos/plugin-notes-client"
+import { packagedWorkflowWorker } from "@repo/eliza-harness"
 import {
   calendarEdits, configurationExit, coreActions, entryCarried, gmailChanges, googleAdmitted, launchViews, loadList, packedPlugins, productPluginName, proposalsAdmitted, refusedActions,
-  serviceAvailable, viewsAdmitted, walletKeysAllowed, workerAdmitted,
+  serviceAvailable, viewsAdmitted, workerAdmitted,
 } from "../gen/agent.effect.vibe"
 import { type Running, call, hostFile, launchFor, listed, manifest, pinnedWorker, policy, ready, socketBridge, startPhoneAgent, startRun, taskStorageKey } from "./phone.ts"
 
@@ -96,12 +97,13 @@ describe("Build the pack only from the pinned eliza", () => {
   // spec/agent/index.md, "A pack is admitted only when its manifest names the pinned commit, Node 26, the local speech module, the plugins it carries, the Alpha product plugin, a pinned workflow worker and every allowed action"
   // spec/agent/index.md, "Every package the bundle carries is the pinned eliza's, except the pack's entry and Alpha's product plugin"
   // spec/agent/index.md, "Only Android's native speech transport can call the resident recognizer"
-  // spec/agent/index.md, "The agent may run the actions the old phone's agent ran plus Alpha's Clock and Reminders actions, and every other action the bundle registers is listed as refused with its reason"
+  // spec/agent/index.md, "The agent may run the actions the old phone's agent ran plus Alpha's Clock, Reminders and Device Control actions, and every other action the bundle registers is listed as refused with its reason"
   // spec/agent/index.md, "The pack carries the plugins the old phone's agent loaded, under the pinned eliza's names, and the launch loads them with the agent's own modules the old agent had"
   // spec/agent/index.md, "A proposed device step goes through eliza's device-action module, and the phone says which steps it takes"
   // spec/agent/index.md, "The launch names Home and every Alpha app but Notes and Browser as a view the agent may show, by the id the phone opens it by"
   // spec/agent/index.md, "The agent changes the owner's mail and calendar through Google only where the launch consents, and the pack's host file consents to neither"
-  it("Build the pack only from the pinned eliza", async () => {
+  // spec/agent/index.md, "Only Android's native control executor can post UI observations, poll queued operations, submit receipts, or fire native interrupts"
+  it("Build the pack only from the pinned eliza", () => {
     const built = manifest()
     const registered = built.actions.map(({ name }) => name)
     const { actions, plugins } = policy()
@@ -118,8 +120,12 @@ describe("Build the pack only from the pinned eliza", () => {
         query: [{ key: "clientId", accepts: { kind: "pattern", pattern: "[A-Za-z0-9][A-Za-z0-9_-]{0,127}" } }] },
       { method: "POST", path: "/api/workflow/hosted/results/ack", stream: false, maxBodyBytes: 1024 },
       { method: "POST", path: "/api/alpha-runtime/notes-recording-cleanup", stream: false, maxBodyBytes: 2048 },
+      { method: "POST", path: "/api/alpha-control/observe", stream: false, maxBodyBytes: 1572864 },
+      { method: "GET", path: "/api/alpha-control/next", stream: false },
+      { method: "POST", path: "/api/alpha-control/receipt", stream: false, maxBodyBytes: 65536 },
+      { method: "POST", path: "/api/alpha-control/interrupt", stream: false, maxBodyBytes: 2048 },
     ])
-    expect(listed().some(({ path }) => ["/api/alpha-speech/scope", "/api/asr/local-inference/live", "/api/alpha-runtime/scope", "/api/alpha-runtime/notes-recording-cleanup", "/api/notes/trash/recordings/complete"].includes(path))).toBe(false)
+    expect(listed().some(({ path }) => ["/api/alpha-speech/scope", "/api/asr/local-inference/live", "/api/alpha-runtime/scope", "/api/alpha-runtime/notes-recording-cleanup", "/api/notes/trash/recordings/complete", "/api/alpha-control/observe", "/api/alpha-control/next", "/api/alpha-control/receipt", "/api/alpha-control/interrupt"].includes(path))).toBe(false)
     expect(plugins.product).toBe(productPluginName)
     expect(entryCarried(built.packages.map(({ name }) => name))).toBe(true)
     expect(built.packages.filter(({ name }) => name.startsWith("@repo/") || name.startsWith("@alphacompute/") || name === productPluginName).map(({ name }) => name).sort())
@@ -131,7 +137,14 @@ describe("Build the pack only from the pinned eliza", () => {
     expect(viewsAdmitted(host.views.map(({ id, label, path, aliases }) => ({ id, label, path, aliases: aliases ?? [] })))).toBe(true)
     expect(coreActions.every((name) => actions.allowed.includes(name))).toBe(true)
     expect(Object.values(actions.refused).every((reason) => reason.trim() !== "")).toBe(true)
-    expect(workerAdmitted((await pinnedWorker()).sha256, built.workflowWorkerSha256 ?? "")).toBe(true)
+    expect(workerAdmitted(packagedWorkflowWorker().sha256, built.workflowWorkerSha256 ?? "")).toBe(true)
+    const gate = defineRoutes(listed())
+    const admitted = (target: string) => gate.admit({ method: "GET", target, streamed: false, body: undefined }).tag === "Admitted"
+    expect([
+      "/api/notifications?nativeTransport=true",
+      "/api/notifications?nativeTransport=true&nativeEpoch=00000000-0000-0000-0000-000000000000&afterSequence=1&throughSequence=5",
+      "/api/notifications?category=workflow&limit=50",
+    ].map(admitted)).toEqual([true, true, false])
   })
 })
 
@@ -287,11 +300,19 @@ describe("Run Alpha's agent on the phone", () => {
 schema WalletStanding { custody: string; canHold: boolean; accounts: Schema.Unknown[] }
 schema TaskStorage { taskStorage: string }
 
-describe("The wallet is given no storage key until the owner allows wallet keys", () => {
-  // spec/agent/index.md, "The wallet is given no storage key until the owner allows wallet keys"
-  it.live("With the account's task key in the launch, the task store opens under it while the wallet holds nothing, offers nothing to make and makes nothing", () => scoped(effect {
+describe("Make the wallet on the signed-in phone", () => {
+  // spec/agent/index.md, "The wallet can be made only on a launch with the signed-in account's storage key"; spec/agent/index.md, "The wallet runs on Sepolia and Solana's devnet until its keys can be backed up"
+  it.live("Only an owner with a storage key can make a wallet, once, on the two test networks", () => scoped(effect {
     const run = try acquireRelease(promise(() => startRun()), (started) => promise(() => started.stop()))
-    const phone = try Effect.try(() => run.place("keyed"))
+    const phone = try Effect.try(() => run.place("wallet"))
+    const standing = (body: string) => Schema.decodeUnknownEffect(Schema.fromJsonString(WalletStanding))(body)
+    try scoped(effect {
+      const keyless = try phoneAgent(run, phone)
+      const before = try promise(() => call(keyless, "GET", "/api/wallet"))
+      const refused = try promise(() => call(keyless, "POST", "/api/wallet", {}))
+      const held = try standing(before.body)
+      try Effect.try(() => expect([before.status, held, refused.status]).toEqual([200, { custody: "none", canHold: false, accounts: [] }, 409]))
+    })
     const keyed = try acquireRelease(
       promise(async () => {
         const running = startPhoneAgent(await launchFor(run.cloud, run.key, phone), phone, run.cloud, run.key, taskStorageKey())
@@ -304,15 +325,21 @@ describe("The wallet is given no storage key until the owner allows wallet keys"
     const made = try promise(() => call(keyed, "POST", "/api/wallet", {}))
     const after = try promise(() => call(keyed, "GET", "/api/wallet"))
     const storage = try promise(() => call(keyed, "GET", "/api/tasks/storage"))
-    const standing = (body: string) => Schema.decodeUnknownEffect(Schema.fromJsonString(WalletStanding))(body)
-    const held = [try standing(before.body), try standing(after.body)]
+    const empty = try standing(before.body)
+    const created = try standing(made.body)
+    const current = try standing(after.body)
+    const again = try promise(() => call(keyed, "POST", "/api/wallet", {}))
+    const repeated = try standing(again.body)
     const tasks = try Schema.decodeUnknownEffect(Schema.fromJsonString(TaskStorage))(storage.body)
-    try Effect.try(() => expect({ walletKeysAllowed, statuses: [before.status, made.status, after.status, storage.status], taskStorage: tasks.taskStorage, held }).toEqual({
-      walletKeysAllowed: false,
-      statuses: [200, 409, 200, 200],
-      taskStorage: "ok",
-      held: [{ custody: "none", canHold: false, accounts: [] }, { custody: "none", canHold: false, accounts: [] }],
-    }))
+    try Effect.try(() => {
+      expect([before.status, made.status, after.status, again.status, storage.status, tasks.taskStorage]).toEqual([200, 200, 200, 200, 200, "ok"])
+      expect(empty).toEqual({ custody: "none", canHold: true, accounts: [] })
+      expect(created).toMatchObject({ custody: "ready", canHold: true, accounts: [
+        { family: "evm", chainId: "11155111", connected: true, address: expect.stringMatching(/^0x[0-9a-fA-F]{40}$/) },
+        { family: "solana", chainId: "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG", connected: true, address: expect.stringMatching(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/) },
+      ] })
+      expect([current, repeated]).toEqual([created, created])
+    })
   }), 300_000)
 })
 

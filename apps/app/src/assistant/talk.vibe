@@ -121,6 +121,9 @@ export interface Known {
   readonly title: string
 }
 
+/** What Alpha could not settle about the draft by itself: a save, a slot to open, a message that may already have been sent. */
+export type Mending = "Unkept" | "Unread" | "Unchecked"
+
 /** What the screen shows beside the machines' states: words, which the specs count but never hold. */
 export interface Seen {
   /** The page showing, and any page still receiving the exact words of an in-flight typed turn. */
@@ -152,6 +155,8 @@ export interface Seen {
   readonly hits: ReadonlyArray<Hit>
   /** The title of each conversation, by its number. */
   readonly titles: ReadonlyMap<number, string>
+  /** What Alpha gave up settling about the draft by itself, for the conversation to tell the owner. */
+  readonly mending: Mending | undefined
 }
 
 /**
@@ -187,6 +192,7 @@ export interface Board {
   lastSentId: string
   /** Whether any text had settled when the owner stopped the reply, by the id the agent keeps its message under, since Alpha started. */
   readonly ownerStops: Map<string, boolean>
+  /** A change to it, to `waitingRequest` or to `postingRequest` is told to subscribers, so a heard turn waiting on the send in hand sees it settle. */
   sendWhenMade: number
   staged: StagedFiles | undefined
   lastTranscriptOffer: number
@@ -219,8 +225,8 @@ export interface Board {
   page(ticket: number): ReadonlyArray<Line>
   line(conversation: number, message: number): Line | undefined
   putPage(ticket: number, conversation: number, lines: ReadonlyArray<Line>): void
-  /** Keep the mutation target of the single typed writer until its stream's scope ends. */
-  holdTurnPage(ticket: number): () => void
+  /** Keep the writer's page until its stream ends, and afterward while the conversation still shows it. */
+  holdTurnPage(ticket: number): (stillShown: boolean) => void
   /** Replace the loaded page, carrying only the words readers still hold, and close a newly redacted preview. */
   takeHistory(ticket: number, conversation: number, lines: readonly Line[], redacted: ReadonlySet<string>, bounds: HistoryBounds, readers: readonly HistoryReference[], shape?: (page: ReadonlyArray<Line>) => ReadonlyArray<Line>): number | undefined
   append(ticket: number, conversation: number, line: Line): void
@@ -276,9 +282,12 @@ export const talk = Layer.effect(Talk, effect {
   let readLines: readonly ReadLine[] = []
   let previewOrigin: { readonly preview: NonNullable<Seen["preview"]>; readonly conversation: number; readonly id: string } | undefined
   let restoredSentId = ""
+  let sendWhenMade = 0
+  let waitingRequest: Board["waitingRequest"] = undefined
+  let postingRequest: Board["postingRequest"] = undefined
   let seen: Seen = {
     pages: new Map(), reply: "", replyUntold: [], label: "", failure: undefined, typed: "", files: [], filesBinding: undefined, filesAuthority: undefined, contactDraft: undefined, transcript: undefined, attachmentNotice: "", preview: undefined, recordingSummary: undefined, media: [], mediaNotes: [], saved: "", hits: [],
-    titles: new Map(),
+    titles: new Map(), mending: undefined,
   }
   const keep = () => {
     const key = catalogue
@@ -302,7 +311,12 @@ export const talk = Layer.effect(Talk, effect {
     get lastSentId() { return board.lastPost?.receipt?.clientMessageId ?? restoredSentId },
     set lastSentId(id: string) { restoredSentId = id },
     ownerStops: new Map(),
-    sendWhenMade: 0,
+    get sendWhenMade() { return sendWhenMade },
+    set sendWhenMade(ticket: number) {
+      if (ticket === sendWhenMade) return
+      sendWhenMade = ticket
+      for (const listener of listeners) listener()
+    },
     staged: undefined,
     lastTranscriptOffer: 0,
     previewFile: (file) => {
@@ -316,8 +330,18 @@ export const talk = Layer.effect(Talk, effect {
     rememberNetwork: (ticket, sighting) => { network = { ticket, sighting } },
     forgetNetwork: () => { network = undefined },
     networkFor: (ticket) => (network?.ticket === ticket ? network.sighting : undefined),
-    waitingRequest: undefined,
-    postingRequest: undefined,
+    get waitingRequest() { return waitingRequest },
+    set waitingRequest(request: Board["waitingRequest"]) {
+      if (request === waitingRequest) return
+      waitingRequest = request
+      for (const listener of listeners) listener()
+    },
+    get postingRequest() { return postingRequest },
+    set postingRequest(request: Board["postingRequest"]) {
+      if (request === postingRequest) return
+      postingRequest = request
+      for (const listener of listeners) listener()
+    },
     change: (patch) => {
       const previous = seen.recordingSummary
       seen = { ...seen, ...patch }
@@ -382,10 +406,10 @@ export const talk = Layer.effect(Talk, effect {
     holdTurnPage: (ticket) => {
       const held = { ticket }
       turnPage = held
-      return () => {
+      return (stillShown) => {
         if (turnPage !== held) return
         turnPage = undefined
-        if (loadedPage === ticket || !seen.pages.has(ticket)) return
+        if (stillShown || loadedPage === ticket || !seen.pages.has(ticket)) return
         const pages = new Map(seen.pages)
         pages.delete(ticket)
         board.change({ pages })

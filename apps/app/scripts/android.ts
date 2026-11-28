@@ -2,7 +2,7 @@
 // spec/app/image/index.md, "Story: Stage Alpha into an image"; spec/agent/index.md, "Story: Build the pack only from the pinned eliza"; spec/agent/index.md, "The launch names the pack's pinned workflow worker, and the agent refuses any other with its configuration code"
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { gzipSync } from "node:zlib";
 import { dirname, join, relative, resolve } from "node:path";
@@ -31,7 +31,7 @@ const nodeLicenceBySource = new Map([
 ]);
 const mockSwitches = ["ELIZA_DEV_ALLOW_TEST_MOCKS", "VITE_ELIZA_DEV_ALLOW_TEST_MOCKS", "ALPHA_FAKES"];
 const signingNames = ["ELIZAOS_KEYSTORE_PATH", "ELIZAOS_KEYSTORE_PASSWORD", "ELIZAOS_KEY_ALIAS", "ELIZAOS_KEY_PASSWORD"];
-const usage = "Usage: node scripts/android.ts <pin|inputs|pack|stage|web|host|build [--release]|verify [--release-only]|audit DIR>";
+const usage = "Usage: node scripts/android.ts <pin|inputs|pack|stage|web|host|build [--release]|verify [--debug-only|--release-only]|audit DIR>";
 const JAVA_HOME_CANDIDATES = [
   "/opt/homebrew/opt/openjdk@21",
   "/usr/local/opt/openjdk@21",
@@ -42,6 +42,14 @@ const JAVA_HOME_CANDIDATES = [
 const RELEASE_SIGNER_FILE = join(app, "aosp/signing/release-signer.json");
 const SIGN_IN_OWNED_PREFIXES = ["/api/public/", "/api/v1/api-keys/"];
 const UNSAFE_ZIP_ENTRY = /[*?[\]\\]|\0/;
+const publishedDelibes = {
+  filename: "delibes-8m-eses.gguf",
+  apk: "https://github.com/AlphaPhone/alpha/releases/download/app-stable-alphacompute/alpha-phone-114.apk",
+  apkBytes: 576_256_512,
+  offset: 485_778_460,
+  bytes: 31_275_328,
+  sha256: "3b635dc24a8952254066daad77ff64aa08368a8b5a689abf4be05bdf2b0afe51",
+};
 
 const sha256 = (bytes: Uint8Array | string) => createHash("sha256").update(bytes).digest("hex");
 const readJson = (file: string): unknown => JSON.parse(readFileSync(file, "utf8"));
@@ -158,7 +166,57 @@ function voiceRecord(directory: string) {
   return receipt.files.map(record);
 }
 
-function stageVoice(env: NodeJS.ProcessEnv) {
+/** Seed Eliza's cache with the verified, uncompressed Delibes model member in Alpha v114. */
+async function verifiedDelibesCache(module: string): Promise<string | undefined> {
+  const pin = record(record(readJson(join(module, "inputs.json"))).spanish);
+  const model = publishedDelibes;
+  if (pin.enabled !== true || pin.path !== `tts/paradee/${model.filename}` || pin.bytes !== model.bytes || pin.sha256 !== model.sha256) return undefined;
+
+  const cache = join(android, ".cache", "voice-models", model.sha256);
+  const target = join(cache, model.filename);
+  const cached = lstatSync(target, { throwIfNoEntry: false });
+  if (cached?.isFile() && cached.size === model.bytes && sha256(readFileSync(target)) === model.sha256) return cache;
+
+  const range = `${model.offset}-${model.offset + model.bytes - 1}`;
+  const response = await fetch(model.apk, {
+    headers: { Range: `bytes=${range}`, "Accept-Encoding": "identity" },
+    signal: AbortSignal.timeout(90_000),
+  });
+  const body = response.body;
+  if (response.status !== 206 || response.headers.get("content-range") !== `bytes ${range}/${model.apkBytes}` || body === null) {
+    await body?.cancel();
+    throw new Error("Alpha v114 did not return the exact Delibes model byte range");
+  }
+  const bytes = new Uint8Array(model.bytes);
+  let downloaded = 0;
+  const reader = body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value.byteLength > bytes.byteLength - downloaded) throw new Error("The Delibes model exceeded its pinned size");
+      bytes.set(value, downloaded);
+      downloaded += value.byteLength;
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
+  if (downloaded !== model.bytes || sha256(bytes) !== model.sha256) throw new Error("The Delibes model does not match its pinned size and SHA-256");
+
+  mkdirSync(cache, { recursive: true });
+  const temporary = mkdtempSync(join(cache, ".partial-"));
+  try {
+    const pending = join(temporary, "model");
+    writeFileSync(pending, bytes);
+    renameSync(pending, target);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+  return cache;
+}
+
+async function stageVoice(env: NodeJS.ProcessEnv) {
   const at = prepared();
   const module = join(at.root, "packages/os/android/local-inference");
   const engineLock = record(record(readJson(join(module, "engine.lock.json"))).engine);
@@ -175,8 +233,10 @@ function stageVoice(env: NodeJS.ProcessEnv) {
   }
   const directory = voiceDirectory();
   if (!existsSync(join(directory, "build-record.json"))) {
+    const modelCache = await verifiedDelibesCache(module);
     run(process.execPath, [
       join(module, "scripts/build-native.ts"), "--workspace", join(android, ".cache", "voice-work", expectedEngine), "--out", directory,
+      ...(modelCache === undefined ? [] : ["--model-cache", modelCache]),
     ], { env: { ...env, ELIZA_INFERENCE_ENGINE_DIR: engine } });
   }
   voiceRecord(directory);
@@ -404,7 +464,7 @@ export async function build(release: boolean) {
   const env = environment();
   refuseOn(inputProblems(env));
   run(process.execPath, [join(app, "scripts/licences.ts"), "--check"], { env });
-  const voice = stageVoice(env);
+  const voice = await stageVoice(env);
   buildPack();
   const runtime = await stageRuntime();
   buildWeb();
@@ -443,7 +503,7 @@ export async function build(release: boolean) {
         alphaCommit: git(root, "rev-parse", "HEAD"), elizaCommit: String(record(readJson(join(root, "eliza.lock.json"))).commit),
       },
     },
-    verify: { command: process.execPath, args: [fileURLToPath(import.meta.url), "verify"] },
+    verify: { command: process.execPath, args: [fileURLToPath(import.meta.url), "verify", ...(release ? [] : ["--debug-only"])] },
   });
   if (!release) for (const name of [`${variant}-release.apk`, `${variant}-release-unsigned.apk`, `mapping/${variant}-release-mapping.txt`]) rmSync(join(artifacts, name), { force: true });
   mkdirSync(join(artifacts, "sbom"), { recursive: true });
@@ -687,16 +747,20 @@ export function checkApk(file: string, mode: "debug" | "release", env: NodeJS.Pr
   };
 }
 
-/** Checks APKs in artifacts/ and writes artifacts/apk-manifest.json: debug + release rows, or release-only with `{ releaseOnly: true }`. */
-export function verify(env: NodeJS.ProcessEnv = environment(), options: { readonly releaseOnly?: boolean } = {}) {
-  const releaseOnly = options.releaseOnly === true;
+/** Writes the APK manifest after checking both variants or the selected build. */
+export function verify(env: NodeJS.ProcessEnv = environment(), options: { readonly releaseOnly?: boolean; readonly debugOnly?: never } | { readonly debugOnly: true; readonly releaseOnly?: never } = {}) {
   const debug = join(artifacts, `${variant}-debug.apk`);
   const release = [`${variant}-release.apk`, `${variant}-release-unsigned.apk`].map((name) => join(artifacts, name)).filter((file) => existsSync(file));
-  if (!releaseOnly && !existsSync(debug)) throw new Error(`artifacts/${variant}-debug.apk is missing`);
-  if (release.length !== 1) throw new Error(`artifacts/ must hold exactly one ${variant} release APK, holds ${release.length}`);
-  const results = releaseOnly
-    ? [checkApk(release[0] ?? "", "release", env, { allowMissingVoiceReceipt: true })]
-    : [checkApk(debug, "debug", env), checkApk(release[0] ?? "", "release", env)];
+  const results: ReturnType<typeof checkApk>[] = [];
+  if (!options.releaseOnly) {
+    if (!existsSync(debug)) throw new Error(`artifacts/${variant}-debug.apk is missing`);
+    results.push(checkApk(debug, "debug", env));
+  }
+  if (!options.debugOnly) {
+    const [file] = release;
+    if (release.length !== 1 || file === undefined) throw new Error(`artifacts/ must hold exactly one ${variant} release APK, holds ${release.length}`);
+    results.push(checkApk(file, "release", env, { allowMissingVoiceReceipt: options.releaseOnly === true }));
+  }
   if (new Set(results.map((row) => row.versionCode)).size !== 1) throw new Error("The debug and release APKs have different version codes");
   const tests = join(artifacts, "instrumentation", `${variant}-androidTest.apk`);
   const manifest = {
@@ -745,8 +809,8 @@ async function main(argv: readonly string[]) {
       await build(rest.includes("--release"));
       return 0;
     case "verify":
-      if (rest.some((arg) => arg !== "--release-only")) throw new Error(usage);
-      verify(environment(), { releaseOnly: rest.includes("--release-only") });
+      if (rest.length > 1 || rest.some((arg) => arg !== "--release-only" && arg !== "--debug-only")) throw new Error(usage);
+      verify(environment(), rest[0] === "--debug-only" ? { debugOnly: true } : { releaseOnly: rest[0] === "--release-only" });
       return 0;
     default:
       process.stderr.write(`${usage}\n`);

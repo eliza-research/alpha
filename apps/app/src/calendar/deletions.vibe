@@ -1,14 +1,16 @@
 // spec/app/calendar/deletions.md, "Story: Undo a deletion before it is sent"
 import * as View from "../../gen/app__calendar.effect.vibe"
 import * as Held from "../../gen/app__calendar__deletions.effect.vibe"
-import type { Effect as Out, Event } from "../../gen/app__calendar__deletions.effect.vibe"
+import type { Effect as Out, Event, Reach } from "../../gen/app__calendar__deletions.effect.vibe"
 import * as Editor from "../../gen/app__calendar__editor.effect.vibe"
 import * as Notices from "../../gen/app__notices__toasts.effect.vibe"
 import { type Said, offer, say, withdraw } from "../notices/index.vibe"
 import { type Due, Job, contained, due, filledStore, following, hearing, reacting, started, together, untimed } from "../runtime/index.vibe"
 import { calendarInFront } from "./calendar.vibe"
+import { PhoneCalendar } from "../platform/index.vibe"
+import { deletionScope, pickOf, scopeOf } from "./shown.ts"
 import { Shown } from "./stores.vibe"
-import { civilDay } from "./time.ts"
+import { readHolds } from "./time.ts"
 
 const undoArea = "Calendar"
 
@@ -36,27 +38,46 @@ const deletionMeta = Layer.effect(DeletionMeta, effect {
   }
 })
 
-/** Undo the waiting deletion if its window or shown notice still permits it. */
-effect function undoWaiting(): void!!Held.Machine {
+/** Undo the waiting deletion if its window or shown notice still permits it, and drop what the phone reviewed of it. */
+effect function undoWaiting(): void!!(Held.Machine | Shown | PhoneCalendar) {
   const held = try Held.Machine
-  if (try contained(held.send({ type: "undo", now: untimed }), "undoing a deletion")) return
-  try contained(held.send({ type: "undoShown" }), "undoing a shown deletion")
+  const key = (try Shown).lastSeen((try held.get()).waiting)?.key
+  if (!(try contained(held.send({ type: "undo", now: untimed }), "undoing a deletion"))) try contained(held.send({ type: "undoShown" }), "undoing a shown deletion")
+  const phone = try PhoneCalendar
+  if (key !== undefined && phone.cancel && (try held.get()).waiting === 0) try phone.cancel(key)
+}
+
+/** The Undo a deletion's notice offers, over this Calendar's deletions, rows and phone, wherever the notice runs it. */
+effect function undoOffered() {
+  const held = try Held.Machine
+  const shown = try Shown
+  const phone = try PhoneCalendar
+  return Effect.provideService(Effect.provideService(Effect.provideService(undoWaiting(), Held.Machine, held), Shown, shown), PhoneCalendar, phone)
+}
+
+// spec/app/calendar/deletions.md, "Confirming the review holds the deletion; a deletion still waiting is sent first, so the only Undo shown is the newest"
+/** Have the phone review a deletion of the event numbered `id` while Calendar is in front, as the owner confirms it, since it reviews nothing for a page it cannot see; its release then sends what it reviewed. */
+effect function reviewWhileShown(id: number, reach: Reach): void!!(Shown | PhoneCalendar) {
+  const row = (try Shown).find(id)
+  const which = row === undefined || row.source !== "Phone" ? undefined : deletionScope(scopeOf(reach), row.recurring)
+  if (row !== undefined && which !== undefined) try (try PhoneCalendar).stage(pickOf(row), which)
 }
 
 // spec/app/calendar/deletions.md, "Confirming the review holds the deletion; a deletion still waiting is sent first, so the only Undo shown is the newest"
 /** Confirm the reviewed deletion and raise its Undo toast through the global notices area without racing the shell. */
-export effect function confirmDelete(event: Extract<Event, { readonly type: "confirm" }>): boolean!!(Held.Machine | Shown | DeletionMeta | Notices.Machine | Said) {
+export effect function confirmDelete(event: Extract<Event, { readonly type: "confirm" }>): boolean!!(Held.Machine | Shown | DeletionMeta | Notices.Machine | Said | PhoneCalendar) {
   const held = try Held.Machine
   const shown = try Shown
   const meta = try DeletionMeta
-  const id = (try held.get()).asked
+  const { asked: id, askedReach } = try held.get()
   if (id === 0) return false
   const title = shown.lastSeen(id)?.title || "Event"
   if (!(try contained(held.send(event), "confirming a deletion"))) return false
+  try reviewWhileShown(id, askedReach)
   const prev = meta.offered()
   if (prev !== 0 && prev !== id) try withdraw(undoArea, prev)
   meta.setOffered(id)
-  const undo = Effect.provideService(undoWaiting(), Held.Machine, held)
+  const undo = try undoOffered()
   try offer(`${title} deleted`, undoArea, id, undo)
   return true
 }
@@ -71,7 +92,7 @@ function carry(fx: Out): Job<Event, Editor.Machine | Shown | DeletionMeta, []> {
     meta.remember(fx.id, fx.revision, row?.version ?? "", row?.answer ?? "")
     const remove: Editor.Event = {
       type: "deleteEvent", id: fx.id, revision: fx.revision,
-      scope: fx.reach === "WholeSeries" ? "WholeSeries" : fx.reach === "FromThisOn" ? "ThisAndFollowing" : "ThisOne", repeating: row?.recurring ?? false,
+      scope: scopeOf(fx.reach), repeating: row?.recurring ?? false,
     }
     return effect {
       try (try Editor.Machine).send(remove)
@@ -130,7 +151,7 @@ const notices = started(effect {
     if (active !== 0 && meta.offered() !== active) {
       meta.setOffered(active)
       const title = shown.lastSeen(active)?.title || "Event"
-      const undo = Effect.provideService(undoWaiting(), Held.Machine, held)
+      const undo = try undoOffered()
       try offer(`${title} deleted`, undoArea, active, undo)
     }
     if (state.dropped !== 0 && state.dropped !== lastDropped) {
@@ -157,7 +178,7 @@ const reconciled = started(effect {
     const d = try held.get()
     if (d.hiding === 0) return
     const id = d.hiding
-    const prior = shown.lastSeen(id)
+    const prior = shown.lastSeen(id) ?? shown.seenAt(id)
     if (prior === undefined && !shown.known(id) && !shown.forgets(id)) return
     const sourceLoaded = prior === undefined
       ? s.phone.status === "Loaded" || s.google.status === "Loaded"
@@ -165,7 +186,8 @@ const reconciled = started(effect {
     if (!sourceLoaded) return
     const current = shown.find(id)
     if (current === undefined) {
-      const covered = prior === undefined || (!(prior.source === "Phone" && s.phoneLimited) && Math.abs(civilDay(prior.begin) - s.anchor) <= 31)
+      const covered = prior === undefined
+        || (prior.source === "Phone" ? !s.phoneLimited && readHolds(prior.begin, s.phoneDay) : !s.googleLimited && readHolds(prior.begin, s.googleDay))
       if (!covered) return
       meta.forget(id)
       try contained(held.send({ type: "readShows", id, unchanged: false }), "clearing a deleted event after read")

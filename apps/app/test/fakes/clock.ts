@@ -1,5 +1,43 @@
 // spec/agent/index.md, "The page reaches exactly the routes its platform services call, and nothing else"
+import type { ClockProjection, ClockTap } from "../../src/platform/clock-alerts.vibe";
+import { plugIn } from "./phone.ts";
 import { type Route, readJsonBody } from "./routes.ts";
+
+/** The Android scheduler, independent of the Clock renderer which publishes deadlines and handles owner taps. */
+export function installClockScheduler() {
+  let projection: ClockProjection = { alerts: [], ready: false, known: [] };
+  let standaloneInstalled = false;
+  let foreground = "";
+  let notificationsEnabled = false;
+  let pending: ClockTap | undefined;
+  let changed = () => {};
+  const unplug = plugIn({
+    AlphaDevice: () => ({
+      launchSiblingApp({ targetPackage }: { targetPackage: string }) {
+        if (standaloneInstalled) foreground = targetPackage;
+        return { launched: standaloneInstalled };
+      },
+    }),
+    AlphaClockAlerts: (emit) => {
+      changed = () => emit("clockAlertOpen", {});
+      return {
+        reconcile(input: ClockProjection) {
+          projection = input;
+          return { notificationsEnabled, exact: true };
+        },
+        checkPermissions: () => ({ notifications: notificationsEnabled ? "granted" : "prompt" }),
+        requestPermissions() { notificationsEnabled = true; return { notifications: "granted" }; },
+        pendingTap: () => pending ?? {},
+        consumeTap({ token }: { token: string }) { if (pending?.token === token) pending = undefined; },
+      };
+    },
+  });
+  return {
+    unplug, alerts: () => projection.alerts, projection: () => projection,
+    installStandalone() { standaloneInstalled = true; }, foreground: () => foreground, pending: () => pending,
+    tap(next: ClockTap) { pending = next; changed(); },
+  };
+}
 
 /** Alarm record shape exchanged on `/api/alpha/clock/*`. */
 export interface FakeClockAlarm {

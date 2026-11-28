@@ -2,6 +2,7 @@
 // spec/app/camera/agent.md, "A capture is taken only when the phone saved a photo it names; any other answer, or the camera released first, is uncertain"
 import { DeviceExecution, NOT_DISPATCHED, RuntimeRequestError, type ConversationRecord, type DeviceAgent, type ExecutorCall, type JournalIdentity, type RuntimeRequestHeaders } from "@elizaos/agent"
 import { mayRunDirectly, readOperation, readResult, type DeviceOperation } from "@elizaos/agent"
+import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import { filterLabel } from "@elizaos/plugin-files-client"
 import { PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL, type PhoneDeviceTarget, type WorkflowDeviceBinding, parseWorkflowBinding } from "@elizaos/plugin-workflow-client"
 import { Machine as Conversation } from "../../gen/app__assistant.effect.vibe"
@@ -111,6 +112,7 @@ import { enrollment, journal, slotFor } from native
 const prefix = "/api/client-devices"
 const protocol = Schema.Struct({ agentId: Schema.NonEmptyString, identityId: Schema.NonEmptyString, deviceActions: Schema.Struct({ protocol: Schema.Literal(1), capabilities: Schema.Array(Schema.String) }) })
 const registration = Schema.Struct({ installationId: Schema.NonEmptyString, enrollmentId: Schema.NonEmptyString })
+const revoked = Schema.Struct({ revoked: Schema.Literal(true) })
 const context = Schema.Struct({ agentId: Schema.NonEmptyString, installationId: Schema.NonEmptyString, enrollmentId: Schema.NonEmptyString, subjectUserId: Schema.NonEmptyString })
 const readOrigin = Schema.Struct({ version: Schema.Literal(1), requestId: Schema.NonEmptyString, conversationId: Schema.NonEmptyString, inReplyTo: Schema.NonEmptyString })
 const readReply = Schema.Struct({ reply: Schema.Struct({ ...readOrigin.fields, messageId: Schema.NonEmptyString, text: Schema.NonEmptyString }) })
@@ -126,7 +128,7 @@ const readReceipt = Schema.Struct({ ...journalBinding.fields, operationId: Schem
   agentAttemptId: Schema.NonEmptyString, acknowledged: Schema.Literal(true), evidence: Schema.Struct({ result: Schema.Unknown }),
 })
 type ReadOrigin = typeof readOrigin.Type
-type ReviewedRead = Extract<DeviceOperation, { type: "sms_latest_sender" | "messages_read_selected" | "voicemail_read_selected" }>
+type ReviewedRead = Extract<DeviceOperation, { type: "sms_latest_sender" | "messages_read_selected" | "voicemail_read_selected" | "calendar_availability" }>
 interface BoundRead { readonly origin: ReadOrigin; readonly pageTicket: number }
 
 type Proposal = typeof listed.Type.proposals[number]
@@ -318,13 +320,15 @@ export function namedReviewQuery(operation: DeviceOperation): string | undefined
 }
 
 function reviewedRead(operation: DeviceOperation): operation is ReviewedRead {
-  return operation.type === "sms_latest_sender" || operation.type === "messages_read_selected" || operation.type === "voicemail_read_selected"
+  return operation.type === "sms_latest_sender" || operation.type === "messages_read_selected"
+    || operation.type === "voicemail_read_selected" || operation.type === "calendar_availability"
 }
 
 function acceptsRead(opened: Session, operation: ReviewedRead): boolean {
   const capabilities = opened.capabilities
   if (operation.type === "messages_read_selected") return capabilities.has("messages.read.v1")
   if (operation.type === "voicemail_read_selected") return capabilities.has("voicemail.read.v1")
+  if (operation.type === "calendar_availability") return capabilities.has("calendar.availability-read.v1")
   return capabilities.has("sms.latest-sender.v2") || (!("includeAddress" in operation) && capabilities.has("sms.latest-sender.v1"))
 }
 
@@ -362,10 +366,11 @@ function spokenOperation(proposal: Proposal, opened: Session, message: string, r
   if (reply.spoken?.noFiles === true && op.type.startsWith("files_")) return undefined
   const request = proposal.payload.requestMessageId
   if (request !== undefined && request !== message) return undefined
-  if (reviewedRead(op)) return acceptsRead(opened, op) && exactReadOrigin(proposal, message, reply) !== undefined ? op : undefined
+  if (reviewedRead(op)) return acceptsRead(opened, op) && (op.type === "calendar_availability" || exactReadOrigin(proposal, message, reply) !== undefined) ? op : undefined
   if (op.type === "voicemail_delete_selected" && (reply.voicemail?.witness === undefined ||
     !opened.capabilities.has("voicemail.delete.v1"))) return undefined
-  return request === message || commsReview(op) || op.type.startsWith("files_") || op.type === "browser_navigate" ? op : undefined
+  return request === message || commsReview(op) || op.type.startsWith("files_") || op.type === "browser_navigate"
+    || calendarOperation(op) !== undefined || notesOperation(op) !== undefined ? op : undefined
 }
 
 /** The exact Talk request whose reply proposed a text in the already-open chat. */
@@ -432,10 +437,11 @@ function offeredBy(reply: DeviceActionReply, actions: ReadonlyMap<string, ReplyA
 }
 
 /** What a reviewed read found, in v119's words (Alpha 45f6bed30: `ui/telephony/telephony-receipt-text.ts:179-196`). */
-function readSaid(result: NonNullable<ReturnType<typeof latestSenderResult>> | { readonly kind: "messages-read" | "voicemail-read" }): string {
+function readSaid(result: NonNullable<ReturnType<typeof latestSenderResult>> | { readonly kind: "messages-read" | "voicemail-read" | "calendar_availability" }): string {
   switch (result.kind) {
     case "messages-read": return "Shared the open thread."
     case "voicemail-read": return "Shared the open voicemail."
+    case "calendar_availability": return "Shared your availability."
     case "sms-latest-sender": return result.status !== "found" ? result.status === "empty" ? "No incoming SMS messages." : "The latest incoming SMS has no readable phone number."
       : "address" in result ? result.address : `Latest incoming SMS sender ends in ${result.numberEnding}.`
   }
@@ -568,7 +574,8 @@ function words(value: NonNullable<ReturnType<typeof operation>>): { title: strin
     case "calendar_update":
     case "calendar_delete":
     case "calendar_named":
-    case "read_calendar_range": return calendarOperationWords(value)
+    case "read_calendar_range":
+    case "calendar_availability": return calendarOperationWords(value)
     case "phone_keypad": return { title: "Open the keypad", detail: value.number ?? "Phone" }
     case "phone_dial": return { title: "Open the phone dialer", detail: value.target.kind === "number" ? value.target.number : phoneQuery(value) ?? "Phone" }
     case "phone_call": return { title: "Call", detail: value.target.kind === "number" ? value.target.number : phoneQuery(value) ?? "Phone" }
@@ -679,7 +686,20 @@ error EnrollmentRefused { reason: string }
 
 type Action = (op: DeviceOperation, call: ExecutorCall) => Promise<unknown>
 
-effect function enrolled(epoch: number, owner: string, image: boolean, runtime: Runtime, executeAction: Action, readBack: Action): Session!unknown {
+const syncedCapabilitiesKey = (slot: string) => `alpha/assistant/device-capabilities/${slot}@1`
+
+const capabilityFingerprint = (capabilities: readonly string[]) =>
+  [...new Set(capabilities)].sort((left, right) => left < right ? -1 : left > right ? 1 : 0).join(",")
+
+effect function enrolled(
+  epoch: number,
+  owner: string,
+  image: boolean,
+  runtime: Runtime,
+  executeAction: Action,
+  readBack: Action,
+  store?: KeyValueStore.KeyValueStore,
+): Session!unknown {
   const offer = try Schema.decodeUnknownEffect(protocol)(try tryPromise(() => runtime.request(`${prefix}/capabilities`)))
   if (offer.agentId !== owner) throw new EnrollmentRefused({ reason: "Device agent changed" })
   const origin = "https://device.alpha.invalid"
@@ -698,12 +718,32 @@ effect function enrolled(epoch: number, owner: string, image: boolean, runtime: 
   ].filter((name) => offer.deviceActions.capabilities.includes(name))
   if (capabilities.length === 0) throw new EnrollmentRefused({ reason: "Media operations are unavailable" })
   const headers = { "x-eliza-device-id": offer.agentId, "x-eliza-device-key": key, "x-eliza-device-capabilities": capabilities.join(",") }
+  const syncedKey = syncedCapabilitiesKey(slot)
+  const wantedCapabilities = capabilityFingerprint(capabilities)
+  const syncedCapabilities = store === undefined ? undefined : (store.get(syncedKey) catch () => undefined)
   let raw = tryPromise(() => runtime.request(`${prefix}/context`, undefined, headers)) catch () => undefined
+  const capabilitiesChanged = syncedCapabilities !== wantedCapabilities
+  if (raw !== undefined && capabilitiesChanged) {
+    const revokeReply = tryPromise(() => runtime.request(`${prefix}/revoke`, {}, headers)) catch (failure) => failure.cause instanceof RuntimeRequestError ? failure.cause : undefined
+    if (revokeReply instanceof RuntimeRequestError) {
+      if (revokeReply.status === 401) {
+        raw = undefined
+      } else if (revokeReply.status !== 404) {
+        throw new EnrollmentRefused({ reason: "The device could not refresh capabilities" })
+      }
+    } else if ((Schema.decodeUnknownEffect(revoked)(revokeReply) catch () => undefined) !== undefined) {
+      raw = undefined
+    } else {
+      throw new EnrollmentRefused({ reason: "The device could not refresh capabilities" })
+    }
+  }
   const canReadRecords = registered("ElizaCalendar") && registered("AlphaNotes")
   const canPresent = registered("ElizaNotifications") && nativeReadingAvailable()
   const maximum = !canReadRecords ? 0 : !canPresent ? 1 : registered("ElizaReminders") ? PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL : 2
   let workflowProtocol = 0
-  if (raw === undefined || maximum > 0) {
+  const reenrolled = raw === undefined
+  let registeredFresh = false
+  if (raw === undefined || capabilitiesChanged || maximum > 0) {
     const offers = maximum > 0
       ? [PHONE_WORKFLOW_CALENDAR_ANCHOR_PROTOCOL, 3, 2, 1].filter((version) => version <= maximum)
       : [0]
@@ -716,6 +756,7 @@ effect function enrolled(epoch: number, owner: string, image: boolean, runtime: 
       if (answer?.installationId === offer.agentId) {
         raw = try tryPromise(() => runtime.request(`${prefix}/context`, undefined, headers))
         workflowProtocol = version
+        registeredFresh = true
       } else if (raw === undefined || answer !== undefined) {
         throw new EnrollmentRefused({ reason: "The device could not enroll" })
       }
@@ -724,6 +765,9 @@ effect function enrolled(epoch: number, owner: string, image: boolean, runtime: 
   }
   const confirmed = try Schema.decodeUnknownEffect(context)(raw)
   if (confirmed.subjectUserId !== offer.identityId || confirmed.agentId !== offer.agentId || confirmed.installationId !== offer.agentId) throw new EnrollmentRefused({ reason: "Device scope changed" })
+  if (reenrolled && registeredFresh && store !== undefined) {
+    try ignore(store.set(syncedKey, wantedCapabilities))
+  }
   const identity = { origin, ownerId: owner, ...confirmed }
   const agent = routes(runtime, headers, capabilities.includes(cameraLibraryIdCapability))
   const execute = new DeviceExecution<DeviceOperation>({
@@ -759,6 +803,7 @@ function completion(op: DeviceOperation, synced: boolean): string {
     case "files_move":
     case "files_trash": return synced ? "Files shows which items changed." : "Files shows which items changed. Agent receipt pending."
     case "maps_read_selected": return synced ? "Shared what Maps shows with the agent." : "Maps place prepared. Agent receipt pending."
+    case "calendar_availability": return synced ? "Shared your availability." : "Availability prepared. Agent receipt pending."
     default: return synced ? "Done" : "Done. Agent receipt pending."
   }
 }
@@ -1021,11 +1066,12 @@ function pendingProposals(context: PendingReviewContext): MediaReview.Shape["pen
       const readsContent = reviewedRead(op)
       const origin = readsContent ? exactReadOrigin(proposal, message, reply) : undefined
       if (readsContent && !acceptsRead(opened, op)) return undefined
-      if (readsContent && (op.type !== "messages_read_selected" || proposal.readReplyOrigin !== undefined)) {
+      if (readsContent && op.type !== "calendar_availability" && (op.type !== "messages_read_selected" || proposal.readReplyOrigin !== undefined)) {
         if (origin === undefined || (request !== undefined && request !== message) || !fromThisEnrollment(proposal, opened)
           || !(try reviewContext(revision, view)) || !(try enrollmentIsCurrent(opened)) || !isLatest(opened) || !(try reviewContext(revision, view))) return undefined
       } else if (request === undefined) {
-        if (!(commsReview(op) || filesOperation || op.type === "browser_navigate" || op.type === "camera_capture_photo")
+        if (!(commsReview(op) || filesOperation || op.type === "browser_navigate" || op.type === "camera_capture_photo"
+          || calendarOperation(op) !== undefined || notesOperation(op) !== undefined)
           || !currentReview || !reviewFromReply(proposal, opened, actions)) return undefined
       } else if (request !== message || (filesOperation && (!fromThisEnrollment(proposal, opened)
         || (actions.get(proposal.id) !== "Review" && actions.get(proposal.id) !== "Direct")))) return undefined
@@ -1117,6 +1163,7 @@ const mediaReviewContext = effect {
   const sameSms = (selection: SmsSelection) => Effect.provideContext(currentSmsSelection(selection), smsContext)
   // spec/app/voice/index.md, "A reply that needs the owner's review in chat keeps voice listening with the microphone open": a text's review names its number's contact as Messages names it.
   const inbox = Option.getOrUndefined(try Effect.serviceOption(Inbox))
+  const store = Option.getOrUndefined(try Effect.serviceOption(KeyValueStore.KeyValueStore))
   const recipientName = (number: string) => inbox === undefined ? Effect.succeed(undefined)
     : Effect.map(inbox.get(), (texts) => texts.names.get(number) || undefined)
   const voicemailContext = try Effect.context<VoicemailReadContext>()
@@ -1162,7 +1209,7 @@ const mediaReviewContext = effect {
       pinnedFiles.clear()
       const owner = Effect.provideService(ownerAt(), Agent, agent) catch () => undefined
       const { image } = try device.capabilities()
-      const fresh = (latest = owner === undefined ? undefined : (enrolled(status.epoch, owner, image, runtime, guarded, readBack) catch effect (cause) => {
+      const fresh = (latest = owner === undefined ? undefined : (enrolled(status.epoch, owner, image, runtime, guarded, readBack, store) catch effect (cause) => {
         try Effect.logWarning("Device action enrollment failed", cause instanceof Error ? cause.message : typeof cause)
         return undefined
       }))
@@ -1260,6 +1307,10 @@ const mediaReviewContext = effect {
     if (operation.type === "sms_latest_sender") {
       const sender = latestSenderResult(operation, entry.evidence.result)
       return sender === undefined ? undefined : { attempt: entry.agentAttemptId, said: readSaid(sender) }
+    }
+    if (operation.type === "calendar_availability") {
+      const availability = readResult<"calendar_availability">(operation, entry.evidence.result)
+      return availability === undefined ? undefined : { attempt: entry.agentAttemptId, said: readSaid(availability) }
     }
     const shared = readResult<"messages_read_selected">(operation, entry.evidence.result)
     return shared?.status === "read" ? { attempt: entry.agentAttemptId, said: readSaid(shared) } : undefined
@@ -1601,9 +1652,10 @@ export const mediaReview = Layer.effect(MediaReview, effect {
         const result = (tryPromise(() => held.execute.approve({ id, digest, expiresAt, operation }, { live: true, nonsensitive: true, exact: true, forceReview: true, requestEligible: true, reviewed: true }))
           |> ensuring(%, sync(() => { scopes.delete(card.id) }))) catch () => undefined
         if (card.read !== undefined) {
+          const refusedRead = result?.kind === "settled" && result.result.tag === "NoEffect"
           const said = result?.kind === "settled" && result.result.tag === "Applied" && result.synced ? try completeRead(held) : undefined
           if ((try finishDecision(held, result?.kind === "settled" && result.synced)) !== "Unavailable" && (try current(held))) {
-            report(said ?? "Alpha couldn’t complete that read.")
+            report(said ?? (refusedRead && card.operation.type === "calendar_availability" ? "Nothing was shared." : "Alpha couldn’t complete that read."))
           }
           return
         }
@@ -1613,7 +1665,8 @@ export const mediaReview = Layer.effect(MediaReview, effect {
         const note = result?.kind !== "settled" ? notStarted
           : result.result.tag === "Unknown" ? "The result could not be confirmed. Check before trying again."
           : filesOutcome !== undefined ? filesCompletion(filesOutcome, result.synced)
-          : result.result.tag === "Applied" ? completion(card.operation, result.synced) : "Nothing changed."
+          : result.result.tag === "Applied" ? completion(card.operation, result.synced)
+          : card.operation.type === "calendar_availability" ? "Nothing was shared." : "Nothing changed."
         report(note)
       })
     },

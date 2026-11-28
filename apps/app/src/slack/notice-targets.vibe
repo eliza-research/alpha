@@ -1,0 +1,124 @@
+// spec/app/slack/notices.md, "Visible read withdraws matching target notices, and tapping a posted notice deep-links to its workspace, channel and thread"
+import * as Shell from "../../gen/app__shell.effect.vibe"
+import * as Workspaces from "../../gen/app__slack.effect.vibe"
+import { Machine as SlackAuth } from "../../gen/app__slack__auth.effect.vibe"
+import * as Composer from "../../gen/app__slack__composer.effect.vibe"
+import * as Conversation from "../../gen/app__slack__conversation.effect.vibe"
+import { Machine as NoticeTray, canNotifyPermissionChanged, type Target } from "../../gen/app__slack__notices.effect.vibe"
+import { Device, MessagingNotices, MessagingSessions, noticeScope, type MessagingNoticeTarget } from "../platform/index.vibe"
+import { currentSurface } from "../surface.ts"
+import { contained, started } from "../runtime/index.vibe"
+import { SlackLedger, authorizationOf, convKindOf, holdsWorkspace, runWorkspaceCall, slackSessionKey, type WorkspaceMeta } from "./ledger.vibe"
+
+type SlackTarget = Extract<MessagingNoticeTarget, { readonly provider: "slack" }>
+
+export function slackNoticeScope(meta: Pick<WorkspaceMeta, "owner" | "teamId" | "ownerUserId" | "authorizationId">) {
+  return noticeScope([meta.owner, "slack", meta.teamId, meta.ownerUserId, meta.authorizationId])
+}
+
+export effect function slackNoticeTarget(target: Target) {
+  const ledger = try SlackLedger
+  const meta = ledger.workspaceMeta(target.workspace)
+  const channel = ledger.channelId(target.workspace, target.channel)
+  const thread = target.threadTs > 0 ? ledger.tsStr(target.workspace, target.channel, target.threadTs) : ""
+  if (!meta || !channel || thread === undefined || !meta.brokered || !(try holdsWorkspace(meta))) return undefined
+  return { provider: "slack" as const, scope: try slackNoticeScope(meta), workspace: meta.teamId, channel, thread } satisfies SlackTarget
+}
+
+export effect function openSlackNotice(target: SlackTarget) {
+  const ledger = try SlackLedger
+  const ws = try Workspaces.Machine
+  const auth = try SlackAuth
+  const meta = ledger.workspaceByTeamId(target.workspace)
+  const retired = effect {
+    const old = ledger.noticesList().find(({ destination }) => destination.scope === target.scope && destination.workspace === target.workspace && destination.channel === target.channel && destination.thread === target.thread)
+    if (old) ledger.removeTargetNotice(old)
+    try (try MessagingNotices).withdraw(target)
+    return "stale" as const
+  }
+  const sessions = try MessagingSessions
+  const owner = try sessions.owner()
+  if (!owner) return "pending" as const
+  const held = Option.getOrUndefined(try sessions.get(slackSessionKey(target.workspace), owner))
+  if (!held?.workspace?.brokered || held.workspace.teamId !== target.workspace) return try retired
+  const authorizationId = try authorizationOf(held)
+  if ((try slackNoticeScope({ ...held.workspace, owner, authorizationId })) !== target.scope) return try retired
+  if (!meta || meta.owner !== owner || meta.authorizationId !== authorizationId) return "pending" as const
+  if (!(try auth.get()).connected.some((grant) => grant.workspace === meta.num)) return "pending" as const
+  const channel = ledger.channelNum(meta.num, target.channel)
+  const info = try runWorkspaceCall(meta.num, (slack, token) => slack.conversationInfo(token, target.channel))
+  if (!info.ok) {
+    const denied = info.failure === "Revoked" || info.code === "channel_not_found" || info.code === "not_in_channel" || info.code === "missing_scope"
+    return denied ? try retired : "pending" as const
+  }
+  if (info.value.channel.id !== target.channel || !(try holdsWorkspace(meta))) return try retired
+  const summary = info.value.channel
+  ledger.putConversations(meta.num, [summary], true)
+  const shell = Option.getOrUndefined(try Effect.serviceOption(Shell.Machine))
+  if (shell && !Shell.showing(try shell.get(), "Slack")) {
+    if (!Shell.canOpenView(try shell.get(), "Slack")) return "pending" as const
+    try contained(shell.send({ type: "openView", view: "Slack" }), "opening Slack")
+    if (!Shell.showing(try shell.get(), "Slack")) return "pending" as const
+  }
+  const state = try ws.get()
+  if (state.selected.workspace !== meta.num) {
+    if (!Workspaces.canSwitchWorkspace(state, meta.num)) return "pending" as const
+    try contained(ws.send({ type: "switchWorkspace", workspace: meta.num }), "opening the notified Slack workspace")
+  }
+  const kind = convKindOf(summary)
+  const conv = try Conversation.Machine
+  let view = try conv.get()
+  if (view.workspace !== meta.num || view.channel !== channel) {
+    if (!Conversation.canOpenChannel(view, meta.num, channel, kind, true)) return "pending" as const
+    try contained(conv.send({ type: "openChannel", workspace: meta.num, channel, kind, front: true }), "opening the notified Slack channel")
+    view = try conv.get()
+  }
+  const threadTs = target.thread === "" ? 0 : ledger.tsNum(meta.num, channel, target.thread)
+  if (view.threadTs !== threadTs) {
+    if (threadTs === 0 && Conversation.canCloseThread(view)) try contained(conv.send({ type: "closeThread" }), "opening the notified Slack channel")
+    else if (Conversation.canOpenThread(view, threadTs)) try contained(conv.send({ type: "openThread", threadTs }), "opening the notified Slack thread")
+    else return "pending" as const
+  }
+  const composer = try Composer.Machine
+  if (Composer.canOpenTarget(try composer.get(), meta.num, channel, threadTs, "Owner")) {
+    try contained(composer.send({ type: "openTarget", workspace: meta.num, channel, threadTs }, "Owner"), "opening the Slack reply target")
+  }
+  const opened = try conv.get()
+  return opened.workspace === meta.num && opened.channel === channel && opened.threadTs === threadTs ? "opened" as const : "pending" as const
+}
+
+export const configureSlackNotices = effect {
+  const host = try MessagingNotices
+  try host.configure("slack")
+  try refreshSlackPermission
+}
+
+const refreshSlackPermission = effect {
+  const allowed = try (try MessagingNotices).allowed("slack")
+  const notices = try NoticeTray
+  if (canNotifyPermissionChanged(try notices.get(), allowed)) {
+    try contained(notices.send({ type: "notifyPermissionChanged", notifyAllowed: allowed }), "checking Slack notification permission")
+  }
+}
+
+export const slackNoticeDelivery = started(effect {
+  const surface = currentSurface()
+  if (surface.mode === "overlay" || (surface.mode === "app" && surface.view !== "Slack")) return
+  const host = try MessagingNotices
+  const device = try Device
+  const conv = try Conversation.Machine
+  const auth = try SlackAuth
+  const workspaces = try Workspaces.Machine
+  const resume = Stream.map(Stream.filter(device.visible, (visible) => visible), () => undefined)
+  const changes = Stream.mergeAll([host.changed, resume], { concurrency: "unbounded" })
+  const permissions = Stream.tap(Stream.concat(Stream.make(undefined), changes), () => refreshSlackPermission)
+  const shell = Option.getOrUndefined(try Effect.serviceOption(Shell.Machine))
+  const ready = Stream.mergeAll([Stream.as(auth.changes, false), Stream.as(workspaces.changes, false), Stream.as(conv.changes, false), shell ? Stream.as(shell.changes, false) : Stream.empty], { concurrency: "unbounded" })
+  let waiting = false
+  try Stream.runForEach(Stream.merge(Stream.as(permissions, true), ready), effect (check) => {
+    if (!host.native || (!check && !waiting) || !(try device.showing())) return
+    const tap = try host.pending("slack")
+    waiting = tap?.target.provider === "slack" && (try host.allowed("slack")) && (try openSlackNotice(tap.target)) === "pending"
+    if (tap && !waiting) try host.consume(tap.token)
+  })
+}, "receiving Slack notification settings and taps")

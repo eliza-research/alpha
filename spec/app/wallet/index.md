@@ -29,7 +29,7 @@ import read as R from "../../kit/read"
 import attempt as A from "../../kit/attempt"
 
 type Family = Evm | Solana
-type Custody = NoWallet | Ready | Off | Unavailable
+type Custody = NoWallet | Ready | Off | Unavailable | SignInRequired
 type Account = { family: Family, address: str, network: str, symbol: str, decimals: int, connected: bool, canSend: bool }
 type Holding = { family: Family, asset: str, symbol: str, decimals: int, units: str }
 type Asker = OwnerAsks | AgentAsks
@@ -128,6 +128,14 @@ pure def canStood(w: Wallet, ticket: int): bool = R::canAnswer(w.standing, ticke
 pure def stood(w: Wallet, ticket: int, ok: bool, custody: Custody, canHold: bool, accounts: List[Account]): Moved =
   if (ok) taken(custody, canHold, accounts, { ...w, standing: R::answer(w.standing, true) })
   else { state: { ...w, standing: R::answer(w.standing, false) }, out: List() }
+```
+
+### A signed-out owner can open Alpha to sign in before using Wallet
+
+When the resident agent reports a credential failure and the phone confirms it is signed out, Wallet hides any previous account's balance and addresses and offers to open Alpha's sign-in. Returning to Wallet reads its standing again. A network failure continues to offer a retry.
+
+```quint
+pure def needsSignIn(w: Wallet): bool = w.custody == SignInRequired
 ```
 
 ### With no wallet, on a phone that can hold one, one action asks the agent to make it, once

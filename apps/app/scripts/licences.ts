@@ -386,7 +386,7 @@ export function renderText(notices: readonly Notice[]): string {
     "A flag records what was found about an entry: a copyleft licence, a licence that is unknown, a package that ships no licence file, or a proprietary item. It is not legal review and not a clearance.",
     ...flagged.map((entry) => `  - ${entry.name}@${entry.version.split("\n")[0]}: ${entry.flags.join(", ")}`)].join("\n")
   const blocks = notices.map((entry) => ["=".repeat(78), entry.name, `Version: ${entry.version.replace(/\n/g, "\n         ")}`, `License: ${entry.license}`, `Source: ${entry.source}`,
-    ...(entry.flags.length ? [`Flags: ${entry.flags.join(", ")}`, ...(entry.obligations ?? []).map((item) => `Obligation (${item.flag}): ${item.note}`)] : []), "", entry.text].join("\n"))
+    ...(entry.flags.length ? [`Flags: ${entry.flags.join(", ")}`, ...(entry.obligations ?? []).map((item) => `Obligation (${item.flag}): ${item.note}`)] : []), "", entry.text.replaceAll("\r\n", "\n")].join("\n"))
   return `${header}\n\n${blocks.join("\n\n")}\n`
 }
 

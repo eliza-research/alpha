@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { Schema } from "effect";
 import { alone, checkout, hasCommit, headCommit, repository, run } from "./checkout.ts";
 
 /**
@@ -64,10 +65,11 @@ function workspace(root: string): Map<string, string> {
 }
 
 function install(root: string) {
+  const args = ["install", "--frozen-lockfile", "--package-import-method=copy"];
   try {
-    run(root, "pnpm", "install", "--frozen-lockfile", "--offline");
+    run(root, "pnpm", ...args, "--offline");
   } catch {
-    run(root, "pnpm", "install", "--frozen-lockfile", "--prefer-offline");
+    run(root, "pnpm", ...args, "--prefer-offline");
   }
 }
 
@@ -205,6 +207,27 @@ export function stagePackEntry(pack: Pack, source: string, product?: ProductPack
 
 /** The pack `pnpm --filter @repo/agent build` wrote: its bundle, and the policy its launch carries. */
 export const packDist = path.join(repository, "apps/agent/dist");
+export const packWorkerDir = path.join(packDist, "workflow-worker");
+
+const decodeWorker = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({
+  executable: Schema.Trimmed.check(Schema.isMinLength(1)),
+  sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
+})));
+
+function workflowWorkerIn(runtimeDir: string) {
+  const { executable, sha256 } = decodeWorker(fs.readFileSync(path.join(runtimeDir, "workflow-worker.json"), "utf8"));
+  const executablePath = fs.realpathSync(path.resolve(runtimeDir, executable));
+  const relative = path.relative(fs.realpathSync(runtimeDir), executablePath);
+  if (path.isAbsolute(executable) || relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error("the workflow worker executable is outside its directory");
+  }
+  const actualSha256 = createHash("sha256").update(fs.readFileSync(executablePath)).digest("hex");
+  if (actualSha256 !== sha256) throw new Error(`workflow worker digest mismatch: expected ${sha256}, got ${actualSha256}`);
+  return { runtimeDir, executable, sha256: actualSha256 };
+}
+
+/** The workflow worker carried in the built agent pack, with the digest measured from its executable. */
+export const packagedWorkflowWorker = () => workflowWorkerIn(packWorkerDir);
 
 /**
  * What a launch of the built pack names: the bundle, the phone's character, the policy's allowed actions and plugins (load list and product), the workflow
@@ -229,19 +252,15 @@ export async function builtPack() {
   if (workflow === undefined || typeof manifest.workflowWorkerSha256 !== "string" || manifest.workflowWorkerSha256 === "") {
     throw new Error("the agent pack pins no workflow worker");
   }
-  const runtimeDir = path.join(workflow, "dist");
-  const { executable } = JSON.parse(fs.readFileSync(path.join(runtimeDir, "workflow-worker.json"), "utf8")) as { executable?: string };
-  if (typeof executable !== "string" || executable === "") throw new Error("the workflow worker manifest names no executable");
-  const workerPath = path.join(runtimeDir, executable);
-  const actualSha256 = createHash("sha256").update(fs.readFileSync(workerPath)).digest("hex");
-  if (actualSha256 !== manifest.workflowWorkerSha256) {
-    throw new Error(`workflow worker digest mismatch: expected ${manifest.workflowWorkerSha256}, got ${actualSha256}`);
+  const workflowWorker = workflowWorkerIn(path.join(workflow, "dist"));
+  if (workflowWorker.sha256 !== manifest.workflowWorkerSha256) {
+    throw new Error(`workflow worker digest mismatch: expected ${manifest.workflowWorkerSha256}, got ${workflowWorker.sha256}`);
   }
   return {
     bundle: path.join(packDist, "bundle/agent.mjs"),
     character: read("host/character.json") as { name: string; system: string },
     policy: { actions: { allowed: policy.actions.allowed }, plugins: policy.plugins },
-    workflowWorker: { runtimeDir, executable, sha256: manifest.workflowWorkerSha256 },
+    workflowWorker,
     ...(host.hostContextRevision === undefined ? {} : { hostContextRevision: host.hostContextRevision }),
     ...(host.views === undefined ? {} : { views: host.views }),
   };

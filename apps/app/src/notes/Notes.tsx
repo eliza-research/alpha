@@ -1,5 +1,5 @@
 // spec/app/notes/index.md, "Story: See my notes"; spec/app/notes/index.md, "Story: Organise my notes"; spec/app/notes/editor.md, "Story: Write a note"; spec/app/notes/trash.md, "Story: Delete a note and get it back"
-import { Alert, AppHeader, Button, Chip, ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogTitle, dockClearance, Input, LinkNoteView, Menu, MenuContent, MenuItem, MenuTrigger, NoteEditor as NoteForm, NoteMenu, NoteRow, cn, focusRing, noteMenuItem, noteMenuPanel, NotesList as NoteRows, Spinner, VoiceNoteView } from "@repo/ui";
+import { Alert, AppHeader, Button, Chip, ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogTitle, Input, LinkNoteView, Menu, MenuContent, MenuItem, MenuTrigger, NoteEditor as NoteForm, NoteMenu, NoteRow, cn, focusRing, noteMenuItem, noteMenuPanel, NotesList as NoteRows, Spinner, VoiceNoteView } from "@repo/ui";
 import { Copy, Download, Ellipsis, FileDown, Folder, FolderInput, ListChecks, Mail, Mic, Pin, Plus, Share2, Trash2 } from "lucide-react";
 import { memo, useCallback, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import * as Notes from "../../gen/app__notes.ts";
@@ -450,15 +450,22 @@ function VoiceNote({ runtime, collection }: { readonly runtime: Runtime; readonl
  * The rows of the list, drawn again only when the list, the notes or the waiting draft change, never as the open
  * note is typed. `hidden` is the note whose unsaved draft waits above the list; `covered` says a draft waits at all.
  */
-const ListedNotes = memo(function ListedNotes({ runtime, collection, covered, hidden }: {
-  readonly runtime: Runtime; readonly collection: Collection; readonly covered: boolean; readonly hidden: number | undefined;
+const ListedNotes = memo(function ListedNotes({ runtime, collection, covered, hidden, available, canNewNote, canStartRecord, selecting }: {
+  readonly runtime: Runtime;
+  readonly collection: Collection;
+  readonly covered: boolean;
+  readonly hidden: number | undefined;
+  readonly available: boolean;
+  readonly canNewNote: boolean;
+  readonly canStartRecord: boolean;
+  readonly selecting: boolean;
 }) {
   const list = useNotes(runtime);
+  const writer = runtime.runSync(NoteEditor);
   const state = list.state;
   if (state === undefined) return null;
   const listEvent = (event: Notes.Event) => void list.send(event, "Owner");
   const can = (event: Notes.Event) => list.can(event, "Owner");
-  const selecting = state.selection !== "NoSelection";
   const shown = Notes.shown(state).filter((item) => item.id !== hidden);
   const first = shown[0];
   const canOpen = first !== undefined && can({ type: "openRow", id: first.id, covered });
@@ -474,6 +481,20 @@ const ListedNotes = memo(function ListedNotes({ runtime, collection, covered, hi
       disabled={selecting && !can(toggle)}
       onClick={selecting ? () => listEvent(toggle) : canOpen ? () => listEvent(open) : undefined} />;
   };
+  const emptyActions = !selecting && state.filter === 0 && (canNewNote || canStartRecord) ? (
+    <div className="flex flex-wrap items-center justify-center gap-2.5">
+      {canNewNote && (
+        <Button onClick={() => void runtime.runPromise(writer.newNote("Text", available, state.filter, covered))}>
+          <Plus aria-hidden className="size-5" />New note
+        </Button>
+      )}
+      {canStartRecord && (
+        <Button variant="secondary" onClick={() => void runtime.runPromise(record)}>
+          <Mic aria-hidden className="size-5" />Record voice
+        </Button>
+      )}
+    </div>
+  ) : undefined;
   return <NoteRows
     state={state.read.status === "Failed" || state.owner === 0 ? "unavailable" : state.read.status === "Loaded" || state.rows.length > 0 ? "listed" : "loading"}
     message="Notes unavailable"
@@ -482,6 +503,7 @@ const ListedNotes = memo(function ListedNotes({ runtime, collection, covered, hi
     filter={state.folders.find((item) => item.id === state.filter)?.name}
     onClearFilter={can({ type: "clearFilter" }) ? () => listEvent({ type: "clearFilter" }) : undefined}
     onRetry={can({ type: "refresh" }) ? () => void runtime.runPromise(enter()) : undefined}
+    emptyActions={emptyActions}
   />;
 });
 
@@ -526,9 +548,9 @@ function NotesList({ alpha, runtime }: { readonly alpha: Alpha; readonly runtime
   const available = Notes.readyForNew(state);
   const draftWaiting = Editor.waiting(writing);
   const newNote = { type: "newNote", kind: "Text", available, covered: draftWaiting, folder: state.filter } as const;
+  const canNewNote = editor.can(newNote, "Owner");
   const openTrash = { type: "show", covered: draftWaiting } as const;
   const showPrevious = { type: "show", covered: draftWaiting } as const;
-  const importText = { type: "importText", available: available && !draftWaiting } as const;
   const rescueDraft = { type: "rescueDraft", note: writing.note, unreadable: writing.unreadable } as const;
   const reopen = { type: "reopenDraft", covered: false } as const;
   const room = { allowed: mic.state?.mic.grant === "Granted", free: hasMic, front: true, silent: voice.state?.play.status !== "Loading" } as const;
@@ -569,7 +591,6 @@ function NotesList({ alpha, runtime }: { readonly alpha: Alpha; readonly runtime
   const canAddFolder = available && can(folderChange("AddFolder", 0, "New"));
   const canRenameFolder = folder !== undefined && available;
   const canRemoveFolder = folder !== undefined && can(folderChange("RemoveFolder", folder.id, ""));
-  const canImport = hasDocuments && transfer.can(importText, "Owner");
   const hasOptionsMenu = canSelect || canOpenTrash || canShowPrevious || canAddFolder || canRenameFolder || canRemoveFolder;
   return <Layers>
     <Under covered={over !== undefined}>
@@ -578,8 +599,12 @@ function NotesList({ alpha, runtime }: { readonly alpha: Alpha; readonly runtime
         <Button size="icon" variant="ghost" aria-label="Delete selected notes" disabled={!can(reviewSelection)} onClick={() => listEvent(reviewSelection)}><Trash2 /></Button>
         <Button variant="ghost" className="h-11 px-3 font-semibold" disabled={busy} onClick={closeSelection}>Done</Button>
       </AppHeader> : <AppHeader title="Notes" className={launcherFirstHeader} leading={<AppBack alpha={alpha} firstPage />}>
-        {canStartRecord && <Button size="icon" variant="ghost" aria-label="Record voice note" onClick={() => void runtime.runPromise(record)}><Mic className="size-5" /></Button>}
-        {editor.can(newNote, "Owner") && <Button size="icon" variant="ghost" aria-label="New note" onClick={() => void runtime.runPromise(writer.newNote("Text", available, state.filter, draftWaiting))}><Plus className="size-5" /></Button>}
+        {(canStartRecord || canNewNote) && (
+          <div className="flex shrink-0 items-center gap-2">
+            {canStartRecord && <Button size="icon" variant="secondary" aria-label="Record voice note" onClick={() => void runtime.runPromise(record)}><Mic aria-hidden className="size-5" /></Button>}
+            {canNewNote && <Button size="icon" variant="primary" aria-label="New note" onClick={() => void runtime.runPromise(writer.newNote("Text", available, state.filter, draftWaiting))}><Plus aria-hidden className="size-5" /></Button>}
+          </div>
+        )}
         {hasOptionsMenu && <Menu>
           <MenuTrigger asChild><Button ref={optionsRef} size="icon" variant="ghost" aria-label="Notes options"><Ellipsis /></Button></MenuTrigger>
           <MenuContent align="end" sideOffset={4} alignOffset={2} className={noteMenuPanel}>
@@ -620,12 +645,16 @@ function NotesList({ alpha, runtime }: { readonly alpha: Alpha; readonly runtime
         {state.writing.outcome === "Unknown" && <Alert variant="warn" className="mb-2">Alpha couldn't confirm the last change</Alert>}
         {state.writing.outcome === "Refused" && <Alert variant="warn" className="mb-2">The note or folder couldn't be changed</Alert>}
       </div>
-      <ListedNotes runtime={runtime} collection={collection} covered={draftWaiting} hidden={!writing.showing && draftWaiting ? writing.note : undefined} />
-      {!selecting && canImport && (
-        <div className={cn("px-4 pt-2", dockClearance)}>
-          <Button size="sm" aria-label="Import text note" className="h-12 px-3.5 text-sm font-normal" variant="secondary" onClick={() => void transfer.send(importText, "Owner")}><Download /> Import</Button>
-        </div>
-      )}
+      <ListedNotes
+        runtime={runtime}
+        collection={collection}
+        covered={draftWaiting}
+        hidden={!writing.showing && draftWaiting ? writing.note : undefined}
+        available={available}
+        canNewNote={canNewNote}
+        canStartRecord={canStartRecord}
+        selecting={selecting}
+      />
       <ConfirmDialog open={over === undefined && state.selection === "Reviewing"} title={selected === 1 ? "Delete this note?" : `Delete ${selected} notes?`}
         destructive confirmLabel="Delete" onCancel={closeSelection} onConfirm={() => void runtime.runPromise(deleteSelection())}>
         The selected {selected === 1 ? "note will" : "notes will"} move to Recently deleted.
@@ -646,8 +675,9 @@ function NotesOpening({ alpha }: { readonly alpha: Alpha }) {
 /** @model spec/app/notes/index.md */
 export function NotesScreen({ alpha, runtime }: { readonly alpha: Alpha; readonly runtime: Runtime }) {
   const notes = useNotes(runtime);
-  if (notes.cause) return <Alert variant="destructive" className="m-4">Alpha couldn't open Notes</Alert>;
   return <div className={cn("flex min-h-0 flex-1 flex-col", launcherTop)}>
-    {notes.state === undefined ? <NotesOpening alpha={alpha} /> : <NotesList alpha={alpha} runtime={runtime} />}
+    {notes.cause
+      ? <Alert variant="destructive" className="m-4">Alpha couldn't open Notes</Alert>
+      : notes.state === undefined ? <NotesOpening alpha={alpha} /> : <NotesList alpha={alpha} runtime={runtime} />}
   </div>;
 }

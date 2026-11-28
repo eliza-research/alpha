@@ -177,8 +177,8 @@ class AlphaAssistantQuickAffordanceConfig @Inject constructor(
         var packageRegistered = false
         var suspendRegistered = false
         try {
-            broadcastDispatcher.registerReceiver(
-                packages, packageFilter, executor = backgroundExecutor, user = UserHandle.ALL,
+            context.registerReceiverAsUser(
+                packages, UserHandle.ALL, packageFilter, null, null, Context.RECEIVER_NOT_EXPORTED,
             )
             packageRegistered = true
             broadcastDispatcher.registerReceiver(
@@ -189,7 +189,7 @@ class AlphaAssistantQuickAffordanceConfig @Inject constructor(
             awaitClose { }
         } finally {
             userTracker.removeCallback(users)
-            if (packageRegistered) broadcastDispatcher.unregisterReceiver(packages)
+            if (packageRegistered) context.unregisterReceiver(packages)
             if (suspendRegistered) broadcastDispatcher.unregisterReceiver(suspension)
         }
     }

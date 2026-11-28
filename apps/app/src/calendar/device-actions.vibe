@@ -1,24 +1,25 @@
-// spec/app/calendar/actions.md, "Story: Let the agent change my phone's calendar only through my reviews"; spec/app/calendar/sharing.md, "Story: Offer the agent only the Calendar actions this phone runs"; spec/app/calendar/sharing.md, "Story: Be told plainly what the agent was shown of an event I named"; spec/app/calendar/sharing.md, "Story: Let a reviewed step read my phone's calendars for the range I approved"
+// spec/app/calendar/actions.md, "Story: Let the agent change my phone's calendar only through my reviews"; spec/app/calendar/sharing.md, "Story: Offer the agent only the Calendar actions this phone runs"; spec/app/calendar/sharing.md, "Story: Be told plainly what the agent was shown of an event I named"; spec/app/calendar/sharing.md, "Story: Let a reviewed step read my phone's calendars for the range I approved"; spec/app/calendar/sharing.md, "Story: Choose the calendars and see the answer before it is shared"
 import { NOT_DISPATCHED, readResult } from "@elizaos/agent"
 import type { DeviceOperation, ExecutorCall } from "@elizaos/agent"
 import { deleteUndoMs } from "@elizaos/os-bridges"
-import { CALENDAR_CAPABILITY, CALENDAR_NAMED_READ_CAPABILITY, NamedReadUnavailable, ReviewedReadsMachine, executeNamedCalendarRead, type NamedCalendarReadContext, type NamedCalendarReadProvider, type NamedReadOutcome } from "@elizaos/plugin-calendar-client"
+import { CALENDAR_AVAILABILITY_CAPABILITY, CALENDAR_CAPABILITY, CALENDAR_NAMED_READ_CAPABILITY, NamedReadUnavailable, ReviewedReadsMachine, executeNamedCalendarRead, type NamedCalendarReadContext, type NamedCalendarReadProvider, type NamedReadOutcome } from "@elizaos/plugin-calendar-client"
 import * as Actions from "../../gen/app__calendar__actions.effect.vibe"
-import type { Action, Screen } from "../../gen/app__calendar__actions.ts"
+import type { Action } from "../../gen/app__calendar__actions.ts"
 import * as View from "../../gen/app__calendar.effect.vibe"
 import { selectedEvent } from "../../gen/app__calendar.effect.vibe"
 import type { Action as Offer, Named } from "../../gen/app__calendar__sharing.ts"
 import { advertised, namedChangeAllowed, rangeAdmitted, rangeOutcome, said, shareOffered } from "../../gen/app__calendar__sharing.effect.vibe"
-import { Machine as Shell } from "../../gen/app__shell.effect.vibe"
-import { Machine as Layers, pageInert } from "../../gen/app__shell__layers.effect.vibe"
-import { Device, PhoneCalendar, type Reviewed, ownerAt } from "../platform/index.vibe"
+import type { Machine as Shell } from "../../gen/app__shell.effect.vibe"
+import type { Machine as Layers } from "../../gen/app__shell__layers.effect.vibe"
+import { type Device, PhoneCalendar, type Reviewed, ownerAt } from "../platform/index.vibe"
 import { Time } from "../runtime/index.vibe"
+import { bindingNow, checkTime } from "./availability.vibe"
 import { type CalendarObject, subjectNow } from "./selection.ts"
 import { shown } from "./shown.ts"
 
 /** The agent's Calendar actions this phone runs, as the agent's operation vocabulary names them. */
 export type CalendarOperation = Extract<DeviceOperation, { readonly type:
-  "calendar_create_local" | "calendar_read_next" | "calendar_create" | "calendar_read_selected" | "calendar_update" | "calendar_delete" | "calendar_named" | "read_calendar_range" }>
+  "calendar_create_local" | "calendar_read_next" | "calendar_create" | "calendar_read_selected" | "calendar_update" | "calendar_delete" | "calendar_named" | "read_calendar_range" | "calendar_availability" }>
 
 type Target = { readonly sourceId: string; readonly sourceRevision: string; readonly eventId: string; readonly revision: string }
 type Fields = { readonly title: string; readonly description: string; readonly location: string; readonly start: string; readonly end: string; readonly timeZone: string }
@@ -34,6 +35,7 @@ export function calendarOperation(value: DeviceOperation): CalendarOperation | u
     case "calendar_delete":
     case "calendar_named":
     case "read_calendar_range":
+    case "calendar_availability":
       return value
     default:
       return undefined
@@ -42,6 +44,7 @@ export function calendarOperation(value: DeviceOperation): CalendarOperation | u
 
 const capabilities: ReadonlyArray<readonly [Offer, string]> = [
   ["LocalEvent", CALENDAR_CAPABILITY], ["CreateOnPhone", "calendar.create.v1"], ["NextRead", "calendar.next-read.v1"], ["NamedRead", CALENDAR_NAMED_READ_CAPABILITY],
+  ["AvailabilityRead", CALENDAR_AVAILABILITY_CAPABILITY],
 ]
 
 // spec/app/calendar/sharing.md, "A local event is always offered; the agenda read only in a browser; every other action only when the agent offers it"
@@ -82,6 +85,10 @@ export function calendarOperationWords(op: CalendarOperation): { readonly title:
       title: "Share your calendar for these dates",
       detail: `From ${spoken(op.start, op.timeZone)} to ${spoken(op.end, op.timeZone)} (${op.timeZone}), from ${op.calendarIds.length === 1 ? "one calendar" : `${op.calendarIds.length} calendars`} on this phone, up to ${op.maximumEvents} events. Titles and times only, never places, notes or guests.`,
     }
+    case "calendar_availability": return {
+      title: "Check availability",
+      detail: `Check whether you are free from ${checkTime(op.start, op.timeZone)} to ${checkTime(op.end, op.timeZone)} (${op.timeZone}).\nYou choose which calendars this phone reads. Only busy times are shared with the agent, not event titles or details. Events marked free are ignored; all-day events count as busy.`,
+    }
     case "calendar_named": return op.action === "update"
       ? { title: `Change “${op.name}”`, detail: detailOf(op.fields, "open") }
       : op.action === "read"
@@ -91,14 +98,6 @@ export function calendarOperationWords(op: CalendarOperation): { readonly title:
 }
 
 const refused = { kind: "refused", code: NOT_DISPATCHED } as const
-
-/** The screen an action is bound to now: Calendar, Home or another app, and whether Alpha is out of sight or covered. */
-effect function bindingNow() {
-  const front = (try (try Shell).get()).trail.at(-1)
-  const screen: Screen = front === "Calendar" ? "OnCalendar" : front === undefined ? "OnHome" : "Elsewhere"
-  const hidden = !(try (try Device).showing()) || pageInert(try (try Layers).get())
-  return { screen, hidden }
-}
 
 /** The event open on Calendar as Ask Alpha was given it, while its detail still shows. */
 effect function openNow(): (CalendarObject | undefined)!!View.Machine {

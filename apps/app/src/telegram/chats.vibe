@@ -10,6 +10,7 @@ import { type Job, answer, contained, following, reacting, started, together, un
 import { reportSessionRevoked, runPeerMutation } from "./auth.vibe"
 import {
   TelegramStore,
+  acceptedReply,
   currentSessionToken,
   isDialogMuted,
   isRevokedFailure,
@@ -35,9 +36,9 @@ effect function readChats(
   const cursorStr = try store.cursorValue(cursor)
   const client = try Telegram
   if (query !== "") {
-    const found = client.searchGlobal(token.value, query, { cursor: cursorStr }) catch (failure) => failure
+    const found = acceptedReply(token.value, client.searchGlobal(token.value, query, { cursor: cursorStr })) catch (failure) => failure
     if (!("ok" in found)) {
-      if (isRevokedFailure(found)) try reportSessionRevoked()
+      if (isRevokedFailure(found)) try reportSessionRevoked(token.value)
       return { type: "listed", ticket, answer: { tag: "ListErr", failure: listFailureOf(found) } }
     }
     for (const msg of found.messages) try store.chatIdOf(msg.peer_key)
@@ -56,15 +57,15 @@ effect function readChats(
       answer: { tag: "ListOk", found: found.messages.length, following: followingId, unread: 0, mentions: 0, now: untimed },
     }
   }
-  const res = client.getDialogs(token.value, {
+  const res = acceptedReply(token.value, client.getDialogs(token.value, {
     archived: tab === "ArchivedChats",
     pinnedOnly: tab === "PinnedChats",
     unreadOnly: tab === "UnreadChats",
     folderId: tab === "FolderChat" ? folderId : undefined,
     cursor: cursorStr,
-  }) catch (failure) => failure
+  })) catch (failure) => failure
   if (!("ok" in res)) {
-    if (isRevokedFailure(res)) try reportSessionRevoked()
+    if (isRevokedFailure(res)) try reportSessionRevoked(token.value)
     return { type: "listed", ticket, answer: { tag: "ListErr", failure: listFailureOf(res) } }
   }
   const notices = try Notices.Machine

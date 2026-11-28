@@ -6,11 +6,14 @@ import * as Alarms from "../../gen/app__clock__alarms.effect.vibe"
 import type { Alarm } from "../../gen/app__clock__alarms.effect.vibe"
 import * as Timers from "../../gen/app__clock__timers.effect.vibe"
 import type { Timer } from "../../gen/app__clock__timers.effect.vibe"
+import * as Shell from "../../gen/app__shell.effect.vibe"
 import * as World from "../../gen/app__clock__world.effect.vibe"
-import { Agent, Device, ask } from "../platform/index.vibe"
+import { Agent, Device, PhoneClockAlerts, ask, launchSiblingApp } from "../platform/index.vibe"
 import { contained, started, together, Time } from "../runtime/index.vibe"
 import { alarms, persistClockMeta } from "./alarms.vibe"
 import { alert } from "./alert.vibe"
+import { currentSurface } from "../surface.ts"
+import { deviceClock } from "./device.vibe"
 import { cityById, findCityMatch } from "./cities.ts"
 import { clockView } from "./clock.vibe"
 import {
@@ -20,7 +23,7 @@ import {
   type TimerMeta,
   normalizeSound,
 } from "./records.ts"
-import { ClockRecords, ClockTicks, activeClockRecords, clockRecordsLayer, clockTicksLayer } from "./shelf.vibe"
+import { ClockRecords, ClockSyncState, ClockTicks, type SyncCoordinator, activeClockRecords, activeSyncCoordinator, confirmClockSnapshot, clockRecordsLayer, clockSyncStateLayer, clockTicksLayer } from "./shelf.vibe"
 import { residentClockTick } from "./ticker.vibe"
 import { nextAlarmFireAt } from "./time.ts"
 import { timers } from "./timers.vibe"
@@ -75,44 +78,6 @@ schema ClockSnapshotSchema {
   readonly deletedTimerIds: string[]
 }
 
-interface SyncCoordinator {
-  readonly lock: Semaphore.Semaphore
-  lastSynced(): string | undefined
-  setLastSynced(key: string | undefined): void
-}
-
-/** Scoped sync coordinator serializing Clock pull/push and tracking last synced state fingerprint. */
-export service ClockSyncState {
-  readonly coordinator: SyncCoordinator
-}
-
-function makeSyncCoordinator(): SyncCoordinator!! {
-  return effect {
-    const lock = try Semaphore.make(1)
-    let synced: string | undefined
-    return {
-      lock,
-      lastSynced: () => synced,
-      setLastSynced: (key: string | undefined) => {
-        synced = key
-      },
-    }
-  }
-}
-
-const clockSyncStateLayer = Layer.effect(ClockSyncState, effect {
-  const coordinator = try makeSyncCoordinator()
-  try Effect.addFinalizer(() => sync(() => { coordinator.setLastSynced(undefined) }))
-  return { coordinator }
-})
-
-effect function activeSyncCoordinator(): SyncCoordinator!! {
-  const ctx = try Effect.context<never>()
-  const found = Context.getOption(ctx, ClockSyncState)
-  if (Option.isSome(found)) return found.value.coordinator
-  return try makeSyncCoordinator()
-}
-
 function syncFingerprint(
   alarmState: Alarms.Alarms,
   timerState: Timers.Timers,
@@ -131,7 +96,7 @@ function syncFingerprint(
 }
 
 function parseNumericSuffix(remoteId: string, fallback: number): number {
-  const match = /(\d+)$/.exec(remoteId)
+  const match = /^(?:alarm|timer)-([1-9]\d*)$/.exec(remoteId)
   if (!match) return fallback
   const parsed = Number(match[1])
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
@@ -275,6 +240,7 @@ effect function pushClockSnapshotLocked(
   records.clearDirty(seqBefore)
   try persistClockMeta()
   coordinator.setLastSynced(syncFingerprint(alarmState, timerState, worldState, records.snapshot()))
+  try confirmClockSnapshot()
   return true
 }
 
@@ -460,6 +426,7 @@ export effect function syncClockNow(): boolean!!(Agent | Alarms.Machine | Timers
     }
     if (remoteEmpty && metaSnap.version === 0 && !metaSnap.dirty) {
       coordinator.setLastSynced(syncFingerprint(currentAlarms, currentTimers, currentWorld, metaSnap))
+      try confirmClockSnapshot()
       return true
     }
 
@@ -514,7 +481,8 @@ export effect function syncClockNow(): boolean!!(Agent | Alarms.Machine | Timers
     }
     coordinator.setLastSynced(syncFingerprint(afterAlarms, afterTimers, afterWorld, records.snapshot()))
     try persistClockMeta()
-    return true
+    if (alarmsApplied && timersApplied && worldApplied) try confirmClockSnapshot()
+    return alarmsApplied && timersApplied && worldApplied
   })
 }
 
@@ -553,6 +521,24 @@ const pushOnLocalMutation = started(effect {
   })
 }, "pushing Clock mutations to agent")
 
+const openInstalledClock = started(effect {
+  if (currentSurface().mode !== "monolith" || !(try PhoneClockAlerts).present) return
+  const shell = Context.getOption(try Effect.context<never>(), Shell.Machine)
+  if (Option.isNone(shell)) return
+  const host = try PhoneClockAlerts
+  const device = try Device
+  const { store: records, notificationRoute } = try ClockRecords
+  const shown = Stream.changesWith(shell.value.changes, (a, b) => a.trail.at(-1) === b.trail.at(-1))
+  try Stream.runForEach(shown, effect (state) => {
+    if (state.trail.at(-1) !== "Clock" || state.route === (try Ref.get(notificationRoute)) || !(try device.showing()) || (try host.pendingTap()) !== undefined) return
+    if (records.snapshot().dirty && !(try syncClockNow())) return
+    const current = (where: Shell.Shell) => where.route === state.route && where.trail.at(-1) === "Clock"
+    if (current(try shell.value.get()) && (try launchSiblingApp("Clock"))) {
+      try contained(shell.value.send({ type: "goBack" }, current), "returning to the launcher after opening the standalone Clock")
+    }
+  })
+}, "using the installed Clock app")
+
 const clockSync = together(syncOnBootAndForeground, pushOnLocalMutation)
 
 /** Resident Clock machines and services, ready for a single-line mount in `apps/app/src/resident.vibe`. */
@@ -565,6 +551,8 @@ export const clockResident = together(
   worldClock,
   clockView,
   alert,
+  deviceClock,
+  openInstalledClock,
   residentClockTick,
   clockSync,
 )

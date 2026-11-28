@@ -23,7 +23,21 @@ import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import type * as ProviderGen from "../../gen/app__account__provider.ts"
 import type * as SessionGen from "../../gen/app__account__session.ts"
 import type * as SignInGen from "../../gen/app__account__signIn.ts"
-import { Cloud, cloudPlugin, registered, signInAccounts, WiFi } from "../platform/index.vibe"
+import {
+  AI_MODE_KEY,
+  type AiMode,
+  Agent,
+  Cloud,
+  DEFAULT_LOCAL_MODEL_ID,
+  LOCAL_MODEL_KEY,
+  WiFi,
+  cloudPlugin,
+  parseAiMode,
+  registered,
+  setLocalLlmMode,
+  signInAccounts,
+  subscribeSharedPreferences,
+} from "../platform/index.vibe"
 import { accountIdNumber, toMillis } from "./clock.vibe"
 
 module nativeBridge {
@@ -111,13 +125,16 @@ export interface AccountDetailsSnapshot {
   readonly verifyOwnerRequested: boolean
   readonly lastExternalUrl: string | undefined
   readonly online: boolean
+  readonly aiMode: AiMode
+  readonly localModel: string
   readonly providerMode: ProviderGen.Mode
   readonly hasTextKey: boolean
   readonly hasVoiceKey: boolean
   readonly providerRevision: number
 }
 
-const emptySnapshot: AccountDetailsSnapshot = {
+/** Initial display metadata snapshot used before AccountShelf hydrates. */
+export const emptyAccountDetailsSnapshot: AccountDetailsSnapshot = {
   identity: undefined,
   snapshot: undefined,
   subscription: undefined,
@@ -132,11 +149,15 @@ const emptySnapshot: AccountDetailsSnapshot = {
   verifyOwnerRequested: false,
   lastExternalUrl: undefined,
   online: true,
+  aiMode: "cloud",
+  localModel: DEFAULT_LOCAL_MODEL_ID,
   providerMode: "Undecided",
   hasTextKey: false,
   hasVoiceKey: false,
   providerRevision: 0,
 }
+
+const emptySnapshot: AccountDetailsSnapshot = emptyAccountDetailsSnapshot
 
 /** Internal provider record stored without putting secret key values into machine state. */
 export interface StoredProvider {
@@ -171,6 +192,7 @@ export service AccountShelf {
   setCandidateKey(candidate: { readonly kind: ProviderGen.Kind; readonly key: string } | undefined): void!!
   readProviderMeta(): StoredProvider!!
   writeProviderMeta(meta: StoredProvider): boolean!!
+  setAiMode(mode: AiMode, localModel?: string): boolean!!
   signInEvent(): Stream.Stream<SignInReceipt>
   emitSignInSettled(receipt: SignInReceipt): void!!
   online(): boolean!!
@@ -191,7 +213,13 @@ const defaultProviderMeta: StoredProvider = { mode: "Undecided", text: false, vo
 export const accountShelfLive = Layer.effect(AccountShelf, effect {
   const store = try KeyValueStore.KeyValueStore
   const wifi = try WiFi
-  let current: AccountDetailsSnapshot = emptySnapshot
+  const agent = try Agent
+  const initialMode = parseAiMode(store.get(AI_MODE_KEY) catch () => undefined) ?? "cloud"
+  const initialModelRaw = store.get(LOCAL_MODEL_KEY) catch () => undefined
+  const initialModel = initialModelRaw !== undefined && initialModelRaw.trim() !== ""
+    ? initialModelRaw.trim()
+    : DEFAULT_LOCAL_MODEL_ID
+  let current: AccountDetailsSnapshot = { ...emptySnapshot, aiMode: initialMode, localModel: initialModel }
   const listeners = new Set<() => void>()
   let pending: PendingSignIn | undefined
   const attempts = new Map<number, SignInAttempt>()
@@ -201,8 +229,6 @@ export const accountShelfLive = Layer.effect(AccountShelf, effect {
   let quoteCounter = 0
   let recoveryToken: string | undefined
   let candidate: { readonly kind: ProviderGen.Kind; readonly key: string } | undefined
-  let savedTextSecret: string | undefined
-  let savedVoiceSecret: string | undefined
   let onlineOverride: boolean | undefined
   const receiptListeners = new Set<(receipt: SignInReceipt) => void>()
 
@@ -215,7 +241,27 @@ export const accountShelfLive = Layer.effect(AccountShelf, effect {
     notify()
   }
 
+  const stopSharedPrefs = subscribeSharedPreferences((change) => {
+    if (change.key === AI_MODE_KEY) {
+      const nextMode = parseAiMode(change.value)
+      if (nextMode !== undefined) mutate((now) => ({ ...now, aiMode: nextMode }))
+    } else if (change.key === LOCAL_MODEL_KEY && change.value !== null && change.value.trim() !== "") {
+      const nextModel = change.value.trim()
+      mutate((now) => ({ ...now, localModel: nextModel }))
+    }
+  })
+  try addFinalizer(() => sync(stopSharedPrefs))
+
   effect function readProviderMeta(): StoredProvider!! {
+    const storedMode = parseAiMode(store.get(AI_MODE_KEY) catch () => undefined)
+    const storedModel = store.get(LOCAL_MODEL_KEY) catch () => undefined
+    if (storedMode !== undefined || (storedModel !== undefined && storedModel.trim() !== "")) {
+      mutate((now) => ({
+        ...now,
+        ...(storedMode !== undefined ? { aiMode: storedMode } : {}),
+        ...(storedModel !== undefined && storedModel.trim() !== "" ? { localModel: storedModel.trim() } : {}),
+      }))
+    }
     const raw = store.get(providerStorageKey) catch () => undefined
     if (raw === undefined) return defaultProviderMeta
     const decoded = Schema.decodeUnknownOption(Schema.fromJsonString(StoredProviderSchema))(raw)
@@ -225,22 +271,36 @@ export const accountShelfLive = Layer.effect(AccountShelf, effect {
     return normalized
   }
 
+  effect function setAiMode(mode: AiMode, localModel?: string): boolean!! {
+    const selectedModel = localModel !== undefined && localModel.trim() !== "" ? localModel.trim() : current.localModel
+    provide KeyValueStore.KeyValueStore = store, Agent = agent {
+      const ok = try setLocalLlmMode(mode, selectedModel)
+      if (ok) {
+        mutate((now) => ({ ...now, aiMode: mode, localModel: selectedModel }))
+      }
+      return ok
+    }
+  }
+
   effect function writeProviderMeta(meta: StoredProvider): boolean!! {
     const ok = effect {
       try store.set(providerStorageKey, JSON.stringify(meta))
       return true
     } catch () => false
     if (ok) {
-      if (!meta.text) savedTextSecret = undefined
-      if (!meta.voice) savedVoiceSecret = undefined
-      if (candidate !== undefined) {
-        if (candidate.kind === "TextKey" && meta.text) savedTextSecret = candidate.key
-        if (candidate.kind === "VoiceKey" && meta.voice) savedVoiceSecret = candidate.key
+      const nextAiMode: AiMode = meta.mode === "OwnKey"
+        ? "own-key"
+        : meta.mode === "CloudAi"
+          ? "cloud"
+          : current.aiMode === "local"
+            ? "local"
+            : "cloud"
+      provide KeyValueStore.KeyValueStore = store, Agent = agent {
+        try ignore(setLocalLlmMode(nextAiMode, current.localModel))
       }
-      void savedTextSecret
-      void savedVoiceSecret
       mutate((now) => ({
         ...now,
+        aiMode: nextAiMode,
         providerMode: meta.mode,
         hasTextKey: meta.text,
         hasVoiceKey: meta.voice,
@@ -298,6 +358,7 @@ export const accountShelfLive = Layer.effect(AccountShelf, effect {
     setCandidateKey: (next) => sync(() => { candidate = next }),
     readProviderMeta,
     writeProviderMeta,
+    setAiMode,
     signInEvent: () => signInEvents,
     emitSignInSettled: (receipt: SignInReceipt) => sync(() => {
       for (const listener of receiptListeners) listener(receipt)

@@ -7,6 +7,8 @@ import { ownCloudName } from "../gen/cloud.effect.vibe"
 import type { ResourcesRefused } from "./cloudflare.vibe"
 import { OperatorFailed, deploy, elizaosCloud, packageDirectory, privateDirectory, profiled, readSecrets, reconciled, recordResources, registrationInto, renderInto, resourcesOf, settledSecrets, stagingCompatibleSecrets, workerSecrets, wrangler, type CandidateRefused, type Component } from "./operator.vibe"
 import { hostedClouds, type HostedCloudUnknown } from "./hosted.vibe"
+import { parseStoreLocation, storeLayer } from "@elizaos/cloud-worker"
+import { prepareSlackMailbox } from "./slack-mailbox.vibe"
 import { smoke } from "./smoke.vibe"
 import { resourceId, type RenderRefused } from "./wrangler.vibe"
 
@@ -24,7 +26,7 @@ const usage = [
   "     | preflight --environment <e> [--env-file <file>] [--resources <file>]",
   "     | migrate|register|prices --environment <e> --profile <file> --env-file <file>",
   "     | deploy --environment <e> --profile <file> --env-file <file> [--component api|edge|all] [--resources <file>]",
-  "     | smoke --environment <e>",
+  "     | smoke --environment <e> [--messaging]",
 ].join("\n")
 
 interface Flags { readonly values: ReadonlyMap<string, string>; readonly on: ReadonlySet<string> }
@@ -126,7 +128,12 @@ effect function database(found: Flags, command: "migrate" | "register" | "prices
     const written = try registrationInto(try privateDirectory(), profile, environment)
     const at = ["--profile", written.profileFile, "--environment", environment, "--store", store]
     switch (command) {
-      case "migrate": try elizaosCloud(["migrate", ...at], values); break
+      case "migrate": {
+        try elizaosCloud(["migrate", ...at], values)
+        const location = parseStoreLocation(store) catch effect () => { throw new OperatorFailed({ problem: "the Slack mailbox database location is invalid" }) }
+        Effect.provide(prepareSlackMailbox, storeLayer(location)) catch effect () => { throw new OperatorFailed({ problem: "the Slack mailbox migration failed" }) }
+        break
+      }
       case "register": try elizaosCloud(["client", "apply", "--file", written.file, ...at], values); break
       case "prices": try elizaosCloud(["prices", "check", ...at], values); break
     }
@@ -138,7 +145,7 @@ effect function smokeOf(found: Flags) {
   const environment = try environmentOf(found)
   const cloud = (try hostedClouds())[environment]
   provide FetchHttpClient.layer {
-    const gates = try smoke(environment, { api: cloud.cloud, web: `https://${cloud.appLinkHost}` }, ownCloudName)
+    const gates = try smoke(environment, { api: cloud.cloud, web: `https://${cloud.appLinkHost}` }, ownCloudName, found.on.has("messaging") ? "messaging" : "cloud")
     return { environment, ready: gates.every((gate) => gate.passed), gates }
   }
 }
@@ -158,7 +165,7 @@ export effect function operate(command: string | undefined, rest: ReadonlyArray<
       provide FetchHttpClient.layer { return try deploy(at) }
     }
     case "smoke": {
-      const result = try smokeOf(try flags(rest, ["environment"]))
+      const result = try smokeOf(try flags(rest, ["environment"], ["messaging"]))
       if (!result.ready) throw new NotReady({ report: JSON.stringify(result, null, 2) })
       return result
     }

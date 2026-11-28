@@ -1,6 +1,6 @@
 export { checkout, link, prepare, prepared, required } from "./checkout.ts";
 export { owned } from "./owned.ts";
-export { packCheckout, packPrepared } from "./pack.ts";
+export { packCheckout, packPrepared, packWorkerDir, packagedWorkflowWorker } from "./pack.ts";
 export { NotBuilt, PackNotPrepared, pinnedCheckout, pinnedPack } from "./pinned.vibe";
 export {
   type FaultRule,

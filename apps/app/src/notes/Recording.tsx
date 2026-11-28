@@ -1,5 +1,5 @@
-// spec/app/notes/recording.md, "Story: Record a voice note"; spec/app/notes/recording.md, "Story: Discard a recording"; spec/app/notes/microphone.md, "The owner sees Mic unavailable after asking to record while the browser denies the microphone"
-import { Alert, Button } from "@repo/ui";
+// spec/app/notes/recording.md, "Story: Record a voice note"; spec/app/notes/recording.md, "Story: Discard a recording"; spec/app/notes/microphone.md, "The owner's screen reader hears Mic unavailable after asking to record while the browser denies the microphone"
+import { Button } from "@repo/ui";
 import { Check, Mic, Pause, Square } from "lucide-react";
 import { type ReactNode, type Ref, useCallback, useRef, useSyncExternalStore } from "react";
 import { useMachine as useMic } from "../../gen/app__notes__microphone.react.ts";
@@ -25,7 +25,10 @@ type RecorderFrameProps = {
   readonly seconds: number;
   readonly levels: readonly number[];
   readonly measuring: boolean;
+  /** The status word drawn under the levels: only the words the v119 demo build showed. */
   readonly status: string;
+  /** What a screen reader hears for the status, where it says more than the drawn word. */
+  readonly spoken?: string | undefined;
   readonly onDiscard?: (() => void) | undefined;
   readonly discardRef?: Ref<HTMLButtonElement>;
   readonly details?: ReactNode;
@@ -33,7 +36,7 @@ type RecorderFrameProps = {
   readonly actions: ReactNode;
 };
 
-function RecorderFrame({ seconds, levels, measuring, status, onDiscard, discardRef, details, review, actions }: RecorderFrameProps) {
+function RecorderFrame({ seconds, levels, measuring, status, spoken = status, onDiscard, discardRef, details, review, actions }: RecorderFrameProps) {
   return (
     <section aria-label="Voice recording" className="@container flex min-h-0 flex-1 flex-col px-6" data-alpha-subview="notes-recording">
       <header className="flex min-h-14 shrink-0 items-center gap-4">
@@ -51,7 +54,9 @@ function RecorderFrame({ seconds, levels, measuring, status, onDiscard, discardR
               style={{ height: Math.max(4, Math.round(Math.sqrt(peak) * 92)), opacity: measuring ? 1 : 0.35 }} />;
           })}
         </div>
-        <p role="status" className="mt-3 min-h-5.5 text-sm text-muted-foreground">{status}</p>
+        <p role="status" className="mt-3 min-h-5.5 text-sm text-muted-foreground">
+          {spoken === status ? status : <><span aria-hidden>{status}</span><span className="sr-only">{spoken}</span></>}
+        </p>
         {details}
       </div>
       {review}
@@ -64,7 +69,7 @@ function RecorderFrame({ seconds, levels, measuring, status, onDiscard, discardR
 
 export function MicrophoneUnavailable({ onRecord, onDiscard }: { readonly onRecord: () => void; readonly onDiscard: () => void }) {
   return <RecorderFrame seconds={0} levels={[]} measuring={false} status="" onDiscard={onDiscard}
-    details={<p role="alert" className="mt-2 text-sm leading-voice-status text-muted-foreground">Mic unavailable</p>} actions={<>
+    details={<p role="alert" className="sr-only">Mic unavailable</p>} actions={<>
     <Button variant="secondary" className={actionClass} onClick={onRecord}><Mic className="size-5" /> Record</Button>
     <Button className={actionClass} disabled><Square className="size-5" /> Stop recording</Button>
   </>} />;
@@ -114,17 +119,15 @@ export function Recording({ runtime }: { readonly runtime: Alpha["runtime"] }) {
   const cancelDiscard = { type: "cancelDiscard", take: state.take } as const;
   const confirmDiscard = { type: "confirmDiscard", take: state.take } as const;
   const canCancel = can(cancelDiscard);
-  const status = active ? (measuring ? "Recording" : "Starting…")
-    : paused ? (state.recovered ? "Recovered recording" : "Paused")
-      : turning ? "Saving…" : "";
+  const status = active ? (measuring ? "Recording" : "Starting…") : paused ? "Paused" : turning ? "Saving…" : "";
 
   return <RecorderFrame seconds={seconds} levels={levels} measuring={measuring} status={status}
+    spoken={paused && state.recovered ? "Recovered recording" : status}
     onDiscard={can(askDiscard) ? () => send(askDiscard) : undefined}
     discardRef={discardRef}
-    details={<>
-      {state.calling && <Alert variant="warn">Recording paused for a phone call</Alert>}
-      {state.phase === "Failed" && <Alert variant="warn">{state.damaged ? "Only part of this recording could be recovered" : "Recording stopped. The saved audio is still here."}</Alert>}
-    </>}
+    details={state.phase === "Failed" && <p role="alert" className="sr-only">
+      {state.damaged ? "Only part of this recording could be recovered" : "Recording stopped. The saved audio is still here."}
+    </p>}
     review={confirming && <div role="group" aria-label="Discard this recording?" className="my-3 flex shrink-0 flex-wrap items-center gap-3"
       onKeyDown={(event) => {
         if (event.key !== "Escape" || !canCancel) return;

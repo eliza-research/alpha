@@ -2,7 +2,7 @@
 import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import { type RequestsStore, createRequestsStore } from "./requests.ts"
 import { Time } from "../runtime/index.vibe"
-import { type KeptNumbers, type ShownStore, createShownStore, exactNumbers, startAt } from "./shown.ts"
+import { type KeptNumbers, type ShownStore, createShownStore, exactNumbers, startAt, unreadAt } from "./shown.ts"
 
 /** Scoped per-runtime store of Calendar events read from Phone and Google. */
 export service Shown: ShownStore {}
@@ -20,6 +20,7 @@ const numbersKey = "alpha.calendar.numbers"
 const decodeNumbers = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Struct({
   last: Schema.Number,
   numbers: Schema.Array(Schema.Union([Schema.Tuple([Schema.String, Schema.Number]), Schema.Tuple([Schema.String, Schema.Number, Schema.Number])])),
+  seen: Schema.optional(Schema.Array(Schema.Tuple([Schema.String, Schema.Number]))),
 })))
 
 // spec/app/calendar/deletions.md, "Deletions hold the owner they are for, the deletion under review, the one waiting with its Undo window and whether its notice shows, the one being sent, and the one sent that a read has yet to confirm"
@@ -31,7 +32,7 @@ const shownLayer = Layer.effect(Shown, effect {
   const decoded: KeptNumbers | undefined = stored === undefined ? undefined : decodeNumbers(stored) catch () => undefined
   const read = decoded === undefined ? undefined : exactNumbers(decoded)
   if (stored !== undefined && read === undefined) try ignore(kv.set(`${numbersKey}.unreadable`, stored))
-  const kept = startAt(read, now)
+  const kept = got === undefined ? unreadAt(now) : startAt(read, now)
   const keep = (numbers: KeptNumbers) => runFork(ignore(kv.set(numbersKey, JSON.stringify(numbers))))
   const store = createShownStore(kept, got === undefined ? undefined : keep)
   try Effect.addFinalizer(() => sync(() => { store.reset() }))

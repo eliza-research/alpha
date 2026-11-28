@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { NOT_DISPATCHED } from "@elizaos/agent";
+import { MMS_MAX_BODY } from "@elizaos/os-bridges";
 import { type Context, Effect, type ManagedRuntime, Stream } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Machine as Conversation } from "../gen/app__assistant.effect.vibe";
@@ -22,7 +23,7 @@ import browser from "../src/browser/index.tsx";
 import home from "../src/home/index.tsx";
 import messages from "../src/messages/index.tsx";
 import { displayNumber } from "../src/phone/words.ts";
-import { button, closeAll, drawn, fill, hardware, input, later, only, open, press, underAct, until } from "./alpha.tsx";
+import { button, closeAll, drawn, fill, hardware, input, later, only, open, press, shownWords, underAct, until } from "./alpha.tsx";
 import { alphaImage as image } from "./fakes/scene.ts";
 import { textReview } from "./fakes/text-review.ts";
 
@@ -96,6 +97,34 @@ async function openMessages(alpha: Awaited<ReturnType<typeof openImage>>["alpha"
   });
   await drawn(() => tile.click());
 }
+
+/** Open Maya's conversation from the Messages list, with its composer empty. */
+async function openMaya(alpha: Awaited<ReturnType<typeof openImage>>["alpha"]) {
+  await openMessages(alpha);
+  await ready(alpha.runtime, Messages, "Messages list loaded", (state) => state.list.status === "Loaded" && state.threads === 1);
+  await press("Maya Chen");
+  await ready(alpha.runtime, Composer, "Composer ready", (state) => state.thread > 0 && state.slot.author === "Nobody");
+}
+
+/** Dictate one clip into the open conversation's bar and wait for the recorder to close. */
+async function dictateToMaya(alpha: Awaited<ReturnType<typeof openImage>>["alpha"]) {
+  const messageView = messages.runtime(alpha);
+  await press("Dictate a text to Maya");
+  await ready(messageView, Voice, "Messages recording", (state) => state.recorder.field === "MessagesBar" && state.recorder.stage === "Recording");
+  await press("Stop recording");
+  await ready(messageView, Voice, "Messages transcript returned", (state) => state.recorder.stage === "Closed");
+}
+
+/** Wait until Maya's message field reads `text`. */
+async function mayaReads(text: string) {
+  await vi.waitFor(async () => {
+    await drawn(() => undefined);
+    expect(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Text Maya"]')?.value).toBe(text);
+  }, { timeout: 12_000 });
+}
+
+const toastsIssued = async (alpha: Awaited<ReturnType<typeof openImage>>["alpha"]) =>
+  (await alpha.runtime.runPromise(Effect.flatMap(Toasts, (toasts) => toasts.get()))).issued;
 
 async function openUnreadCard() {
   const card = await vi.waitFor(() => {
@@ -260,11 +289,7 @@ describe("Messages on an Alpha image", () => {
 
     // spec/app/voice/index.md, "Using the transcript fills the field dictation started in, and dictation never sends"
     const openedChats = world.ask.opened;
-    const messageView = messages.runtime(alpha);
-    await press("Dictate a text to Maya");
-    await ready(messageView, Voice, "Messages recording", (state) => state.recorder.field === "MessagesBar" && state.recorder.stage === "Recording");
-    await press("Stop recording");
-    await ready(messageView, Voice, "Messages transcript returned", (state) => state.recorder.stage === "Closed");
+    await dictateToMaya(alpha);
     const dictated = "On my way Dictated note";
     await vi.waitFor(async () => {
       await drawn(() => undefined);
@@ -272,6 +297,24 @@ describe("Messages on an Alpha image", () => {
     }, { timeout: 12_000 });
     expect([document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Text Maya"]')?.value, world.telephony.sent, world.ask.opened, world.ask.said, world.voice.startLiveCaptureCalls])
       .toEqual([dictated, [], openedChats, [], 0]);
+
+    // spec/app/voice/index.md, "Using the transcript fills the field dictation started in, and dictation never sends": a transcript past the longest text goes into the draft whole, as v119 did, with no words
+    const full = "x".repeat(MMS_MAX_BODY - 4);
+    await fill("Text Maya", full);
+    await ready(alpha.runtime, Composer, "A draft at the length limit is saved", (state) => state.slot.author === "OwnerWrote" && state.slot.draft.sync === "Kept");
+    const beforeLong = await toastsIssued(alpha);
+    const savedAtLimit = (await alpha.runtime.runPromise(Effect.flatMap(Composer, (machine) => machine.get()))).slot.draft.edits;
+    await dictateToMaya(alpha);
+    const long = `${full} Dictated note`;
+    await vi.waitFor(async () => {
+      await drawn(() => undefined);
+      expect(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Text Maya"]')?.value).toBe(long);
+    }, { timeout: 12_000 });
+    await ready(alpha.runtime, Composer, "The long dictated draft is saved", (state) => state.slot.draft.edits > savedAtLimit && state.slot.draft.sync === "Kept");
+    // spec/app/messages/composer.md, "Only the owner's Send sends: a draft or a picture, with send access, a SIM where there is a choice, and never during a call that may be an emergency call": Send waits until the owner shortens it
+    expect([await toastsIssued(alpha) - beforeLong, button("Send")?.disabled ?? true, world.telephony.sent]).toEqual([0, true, []]);
+    await fill("Text Maya", dictated);
+    await ready(alpha.runtime, Composer, "The dictated draft is saved again", (state) => state.slot.author === "OwnerWrote" && state.slot.draft.sync === "Kept");
 
     // spec/app/messages/composer.md, "Only the owner's Send sends: a draft or a picture, with send access, a SIM where there is a choice, and never during a call that may be an emergency call"
     await press("Send");
@@ -363,6 +406,9 @@ describe("Messages on an Alpha image", () => {
     await ready(alpha.runtime, Messages, "Recipient picker open", (s) => s.newDraft.picking);
     await press("Dictate a text to Ben");
     await ready(messages.runtime(alpha), Voice, "New message recording", (s) => s.recorder.field === "MessagesBar" && s.recorder.stage === "Recording");
+    // spec/app/voice/index.md, "Using the transcript fills the field dictation started in, and dictation never sends": the bar's recorder shows no words
+    await drawn(() => undefined);
+    expect(shownWords(document.querySelector("[data-alpha-bar-recorder]"))).toBe("");
     await press("Stop recording");
     await ready(messages.runtime(alpha), Voice, "New message transcript returned", (s) => s.recorder.stage === "Closed");
     const dictated = `${body} Dictated note`;
@@ -1092,13 +1138,61 @@ describe("Messages on an Alpha image", () => {
     await ready(page, Page, "Browser link page", (state) => state.phase === "Shown" && !state.secure);
   });
 
+  it(`A messaging bar's recorder shows no words, and a failed transcription keeps its retry and discard controls (spec/app/voice/index.md, "Using the transcript fills the field dictation started in, and dictation never sends")`, async () => {
+    const world = image();
+    world.voice.transcriptionFailures = 1;
+    const alpha = await readyImageWithIdlePhone(world);
+    await openMaya(alpha);
+    const messageView = messages.runtime(alpha);
+    const before = await toastsIssued(alpha);
+    const bar = () => document.querySelector("[data-alpha-bar-recorder]");
+    await press("Dictate a text to Maya");
+    await ready(messageView, Voice, "Messages recording", (state) => state.recorder.field === "MessagesBar" && state.recorder.stage === "Recording");
+    await drawn(() => undefined);
+    expect([shownWords(bar()), bar()?.querySelector("[role=status]")?.textContent]).toEqual(["", "Recording"]);
+    await press("Stop recording");
+    await ready(messageView, Voice, "Messages transcription failed", (state) => state.recorder.stage === "Recorded");
+    await drawn(() => undefined);
+    expect([shownWords(bar()), bar()?.querySelector("[role=status]")?.textContent, [...(bar()?.querySelectorAll("button") ?? [])].map((one) => one.getAttribute("aria-label"))])
+      .toEqual(["", "Couldn’t transcribe", ["Try transcription again", "Discard transcription"]]);
+    await press("Try transcription again");
+    await ready(messageView, Voice, "Messages transcript returned", (state) => state.recorder.stage === "Closed");
+    await mayaReads("Dictated note");
+    expect([await toastsIssued(alpha) - before, world.telephony.sent]).toEqual([0, []]);
+  });
+
+  it(`Dictation starts while the phone has not told its call state, as the Sunday demo build did (spec/app/voice/index.md, "Using the transcript fills the field dictation started in, and dictation never sends")`, async () => {
+    const world = image();
+    world.telephony.callStateKnown = false;
+    const { alpha } = await openImage(world);
+    await ready(alpha.runtime, Shell, "Alpha image admitted", (state) => state.image);
+    await ready(alpha.runtime, Phone, "Unknown call state", (state) => state.telecom === "CallUnknown");
+    await openMaya(alpha);
+    await dictateToMaya(alpha);
+    await mayaReads("Dictated note");
+    expect(world.telephony.sent).toEqual([]);
+  });
+
+  it(`Dictation that cannot start on this phone does not start and shows no words (spec/app/voice/index.md, "Using the transcript fills the field dictation started in, and dictation never sends")`, async () => {
+    const world = image();
+    world.voice.onDevice = false;
+    world.voice.cloudSpeech = false;
+    const alpha = await readyImageWithIdlePhone(world);
+    await openMaya(alpha);
+    await fill("Text Maya", "On my way");
+    await ready(alpha.runtime, Composer, "Owner wrote draft", (state) => state.slot.author === "OwnerWrote");
+    const before = await toastsIssued(alpha);
+    await press("Dictate a text to Maya");
+    await later(alpha, 1_000);
+    const voice = await messages.runtime(alpha).runPromise(Effect.flatMap(Voice, (machine) => machine.get()));
+    expect([voice.recorder.stage, await toastsIssued(alpha) - before, document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Text Maya"]')?.value, Boolean(button("Dictate a text to Maya")), world.voice.startLiveCaptureCalls])
+      .toEqual(["Closed", 0, "On my way", true, 0]);
+  });
+
   it(`Removes a cleared draft from storage so reopening and agent drafts see an empty composer (spec/app/messages/composer.md, "Typing changes the draft and makes it the owner's; emptying it leaves no draft")`, async () => {
     const world = image();
     const { alpha } = await openImage(world);
-    await openMessages(alpha);
-    await ready(alpha.runtime, Messages, "Messages list loaded", (state) => state.list.status === "Loaded" && state.threads === 1);
-    await press("Maya Chen");
-    await ready(alpha.runtime, Composer, "Composer ready", (state) => state.thread > 0 && state.slot.author === "Nobody");
+    await openMaya(alpha);
 
     await fill("Text Maya", "Temporary draft");
     await ready(alpha.runtime, Composer, "Owner wrote draft", (state) => state.slot.author === "OwnerWrote");

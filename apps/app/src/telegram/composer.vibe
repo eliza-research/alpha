@@ -10,6 +10,7 @@ import { type Job, answer, contained, due, following, reacting, run, together, u
 import { reportSessionRevoked, resolveAuthedPeer } from "./auth.vibe"
 import {
   TelegramStore,
+  acceptedReply,
   currentSessionToken,
   deleteChatDraft,
   isRevokedFailure,
@@ -44,7 +45,7 @@ effect function dispatchSend(
     if (Option.isNone(token)) try reportSessionRevoked()
     return { type: "sendAnswered", id, confirmed: false, known: true }
   }
-  const res = (try Telegram).sendMessage(
+  const res = acceptedReply(token.value, (try Telegram).sendMessage(
     token.value,
     {
       peer: pending.peerKey,
@@ -53,9 +54,9 @@ effect function dispatchSend(
       randomId: pending.idempotencyKey,
     },
     pending.idempotencyKey,
-  ) catch (failure) => ({ failed: failure })
+  )) catch (failure) => ({ failed: failure })
   if ("failed" in res) {
-    if (isRevokedFailure(res.failed)) try reportSessionRevoked()
+    if (isRevokedFailure(res.failed)) try reportSessionRevoked(token.value)
     const outcome = messagingOutcomeOf(res.failed)
     if (outcome.known) try store.update((snap) => ({ ...snap, pendingSend: undefined }))
     return { type: "sendAnswered", id, confirmed: outcome.confirmed, known: outcome.known }
@@ -94,9 +95,9 @@ effect function readBackSend(
   const { token, peerKey } = target.value
   const store = try TelegramStore
   const pending = (try store.get()).pendingSend
-  const res = (try Telegram).getHistory(token, peerKey, { limit: 20 }) catch (failure) => ({ failed: failure })
+  const res = acceptedReply(token, (try Telegram).getHistory(token, peerKey, { limit: 20 })) catch (failure) => ({ failed: failure })
   if ("failed" in res) {
-    if (isRevokedFailure(res.failed)) try reportSessionRevoked()
+    if (isRevokedFailure(res.failed)) try reportSessionRevoked(token)
     return { type: "readBackAnswered", ticket, ok: false, wasSent: false }
   }
   const wasSent = pending !== undefined && pending.id === id

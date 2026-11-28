@@ -7,7 +7,7 @@ import { agents, own, readingOf } from "../gen/app__wallet.ts";
 import { Machine as Sending } from "../gen/app__wallet__transfer.effect.vibe";
 import type { Alpha } from "../src/runtime/area.tsx";
 import wallet from "../src/wallet/index.tsx";
-import { button, closeAll, drawn, fill, hardware, later, only, open, press, pressOnTop, seen, underAct, until } from "./alpha.tsx";
+import { button, closeAll, drawn, fill, hardware, later, only, open, press, pressOnTop, seen, typeInto, underAct, until } from "./alpha.tsx";
 import { type Scene, scene } from "./fakes/scene.ts";
 import { agentAsks } from "./fakes/wallet.ts";
 
@@ -72,6 +72,14 @@ describe.each([["a browser", false], ["a phone", true]])("in %s", (_where, phone
 
   it("See what I hold (spec/app/wallet/index.md, \"Story: See what I hold\"; spec/app/wallet/index.md, \"Story: See what happened\")", async () => {
     const world = holding(phone);
+    if (phone) world.voice.startupSignIn = {
+      startEmail: () => Promise.resolve({ request: 1, attempt: 1, verdict: "code-on-its-way", expiresAt: world.now + 600_000, resendAt: world.now + 60_000 }),
+      verify: ({ attempt }) => {
+        world.signedIn = true;
+        world.platform.agentCredentialMissing = false;
+        return Promise.resolve({ request: 2, attempt, verdict: "signed-in-as", credentialId: world.voice.credentialId, google: "not-requested" });
+      },
+    };
     world.wallet.unread = ["solana"];
     world.wallet.operations.push(
       { intentId: "a", family: "evm", chainId: "1", asset: "native", symbol: "ETH", decimals: 18, atomicUnits: "1000000000000000000", recipient: friend, maximumFee: "1", reservedAt: 4, status: "pending", operationRef: "0x4" },
@@ -94,13 +102,37 @@ describe.each([["a browser", false], ["a phone", true]])("in %s", (_where, phone
     expect([second.held.map((held) => held.symbol), readingOf("Solana", second), second.past[0]?.fate]).toEqual([["ETH", "SOL"], "Something", "Arrived"]);
 
     // spec/app/wallet/index.md, "Only the newest asking's answer is taken; a failure keeps what was last read"
+    if (phone) await press("Send");
     world.wallet.unreachable = true;
     await seen(false);
     await seen(true);
     await until(alpha, runtime, Ledger, (s) => s.standing.status === "Failed");
     expect([(await ledger()).held.length, Boolean(button("Try again"))]).toEqual([2, true]);
-    world.wallet.unreachable = false;
-    await press("Try again");
+    if (phone) {
+      const lastRead = (await ledger()).standing.ticket;
+      world.wallet.unreachable = false;
+      world.platform.agentCredentialMissing = true;
+      await returned(alpha, runtime);
+      await until(alpha, runtime, Ledger, (s) => s.standing.ticket > lastRead && s.standing.status === "Failed");
+      expect(button("Sign in to Alpha")).toBeUndefined();
+      world.signedIn = false;
+      await returned(alpha, runtime);
+      await until(alpha, runtime, Ledger, (s) => s.custody === "SignInRequired");
+      await until(alpha, runtime, Sending, (s) => s.stage === "Closed");
+      expect([(await ledger()).held, (await ledger()).accounts, button("Receive")]).toEqual([[], [], undefined]);
+      await press("Sign in to Alpha");
+      await vi.waitFor(() => expect(button("Email")).toBeDefined());
+      await drawn(() => typeInto(document.querySelector<HTMLInputElement>('input[type="email"]')!, "owner@example.test"));
+      await press("Send code");
+      await vi.waitFor(() => expect(button("Verify code")).toBeDefined());
+      await drawn(() => typeInto(document.querySelector<HTMLInputElement>("#account-signin-code")!, "123456"));
+      await press("Verify code");
+      await vi.waitFor(() => expect(world.signedIn).toBe(true));
+      await later(alpha, 60_000);
+    } else {
+      world.wallet.unreachable = false;
+      await press("Try again");
+    }
     await until(alpha, runtime, Ledger, (s) => s.standing.status === "Loaded" && s.holdings.status === "Loaded");
   });
 

@@ -2,8 +2,8 @@
 import { AuthMark, Button, cn, Dialog, DialogContent, DialogTitle, Input, Sheet, SheetContent, Spinner, StatusDot } from "@repo/ui";
 import { ChevronDown, RotateCw, Ticket, X } from "lucide-react";
 import { normalizeSubscriptionCode, type SnapshotSubscription } from "@elizaos/cloud";
-import { Layer } from "effect";
-import { type ReactNode, useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Effect, Exit, Layer } from "effect";
+import { type ReactNode, useCallback, useRef, useState, useSyncExternalStore } from "react";
 import type * as Billing from "../../gen/app__account__billing.effect.vibe";
 import { useMachine as useCodes } from "../../gen/app__account__codes.react.ts";
 import { useMachine as useBilling } from "../../gen/app__account__billing.react.ts";
@@ -12,6 +12,13 @@ import { useMachine } from "../../gen/app__shell__layers.react.ts";
 import { listed, top } from "../../gen/app__shell__layers.ts";
 import { useMachine as useShell } from "../../gen/app__shell.react.ts";
 import { showing } from "../../gen/app__shell.ts";
+import {
+  AI_MODE_KEY,
+  type AiMode,
+  parseAiMode,
+  readStoredAiMode,
+  subscribeSharedPreferences,
+} from "../platform/index.vibe";
 import { area, type Alpha, type Area, type Resident, type Shown } from "../runtime/ui.tsx";
 import { AccountPanel } from "./AccountPanel.tsx";
 import { accountMachines } from "./account.vibe";
@@ -19,7 +26,7 @@ import { checkout, choosePurchase, recheckPlan, tierOf } from "./billing.vibe";
 import { accountAccess, checkCodePlan, codes, readReferral, referralCode, submitCode } from "./codes.vibe";
 import { managePlan } from "./change.vibe";
 import { ManagePlan } from "./ManagePlan.tsx";
-import { type AccountWrites, accountLayer, accountWrites, closeCatalog, openCatalog, type Profile, type ProfileShelf, profileLive, profileShelf, settingsIsInFront } from "./profile.vibe";
+import { type AccountWrites, accountLayer, accountWrites, closeCatalog, openCatalog, type Catalog, type Profile, type ProfileShelf, profileLive, profileShelf, settingsIsInFront } from "./profile.vibe";
 
 const usd = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
 const planDate = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
@@ -73,7 +80,7 @@ type PlanRuntime = Layer.Success<ReturnType<typeof managePlan>>;
 
 function Plans({ runtime, shelf, canSubscribe, subscription }: {
   runtime: Shown<Resident | CheckoutRuntime | CodeRuntime | PlanRuntime>["runtime"];
-  shelf: ProfileShelf;
+  shelf: ProfileStore;
   canSubscribe: boolean;
   subscription: SnapshotSubscription | undefined;
 }) {
@@ -153,15 +160,172 @@ function PurchaseStatus({ runtime }: { runtime: Shown<Resident | CheckoutRuntime
     </div>
   );
 }
+const readingProfile: Profile = { tag: "Reading" };
+
+interface ProfileStore {
+  readonly subscribe: (listener: () => void) => () => void;
+  readonly snapshot: () => Profile;
+  readonly catalog: () => Catalog | undefined;
+  readonly refresh: () => void;
+  readonly publishCatalog: (value: Catalog | undefined) => void;
+}
+
+const profileStores = new WeakMap<Alpha, ProfileStore>();
+
+function profileStoreFor(alpha: Alpha): ProfileStore {
+  let held = profileStores.get(alpha);
+  if (held !== undefined) return held;
+  const listeners = new Set<() => void>();
+  let live: ProfileShelf | undefined;
+  let unsubscribeLive: (() => void) | undefined;
+  let connecting = false;
+  let currentProfile: Profile = readingProfile;
+  let currentCatalog: Catalog | undefined;
+
+  const notify = () => {
+    for (const listener of listeners) listener();
+  };
+
+  const attach = (shelf: ProfileShelf) => {
+    live = shelf;
+    currentProfile = shelf.snapshot();
+    currentCatalog = shelf.catalog();
+    unsubscribeLive?.();
+    unsubscribeLive = shelf.subscribe(() => {
+      currentProfile = shelf.snapshot();
+      currentCatalog = shelf.catalog();
+      notify();
+    });
+    notify();
+  };
+
+  const immediate = alpha.runtime.runSyncExit(profileShelf);
+  if (Exit.isSuccess(immediate)) {
+    attach(immediate.value);
+  }
+
+  const ensureConnected = () => {
+    if (live !== undefined || connecting) return;
+    connecting = true;
+    void alpha.runtime.runPromise(profileShelf).then(
+      (shelf) => {
+        connecting = false;
+        attach(shelf);
+      },
+      () => {
+        connecting = false;
+      },
+    );
+  };
+
+  held = {
+    subscribe: (listener) => {
+      listeners.add(listener);
+      ensureConnected();
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    snapshot: () => (live ? live.snapshot() : currentProfile),
+    catalog: () => (live ? live.catalog() : currentCatalog),
+    refresh: () => {
+      if (live) {
+        live.refresh();
+      } else {
+        void alpha.runtime.runPromise(profileShelf).then((shelf) => {
+          attach(shelf);
+          shelf.refresh();
+        }, () => undefined);
+      }
+    },
+    publishCatalog: (value) => {
+      currentCatalog = value;
+      live?.publishCatalog(value);
+    },
+  };
+  profileStores.set(alpha, held);
+  return held;
+}
+
+interface AiModeStore {
+  readonly subscribe: (listener: () => void) => () => void;
+  readonly snapshot: () => AiMode | undefined;
+}
+
+const aiModeStores = new WeakMap<Alpha, AiModeStore>();
+
+function aiModeStoreFor(alpha: Alpha): AiModeStore {
+  let held = aiModeStores.get(alpha);
+  if (held !== undefined) return held;
+  const listeners = new Set<() => void>();
+  let current: AiMode | undefined;
+  let hydrated = false;
+  let stopPrefs: (() => void) | undefined;
+
+  const notify = () => {
+    for (const listener of listeners) listener();
+  };
+
+  const syncMode = alpha.runtime.runSyncExit(readStoredAiMode());
+  if (Exit.isSuccess(syncMode)) {
+    current = syncMode.value;
+    hydrated = true;
+  }
+
+  held = {
+    subscribe: (listener) => {
+      listeners.add(listener);
+      if (!hydrated) {
+        hydrated = true;
+        void alpha.runtime.runPromise(readStoredAiMode()).then((mode) => {
+          if (mode !== current) {
+            current = mode;
+            notify();
+          }
+        }, () => undefined);
+      }
+      if (stopPrefs === undefined) {
+        stopPrefs = subscribeSharedPreferences((change) => {
+          if (change.key !== AI_MODE_KEY) return;
+          const next = parseAiMode(change.value);
+          if (next !== current) {
+            current = next;
+            notify();
+          }
+        });
+      }
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0) {
+          stopPrefs?.();
+          stopPrefs = undefined;
+        }
+      };
+    },
+    snapshot: () => current,
+  };
+  aiModeStores.set(alpha, held);
+  return held;
+}
+
 /** The verified account shown below the Account row in Settings. */
 export function AccountStatus({ alpha }: { alpha: Alpha }) {
-  const shelf = useMemo(() => alpha.runtime.runSync(profileShelf), [alpha.runtime]);
+  const shelf = profileStoreFor(alpha);
+  const modeStore = aiModeStoreFor(alpha);
   const current = useSyncExternalStore(shelf.subscribe, shelf.snapshot, shelf.snapshot);
+  const aiMode = useSyncExternalStore(modeStore.subscribe, modeStore.snapshot, modeStore.snapshot);
   if (current.tag === "Reading") return null;
-  const label = current.tag === "Read" ? current.contact || "Signed in"
-    : current.tag === "SignInRequired" ? "Signed out" : "Account unavailable";
-  return <StatusDot status={current.tag === "Read" ? "ok" : "off"} label={label} showLabel
-    className={cn("flex gap-3 text-caption leading-normal text-muted-foreground [&_circle]:fill-current [&_circle]:stroke-none [&_svg]:size-2 [&_svg]:text-current", current.tag === "Read" && "[&_svg]:text-status-ok")} />;
+  const localActive = current.tag === "SignInRequired" && aiMode === "local";
+  const ok = current.tag === "Read" || localActive;
+  const label = current.tag === "Read"
+    ? current.contact || "Signed in"
+    : localActive
+      ? "On-device AI"
+      : current.tag === "SignInRequired"
+        ? "Signed out"
+        : "Account unavailable";
+  return <StatusDot status={ok ? "ok" : "off"} label={label} showLabel
+    className={cn("flex gap-3 text-caption leading-normal text-muted-foreground [&_circle]:fill-current [&_circle]:stroke-none [&_svg]:size-2 [&_svg]:text-current", ok && "[&_svg]:text-status-ok")} />;
 }
 
 /** The browser's account recovery page is contained in Alpha's phone canvas. */
@@ -214,7 +378,8 @@ function AccountCodes({ runtime }: Pick<Shown<Resident | CheckoutRuntime | CodeR
   const billing = useBilling(runtime).state;
   if (state === undefined || billing === undefined) return null;
   const sending = state.redeem.outcome === "Sent" || state.apply.outcome === "Sent";
-  const ownCode = state.referral.status === "Loaded" ? runtime.runSync(referralCode(state.authority)) : undefined;
+  const ownCodeExit = state.referral.status === "Loaded" ? runtime.runSyncExit(referralCode(state.authority)) : undefined;
+  const ownCode = ownCodeExit && Exit.isSuccess(ownCodeExit) ? ownCodeExit.value : undefined;
   const busy = sending || state.unsettled || billing.unsettled || billing.pending || billing.visit.open || billing.visit.orphan;
   const message = state.notice === "Redeemed" ? "Code redeemed" : state.notice === "NotRedeemed" ? "The code couldn’t be redeemed."
     : state.notice === "ReferralApplied" ? "Referral applied."
@@ -272,7 +437,8 @@ function AccountCodes({ runtime }: Pick<Shown<Resident | CheckoutRuntime | CodeR
   );
 }
 
-function AccountSheetFrame({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+/** Styled bottom sheet container hosting the Account area above Settings or Inbox. */
+export function AccountSheetFrame({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <SheetContent
@@ -291,7 +457,7 @@ function AccountSheetFrame({ open, onClose, children }: { open: boolean; onClose
 /** The account sheet above Settings or Inbox, drawing the details the account read returned. */
 export default {
   open(alpha, place) {
-    const profile = alpha.runtime.runSync(profileShelf);
+    const profile = profileStoreFor(alpha);
     function AccountSheet({ runtime }: Shown<Resident | CheckoutRuntime | CodeRuntime | PlanRuntime>) {
       const { state, can, send } = useMachine(runtime);
       const { state: settings } = useSettings(runtime);
@@ -302,6 +468,7 @@ export default {
       const onClose = () => { if (can(close)) void send(close); };
       const open = top(state).id === accountLayer;
       const settingsAccount = shell !== undefined && settings !== undefined && settingsIsInFront(shell, settings);
+      if (settingsAccount && alpha.slot("settings/account") !== undefined) return null;
       if (settings?.told && !settings.phone && shown.tag !== "Read") {
         return <BrowserAccount open={open} reading={shown.tag === "Reading"} inbox={shell !== undefined && showing(shell, "Inbox")} retry={profile.refresh} close={onClose} />;
       }
@@ -317,8 +484,15 @@ export default {
         </AccountSheetFrame>
       );
     }
-    return area(Layer.provideMerge(profileLive(profile.publish, profile.publishCatalog, profile.refreshed, accountAccess),
-      Layer.mergeAll(accountWrites, managePlan(profile.refresh), Layer.provideMerge(codes(profile.refresh), checkout(profile.refresh, profile.publishCatalog)))), AccountSheet).open(alpha, place);
+    const accountLayerLive = Layer.unwrap(Effect.map(profileShelf, (liveProfile) => Layer.provideMerge(
+      profileLive(liveProfile.publish, liveProfile.publishCatalog, liveProfile.refreshed, accountAccess),
+      Layer.mergeAll(
+        accountWrites,
+        managePlan(liveProfile.refresh),
+        Layer.provideMerge(codes(liveProfile.refresh), checkout(liveProfile.refresh, liveProfile.publishCatalog)),
+      ),
+    )));
+    return area(accountLayerLive, AccountSheet).open(alpha, place);
   },
 } satisfies Area;
 
@@ -327,7 +501,7 @@ const accountAreaMap = new WeakMap<Alpha, ReturnType<typeof area<Layer.Success<t
 function accountAreaFor(alpha: Alpha) {
   let held = accountAreaMap.get(alpha);
   if (!held) {
-    const profile = alpha.runtime.runSync(profileShelf);
+    const profile = profileStoreFor(alpha);
     held = area(accountMachines, ({ runtime }) => {
       const layers = useMachine(runtime);
       const shown = useSyncExternalStore(profile.subscribe, profile.snapshot, profile.snapshot);
@@ -335,7 +509,7 @@ function accountAreaFor(alpha: Alpha) {
       const close = { type: "closeLayer", id: accountLayer } as const;
       return (
         <AccountSheetFrame open={top(layers.state).id === accountLayer} onClose={() => { if (layers.can(close)) void layers.send(close); }}>
-          <AccountPanel runtime={runtime} profile={shown} />
+          <AccountPanel runtime={runtime} profile={shown} onRefresh={profile.refresh} />
         </AccountSheetFrame>
       );
     });
@@ -359,11 +533,11 @@ export const accountPanelOverlay: Area = {
 /** Settings-embedded Account area rendered at the `settings/account` slot. */
 export const accountSettingsArea: Area = {
   open(alpha) {
-    const profile = alpha.runtime.runSync(profileShelf);
+    const profile = profileStoreFor(alpha);
     const runtime = accountRuntime(alpha);
     return function AccountEmbedded() {
       const shown = useSyncExternalStore(profile.subscribe, profile.snapshot, profile.snapshot);
-      return <AccountPanel runtime={runtime} profile={shown} />;
+      return <AccountPanel runtime={runtime} profile={shown} onRefresh={profile.refresh} />;
     };
   },
 };

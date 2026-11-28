@@ -3,8 +3,16 @@ import { Banner, Button, Card, CardTitle, ConfirmDialog, Input, Label, ListGroup
 import { useState } from "react";
 import { sends, shows, type Offer, type Trouble } from "../../gen/app__account__provider.ts";
 import { useMachine as useProvider } from "../../gen/app__account__provider.react.ts";
+import type { LocalLlmModel } from "../platform/index.vibe";
 import { untimed } from "../runtime/index.vibe";
-import { type AccountRuntime, useAccountTimed } from "./useAccount.ts";
+import {
+  type AccountRuntime,
+  type LocalLlmController,
+  setAccountAiMode,
+  useAccountShelf,
+  useAccountTimed,
+  useLocalLlmCatalog,
+} from "./useAccount.ts";
 
 const troubleText: Partial<Record<Trouble, string>> = {
   KeyRefused: "That API key was refused. Your saved keys were kept.",
@@ -25,9 +33,161 @@ function offerDescription(offer: Offer): string {
   return "No AI requests will be sent until a provider is chosen.";
 }
 
-/** AI provider selection, Cerebras text key, and independent voice key management UI. */
+function formatGigabytes(bytes: number): string {
+  if (bytes <= 0) return "0 MB";
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1) return `${gb.toFixed(2)} GB`;
+  return `${Math.round(bytes / (1024 * 1024))} MB`;
+}
+
+function fitBadge(model: LocalLlmModel): { readonly status: "ok" | "warn" | "off"; readonly label: string } {
+  if (model.active) return { status: "ok", label: "Active" };
+  if (model.installPhase === "downloading") return { status: "warn", label: `${model.downloadProgress ?? 0}%` };
+  if (model.installPhase === "verifying") return { status: "warn", label: "Verifying" };
+  if (model.downloaded) return { status: "ok", label: "Ready" };
+  if (model.fit === "insufficient") return { status: "off", label: "Needs more RAM" };
+  if (model.fit === "tight") return { status: "warn", label: "Tight RAM" };
+  return { status: "ok", label: "Fits" };
+}
+
+/** Curated on-device GGUF model catalog and download/activation controls. */
+function LocalModelsSection({
+  runtime,
+  localLlm,
+}: {
+  readonly runtime: AccountRuntime;
+  readonly localLlm: LocalLlmController;
+}) {
+  const { status: llmStatus, models } = localLlm.catalog;
+  return (
+    <>
+      {localLlm.notice ? (
+        <Banner
+          variant={localLlm.meteredPromptModelId ? "warn" : "info"}
+          action={(
+            <div className="flex flex-wrap gap-2">
+              {localLlm.meteredPromptModelId ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    const target = localLlm.meteredPromptModelId;
+                    if (target) void localLlm.download(target, true);
+                  }}
+                >
+                  Download on cellular
+                </Button>
+              ) : null}
+              <Button size="sm" variant="ghost" onClick={localLlm.dismissNotice}>
+                Dismiss
+              </Button>
+            </div>
+          )}
+        >
+          {localLlm.notice}
+        </Banner>
+      ) : null}
+
+      <ListGroup heading="On-device models">
+        {llmStatus.totalRamMb > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-caption text-muted-foreground">
+            <span>
+              Device memory: {(llmStatus.totalRamMb / 1024).toFixed(1)} GB RAM · {(llmStatus.freeDiskMb / 1024).toFixed(1)} GB free
+            </span>
+            {llmStatus.metered ? <span>Metered network (Wi-Fi recommended)</span> : null}
+          </div>
+        ) : null}
+        {models.map((model) => {
+          const badge = fitBadge(model);
+          const busy = localLlm.busyModelId === model.id;
+          const downloading = model.installPhase === "downloading" || model.installPhase === "verifying";
+          const detailParts = [
+            formatGigabytes(model.sizeBytes),
+            model.license,
+            model.recommended ? "Recommended" : model.role === "embedding" ? "Embeddings" : undefined,
+            model.fitReason ?? model.summary,
+          ].filter(Boolean);
+          return (
+            <div key={model.id} className="border-t border-border first:border-t-0">
+              <ListRow
+                title={model.name}
+                detail={detailParts.join(" · ")}
+                trailing={<StatusDot status={badge.status} label={badge.label} showLabel />}
+              />
+              {model.lastError ? (
+                <p className="px-4 pb-1 text-caption text-status-error">{model.lastError}</p>
+              ) : null}
+              <div className="flex flex-wrap gap-2 px-4 pb-3">
+                {downloading ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => { void localLlm.cancelDownload(model.id); }}
+                  >
+                    Cancel download
+                  </Button>
+                ) : !model.downloaded ? (
+                  <Button
+                    size="sm"
+                    variant={model.recommended ? "primary" : "secondary"}
+                    loading={busy}
+                    disabled={busy || model.fit === "insufficient"}
+                    onClick={() => { void localLlm.download(model.id, false); }}
+                  >
+                    {model.installPhase === "partial" || model.installPhase === "cancelled" ? "Resume download" : "Download"}
+                  </Button>
+                ) : (
+                  <>
+                    {!model.active && model.role === "chat" ? (
+                      <Button
+                        size="sm"
+                        loading={busy}
+                        disabled={busy}
+                        onClick={() => {
+                          void localLlm.activate(model.id).then((ok) => {
+                            if (ok) void setAccountAiMode(runtime, "local", model.id);
+                          });
+                        }}
+                      >
+                        Activate
+                      </Button>
+                    ) : null}
+                    {model.active ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        loading={busy}
+                        disabled={busy}
+                        onClick={() => { void localLlm.unload(); }}
+                      >
+                        Unload
+                      </Button>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => { void localLlm.remove(model.id); }}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </ListGroup>
+    </>
+  );
+}
+
+/** AI execution mode switcher (On-Device Gemma 4 / Alpha Cloud / Own Key), local GGUF catalog, and API key management UI. */
 export function ProviderView({ runtime }: { readonly runtime: AccountRuntime }) {
   const provider = useAccountTimed(runtime, useProvider);
+  const shelf = useAccountShelf(runtime);
+  const localLlm = useLocalLlmCatalog(runtime);
   const [keyInput, setKeyInput] = useState("");
   const state = provider.state;
   if (!state) return null;
@@ -41,40 +201,70 @@ export function ProviderView({ runtime }: { readonly runtime: AccountRuntime }) 
   const removeTextEvent = { type: "removeKey", kind: "TextKey", busy: false, origin: "ByOwner", now: untimed } as const;
   const removeVoiceEvent = { type: "removeKey", kind: "VoiceKey", busy: false, origin: "ByOwner", now: untimed } as const;
 
+  const aiMode = shelf.aiMode;
+  const activeSummary = aiMode === "local"
+    ? `Running locally on this phone with ${shelf.localModel}. No Alpha Cloud sign-in required.`
+    : activeSends.recipient === "Cerebras" || aiMode === "own-key"
+      ? "Sending requests directly to Cerebras with your own key."
+      : activeSends.recipient === "AlphaCloud" || aiMode === "cloud"
+        ? "Sending requests to Alpha Cloud."
+        : "No AI provider selected yet.";
+
+  const activeDotLabel = aiMode === "local"
+    ? "On-device"
+    : aiMode === "own-key"
+      ? "Own key"
+      : "Alpha Cloud";
+
   return (
     <div className="space-y-3">
       {currentError ? <Banner variant="destructive">{currentError}</Banner> : null}
 
-      <Card className="space-y-2 p-4">
-        <CardTitle>AI Provider</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {activeSends.recipient === "AlphaCloud"
-            ? "Sending requests to Alpha Cloud."
-            : activeSends.recipient === "Cerebras"
-              ? "Sending requests directly to Cerebras with your own key."
-              : "No AI provider selected yet."}
-        </p>
+      <Card className="space-y-3 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle>AI Mode</CardTitle>
+          <StatusDot status="ok" label={activeDotLabel} showLabel />
+        </div>
+        <p className="text-sm text-muted-foreground">{activeSummary}</p>
         <div className="flex flex-wrap gap-2">
           <Button
-            variant={state.mode === "CloudAi" ? "primary" : "secondary"}
+            variant={aiMode === "local" ? "primary" : "secondary"}
             size="sm"
-            disabled={!provider.can(useCloudEvent)}
-            onClick={() => { void provider.send(useCloudEvent); }}
+            onClick={() => {
+              void setAccountAiMode(runtime, "local", shelf.localModel).then(() => { localLlm.refresh(); });
+            }}
           >
-            Use Alpha Cloud
+            On-Device (No Sign-In)
           </Button>
-          {state.text ? (
-            <Button
-              variant={state.mode === "OwnKey" ? "primary" : "secondary"}
-              size="sm"
-              disabled={!provider.can(useOwnEvent)}
-              onClick={() => { void provider.send(useOwnEvent); }}
-            >
-              Use Cerebras key
-            </Button>
-          ) : null}
+          <Button
+            variant={aiMode === "cloud" ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => {
+              void setAccountAiMode(runtime, "cloud").then(() => { localLlm.refresh(); });
+              if (provider.can(useCloudEvent)) void provider.send(useCloudEvent);
+            }}
+          >
+            Alpha Cloud
+          </Button>
+          <Button
+            variant={aiMode === "own-key" ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => {
+              if (state.text) {
+                void setAccountAiMode(runtime, "own-key").then(() => { localLlm.refresh(); });
+                if (provider.can(useOwnEvent)) void provider.send(useOwnEvent);
+              } else if (provider.can(openTextEvent)) {
+                setKeyInput("");
+                void provider.send(openTextEvent);
+              }
+            }}
+          >
+            Own API Key
+          </Button>
         </div>
       </Card>
+
+      <LocalModelsSection runtime={runtime} localLlm={localLlm} />
 
       <ListGroup heading="Saved keys">
         <ListRow

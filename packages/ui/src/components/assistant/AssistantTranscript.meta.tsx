@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import type { ComponentMeta } from "vibestack/stories";
 import { AssistantCard } from "./AssistantCard.tsx";
+import { AssistantCardFrame } from "./AssistantCardFrame.tsx";
 import { AssistantTranscript, type AssistantTranscriptProps } from "./AssistantTranscript.tsx";
 
 const onRetry = fn();
@@ -67,6 +68,7 @@ export const meta: ComponentMeta<AssistantTranscriptProps> = {
     Fork: { onReturnToOriginal },
     "Around a message": { onEarlier: fn(), onLater: fn() },
     Failed: { messages: [], status: "failed", onRetry },
+    "A card standing after messages failed": { messages: [], status: "failed", onRetry, standing: <AssistantCardFrame icon={null} title="Alpha cannot keep your draft" /> },
     Empty: { messages: [] },
     "Following the end": { messages: long },
     "A reply finishing": { messages: [] },
@@ -120,6 +122,11 @@ export const meta: ComponentMeta<AssistantTranscriptProps> = {
       onRetry.mockClear();
       await userEvent.click(within(canvasElement).getByRole("button", { name: "Try again" }));
       await expect(onRetry.mock.calls.length).toBe(1);
+    },
+    "A card standing after messages failed": async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+      const log = within(canvasElement).getByRole("log");
+      await expect(within(log).getByText("Messages did not load")).toBeVisible();
+      await expect(within(log).getByText("Alpha cannot keep your draft")).toBeVisible();
     },
     Fork: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
       onReturnToOriginal.mockClear();

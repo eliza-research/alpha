@@ -2,7 +2,7 @@
 import * as Wallet from "../../gen/app__wallet.effect.vibe"
 import type { Account, Custody, Effect as Out, Event, Family, Fate } from "../../gen/app__wallet.effect.vibe"
 import { Machine as Shell, showing } from "../../gen/app__shell.effect.vibe"
-import { Agent } from "../platform/index.vibe"
+import { Agent, CLOUD_ENVIRONMENT, signInAccounts } from "../platform/index.vibe"
 import { Device } from "../platform/index.vibe"
 import { ask, attemptedWith } from "../platform/index.vibe"
 import type { Attempts } from "../runtime/index.vibe"
@@ -46,6 +46,15 @@ const posted = (path: string, body: object) => HttpClientRequest.post(path) |> H
 // spec/app/wallet/index.md, "Only the newest asking's answer is taken; a failure keeps what was last read"
 effect function stood(ticket: number): Event!!Agent {
   const said = ask(Agent, HttpClientRequest.get(walletPaths.wallet), WalletStatus) catch () => undefined
+  if (said === undefined) {
+    const status = (try Agent).life.status() catch () => undefined
+    if (status?.available && status.state === "failed" && status.failure === "credential") {
+      const signIn = timeout(tryPromise(() => signInAccounts().status({ environment: CLOUD_ENVIRONMENT })), "5 seconds") catch () => undefined
+      if (signIn?.account.kind === "signedOut" && signIn.readiness.environment === CLOUD_ENVIRONMENT) {
+        return { type: "stood", ticket, ok: true, ...nothing, custody: "SignInRequired" }
+      }
+    }
+  }
   const standing = said === undefined ? undefined : standingOf(said)
   return { type: "stood", ticket, ok: standing !== undefined, ...(standing ?? nothing) }
 }
@@ -130,4 +139,13 @@ const returned = started(effect {
 }, "reading the wallet again on return")
 
 /** The wallet as the resident agent holds it: kept across restarts, read while it shows, and changed only by the owner's own actions. */
-export const wallet = together(kept, told, returned)
+const resumed = started(effect {
+  const wallet = try Wallet.Machine
+  const reports = Stream.catch((try Agent).life.changes, () => Stream.empty)
+  try Stream.runForEach(reports, effect (status) => {
+    const state = try wallet.get()
+    if (status.state === "running" && state.showing && Wallet.needsSignIn(state)) try ignore(wallet.send({ type: "refresh" }))
+  })
+}, "reading the wallet when the signed-in agent starts")
+
+export const wallet = together(kept, told, returned, resumed)

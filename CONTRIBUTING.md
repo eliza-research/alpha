@@ -135,8 +135,9 @@ errors in subscribers, since Node reports a thrown subscriber error as an uncaug
 ## Releasing
 
 Alpha's launcher is released by `.github/workflows/release.yml` over `pnpm release` in `apps/app`
-([spec/release/index.md](spec/release/index.md)). A push to `main` builds an unsigned candidate numbered by its
-run, mirrors it privately and writes its signing plan, whose digest the run's summary shows. Read the plan, then
+([spec/release/index.md](spec/release/index.md)). A push to `main` or `develop` builds an unsigned candidate whose
+version is the workflow run number plus a fixed launcher version base. The workflow mirrors it privately and writes
+its signing plan, whose digest the run's summary shows. Read the plan, then
 dispatch the workflow with the candidate's run id, that digest and the voice qualification evidence: the protected
 `release` environment signs exactly the planned APK, delivers it with a receipt, qualifies it and publishes the APK
 before the manifest. Once the manifest reads back naming the release, run `pnpm release record` with the run's
@@ -433,10 +434,15 @@ configured scopes are in `knip.config.js`, `.madgerc`, `.jscpd.json` and
 
 | When | Runs |
 |---|---|
-| Pull request or push to `vibestack-develop` | `pnpm no-bun` checks the active workspace without installing workspace dependencies. |
-| Pull request or push to `main` | `verify` runs `pnpm no-bun`, build, types, tests, browser tests, all checks, ESLint, Stylelint, Knip, Madge, jscpd and the docs and examples self-tests with up to four concurrent Turbo tasks on the four-core hosted runner and `--continue=dependencies-successful`. In parallel, `selftest-a`, `selftest-b` and `selftest-rest` run the three tool self-test tasks. |
+| Pull request or push to `develop` | `pnpm no-bun` checks the active workspace without installing workspace dependencies. |
+| Pull request or push to `main` or `develop` | `verify` runs `pnpm no-bun`, build, types, tests, browser tests, all checks, ESLint, Stylelint, Knip, Madge, jscpd and the docs and examples self-tests with up to four concurrent Turbo tasks on the four-core hosted runner and `--continue=dependencies-successful`. In parallel, `selftest-a`, `selftest-b` and `selftest-rest` run the three tool self-test tasks. |
+| PR merged into `main` or `develop` | The retirement workflow cancels any active run of `ci` for that PR. |
 | Nightly | Every check fresh under the fixed nightly profile; saved counterexamples become a pull request into the branch the run checked, or the default branch for a tag run. Beside it, the three `selftest:tools` tasks without the selftest's shared tool runs |
-| Push to `main` / dispatch (`release.yml`) | Builds an unsigned Alpha launcher candidate on `main`; manual dispatch in the protected `release` environment signs, delivers, qualifies and publishes it ([Releasing](#releasing)) |
+| Push to `main` or `develop` / dispatch (`release.yml`) | Builds an unsigned Alpha launcher candidate. Manual dispatch in the protected `release` environment signs, delivers, qualifies and publishes it ([Releasing](#releasing)) |
+
+GitHub may require a maintainer with write access to approve workflow runs
+from a fork before jobs start. The workflow run page shows when approval is
+required or has expired.
 
 This repository runs its root specs in the ordinary check. Consumer
 workflows using the four simulation jobs balance modules across shards with

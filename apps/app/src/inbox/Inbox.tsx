@@ -1,8 +1,8 @@
 // spec/app/inbox/index.md, "Story: See my mail"; spec/app/inbox/index.md, "Only a card with a positive attachment hint shows a paperclip"; spec/app/inbox/message.md, "Story: Read a message"; spec/app/inbox/marking.md, "Story: Mark mail read or unread"; spec/app/inbox/sending.md, "Story: Archive or trash mail, with Undo"
 import {
-  Alert, Button, InboxAccountList, type InboxAttachmentPreview, InboxAttachmentReview, InboxChangeReview, InboxChangeToast, InboxDiscardDialog, type InboxFolder,
+  Alert, Button, Dialog, DialogContent, DialogDescription, DialogTitle, InboxAccountList, type InboxAttachmentPreview, InboxAttachmentReview, InboxChangeReview, InboxChangeToast, InboxDiscardDialog, type InboxFolder,
   InboxLinkReview, type InboxListRow, InboxListScreen, type InboxListStateKind, InboxMessageScreen, type InboxMessageFaultKind, InboxNotice,
-  type InboxNoticeKind, InboxSendOutcome, ToastRegion,
+  type InboxNoticeKind, InboxSendOutcome, Input, Spinner, ToastRegion,
 } from "@repo/ui";
 import type { MailCard } from "@elizaos/cloud";
 import { Effect, type ManagedRuntime } from "effect";
@@ -430,6 +430,70 @@ function useInboxPaneFocus({ readerOpen, split, covered }: { readerOpen: boolean
   return { lastPaneRef, openingRowRef, listPaneRef, readerPaneRef };
 }
 
+/** Owner confirmation dialog shown when the phone needs a fresh session before opening Google OAuth consent. */
+function MailReauthDialog({ runtime }: { runtime: Runtime }) {
+  const signIn = runtime.runSync(MailSignIn);
+  const subscribe = useCallback((listener: () => void) => signIn.subscribeReauth(listener), [signIn]);
+  const snapshot = useCallback(() => signIn.reauthSnapshot(), [signIn]);
+  const reauth = useSyncExternalStore(subscribe, snapshot, snapshot);
+  const [code, setCode] = useState("");
+  const [shownKind, setShownKind] = useState(reauth.kind);
+  if (reauth.kind !== shownKind) {
+    setShownKind(reauth.kind);
+    setCode("");
+  }
+  if (reauth.kind === "Idle") return null;
+  const busy = reauth.kind === "Starting" || reauth.busy === true;
+  const cancel = () => {
+    setCode("");
+    void runtime.runPromise(signIn.cancelReauth());
+  };
+  const submit = (factor?: "sms" | "totp") => {
+    const entered = code;
+    setCode("");
+    void runtime.runPromise(signIn.verifyReauth(entered, factor));
+  };
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) cancel(); }}>
+      <DialogContent closeLabel="Cancel">
+        <DialogTitle>Confirm it’s you</DialogTitle>
+        <DialogDescription>
+          {reauth.kind === "UseFactor"
+            ? "Finish confirming your Alpha Cloud account to connect Gmail."
+            : `We sent a confirmation code to ${reauth.email} so Alpha can open Gmail authorization.`}
+        </DialogDescription>
+        {reauth.kind === "Starting" ? (
+          <div className="py-2"><Spinner label="Sending confirmation code" /></div>
+        ) : (
+          <form className="grid gap-3" onSubmit={(event) => {
+            event.preventDefault();
+            if (busy || !code.trim()) return;
+            if (reauth.kind === "EnterCode") submit();
+            else if (reauth.factors.length === 1 && (reauth.factors[0] !== "sms" || reauth.smsSent)) submit(reauth.factors[0]);
+          }}>
+            <Input aria-label="Confirmation code" autoComplete="one-time-code" inputMode="numeric" placeholder="6-digit code"
+              value={code} onChange={(event) => setCode(event.currentTarget.value)} />
+            {reauth.error ? <p role="status" className="text-sm text-destructive">{reauth.error}</p> : null}
+            <div className="flex flex-wrap gap-2">
+              {reauth.kind === "EnterCode" ? (
+                <Button type="submit" disabled={busy || !code.trim()}>Verify code</Button>
+              ) : reauth.factors.map((factor) => factor === "sms" && !reauth.smsSent ? (
+                <Button key={factor} type="button" disabled={busy} onClick={() => void runtime.runPromise(signIn.sendReauthSms())}>Text me a code</Button>
+              ) : (
+                <Button key={factor} type="button" disabled={busy || !code.trim()} onClick={() => submit(factor)}>
+                  Verify {factor === "totp" ? "authenticator" : "text message"} code
+                </Button>
+              ))}
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => { setCode(""); void runtime.runPromise(signIn.resendReauth()); }}>Send another email</Button>
+              <Button type="button" variant="ghost" disabled={busy} onClick={cancel}>Not now</Button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /**
  * Inbox: the list of the account, folder and search chosen, saved on the phone while Gmail cannot be reached, and the
  * message opened from it, with the review and Undo of a change. Each control is offered exactly when its machine takes
@@ -684,6 +748,7 @@ export function Inbox({ runtime, alpha }: InboxProps & { alpha: Alpha }) {
       <Suggested runtime={runtime} />
       <EarlierSend runtime={runtime} />
       <ChangeReview runtime={runtime} list={state} cards={cards} selecting={selecting} />
+      <MailReauthDialog runtime={runtime} />
     </>
   );
 }

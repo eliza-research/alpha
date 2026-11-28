@@ -16,6 +16,7 @@ import { ScanExports } from "./files/scanEntry.vibe";
 import { InboxCardEntry } from "./home/cards.vibe";
 import { homeFrame } from "./home/firstFrame.ts";
 import { AgentPages, BrowserDownloadsHandoff, InboxBrowserLinks } from "./platform/browser.vibe";
+import { launchSiblingApp, openAlphaOverlay, openAppViaOverlay } from "./platform/contextBridge.vibe";
 import { Device } from "./platform/device.vibe";
 import type { Platform } from "./platform/platform.vibe";
 import { resident } from "./resident.vibe";
@@ -28,6 +29,7 @@ import { startupSignIn, StartupSignIn } from "./startup/signIn.vibe";
 import * as Access from "../gen/app__startup__access.effect.vibe";
 import { back, taking } from "./shell/shell.vibe";
 import { viewHasHeader, views } from "./shell/views.tsx";
+import { currentSurface } from "./surface.ts";
 
 function ViewLoading({ alpha, place }: { alpha: Alpha; place: `view:${View}` }) {
   const view = place.slice("view:".length) as View;
@@ -115,50 +117,54 @@ function openedScreen(
   };
 }
 
-/**
- * Alpha over `platform`: one root runtime of the resident machines, and each screen of `mounts` at its place, opened
- * when it is first drawn, and contained: one that throws or cannot be loaded stops alone. Each screen's code is a chunk
- * of its own; once Home's first frame is drawn the chunks are fetched one per idle moment (and a tile's on a press), so
- * an app's first open waits only for its machines to start, not for its code, closer to v119, whose one bundle held
- * every view (45f6bed30 apps/app/src/main.tsx).
- */
-export function boot(platform: Layer.Layer<Platform>, mounts: readonly Mount[] = every, requireNativeSignIn = false): Alpha {
+/** Builds the cross-area handoff and context layers shared by the root runtime. */
+function crossAreaLayers(getAlpha: () => Alpha) {
   const media = Layer.succeed(MediaHandoff, {
-    attach: (file, current, suggestion) => Effect.promise(async () => {
-      const { default: assistant } = await import("./assistant/index.tsx");
-      return assistant.runtime(alpha).runPromise(stageAttachment(file, current, suggestion));
-    }).pipe(Effect.catchCause(() => Effect.succeed(false))),
-    offerTranscript: (transcript) => Effect.promise(async () => {
-      const { default: assistant } = await import("./assistant/index.tsx");
-      return assistant.runtime(alpha).runPromise(stageTranscript(transcript));
-    }).pipe(Effect.catchCause(() => Effect.succeed(false))),
+    attach: (file, current, suggestion) => Effect.suspend(() => {
+      if (currentSurface().mode === "app") {
+        return openAlphaOverlay("media-handoff", suggestion, false);
+      }
+      return Effect.promise(async () => {
+        const { default: assistant } = await import("./assistant/index.tsx");
+        return assistant.runtime(getAlpha()).runPromise(stageAttachment(file, current, suggestion));
+      }).pipe(Effect.catchCause(() => Effect.succeed(false)));
+    }),
+    offerTranscript: (transcript) => Effect.suspend(() => {
+      if (currentSurface().mode === "app") {
+        return openAlphaOverlay("transcript-handoff", `Summarize "${transcript.title}"`, false);
+      }
+      return Effect.promise(async () => {
+        const { default: assistant } = await import("./assistant/index.tsx");
+        return assistant.runtime(getAlpha()).runPromise(stageTranscript(transcript));
+      }).pipe(Effect.catchCause(() => Effect.succeed(false)));
+    }),
     reviewedDraft: () => Effect.promise(async () => {
       const { default: assistant } = await import("./assistant/index.tsx");
-      return assistant.runtime(alpha).runPromise(captureReviewedDraft());
+      return assistant.runtime(getAlpha()).runPromise(captureReviewedDraft());
     }).pipe(Effect.catchCause(() => Effect.succeed(undefined))),
     offerPageSpeech: (speech) => Effect.promise(async () => {
       const { default: assistant } = await import("./assistant/index.tsx");
-      return assistant.runtime(alpha).runPromise(readPage(speech));
+      return assistant.runtime(getAlpha()).runPromise(readPage(speech));
     }).pipe(Effect.catchCause(() => Effect.succeed(false))),
     stopPageSpeech: (item, source) => Effect.promise(async () => {
       const { default: assistant } = await import("./assistant/index.tsx");
-      return assistant.runtime(alpha).runPromise(stopPage(item, source));
+      return assistant.runtime(getAlpha()).runPromise(stopPage(item, source));
     }).pipe(Effect.ignoreCause),
   });
   const executors = Layer.succeed(MediaExecutors, {
     filesContext: () => Effect.tryPromise(async () => {
       const [{ default: files }, { filesReadContext }] = await Promise.all([import("./files/index.tsx"), import("./files/agent.vibe")]);
-      return files.runtime(alpha).runPromise(filesReadContext);
+      return files.runtime(getAlpha()).runPromise(filesReadContext);
     }).pipe(Effect.orElseSucceed(() => undefined)),
     readyFiles: () => Effect.tryPromise(async (signal) => {
       const [{ default: files }, { readyFilesReadContext }] = await Promise.all([import("./files/index.tsx"), import("./files/agent.vibe")]);
-      return files.runtime(alpha).runPromise(readyFilesReadContext, { signal });
+      return files.runtime(getAlpha()).runPromise(readyFilesReadContext, { signal });
     }).pipe(Effect.orElseSucceed(() => undefined)),
     reviewFiles: (operation) => Effect.tryPromise(async () => {
       const [{ default: files }, { reviewFileAction }] = await Promise.all([import("./files/index.tsx"), import("./files/agent.vibe")]);
-      return files.runtime(alpha).runPromise(reviewFileAction(operation));
+      return files.runtime(getAlpha()).runPromise(reviewFileAction(operation));
     }).pipe(Effect.orElseSucceed(() => undefined)),
-    execute: (operation, call, authority) => Effect.tryPromise(() => executeMedia(alpha, operation, call, authority)).pipe(Effect.orElseSucceed(() => undefined)),
+    execute: (operation, call, authority) => Effect.tryPromise(() => executeMedia(getAlpha(), operation, call, authority)).pipe(Effect.orElseSucceed(() => undefined)),
   });
   const filesShowing = Effect.gen(function* () {
     const shell = yield* Shell;
@@ -167,6 +173,7 @@ export function boot(platform: Layer.Layer<Platform>, mounts: readonly Mount[] =
     return (yield* device.showing()) && showing(yield* shell.get(), "Files") && !pageInert(yield* layers.get());
   });
   const inFiles = <A,>(read: (signal: AbortSignal) => Promise<A | undefined>) => Effect.tryPromise(async (signal) => {
+    const alpha = getAlpha();
     if (!(await alpha.runtime.runPromise(filesShowing, { signal }))) return undefined;
     const result = await read(signal);
     return (await alpha.runtime.runPromise(filesShowing, { signal })) ? result : undefined;
@@ -174,41 +181,63 @@ export function boot(platform: Layer.Layer<Platform>, mounts: readonly Mount[] =
   const fileContext = Layer.succeed(FileContext, {
     selected: () => inFiles(async (signal) => {
       const [{ default: files }, { selectedTextContext }] = await Promise.all([import("./files/index.tsx"), import("./files/preview.vibe")]);
-      return files.runtime(alpha).runPromise(selectedTextContext(), { signal });
+      return files.runtime(getAlpha()).runPromise(selectedTextContext(), { signal });
     }),
     read: (expected) => inFiles(async (signal) => {
       const [{ default: files }, { readCurrentFileText }] = await Promise.all([import("./files/index.tsx"), import("./files/preview.vibe")]);
-      return files.runtime(alpha).runPromise(readCurrentFileText(expected), { signal });
+      return files.runtime(getAlpha()).runPromise(readCurrentFileText(expected), { signal });
     }),
   });
   const downloads = Layer.succeed(BrowserDownloadsHandoff, {
-    open: () => Effect.tryPromise(async () => {
-      const [{ default: files }, { showBrowserDownloads }] = await Promise.all([import("./files/index.tsx"), import("./files/files.vibe")]);
-      await files.runtime(alpha).runPromise(showBrowserDownloads);
-    }).pipe(Effect.orElseSucceed(() => undefined)),
+    open: () => Effect.suspend(() => {
+      if (currentSurface().mode === "app") {
+        return Effect.asVoid(launchSiblingApp("Files", "alpha://files/downloads", JSON.stringify({ view: "Files", section: "downloads" })));
+      }
+      return Effect.tryPromise(async () => {
+        const [{ default: files }, { showBrowserDownloads }] = await Promise.all([import("./files/index.tsx"), import("./files/files.vibe")]);
+        await files.runtime(getAlpha()).runPromise(showBrowserDownloads);
+      }).pipe(Effect.orElseSucceed(() => undefined));
+    }),
   });
   const agentPages = Layer.succeed(AgentPages, {
-    open: (page, current) => Effect.tryPromise(async () => {
-      const [{ default: browser }, { openAgentPage }] = await Promise.all([import("./browser/index.tsx"), import("./browser/agent.vibe")]);
-      return browser.runtime(alpha).runPromise(openAgentPage({ ...page, current }));
-    }).pipe(Effect.orElseSucceed(() => false)),
+    open: (page, current) => Effect.suspend(() => {
+      if (currentSurface().mode === "overlay") {
+        const payload = JSON.stringify({
+          view: "Browser",
+          action: "browser_open",
+          url: page.operation.url,
+          atOnce: page.atOnce,
+        });
+        return openAppViaOverlay("alpha://browser/open", undefined, payload);
+      }
+      return Effect.tryPromise(async () => {
+        const [{ default: browser }, { openAgentPage }] = await Promise.all([import("./browser/index.tsx"), import("./browser/agent.vibe")]);
+        return browser.runtime(getAlpha()).runPromise(openAgentPage({ ...page, current }));
+      }).pipe(Effect.orElseSucceed(() => false));
+    }),
   });
   const inboxLinks = Layer.succeed(InboxBrowserLinks, {
-    open: (href, current) => Effect.tryPromise(async (signal) => {
-      const [{ default: browser }, { openMessageLink }] = await Promise.all([import("./browser/index.tsx"), import("./browser/browser.vibe")]);
-      return browser.runtime(alpha).runPromise(openMessageLink(href, "Inbox", current), { signal });
-    }).pipe(Effect.orElseSucceed(() => false)),
+    open: (href, current) => Effect.suspend(() => {
+      if (currentSurface().mode === "app") {
+        const payload = JSON.stringify({ view: "Browser", action: "open_link", url: href, from: "Inbox" });
+        return launchSiblingApp("Browser", "alpha://browser/open", payload);
+      }
+      return Effect.tryPromise(async (signal) => {
+        const [{ default: browser }, { openMessageLink }] = await Promise.all([import("./browser/index.tsx"), import("./browser/browser.vibe")]);
+        return browser.runtime(getAlpha()).runPromise(openMessageLink(href, "Inbox", current), { signal });
+      }).pipe(Effect.orElseSucceed(() => false));
+    }),
   });
   const mapsContext = Layer.succeed(MapsContext, {
     selected: () => Effect.tryPromise(async (signal) => {
       const [{ default: maps }, { mapsSelected }] = await Promise.all([import("./maps/index.tsx"), import("./maps/agent.vibe")]);
-      return maps.runtime(alpha).runPromise(mapsSelected(), { signal });
+      return maps.runtime(getAlpha()).runPromise(mapsSelected(), { signal });
     }).pipe(Effect.orElseSucceed(() => undefined)),
   });
   const inboxCard = Layer.succeed(InboxCardEntry, {
     prepare: () => Effect.tryPromise(async (signal) => {
       const [{ default: inbox }, { prepareInboxCardEntry }] = await Promise.all([import("./inbox/index.tsx"), import("./inbox/message.vibe")]);
-      const runtime = inbox.runtime(alpha);
+      const runtime = inbox.runtime(getAlpha());
       const enter = await runtime.runPromise(prepareInboxCardEntry(), { signal });
       return (route: number) => Effect.promise((signal) => runtime.runPromise(enter(route), { signal })).pipe(Effect.ignoreCause);
     }).pipe(Effect.orElseSucceed(() => undefined)),
@@ -216,15 +245,26 @@ export function boot(platform: Layer.Layer<Platform>, mounts: readonly Mount[] =
   const scans = Layer.succeed(ScanExports, {
     record: (selection) => Effect.tryPromise(async () => {
       const [{ default: files }, { retainScanExport }] = await Promise.all([import("./files/index.tsx"), import("./files/scan.vibe")]);
-      await files.runtime(alpha).runPromise(retainScanExport(selection));
+      await files.runtime(getAlpha()).runPromise(retainScanExport(selection));
     }).pipe(Effect.orElseSucceed(() => undefined)),
   });
   const calendarReviews = Layer.succeed(CalendarReviews, {
     relist: () => Effect.tryPromise(async () => {
       const [{ default: calendar }, { relistRequests }] = await Promise.all([import("./calendar/index.tsx"), import("./calendar/agent.vibe")]);
-      await calendar.runtime(alpha).runPromise(relistRequests);
+      await calendar.runtime(getAlpha()).runPromise(relistRequests);
     }).pipe(Effect.orElseSucceed(() => undefined)),
   });
+  return Layer.mergeAll(media, executors, fileContext, mapsContext, downloads, agentPages, inboxLinks, inboxCard, scans, calendarReviews);
+}
+
+/**
+ * Alpha over `platform`: one root runtime of the resident machines, and each screen of `mounts` at its place, opened
+ * when it is first drawn, and contained: one that throws or cannot be loaded stops alone. Each screen's code is a chunk
+ * of its own; once Home's first frame is drawn the chunks are fetched one per idle moment (and a tile's on a press), so
+ * an app's first open waits only for its machines to start, not for its code, closer to v119, whose one bundle held
+ * every view (45f6bed30 apps/app/src/main.tsx).
+ */
+export function boot(platform: Layer.Layer<Platform>, mounts: readonly Mount[] = every, requireNativeSignIn = false): Alpha {
   /** Late-bound StartupSignIn forwarded to the resident layer while the root is being built. */
   let builtSignIn: Context.Service.Shape<typeof StartupSignIn> | undefined;
   const signedIn = () => {
@@ -245,10 +285,11 @@ export function boot(platform: Layer.Layer<Platform>, mounts: readonly Mount[] =
     verify: (code) => Effect.suspend(() => signedIn().verify(code)),
     resend: () => Effect.suspend(() => signedIn().resend()),
     back: () => Effect.suspend(() => signedIn().back()),
+    useLocalMode: () => Effect.suspend(() => signedIn().useLocalMode()),
   });
   const signIn = Layer.tap(startupSignIn(requireNativeSignIn), (context) => Effect.sync(() => { builtSignIn = Context.get(context, StartupSignIn); }));
   const startup = Layer.provideMerge(startupAccessLifecycle(requireNativeSignIn), Layer.provideMerge(signIn, Layer.provideMerge(resident, lateSignIn)));
-  const root = rooted(Layer.provideMerge(startup, Layer.mergeAll(platform, media, executors, fileContext, mapsContext, downloads, agentPages, inboxLinks, inboxCard, scans, calendarReviews)));
+  const root = rooted(Layer.provideMerge(startup, Layer.merge(platform, crossAreaLayers(() => alpha))));
   const placed = new Map<Place, ReactElement[]>();
   /** The runtimes `over` makes while a screen is being opened. */
   let making: Array<{ context: () => Promise<unknown> }> | undefined;

@@ -126,18 +126,19 @@ export function Files({ runtime, alpha }: FilesProps) {
   const back = <AppBack alpha={alpha} />;
   const firstBack = <AppBack alpha={alpha} firstPage />;
   const scanner = <Scan runtime={runtime} alpha={alpha} />;
+  const frame = cn("relative flex min-h-0 flex-1 flex-col", launcherTop);
   const header = (title: string) => <AppHeader title={title} className={launcherFirstHeader} leading={firstBack} />;
-  if (cause) return <>{header("Files")}<Alert variant="destructive" className="m-4">Alpha could not open Files</Alert></>;
-  if (!state) return <section aria-label="Files" aria-busy className="relative flex min-h-0 flex-1 flex-col">{header("Files")}</section>;
+  if (cause) return <div className={frame}>{header("Files")}<Alert variant="destructive" className="m-4">Alpha could not open Files</Alert></div>;
+  if (!state) return <section aria-label="Files" aria-busy className={frame}>{header("Files")}</section>;
   const owner = <E extends Parameters<typeof can>[0]>(event: E) => can(event, "Owner");
   const tell = <E extends Parameters<typeof send>[0]>(event: E) => void send(event, "Owner");
   const shown = browse(state);
   const label = (handle: number) => labelOf(runtime, handle);
-  if (shown === "Closed") return <section aria-label="Files" className="relative flex min-h-0 flex-1 flex-col">{header("Files")}</section>;
-  if (shown === "Unsupported") return <>{header("Files")}<StorageStatus title="Storage unavailable" />{scanner}</>;
+  if (shown === "Closed") return <section aria-label="Files" className={frame}>{header("Files")}</section>;
+  if (shown === "Unsupported") return <div className={frame}>{header("Files")}<StorageStatus title="Storage unavailable" />{scanner}</div>;
   if (shown === "NotAsked" || shown === "NoAccess") {
     const allow = owner({ type: "allow" }) ? () => tell({ type: "allow" }) : undefined;
-    return <>{header("Files")}<StorageStatus title="Allow all files access" text="Files shows your files and folders after you allow access." action={shown === "NotAsked" ? "Allow" : "Open Settings"} onAction={allow} />{scanner}</>;
+    return <div className={frame}>{header("Files")}<StorageStatus title="Allow all files access" text="Files shows your files and folders after you allow access." action={shown === "NotAsked" ? "Allow" : "Open Settings"} onAction={allow} />{scanner}</div>;
   }
   if (state.trash) return <><Trash runtime={runtime} onBack={owner({ type: "closeTrash" }) ? () => tell({ type: "closeTrash" }) : undefined} />{scanner}</>;
   const atTop = shown === "AtTop";
@@ -235,7 +236,7 @@ export function Files({ runtime, alpha }: FilesProps) {
   const selectionActions = actionsOf({ owner, tell, chosenCount: marks.size, setDestination, rename: () => setNaming({ work: "Rename", name: firstPicked?.name ?? "", place: placeKey }) });
   const canDetails = firstPicked !== undefined && picked.length === 1 && owner({ type: "showDetails", target: firstPicked.id });
   return (
-    <section aria-label="Files" className={cn("relative flex min-h-0 flex-1 flex-col", launcherTop)}>
+    <section aria-label="Files" className={frame}>
       <div key={atTop ? "top" : "folder"} inert={previewing !== undefined && showingPreview(previewing)} className={cn("flex min-h-0 flex-1 flex-col", !atTop && "motion-safe:animate-rise")}>
         <AppHeader title={title} detail={selecting || !atTop} className={cn(selecting || !atTop ? cn("[&>h1]:ms-1.5 in-data-[alpha-title-row]:[&>h1]:ms-0", launcherInnerHeader) : launcherFirstHeader, selecting && "[&>h1]:font-display [&>h1]:text-2xl [&>h1]:font-light")} leading={selecting && (choosing || owner({ type: "cancelSelection" })) ? <Button variant="ghost" size="icon" aria-label="Cancel" onClick={endChoosing}><X /></Button> : atTop ? firstBack : back}>
           {selecting && canDetails && <Button variant="ghost" size="icon" aria-label="Details" onClick={() => tell({ type: "showDetails", target: firstPicked.id })}><Info /></Button>}

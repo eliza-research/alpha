@@ -1,6 +1,7 @@
 // spec/agent/index.md, "Story: Run Alpha's agent on the phone"; spec/app/platform/adoption.md, "Background work the earlier Alpha queued under a worker this Alpha does not ship never runs: at every start the phone cancels that work, and only that"
 package ai.alphacompute.alphaphone;
 
+import ai.alphacompute.localllm.AlphaLocalInferenceHost;
 import ai.eliza.os.agent.AgentService;
 import ai.eliza.plugins.signin.CredentialPolicy.Notice;
 import ai.eliza.plugins.signin.CredentialReader;
@@ -22,6 +23,7 @@ public final class AlphaApplication extends Application {
   boolean main = getPackageName().equals(getProcessName());
   if (main) AlphaEarlier.retireWork(this);
   if (main) AlphaLegacyAgentArchive.putBack(this);
+  if (main) LegacyMessagingGrants.migrate(this);
   AlphaAgentCredentials credentials = new AlphaAgentCredentials(this);
   AgentService.useCredentials(DeviceCustody.agentCredentials(this, BuildConfig.CLOUD_API_ORIGIN));
   if (main) AgentService.useGoogleBroker(DeviceCustody.googleBroker(this, BuildConfig.CLOUD_API_ORIGIN));
@@ -37,5 +39,12 @@ public final class AlphaApplication extends Application {
   });
   if (main) AlphaNotificationOwner.observe(this, reader, null);
   AlphaNotificationChannels.describe(this);
+ }
+
+ @Override public void onTrimMemory(int level) {
+  super.onTrimMemory(level);
+  if (!android.os.Process.isIsolated() && getPackageName().equals(getProcessName())) {
+   AlphaLocalInferenceHost.shared(this).onTrimMemory(level);
+  }
  }
 }

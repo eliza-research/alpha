@@ -5,6 +5,17 @@ import { Schema } from "effect";
 import { type Faked, rejection } from "./phone.ts";
 import type { Route } from "./routes.ts";
 
+/** The recording Android's Notes recorder holds, as its `status` reports it. */
+export interface Tape {
+  state: "idle" | "recording" | "paused" | "stopped";
+  recordingId?: string;
+  binding?: { readonly ownerDigest: string; readonly folderId: string | null };
+  stopReason?: string;
+  /** The audio heard so far; a journey moves it on as the microphone hears. */
+  durationMs: number;
+  segments: { readonly segmentId: string; readonly durationMs: number }[];
+}
+
 /** The agent's notes store as the fake agent holds it; a journey changes it between steps. */
 export interface NotesScene {
   notes: StickyNote[];
@@ -14,6 +25,15 @@ export interface NotesScene {
   trash: NonNullable<NotesSnapshot["trash"]>;
   creations: Map<string, string>;
   readonly audio: Map<string, { readonly noteId: string; readonly durationMs: number }>;
+  /** Android's Notes recorder: the tape it holds across restarts of Alpha, and each start or command it was given, in order. */
+  tape: Tape;
+  readonly told: string[];
+  /** Reports the tape as it is now, as Android's recorder does when it changes by itself. */
+  tapeChanged: () => void;
+  /** The owner presses Pause or Resume in the recording's notification, which Android carries out without Alpha. */
+  notification: (action: "Pause" | "Resume", publish?: boolean) => void;
+  /** Android's recorder hears `heardMs` more and closes the segment being written, as it does every 27 s while recording, also with Alpha closed. */
+  rollover: (heardMs: number) => void;
   playing?: { readonly audioId: string; readonly noteId: string; readonly offsetMs: number };
   /** Whether a read of the store fails, as an agent without its notes answers. */
   failing: boolean;
@@ -25,6 +45,9 @@ export interface NotesScene {
   /** The note a claim of a prepared saved-note editor names, as eliza's view host hands it to the renderer it is bound to. */
   target?: string;
   interactGate?: Promise<void>;
+  /** Holds each command Android's recorder is given until it settles, as a phone that has not yet carried it out. */
+  commandGate?: Promise<void>;
+  statusGate?: Promise<void>;
   /** Holds each deletion sent to the store, in place of `interactGate`, until it settles. */
   discardGate?: Promise<void>;
   /** Holds each read of the store until it settles. */
@@ -66,6 +89,11 @@ export function notesScene(now = Date.now()): NotesScene {
     trash: [],
     creations: new Map(),
     audio: new Map(),
+    tape: { state: "idle", durationMs: 0, segments: [] },
+    told: [],
+    tapeChanged: () => {},
+    notification: () => {},
+    rollover: () => {},
     notes: [
       note("enclave", "Enclave launch", "Confirm attestation flow\nShip the keys-on-device doc\nDry run Friday", now - 20 * 60_000, { kind: "text", data: { pinned: true } }),
       note("sync", "Design sync", "", now - hour, {
@@ -104,13 +132,87 @@ export function notesScene(now = Date.now()): NotesScene {
   };
 }
 
-/** The retained Notes recordings as the Android host reports them. */
-export function alphaNotes(scene: NotesScene): Faked {
-  return () => {
+/**
+ * The retained Notes recordings as the Android host reports them. As `AlphaNoteRecorder.java` does, it refuses a Start
+ * while a recording is open, until that one is discarded (line 136), and reports each change it makes to the tape before
+ * answering (`publish()` at lines 146, 221, 231, 237 and 268, sent on by `AlphaNotesPlugin.java` line 84); it discards
+ * only the recording it holds (`AlphaNotesPlugin.java` line 165). The notification's Pause pauses a recording that is
+ * recording, and its Resume goes on with a paused one only while no call holds the phone's audio
+ * (`AlphaNoteRecordingService.java` lines 82-86 and 101-104, `AlphaNotesPlugin.java` lines 67-72), each through the
+ * recorder's own pause or resume, which writes the segment so far on a pause and reports the change
+ * (`AlphaNoteRecorder.java` lines 221 and 229-231). The fake's phone is unlocked, has the microphone granted, holds the
+ * notification for the recording it shows and has no save of it unconfirmed, so the service's other checks pass. A
+ * rollover closes the segment being written only while recording and reports it (`AlphaNoteRecorder.java` lines 169-176),
+ * and the recorder and its notification outlive Alpha, so what they do while Alpha is closed is reported to no one.
+ */
+export function alphaNotes(scene: NotesScene, calling: () => boolean): Faked {
+  return (emit, onUnplug) => {
     let finish: ((result: { ok: boolean }) => void) | undefined;
+    let plugged = true;
+    const reading = () => scene.tape.state === "idle" ? { state: "idle" } : structuredClone(scene.tape);
+    const changed = () => {
+      if (plugged) emit("recordingChanged", reading());
+    };
+    const written = () => {
+      const heard = scene.tape.durationMs - scene.tape.segments.reduce((sum, one) => sum + one.durationMs, 0);
+      if (heard > 0) scene.tape.segments.push({ segmentId: `${scene.tape.recordingId}-${scene.tape.segments.length + 1}`, durationMs: heard });
+    };
+    const told = (recordingId: string, command: string, change: () => void) => {
+      const carry = () => {
+        if (recordingId !== scene.tape.recordingId || scene.tape.state === "idle") return Promise.reject(rejection("No such recording"));
+        scene.told.push(command);
+        const before = scene.tape.state;
+        change();
+        if (command === "End" || scene.tape.state !== before) changed();
+        return Promise.resolve(reading());
+      };
+      return scene.commandGate === undefined ? carry() : scene.commandGate.then(carry);
+    };
+    const notified = (action: "Pause" | "Resume", publish = true) => {
+      if (scene.tape.state !== (action === "Pause" ? "recording" : "paused") || action === "Resume" && calling()) return;
+      if (action === "Pause") written();
+      scene.tape.state = action === "Pause" ? "paused" : "recording";
+      if (publish) changed();
+    };
+    const rolled = (heardMs: number) => {
+      if (scene.tape.state !== "recording") return;
+      scene.tape.durationMs += heardMs;
+      written();
+      changed();
+    };
+    scene.tapeChanged = changed;
+    scene.notification = notified;
+    scene.rollover = rolled;
+    onUnplug?.(() => {
+      plugged = false;
+    });
     return {
       permission: () => Promise.resolve({ grant: "granted" }),
-      status: () => Promise.resolve({ state: "idle" }),
+      requestMicrophone: () => Promise.resolve({ grant: "granted" }),
+      status: () => scene.statusGate === undefined ? Promise.resolve(reading()) : scene.statusGate.then(reading),
+      start: ({ ownerDigest, folderId }: { ownerDigest: string; folderId?: string }) => {
+        if (scene.tape.state !== "idle") return Promise.reject(rejection("A recording is already open"));
+        scene.told.push("Start");
+        scene.tape = { state: "recording", recordingId: `recording-${scene.told.length}`, binding: { ownerDigest, folderId: folderId ?? null }, durationMs: 0, segments: [] };
+        changed();
+        return Promise.resolve(reading());
+      },
+      command: ({ recordingId, command }: { recordingId: string; command: "Pause" | "Resume" | "End" }) => told(recordingId, command, () => {
+        if (command !== "Resume") written();
+        scene.tape.state = command === "Pause" ? "paused" : command === "Resume" ? "recording" : "stopped";
+        if (command === "End") scene.tape.stopReason = "user";
+      }),
+      retain: ({ recordingId, noteId }: { recordingId: string; noteId: string }) => {
+        if (recordingId !== scene.tape.recordingId) return Promise.reject(rejection("No such recording"));
+        scene.audio.set(recordingId, { noteId, durationMs: scene.tape.durationMs });
+        return Promise.resolve({ audioId: recordingId, noteId, durationMs: scene.tape.durationMs });
+      },
+      discard: ({ recordingId }: { recordingId: string }) => {
+        if (recordingId !== scene.tape.recordingId) return Promise.reject(rejection("The recording changed"));
+        scene.tape = { state: "idle", durationMs: 0, segments: [] };
+        changed();
+        return Promise.resolve();
+      },
       consumeOpen: () => Promise.resolve({ open: false }),
       previousExists: () => Promise.resolve({ present: false }),
       describe: ({ audioId }: { audioId: string }) => {

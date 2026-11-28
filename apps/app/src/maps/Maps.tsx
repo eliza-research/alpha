@@ -119,8 +119,11 @@ function Manoeuvre({ maneuver, className }: { maneuver: string | undefined; clas
 
 /** The status card clears the search field or the route controls above it. */
 const statusTop: Record<string, string> = {
-  Browse: "top-32.5 in-data-[alpha-launcher]:top-43.5", Search: "top-21.5 in-data-[alpha-launcher]:top-32.5",
-  Place: "top-21 in-data-[alpha-launcher]:top-32", Directions: "top-58", Navigating: "top-47 in-data-[alpha-launcher]:top-58",
+  Browse: "top-[calc(var(--alpha-safe-top)+--spacing(32.5))] in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(32.5))]",
+  Search: "top-[calc(var(--alpha-safe-top)+--spacing(21.5))] in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(21.5))]",
+  Place: "top-[calc(var(--alpha-safe-top)+--spacing(21))] in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(21))]",
+  Directions: "top-[calc(var(--alpha-safe-top)+--spacing(58))] in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(47))]",
+  Navigating: "top-[calc(var(--alpha-safe-top)+--spacing(47))] in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(47))]",
 };
 
 // spec/app/maps/connection.md, "A wait Cloud names holds every Maps request back until it ends: a rate limit for at most a day, a spent allowance for at most 400 days, and any other wait one minute"
@@ -320,14 +323,18 @@ export function Maps({ runtime, alpha }: Shown<ScreenMachine | CreditsMachine | 
   const locate = () => myLocation?.();
   const disclosing = can({ type: "continueDisclosure" }) && now !== "Navigating";
   const hideFloatingForFullSheet = (now === "Search" || now === "Place" || now === "Directions") && state.sheet === "Full";
+  const creditsNotice = "Add Alpha Cloud credits to search places and get directions.";
+  const needsCredits = seen.insufficientCredits && (state.link.unoffered || holding(state.link));
+  const retryConnect = (state.link.coverage.status === "Failed" || (state.link.unoffered && seen.insufficientCredits)) && !holding(state.link) && can({ type: "connect" });
   // spec/app/maps/index.md, "Story: Use my location": every state Maps reports stands in one card under the search field, as on develop.
   const said: string[] = [
     ...(disclosing ? ["Maps uses your location to show where you are and to plan routes from it. Searches and route points go to the Maps provider; your agent is never told where you are."] : []),
-    ...(state.link.unoffered ? ["Maps unavailable"] : []),
+    ...(needsCredits ? [creditsNotice] : []),
+    ...(state.link.unoffered && !seen.insufficientCredits ? ["Maps unavailable"] : []),
     ...(retryMap ? ["Map rendering is unavailable. Retry the map or open a saved place."] : []),
     ...(refused ? ["Location permission was not granted. You can choose an origin manually.", "Allow location in Settings to show your position."] : []),
     ...(state.link.coverage.status === "Failed" && !holding(state.link) ? ["Maps could not be reached."] : []),
-    ...(holding(state.link) ? [waitNotice(state.link.wait, state.link.held)] : []),
+    ...(holding(state.link) && !seen.insufficientCredits ? [waitNotice(state.link.wait, state.link.held)] : []),
     ...(state.link.known && state.link.account === 0 ? ["Sign in to Alpha Cloud to use Maps."] : []),
     ...(state.missedFix ? ["No location fix arrived."] : []),
     ...(!state.keepable ? ["Saved places could not be read. Existing data has not been replaced."] : []),
@@ -341,7 +348,7 @@ export function Maps({ runtime, alpha }: Shown<ScreenMachine | CreditsMachine | 
     (retryMap || refused) && myLocation && <MapsPillButton key="here" className="text-sm font-normal" onClick={myLocation}>My location</MapsPillButton>,
     refused && myLocation && <MapsPillButton key="settings" tone="fill" aria-label="Location settings" className="gap-1.5 px-3 text-sm font-normal [&_svg]:size-4.5" onClick={myLocation}><Settings aria-hidden />Settings</MapsPillButton>,
     retryMap && <MapsPillButton key="map" tone="fill" aria-label="Retry map" className="gap-1.5 px-3 text-sm font-normal [&_svg]:size-4.5" onClick={retryMap}><RotateCw aria-hidden />Retry</MapsPillButton>,
-    state.link.coverage.status === "Failed" && !holding(state.link) && can({ type: "connect" }) && <MapsPillButton key="connect" tone="fill" className="gap-1.5 px-3 text-sm font-normal [&_svg]:size-4.5" onClick={() => void send({ type: "connect" })}><RotateCw aria-hidden />Retry</MapsPillButton>,
+    retryConnect && <MapsPillButton key="connect" tone="fill" className="gap-1.5 px-3 text-sm font-normal [&_svg]:size-4.5" onClick={() => void send({ type: "connect" })}><RotateCw aria-hidden />Retry</MapsPillButton>,
   ].filter(Boolean);
   const infoShown = !badgeOnly(state.link) && coverage?.available === true;
   const clockNow = runtime.runSync(Effect.flatMap(Time, (t) => t.latest()));
@@ -383,7 +390,7 @@ export function Maps({ runtime, alpha }: Shown<ScreenMachine | CreditsMachine | 
 
       {(now === "Browse" || now === "Search" || now === "Place") && (
         <MapsSearchBar
-          className="absolute inset-x-3 top-2 z-10 in-data-[alpha-launcher]:top-13"
+          className="absolute inset-x-3 top-[calc(var(--alpha-safe-top)+--spacing(2))] z-10 in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(2))]"
           leading={now === "Browse" && <AppBack alpha={alpha} />}
           lead={now === "Browse" ? "search" : "back"}
           onLead={now === "Browse" ? openSearch : leave}
@@ -400,11 +407,11 @@ export function Maps({ runtime, alpha }: Shown<ScreenMachine | CreditsMachine | 
         />
       )}
       {(now === "Directions" || now === "Navigating") && (
-        <div data-host-chrome="" className={cn("absolute top-0 left-3 z-10 in-data-[alpha-launcher]:hidden [&_button]:size-11", now === "Navigating" && "[&_button]:rounded-full [&_button]:bg-background")}><AppBack alpha={alpha} /></div>
+        <div data-host-chrome="" className={cn("absolute top-[var(--alpha-safe-top)] left-3 z-10 in-data-[alpha-launcher]:hidden [&_button]:size-11", now === "Navigating" && "[&_button]:rounded-full [&_button]:bg-background")}><AppBack alpha={alpha} /></div>
       )}
 
       {now === "Browse" && saved.length > 0 && (
-        <nav aria-label="Saved places" className="absolute inset-x-0 top-18 z-10 flex touch-pan-x gap-2 overflow-x-auto px-3 pb-2.5 [scrollbar-width:none] in-data-[alpha-launcher]:top-29">
+        <nav aria-label="Saved places" className="absolute inset-x-0 top-[calc(var(--alpha-safe-top)+--spacing(18))] z-10 flex touch-pan-x gap-2 overflow-x-auto px-3 pb-2.5 [scrollbar-width:none] in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(18))]">
           {saved.map((entry) => (
             <MapsChip key={entry.place} label={shown(entry.name)} icon={<MapPin />} disabled={!can({ type: "pickSaved", place: entry.place })} onClick={offer(screen, { type: "pickSaved", place: entry.place })} />
           ))}
@@ -412,7 +419,7 @@ export function Maps({ runtime, alpha }: Shown<ScreenMachine | CreditsMachine | 
       )}
       {(now === "Browse" || now === "Search" || now === "Place") && can({ type: "returnToEvent" }) && (
         <button type="button" aria-label="Back to event" onClick={() => void send({ type: "returnToEvent" })}
-          className={cn(focusRing, "absolute top-17.5 left-3 z-10 flex h-10 items-center gap-1 rounded-full bg-background pr-3.5 pl-2 text-sm font-semibold shadow-float ring-1 ring-border active:bg-accent dark:shadow-float-dark in-data-[alpha-launcher]:top-28.5 [&_svg]:size-4.5")}>
+          className={cn(focusRing, "absolute top-[calc(var(--alpha-safe-top)+--spacing(17.5))] left-3 z-10 flex h-10 items-center gap-1 rounded-full bg-background pr-3.5 pl-2 text-sm font-semibold shadow-float ring-1 ring-border active:bg-accent dark:shadow-float-dark in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(17.5))] [&_svg]:size-4.5")}>
           <ChevronLeft aria-hidden />Event
         </button>
       )}
@@ -624,7 +631,7 @@ function DirectionsCard({ screen, state, seen, store, spot, kept, saved, coverag
   const from = state.startPlace === 0 ? undefined : store.spot(state.startPlace);
   const swappable = can({ type: "swapEnds", lat: spot.at.lat, lng: spot.at.lng });
   return (
-    <div data-host-chrome="" className="absolute inset-x-3 top-13 z-10 rounded-group bg-background pt-1.5 pr-3 pb-3 pl-1 shadow-float ring-1 ring-border motion-safe:animate-drop dark:shadow-float-dark">
+    <div data-host-chrome="" className="absolute inset-x-3 top-[calc(var(--alpha-safe-top)+--spacing(13))] z-10 rounded-group bg-background pt-1.5 pr-3 pb-3 pl-1 shadow-float ring-1 ring-border motion-safe:animate-drop dark:shadow-float-dark in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(2))]">
       <div className="flex items-center gap-1">
         <MapsRoundButton tone="plain" size="sm" aria-label="Back to place" disabled={!back} onClick={back}><ChevronLeft /></MapsRoundButton>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -732,7 +739,7 @@ function GuidanceHeader({ state, seen, spot, kept, way }: { state: State; seen: 
   const remaining = way === undefined ? undefined : remainingMetrics(way, state.trip.turn);
   return (
     <>
-      <div data-host-chrome="" role="status" className="absolute inset-x-3 top-12.5 z-dialog flex items-center gap-4 rounded-sheet bg-alpha px-5 py-4.5 text-alpha-foreground shadow-banner motion-safe:animate-drop in-data-[alpha-launcher]:top-23.5">
+      <div data-host-chrome="" role="status" className="absolute inset-x-3 top-[calc(var(--alpha-safe-top)+--spacing(12.5))] z-dialog flex items-center gap-4 rounded-sheet bg-alpha px-5 py-4.5 text-alpha-foreground shadow-banner motion-safe:animate-drop in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(12.5))]">
         {arrived ? <Check aria-hidden className="size-13 shrink-0" /> : <Manoeuvre maneuver={turn?.maneuver} className="size-13" />}
         <div className="min-w-0">
           <div className="font-display text-figure-lg font-light">{arrived ? "Arrived" : precise && remaining !== undefined ? distance(remaining.toTurn) : state.trip.rerouting ? "Rerouting…" : "Locating…"}</div>
@@ -742,7 +749,7 @@ function GuidanceHeader({ state, seen, spot, kept, way }: { state: State; seen: 
         </div>
       </div>
       {!arrived && after !== undefined && (
-        <div className="absolute top-39.5 left-7 z-10 flex h-10 items-center gap-2 rounded-b-lg bg-alpha-deep px-3.5 text-sm font-semibold text-alpha-foreground motion-safe:animate-drop in-data-[alpha-launcher]:top-50.5">
+        <div className="absolute top-[calc(var(--alpha-safe-top)+--spacing(39.5))] left-7 z-10 flex h-10 items-center gap-2 rounded-b-lg bg-alpha-deep px-3.5 text-sm font-semibold text-alpha-foreground motion-safe:animate-drop in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(39.5))]">
           Then<Manoeuvre maneuver={after.maneuver} className="size-5" /><span className="max-w-55 truncate">{after.instruction}</span>
         </div>
       )}

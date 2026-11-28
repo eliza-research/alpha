@@ -7,7 +7,7 @@ import { useMachine } from "../../gen/app__workflows__automations.react.ts";
 import type { Machine } from "../../gen/app__workflows__automations.effect.vibe";
 import type { Preset, When } from "../../gen/app__workflows__schedule.ts";
 import type { Resident, Shown } from "../runtime/ui.tsx";
-import { AutomationWords, editAutomation, promptEditEvent, reviewAutomation, reviewPromptPower, rowOffers } from "./automations.vibe";
+import { AutomationWords, type TaskFailureReason, editAutomation, promptEditEvent, reviewAutomation, reviewPromptPower, rowOffers } from "./automations.vibe";
 import type { Prompt } from "./api.vibe";
 import type { WorkflowRow } from "./list.vibe";
 
@@ -33,6 +33,14 @@ const editLabels = { Prompt: "Edit prompt", Reminder: "Edit reminder", Schedule:
 const sources = { Prompt: "Agent automation", Reminder: "Agent reminder", Schedule: "Agent schedule", Routine: "Workflow" } as const;
 const schedules = [["Daily", "Every day"], ["Weekdays", "Weekdays"], ["Weekends", "Weekends"], ["Custom", "Custom"]] as const satisfies readonly (readonly [Preset, string])[];
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const failureText: Readonly<Record<TaskFailureReason, string>> = {
+  InsufficientCredits: "Out of credits. Check your plan in Settings.",
+  CredentialInvalid: "Sign in again in Settings.",
+  LimitReached: "Usage limit reached. Try again later.",
+  ModelUnavailable: "The model was unavailable.",
+  InvalidSummary: "The agent couldn’t write a valid summary.",
+  DispatchFailed: "The agent couldn’t run it.",
+};
 
 function EditFields({ initial, canReview, onReview }: { initial: { title: string; text: string }; canReview: boolean; onReview: (title: string, instructions: string) => void }) {
   const [title, setTitle] = useState(initial.title);
@@ -122,19 +130,30 @@ export function Automation({ runtime, row, owner }: AutomationProps) {
   const canSetCurrentTime = model.can({ type: "setTime", hour: state.when.hour, minute: state.when.minute });
   const reviewedPower = state.review.showing && (state.proposed === "Enable" || state.proposed === "Disable")
     ? snapshot.power : undefined;
+  const taskFailure = snapshot.taskFailure?.owner === owner && snapshot.taskFailure.row === number && snapshot.taskFailure.ticket === state.list.ticket
+    ? snapshot.taskFailure.reason
+    : undefined;
+  const failureMessage = state.fired === "DispatchFailed" || (row !== undefined && state.present && state.list.status === "Loaded" && state.status === "Failed")
+    ? failureText[taskFailure ?? "DispatchFailed"]
+    : undefined;
   return (
     <section aria-label={row === undefined ? "Automation" : "Automation controls"} className="flex flex-col gap-3">
       {row === undefined && !editing && model.can({ type: "openEditor", kind: "PromptTask", zone: 0 }) && (
         <WorkflowChoice label="Automation" icon={<Repeat />} onClick={editor} />
       )}
       {row !== undefined && !editing && !state.review.showing && (() => {
-        const offered = actions.filter(([wanted]) => wanted !== "Fire" && rowOffers(row, wanted) && model.can(eventFor(wanted)));
+        const reopen = eventFor("Reopen");
+        const canReopen = rowOffers(row, "Reopen") && model.can(reopen);
+        const offered = actions.filter(([wanted]) => wanted !== "Fire" && wanted !== "Reopen" && rowOffers(row, wanted) && model.can(eventFor(wanted)));
         const fire = eventFor("Fire");
         return (
           <div className="flex items-center gap-2">
             {row.kind !== "Reminder" && rowOffers(row, "Fire") && model.can(fire) && (
               <button type="button" aria-label="Run now" title="Run now" onClick={() => send(fire)}
                 className={cn(focusRing, "grid size-11 shrink-0 place-items-center rounded-full bg-foreground text-background")}><Play aria-hidden className="size-5.5" /></button>
+            )}
+            {canReopen && (
+              <Button variant="secondary" onClick={() => send(reopen)}>Reopen</Button>
             )}
             {(offered.length > 0 || canEdit) && <WorkflowActions label="More automation actions">
               {canEdit && <WorkflowAction onClick={editor}>{editLabels[row.kind]}</WorkflowAction>}
@@ -178,7 +197,7 @@ export function Automation({ runtime, row, owner }: AutomationProps) {
       {state.fired === "Deferred" && <p role="status">The agent scheduled another attempt.</p>}
       {state.fired === "Raced" && <p role="status">Another run started first.</p>}
       {state.fired === "SkippedRun" && <p role="status">The agent skipped the run.</p>}
-      {state.fired === "DispatchFailed" && <Alert variant="warn">The agent couldn’t run it.</Alert>}
+      {failureMessage !== undefined && <Alert variant="warn">{failureMessage}</Alert>}
       {state.change.live && <p role="status">Waiting for the agent…</p>}
       {model.can({ type: "checkChange" }) && <Alert variant="warn" role="status">The agent didn’t confirm the change.
         <Button size="sm" variant="secondary" onClick={() => send({ type: "checkChange" })}>Check change</Button>

@@ -7,7 +7,7 @@ import { Unreachable } from "../platform/index.vibe"
 import { Slack } from "../platform/index.vibe"
 import { Attempts } from "../runtime/index.vibe"
 import { type Job, answer, contained, due, reacting, run, started, together, untimed } from "../runtime/index.vibe"
-import { SlackLedger, handleSlackFailure, tokenForWorkspace } from "./ledger.vibe"
+import { SlackLedger, handleSlackFailure, withWorkspaceToken } from "./ledger.vibe"
 
 effect function recordSend(id: number, target: TargetKey): Event!!SlackLedger {
   const ledger = try SlackLedger
@@ -25,15 +25,14 @@ effect function dispatchSend(
   const slack = try Slack
   const ledger = try SlackLedger
   const attempts = try Attempts
-  const token = try tokenForWorkspace(target.workspace)
   const channelId = ledger.channelId(target.workspace, target.channel)
   const recorded = ledger.sendPayload(id)
-  if (token === undefined || channelId === undefined || recorded === undefined) {
+  if (channelId === undefined || recorded === undefined) {
     return { type: "sendAnswered", id, confirmed: false, known: true }
   }
   const threadTs = target.threadTs > 0 ? ledger.tsStr(target.workspace, target.channel, target.threadTs) : undefined
   const idempotencyKey = try attempts.key(id)
-  const resp = slack.postMessage(
+  const resp = withWorkspaceToken(target.workspace, (token) => slack.postMessage(
     token,
     {
       channel: channelId,
@@ -42,7 +41,8 @@ effect function dispatchSend(
       replyBroadcast: threadTs !== undefined && broadcast ? true : undefined,
     },
     idempotencyKey,
-  ) catch (failure) => failure
+  )) catch (failure) => failure
+  if (resp === undefined) return { type: "sendAnswered", id, confirmed: false, known: true }
   if (!("ok" in resp)) {
     try handleSlackFailure(target.workspace, resp)
     return { type: "sendAnswered", id, confirmed: false, known: !(resp instanceof Unreachable) }
@@ -62,17 +62,17 @@ effect function readBackSend(
 ): Event!!(Slack | SlackLedger | MessagingSessions | Auth.Machine) {
   const slack = try Slack
   const ledger = try SlackLedger
-  const token = try tokenForWorkspace(target.workspace)
   const channelId = ledger.channelId(target.workspace, target.channel)
   const recorded = ledger.sendPayload(id)
   const ownerId = ledger.workspaceMeta(target.workspace)?.ownerUserId ?? ""
-  if (token === undefined || channelId === undefined || recorded === undefined) {
+  if (channelId === undefined || recorded === undefined) {
     return { type: "readBackAnswered", ticket, ok: true, wasSent: false }
   }
   const threadStr = target.threadTs > 0 ? ledger.tsStr(target.workspace, target.channel, target.threadTs) : undefined
-  const page = (threadStr !== undefined
+  const page = withWorkspaceToken(target.workspace, (token) => threadStr !== undefined
     ? slack.replies(token, channelId, threadStr, { limit: 20 })
     : slack.history(token, channelId, { limit: 20 })) catch (failure) => failure
+  if (page === undefined) return { type: "readBackAnswered", ticket, ok: true, wasSent: false }
   if (!("ok" in page)) {
     try handleSlackFailure(target.workspace, page)
     return { type: "readBackAnswered", ticket, ok: false, wasSent: false }

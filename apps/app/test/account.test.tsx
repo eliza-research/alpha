@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // spec/app/account/index.md, "Story: Have the agent running"; spec/app/account/session.md, "Story: Hold the account signed in"; spec/app/account/signIn.md, "Story: Sign in with a code"; spec/app/account/provider.md, "Story: Use my own key"; spec/app/account/binding.md, "Story: Use Cloud AI only under the current sign-in and plan"; spec/app/account/plan.md, "Story: Know my plan"; spec/app/account/billing.md, "Story: Pay in the browser"; spec/app/account/change.md, "Story: Change or cancel my plan"; spec/app/account/codes.md, "Story: Redeem a code"; spec/app/account/google.md, "Story: See my Google accounts"; spec/app/account/access.md, "Story: Decide what the agent may change in Google"; spec/app/account/outside.md, "Story: Keep the agent out of my account"; spec/app/account/records.md, "Story: Restart after a failure that kept records"
 import { type Context, Effect, Layer, type ManagedRuntime, Stream } from "effect";
+import * as KeyValueStore from "effect/persistence/KeyValueStore";
 import { TestClock } from "effect/testing";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,12 +21,17 @@ import * as SignIn from "../gen/app__account__signIn.effect.vibe";
 import * as Pages from "../gen/app__settings.effect.vibe";
 import * as Shell from "../gen/app__shell.effect.vibe";
 import * as Layers from "../gen/app__shell__layers.effect.vibe";
+import * as UpdatePage from "../gen/app__update__page.effect.vibe";
 import { AccountShelf } from "../src/account/bridge.vibe";
 import { AccountStatus, accountPanelOverlay, accountRuntime } from "../src/account/index.tsx";
 import { normalizePhoneNumber } from "../src/account/phone.ts";
-import { accountLayer, accountProfile, openAccount } from "../src/account/profile.vibe";
+import { accountLayer, accountProfile, openAccount, profileShelf } from "../src/account/profile.vibe";
+import { AI_MODE_KEY, DEFAULT_LOCAL_MODEL_ID, LOCAL_MODEL_KEY } from "../src/platform/index.vibe";
 import type { Alpha, Resident as RootResident } from "../src/runtime/area.tsx";
 import { rooted, together, untimed, whole } from "../src/runtime/index.vibe";
+import { SignIn as StartupSignInView } from "../src/startup/SignIn.tsx";
+import { StartupSignIn, signInShelf, startupSignIn } from "../src/startup/signIn.vibe";
+import { engagements } from "../src/update/activity.vibe";
 import { closeAll, drawn, press, seen, underAct } from "./alpha.tsx";
 import { type AccountScene, accountPlatform, accountScene, makeSnapshot } from "./fakes/account.ts";
 
@@ -259,15 +265,19 @@ describe("Account", () => {
     await waitFor(runtime, Session.Machine, (s) => s.account === 0 && s.notice === "Ended");
   });
 
-  it("handles checkout, plan upgrade/cancel/keep quotes, gift redemption, and referrals (spec/app/account/billing.md, \"Story: Pay in the browser\")", async () => {
-    const startNow = 1_700_000_000_000;
-    const { scene, runtime } = await bootAccount({
+  const bootFreeAccount = async (startNow = 1_700_000_000_000) => {
+    const booted = await bootAccount({
       now: startNow,
       signedIn: true,
       snapshot: makeSnapshot({ nowMs: startNow, planKey: "free", source: "free", balanceUsdMicros: 0 }),
     });
-    await waitFor(runtime, Session.Machine, (s) => s.account > 0);
-    await waitFor(runtime, Plan.Machine, (p) => p.standing === "Unfunded");
+    await waitFor(booted.runtime, Session.Machine, (s) => s.account > 0);
+    await waitFor(booted.runtime, Plan.Machine, (p) => p.standing === "Unfunded");
+    return booted;
+  };
+
+  it("handles checkout, plan upgrade/cancel/keep quotes, gift redemption, and referrals (spec/app/account/billing.md, \"Story: Pay in the browser\")", async () => {
+    const { scene, runtime } = await bootFreeAccount();
     const signIn = Session.currentSignIn(await runtime.runPromise(Session.Machine.use((m) => m.get())));
 
     await runtime.runPromise(Billing.Machine.use((m) => m.send({ type: "askOffers", signIn })));
@@ -379,5 +389,177 @@ describe("Account", () => {
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Alpha Cloud session");
     await press("Close Account");
     await waitFor(alpha.runtime, Layers.Machine, (l) => !Layers.listed(l, accountLayer));
+  });
+
+  it("admits zero-sign-in local AI mode on startup, persists across restart, and stays safe on cold async runtimes (spec/app/account/provider.md, \"Story: See where my requests go\")", async () => {
+    const storeMap = new Map<string, string>();
+    const persistedStore = Layer.succeed(
+      KeyValueStore.KeyValueStore,
+      KeyValueStore.makeStringOnly({
+        get: (key) => Effect.succeed(storeMap.get(key)),
+        set: (key, value) => Effect.sync(() => { storeMap.set(key, value); }),
+        remove: (key) => Effect.sync(() => { storeMap.delete(key); }),
+        clear: Effect.sync(() => { storeMap.clear(); }),
+        size: Effect.sync(() => storeMap.size),
+        keys: Effect.sync(() => [...storeMap.keys()]),
+      }),
+    );
+    const scene = accountScene({ signedIn: false });
+    const platform = Layer.mergeAll(accountPlatform(scene), persistedStore);
+    const startupLayer = Layer.provideMerge(
+      startupSignIn(true),
+      Layer.mergeAll(UpdatePage.machine(), engagements),
+    );
+    const startupBase = Layer.provideMerge(
+      whole(startupLayer),
+      platform,
+    );
+    const startupRoot = rooted(startupBase);
+    await startupRoot.runtime.runPromise(UpdatePage.Machine.use((m) => m.send({
+      type: "endUpdate",
+      activation: 0,
+      bridge: 0,
+      ending: "Gone",
+      resume: false,
+      idle: true,
+    })));
+
+    const container = document.body.appendChild(document.createElement("div"));
+    const reactRoot = createRoot(container);
+    disposers.push(async () => {
+      await drawn(() => reactRoot.unmount());
+      container.remove();
+      await startupRoot.dispose();
+    });
+
+    await startupRoot.runtime.runPromise(StartupSignIn.use((s) => s.check()));
+    const startupAlpha: Alpha = {
+      runtime: startupRoot.runtime as unknown as ManagedRuntime.ManagedRuntime<RootResident, unknown>,
+      over: (layer) => startupRoot.over(layer as never),
+      slot: () => null,
+      back: () => Promise.resolve(undefined),
+      taking: () => undefined,
+      requiresSignIn: true,
+      dispose: startupRoot.dispose,
+    };
+    const initialRead = await startupRoot.runtime.runPromise(Effect.map(signInShelf, (s) => s.snapshot()));
+    const initialSignInState = await startupRoot.runtime.runPromise(SignIn.Machine.use((m) => m.get()));
+    expect(initialRead.stage).toBe("Required");
+
+    await drawn(async () => {
+      reactRoot.render(
+        <StartupSignInView alpha={startupAlpha} read={initialRead} state={initialSignInState} />,
+      );
+      await startupRoot.runtime.runPromise(Effect.void);
+    });
+
+    expect(container.textContent).toContain("Use On-Device AI (No Sign-In)");
+    const localBtn = Array.from(container.querySelectorAll("button")).find((btn) => btn.textContent?.includes("Use On-Device AI"));
+    expect(localBtn).toBeDefined();
+    await drawn(async () => {
+      localBtn?.click();
+      await vi.waitFor(async () => {
+        const after = await startupRoot.runtime.runPromise(Effect.map(signInShelf, (s) => s.snapshot()));
+        expect(after.stage).toBe("Admitted");
+        expect(after.accountConfirmed).toBe(false);
+      });
+    });
+    expect(storeMap.get(AI_MODE_KEY)).toBe("local");
+    expect(storeMap.get(LOCAL_MODEL_KEY)).toBe(DEFAULT_LOCAL_MODEL_ID);
+
+    const restartedRoot = rooted(Layer.provideMerge(
+      whole(startupLayer),
+      platform,
+    ));
+    disposers.push(() => restartedRoot.dispose());
+    await restartedRoot.runtime.runPromise(UpdatePage.Machine.use((m) => m.send({
+      type: "endUpdate",
+      activation: 0,
+      bridge: 0,
+      ending: "Gone",
+      resume: false,
+      idle: true,
+    })));
+    await restartedRoot.runtime.runPromise(StartupSignIn.use((s) => s.check()));
+    const restartedRead = await restartedRoot.runtime.runPromise(Effect.map(signInShelf, (s) => s.snapshot()));
+    expect(restartedRead.stage).toBe("Admitted");
+    expect(restartedRead.accountConfirmed).toBe(false);
+
+    const coldRoot = rooted(Layer.provideMerge(
+      whole(together(Layer.effectDiscard(Effect.promise(() => Promise.resolve())), accountProfile)),
+      platform,
+    ));
+    disposers.push(() => coldRoot.dispose());
+    const coldAlpha: Alpha = {
+      runtime: coldRoot.runtime as unknown as ManagedRuntime.ManagedRuntime<RootResident, unknown>,
+      over: (layer) => coldRoot.over(layer as never),
+      slot: () => null,
+      back: () => Promise.resolve(undefined),
+      taking: () => undefined,
+      requiresSignIn: false,
+      dispose: coldRoot.dispose,
+    };
+    const coldHost = document.body.appendChild(document.createElement("div"));
+    const coldReactRoot = createRoot(coldHost);
+    disposers.push(async () => {
+      await drawn(() => coldReactRoot.unmount());
+      coldHost.remove();
+    });
+    await drawn(async () => {
+      coldReactRoot.render(<AccountStatus alpha={coldAlpha} />);
+      await coldRoot.runtime.runPromise(Effect.map(profileShelf, (shelf) => { shelf.publish({ tag: "SignInRequired" }); }));
+    });
+    await vi.waitFor(() => expect(coldHost.textContent).toContain("On-device AI"));
+  });
+
+  it("exposes 3-way AI mode switcher, Gemma 4 catalog, and Billing review-to-Stripe checkout inside AccountPanel (spec/app/account/billing.md, \"Story: Pay in the browser\")", async () => {
+    const { alpha, scene, runtime } = await bootFreeAccount();
+
+    await drawn(() => alpha.runtime.runPromise(openAccount()));
+    await waitFor(alpha.runtime, Layers.Machine, (l) => Layers.listed(l, accountLayer));
+
+    const aiTab = Array.from(document.querySelectorAll('[role="tab"]')).find((el) => el.textContent === "AI") as HTMLElement | undefined;
+    expect(aiTab).toBeDefined();
+    await drawn(() => {
+      aiTab?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      aiTab?.click();
+    });
+    expect(document.body.textContent).toContain("On-Device (No Sign-In)");
+    expect(document.body.textContent).toContain("Gemma 4 E2B IT (Q4_0)");
+    expect(document.body.textContent).toContain("Qwen 3.5 4B (Q4_K_M)");
+
+    const localModeBtn = Array.from(document.querySelectorAll("button")).find((btn) => btn.textContent === "On-Device (No Sign-In)");
+    await drawn(async () => {
+      localModeBtn?.click();
+      await vi.waitFor(() => expect(runtime.runSync(AccountShelf.use((s) => Effect.succeed(s.snapshot()))).aiMode).toBe("local"));
+    });
+
+    const billingTab = Array.from(document.querySelectorAll('[role="tab"]')).find((el) => el.textContent === "Billing") as HTMLElement | undefined;
+    expect(billingTab).toBeDefined();
+    await drawn(() => {
+      billingTab?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      billingTab?.click();
+    });
+    expect(document.body.textContent).toContain("On-device AI");
+    expect(document.body.textContent).not.toContain("No active plan (AI off)");
+
+    const loadPlansBtn = Array.from(document.querySelectorAll("button")).find((btn) => btn.textContent === "Load plans & invoices");
+    await drawn(async () => {
+      loadPlansBtn?.click();
+      await waitFor(runtime, Billing.Machine, (b) => b.offers.status === "Loaded");
+    });
+    const subscribeBtn = Array.from(document.querySelectorAll("button")).find((btn) => btn.textContent === "Subscribe");
+    expect(subscribeBtn).toBeDefined();
+    expect(subscribeBtn?.disabled).toBe(false);
+    await drawn(async () => {
+      subscribeBtn?.click();
+      await waitFor(runtime, Billing.Machine, (b) => b.review.tag === "PurchaseReview");
+    });
+    const continueStripeBtn = Array.from(document.querySelectorAll("button")).find((btn) => btn.textContent === "Continue to Stripe");
+    expect(continueStripeBtn).toBeDefined();
+    await drawn(async () => {
+      continueStripeBtn?.click();
+      await vi.waitFor(() => expect(scene.openedExternalUrls.some((u) => u.includes("checkout.stripe.test"))).toBe(true));
+    });
   });
 });

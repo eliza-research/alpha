@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<favorites xmlns:launcher="http://schemas.android.com/apk/res-auto">
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:container="-101"
+        launcher:packageName="ai.alphacompute.phone"
+        launcher:screen="0"
+        launcher:x="0"
+        launcher:y="0" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:container="-101"
+        launcher:packageName="ai.alphacompute.messages"
+        launcher:screen="1"
+        launcher:x="1"
+        launcher:y="0" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:container="-101"
+        launcher:packageName="ai.alphacompute.browser"
+        launcher:screen="2"
+        launcher:x="2"
+        launcher:y="0" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:container="-101"
+        launcher:packageName="ai.alphacompute.camera"
+        launcher:screen="3"
+        launcher:x="3"
+        launcher:y="0" />
+
+    <appwidget
+        launcher:className="ai.alphacompute.alphaphone.widget.AlphaDayWidgetProvider"
+        launcher:packageName="ai.alphacompute.alphaphone"
+        launcher:screen="0"
+        launcher:spanX="4"
+        launcher:spanY="2"
+        launcher:x="0"
+        launcher:y="0" />
+
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.inbox"
+        launcher:screen="0"
+        launcher:x="0"
+        launcher:y="2" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.calendar"
+        launcher:screen="0"
+        launcher:x="1"
+        launcher:y="2" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.notes"
+        launcher:screen="0"
+        launcher:x="2"
+        launcher:y="2" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.reminders"
+        launcher:screen="0"
+        launcher:x="3"
+        launcher:y="2" />
+
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.maps"
+        launcher:screen="0"
+        launcher:x="0"
+        launcher:y="3" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.photos"
+        launcher:screen="0"
+        launcher:x="1"
+        launcher:y="3" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.clock"
+        launcher:screen="0"
+        launcher:x="2"
+        launcher:y="3" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.files"
+        launcher:screen="0"
+        launcher:x="3"
+        launcher:y="3" />
+
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.contacts"
+        launcher:screen="0"
+        launcher:x="0"
+        launcher:y="4" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.workflows"
+        launcher:screen="0"
+        launcher:x="1"
+        launcher:y="4" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.wallet"
+        launcher:screen="0"
+        launcher:x="2"
+        launcher:y="4" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.settings"
+        launcher:screen="0"
+        launcher:x="3"
+        launcher:y="4" />
+
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.telegram"
+        launcher:screen="1"
+        launcher:x="0"
+        launcher:y="0" />
+    <favorite
+        launcher:className="ai.alphacompute.thinapp.ThinAppActivity"
+        launcher:packageName="ai.alphacompute.slack"
+        launcher:screen="1"
+        launcher:x="1"
+        launcher:y="0" />
+</favorites>

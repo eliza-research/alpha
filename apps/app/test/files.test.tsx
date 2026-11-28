@@ -288,16 +288,28 @@ describe("Files on a phone", () => {
     world.files.access = "denied";
     const { alpha, runtime } = await onFiles(world);
     // spec/app/files/index.md, "Allow goes to the permission flow while Android was never asked, and to Android's Settings after"
+    const reads = () => world.files.calls.filter((call) => ["storageList", "storageCategory", "storageQuery"].includes(call));
+    const prompt = () => [document.body.textContent?.includes("Allow all files access"), document.body.textContent?.includes("This place cannot be read now"), reads()];
     await until(alpha, runtime, Browser, (s) => s.open && s.access === "Unasked");
-    expect([Boolean(button("Allow")), world.files.calls.includes("storageList")]).toEqual([true, false]);
+    expect([Boolean(button("Allow")), ...prompt()]).toEqual([true, true, false, []]);
     await press("Allow");
     await until(alpha, runtime, Browser, (s) => s.access === "Denied");
+    expect([Boolean(button("Open Settings")), ...prompt()]).toEqual([true, true, false, []]);
     await press("Open Settings");
     world.files.access = "granted";
     // spec/app/files/index.md, "When the phone says Alpha may read the storage the place is read, and when it takes access away, or says the storage cannot be reached at all, everything read is dropped"
     await press("Open Settings");
     await until(alpha, runtime, Browser, (s) => s.access === "Granted" && s.storage.status === "Loaded");
     expect(world.files.calls.filter((call) => call.startsWith("storageRequestAccess"))).toEqual(["storageRequestAccess", "storageRequestAccess settings", "storageRequestAccess settings"]);
+    expect([Boolean(button("All files")), Boolean(button("Internal storage")), ...prompt().slice(0, 2)]).toEqual([true, true, false, false]);
+    await press("Downloads");
+    await until(alpha, runtime, Browser, (s) => s.inCategory && s.category === "Download" && s.listing.status === "Loaded");
+    expect(listed().toSorted()).toEqual(["beach.jpg", "lease.pdf"]);
+    world.files.access = "denied";
+    await seen(false);
+    await seen(true);
+    await until(alpha, runtime, Browser, (s) => s.access === "Unasked" && s.items.length === 0);
+    expect([Boolean(button("Allow")), ...prompt().slice(0, 2)]).toEqual([true, true, false]);
   });
 
   it("Arrange and filter what I see (spec/app/files/index.md, \"Story: Arrange and filter what I see\"; spec/app/files/search.md, \"Story: Filter what I see\")", async () => {

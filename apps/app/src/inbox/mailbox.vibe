@@ -1,5 +1,6 @@
 // spec/app/inbox/index.md, "Story: See my mail"
 import { CloudError } from "@elizaos/cloud"
+import { type SecondFactor, type SignInAttempt, type SignInReceipt, signInCode } from "@elizaos/os-bridges"
 import { gmailConsentCapabilities, protocolFailure } from "@elizaos/plugin-inbox-client"
 import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import * as Inbox from "../../gen/app__inbox.effect.vibe"
@@ -12,12 +13,12 @@ import { waiting } from "../home/waiting.vibe"
 import { civilDay } from "../calendar/time.ts"
 import { fromAreas } from "../home/cards.vibe"
 import { Device, native } from "../platform/index.vibe"
-import { CLOUD_ENVIRONMENT, signInAccounts } from "../platform/index.vibe"
+import { CLOUD_ENVIRONMENT, openGoogleAuthorization, signInAccounts } from "../platform/index.vibe"
 import { afterMailSignIn, leaseRefusalReason } from "../../gen/app__platform.effect.vibe"
 import { Cloud, mailSignIn } from "../platform/index.vibe"
 import type { Machine as Toasts } from "../../gen/app__notices__toasts.effect.vibe"
 import { type Said, say } from "../notices/index.vibe"
-import { type Job, Whole, answer, contained, migratedStore, reacting, started, stream, together, untimed } from "../runtime/index.vibe"
+import { type Job, Whole, answer, contained, createShelf, migratedStore, reacting, started, stream, together, untimed } from "../runtime/index.vibe"
 import { InboxAhead, aheadKey, prefetch } from "./ahead.vibe"
 import type { GmailAuthorizationWindow } from "./authorization.vibe"
 import { Mail, asked, connections, failureOf, mail, page } from "./gmail.vibe"
@@ -176,53 +177,58 @@ effect function signInForMail(usual: () => void): void!!(Cloud | Mail | Inbox.Ma
   else if (next === "AsAlways") usual()
 }
 
-// spec/app/inbox/index.md, "The owner authorizes Gmail in Google and Inbox checks access on return"
-effect function authorizeGmail(intent: ConsentIntent, popup: GmailAuthorizationWindow | undefined): boolean!!MailConsent {
-  const shell = try Shell
-  const mailbox = try Inbox.Machine
+/** Owner confirmation state when the phone requires a fresh account session before opening Google OAuth consent. */
+export type MailReauthState =
+  | { readonly kind: "Idle" }
+  | { readonly kind: "Starting"; readonly email: string }
+  | { readonly kind: "EnterCode"; readonly email: string; readonly expiresAt: number; readonly error?: string; readonly busy?: boolean }
+  | { readonly kind: "UseFactor"; readonly email: string; readonly factors: readonly SecondFactor[]; readonly expiresAt: number; readonly smsSent: boolean; readonly error?: string; readonly busy?: boolean }
+
+interface PendingMailConsent {
+  readonly intent: ConsentIntent
+  readonly account: number
+  readonly capabilities: ReadonlyArray<string>
+  readonly owner: Owner
+  readonly generation: number
+  readonly email: string
+  readonly attempt: SignInAttempt
+  readonly expiresAt: number
+}
+
+type ConnectOutcome = "Opened" | "ReauthRequired" | "Failed"
+
+effect function consentActive(intent: ConsentIntent, account: number, generation: number): boolean!!MailConsent {
+  const view = try (try Shell).get()
+  const list = try (try Inbox.Machine).get()
   const ledger = try Mail
-  const drafts = try Drafts
-  const operations = try Sending.Machine
-  const account = intent.kind === "Send" ? intent.account : (try mailbox.get()).selected.account
-  const generation = ledger.generation()
-  const active = effect {
-    const view = try shell.get()
-    const list = try mailbox.get()
-    if (view.route !== intent.route || !showing(view, "Inbox") || !list.signedIn || list.failure === "LeaseNeeded" ||
-      !ledger.ownerConfirmed() || ledger.generation() !== generation) return false
-    if (intent.kind === "Connect") return list.selected.account === account && !Inbox.readable(list)
-    const draft = try drafts.get()
-    return draft.open && draft.letter.id === intent.draft && draft.letter.account === account && draft.session === intent.session &&
-      Sending.canTurnOnSending(try operations.get(), Inbox.accessOf(list, account), account)
-  }
-  if (!(try active)) return false
-  if (popup === undefined) {
-    try say("Allow pop-ups to connect Gmail", true)
-    return false
-  }
-  const started = effect {
-    if (intent.kind === "Send") {
-      const access = Inbox.accessOf(try mailbox.get(), account)
-      const moved = try operations.send({ type: "turnOnSending", access, account }, "Owner")
-      if (!moved.out.some((emitted) => emitted.tag === "OpenGoogleAccess" && emitted.account === account)) return false
-    }
-    const owner = try currentOwner()
-    if (owner?.saved === undefined || !(try active)) return false
-    const client = provider(try Cloud)
-    const connection = ledger.connection(account)
-    const held = connection === undefined ? [] : (try client.gmailAccounts()).find((item) => item.connectionId === connection)?.grantedCapabilities ?? []
-    if (!(try active)) return false
-    const { authUrl } = try client.gmailConnect([
-      ...gmailConsentCapabilities(intent.kind === "Send" ? "send" : "modify", held), ...held.filter((name) => name.startsWith("google.calendar.")),
-    ])
-    const current = try currentOwner()
-    if (current?.stamp !== owner.stamp || current.saved !== owner.saved || !(try active)) return false
-    const url = Effect.try(() => new URL(authUrl)) catch () => undefined
-    return url !== undefined && url.origin === "https://accounts.google.com" && url.pathname === "/o/oauth2/v2/auth" &&
-      url.username === "" && url.password === "" && (try popup.open(url))
-  } catch () => false
-  if (!started && (try active)) try say("Gmail authorization could not be opened", true)
-  return started
+  if (view.route !== intent.route || !showing(view, "Inbox") || !list.signedIn || list.failure === "LeaseNeeded" ||
+    !ledger.ownerConfirmed() || ledger.generation() !== generation) return false
+  if (intent.kind === "Connect") return list.selected.account === account && !Inbox.readable(list)
+  const draft = try (try Drafts).get()
+  return draft.open && draft.letter.id === intent.draft && draft.letter.account === account && draft.session === intent.session &&
+    Sending.canTurnOnSending(try (try Sending.Machine).get(), Inbox.accessOf(list, account), account)
+}
+
+effect function openGoogleConsent(
+  capabilities: ReadonlyArray<string>,
+  owner: Owner,
+  active: boolean!!MailConsent,
+  popup: GmailAuthorizationWindow,
+): ConnectOutcome!!MailConsent {
+  const client = provider(try Cloud)
+  const reply = effect {
+    return { ok: true as const, authUrl: (try client.gmailConnect(capabilities)).authUrl }
+  } catch (cause) => ({
+    ok: false as const,
+    reauth: protocolFailure(cause)?.status === 401 && protocolFailure(cause)?.reason === "reauth_required",
+  })
+  if (!reply.ok) return reply.reauth ? "ReauthRequired" : "Failed"
+  const current = try currentOwner()
+  if (current?.stamp !== owner.stamp || current.saved !== owner.saved || !(try active)) return "Failed"
+  const url = Effect.try(() => new URL(reply.authUrl)) catch () => undefined
+  if (url === undefined || url.origin !== "https://accounts.google.com" || url.pathname !== "/o/oauth2/v2/auth" ||
+    url.username !== "" || url.password !== "") return "Failed"
+  return (try popup.open(url)) ? "Opened" : "Failed"
 }
 
 /** Inbox's sign-in for mail, for the list's own controls to ask. */
@@ -231,20 +237,218 @@ export service MailSignIn {
   signIn(usual: () => void): void!!
   retry(): void!!
   consent(intent: ConsentIntent, popup: GmailAuthorizationWindow | undefined): void!!
+  reauthSnapshot(): MailReauthState
+  subscribeReauth(listener: () => void): () => void
+  verifyReauth(typed: string, factor?: SecondFactor): void!!
+  sendReauthSms(): void!!
+  resendReauth(): void!!
+  cancelReauth(): void!!
 }
 
 const signIns = Layer.effect(MailSignIn, effect {
   const whole = try Whole
   const opening = try Semaphore.make(1)
+  const reauthShelf = createShelf<MailReauthState>({ kind: "Idle" })
+  let pending: PendingMailConsent | undefined
+  let reauthEpoch = 0
+
+  effect function retireAttempt(): void!! {
+    const previous = pending
+    pending = undefined
+    if (previous !== undefined) try ignore(tryPromise(() => signInAccounts().cancel({ attempt: previous.attempt })))
+  }
+
+  effect function clearReauth(): void!! {
+    reauthEpoch += 1
+    try retireAttempt()
+    reauthShelf.set({ kind: "Idle" })
+  }
+
+  effect function startEmailReauth(
+    meta: Omit<PendingMailConsent, "attempt" | "expiresAt">,
+    active: boolean!!MailConsent,
+  ): ("Confirmed" | "Waiting" | "Stale" | "Unavailable")!!MailConsent {
+    const started = reauthEpoch
+    try retireAttempt()
+    reauthShelf.set({ kind: "Starting", email: meta.email })
+    const receipt = tryPromise(() => signInAccounts().reauthenticate({ environment: CLOUD_ENVIRONMENT, method: "email", email: meta.email })) catch () => undefined
+    if (receipt === undefined) {
+      if (reauthEpoch === started) reauthShelf.set({ kind: "Idle" })
+      return "Unavailable"
+    }
+    if (reauthEpoch !== started || !(try active)) {
+      try ignore(tryPromise(() => signInAccounts().cancel({ attempt: receipt.attempt })))
+      return "Stale"
+    }
+    if (receipt.verdict.kind === "AccountConfirmed") {
+      reauthShelf.set({ kind: "Idle" })
+      return "Confirmed"
+    }
+    if (receipt.verdict.kind !== "CodeOnItsWay") {
+      reauthShelf.set({ kind: "Idle" })
+      return "Unavailable"
+    }
+    pending = { ...meta, attempt: receipt.attempt, expiresAt: receipt.verdict.expiresAt }
+    reauthShelf.set({ kind: "EnterCode", email: meta.email, expiresAt: receipt.verdict.expiresAt })
+    return "Waiting"
+  }
+
+  // spec/app/inbox/index.md, "The owner authorizes Gmail in Google and Inbox checks access on return"
+  effect function authorize(intent: ConsentIntent, popup: GmailAuthorizationWindow | undefined): boolean!!MailConsent {
+    const mailbox = try Inbox.Machine
+    const ledger = try Mail
+    const operations = try Sending.Machine
+    const account = intent.kind === "Send" ? intent.account : (try mailbox.get()).selected.account
+    const generation = ledger.generation()
+    const active = consentActive(intent, account, generation)
+    if (!(try active)) return false
+    if (popup === undefined) {
+      try say("Allow pop-ups to connect Gmail", true)
+      return false
+    }
+    const started = effect {
+      if (intent.kind === "Send") {
+        const access = Inbox.accessOf(try mailbox.get(), account)
+        const moved = try operations.send({ type: "turnOnSending", access, account }, "Owner")
+        if (!moved.out.some((emitted) => emitted.tag === "OpenGoogleAccess" && emitted.account === account)) return false
+      }
+      const owner = try currentOwner()
+      if (owner?.saved === undefined || !(try active)) return false
+      const client = provider(try Cloud)
+      const connection = ledger.connection(account)
+      const held = connection === undefined ? [] : (try client.gmailAccounts()).find((item) => item.connectionId === connection)?.grantedCapabilities ?? []
+      if (!(try active)) return false
+      const capabilities = [
+        ...gmailConsentCapabilities(intent.kind === "Send" ? "send" : "modify", held),
+        ...held.filter((name) => name.startsWith("google.calendar.")),
+      ]
+      const first = try openGoogleConsent(capabilities, owner, active, popup)
+      if (first === "Opened") return true
+      if (first !== "ReauthRequired" || !native()) return false
+      const readiness = (tryPromise(() => signInAccounts().status({ environment: CLOUD_ENVIRONMENT })) catch () => undefined)?.readiness
+      if (readiness?.google) {
+        const googleReceipt = tryPromise(() => signInAccounts().reauthenticate({ environment: CLOUD_ENVIRONMENT, method: "google" })) catch () => undefined
+        if (googleReceipt?.verdict.kind === "AccountConfirmed") {
+          return (try openGoogleConsent(capabilities, owner, active, popup)) === "Opened"
+        }
+        if (googleReceipt?.verdict.kind === "Ended" && googleReceipt.verdict.problem === "Cancelled") return true
+      }
+      if (!readiness?.email) return false
+      const cloud = try Cloud
+      const profile = asked((signal) => cloud.client.account({ signal })) catch () => undefined
+      const email = profile?.email?.trim()
+      if (!email || !(try active)) return false
+      const begun = try startEmailReauth({ intent, account, capabilities, owner, generation, email }, active)
+      if (begun === "Waiting" || begun === "Stale") return true
+      if (begun === "Confirmed") return (try openGoogleConsent(capabilities, owner, active, popup)) === "Opened"
+      return false
+    } catch () => false
+    if (!started && (try active)) try say("Gmail authorization could not be opened", true)
+    return started
+  }
+
+  effect function verify(typed: string, factor?: SecondFactor): void!!MailConsent {
+    const current = pending
+    const started = reauthEpoch
+    if (current === undefined) return
+    const active = consentActive(current.intent, current.account, current.generation)
+    if ((try Clock.currentTimeMillis) >= current.expiresAt || !(try active)) {
+      const stillHere = try active
+      try clearReauth()
+      if (stillHere) try say("Gmail authorization could not be opened", true)
+      return
+    }
+    const setReauthForm = (error: string | undefined, busy: boolean) => {
+      reauthShelf.update((state) => (state.kind === "EnterCode" || state.kind === "UseFactor" ? { ...state, error, busy } : state))
+    }
+    const code = signInCode(typed)
+    if (Option.isNone(code)) {
+      setReauthForm("Check the code and try again.", false)
+      return
+    }
+    setReauthForm(undefined, true)
+    const receipt: SignInReceipt | undefined = tryPromise(() => signInAccounts().verify({
+      attempt: current.attempt, code: code.value, ...(factor === undefined ? {} : { factor }),
+    })) catch () => undefined
+    if (reauthEpoch !== started || pending !== current || !(try active)) return
+    if (receipt?.attempt !== current.attempt) {
+      try clearReauth()
+      try say("Gmail authorization could not be opened", true)
+      return
+    }
+    const reply = receipt.verdict
+    if (reply.kind === "FactorAsked") {
+      pending = { ...current, expiresAt: reply.expiresAt }
+      reauthShelf.set({ kind: "UseFactor", email: current.email, factors: reply.factors, expiresAt: reply.expiresAt, smsSent: false })
+      return
+    }
+    if (reply.kind === "TryAgain") {
+      setReauthForm("Check the code and try again.", false)
+      return
+    }
+    pending = undefined
+    reauthShelf.set({ kind: "Idle" })
+    if (reply.kind !== "AccountConfirmed") {
+      try say("Gmail authorization could not be opened", true)
+      return
+    }
+    const opened = try openGoogleConsent(current.capabilities, current.owner, active, { open: openGoogleAuthorization, close: () => succeed(undefined) })
+    if (opened !== "Opened" && (try active)) try say("Gmail authorization could not be opened", true)
+  }
+
+  effect function sendSms(): void!!MailConsent {
+    const current = pending
+    const started = reauthEpoch
+    if (current === undefined || reauthShelf.get().kind !== "UseFactor") return
+    const active = consentActive(current.intent, current.account, current.generation)
+    if ((try Clock.currentTimeMillis) >= current.expiresAt || !(try active)) {
+      try clearReauth()
+      return
+    }
+    reauthShelf.update((state) => (state.kind === "UseFactor" ? { ...state, busy: true, error: undefined } : state))
+    const sent = tryPromise(() => signInAccounts().sendFactorCode({ attempt: current.attempt })) catch () => undefined
+    if (reauthEpoch !== started || pending !== current || !(try active)) return
+    reauthShelf.update((state) => (state.kind === "UseFactor"
+      ? { ...state, busy: false, smsSent: sent === current.attempt || state.smsSent, ...(sent === current.attempt ? {} : { error: "Couldn’t send a text message." }) }
+      : state))
+  }
+
+  effect function resend(): void!!MailConsent {
+    const current = pending
+    if (current === undefined) return
+    const active = consentActive(current.intent, current.account, current.generation)
+    const begun = try startEmailReauth(current, active)
+    if (begun === "Confirmed") {
+      const opened = try openGoogleConsent(current.capabilities, current.owner, active, { open: openGoogleAuthorization, close: () => succeed(undefined) })
+      if (opened !== "Opened" && (try active)) try say("Gmail authorization could not be opened", true)
+    } else if (begun === "Unavailable" && (try active)) {
+      try say("Gmail authorization could not be opened", true)
+    }
+  }
+
+  try Effect.forkScoped(flatMap(whole.context, (context) => Effect.provideContext(effect {
+    const shell = try Shell
+    const left = Stream.filter(Stream.changes(Stream.map(shell.changes, (state) => showing(state, "Inbox"))), (shown) => !shown)
+    try Stream.runDrain(Stream.merge(Stream.mapEffect(left, () => clearReauth()), Stream.mapEffect(ownerChanges, () => clearReauth())))
+  }, context as Context.Context<Shell | Inbox.Machine | Mail>)))
+
+  try Effect.addFinalizer(() => clearReauth())
+
   return {
     signIn: (usual: () => void) => flatMap(whole.context, (context) => Effect.provideContext(signInForMail(usual), context as Context.Context<MailSession>)),
     retry: () => flatMap(whole.context, (context) => Effect.provideContext(recheck(), context as Context.Context<MailSession>)),
-    effect consent(intent, popup) {
+    effect consent(intent: ConsentIntent, popup: GmailAuthorizationWindow | undefined) {
       const context = try whole.context
-      const work = Effect.provideContext(authorizeGmail(intent, popup), context as Context.Context<MailConsent>)
+      const work = Effect.provideContext(authorize(intent, popup), context as Context.Context<MailConsent>)
       const opened = try opening.withPermitsIfAvailable(1)(work)
       if (!Option.getOrElse(opened, () => false) && popup !== undefined) try popup.close()
     },
+    reauthSnapshot: reauthShelf.snapshot,
+    subscribeReauth: reauthShelf.subscribe,
+    verifyReauth: (typed: string, factor?: SecondFactor) => flatMap(whole.context, (context) => opening.withPermits(1)(Effect.provideContext(verify(typed, factor), context as Context.Context<MailConsent>))),
+    sendReauthSms: () => flatMap(whole.context, (context) => opening.withPermits(1)(Effect.provideContext(sendSms(), context as Context.Context<MailConsent>))),
+    resendReauth: () => flatMap(whole.context, (context) => opening.withPermits(1)(Effect.provideContext(resend(), context as Context.Context<MailConsent>))),
+    cancelReauth: clearReauth,
   }
 })
 

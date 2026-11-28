@@ -189,6 +189,44 @@ pure def renderAccepted(problems: List[RenderProblem], namesElizaCloud: bool): b
 > operator reviewed, and to ask a phone to try again rather than serve
 > another.
 
+A phone built with Alpha’s own Telegram application registration verifies its numeric
+API ID (1 through 2,147,483,647) at `GET /.well-known/alpha-telegram` before starting an MTProto sign-in.
+The Android build takes `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` from its release
+configuration. The Cloud deployment takes only `TELEGRAM_API_ID` and returns 503
+until it is configured. The phone sends login codes and two-factor proofs directly to Telegram.
+The signed-in Alpha owner’s exported MTProto session stays in the phone’s secure store.
+
+With a verified profile, `GET /.well-known/alpha-slack` publishes the deployment's
+registered public Slack client ID. Its operator supplies `SLACK_CLIENT_ID`
+from the Alpha Slack app with PKCE enabled. Register
+`alphaphone://slack/oauth/callback` for the launcher and
+`alphaphone://slack/oauth/standalone` for the standalone Slack app. For browser
+access, also register `/alpha-slack-return` on the deployment’s `WEB_ORIGIN`,
+for example `https://cloud.alphaphone.dev/alpha-slack-return` in production.
+The owner opens `/slack` on that same web origin. The opener keeps the verifier
+and Slack user grant in memory for its tab. A separate return document removes
+the code from browser history and sends it to the waiting tab on its own
+origin. The API Worker serves these two documents and their bundled assets
+from the reviewed deployment. Native callbacks continue to use the registered
+launcher and standalone app addresses.
+An absent or malformed ID yields a retryable 503. For live workspace
+notices, the operator enables token rotation and the Slack Events API, subscribes
+on behalf of users to `message.channels`, `message.groups`, `message.im` and
+`message.mpim`, and registers the API host's `/api/slack/events` as the request
+URL. The operator supplies `SLACK_SIGNING_SECRET`, `SLACK_APP_ID` and an
+app-level `SLACK_APP_TOKEN` with `authorizations:read`. The API advertises
+`notifications: true` when those bindings are present. Alpha's PKCE exchange
+then passes through the Worker, which retains credential digests for the
+authorized human installation for the credential's lifetime, up to 30 days.
+The Worker validates Slack's signature and timestamp and acknowledges a callback
+once its message reference is saved. Background dispatch continues across
+pagination, rate limits and Worker restarts to resolve the individual
+installations entitled to the event. It
+queues up to 128 message references per recipient for an hour. A connected phone
+uses its own enrolled grant. The Worker rereads each message at Slack with that
+grant before returning it. A phone can connect directly to Slack when live
+notices have not been configured.
+
 ### The API Worker serves only while the profile in its assets is the text its pinned digest names, and otherwise asks the caller to retry
 
 The profile is larger than a Worker variable may be, so the Worker's static
@@ -225,9 +263,12 @@ pure def bindingsRepeatTheProfile(bindings: Bindings, api: str, web: str, databa
 
 The web host Worker answers its own health and hands every other address of
 its origin to the API Worker of its environment, through a service binding;
-the API Worker serves the asset links and eliza's return pages.
+the API Worker serves the asset links and eliza's return pages. For the Slack
+browser consent return the web host omits the query when forwarding the static
+document request. The browser itself retains the state and result until that
+document delivers them to the opener.
 
-### The web host answers its own health, hands each other https address of its own origin, without credentials, to the same path and query on the API origin, and refuses every other address
+### The web host answers its own health, hands each other https address of its own origin, without credentials, to the same path on the API origin, preserves the query except for the in-page Slack consent return, and refuses every other address
 
 ```quint
 type Route = Health | Forward | NotFound
@@ -273,6 +314,16 @@ pure def lawNoForwardingHeaderPasses(name: str): bool = not(headerKept(name, tru
 > As the operator, I want one credential-free check of what the phone needs
 > from a deployed environment of Alpha's own cloud, gate by gate, before
 > anyone is asked to test it on a phone.
+
+Before connecting a workspace or a Telegram account, the operator runs
+`pnpm cloud smoke --environment staging --messaging` (or selects production).
+It reads both of the phone's public registration endpoints and checks for
+uncached JSON, Slack's OAuth client ID and live event configuration, and
+Telegram's numeric application ID. It also asks the Slack mailbox for events
+without a credential and verifies that the running relay requires a grant.
+It fetches the Slack browser opener, its return document and their entry modules on the web host.
+It reports each result independently.
+Account consent is checked on the phone.
 
 ### Alpha's own cloud is ready only when each public gate passes: the provisioning smoke reads, then the entitlement keys, Alpha's sign-in configuration, the plans and the sign-in return page on the App Link host
 

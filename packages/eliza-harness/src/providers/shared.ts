@@ -79,6 +79,7 @@ export interface ProviderContext<S> {
 export interface ProviderServerConfig<S> {
   readonly options?: ProviderOptions;
   readonly createInitial: () => S;
+  readonly preflightHeaders?: (pathname: string) => string | undefined;
   readonly serializeState?: (state: S) => unknown;
   readonly defaultFaultBody?: (fault: FaultRule) => unknown;
   readonly onReset?: (params: Readonly<Record<string, unknown>>, ctx: ProviderContext<S>) => void;
@@ -628,7 +629,8 @@ export async function createProviderServer<S>(config: ProviderServerConfig<S>): 
   const server = http.createServer((incoming, outgoing) => {
     void (async () => {
       if ((incoming.method ?? "GET").toUpperCase() === "OPTIONS") {
-        const requested = incoming.headers["access-control-request-headers"];
+        const path = new URL(incoming.url ?? "/", "http://localhost").pathname;
+        const requested = config.preflightHeaders?.(path) ?? incoming.headers["access-control-request-headers"];
         const headers = typeof requested === "string" && requested.trim() !== ""
           ? { ...CORS_HEADERS, "access-control-allow-headers": requested }
           : CORS_HEADERS;

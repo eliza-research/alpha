@@ -4,10 +4,10 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 import { readBundleManifest } from "@elizaos/agent-host"
 import { decodeLaunchDocument, defineRoutes } from "@elizaos/agent"
 import { deployment } from "@repo/deployment"
-import { pinnedCheckout, pinnedPack } from "@repo/eliza-harness"
+import { packWorkerDir, packagedWorkflowWorker, pinnedCheckout, pinnedPack } from "@repo/eliza-harness"
 import {
-  type Environment, type Manifest, browserNotesCleanup, browserNotesTranscription, browserNotesTranscriptionLimit, bundledPlugins, calendarEdits, characterAdmitted, cloudModel, corePlugins, entryCarried, gmailChanges, googleAdmitted,
-  hostedPlugins, inputAdmitted, localEmbeddings, nativeDigestAck, nativeDigestAckLimit, nativeDigestQueries, nativeDigestScope, nativeNotesCleanup, nativeNotesCleanupLimit, nativeRoutes, nativeRoutesAdmitted, nativeSpeechRoutes, notesTrashDays, packAdmitted, packEntry, packedFor, packedPlugins, pageQueries, persistMemory, personalDetailSwap,
+  type Environment, type Manifest, browserNotesCleanup, browserNotesTranscription, browserNotesTranscriptionLimit, bundledPlugins, calendarEdits, characterAdmitted, cloudModel, controlLeaseLimit, controlLeasePath, controlStopLimit, controlStopPath, corePlugins, entryCarried, gmailChanges, googleAdmitted,
+  hostedPlugins, inputAdmitted, localEmbeddings, localLlmActivatePath, localLlmControlLimit, localLlmDeletePath, localLlmModePath, nativeControlInterrupt, nativeControlInterruptLimit, nativeControlObserve, nativeControlObserveLimit, nativeControlReceipt, nativeControlReceiptLimit, nativeDigestAck, nativeDigestAckLimit, nativeDigestQueries, nativeDigestScope, nativeNotesCleanup, nativeNotesCleanupLimit, nativeRoutes, nativeRoutesAdmitted, nativeSpeechRoutes, notesTrashDays, packAdmitted, packEntry, packedFor, packedPlugins, pageQueries, persistMemory, personalDetailSwap,
   launchViews, policyAdmitted, privacyAdmitted, productPluginName, proposalsAdmitted, refusedActions, routeListAdmitted, secretSwap, viewPlugins, viewsAdmitted, walletGetsKey, walletSettings,
 } from "../gen/agent.effect.vibe"
 
@@ -214,7 +214,8 @@ export function entrySource(bundled: readonly string[], hosted: readonly { name:
       '    engine !== undefined && (await Effect.runPromise(engine.speechReady(), { signal })).transcription === true)',
       '}',
       `const nativeSpeechScope = (context) => ({ method: "GET", path: ${JSON.stringify(localScope)}, handler: async ({ signal }) => {`,
-      '  const account = context.launch.account',
+      '  const localMode = context.launch.environment?.ALPHA_AI_MODE === "local" || context.launch.model.backend === "none"',
+      '  const account = context.launch.account ?? (localMode ? { userId: "local", organizationId: "device" } : undefined)',
       '  const engine = context.launch.environment?.ALPHA_LOCAL_SPEECH_SOCKET === undefined ? undefined : speechEngine(context)',
       '  if (account === undefined || engine === undefined) return { status: 503, body: { error: "LOCAL_SPEECH_UNAVAILABLE" } }',
       '  try {',
@@ -227,7 +228,8 @@ export function entrySource(bundled: readonly string[], hosted: readonly { name:
       '} })',
     ] : []),
     `const nativeRuntimeScope = (context) => ({ method: "GET", path: ${JSON.stringify(nativeDigestScope)}, handler: () => {`,
-    '  const account = context.launch.account',
+    '  const localMode = context.launch.environment?.ALPHA_AI_MODE === "local" || context.launch.model.backend === "none"',
+    '  const account = context.launch.account ?? (localMode ? { userId: "local", organizationId: "device" } : undefined)',
     '  if (account === undefined) return { status: 503, body: { error: "RESIDENT_ACCOUNT_UNAVAILABLE" } }',
     '  return { status: 200, body: { epoch: context.epoch, agentId: context.runtime.agentId, userId: account.userId, organizationId: account.organizationId } }',
     '} })',
@@ -315,9 +317,15 @@ function routeBodyLimit(route: RouteLine, native: boolean): number | undefined {
   if (route.method !== "POST") return undefined
   if (!native) {
     if (route.path === browserNotesTranscription) return browserNotesTranscriptionLimit
+    if (route.path === controlLeasePath) return controlLeaseLimit
+    if (route.path === controlStopPath) return controlStopLimit
+    if (route.path === localLlmModePath || route.path === localLlmActivatePath || route.path === localLlmDeletePath) return localLlmControlLimit
     return route.path === browserNotesCleanup ? nativeNotesCleanupLimit : undefined
   }
   if (route.path === nativeDigestAck) return nativeDigestAckLimit
+  if (route.path === nativeControlObserve) return nativeControlObserveLimit
+  if (route.path === nativeControlReceipt) return nativeControlReceiptLimit
+  if (route.path === nativeControlInterrupt) return nativeControlInterruptLimit
   return route.path === nativeNotesCleanup ? nativeNotesCleanupLimit : undefined
 }
 
@@ -426,7 +434,11 @@ effect function build(name: string) {
     }),
     catch: (cause) => new Refused({ message: `eliza refused to build the bundle: ${String(cause)} ${cause instanceof Error && "detail" in cause ? String(cause.detail) : ""}` }),
   })
+  const workflow = pack.packages.get(workflowPluginName)
+  if (workflow === undefined) throw new Refused({ message: `the bundle needs ${workflowPluginName}` })
   const fs = try FileSystem.FileSystem
+  try fs.remove(packWorkerDir, { recursive: true, force: true })
+  try fs.copy(`${workflow}/dist`, packWorkerDir)
   try fs.makeDirectory(at.host, { recursive: true })
   for (const file of ["character.json", "policy.json"]) try fs.copyFile(`${at.data}/${file}`, `${at.host}/${file}`)
   const service = try decoded(`${at.data}/service.json`, Service)
@@ -461,6 +473,8 @@ effect function check() {
   const pin = try pinned()
   const at = places()
   const manifest = try admittedManifest(at.bundle, pin.commit)
+  const worker = try Effect.try({ try: packagedWorkflowWorker, catch: (cause) => new Refused({ message: `the packaged workflow worker could not be read: ${String(cause)}` }) })
+  if (worker.sha256 !== manifest.workflowWorkerSha256) throw new Refused({ message: "the packaged workflow worker differs from the bundle's pin" })
   const host = try admittedHost(at.host, manifest.actions.map(({ name }) => name))
   const fs = try FileSystem.FileSystem
   const files = try fs.readDirectory(at.bundle)

@@ -108,22 +108,23 @@ text = replace(text, '            initialized = true', '''            // Refresh
                 user = UserHandle.ALL,
                 flags = Context.RECEIVER_NOT_EXPORTED,
             )
-            broadcastDispatcher.registerReceiver(
+            userTracker.userContext.registerReceiverAsUser(
                 object : BroadcastReceiver() {
                     override fun onReceive(context: Context, intent: Intent) {
                         if (intent.data?.schemeSpecificPart == AlphaCoreLauncherPolicy.PACKAGE) {
-                            refreshAlphaCoreLauncher()
+                            backgroundExecutor.execute(refreshAlphaCoreLauncher)
                         }
                     }
                 },
+                UserHandle.ALL,
                 IntentFilter().apply {
                     addAction(Intent.ACTION_PACKAGE_CHANGED)
                     addAction(Intent.ACTION_PACKAGE_REPLACED)
                     addDataScheme("package")
                 },
-                executor = backgroundExecutor,
-                user = UserHandle.ALL,
-                flags = Context.RECEIVER_NOT_EXPORTED,
+                null,
+                null,
+                Context.RECEIVER_NOT_EXPORTED,
             )
             broadcastDispatcher.registerReceiver(
                 object : BroadcastReceiver() {

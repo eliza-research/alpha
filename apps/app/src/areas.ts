@@ -1,5 +1,6 @@
 import type { View } from "../gen/app__shell.ts";
 import type { Area } from "./runtime/area.tsx";
+import { type AlphaSurface, currentSurface, mountsFor as filterMounts } from "./surface.ts";
 import home from "./home/index.tsx";
 
 /**
@@ -25,9 +26,10 @@ export const at = (place: Place, load: Mount["load"]): Mount => ({ at: place, lo
 export const first = (place: Place, screen: Area): Mount => ({ at: place, load: () => Promise.resolve({ default: screen }), first: screen });
 
 /** Every screen of Alpha and where it is drawn: one line each, in the order a place draws them. Lines are only ever added. */
-export const mounts: readonly Mount[] = [
+export const allMounts: readonly Mount[] = [
   first("home", home),
   at("notice", () => import("./notices/Toasts.tsx")),
+  at("notice", () => import("./notices/MessagingActivity.tsx")),
   at("assistant", () => import("./assistant/index.tsx")),
   at("view:Settings", () => import("./settings/index.tsx")),
   at("overlay", () => import("./account/index.tsx")),
@@ -67,4 +69,13 @@ export const mounts: readonly Mount[] = [
   at("settings/voice", () => import("./assistant/settingsVoice.tsx")),
   at("settings/notification-collection", () => import("./notices/SettingsCollection.tsx")),
   at("assistant/calendar", () => import("./calendar/sheet.tsx")),
+  at("overlay", () => import("./calendar/availability.tsx")),
 ];
+
+/** Filter `allMounts` to the screen mounts active for `surface`. */
+export function mountsFor(surface: AlphaSurface): readonly Mount[] {
+  return filterMounts(surface, allMounts);
+}
+
+/** The active screen mounts for the current surface; identical to `allMounts` in default monolith mode. */
+export const mounts: readonly Mount[] = mountsFor(currentSurface());

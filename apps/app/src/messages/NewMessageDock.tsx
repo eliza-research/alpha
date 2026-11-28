@@ -8,7 +8,7 @@ import { useRef, useState, type RefObject } from "react";
 import type { NewDraft } from "../../gen/app__messages.ts";
 import { useMachine as useComposer } from "../../gen/app__messages__composer.react.ts";
 import { busy, uncertain } from "../../gen/app__messages__sending.ts";
-import { clear } from "../../gen/app__phone.ts";
+import { clear, liveCall } from "../../gen/app__phone.ts";
 import { useMachine as usePhone } from "../../gen/app__phone.react.ts";
 import { useMachine as useVoice } from "../../gen/app__voice.react.ts";
 import { CommsBar } from "../comms/ui.tsx";
@@ -58,7 +58,7 @@ export function NewMessageDock({ runtime, scope, contactsAllowed, draft, textare
   const checking = state.newSend.revision === revision && uncertain(state.outgoing);
   const supportedSend = runtime.runSync(supported(addresses.length, draft.pictures.length));
   const canPicture = editable && saved && !picking && draft.pictures.length < MMS_MAX_ATTACHMENTS && runtime.runSync(supported(1, 1));
-  const canSend = saved && hasContent && !picking && (checking || state.sims <= 1 || selected !== undefined)
+  const canSend = saved && hasContent && body.length <= MMS_MAX_BODY && !picking && (checking || state.sims <= 1 || selected !== undefined)
     && composer.can({ type: "sendNew", thread: recipient, recipients: addresses.length, visit, revision, supported: supportedSend, clear: clear(phone.state) });
   const subscriptions = runtime.runSync(Effect.flatMap(Drafts, (store) => store.subscriptions()));
   const recorder = voice.state?.recorder;
@@ -101,7 +101,7 @@ export function NewMessageDock({ runtime, scope, contactsAllowed, draft, textare
     </div>
     <CommsBar runtime={runtime} {...(title ? { person: { label: title, initials: callerInitials(title) } } : {})} closed={recording ? (
       <div data-alpha-composer data-alpha-bar-recorder="" aria-label="Message dictation" role="group" className="flex min-w-0 flex-1 items-center gap-2">
-        <span role="status" className="min-w-0 flex-1 text-sm">{recorder.stage === "Recording" ? "Recording" : recorder.stage === "Recorded" ? "Couldn’t transcribe" : recorder.stage === "Transcribing" ? "Transcribing" : "Starting microphone"}</span>
+        <span className="min-w-0 flex-1"><span role="status" className="sr-only">{recorder.stage === "Recording" ? "Recording" : recorder.stage === "Recorded" ? "Couldn’t transcribe" : recorder.stage === "Transcribing" ? "Transcribing" : "Starting microphone"}</span></span>
         {voice.can(retry) && <Button variant="ghost" size="icon" aria-label="Try transcription again" onClick={() => void voice.send(retry)}><RefreshCw /></Button>}
         {voice.can(dismiss) && <Button variant="ghost" size="icon" aria-label="Discard transcription" onClick={() => void voice.send(dismiss)}><X /></Button>}
         {voice.can(stop) && <Button size="icon" aria-label="Stop recording" onClick={() => void voice.send(stop)}><Square fill="currentColor" /></Button>}
@@ -126,7 +126,7 @@ export function NewMessageDock({ runtime, scope, contactsAllowed, draft, textare
           }} />)}
         {hasContent && <Button size="icon" className="disabled:opacity-100" aria-label={checking ? "Check send status" : "Send"} data-alpha-bar-send disabled={!canSend}
           onClick={(event) => { if (textIsSaved()) void runtime.runPromise(sendNewMessage(visit, revision, selected, event.nativeEvent.isTrusted)); }}>{checking ? <RefreshCw /> : <ArrowUp />}</Button>}
-        {editable && phone.state.telecom === "NoCall" && voice.can({ type: "openRecorder", target: "MessagesBar" }) && <Button variant="ghost" size="icon"
+        {editable && !liveCall(phone.state) && voice.can({ type: "openRecorder", target: "MessagesBar" }) && <Button variant="ghost" size="icon"
           aria-label={`Dictate a text to ${first || "them"}`} disabled={!saved} onClick={() => { if (textIsSaved()) void runtime.runPromise(dictateNewMessage(visit, revision)); }}><Mic /></Button>}
       </div>
     )} />

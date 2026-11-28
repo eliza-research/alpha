@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="grid_num_rows">5</integer>
+    <integer name="grid_num_columns">4</integer>
+    <integer name="grid_icon_size_dp">60</integer>
+    <integer name="hotseat_count">4</integer>
+    <bool name="default_wallpapper_enabled">false</bool>
+    <string name="config_icon_mask" translatable="false">M50,0 C82,0 100,18 100,50 C100,82 82,100 50,100 C18,100 0,82 0,50 C0,18 18,0 50,0 Z</string>
+</resources>

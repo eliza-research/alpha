@@ -1,0 +1,64 @@
+// spec/app/slack/auth.md, "Adding a workspace presents scope consent first, then opens PKCE OAuth with a fresh state nonce"; spec/app/slack/auth.md, "OAuth callback verifies the state nonce and exchanges the secret code and PKCE verifier; only user tokens (`UserToken`) are admitted"
+import { native } from "./device.vibe"
+import { returnChannel } from "./slack-return.vibe"
+
+module host {
+  import { native } from "./device.vibe"
+  import { currentSurface } from "../surface.ts"
+  import type { HttpOptions, HttpResponse } from "@capacitor/core"
+  import { plugin } from "./capacitor.ts"
+
+  import { browserSlackReturn } from "./slack-return.vibe"
+  /** The redirect for the phone's registered app or the local development browser. @throws {never} */
+  export function redirectUri(): string {
+    if (!native()) return browserSlackReturn()
+    return currentSurface().mode === "app" ? "alphaphone://slack/oauth/standalone" : "alphaphone://slack/oauth/callback"
+  }
+
+  /** The independent system browser on Android supplies the validated return to the requesting WebView. */
+  export async function authorize(url: string): Promise<unknown> {
+    if (native()) return plugin<{ authorize(options: { url: string }): Promise<unknown> }>("AlphaSlackOAuth").authorize({ url })
+    return undefined
+  }
+
+  /** The native request is buffered: Slack's Web API disallows the authorization header in WebView CORS preflights. */
+  export async function nativeRequest(url: string, method: string, headers: Readonly<Record<string, string>>, data: string | undefined): Promise<Response> {
+    const http = plugin<{ request(options: HttpOptions): Promise<HttpResponse> }>("AlphaSlackOAuth")
+    const reply = await http.request({ url, method, headers, data, disableRedirects: true, connectTimeout: 15000, readTimeout: 15000, responseType: "text" })
+    return new Response(typeof reply.data === "string" ? reply.data : JSON.stringify(reply.data), { status: reply.status, headers: reply.headers })
+  }
+}
+import { authorize, nativeRequest, redirectUri } from host
+
+export { redirectUri as slackRedirectUri }
+
+export schema SlackReturn { readonly state: string; readonly code: string; readonly error: string }
+
+/** The native result, or a return still pending in a browser tab. */
+export effect function authorizeSlack(url: string) {
+  const result = try tryPromise(() => authorize(url))
+  return result === undefined ? undefined : try Schema.decodeUnknownEffect(SlackReturn)(result)
+}
+
+/** Browser tabs only accept returns sent on their own origin and each resident closes its listener on disposal. */
+export const slackReturns = Stream.unwrap(effect {
+  if (native()) return Stream.empty
+  const channel = try acquireRelease(sync(returnChannel), (opened) => sync(() => opened.close()))
+  return Stream.filterMap(Stream.fromEventListener<MessageEvent>(channel, "message"), (event) => Schema.decodeUnknownResult(SlackReturn)(event.data))
+})
+
+/** Browser requests keep credentials on the chosen provider and omit cross-origin tracing headers. */
+export const browserSlackHttp = Layer.provide(FetchHttpClient.layer, Layer.merge(
+  Layer.succeed(FetchHttpClient.RequestInit, { redirect: "error", credentials: "omit", referrerPolicy: "no-referrer" }),
+  Layer.succeed(HttpClient.TracerPropagationEnabled, false),
+))
+
+/** Android's HTTP client carries Slack's credentials to Slack outside the WebView. */
+export const nativeSlackHttp = Layer.succeed(HttpClient.HttpClient, HttpClient.make((request, url) => effect {
+  const body = request.body._tag === "Uint8Array" ? new TextDecoder().decode(request.body.body) : undefined
+  const response = try tryPromise({
+    try: () => nativeRequest(url.href, request.method, request.headers, body),
+    catch: (cause) => new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request, cause }) }),
+  })
+  return HttpClientResponse.fromWeb(request, response)
+}))

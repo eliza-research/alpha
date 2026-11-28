@@ -480,6 +480,21 @@ function computeDialogSummary(state: TelegramState, dialog: TelegramDialog): Rec
   };
 }
 
+function requirePassword(ctx: ProviderContext<TelegramState>, res: ServerResponse, phone: string): boolean {
+  const state = ctx.getState();
+  const security = ownGet(state.securityByPhone, phone);
+  if (!security?.password) return false;
+  const pendingAuthId = randomToken("p2fa_", 14);
+  const hint = security.hint ?? "";
+  state.pendingPasswords[pendingAuthId] = {
+    pending_auth_id: pendingAuthId, phone_number: phone, password: security.password, hint, attempts: 0,
+  };
+  pruneRecordCap(state.pendingPasswords, MAX_TRANSIENT);
+  ctx.save();
+  tgError(res, 401, "SESSION_PASSWORD_NEEDED", { hint, pending_auth_id: pendingAuthId });
+  return true;
+}
+
 function handleAuthRpc(
   req: ParsedRequest,
   res: ServerResponse,
@@ -538,24 +553,7 @@ function handleAuthRpc(
       return true;
     }
     pending.consumed = true;
-    const sec = ownGet(state.securityByPhone, phone);
-    if (sec?.password) {
-      const pendingAuthId = randomToken("p2fa_", 14);
-      state.pendingPasswords[pendingAuthId] = {
-        pending_auth_id: pendingAuthId,
-        phone_number: phone,
-        password: sec.password,
-        hint: sec.hint ?? "",
-        attempts: 0,
-      };
-      pruneRecordCap(state.pendingPasswords, MAX_TRANSIENT);
-      ctx.save();
-      tgError(res, 401, "SESSION_PASSWORD_NEEDED", {
-        hint: sec.hint ?? "",
-        pending_auth_id: pendingAuthId,
-      });
-      return true;
-    }
+    if (requirePassword(ctx, res, phone)) return true;
     const auth = issueSession(state, phone);
     ctx.save();
     sendJson(res, 200, { ok: true, _type: "auth.authorization", ...auth });
@@ -623,6 +621,11 @@ function handleAuthRpc(
       if (!record || record.consumed === true || record.expires < Math.floor(Date.now() / 1000)) {
         tgError(res, 400, "AUTH_TOKEN_EXPIRED");
         return true;
+      }
+      if (record.approved && !record.session_token && record.phone_number) {
+        record.consumed = true;
+        if (requirePassword(ctx, res, record.phone_number)) return true;
+        record.session_token = issueSession(state, record.phone_number).session_token;
       }
       if (record.approved && record.session_token) {
         const sessionToken = record.session_token;
@@ -1113,10 +1116,15 @@ function handleTelegramControl(
       return true;
     }
     const phone = asString(req.params.phone) ?? state.owner.phone ?? "+15550101234";
-    const issued = issueSession(state, phone);
     record.approved = true;
-    record.session_token = issued.session_token;
     record.phone_number = phone;
+    if (ownGet(state.securityByPhone, phone)?.password) {
+      ctx.save();
+      sendJson(res, 200, { ok: true, token });
+      return true;
+    }
+    const issued = issueSession(state, phone);
+    record.session_token = issued.session_token;
     ctx.save();
     sendJson(res, 200, { ok: true, token, session_token: issued.session_token, user: issued.user });
     return true;

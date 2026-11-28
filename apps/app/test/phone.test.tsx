@@ -213,16 +213,18 @@ describe("Phone on an Alpha image", () => {
     await until(alpha, alpha.runtime, Phone, (state) => state.front && state.tab === "Recents" && state.recents.status === "Loaded");
     expect(button("Call Maya Chen")).toBeDefined();
 
-    // spec/app/contacts/index.md, "Back from the search field clears the query and returns to Contacts"
+    // spec/app/contacts/index.md, "Filtering or changing the filter chip starts a new list"
     await tab("Contacts");
     await contactsFront();
     const contactsListed = () => until(alpha, alpha.runtime, Contacts, (state) =>
-      state.front && !state.searching && !state.sought && state.list.status === "Loaded" && state.rows === 2);
+      state.front && !state.sought && state.list.status === "Loaded" && state.rows === 2);
     await contactsListed();
-    await press("Search contacts");
-    await fill("Search contacts", "Maya");
-    await until(alpha, alpha.runtime, Contacts, (state) =>
-      state.searching && state.sought && state.list.status === "Loaded" && state.rows === 1);
+    expect(button("Search contacts")).toBeUndefined();
+    const contactsHeader = document.querySelector("[data-alpha-phone-header]");
+    expect([
+      Boolean(contactsHeader?.querySelector('[role="tablist"][aria-label="Phone"]')),
+      Boolean(contactsHeader?.querySelector('button[aria-label="New contact"]')),
+    ]).toEqual([true, true]);
     expect(button("Maya Chen")).toBeDefined();
     await tab("Voicemail");
     await until(alpha, alpha.runtime, Shell, (state) => state.trail.join(",") === "Phone");
@@ -406,6 +408,19 @@ describe("Phone on an Alpha image", () => {
     await press("Call Maya Chen");
     await until(alpha, alpha.runtime, Phone, (s) => s.dial.status === "Loaded");
     expect([world.telephony.dialed, world.telephony.placed]).toEqual([["+14155550100", "+14155550100"], []]);
+
+    // spec/app/voice/index.md, "A phone call ends Talk quietly, and only the owner starts it again": a call state the phone has not told is no call, so Talk from the bar starts
+    await until(alpha, alpha.runtime, Phone, (s) => s.front && s.telecom === "CallUnknown");
+    await press("Talk");
+    await vi.waitFor(async () => {
+      await drawn(() => undefined);
+      expect([world.voice.startLiveCaptureCalls + world.voice.startCloudSpeechCalls, Boolean(button("Stop voice conversation"))]).toEqual([1, true]);
+    }, { timeout: 12_000 });
+    await press("Stop voice conversation");
+    await vi.waitFor(async () => {
+      await drawn(() => undefined);
+      expect(button("Stop voice conversation")).toBeUndefined();
+    }, { timeout: 12_000 });
   });
 
   it('Lets Android determine which emergency numbers can open the dialer without service (spec/app/phone/index.md, "Story: Call a number")', async () => {

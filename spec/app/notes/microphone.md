@@ -105,11 +105,12 @@ pure def canOpenSettings(m: Microphone, by: Actor): bool = by == Owner and P::ne
 pure def openSettings(m: Microphone, by: Actor): Moved = { state: m, out: List(OpensSettings) }
 ```
 
-### The owner sees Mic unavailable after asking to record while the browser denies the microphone
+### The owner's screen reader hears Mic unavailable after asking to record while the browser denies the microphone
 
 The recorder page has no audio, an elapsed time of zero, and Record and
-Discard. Record checks the current permission again. Discard and Back
-return to Notes.
+Discard, and no words beside them: Mic unavailable is told to a screen
+reader only, as no voice error is drawn. Record checks the current
+permission again. Discard and Back return to Notes.
 
 ```quint
 pure def canShowBrowserDenial(m: Microphone, available: bool, covered: bool, by: Actor): bool =

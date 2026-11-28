@@ -177,7 +177,7 @@ effect function shown(query: string): unknown!!(Telephony | Rows | ContactsMachi
   if (Option.isNone(current) || Option.isNone(current.value) || current.value.value.form !== "Shut") return unavailable
   if (current.value.value.opened) try ignore(machine.send({ type: "closeContact" }))
   if (current.value.value.chip !== "Everyone") try ignore(machine.send({ type: "pick", chip: "Everyone" }))
-  try (try Rows).set({ sought: query, filteredBy: "Alpha" })
+  try (try Rows).set({ sought: query })
   const search = machine.send({ type: "search", typed: true }) catch () => undefined
   if (search === undefined) return unavailable
   const ticket = search.state.list.ticket

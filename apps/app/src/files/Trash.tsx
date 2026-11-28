@@ -127,7 +127,7 @@ export function Undo({ runtime }: Pick<TrashProps, "runtime">) {
   const undo = { type: "undoDelete", now: untimed } as const;
   if (!state || !can(undo, "Owner")) return null;
   return (
-    <div role="status" aria-live="polite" className="pointer-events-none absolute inset-x-4 top-15 z-toast flex flex-col items-center">
+    <div role="status" aria-live="polite" className="pointer-events-none absolute inset-x-4 top-[calc(var(--alpha-safe-top)+--spacing(15))] z-toast flex flex-col items-center in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(15))]">
       <Toast key={state.undo.until} onUndo={() => void send(undo, "Owner")}>{`${state.binned.length === 1 ? "1 item" : `${state.binned.length} items`} moved to Trash`}</Toast>
     </div>
   );

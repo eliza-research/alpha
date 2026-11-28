@@ -66,6 +66,14 @@ module web {
   }
 }
 import { alpha, copyToBrowser, marked, native, page, pages, registered, shareWords, showing, zoom } from web
+
+/** A native signal stays subscribed for the lifetime of its consumer. */
+export function pluginChanges(subscribe: (notify: () => void) => Promise<{ remove(): Promise<void> }>): Stream.Stream<void> {
+  return Stream.callback<void>((queue) => Effect.asVoid(acquireRelease(
+    Effect.option(tryPromise(() => subscribe(() => { Queue.offerUnsafe(queue, undefined) }))),
+    (handle) => Option.isSome(handle) ? ignore(tryPromise(() => handle.value.remove())) : Effect.void,
+  )))
+}
 export { native, registered }
 
 const CheckoutReturn = Schema.Struct({ session: Schema.NullOr(Schema.String.check(Schema.isPattern(/^cs_[A-Za-z0-9_]{1,250}$/))) })

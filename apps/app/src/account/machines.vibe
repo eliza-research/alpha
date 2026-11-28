@@ -9,7 +9,7 @@ import * as Change from "../../gen/app__account__change.effect.vibe"
 import * as Codes from "../../gen/app__account__codes.effect.vibe"
 import * as Plan from "../../gen/app__account__plan.effect.vibe"
 import * as Session from "../../gen/app__account__session.effect.vibe"
-import { Cloud, Device, Refused, ask, outcomeOf } from "../platform/index.vibe"
+import { Cloud, Device, Refused, ask, billReturned, outcomeOf, takeBillingReturn } from "../platform/index.vibe"
 import { Attempts, type Job, Time, answer, contained, due, reacting, run, started, together, untimed } from "../runtime/index.vibe"
 import { AccountShelf } from "./bridge.vibe"
 import { nowMillis, toMillis } from "./clock.vibe"
@@ -260,8 +260,20 @@ function billingTimers(state: Billing.Billing) {
 const resumeBillingVisit = started(effect {
   const device = try Device
   const billing = try Billing.Machine
-  try Stream.runForEach(Stream.filter(device.visible, (shown) => shown), effect () => {
+  const shelf = try AccountShelf
+  const triggers = Stream.merge(Stream.filter(device.visible, (shown) => shown), billReturned)
+  try Stream.runForEach(triggers, effect () => {
     const current = try billing.get()
+    const returned = try takeBillingReturn()
+    if (returned !== null && current.visit.orphan && Billing.canReturnedCold(current, current.visit.number)) {
+      try contained(billing.send({ type: "returnedCold", visit: current.visit.number }), "billing visit returned cold")
+      return
+    }
+    if (returned !== null && current.visit.open && Billing.canReturned(current, current.visit.number, current.checkout.signIn, returned, 0)) {
+      try shelf.setCheckoutSession(returned)
+      try contained(billing.send({ type: "returned", visit: current.visit.number, signIn: current.checkout.signIn, session: returned, now: untimed }), "billing visit returned")
+      return
+    }
     if (Billing.canResumed(current, 0)) {
       try contained(billing.send({ type: "resumed", now: untimed }), "billing visit resumed")
     }

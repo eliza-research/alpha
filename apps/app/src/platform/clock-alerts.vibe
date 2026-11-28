@@ -1,0 +1,91 @@
+// spec/app/clock/index.md, "Story: Hear and prioritize ringing alerts"
+import { pluginChanges, registered } from "./device.vibe"
+import { plugin } from "./capacitor.ts"
+
+module identifiers {
+  /** Allocate a cross-installation Clock identifier when this host supplies secure entropy. @throws {never} */
+  export function clockRecordId(): string | undefined {
+    try { return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("") }
+    catch { return undefined }
+  }
+}
+import { clockRecordId } from identifiers
+export { clockRecordId }
+
+interface AlarmFields {
+  readonly id: number
+  readonly remoteId: string
+  readonly at: number
+  readonly ringing: boolean
+  readonly title: string
+  readonly vibrate: boolean
+}
+
+export type NativeClockAlert = AlarmFields & ({ readonly kind: "timer" } | {
+  readonly kind: "alarm"; readonly snoozed: boolean; readonly hour: number; readonly minute: number; readonly daysMask: number
+})
+
+export interface ClockProjection {
+  readonly alerts: readonly NativeClockAlert[]
+  readonly known: readonly { readonly kind: NativeClockAlert["kind"]; readonly remoteId: string }[]
+  readonly ready: boolean
+}
+
+const permissions = Schema.Struct({ notificationsEnabled: Schema.Boolean, exact: Schema.Boolean })
+const permissionState = Schema.Struct({ notifications: Schema.Literals(["granted", "denied", "prompt", "prompt-with-rationale"]) })
+const tap = Schema.Struct({ token: Schema.NonEmptyString, kind: Schema.Literals(["alarm", "timer"]), id: Schema.Int })
+export type ClockTap = typeof tap.Type
+
+interface ClockPlugin {
+  reconcile(input: ClockProjection): Promise<unknown>
+  pendingTap(): Promise<unknown>
+  consumeTap(input: { token: string }): Promise<void>
+  checkPermissions(): Promise<unknown>
+  openNotificationSettings(): Promise<void>
+  requestPermissions(input: { permissions: readonly string[] }): Promise<unknown>
+  openExactAlarmSettings(): Promise<void>
+  addListener(event: "clockAlertOpen", listener: () => void): Promise<{ remove(): Promise<void> }>
+}
+
+export service PhoneClockAlerts {
+  readonly present: boolean
+  readonly changed: Stream.Stream<void>
+  configure(access: "notifications" | "exact"): void!!
+  reconcile(input: ClockProjection): (typeof permissions.Type | undefined)!!
+  pendingTap(): (ClockTap | undefined)!!
+  consumeTap(token: string): void!!
+}
+
+export const phoneClockAlerts = Layer.effect(PhoneClockAlerts, effect {
+  const present = registered("AlphaClockAlerts")
+  const host = () => plugin<ClockPlugin>("AlphaClockAlerts")
+  const permission = try PubSub.unbounded<void>()
+  const tapped = pluginChanges((notify) => host().addListener("clockAlertOpen", notify))
+  return {
+    present,
+    changed: Stream.merge(Stream.fromPubSub(permission), tapped),
+    effect configure(access: "notifications" | "exact") {
+      if (access === "exact") try ignore(tryPromise(() => host().openExactAlarmSettings()))
+      else {
+        const raw = tryPromise(() => host().checkPermissions()) catch () => undefined
+        const grant = Option.getOrUndefined(Schema.decodeUnknownOption(permissionState)(raw))?.notifications
+        if (grant === "granted" || grant === "denied") try ignore(tryPromise(() => host().openNotificationSettings()))
+        else try ignore(tryPromise(() => host().requestPermissions({ permissions: ["notifications"] })))
+      }
+      try PubSub.publish(permission, undefined)
+    },
+    effect reconcile(input: ClockProjection) {
+      const result = tryPromise(() => host().reconcile(input)) catch () => undefined
+      return Option.getOrUndefined(Schema.decodeUnknownOption(permissions)(result))
+    },
+    effect pendingTap() {
+      const result = tryPromise(() => host().pendingTap()) catch () => undefined
+      return Option.getOrUndefined(Schema.decodeUnknownOption(tap)(result))
+    },
+    consumeTap: (token: string) => ignore(tryPromise(() => host().consumeTap({ token }))),
+  }
+})
+
+export const browserClockAlerts = Layer.succeed(PhoneClockAlerts, {
+  present: false, changed: Stream.empty, configure: () => Effect.void, reconcile: () => succeed(undefined), pendingTap: () => succeed(undefined), consumeTap: () => Effect.void,
+})

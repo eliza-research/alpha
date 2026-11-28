@@ -38,7 +38,7 @@ export const meta: ComponentMeta<AssistantComposerProps> = {
       onUnquote: fn(),
     },
     Editing: { value: "What is on Friday?", editing: true, onSend },
-    "Storage failed": { value: "Ask Ana about lunch", notice: { status: "failed", onRetry: fn() }, onSend },
+    "Too long": { value: "Ask Ana about lunch", notice: { status: "long" } },
     Closed: { value: "", closed: true },
   },
   play: {

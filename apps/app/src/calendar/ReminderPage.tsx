@@ -11,6 +11,7 @@ import { snoozeSelectedReminder } from "../reminders/alerts.vibe";
 import { deleteReminderItem, toggleReminderComplete } from "../reminders/reminders.vibe";
 import { remindersStore } from "../reminders/store.ts";
 import type { Alpha } from "../runtime/ui.tsx";
+import { launcherTop } from "../shell/ui.tsx";
 import type { CalendarProps } from "./Calendar.tsx";
 import { startReminderEdit } from "./editor.vibe";
 import { SourceNote } from "./SourceNote.tsx";
@@ -72,7 +73,7 @@ export function ReminderPage({ alpha, runtime, row, onBack }: { alpha: Alpha; ru
     ? "Next occurrence is saved with no alert after Done." : "Next occurrence is scheduled after Done."}`;
   const words = [record.notes, snoozed, repeats, noteFor(record)].filter(Boolean).join("\n");
   return (
-    <CalendarEventPage title={record.title} when={`Due ${hour.format(begin)}`} day={date.format(begin)} source="Reminders" notes={words} onBack={onBack}
+    <CalendarEventPage className={launcherTop} title={record.title} when={`Due ${hour.format(begin)}`} day={date.format(begin)} source="Reminders" notes={words} onBack={onBack}
       actions={<CalendarEventMenu items={[{ label: "Edit", name: "Edit event", onSelect: edit }, { label: "Delete", name: "Delete event", onSelect: remove }]} />}>
       {owner !== undefined && <SourceNote runtime={runtime} account={owner} selection={row.id} target="Reminder" record={record.id} />}
       <div className={record.alertMinutes === null ? "mt-5 pb-5" : "mt-5"}>

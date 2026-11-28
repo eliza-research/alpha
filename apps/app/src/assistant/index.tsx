@@ -28,12 +28,12 @@ import { assistantBack, assisting, spokenScreen } from "./assistant.vibe";
 import { copyMessage, emailDestination, emailMessage } from "./message-actions.vibe";
 import { dictate } from "./dictation.vibe";
 import { aloud, readTranscript, stopMessage } from "./read-aloud.vibe";
-import { beginTalk, commsVoicePanel, spokenReviewNotice, talkFromComms } from "./voice-entry.vibe";
+import { beginTalk, commsVoicePanel, overlayEvents, spokenReviewNotice, talkFromComms } from "./voice-entry.vibe";
 
 const voiceOwnsComposer = (state: VoiceState) => !quiet(state) || state.recorder.stage !== "Closed";
 
 const screens = together(
-  assisting, voiceArea, voiceReported("assistant"), aloud, talkFromComms, commsVoicePanel, spokenScreen, spokenReviewNotice, interimLiveness,
+  assisting, voiceArea, voiceReported("assistant"), aloud, talkFromComms, commsVoicePanel, spokenScreen, spokenReviewNotice, overlayEvents, interimLiveness,
   following(Voice, voiceOwnsComposer, Dock, (on) => ({ type: "voicing", on, now: untimed } as const)),
   applying(Voice, voiceOwnsComposer, keyboardVoice),
 );

@@ -16,6 +16,7 @@ export interface PlatformScene {
   readonly hanging: Set<object>;
   /** When true, `ElizaAgent.abort` rejects, simulating a bridge failure during stream teardown. */
   abortFails?: boolean;
+  agentCredentialMissing?: boolean;
   /**
    * What `AlphaNetworkLocation` finds: the fingerprint of the networks it sees ("" where too few are seen, and the
    * service answers from the address alone), the position the service gives, whether lookups fail, and what each

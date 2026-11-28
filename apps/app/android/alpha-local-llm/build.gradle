@@ -1,0 +1,27 @@
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'ai.alphacompute.localllm'
+    compileSdk rootProject.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+
+    defaultConfig {
+        minSdk rootProject.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 29
+        targetSdk rootProject.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:${rootProject.hasProperty('junitVersion') ? rootProject.ext.junitVersion : '4.13.2'}"
+    testImplementation 'org.json:json:20250517'
+}

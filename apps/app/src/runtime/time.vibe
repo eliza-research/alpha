@@ -4,7 +4,8 @@ import * as KeyValueStore from "effect/persistence/KeyValueStore"
 /**
  * Alpha's time, in milliseconds: every event's `now`. It never goes back, across a restart or a clock that was set
  * back, so a stamp a machine keeps is never later than a `now` it is given afterwards. Where the phone's clock is
- * behind it, it runs at half speed until the clock has caught up.
+ * behind it, it runs at half speed until the clock has caught up. A kept time more than a year and a day ahead of a clock
+ * that reads 2026 or later came from a clock once set far ahead: it is let go, and the clock is taken as it reads.
  */
 export service Time {
   /** The time now. */
@@ -18,6 +19,12 @@ export service Time {
 /** Where the latest time is kept so restarts never move backwards. */
 const key = "alpha.time"
 
+/** The earliest date this build runs on, 2026-01-01: a phone's clock before it has not been set, and its kept time is trusted over it. */
+const clockSet = Date.UTC(2026, 0, 1)
+
+/** How far a kept time may lead a clock that has been set, a year and a day: further ahead, it was kept from a clock set far ahead, and is let go. */
+const keptLead = 366 * 86_400_000
+
 /**
  * Time over Effect's `Clock` and the store. `resumed` says each time the page may have slept, which stops its timers:
  * every wait looks at the clock again then. If `resumed` completes cleanly, waits still rest on the clock without spinning.
@@ -27,8 +34,8 @@ export function timeOver(resumed: Stream.Stream<unknown>) {
     const store = try KeyValueStore.KeyValueStore
     const clock = try Clock.clockWith((clock) => succeed(clock))
     const before = Number((store.get(key) catch () => undefined) ?? 0)
-    const persisted = Number.isSafeInteger(before) && before > 0 ? before : 0
     let wall = try clock.currentTimeMillis
+    const persisted = Number.isSafeInteger(before) && before > 0 && (wall < clockSet || before <= wall + keptLead) ? before : 0
     let latest = persisted > wall ? persisted : wall
     let saved = persisted
     effect function persist(value: number): void!! {

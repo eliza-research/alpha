@@ -131,34 +131,34 @@ pure def lawTheWalletHoldsNothingOfValue(chain: str): bool =
   valuedChains.includes(chain) implies not(walletSettings.some(s => s.held == chain))
 ```
 
-### The wallet is given no storage key until the owner allows wallet keys
+### The wallet can be made only on a launch with the signed-in account's storage key
 
-A signed-in launch carries the account's task storage key, which the
-agent's task store seals its records under. The wallet seals its keys
-under the same key, so with it the wallet could be made and its keys
-written. Until the owner allows wallet keys on the phone, the pack hands
-the wallet module the launch without its storage key: the wallet holds
-nothing, offers no wallet to make and refuses to make one, as on a launch
-with no key. Every other module keeps the key. Allowing wallet keys is
-this one value.
+A signed-in phone gives the resident wallet the same account-bound storage
+key it releases for the task store. The wallet uses that key to seal its
+own keys on this phone when the owner chooses Make wallet. Opening Wallet
+with no wallet yet only offers that choice. Without the launch key the
+wallet cannot be made.
 
 ```quint
-pure val walletKeysAllowed = false
+pure val walletKeysAllowed = true
 pure def walletGetsKey(launchKey: bool): bool = launchKey and walletKeysAllowed
-pure def lawTheWalletSealsNothingUntilAllowed(launchKey: bool): bool =
-  walletGetsKey(launchKey) implies walletKeysAllowed
+pure def lawTheWalletRequiresTheLaunchKey(launchKey: bool): bool =
+  walletGetsKey(launchKey) iff launchKey
 ```
 
-### The agent may run the actions the old phone's agent ran plus Alpha's Clock and Reminders actions, and every other action the bundle registers is listed as refused with its reason
+### The agent may run the actions the old phone's agent ran plus Alpha's Clock, Reminders and Device Control actions, and every other action the bundle registers is listed as refused with its reason
 
 The old agent had no allowlist: every action its plugins registered could
 run. The pack's plugins register those same actions under the pinned
 eliza's names, and Alpha's `alpha-apps` product plugin registers
-`CLOCK_ALARM`, `CLOCK_TIMER`, `CLOCK_WORLD` and `REMINDERS_MANAGE`.
+`CLOCK_ALARM`, `CLOCK_TIMER`, `CLOCK_WORLD`, `REMINDERS_MANAGE` and
+`DEVICE_CONTROL`.
 `CLOCK_ALARM` tells the model that an alarm rings at a clock time, that
 being woken up is an alarm, and that a reminder never stands in for one,
 as the old phone's agent was told; which tool a request needs stays the
-model's to decide. Eliza's
+model's to decide. `DEVICE_CONTROL` lets the agent observe and act inside
+an owner-approved third-party app within the lease and screen-safety rules
+of `spec/app/control/index.md`. Eliza's
 wallet module registers `WALLET`, which reads the wallet and asks for a
 transfer and can approve none.
 `BROWSER_OPEN` hands a web page the owner asks for to the screen they asked
@@ -174,7 +174,7 @@ calculator.
 ```quint
 pure val productPluginName: str = "alpha-apps"
 pure val coreActions: List[str] = List("REPLY", "IGNORE", "NONE")
-pure val alphaAppActions: List[str] = List("CLOCK_ALARM", "CLOCK_TIMER", "CLOCK_WORLD", "REMINDERS_MANAGE")
+pure val alphaAppActions: List[str] = List("CLOCK_ALARM", "CLOCK_TIMER", "CLOCK_WORLD", "REMINDERS_MANAGE", "DEVICE_CONTROL")
 pure val allowedActions: List[str] = List(
   "REPLY", "IGNORE", "NONE",
   "OWNER_REMINDERS", "OWNER_GOALS", "TODO", "OWNER_ROUTINES", "BRIEF",
@@ -186,7 +186,7 @@ pure val allowedActions: List[str] = List(
   "BROWSER", "BROWSER_BACK", "BROWSER_FORWARD", "BROWSER_RELOAD", "BROWSER_OPEN",
   "NOTES_LIST", "NOTES_GET", "NOTES_CREATE", "NOTES_UPDATE", "NOTES_DELETE", "NOTES_RESTORE", "NOTES_MOVE",
   "PROPOSE_DEVICE_ACTION", "VIEWS",
-  "CLOCK_ALARM", "CLOCK_TIMER", "CLOCK_WORLD", "REMINDERS_MANAGE",
+  "CLOCK_ALARM", "CLOCK_TIMER", "CLOCK_WORLD", "REMINDERS_MANAGE", "DEVICE_CONTROL",
   "WALLET"
 )
 pure def lawCoreActionsAreAlwaysAllowed(a: str): bool = coreActions.includes(a) implies allowedActions.includes(a)
@@ -343,7 +343,8 @@ through the approvals module. Ask Alpha completes a reviewed Messages read only
 for the exact owner turn after the agent acknowledges its device receipt.
 Wallet reads the wallet module's status, holdings, waiting requests and
 activity, makes and switches the wallet, asks for a transfer, and opens and
-decides its review. A route an area
+decides its review. Settings reads and updates Alpha's on-device local LLM
+status, pinned model catalog, AI routing mode, active model, and model removal. A route an area
 fakes for want of an agent plugin is not listed: none does today. Each line
 of `apps/agent/host/routes.jsonl` is one route; the pack is refused unless
 that list is this one, and eliza's route gate admits each of its routes.
@@ -372,6 +373,7 @@ pure val pageRoutesCore: List[Route] = List(
   { method: Post, path: "/api/views/interact-result", stream: false },
   { method: Get, path: "/api/client-devices/capabilities", stream: false },
   { method: Post, path: "/api/client-devices/register", stream: false },
+  { method: Post, path: "/api/client-devices/revoke", stream: false },
   { method: Get, path: "/api/client-devices/context", stream: false },
   { method: Get, path: "/api/client-devices/proposals", stream: false },
   { method: Post, path: "/api/client-devices/proposals/{id}/decision", stream: false },
@@ -483,7 +485,23 @@ pure val pageRoutesTasksWallet: List[Route] = List(
   { method: Post, path: "/api/wallet/requests", stream: false },
   { method: Post, path: "/api/wallet/requests/{id}/review", stream: false },
   { method: Post, path: "/api/wallet/requests/{id}/decide", stream: false },
+  { method: Get, path: "/api/alpha/control/state", stream: false },
+  { method: Post, path: "/api/alpha/control/lease", stream: false },
+  { method: Post, path: "/api/alpha/control/stop", stream: false },
+  { method: Get, path: "/api/alpha/local-llm/status", stream: false },
+  { method: Get, path: "/api/alpha/local-llm/catalog", stream: false },
+  { method: Post, path: "/api/alpha/local-llm/mode", stream: false },
+  { method: Post, path: "/api/alpha/local-llm/activate", stream: false },
+  { method: Post, path: "/api/alpha/local-llm/delete", stream: false },
 )
+pure val controlLeasePath = "/api/alpha/control/lease"
+pure val controlStopPath = "/api/alpha/control/stop"
+pure val controlLeaseLimit = 4096
+pure val controlStopLimit = 1024
+pure val localLlmModePath = "/api/alpha/local-llm/mode"
+pure val localLlmActivatePath = "/api/alpha/local-llm/activate"
+pure val localLlmDeletePath = "/api/alpha/local-llm/delete"
+pure val localLlmControlLimit = 1024
 pure def concatRoutes(a: List[Route], b: List[Route]): List[Route] = a.concat(b)
 pure val pageRoutes: List[Route] = concatRoutes(concatRoutes(pageRoutesCore, pageRoutesApps), concatRoutes(pageRoutesWorkflows, pageRoutesTasksWallet))
 pure def admitted(listed: List[Route], r: Route): bool = listed.includes(r)
@@ -582,7 +600,20 @@ The page can read pending receipts. It cannot complete them.
 ```quint
 pure val nativeNotesCleanup = "/api/alpha-runtime/notes-recording-cleanup"
 pure val nativeNotesCleanupLimit = 2048
+pure val nativeControlObserve = "/api/alpha-control/observe"
+pure val nativeControlNext = "/api/alpha-control/next"
+pure val nativeControlReceipt = "/api/alpha-control/receipt"
+pure val nativeControlInterrupt = "/api/alpha-control/interrupt"
+pure val nativeControlObserveLimit = 1572864
+pure val nativeControlReceiptLimit = 65536
+pure val nativeControlInterruptLimit = 2048
 pure val nativeRecordingRoutes: List[Route] = List({ method: Post, path: nativeNotesCleanup, stream: false })
+pure val nativeControlRoutes: List[Route] = List(
+  { method: Post, path: nativeControlObserve, stream: false },
+  { method: Get, path: nativeControlNext, stream: false },
+  { method: Post, path: nativeControlReceipt, stream: false },
+  { method: Post, path: nativeControlInterrupt, stream: false },
+)
 pure val nativeRoutes: List[Route] = List(
   { method: Get, path: "/api/alpha-speech/scope", stream: false },
   { method: Post, path: "/api/asr/local-inference/live", stream: false },
@@ -591,10 +622,28 @@ pure val nativeRoutes: List[Route] = List(
   { method: Get, path: "/api/workflow/hosted/results", stream: false },
   { method: Post, path: nativeDigestAck, stream: false },
   { method: Post, path: nativeNotesCleanup, stream: false },
+  { method: Post, path: nativeControlObserve, stream: false },
+  { method: Get, path: nativeControlNext, stream: false },
+  { method: Post, path: nativeControlReceipt, stream: false },
+  { method: Post, path: nativeControlInterrupt, stream: false },
 )
 pure def nativeRoutesAdmitted(listed: List[Route]): bool =
   listed.length() == nativeRoutes.length() and listed.every(route => nativeRoutes.includes(route))
     and nativeRoutes.every(route => listed.includes(route))
+```
+
+### Only Android's native control executor can post UI observations, poll queued operations, submit receipts, or fire native interrupts
+
+The page's route table carries only the overlay's state read, owner lease
+grant, and stop switch. Raw screen observations, queued operations, execution
+receipts, and touch-preemption interrupts stay on the phone's root-only native
+channel so no untrusted WebView page can inject forged UI trees or spoof
+receipts.
+
+```quint
+pure val controlRouteValues: Set[Route] = nativeControlRoutes.foldl(Set(), (routes, route) => routes.union(Set(route)))
+pure def lawControlNativeRoutesAreAbsentFromThePage(controlRoute: Route): bool =
+  nativeControlRoutes.includes(controlRoute) implies not(pageRoutes.includes(controlRoute))
 ```
 
 ### The page names the query values each gated route can receive
@@ -610,7 +659,9 @@ start and end of their window, and Calendar may send a time zone.
 Calendar asks for up to fifty pending approvals, and when deleting an event
 sends the calendar, grant, recurrence scope, expected provider version,
 idempotency key, cancellation mode and attendee notice choice. Workflows lists the owner's
-visible tasks, reads a result page for its
+visible tasks, pages the agent's native notification inbox (`nativeTransport=true`,
+with optional UUID `nativeEpoch` and nonnegative decimal `limit`, `afterSequence`
+and `throughSequence`), reads a result page for its
 client, and supplies the exact reviewed revision when removing a trigger.
 Reminders says, when it deletes a custom list, whether the list's reminders
 move to the default list or go with it.
@@ -633,8 +684,11 @@ pure val pageQueries: List[RequestQuery] = List(
   { method: Get, path: "/api/lifeops/calendar/feed", key: "timeMin", kind: AnyQuery, value: "", example: "2026-11-24T00:00:00.000Z" },
   { method: Get, path: "/api/lifeops/calendar/feed", key: "timeMax", kind: AnyQuery, value: "", example: "2026-11-25T00:00:00.000Z" },
   { method: Get, path: "/api/lifeops/calendar/feed", key: "timeZone", kind: AnyQuery, value: "", example: "America/New_York" },
-  { method: Get, path: "/api/notifications", key: "category", kind: FixedQuery, value: "workflow", example: "workflow" },
-  { method: Get, path: "/api/notifications", key: "limit", kind: FixedQuery, value: "50", example: "50" },
+  { method: Get, path: "/api/notifications", key: "nativeTransport", kind: FixedQuery, value: "true", example: "true" },
+  { method: Get, path: "/api/notifications", key: "nativeEpoch", kind: PatternQuery, value: "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", example: "00000000-0000-0000-0000-000000000000" },
+  { method: Get, path: "/api/notifications", key: "limit", kind: PatternQuery, value: "0|[1-9][0-9]{0,15}", example: "50" },
+  { method: Get, path: "/api/notifications", key: "afterSequence", kind: PatternQuery, value: "0|[1-9][0-9]{0,15}", example: "0" },
+  { method: Get, path: "/api/notifications", key: "throughSequence", kind: PatternQuery, value: "0|[1-9][0-9]{0,15}", example: "0" },
   { method: Delete, path: "/api/lifeops/calendar/events/{eventId}", key: "calendarId", kind: AnyQuery, value: "", example: "primary" },
   { method: Delete, path: "/api/lifeops/calendar/events/{eventId}", key: "grantId", kind: AnyQuery, value: "", example: "grant-1" },
   { method: Delete, path: "/api/lifeops/calendar/events/{eventId}", key: "recurrenceScope", kind: PatternQuery, value: "instance|this_and_following|series", example: "instance" },

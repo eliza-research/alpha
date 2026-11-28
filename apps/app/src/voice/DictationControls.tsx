@@ -62,9 +62,9 @@ export function DictationControls({ runtime, onKeyboard, playback }: {
       : {
         label: recorder.preparation === "Preparing" ? "Preparing on-device speech"
           : recorder.preparation === "Unavailable" ? "On-device speech unavailable" : "Start recording",
-        icon: Mic, event: start, enabled: can(start),
+        icon: Mic, event: start, enabled: can(start), unseen: recorder.preparation === "Preparing" || recorder.preparation === "Unavailable",
       },
-    Starting: { label: "Starting microphone", icon: Mic, event: start, enabled: false },
+    Starting: { label: "Starting microphone", icon: Mic, event: start, enabled: false, unseen: true },
     Recording: { label: "Stop recording", icon: VoiceStopIcon, event: stop, enabled: can(stop) },
     Transcribing: { label: "Cancel transcription", icon: VoiceStopIcon, event: close, enabled: can(close) },
     Recorded: { label: "Transcribe on this phone", icon: Mic, event: retry, enabled: can(retry) },
@@ -108,7 +108,7 @@ export function DictationControls({ runtime, onKeyboard, playback }: {
       )}
       <Button className={cn("min-h-14 gap-2.5 rounded-sheet px-4", waitingForRecognition && "disabled:opacity-100")}
         disabled={pending || !primary.enabled} onClick={() => void send(primary.event)}>
-        <PrimaryIcon aria-hidden="true" className="size-6" />{primary.label}
+        <PrimaryIcon aria-hidden="true" className="size-6" /><span className={"unseen" in primary && primary.unseen ? "sr-only" : undefined}>{primary.label}</span>
       </Button>
       {review && (playback || can(another)) && <Button variant="secondary" className={cn("h-11 px-4 font-normal", playback && dictatedText.trim() === "" && !pending && "disabled:opacity-100")}
         disabled={pending || (playback !== undefined && dictatedText.trim() === "")}

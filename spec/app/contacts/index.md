@@ -1,7 +1,7 @@
 # Contacts
 
 The phone's address book, on an Alpha image that admits it: the list with
-favourites and search, one contact, and the form that adds or changes one.
+favourites, one contact, and the form that adds or changes one.
 What the phone holds is kept in memory only while Contacts is showing.
 Calling or messaging a contact opens [Phone](../phone/) or
 [Messages](../messages/) with the number filled in; nothing is dialled or
@@ -18,7 +18,7 @@ blank screen.
 
 ### What Contacts holds
 
-The list as last read, with its search and filter chip, and whether the
+The list as last read, with its filter and filter chip, and whether the
 phone lets Alpha write contacts; the open contact as the phone holds it; the
 form; and the one change being written. A sheet
 counts what a contact has: a name, phone numbers, email addresses and
@@ -38,7 +38,7 @@ type Source = Listing | Card
 type Sheet = { names: int, phones: int, emails: int, notes: int, notable: bool }
 type Contacts = {
   front: bool, access: P::Permission,
-  list: R::Read, rows: int, more: bool, searching: bool, sought: bool, chip: Chip, editable: bool,
+  list: R::Read, rows: int, more: bool, sought: bool, chip: Chip, editable: bool,
   opened: bool, contact: str, card: R::Read, held: Sheet, confirming: bool,
   form: Form, sheet: Sheet, dirty: bool,
   write: A::Attempt, change: Change,
@@ -48,7 +48,7 @@ pure val blankSheet: Sheet = { names: 0, phones: 0, emails: 0, notes: 0, notable
 
 pure val initial: Contacts = {
   front: false, access: P::unasked,
-  list: R::unread, rows: 0, more: false, searching: false, sought: false, chip: Everyone, editable: false,
+  list: R::unread, rows: 0, more: false, sought: false, chip: Everyone, editable: false,
   opened: false, contact: "", card: R::unread, held: blankSheet, confirming: false,
   form: Shut, sheet: blankSheet, dirty: false,
   write: A::plan(0), change: Create,
@@ -106,9 +106,9 @@ pure val weight_writeAnswered = 4
 
 ## Story: Browse my contacts
 
-> As the owner, I want my contacts listed with my favourites, a search and
-> a filter, and to be told plainly when there are none, when nothing
-> matches and when Alpha has no access.
+> As the owner, I want my contacts listed with my favourites and filter,
+> and to be told plainly when there are none, when nothing matches and when
+> Alpha has no access.
 
 Contacts are grouped from A to Z by the first letter without accents, with
 other names together at the end. Names use local alphabetical order
@@ -130,7 +130,7 @@ pure def show(s: Contacts): Moved =
 pure def canLeave(s: Contacts): bool = s.front
 
 pure def leave(s: Contacts): Contacts =
-  { ...s, front: false, rows: 0, more: false, searching: false, opened: false, held: blankSheet, confirming: false }
+  { ...s, front: false, rows: 0, more: false, opened: false, held: blankSheet, confirming: false }
 ```
 
 ### A refresh reads the list again and keeps the rows shown until it answers
@@ -145,10 +145,12 @@ pure def refresh(s: Contacts): Moved =
   { state: { ...s, list: list }, out: fetching(Listing, list.ticket, false) }
 ```
 
-### Searching or changing the filter chip starts a new list
+### Filtering or changing the filter chip starts a new list
 
-The header search and the closed Ask Alpha bar both filter on the phone
-while the owner types. Submitting the bar passes those words to Ask Alpha.
+Contacts has no owner search button or search field, and the closed Ask
+Alpha bar addresses Alpha without filtering the list. A filter Alpha
+applies or a filter chip narrows the list, and clearing it or pressing Back
+while filtered returns to All contacts before Back leaves Contacts.
 
 ```quint
 pure def narrowed(s: Contacts): bool = s.sought or s.chip != Everyone
@@ -164,37 +166,13 @@ pure def search(s: Contacts, typed: bool): Moved = relisted(typed, s.chip, s)
 pure def canPick(s: Contacts, chip: Chip): bool = readable(s) and chip != s.chip
 
 pure def pick(s: Contacts, chip: Chip): Moved = relisted(s.sought, chip, s)
-```
 
-### Back from the search field clears the query and returns to Contacts
+pure def canClearFilter(s: Contacts): bool =
+  s.front and not(s.opened) and s.form == Shut and narrowed(s)
 
-The search field opens from the list. Back, Android's or the field's own
-where one is drawn, closes the field first, even with nothing typed, clears
-its query and returns to All contacts; only the next Back leaves Contacts.
-As in Sunday's v119, while Alpha is the phone's launcher the field draws no
-Back of its own and runs the full width, in Contacts and on Phone's
-Contacts tab alike. A filter that Alpha applied can be cleared from the list
-without opening the field. As in Sunday's v119, opening the field over a
-filter that Alpha applied clears that filter first: the field opens empty
-over All contacts. Words the owner typed stay in the field. `applied` is
-whether the words on the list are a filter Alpha applied.
-
-```quint
-pure def canBeginSearch(s: Contacts): bool =
-  readable(s) and not(s.searching) and not(s.opened) and s.form == Shut
-
-pure def beginSearch(s: Contacts, applied: bool): Moved =
-  val opened = { ...s, searching: true }
-  if (applied and s.sought) relisted(false, Everyone, opened)
-  else { state: opened, out: List() }
-
-pure def canEndSearch(s: Contacts): bool =
-  s.front and not(s.opened) and s.form == Shut and (s.searching or narrowed(s))
-
-pure def endSearch(s: Contacts): Moved =
-  val listing = { ...s, searching: false }
-  if (narrowed(s) and readable(s)) relisted(false, Everyone, listing)
-  else { state: { ...listing, sought: false, chip: Everyone }, out: List() }
+pure def clearFilter(s: Contacts): Moved =
+  if (readable(s)) relisted(false, Everyone, s)
+  else { state: { ...s, sought: false, chip: Everyone }, out: List() }
 ```
 
 ### "More contacts" reads further only when the phone said there are more
@@ -222,7 +200,7 @@ pure def canListed(s: Contacts, ticket: int, count: int): bool =
 pure def listed(s: Contacts, ticket: int, ok: bool, grant: P::Grant, count: int, further: bool, editable: bool): Contacts =
   val access = P::observe(s.access, grant)
   val good = ok and P::allows(access)
-  val kept = if (P::allows(access)) s else { ...s, searching: false, opened: false, held: blankSheet, confirming: false, form: Shut, sheet: blankSheet, dirty: false }
+  val kept = if (P::allows(access)) s else { ...s, opened: false, held: blankSheet, confirming: false, form: Shut, sheet: blankSheet, dirty: false }
   { ...kept,
     access: access, list: R::answer(s.list, good), editable: if (good) editable else s.editable and P::allows(access),
     rows: if (good) count else 0, more: good and further and count > 0,
@@ -288,7 +266,7 @@ pure def openSettings(s: Contacts): Moved = { state: s, out: List(Settings) }
 pure def accessReported(s: Contacts, grant: P::Grant): Moved =
   val access = P::observe(s.access, grant)
   if (not(P::allows(access)))
-    { state: { ...s, access: access, searching: false, rows: 0, more: false, opened: false, held: blankSheet, confirming: false, form: Shut, sheet: blankSheet, dirty: false },
+    { state: { ...s, access: access, rows: 0, more: false, opened: false, held: blankSheet, confirming: false, form: Shut, sheet: blankSheet, dirty: false },
       out: List() }
   else if (s.front and not(P::allows(s.access))) refresh({ ...s, access: access })
   else { state: { ...s, access: access }, out: List() }

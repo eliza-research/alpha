@@ -57,9 +57,13 @@ const read = ({ minutes, seconds }: Reading) => `${minutes}:${seconds.toString()
 
 const timed = (film: Film) => nearLimit(film) ? `${read(elapsedClock(film))} · ${read(remaining(film))} left` : read(elapsedClock(film));
 
-function Viewfinder({ state, native, sheet, zoom, focusAt, bind }: {
+/** Solid-black 1x1 PNG data URI preventing WebView's default play-icon video poster before a live frame renders. */
+const blackVideoPoster = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+function Viewfinder({ state, native, nativePreview, sheet, zoom, focusAt, bind }: {
   state: Visit;
   native: boolean;
+  nativePreview: boolean;
   sheet: boolean;
   zoom: (tenths: number) => void;
   focusAt: (point: Point) => void;
@@ -139,9 +143,10 @@ function Viewfinder({ state, native, sheet, zoom, focusAt, bind }: {
         autoPlay
         muted
         playsInline
+        poster={blackVideoPoster}
         aria-hidden
-        className={cn("pointer-events-none absolute inset-0 size-full object-cover", native && "invisible")}
-        style={native ? undefined : { scale: `${(state.lens === "Front" ? -1 : 1) * state.zoom / 10} ${state.zoom / 10}` }}
+        className={cn("pointer-events-none absolute inset-0 size-full object-cover", (nativePreview || !ready(state)) && "invisible")}
+        style={nativePreview ? undefined : { scale: `${(state.lens === "Front" ? -1 : 1) * state.zoom / 10} ${state.zoom / 10}` }}
       />
       <span aria-hidden className="pointer-events-none absolute top-1/2 -left-[4%] block aspect-3/4 w-[108%] -translate-y-1/2" />
       {state.focus > 0 && target !== undefined && target.preview === state.preview && (
@@ -248,7 +253,14 @@ export function Camera({ runtime, alpha }: Shown<Runtime>) {
     void runtime.runPromiseExit(Effect.flatMap(CameraAssets, (assets) => assets.bind(video)));
     return () => { void runtime.runPromiseExit(Effect.flatMap(CameraAssets, (assets) => assets.bind(null))); };
   }, [runtime]);
-  if (!state) return null;
+  if (!state) return (
+    <section
+      aria-label="Camera"
+      data-alpha-camera-root=""
+      // eslint-disable-next-line better-tailwindcss/no-unknown-classes -- design.md, "Dark": Camera keeps a dark viewfinder and controls in both themes, as in develop
+      className="dark relative isolate min-h-0 flex-1 overflow-hidden bg-background text-foreground"
+    />
+  );
 
   const port = runtime.runSync(CameraPort);
   const assets = runtime.runSync(CameraAssets);
@@ -298,6 +310,7 @@ export function Camera({ runtime, alpha }: Shown<Runtime>) {
       <Viewfinder
         state={state}
         native={native}
+        nativePreview={port.nativePreview}
         sheet={sheet}
         bind={bind}
         zoom={currentZoom}

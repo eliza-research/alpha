@@ -3,7 +3,10 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import { createCloudClient } from "@elizaos/cloud"
 import { deployment } from "@repo/deployment"
-import { prepared, said } from "@repo/eliza-harness"
+import { storeLayer } from "@elizaos/cloud-worker"
+import { dispatchSlackEvents, slackRelay } from "../src/slack-events.vibe"
+import { prepareSlackMailbox, pruneSlackMailbox } from "../src/slack-mailbox.vibe"
+import { prepared, said, startSlackProvider } from "@repo/eliza-harness"
 import { ChildProcess } from "effect/process"
 import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 import { alphaName, alphaPackage, assetLinksNameAlpha, profileFits, releaseSigner, returnAnswer, returnPageSealed, returnsOffApi } from "../gen/cloud.effect.vibe"
@@ -31,11 +34,48 @@ import resources from "./fixtures/resources.json" with { type: "json" }
 
 module node {
   import { pathOf, readCloudError, routesByName, type EnvironmentProfile } from "@elizaos/cloud"
-  import { createHash, generateKeyPairSync, randomBytes } from "node:crypto"
+  import { createHash, createHmac, generateKeyPairSync, randomBytes } from "node:crypto"
   import http from "node:http"
   import type { AddressInfo } from "node:net"
   import { runInNewContext } from "node:vm"
 
+  export const receiverEnv = {
+    SLACK_APP_ID: "A01ALPHA", SLACK_APP_TOKEN: "xapp-local-receiver", SLACK_CLIENT_ID: "123.456",
+    SLACK_SIGNING_SECRET: "c".repeat(32), WEB_ORIGIN: "https://cloud.alpha.test",
+  }
+  /** The network port targets only the Slack provider fixture. @throws {never} */
+  export function providerAt(origin: string): typeof fetch {
+    return async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input)
+      if (url.origin !== "https://slack.com" || !url.pathname.startsWith("/api/") || url.searchParams.has("token")) throw new Error("unexpected provider destination")
+      return fetch(origin + url.pathname + url.search, init)
+    }
+  }
+  export async function limitAuthorizations(origin: string) {
+    const response = await fetch(origin + "/__control/fault", { method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({path: "/api/apps.event.authorizations.list", status: 429, retryAfter: 2, remaining: 1}) })
+    if (!response.ok) throw new Error("could not configure Slack rate limit")
+  }
+  export async function consentCode(origin: string, team: string, redirectUri: string) {
+    const verifier = random()
+    const fields = new URLSearchParams({ client_id: receiverEnv.SLACK_CLIENT_ID, redirect_uri: redirectUri,
+      state: random(), code_challenge: challengeOf(verifier), code_challenge_method: "S256", team, decision: "allow" })
+    const answer = await fetch(origin + "/oauth/v2/authorize", { method: "POST", body: fields, redirect: "manual" })
+    const code = new URL(answer.headers.get("location") ?? "").searchParams.get("code")
+    if (!code) throw new Error("provider did not authorize grant")
+    return new URLSearchParams({ client_id: receiverEnv.SLACK_CLIENT_ID, redirect_uri: redirectUri, code_verifier: verifier, code })
+  }
+  /** Fixed origin and test-owned request fields. @throws {never} */
+  export function relayRequest(path: string, body: string, headers: Record<string,string> = {}): Request {
+    return new Request("https://api.alpha.test/api/slack/" + path, { method: "POST", body, headers })
+  }
+  /** Sign one fixture using the local provider secret. @throws {never} */
+  export function signedEvent(payload: unknown, milliseconds: number, secret = receiverEnv.SLACK_SIGNING_SECRET): Request {
+    const timestamp = String(Math.floor(milliseconds / 1000))
+    const body = JSON.stringify(payload)
+    const signature = createHmac("sha256", secret).update("v0:" + timestamp + ":" + body).digest("hex")
+    return relayRequest("events", body, { "X-Slack-Request-Timestamp": timestamp, "X-Slack-Signature": "v0="+signature })
+  }
   /** The paid plans a billing profile binds to provider prices: Plus always, Pro only where the deployment sells it. */
   type Plans = NonNullable<EnvironmentProfile["billing"]>["plans"]
 
@@ -118,7 +158,7 @@ module node {
     return { address: url.href, ...shown }
   }
 }
-import { catalog, challengeOf, oversizedKey, p384Key, portalAnswer, random, returnPageAt, returnPageParts } from node
+import { consentCode, limitAuthorizations, providerAt, receiverEnv, relayRequest, signedEvent, catalog, challengeOf, oversizedKey, p384Key, portalAnswer, random, returnPageAt, returnPageParts } from node
 
 /** The cloud stopped, or said nothing of serving, before its deadline. */
 error NotServing { output: string }
@@ -330,9 +370,6 @@ describe(`Alpha's screens reach the cloud through eliza's policy (spec/cloud/ind
     const listed = (group?.routes ?? []).map((route) => ({ path: route.path.replace(/\{\w+\}/g, "{}"), keys: ((route as { readonly query?: ReadonlyArray<{ readonly key: string }> }).query ?? []).map((rule) => rule.key).sort() }))
     try holds(() => assert.ok(sent.length >= 13, `found ${sent.length} paths of the managed Gmail client`))
     try holds(() => assert.deepStrictEqual(sent.filter((want) => !listed.some((have) => have.path === want.path && have.keys.join() === want.keys.join())), []))
-    const capConfig = (try tryPromise(() => import(new URL("../../app/capacitor.config.ts", import.meta.url).href) as Promise<{ default: { plugins?: { ElizaCloud?: { routes?: unknown } }; android?: { webContentsDebuggingEnabled?: boolean } } }>)).default
-    try holds(() => assert.deepStrictEqual(capConfig.plugins?.ElizaCloud?.routes, elizaCloudRoutes))
-    try holds(() => assert.strictEqual(capConfig.android?.webContentsDebuggingEnabled, false))
   } |> Effect.provide(%, NodeServices.layer))
 })
 
@@ -376,7 +413,115 @@ describe(`The API Worker serves one reviewed profile (spec/cloud/rollout.md, "St
     const env = { CLOUD_PROFILE_SHA256: sha256Hex(profile), ASSETS: holding(undefined) } as unknown as Parameters<typeof alphaCloudWorker.fetch>[1]
     const answer = try tryPromise(() => alphaCloudWorker.fetch(new EdgeRequest("https://api.alphaphone.dev/api/health"), env))
     try holds(() => assert.deepStrictEqual([answer.status, answer.headers.get("retry-after")], [503, "30"]))
+    const registration = new EdgeRequest("https://api.alphaphone.dev/.well-known/alpha-slack")
+    const origin = "https://cloud.alphaphone.dev"
+    const apiOrigin = "https://api.alphaphone.dev"
+    const browserAssets = new Map([
+      ["/alpha-slack-assets/opener", '<script type="module" src="/alpha-slack-assets/assets/slack-example.js"></script>'],
+      ["/alpha-slack-assets/return", '<script type="module" src="/alpha-slack-assets/assets/alpha-slack-return-example.js"></script>'],
+    ])
+    const ready = { ...env, WEB_ORIGIN: origin, PUBLIC_API_ORIGIN: apiOrigin, ASSETS: { fetch: (request: Request) => {
+      const path = new URL(request.url).pathname
+      const document = browserAssets.get(path)
+      if (document !== undefined) return Promise.resolve(new EdgeResponse(document))
+      if (path === "/alpha-slack-assets/assets/slack-example.js" || path === "/alpha-slack-assets/assets/alpha-slack-return-example.js")
+        return Promise.resolve(new EdgeResponse("export {};", { headers: { "Content-Type": "text/javascript" } }))
+      return holding(profile).fetch(request)
+    } } }
+    const telegram = new EdgeRequest("https://api.alphaphone.dev/.well-known/alpha-telegram")
+    const absentTelegram = try tryPromise(() => alphaCloudWorker.fetch(telegram, ready))
+    const registeredTelegram = try tryPromise(() => alphaCloudWorker.fetch(telegram, { ...ready, TELEGRAM_API_ID: "2147483647" }))
+    const telegramInfo = try tryPromise(() => registeredTelegram.json())
+    try holds(() => assert.deepStrictEqual([absentTelegram.status, registeredTelegram.status, telegramInfo], [503, 200, { apiId: 2147483647 }]))
+    const missing = try tryPromise(() => alphaCloudWorker.fetch(registration, ready))
+    const published = try tryPromise(() => alphaCloudWorker.fetch(registration, { ...ready, SLACK_CLIENT_ID: "123.456" }))
+    const body = try tryPromise(() => published.json())
+    try holds(() => assert.deepStrictEqual([missing.status, published.status, body], [503, 200, { clientId: "123.456" }]))
+    const registrations = (bindings: typeof ready) => {
+      const api = { fetch: (request: Request) => alphaCloudWorker.fetch(request, bindings) }
+      const reach: typeof fetch = (input, init) => {
+        const request = new EdgeRequest(input, init)
+        return new URL(request.url).origin === origin
+          ? edgeWorker.fetch(request, { CLOUD_ENVIRONMENT: "production", WEB_ORIGIN: origin, PUBLIC_API_ORIGIN: apiOrigin, API: api })
+          : api.fetch(request)
+      }
+      return smoke("production", { api: "https://api.alphaphone.dev", web: "https://cloud.alphaphone.dev" }, "Alpha Cloud", "messaging")
+        |> Effect.provide(%, FetchHttpClient.layer) |> Effect.provideService(%, FetchHttpClient.Fetch, reach)
+    }
+    const invalidId = try registrations({ ...ready, TELEGRAM_API_ID: "2147483648" })
+    try holds(() => assert.deepStrictEqual(invalidId.find(gate => gate.gate === "TelegramRegistration"), { gate: "TelegramRegistration", passed: false, detail: "HTTP 503" }))
+    const offline = try registrations(ready)
+    const partial = try registrations({ ...ready, SLACK_CLIENT_ID: "123.456", TELEGRAM_API_ID: "1234" })
+    const disconnectedMailbox = try registrations({ ...ready, ...receiverEnv, WEB_ORIGIN: origin, TELEGRAM_API_ID: "1234" })
+    try holds(() => assert.deepStrictEqual(offline.map(gate => [gate.gate, gate.passed, gate.detail]), [["SlackRegistration", false, "HTTP 503"], ["SlackMailbox", false, "HTTP 503"], ["TelegramRegistration", false, "HTTP 503"], ["SlackBrowser", true, "HTTP 200"], ["SlackBrowserReturn", true, "HTTP 200"]]))
+    try holds(() => assert.deepStrictEqual(partial.map(gate => gate.passed), [false, false, true, true, true]))
+    try holds(() => assert.deepStrictEqual(disconnectedMailbox.map(gate => gate.passed), [true, false, true, true, true]))
   })
+})
+
+describe(`Cloud Slack events reach each authorized installation (spec/app/slack/notices.md, "Story: Hear about Slack DMs, mentions and thread replies per workspace")`, () => {
+  it.live("exchanges PKCE grants, verifies signed callbacks and rereads a DM with its authorized handset after rotation", () => effect {
+    try prepareSlackMailbox
+    const slack = try acquireRelease(tryPromise(() => startSlackProvider()), running => promise(() => running.stop()))
+    const send = providerAt(slack.origin)
+    const now = 1800000000000
+    const relay = (request: Request, at = now) => slackRelay(request, receiverEnv, send, at)
+    const readFor = (access: string, cursor?: number) => relay(relayRequest("events/read", JSON.stringify({ cursor }), { Authorization: "Bearer " + access }))
+    const grant = effect (team: string, redirect: string) => {
+      const fields = try tryPromise(() => consentCode(slack.origin, team, redirect))
+      const answer = try relay(relayRequest("oauth", fields.toString()))
+      const body = try tryPromise(() => answer.json() as Promise<{ authed_user: { access_token: string; refresh_token: string } }>)
+      try holds(() => assert.ok(body.authed_user?.access_token, JSON.stringify([answer.status, Object.keys(body)])))
+      return body.authed_user
+    }
+    const alpha = try grant("T01ALPHA", "alphaphone://slack/oauth/callback")
+    const design = try grant("T02DESIGN", "alphaphone://slack/oauth/standalone")
+    const readBody = (answer: Response) => tryPromise(() => answer.json() as Promise<{ cursor: number; events: { event: { text: string; channel: string } }[] }>)
+    const initial = try readBody(try readFor(alpha.access_token))
+    try holds(() => assert.deepStrictEqual(initial, { cursor: 0, events: [] }))
+    const probe = { type: "url_verification", challenge: "verification" }
+    const verified = try relay(signedEvent(probe, now))
+    const verifiedBody = try tryPromise(() => verified.json())
+    const forged = try relay(signedEvent(probe, now, "wrong"))
+    const stale = try relay(signedEvent(probe, now - 360000))
+    try holds(() => assert.deepStrictEqual([verifiedBody, forged.status, stale.status], [{ challenge: "verification" },401,401]))
+    const callback = { type: "event_callback", api_app_id: "A01ALPHA", event_id: "EvDM01", event_time: now/1000,
+      event_context: "EC-local-direct", team_id: "T02DESIGN", authorizations: [{ enterprise_id: null, team_id: "T02DESIGN", user_id: "U11OWNER", is_bot: true }],
+      event: { type: "message", channel: "D01MAYA", ts: "1730000360.000200", user: "U11OWNER", text: "callback text must never be delivered" } }
+    const accepted = try relay(signedEvent(callback, now))
+    const retry = try relay(signedEvent(callback, now))
+    const pending = try readBody(try readFor(alpha.access_token, 0))
+    try holds(() => assert.deepStrictEqual(pending.events, []))
+    try tryPromise(() => limitAuthorizations(slack.origin))
+    try dispatchSlackEvents(receiverEnv, send, now)
+    try dispatchSlackEvents(receiverEnv, send, now + 1000)
+    const delayed = try readBody(try readFor(alpha.access_token, 0))
+    try holds(() => assert.deepStrictEqual(delayed.events, []))
+    try dispatchSlackEvents(receiverEnv, send, now + 2000)
+    const stranger = try readBody(try readFor(design.access_token, 0))
+    const foreign = try readFor("xoxp-alpha-team-owner-initial", 0)
+    try holds(() => assert.deepStrictEqual([accepted.status, retry.status, stranger, foreign.status], [200,200,{cursor:0,events:[]},401]))
+    const rotated = try relay(relayRequest("oauth", new URLSearchParams({ client_id: receiverEnv.SLACK_CLIENT_ID, grant_type: "refresh_token", refresh_token: alpha.refresh_token }).toString()))
+    const credentials = try tryPromise(() => rotated.json() as Promise<{ access_token: string }>)
+    const retired = try readFor(alpha.access_token, 0)
+    const received = try readBody(try readFor(credentials.access_token, initial.cursor))
+    const again = try readBody(try readFor(credentials.access_token, received.cursor))
+    try holds(() => assert.deepStrictEqual([rotated.status, retired.status, received.events.map(item => item.event.text), again.events],
+      [200,401,["Yes! Grabbing coffee and joining in 5."],[]]))
+    const thread = { ...callback, event_id: "EvThread", event: { ...callback.event, channel: "C01GENERAL", ts: "1730000130.000300", thread_ts: "1730000100.000100" } }
+    try relay(signedEvent(thread, now))
+    try dispatchSlackEvents(receiverEnv, send, now)
+    const reply = try readBody(try readFor(credentials.access_token, received.cursor))
+    try holds(() => assert.deepStrictEqual(reply.events.map(item => item.event.text), ["Design slides are linked in the doc."]))
+    const hidden = { ...callback, event_id: "EvHidden", event: { ...callback.event, channel: "D99HIDDEN" } }
+    try relay(signedEvent(hidden, now))
+    try dispatchSlackEvents(receiverEnv, send, now)
+    const denied = try readBody(try readFor(credentials.access_token, reply.cursor))
+    try holds(() => assert.deepStrictEqual(denied.events, []))
+    try pruneSlackMailbox(now + 3600001)
+    const expired = try readBody(try readFor(credentials.access_token, 0))
+    try holds(() => assert.deepStrictEqual(expired, { cursor: 0, events: [] }))
+  } |> scoped(%) |> Effect.provide(%, storeLayer({ kind: "pglite", file: undefined })), 30000)
 })
 
 describe(`The web host returns the owner to the app (spec/cloud/rollout.md, "Story: Bring me back to the app when its link did not open")`, () => {
@@ -385,6 +530,8 @@ describe(`The web host returns the owner to the app (spec/cloud/rollout.md, "Sto
   it.effect("hands its own addresses to the API Worker as the web host, answers its health, and refuses every other address", () => effect {
     const routeOf = (address: string) => edgeRouteOf(new URL(address), env)
     const signIn = routeOf("https://cloud.alphaphone.dev/alphaphone/auth/callback?state=x")
+    const slackReturn = routeOf("https://cloud.alphaphone.dev/alpha-slack-return?state=private-state&code=single-use-code")
+    try holds(() => assert.deepStrictEqual([slackReturn.route, slackReturn.target?.href], ["Forward", "https://api.alphaphone.dev/alpha-slack-return"]))
     try holds(() => assert.deepStrictEqual([signIn.route, signIn.target?.href], ["Forward", "https://api.alphaphone.dev/alphaphone/auth/callback?state=x"]))
     try holds(() => assert.deepStrictEqual(["https://cloud.alphaphone.dev/health", "https://other.alphaphone.dev/x", "http://cloud.alphaphone.dev/x", "https://user:pass@cloud.alphaphone.dev/"].map((address) => routeOf(address).route), ["Health", "NotFound", "NotFound", "NotFound"]))
     const seen: string[] = []

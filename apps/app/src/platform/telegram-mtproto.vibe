@@ -1,0 +1,214 @@
+// spec/app/telegram/auth.md, "Story: Sign in to my Telegram user account"
+import { Telegram, unavailableTelegram, mtprotoRequest } from "./telegram.vibe"
+import { telegramRegistration } from "./build.ts"
+import { telegramMessages } from "./telegram-messages.vibe"
+
+module mtproto {
+  import { appVersion, cloudApiOrigin } from "./build.ts"
+  import type { TelegramClient as SdkClient, RpcCallMiddleware, networkMiddlewares, User, tl as TelegramTypes } from "@mtcute/web"
+  import { telegramUser, type TelegramSignInResult, type TelegramExportLoginTokenResult } from "./telegram.vibe"
+
+  const loginRequests = new Set<TelegramTypes.RpcMethod["_"]>([
+    "auth.sendCode", "auth.signIn", "auth.checkPassword", "account.getPassword", "auth.exportLoginToken", "auth.importLoginToken", "auth.acceptLoginToken",
+  ])
+
+  export function telegramNetwork(middlewares: typeof networkMiddlewares): RpcCallMiddleware[] {
+    return [
+      (ctx, next) => next(loginRequests.has(ctx.request._) ? { ...ctx, params: { ...ctx.params, floodSleepThreshold: 0 } } : ctx),
+      ...middlewares.basic(),
+    ]
+  }
+
+  export async function openTransport(app: { id: number; hash: string }) {
+    const { TelegramClient, MemoryStorage, networkMiddlewares, tl } = await import("@mtcute/web")
+    const { LogManager } = await import("@mtcute/web/utils.js")
+    const make = () => new TelegramClient({
+      apiId: app.id, apiHash: app.hash, storage: new MemoryStorage(), logLevel: LogManager.OFF,
+      network: { middlewares: telegramNetwork(networkMiddlewares) },
+      initConnectionOptions: { deviceModel: "Alpha Phone", appVersion: appVersion() },
+    })
+    type Pending = { client: SdkClient; id: string; qr?: Extract<TelegramExportLoginTokenResult, { kind: "Pending" }>; scanned: boolean; stopListening: () => void }
+    let generation = 0
+    let pending: Pending | undefined
+    let active: { token: string; client: SdkClient; ready: Promise<void> } | undefined
+    async function cancel() {
+      generation += 1
+      const prior = pending
+      pending = undefined
+      prior?.stopListening()
+      await prior?.client.destroy()
+    }
+    async function begin(signal: AbortSignal) {
+      const stopped = cancel()
+      const ticket = generation
+      await stopped
+      const response = await fetch(new URL("/.well-known/alpha-telegram", cloudApiOrigin), {
+        credentials: "omit", redirect: "error", cache: "no-store", signal: AbortSignal.any([signal, AbortSignal.timeout(10000)]),
+      })
+      const registration: unknown = response.ok ? await response.json() : undefined
+      if (!registration || typeof registration !== "object" || !("apiId" in registration) || registration.apiId !== app.id) {
+        throw new Error("Telegram registration unavailable")
+      }
+      if (generation !== ticket || signal.aborted) throw new tl.RpcError(400, "AUTH_TOKEN_EXPIRED")
+      const client = make()
+      const scanned = (update: TelegramTypes.TypeUpdates) => {
+        if (current === pending && update._ === "updateShort" && update.update._ === "updateLoginToken") current.scanned = true
+      }
+      const current: Pending = { client, id: crypto.randomUUID(), scanned: false, stopListening: () => client.onServerUpdate.remove(scanned) }
+      client.onServerUpdate.add(scanned)
+      pending = current
+      return current
+    }
+    function attempt(id: string) {
+      if (!id || pending?.id !== id) throw new tl.RpcError(400, "AUTH_TOKEN_EXPIRED")
+      return pending
+    }
+    async function bind(client: SdkClient, user: User) {
+      if (user.isBot) throw new Error("BOT_TOKENS_NOT_SUPPORTED")
+      if (client !== pending?.client) throw new tl.RpcError(400, "AUTH_TOKEN_EXPIRED")
+      const token = await client.exportSession()
+      if (client !== pending?.client) throw new tl.RpcError(400, "AUTH_TOKEN_EXPIRED")
+      const old = active
+      active = { token, client, ready: Promise.resolve() }
+      pending.stopListening()
+      pending = undefined
+      await old?.client.destroy()
+      return { sessionToken: token, user: telegramUser(user) }
+    }
+    async function connected(token: string): Promise<SdkClient> {
+      if (!token) throw new tl.RpcError(401, "AUTH_KEY_UNREGISTERED")
+      let held = active
+      if (held?.token !== token) {
+        const prior = held
+        const client = make()
+        held = { token, client, ready: (async () => {
+          await prior?.client.destroy()
+          await client.importSession(token)
+        })() }
+        active = held
+      }
+      try {
+        await held.ready
+      } catch (error) {
+        if (active === held) {
+          active = undefined
+          await held.client.destroy()
+        }
+        throw error
+      }
+      if (active !== held) throw new tl.RpcError(401, "AUTH_KEY_UNREGISTERED")
+      return held.client
+    }
+    async function needsPassword(client: SdkClient, id: string) {
+      return { kind: "PasswordRequired" as const, pendingAuthId: id, hint: (await client.getPasswordHint()) ?? "" }
+    }
+    return {
+      connected, cancel,
+      async me(token: string) {
+        const user = await (await connected(token)).getMe()
+        if (user.isBot) throw new Error("BOT_TOKENS_NOT_SUPPORTED")
+        return { ok: true as const, user: telegramUser(user) }
+      },
+      async close() {
+        const old = active
+        active = undefined
+        await Promise.all([cancel(), old?.client.destroy()])
+      },
+      async send(phone: string, signal: AbortSignal) {
+        const held = await begin(signal)
+        const answer = await held.client.sendCode({ phone, abortSignal: signal })
+        if (!("phoneCodeHash" in answer) || held !== pending) throw new tl.RpcError(400, "PHONE_CODE_EXPIRED")
+        held.id = answer.phoneCodeHash
+        return { ok: true as const, _type: "auth.sentCode" as const, phone_code_hash: answer.phoneCodeHash,
+          type: { _type: answer.type, length: answer.length }, timeout: answer.timeout }
+      },
+      async signIn(phone: string, id: string, code: string, signal: AbortSignal): Promise<TelegramSignInResult> {
+        const { client } = attempt(id)
+        try {
+          const user = await client.signIn({ phone, phoneCodeHash: id, phoneCode: code, abortSignal: signal })
+          return { kind: "Authenticated", ...await bind(client, user) }
+        } catch (cause) {
+          if (tl.RpcError.is(cause, "SESSION_PASSWORD_NEEDED")) return needsPassword(client, id)
+          throw cause
+        }
+      },
+      async password(id: string, password: string, signal: AbortSignal) {
+        const { client } = attempt(id)
+        const result = await bind(client, await client.checkPassword({ password, abortSignal: signal }))
+        return { ok: true as const, _type: "auth.authorization" as const, session_token: result.sessionToken, user: result.user }
+      },
+      async passwordInfo(id?: string, token?: string) {
+        const client = token ? await connected(token) : attempt(id ?? "").client
+        const info = await client.call({ _: "account.getPassword" })
+        return { ok: true as const, _type: "account.password" as const, has_password: !!info.hasPassword,
+          hint: info.hint ?? "", srp_id: info.srpId?.toString() ?? "", current_algo: { _type: info.currentAlgo?._ ?? "" } }
+      },
+      async qr(id: string | undefined, signal: AbortSignal): Promise<TelegramExportLoginTokenResult> {
+        const held = id ? attempt(id) : await begin(signal)
+        const client = held.client
+        if (held.qr && !held.scanned && held.qr.expiresAt > Date.now()) return held.qr
+        held.scanned = false
+        try {
+          let reply = await client.call({ _: "auth.exportLoginToken", apiId: app.id, apiHash: app.hash, exceptIds: [] }, { abortSignal: signal })
+          if (reply._ === "auth.loginTokenMigrateTo") {
+            await client.changePrimaryDc(reply.dcId)
+            reply = await client.call({ _: "auth.importLoginToken", token: reply.token }, { abortSignal: signal })
+          }
+          if (held !== pending) throw new tl.RpcError(400, "AUTH_TOKEN_EXPIRED")
+          if (reply._ === "auth.loginTokenSuccess" && reply.authorization._ === "auth.authorization" && reply.authorization.user._ === "user") {
+            await client.notifyLoggedIn(reply.authorization.user)
+            return { kind: "Success", ...await bind(client, await client.getMe()) }
+          }
+          if (reply._ !== "auth.loginToken") throw new tl.RpcError(400, "AUTH_TOKEN_EXPIRED")
+          const raw = btoa(String.fromCharCode(...reply.token)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "")
+          held.id = raw
+          held.qr = { kind: "Pending", token: raw, expiresAt: reply.expires * 1000, loginUrl: `tg://login?token=${raw}` }
+          return held.qr
+        } catch (cause) {
+          if (tl.RpcError.is(cause, "SESSION_PASSWORD_NEEDED")) return needsPassword(client, held.id)
+          throw cause
+        }
+      },
+      async acceptQr(token: string, qr: string) {
+        const client = await connected(token)
+        const bytes = Uint8Array.from(atob(qr.replaceAll("-", "+").replaceAll("_", "/")), (c) => c.charCodeAt(0))
+        await client.call({ _: "auth.acceptLoginToken", token: bytes })
+        return { ok: true as const, _type: "authorization" as const, session_token: token, user: telegramUser(await client.getMe()) }
+      },
+      async logout(token: string) {
+        const client = await connected(token)
+        try { await client.logOut() } finally {
+          if (active?.client === client) active = undefined
+          await client.destroy()
+        }
+        return { ok: true as const, _type: "auth.loggedOut" as const }
+      },
+    }
+  }
+}
+import { openTransport } from mtproto
+export { telegramNetwork } from mtproto
+
+/** The installed client's MTProto connection. Only its encrypted session can survive an app restart. */
+export const personalTelegram = Layer.unwrap(sync(() => {
+  const app = telegramRegistration()
+  if (app === undefined) return unavailableTelegram
+  return Layer.effect(Telegram, effect {
+    const session = try promise(() => openTransport(app))
+    try addFinalizer(() => ignore(tryPromise(() => session.close())))
+    return {
+      accountAccess: "connectedClient" as const, baseUrl: "https://telegram.org",
+      ...telegramMessages(session.connected),
+      cancelLogin: () => ignore(tryPromise(() => session.cancel())),
+      forgetSession: () => ignore(tryPromise(() => session.close())),
+      sendCode: (phone) => mtprotoRequest((signal) => session.send(phone, signal)),
+      signIn: (phone, id, code) => mtprotoRequest((signal) => session.signIn(phone, id, code, signal)),
+      checkPassword: (id, password) => mtprotoRequest((signal) => session.password(id, password, signal)),
+      getPassword: (id, token) => mtprotoRequest(() => session.passwordInfo(id, token)),
+      exportLoginToken: (id) => mtprotoRequest((signal) => session.qr(id, signal)),
+      acceptLoginToken: (token, qr) => mtprotoRequest(() => session.acceptQr(token, qr)),
+      getMe: (token) => mtprotoRequest(() => session.me(token)),
+      logOut: (token) => mtprotoRequest(() => session.logout(token)),
+    }
+  })
+}))

@@ -3,7 +3,7 @@ import { type Account as CloudProfile, checkoutFromResponse, CloudError, isCrede
 import * as Codes from "../../gen/app__account__codes.effect.vibe"
 import { changeIsOpen } from "./change.vibe"
 import * as Billing from "../../gen/app__account__billing.effect.vibe"
-import { type Account, Cloud, openCloudCheckout } from "../platform/index.vibe"
+import { type Account, ask, CLOUD_ENVIRONMENT, Cloud, cloudPlugin, openCloudCheckout, registered } from "../platform/index.vibe"
 import { billReturned, Device, takeBillingReturn } from "../platform/index.vibe"
 import { attemptedUsing } from "../platform/index.vibe"
 import type { Attempts } from "../runtime/index.vibe"
@@ -177,6 +177,16 @@ export effect function recheckPlan() {
   }
 }
 
+schema PortalReply { readonly url: string }
+
+effect function openBillingPortal(): void!!Cloud {
+  const portal = ask(Cloud, HttpClientRequest.post("/api/v1/subscriptions/portal"), PortalReply) catch () => undefined
+  if (portal === undefined) return
+  if (registered("ElizaCloud")) {
+    try ignore(tryPromise(() => cloudPlugin().openExternal({ url: portal.url, environment: CLOUD_ENVIRONMENT })))
+  }
+}
+
 function effects(refresh: () => void, publishCatalog: (catalog: Catalog | undefined) => void) {
   return (fx: Billing.Effect): Job<Billing.Event, Billing.Machine | Cloud | Purchases | Attempts | Effect.Services<typeof accountIsInFront>, []> => match (fx) {
     when { tag: "OpenCheckout", let visit, let tier }: run("open paid checkout", openCheckout(visit, tier));
@@ -186,8 +196,8 @@ function effects(refresh: () => void, publishCatalog: (catalog: Catalog | undefi
       try recheckPlan()
     });
     when { tag: "ReadOffers", let check }: run("read offered plans", readCatalog(check, publishCatalog));
-    when { tag: "OpenFunds" }: run("unmounted balance checkout", Effect.void);
-    when { tag: "OpenInvoice" }: run("unmounted invoice checkout", Effect.void);
+    when { tag: "OpenFunds" }: run("open balance checkout", openBillingPortal());
+    when { tag: "OpenInvoice" }: run("open invoice checkout", openBillingPortal());
   }
 }
 

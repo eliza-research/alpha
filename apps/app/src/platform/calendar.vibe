@@ -1,5 +1,6 @@
 // spec/app/calendar/index.md, "Story: Let Calendar read my phone's calendar"; spec/app/calendar/editor.md, "Story: Write an event"; spec/app/calendar/editor.md, "Story: Never create an event twice"; spec/kit/permission.md, "Story: Ask for access"
 import type { AndroidCalendarDeletionScope, AndroidCalendarEditorFields, AndroidCalendarHandoffEvent, AndroidCalendarList, AndroidCalendarSelection, CalendarClient, CalendarPick, CalendarRange } from "@elizaos/os-bridges"
+import type { AvailabilityReadRequest, ReadAnswer, SourcesAnswer } from "@elizaos/plugin-calendar-client"
 import type { WorkflowCalendarReadOperation } from "@elizaos/plugin-workflow-client"
 import { createShelf } from "../runtime/index.vibe"
 import { registered } from "./device.vibe"
@@ -7,6 +8,7 @@ import { registered } from "./device.vibe"
 module held {
   import { calendarClient } from "@elizaos/os-bridges"
   import type { AndroidCalendarEditorFields, AndroidCalendarHandoffEvent, AndroidCalendarInspection, AndroidCalendarPlugin, AndroidCalendarSelection, CalendarClient } from "@elizaos/os-bridges"
+  import type { AvailabilityReadRequest, ReadAnswer, SourcesAnswer } from "@elizaos/plugin-calendar-client"
   import type { WorkflowCalendarReadOperation } from "@elizaos/plugin-workflow-client"
   import { rendererDeletionClock } from "@elizaos/os-bridges"
   import { plugin as capacitorPlugin } from "./capacitor.ts"
@@ -20,7 +22,8 @@ module held {
    * The calls of eliza's `ElizaCalendar` plugin that its typed client does not name yet: a create under a creation
    * identity, which the plugin journals so that a lost answer is reconciled and never replayed, the same for an event
    * with an all-day span, a time zone or a repeat, its receipts, opening an event in Android Calendar, Android's own
-   * answer on access, the revisions of an event as the phone inspects it, and reviewed agent actions.
+   * answer on access, the revisions of an event as the phone inspects it, reviewed agent actions, and Alpha's own
+   * free or busy reads of the calendars the owner chose.
    */
   export interface Creations {
     checkPermissions(): Promise<{ calendar: string }>
@@ -29,6 +32,8 @@ module held {
     requestWorkflowReadAccess(): Promise<{ status: string }>
     workflowCalendars(): Promise<unknown>
     readWorkflowRange(input: Omit<WorkflowCalendarReadOperation, "type">): Promise<{ status: string; events?: unknown }>
+    availabilitySources(input: { timeZone: string }): Promise<SourcesAnswer>
+    readAvailability(input: AvailabilityReadRequest): Promise<ReadAnswer>
     open(input: { id: string; begin?: number; end?: number }): Promise<{ status: string }>
     save(input: AndroidCalendarEditorFields & { calendarId: string; creationId: string; separateCreation: boolean }): Promise<{ status: string; id?: string }>
     saveOptions(input: { event: OptionEvent; calendarId: string; creationId: string; separateCreation: boolean }): Promise<{ status: string; id?: string }>
@@ -141,7 +146,11 @@ export service PhoneCalendar {
   create(creation: CalendarCreation, creationId: string, separate: boolean): Written!!
   created(creationId: string): boolean!CalendarUnread
   update(pick: CalendarPick, fields: AndroidCalendarEditorFields): Written!!
-  /** Stage the deletion through the phone's review, which inspects the event as it is now. */
+  /**
+   * Stage the deletion through the phone's review, which inspects the event as it is now, and only while Alpha is in front
+   * and the phone unlocked; where it can review nothing now, a deletion of the same occurrences it staged before is the one
+   * it staged, with what is left of its window, and the phone still refuses it if the event changed since.
+   */
   stage(pick: CalendarPick, scope: AndroidCalendarDeletionScope): Staged!!
   /** Send a staged deletion once its window is over; one the review still holds is refused, and nothing is sent. */
   dispatch(id: string): Written!!
@@ -155,6 +164,10 @@ export service PhoneCalendar {
   readAccess(): boolean!CalendarUnread
   /** The events of the calendars and dates a reviewed step names, no more than its limit, read while the phone is in front. */
   readRange(asked: RangeAsked): Ranged!CalendarUnread
+  /** The calendars the phone may read at free or busy level, for one availability check in its zone: names and accounts for the owner's sheet, and no event. */
+  availabilitySources(input: { readonly timeZone: string }): SourcesAnswer!CalendarUnread
+  /** The busy, free and tentative times of exactly the calendars `request` names, at the revisions the owner saw; none unless every one lives on this phone. */
+  readAvailability(request: AvailabilityReadRequest): ReadAnswer!CalendarUnread
 }
 
 const plugin = "ElizaCalendar"
@@ -163,7 +176,7 @@ const lost: Written = { confirmed: false, known: false }
 const refused: Written = { confirmed: false, known: true }
 
 interface CalendarShelfState {
-  readonly staged: ReadonlyMap<string, ReturnType<CalendarClient["review"]>>
+  readonly staged: ReadonlyMap<string, { readonly review: ReturnType<CalendarClient["review"]>; readonly scope: AndroidCalendarDeletionScope; readonly begin: number; readonly expiresElapsed: number }>
   readonly writableCalendarId: string | undefined
 }
 
@@ -185,7 +198,7 @@ export const phoneCalendar = Layer.effect(PhoneCalendar, effect {
       next.delete(id)
       return { ...current, staged: next }
     })
-    return review
+    return review?.review
   }
   return {
     present,
@@ -252,11 +265,14 @@ export const phoneCalendar = Layer.effect(PhoneCalendar, effect {
       const deadline = await review.stageDeletion(inspected.ticket)
       shelf.update((current) => {
         const next = new Map(current.staged)
-        next.set(pick.event.id, review)
+        next.set(pick.event.id, { review, scope, begin: pick.event.begin, expiresElapsed: deadline.expiresElapsed })
         return { ...current, staged: next }
       })
       return { kind: "ready", window: untilElapsed(deadline.expiresElapsed) }
-    }), (): Staged => ({ kind: "refused" })),
+    }), (): Staged => {
+      const kept = shelf.get().staged.get(pick.event.id)
+      return kept !== undefined && kept.scope === scope && kept.begin === pick.event.begin ? { kind: "ready", window: untilElapsed(kept.expiresElapsed) } : { kind: "refused" }
+    }),
     dispatch: (id: string) => !present ? succeed(refused) : Effect.orElseSucceed(tryPromise(async (): Promise<Written> => {
       const review = dropStaged(id)
       if (review === undefined) return refused
@@ -274,6 +290,8 @@ export const phoneCalendar = Layer.effect(PhoneCalendar, effect {
       },
       catch: (cause) => new CalendarUnread({ cause }),
     }),
+    availabilitySources: (input: { readonly timeZone: string }) => !present ? fail(absent()) : tryPromise({ try: () => native().availabilitySources({ ...input }), catch: (cause) => new CalendarUnread({ cause }) }),
+    readAvailability: (request: AvailabilityReadRequest) => !present ? fail(absent()) : tryPromise({ try: () => native().readAvailability({ ...request }), catch: (cause) => new CalendarUnread({ cause }) }),
   }
 })
 
@@ -300,4 +318,6 @@ export const browserCalendar = Layer.succeed(PhoneCalendar, {
   cancelReview: () => Effect.void,
   readAccess: () => fail(absent()),
   readRange: () => fail(absent()),
+  availabilitySources: () => fail(absent()),
+  readAvailability: () => fail(absent()),
 })

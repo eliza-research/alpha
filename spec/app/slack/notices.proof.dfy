@@ -5,14 +5,13 @@ lemma RemovedViews(s: Notices, workspace: int)
 }
 
 lemma PolledUpView(s: Notices, ticket: int, ok: bool, point: int, incoming: Incoming)
-  requires ok && sinceOf(s.checkingWorkspace, s.watermarks) != 0 && incoming.channel > 0 && incoming.ts > 0
+  requires s.notifyAllowed && ok && sinceOf(s.checkingWorkspace, s.watermarks) != 0 && incoming.channel > 0 && incoming.ts > 0
   requires shouldNotify(incoming.isOwn, incoming.channel in s.mutedChannels, s.front, Target(s.checkingWorkspace, incoming.channel, incoming.threadTs), incoming.kind, incoming.mentioned, incoming.inThread)
   ensures polled(s, ticket, ok, point, incoming).state.up == (ProofLib.Filter((p: Posted) => (p.target != Target(s.checkingWorkspace, incoming.channel, incoming.threadTs)), s.up) + [Posted(Target(s.checkingWorkspace, incoming.channel, incoming.threadTs), incoming.ts)])
 {
 }
 
 lemma FrontUpView(s: Notices, workspace: int, channel: int, threadTs: int)
-  requires Target(workspace, channel, threadTs) != noTarget && (exists p :: p in s.up && p.target == Target(workspace, channel, threadTs))
   ensures frontChanged(s, workspace, channel, threadTs).state.up == ProofLib.Filter((p: Posted) => (p.target != Target(workspace, channel, threadTs)), s.up)
 {
 }
@@ -50,7 +49,7 @@ lemma polled_ensures(s: Notices, ticket: int, ok: bool, point: int, incoming: In
 {
   if inv(s) && canPolled(s, ticket, ok, point, incoming) {
     var target := Target(s.checkingWorkspace, incoming.channel, incoming.threadTs);
-    if ok && sinceOf(s.checkingWorkspace, s.watermarks) != 0 && incoming.channel > 0 && incoming.ts > 0 && shouldNotify(incoming.isOwn, incoming.channel in s.mutedChannels, s.front, target, incoming.kind, incoming.mentioned, incoming.inThread) {
+    if s.notifyAllowed && ok && sinceOf(s.checkingWorkspace, s.watermarks) != 0 && incoming.channel > 0 && incoming.ts > 0 && shouldNotify(incoming.isOwn, incoming.channel in s.mutedChannels, s.front, target, incoming.kind, incoming.mentioned, incoming.inThread) {
       PolledUpView(s, ticket, ok, point, incoming);
       var filtered := ProofLib.Filter((p: Posted) => (p.target != target), s.up);
       forall p | p in filtered ensures p in s.up {
@@ -68,12 +67,10 @@ lemma frontChanged_ensures(s: Notices, workspace: int, channel: int, threadTs: i
 {
   if inv(s) && canFrontChanged(s, workspace, channel, threadTs) {
     var target := Target(workspace, channel, threadTs);
-    if target != noTarget && (exists p :: p in s.up && p.target == target) {
-      FrontUpView(s, workspace, channel, threadTs);
-      var after := frontChanged(s, workspace, channel, threadTs).state;
-      forall p | p in after.up ensures p in s.up && p.target != target {
-        ProofLib.FilterMember((p: Posted) => (p.target != target), s.up, p);
-      }
+    FrontUpView(s, workspace, channel, threadTs);
+    var after := frontChanged(s, workspace, channel, threadTs).state;
+    forall p | p in after.up ensures p in s.up && p.target != target {
+      ProofLib.FilterMember((p: Posted) => (p.target != target), s.up, p);
     }
   }
 }

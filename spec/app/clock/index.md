@@ -89,6 +89,11 @@ pure def alwaysValidEditAlarmSheet(s: ClockView): bool = validSheet(s.sheet)
 > alert audio to play only while something is ringing and unmuted, and muting
 > to silence only the current ring.
 
+Android keeps the next enabled alarm and each running timer while Clock is closed.
+Pausing, editing, deleting and dismissing update those native deadlines. Tapping a
+posted notification opens its Clock tab and selects the matching ringing alert within its kind. If an alarm has priority, a tapped timer opens after the alarm settles. Clock shows when Android notification
+or exact alarm access limits delivery. When the standalone Clock is installed, the launcher opens it. Its scheduler takes over after it has loaded the resident agent’s Clock snapshot.
+
 ### A ringing alarm takes priority over a ringing timer
 
 ```quint

@@ -13,6 +13,7 @@ rules.
 - [Digests](./digests/): scheduled digest inbox and delivered summaries
 - [Notices](./notices/): in-app alerts, unread counts and dismissal
 - [Approvals](./approvals/): owner review of agent proposals and leases
+- [Control](./control/): external app observation, bounded agent actuation leases, protected-screen refusal and kill-switch
 - [Passwords](./passwords/): stored credentials and vault entries
 - [Workflows](./workflows/): scheduled and on-demand workflows, runs and hosted results
 - [Settings](./settings/): the phone's facts, preferences, agent activity and reset

@@ -58,6 +58,8 @@ export interface MapsScene {
   readonly guidance: { session: string | undefined; title: string; text: string; arrivals: string[]; opened: boolean; stop?: (reason: string) => void };
   /** Tiles answer 429 with this wait in seconds, once each, while it is set. */
   tilesLimited: number | undefined;
+  /** Tiles answer 402 insufficient_credits while true. */
+  tilesInsufficientCredits?: boolean;
   /** The tiles the page fetched, as `z/x/y`. */
   readonly tiles: string[];
 }
@@ -157,6 +159,9 @@ export function mapsRoutes(scene: MapsScene, now: () => number): Route[] {
       const tile = /^\/api\/v1\/maps\/tiles\/(\d+)\/(\d+)\/(\d+)$/.exec(url.pathname);
       if (request.method !== "GET" || tile === null) return;
       scene.tiles.push(`${tile[1]}/${tile[2]}/${tile[3]}`);
+      if (scene.tilesInsufficientCredits) {
+        return Response.json({ error: "insufficient_credits", errorDescription: "Insufficient credits.", retryable: false }, { status: 402 });
+      }
       if (scene.tilesLimited !== undefined) {
         const wait = scene.tilesLimited;
         scene.tilesLimited = undefined;

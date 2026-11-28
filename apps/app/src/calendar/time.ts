@@ -79,6 +79,12 @@ export function readWindow(day: number): { begin: number; end: number } {
   return { begin: dayStart(monthStart(day, windowFirstMonth(0))), end: dayStart(monthStart(day, windowLastMonth(0) + 1)) };
 }
 
+/** Whether a read for civil `day` holds an event that starts at `begin`: only then can such a read show the event gone. @throws {never} */
+export function readHolds(begin: number, day: number): boolean {
+  const window = readWindow(day);
+  return begin >= window.begin && begin < window.end;
+}
+
 /** A read of the agent's calendar over the window around civil `day`, in the phone's own time zone. @throws {never} */
 export function feedParams(day: number): { timeMin: string; timeMax: string; timeZone: string } {
   const range = readWindow(day);

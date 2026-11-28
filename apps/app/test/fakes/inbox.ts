@@ -70,7 +70,7 @@ export interface InboxScene {
   readonly receipts: Map<string, MailOperation["receipt"]["state"]>;
   readonly receiptReads: string[];
   notices?: InboxNoticeScene;
-  consent?: { authUrl: string; readonly requests: string[][]; readonly opened: string[] };
+  consent?: { authUrl: string; reauthRequired?: boolean; readonly requests: string[][]; readonly opened: string[] };
 }
 
 export interface InboxNoticeScene {

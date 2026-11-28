@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AlphaTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:colorAccent">@color/alpha_primary</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">@color/alpha_background</item>
+        <item name="android:navigationBarColor">@color/alpha_background</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowBackground">@color/alpha_background</item>
+    </style>
+
+    <style name="AlphaTheme.Launch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/alpha_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/alpha_launch_mark</item>
+        <item name="postSplashScreenTheme">@style/AlphaTheme</item>
+    </style>
+</resources>

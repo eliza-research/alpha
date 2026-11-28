@@ -1,7 +1,11 @@
-import { Effect, Layer, Queue, Stream } from "effect";
+import { Effect, Layer, Schema } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { afterEach, describe, expect, inject, it } from "vitest";
-import { page } from "vitest/browser";
+import { commands, page } from "vitest/browser";
+
+declare module "vitest/browser" {
+  interface BrowserCommands { approveSlackWorkspace(): Promise<void> }
+}
 import { homeOrder } from "../gen/app__home__tiles.effect.vibe";
 import * as Shell from "../gen/app__shell.effect.vibe";
 import * as SlackWorkspaces from "../gen/app__slack.effect.vibe";
@@ -14,15 +18,15 @@ import * as TelegramConversation from "../gen/app__telegram__conversation.effect
 import * as TelegramNotices from "../gen/app__telegram__notices.effect.vibe";
 import { savedKey, written } from "../src/home/saved.vibe";
 import { MessagingBridge, type MessagingDraftProposal } from "../src/messaging/bridge.vibe";
+import { browserSlackHttp } from "../src/platform/slack-oauth.vibe";
 import { messagingSessions } from "../src/platform/messaging.vibe";
-import { slackAt } from "../src/platform/slack.vibe";
 import { telegramAt } from "../src/platform/telegram.vibe";
 import type { Alpha } from "../src/runtime/area.tsx";
-import { completeSlackOAuthCallback } from "../src/slack/auth.vibe";
 import { SlackLedger } from "../src/slack/ledger.vibe";
 import { closeAll, coverLifted, later, only, openOver, until } from "./alpha.tsx";
 import { scene } from "./fakes/scene.ts";
 import { fakeWorld } from "./fakes/world.vibe";
+import { slackAt } from "../src/platform/slack.vibe";
 import "../src/main.css";
 
 const slackOrigin = inject("slackOrigin");
@@ -41,8 +45,8 @@ async function controlJson(origin: string, route: string, body?: unknown): Promi
 }
 
 /**
- * Alpha with Telegram and Slack kept on Home after its default tiles, as the owner adds them from Add to Home:
- * they are in Home's catalog, not its defaults (spec/app/home/tiles.md, "Home's defaults use the product's Home order, and Home holds at most 4096 tiles").
+ * Alpha with its default Home tiles, including Telegram and Slack
+ * (spec/app/home/tiles.md, "Home's defaults use the product's Home order, and Home holds at most 4096 tiles").
  */
 /** Stage `draft` as the agent does, raise Ask Alpha in full, and send it from there once it shows. */
 async function sendStagedDraft(alpha: Alpha, draft: MessagingDraftProposal) {
@@ -55,43 +59,15 @@ async function sendStagedDraft(alpha: Alpha, draft: MessagingDraftProposal) {
 }
 
 async function openMessagingAlpha() {
-  localStorage.setItem(savedKey, written([
-    ...homeOrder.map((view) => ({ tag: "Own" as const, view })),
-    { tag: "Own", view: "Telegram" },
-    { tag: "Own", view: "Slack" },
-  ]));
+  localStorage.setItem(savedKey, written(homeOrder.map((view) => ({ tag: "Own" as const, view }))));
   const platform = fakeWorld(scene(), {
-    slack: Layer.provide(slackAt(slackOrigin), FetchHttpClient.layer),
+    slack: Layer.provide(slackAt(slackOrigin, slackOrigin, "browser"), browserSlackHttp),
     telegram: Layer.provide(telegramAt(telegramOrigin), FetchHttpClient.layer),
     sessions: messagingSessions,
   });
   const opened = await openOver(platform, messagingMounts);
   await coverLifted(opened.alpha);
   return opened;
-}
-
-async function waitForSlackOAuth(
-  alpha: Awaited<ReturnType<typeof openMessagingAlpha>>["alpha"],
-  nonce: number,
-) {
-  return alpha.runtime.runPromise(
-    Effect.flatMap(SlackLedger, (ledger) =>
-      Stream.runHead(
-        Stream.filter(
-          Stream.callback<ReturnType<typeof ledger.pendingOAuth>>((queue) =>
-            Effect.gen(function* () {
-              Queue.offerUnsafe(queue, ledger.pendingOAuth());
-              const off = ledger.subscribe(() => {
-                Queue.offerUnsafe(queue, ledger.pendingOAuth());
-              });
-              yield* Effect.addFinalizer(() => Effect.sync(off));
-            }),
-          ),
-          (pending) => pending !== undefined && pending.nonce === nonce,
-        ),
-      ),
-    ),
-  );
 }
 
 async function connectSlackWorkspace(
@@ -108,22 +84,9 @@ async function connectSlackWorkspace(
   await expect.element(page.getByText("User account · no bot token")).toBeVisible();
   await page.getByRole("button", { name: "Approve & connect" }).click();
   await until(alpha, alpha.runtime, SlackAuth.Machine, (s) => s.step === "BrowserOAuth");
-  const authState = await alpha.runtime.runPromise(Effect.flatMap(SlackAuth.Machine, (m) => m.get()));
-  const pendingOpt = await waitForSlackOAuth(alpha, authState.nonce);
-  if (pendingOpt._tag !== "Some" || pendingOpt.value === undefined) throw new Error("Pending Slack OAuth missing");
-  const pending = pendingOpt.value;
-  expect(pending.authorizeUrl).toContain("user_scope=");
-  expect(pending.authorizeUrl).not.toContain("&scope=");
-  expect(pending.authorizeUrl).toContain("code_challenge_method=S256");
-
-  await fetch(`${pending.authorizeUrl}&auto_approve=1`, { redirect: "manual" });
-  const providerState = await controlJson(slackOrigin, "/__control/state");
-  const snapshot = (providerState.state ?? {}) as { authCodes?: Record<string, { code: string; state: string; used?: boolean }> };
-  const authCodes = snapshot.authCodes ?? {};
-  const matched = Object.values(authCodes).find((entry) => entry.state === pending.state && !entry.used);
-  expect(matched?.code).toBeTruthy();
-
-  await alpha.runtime.runPromise(completeSlackOAuthCallback(pending.state, matched?.code ?? ""));
+  const link = page.getByRole("link", { name: "Open Slack in your browser" });
+  await expect.element(link).toBeVisible();
+  await commands.approveSlackWorkspace();
   await until(alpha, alpha.runtime, SlackAuth.Machine, (s) => s.step === "Idle" && s.trouble === "Fine");
   const meta = await alpha.runtime.runPromise(
     Effect.flatMap(SlackLedger, (ledger) => Effect.sync(() => ledger.workspaceByTeamId(teamId))),
@@ -226,10 +189,8 @@ describe("Messaging E2E", () => {
       message: "Live SSE ping from browser test",
     });
     await until(alpha, alpha.runtime, TelegramNotices.Machine, (s) => s.posts > 0);
-    await expect.element(page.getByText(/Live SSE ping from browser test/)).toBeVisible();
-    await later(alpha, 10_000);
-
-    await page.getByRole("button", { name: /^Telegram/ }).first().click();
+    await page.getByRole("button", { name: /Live SSE ping from browser test/ }).click();
+    await expect.element(page.getByRole("log", { name: "Telegram messages" }).getByText("Live SSE ping from browser test")).toBeVisible();
     await page.getByRole("button", { name: "Back to chats" }).click();
     await page.getByRole("button", { name: "Account options" }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
@@ -275,39 +236,68 @@ describe("Messaging E2E", () => {
     await page.getByText("general", { exact: true }).click();
     await until(alpha, alpha.runtime, SlackConversation.Machine, (s) => s.channel > 0 && s.channelRead.status === "Loaded");
 
-    await sendStagedDraft(alpha, {
+    const draftText = "Alpha Chromium Slack draft & + = 👋";
+    const threadTs = "1730000100.000100";
+    const slackDraft: MessagingDraftProposal = {
       id: "sl-browser-draft-1",
       platform: "Slack",
       target: "Alpha Team · #general",
       targetId: "C01GENERAL",
       workspaceId: "T01ALPHA",
-      body: "Alpha Chromium Slack draft",
+      threadTs,
+      body: draftText,
       revision: 1,
       status: "draft",
-    });
+    };
+    await sendStagedDraft(alpha, slackDraft);
+    await alpha.runtime.runPromise(Effect.flatMap(Shell.Machine, (m) => m.send({ type: "goBack" })));
+    await sendStagedDraft(alpha, slackDraft);
 
+    expect(new URL(slackOrigin).origin).not.toBe(location.origin);
     const slackPosts = await controlJson(slackOrigin, "/__control/requests?path=/api/chat.postMessage");
-    expect(((slackPosts.requests ?? []) as ReadonlyArray<unknown>).length).toBeGreaterThanOrEqual(1);
+    const posts = Schema.decodeUnknownSync(Schema.Array(Schema.Struct({
+      method: Schema.String, query: Schema.Record(Schema.String, Schema.String),
+      body: Schema.Struct({ channel: Schema.String, text: Schema.String, thread_ts: Schema.String, client_msg_id: Schema.String.check(Schema.isUUID(5)) }),
+    })))(slackPosts.requests);
+    expect(posts).toHaveLength(2);
+    expect(posts[1]).toEqual(posts[0]);
+    expect(posts[0]?.query).toEqual({});
+    expect(posts[0]).toMatchObject({ method: "POST", body: { channel: "C01GENERAL", text: draftText, thread_ts: threadTs } });
 
     await alpha.runtime.runPromise(Effect.flatMap(Shell.Machine, (m) => m.send({ type: "goHome" })));
-    await until(alpha, alpha.runtime, SlackNotices.Machine, (s) => Object.keys(s.watermarks).length > 0);
+    await page.getByRole("button", { name: /^Slack/ }).first().click();
+    await expect.element(page.getByRole("button", { name: "Back to conversations" })).toBeVisible();
+    await page.getByRole("article", { name: /^Maya Chen at / }).filter({ has: page.getByText("Sprint review kicks off at 2pm today.", { exact: true }) }).getByRole("button", { name: /3 replies/ }).click();
+    await expect.element(page.getByText("Sprint review kicks off at 2pm today.", { exact: true })).toBeVisible();
+    const sentDraft = page.getByRole("article", { name: /^Alex Rivera at / }).getByText(draftText, { exact: true });
+    await expect.element(sentDraft).toBeVisible();
+    expect(page.getByRole("article").getByText(draftText, { exact: true }).elements()).toHaveLength(1);
+    await alpha.runtime.runPromise(Effect.flatMap(Shell.Machine, (m) => m.send({ type: "goHome" })));
+    await until(alpha, alpha.runtime, SlackNotices.Machine, (s) => (s.watermarks[alphaWs] ?? 0) > 0 && (s.watermarks[designWs] ?? 0) > 0);
     await controlJson(slackOrigin, "/__control/inject", {
       kind: "message",
       team_id: "T01ALPHA",
       channel: "C02ENG",
       user: "U02MAYA",
-      text: "Hey <@U01OWNER> check the Chromium Slack SSE test",
+      thread_ts: "1730000200.000100",
+      text: "Hey <@U01OWNER> check the Chromium Slack mention",
     });
+    await later(alpha, 5_000);
     await until(alpha, alpha.runtime, SlackNotices.Machine, (s) => s.posts > 0);
+    await page.getByRole("button", { name: /Alpha Team · engineering.*Maya Chen:.*Chromium Slack mention/ }).click();
+    await until(alpha, alpha.runtime, SlackConversation.Machine, (s) => s.workspace === alphaWs && s.threadTs > 0 && s.threadLoaded);
+    await expect.element(page.getByText("Shipping the new HTTP client layer today.")).toBeVisible();
+    await expect.element(page.getByText(/check the Chromium Slack mention/)).toBeVisible();
+    await page.getByRole("button", { name: "Back to channel" }).click();
 
     await controlJson(slackOrigin, "/__control/revoke", { team_id: "T02DESIGN" });
+    await later(alpha, 5_000);
     await until(
       alpha,
       alpha.runtime,
       SlackAuth.Machine,
       (s) => !s.connected.some((w) => w.workspace === designWs) && s.connected.some((w) => w.workspace === alphaWs),
     );
-    await page.getByRole("button", { name: /^Slack/ }).first().click();
     await page.getByRole("button", { name: "Back to conversations" }).click();
     await page.getByRole("button", { name: "Switch workspace" }).click();
     await expect.element(page.getByText("Design Guild")).not.toBeInTheDocument();

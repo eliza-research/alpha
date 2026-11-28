@@ -104,7 +104,10 @@ export function elizaFiles(scene: FilesScene): Faked {
   return plugin<ElizaFilesPlugin, { storageChanged: undefined }>((emit) => {
     scene.changed = () => { if (scene.watching !== undefined) emit("storageChanged", undefined); };
     const denied = () => scene.access !== "granted";
-    const refused = () => ({ status: scene.access === "unsupported" ? "unavailable" as const : "denied" as const, access: scene.access });
+    /** `FilesPlugin.access()` (FilesPlugin.java:204-209, eliza ec5458230278): always `ready`, with Android's grant beside it, whatever the grant is. */
+    const access = () => ({ status: "ready" as const, access: scene.access, legacy: false });
+    /** `FilesPlugin.denied()` (FilesPlugin.java:77-82), which `admitted()` answers for every read and change while the grant is not `granted` (:162). */
+    const refused = () => ({ status: "denied" as const, message: "Allow all-files access to browse storage.", access: scene.access, legacy: false });
     const on = (volume: string | undefined) => volume ?? "primary";
     const find = (volume: string, path: string) => scene.stored.find((one) => one.volume === volume && one.path === path);
     const inside = (volume: string, path: string) => scene.stored.filter((one) => one.volume === volume && (one.path === path || one.path.startsWith(`${path}/`)));
@@ -132,11 +135,11 @@ export function elizaFiles(scene: FilesScene): Faked {
       async storageState() {
         called("storageState");
         await scene.gate;
-        return denied() ? refused() : { status: "ready", access: "granted", volumes: scene.volumes };
+        return { ...access(), volumes: denied() ? [] : scene.volumes };
       },
       storageRequestAccess(input) {
         called(input?.settings ? "storageRequestAccess settings" : "storageRequestAccess");
-        return Promise.resolve(denied() ? refused() : { status: "ready", access: "granted" });
+        return Promise.resolve(access());
       },
       async storageList({ volume, path }) {
         called("storageList");

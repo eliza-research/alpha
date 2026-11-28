@@ -157,6 +157,7 @@ export default {
     "apps/*": app,
     "apps/app": {
       ...app,
+      entry: [...app.entry, "src/slack-browser.tsx"],
       ignoreDependencies: [...app.ignoreDependencies, "@capacitor/android", "@tesseract.js-data/eng", "tesseract.js", "tesseract.js-core"]
     }
   }

@@ -11,3 +11,19 @@ export function plugin<T>(name: string): T {
   registered.set(name, created);
   return created;
 }
+
+/** Attach an async Capacitor plugin listener with cancellation cleanup before resolution. @throws {never} */
+export function subscribePluginListener(
+  attach: (isActive: () => boolean) => Promise<{ remove(): Promise<void> }>,
+): () => void {
+  let active = true;
+  let handle: { remove(): Promise<void> } | undefined;
+  void attach(() => active).then((attached) => {
+    if (!active) void attached.remove();
+    else handle = attached;
+  }, () => undefined);
+  return () => {
+    active = false;
+    if (handle !== undefined) void handle.remove();
+  };
+}

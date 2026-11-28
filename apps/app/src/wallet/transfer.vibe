@@ -77,4 +77,6 @@ const kept = reacting(Transfer, { keep: 1, open: [{ type: "reopen" }], carry, ti
 const settled = following(Transfer.Machine, (transfer) => transfer.settled, Wallet, (count): WalletEvent | undefined => (count === 0 ? undefined : { type: "refresh" }))
 
 /** The transfer under way: kept across restarts, which end what was in flight as unknown, and lapsed at the time its review gave. */
-export const transfer = together(kept, settled)
+const signedOut = following(Wallet, (ledger) => ledger.custody === "SignInRequired", Transfer.Machine, (missing): Event | undefined => missing ? { type: "ownerSignedOut" } : undefined)
+
+export const transfer = together(kept, settled, signedOut)

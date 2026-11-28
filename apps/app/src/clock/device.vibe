@@ -1,0 +1,95 @@
+// spec/app/clock/index.md, "Story: Hear and prioritize ringing alerts"; spec/app/clock/timers.md, "Story: Run multiple countdown timers"
+import * as Alarms from "../../gen/app__clock__alarms.effect.vibe"
+import * as Timers from "../../gen/app__clock__timers.effect.vibe"
+import * as Shell from "../../gen/app__shell.effect.vibe"
+import * as ClockView from "../../gen/app__clock.effect.vibe"
+import { Device, PhoneClockAlerts, type NativeClockAlert } from "../platform/index.vibe"
+import { contained, started } from "../runtime/index.vibe"
+import { currentSurface } from "../surface.ts"
+import { ClockRecords, ClockSyncState, activeClockTicks } from "./shelf.vibe"
+
+export const deviceClock = started(effect {
+  const host = try PhoneClockAlerts
+  const surface = currentSurface()
+  if (!host.present || surface.mode === "overlay" || (surface.mode === "app" && surface.view !== "Clock")) return
+  const alarms = try Alarms.Machine
+  const timers = try Timers.Machine
+  const view = try ClockView.Machine
+  const shell = Context.getOption(try Effect.context<never>(), Shell.Machine)
+  const { store: records, nativeReady, notificationRoute } = try ClockRecords
+  const { delivery } = try activeClockTicks()
+  const { coordinator } = try ClockSyncState
+  const device = try Device
+  const changes = Stream.mergeAll([
+    host.changed, Stream.as(device.visible, undefined), Stream.as(alarms.changes, undefined),
+    Stream.as(timers.changes, undefined), Stream.as(SubscriptionRef.changes(nativeReady), undefined),
+  ], { concurrency: "unbounded" })
+  try Stream.runForEach(changes, effect () => {
+    const snapshot = try Semaphore.withPermit(coordinator.lock, effect {
+      const ready = try SubscriptionRef.get(nativeReady)
+      const a = try alarms.get()
+      const t = try timers.get()
+      const meta = records.snapshot()
+      const known = [
+        ...meta.deletedAlarmIds.map((remoteId) => ({ kind: "alarm" as const, remoteId })),
+        ...meta.deletedTimerIds.map((remoteId) => ({ kind: "timer" as const, remoteId })),
+      ]
+      const desired: NativeClockAlert[] = []
+      for (const alarm of a.items) {
+        const record = records.alarm(alarm.id)
+        known.push({ kind: "alarm", remoteId: record.remoteId })
+        if (!alarm.enabled) continue
+        const ringing = alarm.phase === "Ringing"
+        const at = ringing ? alarm.fireAt : Alarms.dueAtOf(alarm)
+        if (at > 0) desired.push({ kind: "alarm", id: alarm.id, remoteId: record.remoteId, at, ringing, title: record.label || "Alarm",
+          vibrate: alarm.vibrate, snoozed: alarm.phase === "Snoozed", hour: alarm.hour, minute: alarm.minute, daysMask: alarm.daysMask })
+      }
+      for (const timer of t.items) {
+        const record = records.timer(timer.id)
+        known.push({ kind: "timer", remoteId: record.remoteId })
+        const ringing = timer.status === "Ringing"
+        if (ringing || timer.status === "Running") desired.push({ kind: "timer", id: timer.id, remoteId: record.remoteId, at: ringing ? timer.ringStartedAt : timer.endAt,
+          ringing, title: record.label || "Timer", vibrate: true })
+      }
+      return { alerts: desired, known, ready }
+    })
+    const desired = snapshot.alerts
+    const result = try host.reconcile(snapshot)
+    delivery.set(desired.length === 0 ? "" : result === undefined ? "unavailable" : !result.notificationsEnabled ? "notifications" : !result.exact ? "exact" : "")
+    if (!(try device.showing())) return
+    const tap = try host.pendingTap()
+    if (tap === undefined) return
+    if (surface.mode === "monolith" && Option.isSome(shell)) {
+      const current = try shell.value.get()
+      const opening = current.trail.at(-1) !== "Clock"
+      try Ref.set(notificationRoute, opening ? current.route + 1 : current.route)
+      if (opening && !(try contained(shell.value.send({ type: "openView", view: "Clock" }, (where) => where.route === current.route), "opening Clock from its notification"))) {
+        try Ref.set(notificationRoute, -1)
+        return
+      }
+    }
+    if (tap.kind === "timer" && desired.some((item) => item.kind === "alarm" && item.ringing)) return
+    const tab = tap.kind === "alarm" ? "Alarms" : "Timers"
+    const selected = try view.get()
+    if (ClockView.canCloseSheet(selected)) {
+      if (!(try contained(view.send({ type: "closeSheet" }), "opening the notification over the Clock editor"))) return
+    }
+    if (selected.tab !== tab && !(try contained(view.send({ type: "selectTab", tab }), "opening the Clock notification tab"))) return
+    const target = desired.find((item) => item.kind === tap.kind && item.id === tap.id)
+    if (target !== undefined && !target.ringing && target.at <= (try Clock.currentTimeMillis)) return
+    if (target?.ringing === true) {
+      const ringing = try view.get()
+      const alarmId = tap.kind === "alarm" ? tap.id : ringing.ringingAlarm
+      const timerId = tap.kind === "timer" ? tap.id : ringing.ringingTimer
+      if (ClockView.canSyncAlerts(ringing, alarmId, timerId)) {
+        if (!(try contained(view.send({ type: "syncAlerts", alarmId, timerId }), "showing controls for the tapped Clock alert"))) return
+      }
+    }
+    try host.consumeTap(tap.token)
+  })
+}, "scheduling Clock alerts on Android")
+
+export effect function configureClockDelivery(access: "notifications" | "exact"): void!! {
+  const host = Context.getOption(try Effect.context<never>(), PhoneClockAlerts)
+  if (Option.isSome(host)) try host.value.configure(access)
+}

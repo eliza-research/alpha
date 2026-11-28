@@ -12,7 +12,7 @@ import { Attempts } from "../runtime/index.vibe"
 import { type Job, answer, applying, following, reacting, together } from "../runtime/index.vibe"
 import { createShelf } from "../runtime/index.vibe"
 import { Time } from "../runtime/index.vibe"
-import { type Prompt, PromptSchema, type PromptTiming, ScheduledTask, type WorkflowsApi, localTimeZone, readPromptRuns, readPrompts, sendChangeWhenReady } from "./api.vibe"
+import { type Prompt, PromptSchema, type PromptTiming, ScheduledTask, type WorkflowsApi, localTimeZone, readAgentFailure, readPromptRuns, readPrompts, sendChangeWhenReady } from "./api.vibe"
 import { type WorkflowRow, Rows, refresh } from "./list.vibe"
 
 type EditSource =
@@ -44,12 +44,28 @@ interface PromptPowerReview {
   readonly enabled: boolean
 }
 
+export type TaskFailureReason =
+  | "InsufficientCredits"
+  | "CredentialInvalid"
+  | "LimitReached"
+  | "ModelUnavailable"
+  | "InvalidSummary"
+  | "DispatchFailed"
+
+interface ObservedTaskFailure {
+  readonly owner: number
+  readonly row: number
+  readonly ticket: number
+  readonly reason: TaskFailureReason
+}
+
 const empty: EditorWords = { owner: 0, row: 0, title: "", text: "", zone: "UTC", source: { kind: "New" } }
 
 export interface AutomationWordsSnapshot {
   readonly editor: EditorWords
   readonly observed?: ObservedPrompt
   readonly power?: PromptPowerReview
+  readonly taskFailure?: ObservedTaskFailure
 }
 
 export service AutomationWords {
@@ -57,6 +73,7 @@ export service AutomationWords {
   hold(words: EditorWords): void!!
   current(owner: number, row: number, ticket: number): (Prompt | undefined)!!
   remember(shown: ObservedPrompt): void!!
+  rememberTaskFailure(failure: ObservedTaskFailure | undefined): void!!
   powerReview(): (PromptPowerReview | undefined)!!
   keepPowerReview(review: PromptPowerReview): void!!
   snapshot(this: void): AutomationWordsSnapshot
@@ -73,12 +90,32 @@ const words = Layer.sync(AutomationWords, () => {
       return observed?.owner === owner && observed.row === row && observed.ticket === ticket ? observed.prompt : undefined
     }),
     remember: (observed: ObservedPrompt) => sync(() => { shelf.update((cur) => ({ ...cur, observed })) }),
+    rememberTaskFailure: (taskFailure: ObservedTaskFailure | undefined) => sync(() => {
+      shelf.update((cur) => taskFailure === undefined ? { editor: cur.editor, ...(cur.observed === undefined ? {} : { observed: cur.observed }), ...(cur.power === undefined ? {} : { power: cur.power }) } : { ...cur, taskFailure })
+    }),
     powerReview: () => sync(() => shelf.get().power),
     keepPowerReview: (power: PromptPowerReview) => sync(() => { shelf.update((cur) => ({ ...cur, power })) }),
     snapshot: shelf.snapshot,
     subscribe: shelf.subscribe,
   }
 })
+
+/** Classify a failed scheduled task's decision log and cloud failure kind into a user-facing reason. */
+function taskFailureReason(log: string | undefined, cloudFailure: string | undefined): TaskFailureReason {
+  if (log !== undefined && log.includes("NoModel")) {
+    switch (cloudFailure) {
+      case "insufficient_credits": return "InsufficientCredits"
+      case "credential_invalid": return "CredentialInvalid"
+      case "limit_reached":
+      case "rate_limited": return "LimitReached"
+      default: return "ModelUnavailable"
+    }
+  }
+  if (log !== undefined && ["BlankSummary", "GenerationRefused", "WrongDaySummary", "cannot be presented"].some((word) => log.includes(word))) {
+    return "InvalidSummary"
+  }
+  return "DispatchFailed"
+}
 const TriggerReply = Schema.Struct({ trigger: PromptSchema })
 const TaskReply = Schema.Struct({ task: ScheduledTask })
 const RemovedReply = Schema.Struct({ ok: Schema.Literal(true) })
@@ -148,7 +185,7 @@ const automationChangeKey = (owner: string) => `alpha/workflows/automation-chang
 type Needs = Agent | WorkflowsApi | Rows | Listing.Machine | Model.Machine | AutomationWords | KeyValueStore.KeyValueStore | Time
 
 effect function read(ticket: number, owner: number): Event!!Needs {
-  const failed: Event = {
+  const failed: Extract<Event, { type: "automationsRead" }> = {
     type: "automationsRead", ticket, ok: false, complete: false, count: 0, issues: 0,
     present: false, on: false, status: "Scheduled", issue: false, kind: "PromptTask",
   }
@@ -161,9 +198,9 @@ effect function read(ticket: number, owner: number): Event!!Needs {
   if (source.owner !== owner || state.owner !== owner || !(try rows.sameOwner(scope, owner))) return failed
   const selected = try rows.row(owner, state.row)
   const count = (try rows.view(owner)).rows.length
-  const base: Event = { ...failed, ok: source.list.status === "Loaded", count, complete: source.complete }
+  const base: Extract<Event, { type: "automationsRead" }> = { ...failed, ok: source.list.status === "Loaded", count, complete: source.complete }
   if (selected === undefined || selected.kind === "Routine") return base
-  const found: { event: Event; prompt?: Prompt } = effect {
+  const found: { event: Extract<Event, { type: "automationsRead" }>; prompt?: Prompt; taskFailure?: TaskFailureReason } = effect {
     if (selected.kind === "Prompt") {
       const { trigger } = try ask(Agent, HttpClientRequest.get(promptPath(selected.id)), TriggerReply)
       return trigger.id === selected.id ? { event: { ...base, present: true, on: trigger.enabled }, prompt: trigger } : { event: failed }
@@ -171,14 +208,22 @@ effect function read(ticket: number, owner: number): Event!!Needs {
     const { task } = try ask(Agent, HttpClientRequest.get(taskPath(selected.id)), TaskReply)
     if (task.taskId !== selected.id || !task.ownerVisible) return { event: failed }
     const status = taskStatus(task.state.status)
-    return { event: { ...base, present: true, on: status === "Scheduled" && task.trigger.kind !== "manual",
-      status, issue: status === "Failed", issues: status === "Failed" ? 1 : 0, kind: sourceKind(selected) } }
+    const cloudFailure = status === "Failed" && task.state.lastDecisionLog?.includes("NoModel") ? try readAgentFailure() : undefined
+    const failure = status === "Failed" ? taskFailureReason(task.state.lastDecisionLog, cloudFailure) : undefined
+    return {
+      event: { ...base, present: true, on: status === "Scheduled" && task.trigger.kind !== "manual",
+        status, issue: status === "Failed", issues: status === "Failed" ? 1 : 0, kind: sourceKind(selected) },
+      ...(failure === undefined ? {} : { taskFailure: failure }),
+    }
   } catch (error) => ({ event: error instanceof Refused && error.status === 404 ? base : failed })
   const confirmed = ownerAt() catch () => ""
   const live = try machine.get()
   if (confirmed !== scope || live.row !== state.row || live.owner !== owner ||
     !Model.canAutomationsRead(live, ticket, count, 0)) return failed
-  if (found.prompt !== undefined) try (try AutomationWords).remember({ owner, row: state.row, ticket, prompt: found.prompt })
+  const box = try AutomationWords
+  if (found.prompt !== undefined) try box.remember({ owner, row: state.row, ticket, prompt: found.prompt })
+  if (found.taskFailure !== undefined) try box.rememberTaskFailure({ owner, row: state.row, ticket, reason: found.taskFailure })
+  else if (found.event.ok) try box.rememberTaskFailure(undefined)
   return found.event
 }
 

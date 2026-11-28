@@ -1,0 +1,77 @@
+// spec/app/slack/notices.md, "Story: Hear about Slack DMs, mentions and thread replies per workspace"; spec/app/telegram/notices.md, "Story: Hear about new Telegram messages without noise"
+import { plugin } from "./capacitor.ts"
+import { pluginChanges, registered } from "./device.vibe"
+import type { ProviderName } from "./messaging.vibe"
+
+const scope = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]{43}$/))
+const identifier = Schema.NonEmptyString.check(Schema.isMaxLength(256))
+const noticeTarget = Schema.Union([
+  Schema.Struct({ provider: Schema.Literal("slack"), scope, workspace: identifier, channel: identifier, thread: Schema.String.check(Schema.isMaxLength(256)) }),
+  Schema.Struct({ provider: Schema.Literal("telegram"), scope, peer: identifier }),
+])
+export type MessagingNoticeTarget = typeof noticeTarget.Type
+export type MessagingNoticeFilter = { readonly provider: "slack"; readonly scope?: string; readonly workspace?: string; readonly channel?: string; readonly thread?: string }
+  | { readonly provider: "telegram"; readonly scope?: string; readonly peer?: string }
+const tapped = Schema.Struct({ token: identifier, target: noticeTarget })
+const permission = Schema.Struct({ allowed: Schema.Boolean })
+const delivery = Schema.Struct({ posted: Schema.Boolean })
+
+interface NativeMessagingNotices {
+  status(input: { provider: ProviderName }): Promise<unknown>
+  configure(input: { provider: ProviderName }): Promise<void>
+  front(input: { provider: ProviderName; target?: MessagingNoticeTarget }): Promise<void>
+  post(input: { target: MessagingNoticeTarget; title: string; body: string }): Promise<unknown>
+  withdraw(filter: MessagingNoticeFilter): Promise<void>
+  pendingTap(input: { provider: ProviderName }): Promise<unknown>
+  consumeTap(input: { token: string }): Promise<void>
+  addListener(event: "messagingNoticesChanged", listener: () => void): Promise<{ remove(): Promise<void> }>
+}
+
+/** Device-owned presentation and single-use returns for authenticated Slack and Telegram conversations. */
+export service MessagingNotices {
+  readonly native: boolean
+  readonly changed: Stream.Stream<void>
+  allowed(provider: ProviderName): boolean!!
+  configure(provider: ProviderName): void!!
+  front(provider: ProviderName, target?: MessagingNoticeTarget): void!!
+  post(target: MessagingNoticeTarget, title: string, body: string): boolean!!
+  withdraw(filter: MessagingNoticeFilter): void!!
+  pending(provider: ProviderName): (typeof tapped.Type | undefined)!!
+  consume(token: string): void!!
+}
+
+const name = "AlphaMessagingNotices"
+export const phoneMessagingNotices = Layer.sync(MessagingNotices, () => {
+  const available = registered(name)
+  const host = () => plugin<NativeMessagingNotices>(name)
+  const changed = available ? pluginChanges((notify) => host().addListener("messagingNoticesChanged", notify)) : Stream.empty
+  return {
+    native: true,
+    changed,
+    effect allowed(provider) {
+      if (!available) return false
+      const raw = tryPromise(() => host().status({ provider })) catch () => undefined
+      return Option.getOrUndefined(Schema.decodeUnknownOption(permission)(raw))?.allowed === true
+    },
+    configure: (provider) => available ? ignore(tryPromise(() => host().configure({ provider }))) : Effect.void,
+    front: (provider, target) => available ? ignore(tryPromise(() => host().front(target === undefined ? { provider } : { provider, target }))) : Effect.void,
+    effect post(target, title, body) {
+      if (!available) return false
+      const raw = tryPromise(() => host().post({ target, title, body })) catch () => undefined
+      return Option.getOrUndefined(Schema.decodeUnknownOption(delivery)(raw))?.posted === true
+    },
+    withdraw: (filter) => available ? ignore(tryPromise(() => host().withdraw(filter))) : Effect.void,
+    effect pending(provider) {
+      if (!available) return undefined
+      const raw = tryPromise(() => host().pendingTap({ provider })) catch () => undefined
+      const tap = Option.getOrUndefined(Schema.decodeUnknownOption(tapped)(raw))
+      return tap?.target.provider === provider ? tap : undefined
+    },
+    consume: (token) => available ? ignore(tryPromise(() => host().consumeTap({ token }))) : Effect.void,
+  }
+})
+
+export const browserMessagingNotices = Layer.succeed(MessagingNotices, {
+  native: false, changed: Stream.empty, allowed: () => succeed(true), configure: () => Effect.void,
+  front: () => Effect.void, post: () => succeed(false), withdraw: () => Effect.void, pending: () => succeed(undefined), consume: () => Effect.void,
+})

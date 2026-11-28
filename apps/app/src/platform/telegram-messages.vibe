@@ -1,0 +1,288 @@
+// spec/app/telegram/index.md, "Story: Browse and search my Telegram chats"; spec/app/telegram/conversation.md, "Story: Read and interact with a Telegram conversation"; spec/app/telegram/composer.md, "Story: Draft and send Telegram messages under my sole authority"; spec/app/telegram/notices.md, "Story: Hear about new Telegram messages without noise"
+import type { TelegramClient as SdkClient } from "@mtcute/web"
+import type { MessagingFailure } from "./messaging.vibe"
+import type { TelegramClient, TelegramUpdate } from "./telegram.vibe"
+import { mtprotoRequest } from "./telegram.vibe"
+
+module sdk {
+  import type { Dialog, Message, Peer, TelegramClient as Client, tl } from "@mtcute/web"
+  import { telegramUser } from "./telegram.vibe"
+  import type { TelegramChat, TelegramDeleteMessagesReq, TelegramDialogSummary, TelegramDifferenceResponse, TelegramDialogsResponse, TelegramEditMessageReq, TelegramGetDialogsOpts, TelegramGetHistoryOpts, TelegramMessage, TelegramPeer, TelegramPeerInput, TelegramReactionCount, TelegramSearchGlobalOpts, TelegramSendMessageReq, TelegramSendReactionReq, TelegramUpdate, TelegramUser } from "./telegram.vibe"
+
+  export async function using<A>(clientFor: (token: string) => Promise<Client>, token: string, signal: AbortSignal, use: (c: Client, signal: AbortSignal) => Promise<A>) {
+    const client = await clientFor(token)
+    if (signal.aborted) throw signal.reason
+    return use(client, signal)
+  }
+
+  function providerPeer(peer: TelegramPeerInput): tl.TypePeer {
+    if (typeof peer !== "string") {
+      if (peer._type === "peerUser") return { _: "peerUser", userId: peer.user_id }
+      if (peer._type === "peerChat") return { _: "peerChat", chatId: peer.chat_id }
+      return { _: "peerChannel", channelId: peer.channel_id }
+    }
+    const parts = /^(user|chat|channel):([1-9]\d*)$/.exec(peer)
+    if (!parts || !Number.isSafeInteger(Number(parts[2]))) throw new Error("Invalid Telegram peer")
+    const id = Number(parts[2])
+    if (parts[1] === "user") return { _: "peerUser", userId: id }
+    if (parts[1] === "chat") return { _: "peerChat", chatId: id }
+    return { _: "peerChannel", channelId: id }
+  }
+
+  function address(peer: tl.TypePeer): { peer: TelegramPeer; peer_key: string } {
+    if (peer._ === "peerUser") return { peer: { _type: peer._, user_id: peer.userId }, peer_key: `user:${peer.userId}` }
+    if (peer._ === "peerChat") return { peer: { _type: peer._, chat_id: peer.chatId }, peer_key: `chat:${peer.chatId}` }
+    return { peer: { _type: peer._, channel_id: peer.channelId }, peer_key: `channel:${peer.channelId}` }
+  }
+
+  function tallies(reactions?: tl.TypeMessageReactions): TelegramReactionCount[] {
+    return reactions?.results.flatMap(({ reaction, count, chosenOrder }) =>
+      reaction._ === "reactionEmoji" ? [{ emoticon: reaction.emoticon, count, chosen: chosenOrder !== undefined }] : []) ?? []
+  }
+
+  function message(raw: tl.RawMessage | tl.RawMessageService): TelegramMessage {
+    const { peer: peer_id, peer_key } = address(raw.peerId)
+    const from = raw.fromId ?? raw.peerId
+    const reply = raw.replyTo?._ === "messageReplyHeader" ? raw.replyTo.replyToMsgId : undefined
+    return { _type: "message", id: raw.id, peer_id, peer_key,
+      from_id: from._ === "peerUser" ? from.userId : from._ === "peerChat" ? -from.chatId : -(1_000_000_000_000 + from.channelId),
+      date: raw.date, message: raw._ === "message" ? raw.message : "", out: raw.out === true, mentioned: raw.mentioned === true,
+      ...(reply === undefined ? {} : { reply_to_msg_id: reply }),
+      ...(raw._ === "message" && raw.editDate !== undefined ? { edit_date: raw.editDate } : {}),
+      reactions: tallies(raw.reactions) }
+  }
+
+  function entities(peers: readonly Peer[]): { users: TelegramUser[]; chats: TelegramChat[] } {
+    const users = new Map<number, TelegramUser>()
+    const chats = new Map<number, TelegramChat>()
+    for (const peer of peers) {
+      if (peer.type === "user") users.set(peer.id, telegramUser(peer))
+      else chats.set(peer.id, { _type: peer.chatType === "group" ? "chat" : "channel", id: peer.raw.id,
+        title: peer.title, ...(peer.username ? { username: peer.username } : {}), megagroup: peer.chatType === "supergroup",
+        broadcast: peer.chatType === "channel", participants_count: peer.membersCount ?? 0 })
+    }
+    return { users: [...users.values()], chats: [...chats.values()] }
+  }
+
+  function canPost(peer: Peer): boolean {
+    if (peer.type === "user") return !peer.isDeleted
+    if (!peer.isMember || peer.isBanned) return false
+    if (peer.isCreator) return true
+    if (peer.chatType === "channel" || peer.chatType === "gigagroup") return peer.adminRights?.postMessages === true
+    return peer.isAdmin || [peer.permissions, peer.defaultPermissions].every((rights) => !rights || (rights.canSendMessages && rights.canSendText))
+  }
+
+  function dialog(item: Dialog): TelegramDialogSummary {
+    return { ...address(item.raw.peer), top_message: item.raw.topMessage, read_inbox_max_id: item.lastReadIngoing,
+      read_outbox_max_id: item.lastReadOutgoing, unread_count: item.unreadCount, unread_mentions_count: item.unreadMentionsCount,
+      pinned: item.isPinned, archived: item.isArchived, folder_id: item.raw.folderId ?? 0, can_post: canPost(item.peer),
+      notify_settings: { mute_until: item.raw.notifySettings.muteUntil ?? 0 }, top_date: item.lastMessage?.raw.date ?? 0 }
+  }
+
+  function pageSize(limit?: number) { return Math.min(99, Math.max(1, limit ?? 25)) }
+
+  function cursorFor(peer: tl.TypePeer, id: number, offset: number): string { return `${address(peer).peer_key}/${id}/${offset}` }
+
+  function readCursor(cursor?: string) {
+    if (!cursor) return undefined
+    const fields = cursor.split("/")
+    if (fields.length !== 3 || !/^\d+$/.test(fields[1]) || !/^\d+$/.test(fields[2])) throw new Error("Invalid Telegram cursor")
+    return { peer: providerPeer(fields[0]), id: Number(fields[1]), offset: Number(fields[2]) }
+  }
+
+  export async function dialogs(c: Client, opts: TelegramGetDialogsOpts = {}, signal: AbortSignal): Promise<TelegramDialogsResponse> {
+    const cursor = readCursor(opts.cursor)
+    const limit = pageSize(opts.limit)
+    const filtered = Boolean(opts.folderId || opts.pinnedOnly)
+    const offset = filtered ? undefined : cursor
+    const iter = c.iterDialogs({ folder: opts.folderId, archived: opts.archived ? "only" : "exclude",
+      pinned: opts.pinnedOnly ? "only" : offset ? "exclude" : "include",
+      ...(offset ? { offsetPeer: await c.resolvePeer(offset.peer), offsetId: offset.id, offsetDate: offset.offset * 1000 } : { offsetDate: (opts.offsetDate ?? 0) * 1000 }) })
+    const page: Dialog[] = []
+    let after = filtered && cursor ? address(cursor.peer).peer_key : undefined
+    for await (const item of iter) {
+      if (signal.aborted) throw signal.reason
+      if (after !== undefined) {
+        if (address(item.raw.peer).peer_key === after) after = undefined
+        continue
+      }
+      if (!opts.unreadOnly || item.isUnread) page.push(item)
+      if (page.length > limit) break
+    }
+    const has_more = page.length > limit
+    if (has_more) page.pop()
+    const last = page.at(-1)
+    const [filters, state] = await Promise.all([c.getFolders(), c.call({ _: "updates.getState" })])
+    return { ok: true, dialogs: page.map(dialog), ...entities(page.map((d) => d.peer)),
+      messages: page.flatMap((d) => d.lastMessage ? [message(d.lastMessage.raw)] : []),
+      folders: filters.filters.flatMap((f) => f._ === "dialogFilterDefault" ? [] : [{ id: f.id, title: f.title.text }]),
+      next_cursor: has_more && last ? cursorFor(last.raw.peer, last.raw.topMessage, last.lastMessage?.raw.date ?? 0) : "",
+      has_more, pts: state.pts }
+  }
+
+  export async function history(c: Client, peer: TelegramPeerInput, opts: TelegramGetHistoryOpts = {}) {
+    const target = providerPeer(peer)
+    const cursor = readCursor(opts.cursor)
+    const limit = pageSize(opts.limit)
+    const [page, state] = await Promise.all([c.getHistory(target, { limit: limit + 1,
+      offset: { id: cursor?.id ?? opts.offsetId ?? 0, date: cursor?.offset ?? 0 } }), c.call({ _: "updates.getState" })])
+    const messages = page.slice(0, limit).map((m) => message(m.raw))
+    const last = messages.at(-1)
+    const has_more = page.length > limit
+    return { ok: true as const, messages, count: page.total, has_more, next_cursor: has_more && last ? cursorFor(target, last.id, last.date) : "", pts: state.pts }
+  }
+
+  export async function search(c: Client, query: string, opts: TelegramSearchGlobalOpts = {}) {
+    const cursor = readCursor(opts.cursor)
+    const limit = pageSize(opts.limit)
+    const page = opts.peer ? await c.searchMessages({ chatId: providerPeer(opts.peer), query, limit, offset: cursor?.id ?? opts.offsetId })
+      : await c.searchGlobal({ query, limit, ...(cursor ? { offset: { peer: await c.resolvePeer(cursor.peer), id: cursor.id, rate: cursor.offset } } : {}) })
+    const last = page.at(-1)
+    const has_more = page.length === limit && page.next !== undefined
+    const rate = page.next && typeof page.next === "object" ? page.next.rate : 0
+    return { ok: true as const, ...entities(page.flatMap((m) => [m.chat, m.sender])), messages: page.map((m) => message(m.raw)),
+      count: page.total, next_cursor: has_more && last ? cursorFor(last.raw.peerId, last.id, rate) : "", has_more }
+  }
+
+  async function confirmed(c: Client, result: Message) {
+    const state = await c.call({ _: "updates.getState" })
+    return { ok: true as const, message: message(result.raw), pts: state.pts }
+  }
+
+  export async function send(c: Client, req: TelegramSendMessageReq, key?: string) {
+    const id = key ?? req.randomId
+    const { Long } = await import("@mtcute/web")
+    const randomId = id === undefined ? undefined : Long.fromBytesBE([...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(id)))).slice(0, 8)])
+    return confirmed(c, await c.sendText(providerPeer(req.peer), req.message, { replyTo: req.replyToMsgId, randomId }))
+  }
+
+  export async function edit(c: Client, req: TelegramEditMessageReq) {
+    return confirmed(c, await c.editMessage({ chatId: providerPeer(req.peer), message: req.id, text: req.message }))
+  }
+
+  export async function remove(c: Client, req: TelegramDeleteMessagesReq) {
+    const target = providerPeer(req.peer)
+    const key = address(target).peer_key
+    const ids = [...req.ids]
+    const owned = await c.getMessages(target, ids)
+    if (owned.some((m) => !m || address(m.raw.peerId).peer_key !== key)) throw new Error("Message absent from this Telegram chat")
+    const result = target._ === "peerChannel" ? await c.call({ _: "channels.deleteMessages", channel: await c.resolveChannel(target), id: ids })
+      : await c.call({ _: "messages.deleteMessages", id: ids, revoke: true })
+    const pts = target._ === "peerChannel" ? (await c.call({ _: "updates.getState" })).pts : result.pts
+    return { ok: true as const, deleted_ids: ids, pts, pts_count: result.ptsCount }
+  }
+
+  export async function react(c: Client, req: TelegramSendReactionReq) {
+    const peer = providerPeer(req.peer)
+    const result = await c.sendReaction({ chatId: peer, message: req.msgId, emoji: req.reaction || null })
+    const updated = result ?? (await c.getMessages(peer, req.msgId))[0]
+    if (!updated) throw new Error("Telegram did not return the reacted message")
+    return confirmed(c, updated)
+  }
+
+  export async function read(c: Client, peer: TelegramPeerInput, maxId?: number) {
+    const target = providerPeer(peer)
+    await c.readHistory(target, { maxId })
+    const [[current], state] = await Promise.all([c.getPeerDialogs([target]), c.call({ _: "updates.getState" })])
+    if (!current) throw new Error("Telegram did not return the read dialog")
+    return { ok: true as const, pts: state.pts, read_inbox_max_id: current.lastReadIngoing, unread_count: current.unreadCount }
+  }
+
+  export async function mute(c: Client, peer: TelegramPeerInput, muteUntil: number) {
+    const target = providerPeer(peer)
+    const notify = { _: "inputNotifyPeer" as const, peer: await c.resolvePeer(target) }
+    if (!(await c.call({ _: "account.updateNotifySettings", peer: notify, settings: { _: "inputPeerNotifySettings", muteUntil } }))) {
+      throw new Error("Telegram declined the notification change")
+    }
+    const result = await c.call({ _: "account.getNotifySettings", peer: notify })
+    return { ok: true as const, peer: address(target).peer, notify_settings: { mute_until: result.muteUntil ?? 0 } }
+  }
+
+  function update(raw: tl.TypeUpdate, accountPts: number, date: number): TelegramUpdate | undefined {
+    switch (raw._) {
+      case "updateNewMessage": case "updateNewChannelMessage": case "updateEditMessage": case "updateEditChannelMessage": {
+        if (raw.message._ === "messageEmpty") return undefined
+        const m = message(raw.message)
+        return { _type: raw._ === "updateNewMessage" || raw._ === "updateNewChannelMessage" ? "updateNewMessage" : "updateEditMessage",
+          pts: accountPts, date: m.date, ...address(raw.message.peerId), message: m }
+      }
+      case "updateDeleteChannelMessages": return { _type: "updateDeleteMessages", pts: accountPts, date, ...address({ _: "peerChannel", channelId: raw.channelId }), messages: raw.messages }
+      case "updateDeleteMessages": return { _type: "updateDeleteMessages", pts: accountPts, date, messages: raw.messages }
+      case "updateMessageReactions": return { _type: raw._, pts: accountPts, date, ...address(raw.peer), msg_id: raw.msgId, reactions: tallies(raw.reactions) }
+      case "updateReadHistoryInbox": return { _type: raw._, pts: accountPts, date, ...address(raw.peer), max_id: raw.maxId, unread_count: raw.stillUnreadCount }
+      case "updateReadChannelInbox": return { _type: "updateReadHistoryInbox", pts: accountPts, date, ...address({ _: "peerChannel", channelId: raw.channelId }), max_id: raw.maxId, unread_count: raw.stillUnreadCount }
+      default: return undefined
+    }
+  }
+
+  const checkpoints = new WeakMap<Client, tl.updates.TypeState>()
+
+  export async function difference(c: Client, pts: number): Promise<TelegramDifferenceResponse> {
+    let prior = checkpoints.get(c)
+    if (!prior || !pts) prior = await c.call({ _: "updates.getState" })
+    let date = prior.date, qts = prior.qts
+    const new_messages: TelegramMessage[] = [], other_updates: TelegramUpdate[] = []
+    if (!pts) { checkpoints.set(c, prior); return { ok: true, _type: "updates.difference", new_messages, other_updates, state: prior } }
+    for (;;) {
+      const diff = await c.call({ _: "updates.getDifference", pts, date, qts })
+      if (diff._ === "updates.differenceTooLong") {
+        const state = await c.call({ _: "updates.getState" })
+        checkpoints.set(c, state)
+        return { ok: true, _type: "updates.difference", reset_snapshot: true, new_messages: [], other_updates: [], state }
+      }
+      if (diff._ === "updates.differenceEmpty") return { ok: true, _type: "updates.difference", new_messages, other_updates, state: { pts, date: diff.date } }
+      const state = diff._ === "updates.difference" ? diff.state : diff.intermediateState
+      new_messages.push(...diff.newMessages.flatMap((m) => m._ === "messageEmpty" ? [] : [message(m)]))
+      other_updates.push(...diff.otherUpdates.flatMap((raw) => update(raw, state.pts, state.date) ?? []))
+      checkpoints.set(c, state)
+      if (diff._ === "updates.difference") return { ok: true, _type: "updates.difference", new_messages, other_updates, state }
+      pts = state.pts; date = state.date; qts = state.qts
+    }
+  }
+
+  export function listen(c: Client, pts: number, receive: (u: TelegramUpdate) => void) {
+    let accountPts = pts
+    const listener = ({ update: raw }: { update: tl.TypeUpdate }) => {
+      if (raw._ === "updateNewMessage" || raw._ === "updateEditMessage" || raw._ === "updateDeleteMessages" || raw._ === "updateReadHistoryInbox") accountPts = Math.max(accountPts, raw.pts)
+      const event = update(raw, accountPts, 0)
+      if (event) receive(event)
+    }
+    c.onRawUpdate.add(listener)
+    return () => c.onRawUpdate.remove(listener)
+  }
+}
+
+import { dialogs, history, search, send, edit, remove, react, read, mute, difference, listen, using } from sdk
+
+type MessageMethods = Pick<TelegramClient, "getDialogs" | "getHistory" | "searchGlobal" | "sendMessage" | "editMessage" | "deleteMessages" | "sendReaction" | "readHistory" | "updateNotifySettings" | "getDifference" | "updatesStream">
+
+/** A signed-in MTProto client serves each read, mutation and live update from Telegram itself. */
+export function telegramMessages(clientFor: (token: string) => Promise<SdkClient>): MessageMethods {
+  const request = <A>(token: string, use: (c: SdkClient, signal: AbortSignal) => Promise<A>) =>
+    mtprotoRequest((signal) => using(clientFor, token, signal, use))
+  return {
+    getDialogs: (token, opts) => request(token, (c, signal) => dialogs(c, opts, signal)),
+    getHistory: (token, peer, opts) => request(token, (c) => history(c, peer, opts)),
+    searchGlobal: (token, query, opts) => request(token, (c) => search(c, query, opts)),
+    sendMessage: (token, req, key) => request(token, (c) => send(c, req, key)),
+    editMessage: (token, req) => request(token, (c) => edit(c, req)),
+    deleteMessages: (token, req) => request(token, (c) => remove(c, req)),
+    sendReaction: (token, req) => request(token, (c) => react(c, req)),
+    readHistory: (token, peer, maxId) => request(token, (c) => read(c, peer, maxId)),
+    updateNotifySettings: (token, peer, muteUntil) => request(token, (c) => mute(c, peer, muteUntil)),
+    getDifference: (token, pts) => request(token, (c) => difference(c, pts)),
+    updatesStream: (token, pts = 0) => Stream.unwrap(effect {
+      const client = try mtprotoRequest(() => clientFor(token))
+      return Stream.callback<TelegramUpdate, MessagingFailure>((queue) => effect {
+        const live = try Queue.unbounded<TelegramUpdate>()
+        try acquireRelease(sync(() => listen(client, pts, (u) => { Queue.offerUnsafe(live, u) })), (off) => sync(off))
+        try mtprotoRequest(() => client.startUpdatesLoop())
+        const gap = try mtprotoRequest(() => difference(client, pts))
+        if (gap.reset_snapshot) try Queue.offer(queue, { _type: "updateSnapshotRequired", pts: gap.state.pts, date: gap.state.date })
+        for (const m of gap.new_messages) try Queue.offer(queue, { _type: "updateNewMessage", pts: gap.state.pts, date: m.date, message: m })
+        for (const update of gap.other_updates) try Queue.offer(queue, update)
+        try Stream.runForEach(Stream.fromQueue(live), (update) => Queue.offer(queue, update))
+      })
+    }),
+  }
+}

@@ -1,4 +1,4 @@
-import { AppHeader, Button, TabsList, TabsTrigger, cn } from "@repo/ui";
+import { Button, TabsList, TabsTrigger, cn } from "@repo/ui";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { ContactsGlyph, Dialpad, RecentsGlyph, VoicemailGlyph } from "./icons.ts";
@@ -9,16 +9,15 @@ export interface PhoneTabsProps {
   voicemail: boolean;
   unheard: boolean;
   onBack?: () => void;
-  header?: ReactNode;
-  /** Contacts' actions, which get the title row while the tabs sit below. */
+  backLabel?: string;
+  /** Actions shown on the right of the single header row, such as New contact. */
   children?: ReactNode;
 }
 
 /**
- * The top of Phone and Contacts as the Pixel drew it on Sunday's v119 (Alpha 45f6bed30): `--alpha-telephony-header-top`,
- * `max(44px, top inset + 8px)` (`prototype/phone.css:27,305-308`), a 56px `.alpha-stage-header` row with 4px gaps
- * (`phone.css:304`), 2px under the inset off the launcher (`phone.css:309`) and the top during a call (`phone.css:310`).
- * Its `.ib` actions are 44px; `.app-header-back` stays 52px (`prototype.css:12`, `phone.css:342`).
+ * The top inset of Phone and Contacts headers: clears the status bar unconditionally (`--alpha-native-inset-top` or
+ * `safe-area-inset-top`), keeps the 44px launcher bar clearance on Home, and resets to `mt-0` when the live call strip
+ * occupies the top of the screen.
  */
 export const telephonyHeader = cn(
   "mt-[calc(max(var(--alpha-native-inset-top,0px),env(safe-area-inset-top))+--spacing(0.5))] shrink-0",
@@ -35,39 +34,37 @@ const tabs = [
 ] as const;
 
 /**
- * Recents, keypad and the phone's admitted voicemail and address book, in the Phone header, as the Pixel drew it on
- * Sunday's v119 (Alpha 45f6bed30): the tab's name as the serif title with the icon pill inline at its end, 46px tabs and
- * the unheard dot 8px from the right (`prototype/template.html:136-141`, `prototype/phone-adapter.ts:41-65`,
- * `prototype/phone.css:311-317,1149-1157`). Contacts opened from the pill keeps its own title row and the pill sits
- * centred under it, 64px tabs, the dot 16px from the right (`template.html:2843-2862`, `phone.css:1149-1154`). The row
- * starts `max(44px, top inset + 8px)` down and is 56px tall with 4px gaps (`phone.css:27,304-308`); during a call it
- * starts at the top (`phone.css:310`).
+ * Single-row Phone header: optional Back on the left, centered Recents/Keypad/(Voicemail)/Contacts icon pill in the
+ * middle with an accessible screen-reader title, and view actions (such as New contact) on the right.
  */
-export function PhoneTabs({ title, contacts, voicemail, unheard, onBack, header, children }: PhoneTabsProps) {
-  const separate = header !== undefined || children !== undefined;
+export function PhoneTabs({ title, contacts, voicemail, unheard, onBack, backLabel = "Back to apps", children }: PhoneTabsProps) {
   const selector = (
     <TabsList aria-label="Phone" className="gap-0.5 rounded-panel p-[3px]">
       {tabs.map(({ name, Icon }) => {
         if ((name === "Voicemail" && !voicemail) || (name === "Contacts" && !contacts)) return null;
         return (
           <TabsTrigger key={name} value={name} data-alpha-phone-tab={name.toLowerCase()}
-            className={cn("relative grid h-11 flex-none place-items-center px-0 text-foreground transition-none", separate ? "w-16" : "w-[46px]")}>
+            className="relative grid h-11 w-12 flex-none place-items-center px-0 text-foreground transition-none">
             <Icon aria-hidden className="size-5" />
             <span className="sr-only">{name}</span>
             {name === "Voicemail" && unheard && <span role="img" aria-label="Unheard voicemail"
-              className={cn("absolute top-2 size-2 rounded-full bg-primary", separate ? "right-4" : "right-2")} />}
+              className="absolute top-2 right-2.5 size-2 rounded-full bg-primary" />}
           </TabsTrigger>
         );
       })}
     </TabsList>
   );
   return (
-    <>
-      {header ?? <AppHeader title={title} data-alpha-phone-header="" className={telephonyHeader}
-        leading={onBack && <Button variant="ghost" size="icon" aria-label={separate ? "Back" : "Back to apps"} className="rounded-lg" onClick={onBack}><ChevronLeft /></Button>}>
-        {separate ? children : selector}
-      </AppHeader>}
-      {separate && <div className="flex shrink-0 justify-center px-4 pb-2">{selector}</div>}
-    </>
+    <header data-host-chrome="" data-alpha-phone-header=""
+      className={cn(telephonyHeader, "grid min-h-14 grid-cols-[1fr_auto_1fr] items-center gap-1 px-2 py-1")}>
+      <div className="flex items-center justify-start">
+        {onBack && <Button variant="ghost" size="icon" aria-label={backLabel} className="rounded-lg" onClick={onBack}><ChevronLeft /></Button>}
+      </div>
+      <div className="flex items-center justify-center">
+        <h1 className="sr-only">{title}</h1>
+        {selector}
+      </div>
+      <div className="flex items-center justify-end">{children}</div>
+    </header>
   );
 }

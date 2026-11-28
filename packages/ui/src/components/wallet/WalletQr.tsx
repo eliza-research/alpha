@@ -3,7 +3,7 @@ import { cn } from "../../lib/cn.ts";
 import { qrModules } from "../../lib/qr.ts";
 
 export type WalletQrProps = Omit<ComponentProps<"svg">, "children"> & {
-  /** The text the code holds, such as an address: at most 106 bytes. */
+  /** The text the code holds, such as an address: at most 2953 UTF-8 bytes. */
   value: string;
   /** What the code is, for assistive technology, such as "Ethereum address as a QR code". */
   label: string;

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AlphaLauncherBaseTheme" parent="@android:style/Theme.DeviceDefault.DayNight.NoActionBar">
+        <item name="android:colorBackground">@color/surface</item>
+        <item name="android:colorPrimary">@color/launcher_accent_color</item>
+        <item name="android:colorAccent">@color/launcher_accent_color</item>
+        <item name="android:textColorPrimary">@color/workspace_text_color</item>
+        <item name="android:textColorSecondary">@color/alpha_color_muted_foreground</item>
+        <item name="android:dialogCornerRadius">@dimen/alpha_radius_tile</item>
+    </style>
+
+    <style name="AlphaLauncherQsbPill">
+        <item name="android:backgroundTint">@color/popup_color_background</item>
+        <item name="android:textColorHint">@color/alpha_color_muted_foreground</item>
+        <item name="android:textColor">@color/workspace_text_color</item>
+    </style>
+
+    <style name="AlphaLauncherIconLabel">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/workspace_text_color</item>
+        <item name="android:shadowRadius">0</item>
+    </style>
+</resources>

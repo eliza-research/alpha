@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from packages/design-system/tokens.json by pnpm cli alpha-next sync-tokens -->
+<resources>
+  <color name="alpha_color_accent">#262626</color>
+  <color name="alpha_color_accent_foreground">#FFFFFF</color>
+  <color name="alpha_color_background">#000000</color>
+  <color name="alpha_color_border">#262626</color>
+  <color name="alpha_color_card">#0B0B0B</color>
+  <color name="alpha_color_card_foreground">#FFFFFF</color>
+  <color name="alpha_color_destructive">#FF6B60</color>
+  <color name="alpha_color_destructive_foreground">#000000</color>
+  <color name="alpha_color_foreground">#FFFFFF</color>
+  <color name="alpha_color_info">#8A93FF</color>
+  <color name="alpha_color_input">#6B6B6B</color>
+  <color name="alpha_color_muted">#151515</color>
+  <color name="alpha_color_muted_foreground">#8F8F8F</color>
+  <color name="alpha_color_ok">#05C853</color>
+  <color name="alpha_color_popover">#0B0B0B</color>
+  <color name="alpha_color_popover_foreground">#FFFFFF</color>
+  <color name="alpha_color_primary">#8A93FF</color>
+  <color name="alpha_color_primary_foreground">#000000</color>
+  <color name="alpha_color_record">#FF453A</color>
+  <color name="alpha_color_ring">#8A93FF</color>
+  <color name="alpha_color_secondary">#151515</color>
+  <color name="alpha_color_secondary_foreground">#FFFFFF</color>
+  <color name="alpha_color_status_error">#D93025</color>
+  <color name="alpha_color_status_ok">#1E8E3E</color>
+  <color name="alpha_color_status_warn">#E8A200</color>
+  <color name="alpha_color_voice_paused">#4F4FC1</color>
+  <color name="alpha_color_voice_processing">#4747FF</color>
+  <color name="alpha_color_warn">#E8A200</color>
+  <color name="all_apps_bg_hand_off">#000000</color>
+  <color name="all_apps_label_text">#FFFFFF</color>
+  <color name="all_apps_tabs_background">#151515</color>
+  <color name="folder_background_dark">#0B0B0B</color>
+  <color name="folder_dot_color">#0000FF</color>
+  <color name="launcher_accent_color">#8A93FF</color>
+  <color name="material_color_primary">#8A93FF</color>
+  <color name="notification_dot_color">#0000FF</color>
+  <color name="popup_color_background">#000000</color>
+  <color name="popup_color_primary_dark">#0B0B0B</color>
+  <color name="popup_color_secondary_dark">#151515</color>
+  <color name="popup_color_tertiary_dark">#262626</color>
+  <color name="surface">#000000</color>
+  <color name="widget_picker_surface">#151515</color>
+  <color name="workspace_text_color">#FFFFFF</color>
+</resources>

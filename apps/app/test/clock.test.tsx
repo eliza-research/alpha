@@ -10,6 +10,7 @@ import * as Stopwatch from "../gen/app__clock__stopwatch.effect.vibe";
 import * as Timers from "../gen/app__clock__timers.effect.vibe";
 import * as World from "../gen/app__clock__world.effect.vibe";
 import * as Toasts from "../gen/app__notices__toasts.effect.vibe";
+import { Machine as Home } from "../gen/app__home.effect.vibe";
 import * as Shell from "../gen/app__shell.effect.vibe";
 import { at } from "../src/areas.ts";
 import alertOverlayArea from "../src/clock/alertOverlay.tsx";
@@ -20,10 +21,13 @@ import { createClockRecords } from "../src/clock/records.ts";
 import { activeClockRecords, activeClockTicks } from "../src/clock/shelf.vibe";
 import { syncClockNow } from "../src/clock/sync.vibe";
 import { nextAlarmFireAt } from "../src/clock/time.ts";
+import home from "../src/home/index.tsx";
 import { agentAt } from "../src/platform/agent.vibe";
+import { phoneClockAlerts } from "../src/platform/clock-alerts.vibe";
 import { cloudAt } from "../src/platform/cloud.vibe";
 import { pagePlatform } from "../src/platform/platform.vibe";
 import { button, closeAll, drawn, fill, only, openOver, press, pressOnTop, seen, underAct, until } from "./alpha.tsx";
+import { installClockScheduler } from "./fakes/clock.ts";
 import { answering, fetched } from "./fakes/routes.ts";
 
 underAct();
@@ -100,18 +104,23 @@ function makePlatform(startMs: number, remote: RemoteClock) {
   );
 }
 
+let scheduler: ReturnType<typeof installClockScheduler> | undefined;
 afterEach(async () => {
   await closeAll();
+  scheduler?.unplug();
+  scheduler = undefined;
   document.body.innerHTML = "";
 });
 
-async function mountClock(startMs: number, remote: RemoteClock) {
-  const platform = makePlatform(startMs, remote);
+async function mountClock(startMs: number, remote: RemoteClock, onDevice = false) {
+  const page = makePlatform(startMs, remote);
+  const platform = onDevice ? Layer.merge(page, phoneClockAlerts) : page;
   const { alpha, close } = await openOver(platform, withClock);
   const runtime = clockArea.runtime(alpha);
   const currentShell = await alpha.runtime.runPromise(Shell.Machine.use((m) => m.get()));
   if (!Shell.showing(currentShell, "Clock")) {
-    await drawn(() => alpha.runtime.runPromise(Shell.Machine.use((m) => m.send({ type: "openView", view: "Clock" }))));
+    await until(alpha, home.runtime(alpha), Home, (h) => h.tiles.load.status === "Loaded");
+    await press("Clock");
   }
   await until(alpha, alpha.runtime, Shell.Machine, (s) => Shell.showing(s, "Clock"));
   await until(alpha, runtime, ClockView.Machine, () => true);
@@ -235,7 +244,10 @@ describe("Clock journeys", () => {
   it("Concurrent timers, +1:00 extension while ringing, and alarm ring priority over timer (spec/app/clock/timers.md, \"Story: Run multiple countdown timers\"; spec/app/clock/index.md, \"A ringing alarm takes priority over a ringing timer\")", async () => {
     const startMs = new Date(2026, 10, 24, 9, 0, 0, 0).getTime();
     const remote = emptyRemote(startMs);
-    const { advance, waitFor } = await mountClock(startMs, remote);
+    const host = installClockScheduler();
+    scheduler = host;
+    remote.offline = true;
+    const { alpha, runtime, advance, waitFor } = await mountClock(startMs, remote, true);
 
     await clickTab("Timers");
     await waitFor(ClockView.Machine, (s) => s.tab === "Timers");
@@ -243,13 +255,26 @@ describe("Clock journeys", () => {
     // spec/app/clock/timers.md, "Creating a timer adds a ready or running countdown under the limit"
     await press("Start 1m timer");
     await press("Start 5m timer");
+    await expect.poll(() => host.alerts().map(({ title, at }) => ({ title, at }))).toEqual([
+      { title: "1m timer", at: startMs + 60_000 }, { title: "5m timer", at: startMs + 300_000 },
+    ]);
+    expect(host.projection().ready).toBe(false);
+    remote.offline = false;
+    await drawn(() => runtime.runPromise(syncClockNow()));
+    await expect.poll(() => host.projection().ready).toBe(true);
+    await press("Allow notifications");
+    await expect.poll(() => button("Allow notifications")).toBeUndefined();
     await waitFor(Timers.Machine, (s) => s.items.length === 2 && s.items.every((t) => t.status === "Running"));
 
     // spec/app/clock/timers.md, "Starting, pausing, and resuming preserve remaining time accurately"
     await advance(10_000);
     await press("Pause 5m timer");
     await waitFor(Timers.Machine, (s) => s.items.some((t) => t.status === "Paused"));
+    await expect.poll(() => host.alerts().map(({ id }) => id)).toEqual([1]);
+    expect(host.projection().known).toHaveLength(2);
+    expect(new Set(host.projection().known.map((entry) => entry.remoteId)).size).toBe(2);
     await press("Resume 5m timer");
+    await expect.poll(() => host.alerts().at(-1)?.at).toBe(startMs + 300_000);
     await waitFor(Timers.Machine, (s) => s.items.every((t) => t.status === "Running"));
 
     // spec/app/clock/timers.md, "A running timer finishes only at or after its end time, and dismissing or resetting returns it to ready"
@@ -268,6 +293,39 @@ describe("Clock journeys", () => {
     await waitFor(Timers.Machine, (s) => s.items[0]?.status === "Ringing");
     await press("Stop");
     await waitFor(Timers.Machine, (s) => s.items[0]?.status === "Ready");
+    await expect.poll(() => host.alerts().map(({ id }) => id)).toEqual([2]);
+
+    await press("Start 1m timer");
+    await clickTab("Alarms");
+    await press("Add alarm");
+    for (let step = 0; step < 2; step++) await pressOnTop("Increase hour");
+    for (let step = 0; step < 5; step++) await pressOnTop("Increase minute");
+    await fill("Alarm label", "Breakfast");
+    await pressOnTop("Save");
+    await clickTab("World");
+    await advance(180_000);
+    await waitFor(ClockView.Machine, (s) => s.ringingAlarm === 1);
+    await waitFor(Timers.Machine, (s) => s.items.filter((item) => item.status === "Ringing").length === 2);
+    await drawn(() => alpha.runtime.runPromise(Shell.Machine.use((m) => m.send({ type: "goHome" }))));
+    await until(alpha, alpha.runtime, Shell.Machine, (s) => !Shell.showing(s, "Clock"));
+    host.installStandalone();
+    await drawn(() => host.tap({ kind: "timer", id: 3, token: "third-countdown" }));
+    await until(alpha, alpha.runtime, Shell.Machine, (s) => Shell.showing(s, "Clock"));
+    expect(document.querySelector("[role=alertdialog]")?.textContent).toContain("Breakfast");
+    expect(host.pending()?.id).toBe(3);
+    await press("Dismiss");
+    await waitFor(ClockView.Machine, (s) => s.tab === "Timers" && s.ringingTimer === 3);
+    await expect.poll(() => host.pending()).toBeUndefined();
+    expect(document.querySelector("[role=alertdialog]")?.textContent).toContain("1m timer");
+    await press("Stop");
+    await waitFor(ClockView.Machine, (s) => s.ringingTimer === 2);
+    expect(document.querySelector("[role=alertdialog]")?.textContent).toContain("5m timer");
+    await press("Stop");
+    await drawn(() => alpha.runtime.runPromise(Shell.Machine.use((m) => m.send({ type: "goHome" }))));
+    expect(host.foreground()).toBe("");
+    await press("Clock");
+    await expect.poll(() => host.foreground()).toBe("Clock");
+    await until(alpha, alpha.runtime, Shell.Machine, (s) => !Shell.showing(s, "Clock"));
   });
 
   it("Stopwatch laps, fastest/slowest highlight, pause, resume, reset, and visibility ticker gating (spec/app/clock/stopwatch.md, \"Story: Time laps with the stopwatch\")", async () => {

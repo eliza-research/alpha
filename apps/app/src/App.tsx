@@ -1,7 +1,10 @@
 // spec/app/shell/index.md, "Story: Move between Home and the apps"; spec/app/shell/index.md, "On Phone, Messages and Contacts the app's own bar stands in for Ask Alpha at rest, until Ask Alpha rises"; spec/app/shell/gestures.md, "A swipe travels more than 46 points; a sideways one from within 30 points of a side edge, towards the middle, is Back"; spec/app/shell/gestures.md, "On the launcher a swipe up from the bottom bar goes Home; nothing else is a shell swipe"; spec/app/shell/layers.md, "The page under a layer or a hold takes no touch, and a covering layer or a hold takes none for Ask Alpha either"; spec/app/update/page.md, "A page that was not mounted mounts its editors only once no update is pending"
 import { Alert, AppHeader, SHEET_EASE, StartupFailureScreen, StartupMark, cn } from "@repo/ui";
-import { type MouseEvent, type PointerEvent, type SyntheticEvent, type TouchEvent, useCallback, useRef, useState, useSyncExternalStore } from "react";
+import { Effect, Stream } from "effect";
+import { type MouseEvent, type PointerEvent, type ReactNode, type SyntheticEvent, type TouchEvent, useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { useMachine as useComms } from "../gen/app__phone__comms.react.ts";
+import * as Pages from "../gen/app__settings.effect.vibe";
+import { Machine as ShellMachine } from "../gen/app__shell.effect.vibe";
 import { useMachine } from "../gen/app__shell.react.ts";
 import { type Shell, type View, adjacentAskSheet, askAlphaDrawn } from "../gen/app__shell.ts";
 import { useMachine as useCanvas } from "../gen/app__shell__keyboard.react.ts";
@@ -13,8 +16,21 @@ import { barHeight, edge, swipe } from "../gen/app__shell__gestures.ts";
 import { useMachine as usePage } from "../gen/app__update__page.react.ts";
 import { dialogShown, editorsMounted } from "../gen/app__update__page.ts";
 import { BrowserFrames } from "./browser/BrowserFrames.tsx";
+import { OverlayControlBanner } from "./control/ControlBanner.tsx";
 import { addLayerAt } from "./home/addHome.vibe";
+import { MessagingBridge } from "./messaging/bridge.vibe";
+import { noteSubjects, notesSelection } from "./notes/selection.vibe";
 import { coarsePointer, desktopPreview, landscapeHomeInput, watchPrimaryPointer } from "./shell/canvas.vibe";
+import {
+  type AlphaIntentDetail,
+  type AlphaIntentResult,
+  DEFAULT_CONTEXT_LEASE_MS,
+  finishThinAppTask,
+  launchSiblingApp,
+  publishForegroundContext,
+  watchAppSurface,
+  watchOverlaySurface,
+} from "./platform/contextBridge.vibe";
 import { native } from "./platform/device.vibe";
 import type { Alpha } from "./runtime/area.tsx";
 import { versions } from "./settings/build.ts";
@@ -23,6 +39,7 @@ import { measureChrome, watchChrome } from "./shell/chrome.vibe";
 import { ShellLayerHost } from "./shell/ShellLayerHost.tsx";
 import { home } from "./shell/shell.vibe";
 import { isCommsView, viewHasHeader, views } from "./shell/views.tsx";
+import { type AlphaSurface, currentSurface } from "./surface.ts";
 import { canLeaveSignInStep, SignIn, useFirstRun } from "./startup/SignIn.tsx";
 import { AccessWalkthrough } from "./startup/SettingsAccess.tsx";
 import { firstFrame } from "./startup/cover.vibe";
@@ -31,6 +48,8 @@ import { launcherBeforeMount, openHomeSettings, reloadBeforeMount } from "./star
 export interface AppProps {
   /** Alpha as boot.tsx opened it: the root runtime, and every screen at its place. */
   alpha: Alpha;
+  /** Optional explicit surface override; defaults to `currentSurface()`. */
+  surface?: AlphaSurface;
 }
 
 type StartedSwipe = {
@@ -214,6 +233,233 @@ function useShellSwipe(alpha: Alpha, blocked: boolean, launcher: boolean, owner:
   };
 }
 
+function useSurfaceHost(alpha: Alpha) {
+  const machine = useMachine(alpha.runtime);
+  const layers = useLayers(alpha.runtime).state;
+  const canvas = useCanvas(alpha.runtime).state;
+  const phone = native();
+  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
+  return { ...machine, layers, canvas, phone, portalNode, setPortalNode };
+}
+
+function SurfaceChrome({ alpha, setPortalNode, topBanner }: {
+  readonly alpha: Alpha;
+  readonly setPortalNode: (node: HTMLElement | null) => void;
+  readonly topBanner?: ReactNode;
+}) {
+  return (
+    <>
+      <div data-alpha-top-alerts="" className="pointer-events-none fixed inset-x-0 top-[var(--alpha-safe-top)] z-alert mx-auto flex max-w-103 flex-col gap-2 px-3 pt-2 *:pointer-events-auto">
+        {topBanner}
+        {alpha.slot("overlay")}
+      </div>
+      {alpha.slot("notice")}
+      <div ref={setPortalNode} data-alpha-portal-root="" className="contents" />
+    </>
+  );
+}
+
+/** Transparent system-wide Ask Alpha overlay surface hosted inside `AlphaVoiceInteractionSession`. */
+function OverlaySurface({ alpha }: { readonly alpha: Alpha }) {
+  const { cause, layers, canvas, phone, portalNode, setPortalNode } = useSurfaceHost(alpha);
+  const overlayRef = useCallback((node: HTMLElement | null) => {
+    if (!node) return;
+    const stopChrome = watchChrome(node, (event) => { void alpha.runtime.runPromise(measureChrome(event)); });
+    const stopOverlay = watchOverlaySurface(node);
+    return () => {
+      stopOverlay();
+      stopChrome();
+    };
+  }, [alpha]);
+  return (
+    <ShellLayerHost alpha={alpha} portalContainer={portalNode}>
+      <main
+        ref={overlayRef}
+        data-alpha-surface="overlay"
+        data-alpha-native={phone ? "" : undefined}
+        style={canvas?.covered ? { height: canvas.visible } : undefined}
+        className="pointer-events-none relative mx-auto flex h-dvh w-full flex-col overflow-hidden bg-transparent font-sans text-base text-foreground *:pointer-events-auto"
+      >
+        <div
+          data-alpha-assistant-host=""
+          className="relative flex min-h-0 flex-1 flex-col justify-end [&>[data-alpha-detent]]:absolute [&>[data-alpha-detent]]:inset-x-0 [&>[data-alpha-detent]]:bottom-0 [&>[data-alpha-detent]]:max-w-none"
+          inert={cause !== undefined || (layers !== undefined && assistantInert(layers))}
+        >
+          {alpha.slot("assistant")}
+        </div>
+        <SurfaceChrome alpha={alpha} setPortalNode={setPortalNode} topBanner={<OverlayControlBanner alpha={alpha} />} />
+      </main>
+    </ShellLayerHost>
+  );
+}
+
+function parseIntentPayload(raw: string): Record<string, unknown> {
+  if (raw.trim().length === 0) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+async function handleAppViewIntent(
+  alpha: Alpha,
+  view: View,
+  detail: AlphaIntentDetail,
+): Promise<AlphaIntentResult> {
+  const payload = parseIntentPayload(detail.payloadJson);
+  if (view === "Notes") {
+    const target = typeof payload.target === "object" && payload.target !== null
+      ? (payload.target as Record<string, unknown>)
+      : undefined;
+    const noteId = typeof target?.noteId === "string"
+      ? target.noteId
+      : typeof payload.noteId === "string" ? payload.noteId : undefined;
+    if (noteId !== undefined && noteId.length > 0) {
+      const { agentOpen } = await import("./notes/agent.vibe");
+      const turn = detail.ticket > 0 ? detail.ticket : 1;
+      const opened = await alpha.runtime.runPromise(agentOpen(noteId, { turn, current: turn, sensitive: false }));
+      return {
+        switched: true,
+        result: { view, uri: detail.uri, opened, ...(opened && target !== undefined ? { shown: target } : {}) },
+      };
+    }
+  }
+  if (view === "Browser") {
+    const url = typeof payload.url === "string" ? payload.url : undefined;
+    if (url !== undefined && url.length > 0) {
+      const [{ default: browser }, { openMessageLink }] = await Promise.all([
+        import("./browser/index.tsx"),
+        import("./browser/browser.vibe"),
+      ]);
+      const opened = await browser.runtime(alpha).runPromise(openMessageLink(url, "Ask Alpha"));
+      return { switched: true, result: { view, uri: detail.uri, opened } };
+    }
+  }
+  if (view === "Settings") {
+    const section = typeof payload.section === "string" ? payload.section : undefined;
+    if (section !== undefined && section.length > 0) {
+      const parsed = Pages.parseEvent({ type: "openSection", page: section });
+      if (parsed?.type === "openSection") {
+        await alpha.runtime.runPromiseExit(Effect.flatMap(Pages.Machine, (pages) => pages.send(parsed)));
+      }
+    }
+  }
+  return { switched: true, result: { view, uri: detail.uri } };
+}
+
+/** Standalone single-view surface packaged inside a thin Alpha app APK. */
+function AppSurface({ alpha, view }: { readonly alpha: Alpha; readonly view: View }) {
+  const { cause, send, layers, canvas, phone, portalNode, setPortalNode } = useSurfaceHost(alpha);
+  const comms = isCommsView(view);
+  const inert = cause !== undefined || (layers !== undefined && pageInert(layers));
+  const hasStepBack = cause === undefined && layers !== undefined && takesBack(layers);
+  const canGoBack = String(hasStepBack);
+  const appRef = useCallback((node: HTMLElement | null) => {
+    if (!node) return;
+    void send({ type: "openView", view });
+    const stopChrome = watchChrome(node, (event) => { void alpha.runtime.runPromise(measureChrome(event)); });
+    const stopApp = watchAppSurface(view, async (detail) => {
+      node.ownerDocument.defaultView?.dispatchEvent(new CustomEvent("alpha-view-intent", { detail }));
+      return handleAppViewIntent(alpha, view, detail);
+    });
+    const appFiber = alpha.runtime.runFork(Effect.gen(function* () {
+      const shell = yield* ShellMachine;
+      const pages = yield* Pages.Machine;
+      const bridge = yield* MessagingBridge;
+      const syncSibling = Stream.runForEach(shell.changes, (state) => Effect.gen(function* () {
+        const active = state.trail.at(-1);
+        if (active === undefined || active === view) return;
+        yield* launchSiblingApp(active);
+        yield* Effect.exit(shell.send({ type: "openView", view }));
+      }));
+      const publishContext = Effect.gen(function* () {
+        const pageState = yield* pages.get();
+        const msgSnap = bridge.snapshot();
+        const platform = view === "Telegram" ? "Telegram" : view === "Slack" ? "Slack" : undefined;
+        const msgCtx = platform === undefined ? undefined : msgSnap.contexts[platform];
+        const sensitive = (view === "Settings" && Pages.sensitive(pageState))
+          || (platform !== undefined && (msgCtx?.sensitive === true || msgCtx?.pane === "auth"));
+        const note = !sensitive && view === "Notes" ? yield* notesSelection() : undefined;
+        const selectedObject = note ?? (view === "Settings" ? { kind: "settings", id: pageState.page } : undefined);
+        const snapshotJson = JSON.stringify({
+          view,
+          title: node.ownerDocument.title || view,
+          ...(view === "Settings" ? { section: pageState.page } : {}),
+          ...(selectedObject === undefined ? {} : { selectedObject }),
+        });
+        yield* publishForegroundContext({
+          view,
+          route: view === "Settings" ? `/${pageState.page.toLowerCase()}` : `/${view.toLowerCase()}`,
+          snapshotJson,
+          sensitive,
+          leaseMs: DEFAULT_CONTEXT_LEASE_MS,
+        });
+      });
+      const contextSources = [
+        Stream.as(pages.changes, undefined),
+        Stream.as(bridge.changes, undefined),
+        Stream.as(noteSubjects, undefined),
+      ];
+      const syncContext = Effect.andThen(
+        publishContext,
+        Stream.runForEach(Stream.mergeAll(contextSources, { concurrency: "unbounded" }), () => publishContext),
+      );
+      yield* Effect.all([syncSibling, syncContext], { concurrency: "unbounded" });
+    }));
+    const win = node.ownerDocument.defaultView;
+    const onRootBack = () => {
+      if (node.ownerDocument.documentElement.dataset.alphaCanGoBack !== "true") finishThinAppTask();
+    };
+    win?.addEventListener("alpha-back", onRootBack);
+    return () => {
+      win?.removeEventListener("alpha-back", onRootBack);
+      appFiber.interruptUnsafe();
+      stopApp();
+      stopChrome();
+    };
+  }, [alpha, send, view]);
+  return (
+    <ShellLayerHost alpha={alpha} portalContainer={portalNode}>
+      <main
+        ref={appRef}
+        data-alpha-surface="app"
+        data-alpha-view={view}
+        data-alpha-native={phone ? "" : undefined}
+        style={canvas?.covered ? { height: canvas.visible } : undefined}
+        className={cn(
+          "relative mx-auto flex h-dvh w-full flex-col overflow-hidden bg-background font-sans text-base text-foreground [--alpha-call-inset-top:max(var(--alpha-native-inset-top,0px),env(safe-area-inset-top))] has-[[data-alpha-camera-native]]:bg-transparent in-data-[alpha-browser-under]:bg-transparent in-data-[alpha-browser-under]:bg-[linear-gradient(to_bottom,var(--background)_var(--alpha-browser-under-top),transparent_0_var(--alpha-browser-under-bottom),var(--background)_0),linear-gradient(to_right,var(--background)_var(--alpha-browser-under-left),transparent_0_var(--alpha-browser-under-right),var(--background)_0)] has-[[data-alpha-call-strip=over]]:pt-[calc(var(--alpha-call-inset-top)_+_4rem)]",
+          view === "Camera" && "bg-camera-panel",
+          !phone && "sm:pointer-fine:max-w-103 sm:pointer-fine:border-x sm:pointer-fine:border-border/60",
+        )}
+      >
+        <div
+          data-alpha-shell-page=""
+          data-alpha-comms-stage={comms ? "" : undefined}
+          ref={(node) => {
+            const root = node?.ownerDocument.documentElement;
+            if (root && root.dataset.alphaCanGoBack !== canGoBack) root.dataset.alphaCanGoBack = canGoBack;
+          }}
+          className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-auto overscroll-contain in-[main:has([data-alpha-call-strip=over])]:[--alpha-native-inset-top:0px]"
+          inert={inert}
+        >
+          {comms && alpha.slot("phone/stage")}
+          {!viewHasHeader(view) && <AppHeader
+            title={views[view].label}
+            leading={hasStepBack && <AppBack alpha={alpha} />}
+            className="shrink-0"
+          />}
+          {alpha.slot(`view:${view}`)}
+        </div>
+        <SurfaceChrome alpha={alpha} setPortalNode={setPortalNode} />
+      </main>
+    </ShellLayerHost>
+  );
+}
+
 /**
  * Alpha: Home, or the app on top of the trail under its title, with Back offered exactly when the rules allow it, and
  * over them Ask Alpha, whatever covers the screen, and the notices. Each screen is its area's, drawn at its place.
@@ -225,7 +471,19 @@ function useShellSwipe(alpha: Alpha, blocked: boolean, launcher: boolean, owner:
  * stage did (45f6bed30 prototype/model.js:5759-5785).
  * @model spec/app/shell/index.md
  */
-export function App({ alpha }: AppProps) {
+export function App({ alpha, surface }: AppProps) {
+  const resolved = surface ?? currentSurface();
+  switch (resolved.mode) {
+    case "overlay":
+      return <OverlaySurface alpha={alpha} />;
+    case "app":
+      return <AppSurface alpha={alpha} view={resolved.view} />;
+    case "monolith":
+      return <MonolithApp alpha={alpha} />;
+  }
+}
+
+function MonolithApp({ alpha }: { readonly alpha: Alpha }) {
   const { state, cause, can } = useMachine(alpha.runtime);
   const layers = useLayers(alpha.runtime).state;
   const page = usePage(alpha.runtime).state;
@@ -327,7 +585,7 @@ export function App({ alpha }: AppProps) {
             if (document && document.dataset.alphaCanGoBack !== canGoBack) document.dataset.alphaCanGoBack = canGoBack;
           }}
           className={cn(
-            "relative flex min-h-0 min-w-0 flex-1 flex-col in-[main:has([data-alpha-call-strip=over])]:[--alpha-native-inset-top:0px]",
+            "relative flex min-h-0 min-w-0 flex-1 flex-col in-[main:has([data-alpha-call-strip=over])]:[--alpha-native-inset-top:0px] in-[main:has([data-alpha-call-strip=over])]:[--alpha-safe-top:0px]",
             showing !== undefined && "overflow-auto overscroll-contain",
             strip && "overflow-hidden",
             nativeHomeSide && "[--alpha-dock-overlap:0px]",
@@ -360,7 +618,7 @@ export function App({ alpha }: AppProps) {
                   {!viewHasHeader(showing) && <AppHeader
                     title={views[showing].label}
                     leading={back && <AppBack alpha={alpha} />}
-                    className="shrink-0"
+                    className="mt-[var(--alpha-safe-top)] shrink-0 in-data-[alpha-launcher]:mt-[max(--spacing(11),var(--alpha-safe-top))]"
                   />}
                   {alpha.slot(`view:${showing}`)}
                 </div>

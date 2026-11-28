@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+ <permission android:name="ai.alphacompute.permission.AGENT_IPC" android:protectionLevel="signature" />
+ <uses-permission android:name="ai.alphacompute.permission.AGENT_IPC" />
  <uses-permission android:name="android.permission.INTERNET" />
  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
  <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
@@ -7,6 +9,8 @@
  <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+ <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+ <uses-permission android:name="android.permission.VIBRATE" />
  <uses-permission android:name="android.permission.RECORD_AUDIO" />
  <uses-permission android:name="ai.alphacompute.alphaphone.sense.permission.LISTENER_CONTROL" />
  <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
@@ -47,6 +51,27 @@
   <intent><action android:name="android.intent.action.DISMISS_ALARM" /></intent>
   <intent><action android:name="android.intent.action.SNOOZE_ALARM" /></intent>
   <intent><action android:name="android.support.customtabs.action.CustomTabsService" /></intent>
+  <intent><action android:name="ai.alphacompute.action.AGENT_OPEN" /><data android:scheme="alpha" /></intent>
+  <package android:name="ai.alphacompute.phone" />
+  <package android:name="ai.alphacompute.messages" />
+  <package android:name="ai.alphacompute.contacts" />
+  <package android:name="ai.alphacompute.browser" />
+  <package android:name="ai.alphacompute.inbox" />
+  <package android:name="ai.alphacompute.telegram" />
+  <package android:name="ai.alphacompute.slack" />
+  <package android:name="ai.alphacompute.calendar" />
+  <package android:name="ai.alphacompute.clock" />
+  <package android:name="ai.alphacompute.reminders" />
+  <package android:name="ai.alphacompute.camera" />
+  <package android:name="ai.alphacompute.photos" />
+  <package android:name="ai.alphacompute.maps" />
+  <package android:name="ai.alphacompute.notes" />
+  <package android:name="ai.alphacompute.files" />
+  <package android:name="ai.alphacompute.workflows" />
+  <package android:name="ai.alphacompute.wallet" />
+  <package android:name="ai.alphacompute.settings" />
+  <package android:name="ai.alphacompute.controlbridge" />
+  <package android:name="org.mozilla.firefox" />
  </queries>
  <application android:name=".AlphaApplication" android:label="@string/app_name" android:icon="@drawable/app_icon" android:roundIcon="@drawable/app_icon" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:supportsRtl="false" android:enableOnBackInvokedCallback="true" android:usesCleartextTraffic="false" android:networkSecurityConfig="@xml/network_security_config" android:theme="@style/AppTheme">
   <meta-data android:name="ai.alphacompute.alphaphone.UPDATE_CHANNEL" android:value="${alphaUpdateChannel}" />
@@ -61,6 +86,16 @@
   <service android:name=".AlphaNoteRecordingService" android:exported="false" android:foregroundServiceType="microphone" />
   <service android:name=".AlphaNavigationService" android:exported="false" android:foregroundServiceType="location" />
   <service android:name=".IsolatedPdfService" android:exported="false" android:isolatedProcess="true" android:process=":isolated_pdf" android:stopWithTask="true" />
+  <receiver android:name=".clock.ClockAuthority$Changed" android:exported="true" android:permission="ai.alphacompute.permission.AGENT_IPC" />
+  <receiver android:name=".clock.ClockAlertReceiver" android:exported="false">
+   <intent-filter>
+    <action android:name="android.intent.action.BOOT_COMPLETED" />
+    <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+    <action android:name="android.intent.action.TIME_SET" />
+    <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+    <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+   </intent-filter>
+  </receiver>
   <receiver android:name=".AlphaUpdateStatusReceiver" android:exported="false" />
   <service android:name=".AlphaNotificationListener" android:label="@string/app_name" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
    <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
@@ -76,11 +111,49 @@
   <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:screenOrientation="${appOrientation}" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|density|navigation" android:theme="@style/AppTheme.Launch">
    <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
   </activity>
+  <activity android:name=".AlphaCoreSignInActivity" android:exported="false" android:excludeFromRecents="true" android:noHistory="true" android:theme="@style/Theme.Alpha.Translucent" />
+  <activity android:name=".AlphaBillingReturnActivity" android:exported="false" android:excludeFromRecents="true" android:noHistory="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" />
   <activity android:name="ai.eliza.plugins.signin.SignInCallbackActivity" android:exported="true" android:excludeFromRecents="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
    <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" android:host="${appLinkHost}" android:path="${signInCallbackPath}" /></intent-filter>
   </activity>
-  <activity-alias android:name=".AlphaCloudBillingReturn" android:targetActivity=".MainActivity" android:exported="true">
+  <activity-alias android:name=".AlphaSlackReturn" android:targetActivity=".MainActivity" android:exported="true">
+   <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="alphaphone" android:host="slack" android:path="/oauth/callback" /></intent-filter>
+  </activity-alias>
+  <activity-alias android:name=".AlphaCloudBillingReturn" android:targetActivity=".AlphaBillingReturnActivity" android:exported="true">
    <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" android:host="${appLinkHost}" android:path="/alphaphone/billing/return" /></intent-filter>
   </activity-alias>
+  <service android:name=".ipc.AlphaAgentBrokerService" android:exported="true" android:permission="ai.alphacompute.permission.AGENT_IPC">
+   <intent-filter><action android:name="ai.alphacompute.ipc.ACTION_AGENT_BROKER" /></intent-filter>
+  </service>
+  <service android:name=".ipc.AlphaPlatformBrokerService" android:exported="true" android:permission="ai.alphacompute.permission.AGENT_IPC">
+   <intent-filter><action android:name="ai.alphacompute.ipc.ACTION_PLATFORM_BROKER" /></intent-filter>
+  </service>
+  <service android:name=".ipc.AlphaContextRegistryService" android:exported="true" android:permission="ai.alphacompute.permission.AGENT_IPC">
+   <intent-filter><action android:name="ai.alphacompute.ipc.ACTION_CONTEXT_REGISTRY" /></intent-filter>
+  </service>
+  <provider android:name=".messaging.MessagingNoticeAuthority" android:authorities="${applicationId}.messaging-notices" android:exported="true" android:permission="ai.alphacompute.permission.AGENT_IPC" />
+  <receiver android:name=".messaging.MessagingNotices$Dismissed" android:exported="false" />
+  <provider android:name=".ipc.AlphaPreferencesProvider" android:authorities="ai.alphacompute.alphaphone.preferences" android:exported="true" android:permission="ai.alphacompute.permission.AGENT_IPC" />
+  <service android:name=".overlay.AlphaVoiceInteractionService" android:label="@string/app_name" android:exported="true" android:permission="android.permission.BIND_VOICE_INTERACTION">
+   <meta-data android:name="android.voice_interaction" android:resource="@xml/alpha_voice_interaction_service" />
+   <intent-filter><action android:name="android.service.voice.VoiceInteractionService" /></intent-filter>
+  </service>
+  <service android:name=".overlay.AlphaVoiceInteractionSessionService" android:exported="true" android:permission="android.permission.BIND_VOICE_INTERACTION" />
+  <activity android:name=".overlay.AlphaOverlayIntakeActivity" android:exported="true" android:permission="ai.alphacompute.permission.AGENT_IPC" android:excludeFromRecents="true" android:noHistory="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
+   <intent-filter><action android:name="ai.alphacompute.action.STAGE_ATTACHMENT" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
+  </activity>
+  <receiver android:name=".widget.AlphaDayWidgetProvider" android:label="@string/alpha_day_widget_label" android:exported="true">
+   <intent-filter>
+    <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    <action android:name="ai.alphacompute.alphaphone.widget.DAY_REFRESH" />
+   </intent-filter>
+   <meta-data android:name="android.appwidget.provider" android:resource="@xml/alpha_day_widget_info" />
+  </receiver>
+  <receiver android:name=".widget.AlphaSearchWidgetProvider" android:label="@string/alpha_search_widget_label" android:exported="true">
+   <intent-filter>
+    <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+   </intent-filter>
+   <meta-data android:name="android.appwidget.provider" android:resource="@xml/alpha_search_widget_info" />
+  </receiver>
  </application>
 </manifest>

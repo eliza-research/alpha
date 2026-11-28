@@ -1,0 +1,240 @@
+// spec/app/slack/notices.md, "Story: Hear about Slack DMs, mentions and thread replies per workspace"; spec/cloud/rollout.md, "Story: Serve one reviewed profile from the API Worker"
+import { EdgeResponse } from "./edge-platform.ts"
+import { mailbox, type SlackOwner } from "./slack-mailbox.vibe"
+
+export interface SlackBindings {
+  readonly SLACK_CLIENT_ID?: string
+  readonly SLACK_APP_ID?: string
+  readonly SLACK_APP_TOKEN?: string
+  readonly SLACK_SIGNING_SECRET?: string
+  readonly WEB_ORIGIN: string
+}
+
+export function slackNotifications(env: SlackBindings): boolean {
+  return /^\d+\.\d+$/.test(env.SLACK_CLIENT_ID ?? "") && /^A[A-Z0-9]+$/.test(env.SLACK_APP_ID ?? "") &&
+    /^xapp-\S+$/.test(env.SLACK_APP_TOKEN ?? "") && /^[a-f0-9]{32}$/i.test(env.SLACK_SIGNING_SECRET ?? "")
+}
+
+module slackWire {
+  import { Schema, Option } from "effect"
+
+  export class SlackRefusal extends Error {
+    /** @throws {never} */
+    constructor(readonly status: number, readonly reason: string, readonly retry = 0) { super(reason) }
+  }
+
+  const text = new TextEncoder()
+  const identity = Schema.String.check(Schema.isPattern(/^[A-Z][A-Z0-9]{1,63}$/))
+  const stamp = Schema.String.check(Schema.isPattern(/^\d{1,16}\.\d{1,12}$/))
+  const optionalEnterprise = Schema.optional(Schema.NullOr(identity))
+  const installation = Schema.Struct({ enterprise_id: optionalEnterprise, team_id: Schema.NullOr(identity), user_id: Schema.NullOr(identity), is_bot: Schema.Boolean, is_enterprise_install: Schema.optional(Schema.Boolean) })
+  export const auth = Schema.Struct({ ok: Schema.Literal(true), team_id: identity, user_id: identity, bot_id: Schema.optional(identity), enterprise_id: optionalEnterprise, is_enterprise_install: Schema.optional(Schema.Boolean) })
+  const token = { token_type: Schema.Literal("user"), access_token: Schema.String.check(Schema.isPattern(/^(xoxp-|xoxe\.xoxp-)\S+$/)), refresh_token: Schema.String.check(Schema.isNonEmpty()), expires_in: Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0)) }
+  export const initial = Schema.Struct({ ok: Schema.Literal(true), app_id: identity, team: Schema.Struct({ id: identity, name: Schema.String }), authed_user: Schema.Struct({ ...token, id: identity, scope: Schema.String }) })
+  export const rotated = Schema.Struct({ ok: Schema.Literal(true), ...token })
+  export const callback = Schema.Struct({ type: Schema.Literal("event_callback"), api_app_id: identity, event_id: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9]{2,128}$/)), event_time: Schema.Number, event_context: Schema.optional(Schema.String), authorizations: Schema.optional(Schema.Array(installation)), event: Schema.Unknown })
+  export const incoming = Schema.Struct({ type: Schema.Literal("message"), subtype: Schema.optional(Schema.String), channel: identity, ts: stamp, thread_ts: Schema.optional(stamp) })
+  export type Installation = typeof installation.Type
+  export const page = Schema.Struct({ authorizations: Schema.Array(installation), response_metadata: Schema.optional(Schema.Struct({ next_cursor: Schema.optional(Schema.String) })) })
+  export const messagePage = Schema.Struct({ messages: Schema.Array(Schema.Struct({ type: Schema.Literal("message"), ts: stamp, user: Schema.optional(identity), text: Schema.optional(Schema.String), thread_ts: Schema.optional(stamp), reply_broadcast: Schema.optional(Schema.Boolean) })) })
+  export const challenge = Schema.Struct({ type: Schema.Literal("url_verification"), challenge: Schema.String })
+  export const read = Schema.Struct({ cursor: Schema.optional(Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(Number.MAX_SAFE_INTEGER))) })
+  const result = Schema.Struct({ ok: Schema.Boolean, error: Schema.optional(Schema.String) })
+
+  /** Decode an external Slack or handset payload. @throws {SlackRefusal} */
+  export function decode<S extends Schema.ConstraintDecoder<unknown, never>>(schema: S, value: unknown, status = 400): S["Type"] {
+    const parsed = Schema.decodeUnknownOption(schema)(value)
+    if (Option.isNone(parsed)) throw new SlackRefusal(status, "invalid_payload")
+    return parsed.value
+  }
+  /** A fixed Slack method receives credentials only in POST bodies or Authorization headers. @throws {SlackRefusal} */
+  export async function call(send: typeof fetch, method: string, fields: URLSearchParams, bearer?: string): Promise<unknown> {
+    const reading = method === "conversations.history" || method === "conversations.replies"
+    const url = new URL("https://slack.com/api/" + method)
+    if (reading) url.search = fields.toString()
+    const response = await send(url, { method: reading ? "GET" : "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", ...(bearer ? { Authorization: "Bearer " + bearer } : {}) }, body: reading ? undefined : fields.toString(), redirect: "error", signal: AbortSignal.timeout(10000) })
+    if (response.status === 429) throw new SlackRefusal(429, "ratelimited", Math.max(1, Math.min(3600, Number(response.headers.get("retry-after")) || 60)))
+    if (!response.ok) throw new SlackRefusal(503, "slack_unavailable", 15)
+    const raw: unknown = await response.json()
+    const answer = decode(result, raw, 502)
+    if (!answer.ok) {
+      const e = answer.error ?? ""
+      if (["channel_not_found", "not_in_channel", "thread_not_found", "message_not_found"].includes(e)) throw new SlackRefusal(404, "message_unavailable")
+      if (["invalid_auth", "account_inactive", "token_revoked", "token_expired", "invalid_refresh_token", "bad_refresh_token"].includes(e)) throw new SlackRefusal(401, e)
+      if (["invalid_code", "code_already_used", "bad_redirect_uri", "invalid_grant", "bad_code_verifier", "invalid_code_verifier"].includes(e)) throw new SlackRefusal(400, e)
+      throw new SlackRefusal(503, "slack_unavailable", 15)
+    }
+    return raw
+  }
+  /** Read at most one supported Slack event envelope. @throws {SlackRefusal} */
+  export async function bodyOf(request: Request, maximum: number): Promise<Uint8Array<ArrayBuffer>> {
+    const reader = request.body?.getReader()
+    if (!reader || Number(request.headers.get("content-length")) > maximum) throw new SlackRefusal(413, "body_size")
+    let total = 0
+    const chunks: Uint8Array[] = []
+    try {
+      for (;;) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        total += chunk.value.byteLength
+        if (total > maximum) { await reader.cancel(); throw new SlackRefusal(413, "body_size") }
+        chunks.push(chunk.value)
+      }
+    } finally { reader.releaseLock() }
+    const bytes = new Uint8Array(total)
+    let at = 0
+    for (const chunk of chunks) { bytes.set(chunk, at); at += chunk.byteLength }
+    return bytes
+  }
+  /** Verify Slack's timestamped HMAC over the original request bytes. @throws {SlackRefusal} */
+  export async function signed(request: Request, secret: string, now: number): Promise<unknown> {
+    const ts = request.headers.get("x-slack-request-timestamp") ?? ""
+    const signature = /^v0=([a-f0-9]{64})$/.exec(request.headers.get("x-slack-signature") ?? "")
+    if (!/^\d{1,12}$/.test(ts) || Math.abs(now / 1000 - Number(ts)) > 300 || !signature) throw new SlackRefusal(401, "invalid_signature")
+    const bytes = await bodyOf(request, 256 * 1024)
+    const prefix = text.encode("v0:" + ts + ":")
+    const input = new Uint8Array(prefix.length + bytes.length)
+    input.set(prefix); input.set(bytes, prefix.length)
+    const key = await crypto.subtle.importKey("raw", text.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"])
+    const mac = Uint8Array.from(signature[1].match(/../g) ?? [], v => parseInt(v, 16))
+    if (!(await crypto.subtle.verify("HMAC", key, mac, input))) throw new SlackRefusal(401, "invalid_signature")
+    return json(bytes)
+  }
+  /** @throws {SlackRefusal} */
+  export function json(bytes: Uint8Array): unknown {
+    try { return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) } catch { throw new SlackRefusal(400, "invalid_payload") }
+  }
+  export async function digest(value: string) {
+    const bytes = await crypto.subtle.digest("SHA-256", text.encode(value))
+    return Array.from(new Uint8Array(bytes), v => v.toString(16).padStart(2,"0")).join("")
+  }
+
+  /** Accept only the client, return and PKCE fields the registered Alpha app uses. @throws {SlackRefusal} */
+  export function oauthFields(bytes: Uint8Array, clientId: string, origin: string) {
+    const fields = new URLSearchParams(new TextDecoder().decode(bytes))
+    const renewal = fields.get("grant_type") === "refresh_token"
+    const allowed = renewal ? ["client_id","grant_type","refresh_token"] : ["client_id","code","code_verifier","redirect_uri","grant_type"]
+    const redirects = ["alphaphone://slack/oauth/callback", "alphaphone://slack/oauth/standalone", origin + "/alpha-slack-return"]
+    if (fields.get("client_id") !== clientId || [...fields.keys()].some(key => !allowed.includes(key) || fields.getAll(key).length !== 1) ||
+      (renewal ? !fields.get("refresh_token") : (!fields.get("code") || !/^[A-Za-z0-9._~-]{43,128}$/.test(fields.get("code_verifier") ?? "") ||
+      ![null,"authorization_code"].includes(fields.get("grant_type")) || !redirects.includes(fields.get("redirect_uri") ?? "")))) throw new SlackRefusal(400, "invalid_grant")
+    return fields
+  }
+}
+import { SlackRefusal, auth, bodyOf, call, callback, challenge, decode, digest, incoming, initial, json, messagePage, oauthFields, page, read, rotated, signed, type Installation } from slackWire
+
+const asyncFailure = (e: unknown) => e instanceof SlackRefusal ? e : new SlackRefusal(503, "unavailable", 10)
+const parseFailure = (e: unknown) => e instanceof SlackRefusal ? e : new SlackRefusal(400, "invalid_payload")
+const noFields = () => new URLSearchParams()
+const respond = (body: unknown, status = 200, retry = 0) => new EdgeResponse(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...(retry ? { "Retry-After": String(retry) } : {}) } })
+const sameOwner = (left: SlackOwner, right: SlackOwner) => left.enterprise === right.enterprise && left.team === right.team && left.user === right.user
+
+effect function ownerOf(send: typeof fetch, access: string) {
+  const raw = try Effect.tryPromise({ try: () => call(send, "auth.test", noFields(), access), catch: asyncFailure })
+  const user = try Effect.try({ try: () => decode(auth, raw, 502), catch: parseFailure })
+  if (user.bot_id || user.is_enterprise_install) throw new SlackRefusal(403, "user_required")
+  return { team: user.team_id, user: user.user_id, enterprise: user.enterprise_id ?? "" }
+}
+
+effect function exchange(request: Request, env: SlackBindings, send: typeof fetch, now: number) {
+  const db = try mailbox
+  const bytes = try Effect.tryPromise({ try: () => bodyOf(request, 16384), catch: asyncFailure })
+  const fields = try Effect.try({ try: () => oauthFields(bytes, env.SLACK_CLIENT_ID!, env.WEB_ORIGIN), catch: parseFailure })
+  const old = fields.get("refresh_token")
+  const oldHash = old ? try Effect.tryPromise({ try: () => digest(old), catch: asyncFailure }) : ""
+  const previous = oldHash ? try db.ownerFor(oldHash, true, now) : undefined
+  if (old && !previous) throw new SlackRefusal(401, "invalid_refresh_token")
+  const raw = try Effect.tryPromise({ try: () => call(send, "oauth.v2.access", fields), catch: asyncFailure })
+  const issued = previous ? try Effect.try({ try: () => decode(rotated, raw, 502), catch: parseFailure }) : try Effect.try({ try: () => decode(initial, raw, 502), catch: parseFailure })
+  const first = "authed_user" in issued ? issued : undefined
+  if (first && first.app_id !== env.SLACK_APP_ID) throw new SlackRefusal(403, "wrong_app")
+  const grant = "authed_user" in issued ? issued.authed_user : issued
+  const owner = try ownerOf(send, grant.access_token)
+  if ((first && (first.team.id !== owner.team || first.authed_user.id !== owner.user)) || (previous && !sameOwner(previous, owner))) throw new SlackRefusal(403, "wrong_identity")
+  const access = try Effect.tryPromise({ try: () => digest(grant.access_token), catch: asyncFailure })
+  const refresh = try Effect.tryPromise({ try: () => digest(grant.refresh_token), catch: asyncFailure })
+  try db.enroll(owner, access, refresh, oldHash, now + Math.min(grant.expires_in, 43200) * 1000, now)
+  return respond(issued)
+}
+
+effect function receive(request: Request, env: SlackBindings, now: number) {
+  const raw = try Effect.tryPromise({ try: () => signed(request, env.SLACK_SIGNING_SECRET!, now), catch: asyncFailure })
+  const probe = Schema.decodeUnknownOption(challenge)(raw)
+  if (Option.isSome(probe)) return respond({ challenge: probe.value.challenge })
+  const envelope = try Effect.try({ try: () => decode(callback, raw), catch: parseFailure })
+  if (envelope.api_app_id !== env.SLACK_APP_ID) throw new SlackRefusal(403, "wrong_app")
+  const parsed = Schema.decodeUnknownOption(incoming)(envelope.event)
+  if (Option.isNone(parsed)) return respond({ ok: true })
+  const event = parsed.value
+  if (event.subtype && !["thread_broadcast","me_message","file_share"].includes(event.subtype)) return respond({ ok: true })
+  const db = try mailbox
+  const coordinates = { id: envelope.event_id, time: envelope.event_time, channel: event.channel, ts: event.ts, thread: event.thread_ts ?? "" }
+  if (envelope.event_context) try db.dispatch(envelope.event_context, coordinates, now)
+  else try db.enqueue(ownersOf(envelope.authorizations ?? []), coordinates, now)
+  return respond({ ok: true })
+}
+
+function ownersOf(installs: ReadonlyArray<Installation>) {
+  const owners = new Map<string, SlackOwner>()
+  for (const installation of installs) {
+    if (installation.is_bot || installation.is_enterprise_install || !installation.team_id || !installation.user_id) continue
+    const owner = { enterprise: installation.enterprise_id ?? "", team: installation.team_id, user: installation.user_id }
+    owners.set(JSON.stringify(owner), owner)
+  }
+  return [...owners].sort(([a],[b]) => a.localeCompare(b)).map(([,owner]) => owner)
+}
+
+export effect function dispatchSlackEvents(env: SlackBindings, send: typeof fetch, now: number) {
+  const db = try mailbox
+  for (let count = 0; count < 8; count++) {
+    const job = try db.claim(now)
+    if (!job) break
+    const fields = new URLSearchParams({ event_context: job.context, limit: "100", ...(job.cursor ? { cursor: job.cursor } : {}) })
+    const fetched = Effect.tryPromise({ try: () => call(send, "apps.event.authorizations.list", fields, env.SLACK_APP_TOKEN), catch: asyncFailure })
+    const result = (Effect.flatMap(fetched, (value) => Effect.try({ try: () => decode(page, value, 502), catch: parseFailure })) catch (error) => error)
+    if (result instanceof SlackRefusal) {
+      try db.finishPage(job.event.id, job.lease, job.cursor, job.cursor, now + 1000 * (result.retry || 60))
+      if (result.status === 429) break
+      continue
+    }
+    const next = result.response_metadata?.next_cursor || null
+    try db.enqueue(ownersOf(result.authorizations), job.event, job.receivedAt)
+    try db.finishPage(job.event.id, job.lease, job.cursor, next, next === job.cursor ? now + 60000 : now)
+  }
+}
+
+effect function deliver(request: Request, env: SlackBindings, send: typeof fetch, now: number) {
+  const access = /^Bearer ((?:xoxp-|xoxe\.xoxp-)\S{1,4096})$/.exec(request.headers.get("Authorization") ?? "")?.[1]
+  if (!access) throw new SlackRefusal(401, "invalid_auth")
+  const bytes = try Effect.tryPromise({ try: () => bodyOf(request, 1024), catch: asyncFailure })
+  const selection = try Effect.try({ try: () => decode(read, json(bytes)), catch: parseFailure })
+  const hash = try Effect.tryPromise({ try: () => digest(access), catch: asyncFailure })
+  const db = try mailbox
+  const owner = try db.ownerFor(hash, false, now)
+  if (!owner) throw new SlackRefusal(401, "invalid_auth")
+  const next = try db.read(owner, selection.cursor, now)
+  const event = next.event
+  if (!event) return respond({ cursor: next.cursor, events: [] })
+  const current = try ownerOf(send, access)
+  if (!sameOwner(current, owner)) throw new SlackRefusal(403, "wrong_identity")
+  const thread = event.thread && event.thread !== event.ts
+  const fields = new URLSearchParams({ channel: event.channel, oldest: event.ts, latest: event.ts, inclusive: "true", limit: thread ? "2" : "1", ...(thread ? { ts: event.thread } : {}) })
+  const available = (Effect.tryPromise({ try: () => call(send, thread ? "conversations.replies" : "conversations.history", fields, access), catch: asyncFailure }) catch effect (e) => {
+    if (e.status === 404) return undefined
+    throw e
+  })
+  if (!available) return respond({ cursor: next.cursor, events: [] })
+  const messages = try Effect.try({ try: () => decode(messagePage, available, 502), catch: parseFailure })
+  const message = messages.messages.find(m => m.ts === event.ts && m.user && m.text !== undefined)
+  return respond({ cursor: next.cursor, events: message ? [{ type: "event_callback", team_id: owner.team, api_app_id: env.SLACK_APP_ID,
+    event_id: event.id, event_time: event.time, event: { ...message, channel: event.channel } }] : [] })
+}
+
+export effect function slackRelay(request: Request, env: SlackBindings, send: typeof fetch, now: number) {
+  if (!slackNotifications(env)) return respond({ ok: false, error: "unconfigured" }, 503, 30)
+  if (request.method !== "POST") return respond({ ok: false, error: "method_not_allowed" }, 405)
+  const path = new URL(request.url).pathname
+  const work = path === "/api/slack/oauth" ? exchange(request, env, send, now) : path === "/api/slack/events" ? receive(request, env, now)
+    : path === "/api/slack/events/read" ? deliver(request, env, send, now) : Effect.succeed(respond({ ok: false, error: "not_found" }, 404))
+  return work catch (e) => e instanceof SlackRefusal ? respond({ ok: false, error: e.reason }, e.status, e.retry) : respond({ ok: false, error: "unavailable" }, 503, 15)
+}

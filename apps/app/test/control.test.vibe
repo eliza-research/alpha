@@ -1,0 +1,257 @@
+// spec/app/control/index.md, "Story: Control a third-party app within an owner-approved lease"; spec/app/control/index.md, "Story: Enforce formal safety guarantees over external app control"
+import { describe, expect, it } from "@effect/vitest"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as KeyValueStore from "effect/persistence/KeyValueStore"
+import { TestClock } from "effect/testing"
+import * as Control from "../gen/app__control.effect.vibe"
+import { ControlLeaseRequests, approveControlLease, approvePendingLeaseRequest, dismissPendingLeaseRequest, externalControl, reportControlOutcome, syncControlSnapshot, triggerControlKillSwitch } from "../src/control/control.vibe"
+import { agentAt } from "../src/platform/index.vibe"
+import { install, timeOver, whole } from "../src/runtime/index.vibe"
+
+module httpWire {
+  /** Build a JSON HTTP Response for the in-memory agent test transport. @throws {never} */
+  export function jsonResponse(body: unknown, status = 200): Response {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { "content-type": "application/json" },
+    })
+  }
+
+  /** Decode a UTF-8 JSON request body into a plain object. @throws {never} */
+  export function decodeBody(bytes: Uint8Array): Record<string, unknown> {
+    return JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>
+  }
+
+  /** Extract pathname from a request URL string. @throws {never} */
+  export function pathOf(raw: string): string {
+    return new URL(raw, "http://agent.test").pathname
+  }
+}
+import { decodeBody, jsonResponse, pathOf } from httpWire
+
+interface RecordedControlAgent {
+  readonly leases: Array<{ readonly packageName: string; readonly maxOps: number; readonly durationMs: number }>
+  readonly stops: Array<{ readonly reason: string }>
+  readonly layer: Layer.Layer<Control.Machine | Layer.Success<typeof externalControl>>
+}
+
+const INACTIVE_LEASE = {
+  leaseId: 0,
+  packageName: "",
+  maxOps: 0,
+  usedOps: 0,
+  expiresAtMs: 0,
+  status: "LeaseInactive" as "LeaseInactive" | "LeaseActive" | "LeaseRevoked",
+}
+
+function makeSnapshot(input: {
+  readonly tier?: "TierNone" | "TierAccessibility" | "TierPrivileged"
+  readonly capabilities?: string[]
+  readonly snapId?: number
+  readonly packageName?: string
+  readonly activityName?: string
+  readonly webUri?: string | null
+  readonly targetKind?: "AllowedApp" | "BlockedApp" | "NoTarget"
+  readonly protection?: "ScreenClear" | "ScreenLocked" | "SecureFlag" | "PrivateTab" | "SensitiveView"
+  readonly observedAtMs: number
+  readonly lease?: typeof INACTIVE_LEASE
+  readonly lastResult?: "done" | "refused" | "preempted"
+  readonly killed?: boolean
+}) {
+  return {
+    tier: input.tier ?? "TierAccessibility",
+    capabilities: input.capabilities ?? ["ui.observe.v1", "ui.act.v1"],
+    foreground: {
+      snapId: input.snapId ?? 1,
+      packageName: input.packageName ?? "org.mozilla.firefox",
+      activityName: input.activityName ?? "org.mozilla.fenix.HomeActivity",
+      webUri: input.webUri === undefined ? "https://example.com" : input.webUri,
+      targetKind: input.targetKind ?? "AllowedApp",
+      protection: input.protection ?? "ScreenClear",
+      windowCount: 1,
+      observedAtMs: input.observedAtMs,
+    },
+    lease: input.lease ?? INACTIVE_LEASE,
+    pending: null,
+    lastResult: input.lastResult ?? "done",
+    killed: input.killed ?? false,
+  }
+}
+
+function makeControlHarness(startMs = 1_000): RecordedControlAgent {
+  const leases: Array<{ readonly packageName: string; readonly maxOps: number; readonly durationMs: number }> = []
+  const stops: Array<{ readonly reason: string }> = []
+  let nextLeaseId = 1
+  let killed = false
+  let lease = { ...INACTIVE_LEASE }
+
+  const stateWire = () => makeSnapshot({ observedAtMs: startMs, lease, killed })
+
+  const http = Layer.succeed(HttpClient.HttpClient, HttpClient.make((request) => sync(() => {
+    const pathname = pathOf(request.url)
+    const body = request.body._tag === "Uint8Array" ? decodeBody(request.body.body) : {}
+    if (pathname === "/api/health") return HttpClientResponse.fromWeb(request, jsonResponse({ ready: true }))
+    if (pathname === "/api/alpha/control/state") return HttpClientResponse.fromWeb(request, jsonResponse(stateWire()))
+    if (pathname === "/api/alpha/control/lease") {
+      const packageName = String(body.packageName ?? "")
+      const maxOps = Number(body.maxOps ?? 1)
+      const durationMs = Number(body.durationMs ?? 10_000)
+      leases.push({ packageName, maxOps, durationMs })
+      killed = false
+      lease = {
+        leaseId: nextLeaseId++,
+        packageName,
+        maxOps,
+        usedOps: 0,
+        expiresAtMs: startMs + durationMs,
+        status: "LeaseActive",
+      }
+      return HttpClientResponse.fromWeb(request, jsonResponse({ lease }))
+    }
+    if (pathname === "/api/alpha/control/stop") {
+      const reason = String(body.reason ?? "kill_switch")
+      stops.push({ reason })
+      killed = true
+      if (lease.status === "LeaseActive") lease = { ...lease, status: "LeaseRevoked" }
+      return HttpClientResponse.fromWeb(request, jsonResponse(stateWire()))
+    }
+    return HttpClientResponse.fromWeb(request, jsonResponse({ error: "not_found" }, 404))
+  })))
+
+  const base = Layer.mergeAll(
+    KeyValueStore.layerMemory,
+    Layer.provide(install, KeyValueStore.layerMemory),
+    Layer.provide(timeOver(Stream.empty), KeyValueStore.layerMemory),
+    Layer.provide(agentAt("http://agent.test"), http),
+  )
+  const layer = Layer.provide(whole(externalControl), base)
+  return { leases, stops, layer }
+}
+
+const appIdOf = (packageName: string) => (packageName === "org.mozilla.firefox" ? 1 : 2)
+
+describe("External app control shell journey", () => {
+  // spec/app/control/index.md, "Story: Control a third-party app within an owner-approved lease"
+  // spec/app/control/index.md, "The agent dispatches one operation at a time only under an active lease on a clear unblocked screen, binding the exact live snapshot for every UI operation"
+  // spec/app/control/index.md, "Protected screens, blocked apps, stale snapshots, exhausted leases, and engaged kill-switches always refuse dispatch"
+  // spec/app/control/index.md, "The kill-switch immediately revokes any active lease, clears any in-flight operation, and signals the native bridge and overlay"
+  it.effect('grants a bounded lease, dispatches on a live snapshot, refuses protected screens, and halts on kill-switch (spec/app/control/index.md, "Story: Control a third-party app within an owner-approved lease")', () => effect {
+    try TestClock.setTime(1_000)
+    const harness = makeControlHarness(1_000)
+    provide harness.layer {
+      const machine = try Control.Machine
+
+      try syncControlSnapshot(makeSnapshot({ observedAtMs: 1_000 }), appIdOf)
+
+      const granted = try approveControlLease({
+        packageName: "org.mozilla.firefox",
+        appId: 1,
+        maxOps: 3,
+        durationMs: 60_000,
+        nowMs: 1_000,
+      })
+      expect(granted?.leaseId).toBe(1)
+      expect(harness.leases).toEqual([{ packageName: "org.mozilla.firefox", maxOps: 3, durationMs: 60_000 }])
+
+      const active = try machine.get()
+      expect(active.lease.status).toBe("LeaseActive")
+      expect(active.lease.maxOps).toBe(3)
+      expect(Control.canDispatch(active, 1, "OpClick", 1, 1, 1_000, "Agent")).toBe(true)
+      expect(Control.canDispatch(active, 1, "OpClick", 99, 1, 1_000, "Agent")).toBe(false)
+
+      try machine.send({ type: "dispatch", opId: 1, op: "OpClick", snapId: 1, appId: 1, now: 1_000 }, "Agent")
+      const midOp = try machine.get()
+      expect(midOp.pending.active).toBe(true)
+      expect(midOp.lease.usedOps).toBe(1)
+
+      const finished = try reportControlOutcome(1, "OutcomeDone")
+      expect(finished).toBe(true)
+      expect((try machine.get()).pending.active).toBe(false)
+
+      try syncControlSnapshot(makeSnapshot({
+        snapId: 2,
+        webUri: null,
+        protection: "PrivateTab",
+        observedAtMs: 1_500,
+        lease: { leaseId: 1, packageName: "org.mozilla.firefox", maxOps: 3, usedOps: 1, expiresAtMs: 61_000, status: "LeaseActive" },
+      }), appIdOf)
+
+      const onPrivateTab = try machine.get()
+      expect(onPrivateTab.foreground.protection).toBe("PrivateTab")
+      expect(Control.canDispatch(onPrivateTab, 2, "OpClick", 2, 1, 1_500, "Agent")).toBe(false)
+
+      const halted = try triggerControlKillSwitch("kill_switch")
+      expect(halted).toBe(true)
+      const afterKill = try machine.get()
+      expect(afterKill.killed).toBe(true)
+      expect(afterKill.lease.status).toBe("LeaseRevoked")
+      expect(afterKill.pending.active).toBe(false)
+      expect(Control.canDispatch(afterKill, 3, "OpLaunchPackage", 0, 1, 1_600, "Agent")).toBe(false)
+      expect(harness.stops.some((entry) => entry.reason === "kill_switch")).toBe(true)
+    }
+  })
+
+  // spec/app/control/index.md, "Each phone observation advances the snapshot id, preempts in-flight work if the screen turns protected, blocked, or leaves the bound app, and revokes any lease on screen lock"
+  it.effect('preempts an in-flight operation and revokes the lease when the screen locks (spec/app/control/index.md, "Each phone observation advances the snapshot id, preempts in-flight work if the screen turns protected, blocked, or leaves the bound app, and revokes any lease on screen lock")', () => effect {
+    try TestClock.setTime(2_000)
+    const harness = makeControlHarness(2_000)
+    provide harness.layer {
+      const machine = try Control.Machine
+      try syncControlSnapshot(makeSnapshot({
+        tier: "TierPrivileged",
+        capabilities: ["ui.observe.v1", "ui.act.v1", "input.inject.v1"],
+        observedAtMs: 2_000,
+      }), appIdOf)
+      try approveControlLease({
+        packageName: "org.mozilla.firefox",
+        appId: 1,
+        maxOps: 2,
+        durationMs: 30_000,
+        nowMs: 2_000,
+      })
+      try machine.send({ type: "dispatch", opId: 1, op: "OpSetText", snapId: 1, appId: 1, now: 2_000 }, "Agent")
+      expect((try machine.get()).pending.active).toBe(true)
+
+      try syncControlSnapshot(makeSnapshot({
+        tier: "TierPrivileged",
+        capabilities: ["ui.observe.v1", "ui.act.v1", "input.inject.v1"],
+        snapId: 2,
+        packageName: "com.android.systemui",
+        activityName: "Keyguard",
+        webUri: null,
+        targetKind: "BlockedApp",
+        protection: "ScreenLocked",
+        observedAtMs: 2_500,
+        lease: { leaseId: 1, packageName: "org.mozilla.firefox", maxOps: 2, usedOps: 1, expiresAtMs: 32_000, status: "LeaseActive" },
+        lastResult: "preempted",
+      }), appIdOf)
+
+      const locked = try machine.get()
+      expect(locked.pending.active).toBe(false)
+      expect(locked.lease.status).toBe("LeaseRevoked")
+      expect(locked.lastResult).toBe("OutcomePreempted")
+    }
+  })
+
+  // spec/app/control/index.md, "Story: Control a third-party app within an owner-approved lease"
+  it.effect('tracks pending lease requests for owner approval or dismissal (spec/app/control/index.md, "Story: Control a third-party app within an owner-approved lease")', () => effect {
+    try TestClock.setTime(3_000)
+    const harness = makeControlHarness(3_000)
+    provide harness.layer {
+      const requests = try ControlLeaseRequests
+      try syncControlSnapshot(makeSnapshot({ observedAtMs: 3_000 }), appIdOf)
+      try requests.set({ packageName: "org.mozilla.firefox", requestedOp: "ui_click", requestedAt: 3_000 })
+      expect(requests.snapshot()?.packageName).toBe("org.mozilla.firefox")
+
+      try dismissPendingLeaseRequest()
+      expect(requests.snapshot()).toBeUndefined()
+
+      try requests.set({ packageName: "org.mozilla.firefox", requestedOp: "ui_click", requestedAt: 3_500 })
+      const granted = try approvePendingLeaseRequest(4, 30_000)
+      expect(granted?.leaseId).toBe(1)
+      expect(granted?.maxOps).toBe(4)
+      expect(requests.snapshot()).toBeUndefined()
+    }
+  })
+})

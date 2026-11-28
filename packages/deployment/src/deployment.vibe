@@ -1,6 +1,11 @@
 // spec/cloud/index.md, "Story: Know which cloud the app talks to"
 import table from "../deployments.json" with { type: "json" }
 
+/** A Telegram MTProto application ID is a positive signed TL int on the wire. */
+export function isTelegramApplicationId(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 2_147_483_647
+}
+
 function isHttpsOrigin(value: string): boolean {
   const parsed = URL.parse(value)
   return parsed !== null

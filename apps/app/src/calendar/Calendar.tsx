@@ -24,7 +24,7 @@ import { setUp } from "./link.vibe";
 import { useTimed } from "../runtime/ui.tsx";
 import { untimed } from "../runtime/index.vibe";
 import type { Alpha, Resident } from "../runtime/ui.tsx";
-import { AppBack } from "../shell/ui.tsx";
+import { AppBack, launcherTop } from "../shell/ui.tsx";
 import { useMachine as useEditor } from "../../gen/app__calendar__editor.react.ts";
 import { useMachine as useHeld } from "../../gen/app__calendar__deletions.react.ts";
 import type { Event as DeletionEvent } from "../../gen/app__calendar__deletions.ts";
@@ -300,7 +300,7 @@ export function Calendar({ runtime, alpha }: CalendarProps) {
   const reminders = datedReminders(local);
   const openedReminder = reminders.find((row) => row.id === s?.reminder);
   const dayReminders = reminders.filter((row) => onDay(row, s?.anchor ?? 0)).length;
-  if (!s) return <section aria-label="Calendar" aria-busy className="absolute inset-0 flex flex-col overflow-hidden leading-plain">
+  if (!s) return <section aria-label="Calendar" aria-busy className={cn("absolute inset-0 flex flex-col overflow-hidden leading-plain", launcherTop)}>
     <CalendarHeader title="" className="pr-2 pl-2" leading={alpha ? <AppBack alpha={alpha} firstPage className="size-13 [&_svg]:size-5.5" /> : null} />
   </section>;
   const send = (event: View.Event) => () => void view.send(event);
@@ -380,7 +380,7 @@ export function Calendar({ runtime, alpha }: CalendarProps) {
   const empty = s.anchor === s.today ? "Nothing scheduled today" : "Free all day";
   const pageCovered = open !== undefined || openedReminder !== undefined || editor.state?.shown === true;
   return (
-    <div ref={surface} className="absolute inset-0 flex flex-col overflow-hidden leading-plain">
+    <div ref={surface} className={cn("absolute inset-0 flex flex-col overflow-hidden leading-plain", launcherTop)}>
       <div className="relative shrink-0">
         <CalendarHeader inert={pageCovered} title={title} titleRef={dateButtonRef} expanded={month} onTitle={month ? send({ type: "closeOverlay" }) : view.can({ type: "openMonth" }) ? send({ type: "openMonth" }) : undefined}
           className="pr-2 pl-2" leading={alpha ? <AppBack alpha={alpha} firstPage className="size-13 [&_svg]:size-5.5" /> : null}>
@@ -672,7 +672,7 @@ function EventPage({ runtime, row, today, inert }: CalendarProps & { row: Row; t
     row.editable && row.managed ? "Delete or decline this event in Google Calendar." : null,
   ].filter((text) => text !== null).map((text) => <div key={text} className="mt-3 text-sm leading-plain text-muted-foreground">{text}</div>);
   return (
-    <CalendarEventPage inert={inert} title={row.title || "Untitled event"} onBack={close} when={interval(row)} day={dayName(civilDay(row.begin), today)}
+    <CalendarEventPage className={launcherTop} inert={inert} title={row.title || "Untitled event"} onBack={close} when={interval(row)} day={dayName(civilDay(row.begin), today)}
       source={row.source === "Phone" ? "Phone calendar" : calendarName(shown.listedName(row.calendarId))} repeat={row.repeat} dot={stripe(row)} notes={row.notes}
       actions={menu ? (
         <CalendarEventMenu items={[
@@ -1194,7 +1194,7 @@ function Form({ runtime, day, today, connected, viewOwner }: CalendarProps & { d
     change({ ...fields, allDay, begin: nextBegin, end: Math.max(nextBegin + 60_000, nextEnd) }, toggleAllDayEvent);
   };
   return (
-    <CalendarFormPage className={reminder ? "[&>[data-host-chrome]]:pr-2" : undefined} onBack={close} saving={saving}
+    <CalendarFormPage className={cn(launcherTop, reminder && "[&>[data-host-chrome]]:pr-2")} onBack={close} saving={saving}
       onSave={(reminder || !e.extras) && !wallError && !noCalendar && !noAccess && (editor.can(save) || reviewingReschedule) ? submit : undefined}>
       {noAccess ? (
         <CalendarNotice tone="caution" className="mx-6" actions={<CalendarNoticeAction aria-label="Open Calendar settings" onClick={() => void view.send({ type: "openSettings" })}><Settings aria-hidden />Settings</CalendarNoticeAction>}>

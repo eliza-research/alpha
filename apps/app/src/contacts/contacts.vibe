@@ -21,7 +21,7 @@ export interface Form {
   readonly notes: string
 }
 
-/** What Contacts counts, kept beside it: the rows listed, the search, the open contact as the phone holds it, the form, and the number to reach. */
+/** What Contacts counts, kept beside it: the rows listed, any Alpha filter query, the open contact as the phone holds it, the form, and the number to reach. */
 export interface Book {
   readonly rows: ReadonlyArray<AddressBookContact>
   readonly next: ContactCursor | undefined
@@ -37,14 +37,12 @@ export interface Book {
     readonly number: string
   } | undefined
   readonly problem: ContactDraftProblem | "stale" | "not-found" | undefined
-  /** Who narrowed the list to `sought`: a filter Alpha applied shows as a chip the owner can clear. */
-  readonly filteredBy: "Owner" | "Alpha"
   readonly refusedWrite: number | undefined
 }
 
 export const blankForm: Form = { givenName: "", familyName: "", phones: [""], emails: [""], notes: "" }
 
-const empty: Book = { rows: [], next: undefined, sought: "", card: undefined, editBase: undefined, form: blankForm, reach: undefined, problem: undefined, filteredBy: "Owner", refusedWrite: undefined }
+const empty: Book = { rows: [], next: undefined, sought: "", card: undefined, editBase: undefined, form: blankForm, reach: undefined, problem: undefined, refusedWrite: undefined }
 
 /** The contacts behind Contacts' counts. */
 export service Rows {
@@ -298,11 +296,13 @@ const shown = visiting(on("Contacts"), Contacts.Machine, (showing): Event => (sh
 
 const forget = applying(Contacts.Machine, (state) => ({
   list: !state.front || state.list.status === "Failed",
+  sought: !state.sought,
   card: !state.opened && !(Contacts.pending(state) && state.change === "Remove"),
   form: state.form === "Shut",
-}), effect ({ list, card, form }) => {
+}), effect ({ list, sought, card, form }) => {
   try (try Rows).set({
     ...(list ? { rows: [], next: undefined } : {}),
+    ...(sought ? { sought: "" } : {}),
     ...(card ? { card: undefined, reach: undefined } : {}),
     ...(form ? { form: blankForm, editBase: undefined, problem: undefined, refusedWrite: undefined } : {}),
   })

@@ -1,9 +1,9 @@
 {
   "key": "alpha/app/wallet/index@1",
   "spec": "spec/app/wallet/index.md",
-  "shape": "ddd598a04d0e2614",
+  "shape": "e3fa1e58973f8520",
   "sealed": {
-    "shape": "ddd598a04d0e2614",
+    "shape": "e3fa1e58973f8520",
     "state": "429338d1146f06e0"
   },
   "state": {
@@ -91,5 +91,97 @@
       "status": "Idle",
       "ticket": 0
     }
-  }
+  },
+  "earlier": [
+    {
+      "from": "8eecd921b2",
+      "until": "f79d280363",
+      "state": {
+        "showing": false,
+        "standing": {
+          "status": "Idle",
+          "ticket": 0
+        },
+        "custody": "Ready",
+        "canHold": true,
+        "accounts": [
+          {
+            "family": "Evm",
+            "address": "0x000000000000000000000000000000000000dEaD",
+            "network": "base",
+            "symbol": "ETH",
+            "decimals": 18,
+            "connected": true,
+            "canSend": true
+          },
+          {
+            "family": "Solana",
+            "address": "11111111111111111111111111111111",
+            "network": "solana",
+            "symbol": "SOL",
+            "decimals": 9,
+            "connected": true,
+            "canSend": true
+          }
+        ],
+        "change": "Making",
+        "changing": {
+          "id": 0,
+          "outcome": "Planned"
+        },
+        "holdings": {
+          "status": "Idle",
+          "ticket": 0
+        },
+        "held": [
+          {
+            "family": "Evm",
+            "asset": "native",
+            "symbol": "ETH",
+            "decimals": 18,
+            "units": "12000000000000000"
+          }
+        ],
+        "unread": [
+          "Solana"
+        ],
+        "desk": {
+          "status": "Idle",
+          "ticket": 0
+        },
+        "waiting": [
+          {
+            "id": 3,
+            "family": "Evm",
+            "asset": "native",
+            "symbol": "ETH",
+            "recipient": "0x0000000000000000000000000000000000000001",
+            "amount": "0.001",
+            "asker": "OwnerAsks"
+          }
+        ],
+        "activity": {
+          "status": "Idle",
+          "ticket": 0
+        },
+        "past": [
+          {
+            "intent": "intent-2",
+            "family": "Evm",
+            "symbol": "ETH",
+            "decimals": 18,
+            "units": "1000000000000000",
+            "recipient": "0x0000000000000000000000000000000000000001",
+            "at": 1794913600000,
+            "fate": "Arrived"
+          }
+        ],
+        "receiving": false,
+        "copy": {
+          "status": "Idle",
+          "ticket": 0
+        }
+      }
+    }
+  ]
 }

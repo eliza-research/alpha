@@ -1,12 +1,13 @@
 // spec/app/slack/index.md, "Story: Switch workspaces and browse Slack conversations with strict isolation"
+import { muteSlackNotices } from "./notices.vibe"
 import * as Workspaces from "../../gen/app__slack.effect.vibe"
 import type { Effect as Out, Event, Section } from "../../gen/app__slack.effect.vibe"
 import type * as Auth from "../../gen/app__slack__auth.effect.vibe"
-import * as Notices from "../../gen/app__slack__notices.effect.vibe"
+import type * as Notices from "../../gen/app__slack__notices.effect.vibe"
 import type { MessagingSessions } from "../platform/index.vibe"
 import type { Slack, SlackChannelSummary } from "../platform/index.vibe"
-import { type Job, answer, contained, reacting, untimed } from "../runtime/index.vibe"
-import { SlackLedger, runChannelAction, runWorkspaceCall } from "./ledger.vibe"
+import { type Job, answer, reacting, untimed } from "../runtime/index.vibe"
+import { SlackLedger, runWorkspaceCall } from "./ledger.vibe"
 
 function typesForSection(section: Section): string {
   return match (section) {
@@ -97,20 +98,8 @@ effect function setChannelMute(
   channel: number,
   muted: boolean,
 ): Event!!(Slack | SlackLedger | MessagingSessions | Auth.Machine | Notices.Machine) {
-  let finalMuted = muted
-  const outcome = try runChannelAction(
-    workspace,
-    channel,
-    (slack, token, channelId) => slack.setMute(token, channelId, muted),
-    (resp, _channelId, store) => {
-      finalMuted = resp.is_muted
-      store.setChannelMuted(workspace, channel, resp.is_muted)
-    },
-  )
-  if (outcome.ok) {
-    try contained((try Notices.Machine).send({ type: "muteChannelChanged", channel, isMuted: finalMuted }), "Slack mute sync")
-  }
-  return { type: "muteAnswered", id, channel, muted: finalMuted, ok: outcome.ok, known: outcome.known }
+  const ok = try muteSlackNotices(workspace, channel, muted)
+  return { type: "muteAnswered", id, channel, muted, ok, known: true }
 }
 
 function carry(

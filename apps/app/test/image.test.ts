@@ -166,7 +166,7 @@ function channelAt(assets: Record<string, Uint8Array> = {}, recordFile = place("
       return Effect.void;
     }),
     read: (url, bound) => Effect.suspend(() => {
-      const bytes = url.startsWith(channelBase) ? assets[url.slice(channelBase.length)] : undefined;
+      const bytes = assets[url.startsWith(channelBase) ? url.slice(channelBase.length) : url];
       if (bytes === undefined || bytes.length > bound) return Effect.fail(new ReleaseRefused({ message: `${url} answered 404` }));
       return Effect.succeed({ size: bytes.length, sha256: digestOf(bytes), bytes });
     }),
@@ -312,10 +312,17 @@ describe("Build a candidate and sign it (spec/release/index.md, \"Story: Build a
     const debugRow = candidateRow({ mode: "debug", sha256: digest("debug"), signed: true, signerSha256: digest("debug key"), distributable: false });
     const verified = write(directory, "apk-manifest.json", { results: [debugRow, candidateRow()] });
     const lock = JSON.parse(readFileSync(place("../../eliza.lock.json"), "utf8")) as { remote: string; branch: string; commit: string };
-    const upstream = write(directory, "upstream.json", { ...lock, status: "ahead", mergeBase: lock.commit });
+    const upstream = join(directory, "upstream.json");
     const candidate = (number: string, apks: string, reached = upstream) => released("candidate", "--run", run, "--number", number, "--attempt", "1", "--apk-manifest", apks, "--upstream", reached);
     // spec/release/index.md, "A candidate is built only from an eliza pin that the branch its lock names reaches, by a compare made for exactly that pin"
-    expect(compareUrl(lock)).toBe(`https://api.github.com/repos/elizaOS/eliza/compare/${lock.commit}...${lock.branch}`);
+    const comparison = `https://api.github.com/repos/elizaOS/eliza/compare/${lock.commit}...${lock.branch}`;
+    const page = `${comparison}?per_page=1&page=2`;
+    const ancestry = { status: "ahead", merge_base_commit: { sha: lock.commit } };
+    const large = json({ ...ancestry, files: [{ patch: "x".repeat(65_537) }] });
+    const published = channelAt({ [comparison]: large, [page]: json(ancestry) });
+    expect(compareUrl(lock)).toBe(page);
+    expect(await releasedOver(channelAt({ [page]: large }).port)("upstream", "--out", upstream)).toMatchObject({ ok: false, tag: "ReleaseRefused" });
+    expect(await releasedOver(published.port)("upstream", "--out", upstream)).toMatchObject({ ok: true, value: { ...lock, status: "ahead", mergeBase: lock.commit } });
     expect([compared({ ...lock, status: "diverged", mergeBase: digest("older") }, lock), compared({ ...lock, commit: "0".repeat(40), status: "ahead", mergeBase: lock.commit }, lock)])
       .toEqual([{ forThePin: true, reached: false }, { forThePin: false, reached: true }]);
     const diverged = await candidate("121", verified, write(directory, "diverged.json", { ...lock, status: "diverged", mergeBase: "0".repeat(40) }));

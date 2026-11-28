@@ -472,6 +472,32 @@ describe("Camera on a phone", () => {
     expect(settled).toEqual({ result: "Blocked", cause: "Denied" });
   });
 
+  it('Keeps the camera surface solid dark with no visible empty video element before native preview starts (spec/app/camera/index.md, "Story: Open the camera")', async () => {
+    const world = { ...scene(), phone: true };
+    const gate = Promise.withResolvers<void>();
+    world.camera.startGate = gate.promise;
+    const { alpha } = await open(world, only("home", "view:Camera", "notice"));
+    const runtime = camera.runtime(alpha);
+    await press("Camera");
+    await until(alpha, runtime, Machine, (state) => state.showing && state.phase === "Starting");
+    const root = document.querySelector<HTMLElement>("[data-alpha-camera-root]");
+    const viewfinder = document.querySelector<HTMLElement>("[data-alpha-camera=viewfinder]");
+    const video = viewfinder?.querySelector<HTMLVideoElement>("video");
+    expect([
+      root?.classList.contains("bg-background"),
+      root?.hasAttribute("data-alpha-camera-native"),
+      viewfinder?.classList.contains("bg-background"),
+      video?.classList.contains("invisible"),
+      video?.getAttribute("poster")?.startsWith("data:image/png;base64,"),
+    ]).toEqual([true, false, true, true, true]);
+    await drawn(() => gate.resolve());
+    await until(alpha, runtime, Machine, (state) => state.phase === "Ready");
+    expect([
+      root?.hasAttribute("data-alpha-camera-native"),
+      video?.classList.contains("invisible"),
+    ]).toEqual([true, true]);
+  });
+
   it('Forgets a deleted last capture across Camera visits (spec/app/camera/index.md, "An older library read never replaces a photo taken while it was pending")', async () => {
     const world = { ...scene(), phone: true };
     const running = await open(world, only("home", "view:Camera", "notice"));

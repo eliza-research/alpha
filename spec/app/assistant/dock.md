@@ -456,6 +456,26 @@ pure def lawSendingShowsTheReply(phone: S::Shell): bool =
   applied(sent(phone.assistant), phone).assistant == (if (not(isOpen(phone.assistant))) S::Sheet else phone.assistant)
 ```
 
+### A touch of the bar or of Type while the conversation holds a card about the draft opens the sheet, where the card shows
+
+Ask Alpha at the bar or typing shows no conversation, so a card about the
+draft, such as Try again after storage failed, is out of sight there and
+the bar gives no Send. While such a card waits, focusing the composer or
+tapping Type opens the sheet with the card instead of typing on the bar;
+an open sheet or the full screen stays as it is. Nothing raises Ask Alpha
+again by itself: only the owner's touch does.
+
+```quint
+pure def touched(detent: S::Detent, carded: bool): List[Effect] =
+  if (carded and not(isOpen(detent))) List(Raise({ detent: S::Sheet })) else focused(detent)
+
+pure def lawATouchShowsTheDraftsCard(phone: S::Shell): bool =
+  applied(touched(phone.assistant, true), phone).assistant == (if (not(isOpen(phone.assistant))) S::Sheet else phone.assistant)
+
+pure def lawWithoutACardATouchTypes(detent: S::Detent): bool =
+  touched(detent, false) == focused(detent)
+```
+
 ### A tap of Alpha's mark opens the sheet, and a tap of the open sheet's handle fills the screen
 
 As on v121, the mark on the bar or the pill opens the conversation sheet

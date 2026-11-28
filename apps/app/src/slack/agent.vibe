@@ -1,10 +1,11 @@
 // spec/app/slack/agent.md, "Story: Let Alpha help across my Slack workspaces safely"
+import { muteSlackNotices } from "./notices.vibe"
 import * as Agent from "../../gen/app__slack__agent.effect.vibe"
 import type { Actor, Effect as Out, Event, MutationTool, Pane, ReadTool } from "../../gen/app__slack__agent.effect.vibe"
 import * as Auth from "../../gen/app__slack__auth.effect.vibe"
 import * as Composer from "../../gen/app__slack__composer.effect.vibe"
 import * as Conversation from "../../gen/app__slack__conversation.effect.vibe"
-import * as Notices from "../../gen/app__slack__notices.effect.vibe"
+import type * as Notices from "../../gen/app__slack__notices.effect.vibe"
 import * as Workspaces from "../../gen/app__slack.effect.vibe"
 import type { MessagingSessions } from "../platform/index.vibe"
 import type { Slack } from "../platform/index.vibe"
@@ -14,7 +15,7 @@ import {
   channelTitleOf,
   runChannelAction,
   runWorkspaceCall,
-  userNameOf,
+  messageSenderName,
 } from "./ledger.vibe"
 
 /** One bounded, secret-free message entry included in an ambient Slack context snapshot for Ask Alpha. */
@@ -112,7 +113,7 @@ effect function executeReadTool(
   if (!res.ok) return { error: "history_failed" }
   const users = ledger.usersOf(workspace)
   return res.value.messages.slice(0, bounded).map((m) => ({
-    ts: m.ts, sender: userNameOf(users, m.user), text: scrubSecrets(m.text), threadTs: m.thread_ts,
+    ts: m.ts, sender: messageSenderName(users, m), text: scrubSecrets(m.text), threadTs: m.thread_ts,
   }))
 }
 
@@ -174,13 +175,8 @@ effect function applyApprovedMutation(
     const out = try runChannelAction(workspace, channel, (s, t, cid) => s.markRead(t, cid, latest), (_r, _cid, st) => st.setChannelRead(workspace, channel, latest))
     return { type: "answered", attempt: turn, ...out }
   }
-  let finalMuted = Boolean(payload.muted)
-  const out = try runChannelAction(workspace, channel, (s, t, cid) => s.setMute(t, cid, finalMuted), (r, _cid, st) => {
-    finalMuted = r.is_muted
-    st.setChannelMuted(workspace, channel, r.is_muted)
-  })
-  if (out.ok) try contained((try Notices.Machine).send({ type: "muteChannelChanged", channel, isMuted: finalMuted }), "Slack agent mute sync")
-  return { type: "answered", attempt: turn, ...out }
+  const ok = try muteSlackNotices(workspace, channel, Boolean(payload.muted))
+  return { type: "answered", attempt: turn, ok, known: true }
 }
 
 effect function readBackMutation(
@@ -236,7 +232,7 @@ export const slackAmbientSnapshot: (SlackAmbientSnapshot | undefined)!!(Agent.Ma
     const cleanText = scrubSecrets(msg.text)
     const text = cleanText.length > remaining ? cleanText.slice(0, remaining) : cleanText
     charCount += text.length
-    bounded.push({ ts: msg.ts, sender: userNameOf(users, msg.user), text })
+    bounded.push({ ts: msg.ts, sender: messageSenderName(users, msg), text })
   }
   const decision = Agent.ambientContext(state, bounded.length, charCount)
   if (decision.tag === "NoContext") return undefined

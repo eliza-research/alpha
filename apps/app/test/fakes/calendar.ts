@@ -1,6 +1,6 @@
 // spec/app/calendar/index.md, "Story: See my days"; spec/app/calendar/index.md, "Story: See only my own account's calendar"
-import type { AndroidCalendarEditorFields, AndroidCalendarEvent, AndroidCalendarHandoffEvent, AndroidCalendarList, AndroidCalendarPlugin, AndroidCalendarRow } from "@elizaos/os-bridges";
-import { type Faked, plugin, rejection } from "./phone.ts";
+import { ANDROID_CALENDAR_METHODS, type AndroidCalendarEditorFields, type AndroidCalendarEvent, type AndroidCalendarHandoffEvent, type AndroidCalendarList, type AndroidCalendarPlugin, type AndroidCalendarRow } from "@elizaos/os-bridges";
+import { type Faked, type Native, plugin, rejection } from "./phone.ts";
 import type { Route } from "./routes.ts";
 
 /** One attendee of an event, as eliza's `@elizaos/plugin-calendar` answers it. */
@@ -48,6 +48,9 @@ export interface CalendarScene {
   feedState?: "complete" | "partial" | "unavailable";
   /** How many times `/api/lifeops/calendar/feed` was read. */
   feedReads?: number;
+  /** While set, each read of `/api/lifeops/calendar/feed` answers the events as they were when read, once released; the releases are kept here in the order the reads came. */
+  holdFeed?: boolean;
+  readonly heldFeed: Array<() => void>;
   /** The summary `/api/lifeops/calendar/calendars` lists for the agent's calendar (defaults to eliza's own, "Eliza Calendar"). */
   summary?: string;
   /** What `/api/lifeops/calendar/calendars` lists in place of that one calendar: eliza's own resident "primary" first, then each Google calendar, as eliza lists them. */
@@ -76,6 +79,12 @@ export interface CalendarScene {
   phoneEvents: AndroidCalendarEvent[];
   granted: boolean;
   denies: boolean;
+  /** The phone's events, by id, that mark their time free or tentative rather than busy. */
+  readonly marked: Map<string, "free" | "tentative">;
+  /** Android granted reading the calendars alone, as a reviewed read asks it, and not writing them. */
+  readOnly: boolean;
+  /** Each read of the phone's events, by any call: `list`, or `readWorkflowRange` and `readAvailability` with the calendars they read. */
+  readonly eventReads: string[];
   /** A read of the agent's calendar feed is taken and never answered, as by an agent still busy starting. */
   silent: boolean;
   asked: number;
@@ -96,10 +105,10 @@ export interface CalendarScene {
 export function calendarScene(): CalendarScene {
   return {
     events: [], writes: [], keys: new Map(), down: false, stalled: false, queued: false,
-    calendars: [{ id: "local", name: "Phone", writable: true, local: true }], phoneEvents: [], granted: false, denies: false, silent: false, asked: 0,
+    calendars: [{ id: "local", name: "Phone", writable: true, local: true }], phoneEvents: [], granted: false, denies: false, marked: new Map(), readOnly: false, eventReads: [], silent: false, asked: 0,
     creations: new Map(), lost: false, handedOff: 0, handoffs: [],
     reviewed: [], review: "applied",
-    control: { revision: 0, paused: true, destination: null, links: [] }, approvals: [], heldCalendars: [], heldApprovals: [],
+    control: { revision: 0, paused: true, destination: null, links: [] }, approvals: [], heldCalendars: [], heldApprovals: [], heldFeed: [],
   };
 }
 
@@ -169,6 +178,9 @@ export function agentEvent(title: string, begin: number, end: number, more: Part
 const etag = (event: FakeEvent) => typeof event.metadata["etag"] === "string" ? event.metadata["etag"] : "";
 const bump = (event: FakeEvent) => { event.metadata = { ...event.metadata, etag: String(Number(etag(event)) + 1) }; };
 const never = () => new Promise<Response>(() => {});
+/** `answer` at once, or, while `holding`, once the release it keeps in `releases` is called. */
+const heldWhile = (holding: boolean | undefined, releases: Array<() => void>, answer: () => Response) =>
+  holding ? new Promise<void>((release) => releases.push(release)).then(answer) : answer();
 const base = "/api/lifeops/calendar";
 
 function changed(scene: CalendarScene, key: string, event: FakeEvent, reply: unknown): Response | Promise<Response> {
@@ -187,7 +199,7 @@ export function calendarRoutes(scene: CalendarScene): Route[] {
         scene.approvalsAnswered = (scene.approvalsAnswered ?? 0) + 1;
         return Response.json(listed);
       };
-      return scene.holdApprovals ? new Promise<void>((release) => scene.heldApprovals.push(release)).then(answer) : answer();
+      return heldWhile(scene.holdApprovals, scene.heldApprovals, answer);
     },
     (request, url) => {
       const found = /^\/api\/approvals\/([^/]+)\/resolve$/.exec(url.pathname);
@@ -232,7 +244,8 @@ export function calendarRoutes(scene: CalendarScene): Route[] {
       const [timeMin, timeMax] = [url.searchParams.get("timeMin") ?? "", url.searchParams.get("timeMax") ?? ""];
       const [from, to] = [Date.parse(timeMin), Date.parse(timeMax)];
       const events = scene.events.filter((event) => Date.parse(event.startAt) < to && Date.parse(event.endAt) > from);
-      return Response.json({ calendarId: "all", events, source: "synced", state: scene.feedState ?? "complete", sources: [], timeMin, timeMax, syncedAt: timeMax });
+      const answer = { calendarId: "all", events, source: "synced", state: scene.feedState ?? "complete", sources: [], timeMin, timeMax, syncedAt: timeMax };
+      return heldWhile(scene.holdFeed, scene.heldFeed, () => Response.json(answer));
     },
     (request, url) => {
       if (request.method !== "GET" || url.pathname !== `${base}/calendars`) return;
@@ -241,7 +254,7 @@ export function calendarRoutes(scene: CalendarScene): Route[] {
         if (scene.down || scene.calendarsDown) return Response.json({ error: "starting" }, { status: 503 });
         return Response.json({ calendars: scene.listed ?? [{ provider: "eliza", side: "owner", calendarId: "eliza-calendar/primary", summary: scene.summary ?? "Eliza Calendar", primary: true }] });
       };
-      return scene.holdCalendars ? new Promise<void>((release) => scene.heldCalendars.push(release)).then(answer) : answer();
+      return heldWhile(scene.holdCalendars, scene.heldCalendars, answer);
     },
     (request, url) => {
       if (request.method !== "POST" || url.pathname !== `${base}/events`) return;
@@ -309,8 +322,19 @@ interface Creations {
   cancelAgent(input: { operationId: string }): Promise<{ status: string }>;
   requestWorkflowReadAccess(): Promise<{ status: string }>;
   readWorkflowRange(input: { calendarIds: readonly string[]; start: string; end: string; timeZone: string; maximumEvents: number }): Promise<{ status: string; events?: unknown }>;
+  availabilitySources(input: { timeZone: string }): Promise<{ status: string; timeZone?: string; calendars?: unknown }>;
+  readAvailability(input: { calendars: ReadonlyArray<{ id: string; revision: string }>; start: string; end: string; timeZone: string }): Promise<{ status: string; freshness?: string; events?: unknown }>;
   prepareAgentSource(): Promise<{ status: string; sourceId?: string; sourceRevision?: string }>;
 }
+
+/** The phone's calls: what eliza's definition lists, which eliza checks against the compiled plugin, then the calls it does not name yet. */
+type PhoneCalendar = Omit<AndroidCalendarPlugin, "save"> & Creations;
+const CREATION_CALLS = Object.keys({
+  saveOptions: true, pendingCreations: true, executeAgent: true, cancelAgent: true, requestWorkflowReadAccess: true, readWorkflowRange: true, availabilitySources: true, readAvailability: true, prepareAgentSource: true,
+} satisfies Record<Exclude<keyof Creations, "save">, true>) as ReadonlyArray<Exclude<keyof Creations, "save">>;
+
+/** A phone calendar's source revision as `CalendarSourceIdentity.java` names it: 64 hex digits that change with its name, account or kind. */
+const sourceRevisionOf = (row: AndroidCalendarRow) => [...JSON.stringify([row.id, row.name, row.account, row.local])].map((one) => one.charCodeAt(0).toString(16)).join("").padEnd(64, "0").slice(-64);
 
 /** The phone event `id` as the plugin compares it: its revision is what it says. */
 const revisionOf = (event: AndroidCalendarEvent) => JSON.stringify([event.title, event.body, event.location, event.begin, event.end]);
@@ -319,10 +343,13 @@ const revisionOf = (event: AndroidCalendarEvent) => JSON.stringify([event.title,
  * `CalendarPlugin.java`, the `ElizaCalendar` plugin: Android's one prompt for Calendar access, the phone's calendars
  * and events of a range, which it lists only once access is granted, a create journaled under its creation identity
  * (`lost` makes the next one's answer unknown, as a write the phone could not confirm), a change of the event as last inspected, and
- * a deletion the phone's own review confirmed.
+ * a deletion the phone's own review confirmed. `AlphaCalendarPlugin.java` adds the free or busy reads: the calendars to choose
+ * from, with no event, and the times of exactly those chosen, read only once every one is local and as reviewed.
  */
 export function elizaCalendar(scene: CalendarScene): Faked {
   const find = (id: string) => scene.phoneEvents.find((event) => event.id === id);
+  const reads = () => scene.granted || scene.readOnly;
+  const inFront = () => document.visibilityState === "visible";
   let nextPhoneId = Math.max(0, ...scene.phoneEvents.map((event) => Number(event.id.replace(/^p/, "")) || 0));
   function create(input: AndroidCalendarEditorFields, creationId = "", allDay = false, recurring = false): ReturnType<Creations["save"]> {
     nextPhoneId = Math.max(nextPhoneId, ...scene.phoneEvents.map((event) => Number(event.id.replace(/^p/, "")) || 0)) + 1;
@@ -332,7 +359,7 @@ export function elizaCalendar(scene: CalendarScene): Faked {
     if (scene.lost) return Promise.reject(rejection("Calendar write could not be confirmed. Check creation receipts before retrying."));
     return Promise.resolve({ status: "saved", id, calendarId: "local", creationId });
   }
-  return plugin<Omit<AndroidCalendarPlugin, "save"> & Creations>(() => ({
+  const calls: Native<PhoneCalendar> = {
     checkPermissions: () => Promise.resolve({ calendar: scene.granted ? "granted" : "prompt" }),
     requestAccess() {
       scene.asked += 1;
@@ -340,6 +367,7 @@ export function elizaCalendar(scene: CalendarScene): Faked {
       return Promise.resolve({ status: scene.granted ? "granted" : "denied" });
     },
     list({ begin, end }): Promise<AndroidCalendarList> {
+      scene.eventReads.push("list");
       if (!scene.granted) return Promise.resolve({ status: "permission-required" });
       return Promise.resolve({ status: "ready", calendars: scene.calendars, events: scene.phoneEvents.filter((event) => event.begin < end && event.end > begin), truncated: false });
     },
@@ -366,6 +394,7 @@ export function elizaCalendar(scene: CalendarScene): Faked {
     },
     pendingCreations: () => Promise.resolve({ status: "ready", creations: [...scene.creations].map(([creationId, status]) => ({ creationId, status })) }),
     inspectDeletion({ id, expected }) {
+      if (document.visibilityState !== "visible") return Promise.resolve({ status: "unavailable" });
       const series = scene.phoneEvents.filter((event) => event.id === id);
       const event = series.find((one) => one.begin === expected.begin);
       if (!event) return Promise.resolve({ status: "conflict" });
@@ -388,20 +417,42 @@ export function elizaCalendar(scene: CalendarScene): Faked {
     prepareAgentSource: () => Promise.resolve(scene.granted ? { status: "ready", sourceId: "local", sourceRevision: "0".repeat(64) } : { status: "permission-required" }),
     requestWorkflowReadAccess() {
       scene.asked += 1;
-      return Promise.resolve({ status: scene.granted ? "granted" : "denied" });
+      return Promise.resolve({ status: reads() ? "granted" : "denied" });
     },
     readWorkflowRange({ calendarIds, start, end, maximumEvents }) {
+      scene.eventReads.push(`readWorkflowRange ${calendarIds.join(",")}`);
       const [from, to] = [Date.parse(start), Date.parse(end)];
       const events = scene.phoneEvents.filter((event) => calendarIds.includes(event.calendarId) && event.begin < to && event.end > from).slice(0, maximumEvents + 1)
         .map((event) => ({ id: event.id, calendarId: event.calendarId, revision: "0".repeat(64), title: event.title ?? "", start: new Date(event.begin).toISOString(), end: new Date(event.end).toISOString(), allDay: event.allDay }));
       return Promise.resolve({ status: "ready", events });
     },
-    dispatchDeletion({ id, change, originalStart }) {
+    availabilitySources({ timeZone }) {
+      if (!reads()) return Promise.resolve({ status: "permission-required" });
+      if (!inFront()) return Promise.resolve({ status: "unavailable" });
+      return Promise.resolve({ status: "ready", timeZone, calendars: scene.calendars.map((row) => ({ id: row.id, name: row.name ?? "", account: row.account ?? "", sourceRevision: sourceRevisionOf(row) })) });
+    },
+    readAvailability({ calendars, start, end }) {
+      if (!reads()) return Promise.resolve({ status: "permission-required" });
+      if (!inFront()) return Promise.resolve({ status: "unavailable" });
+      const chosen = calendars.map(({ id, revision }) => ({ revision, row: scene.calendars.find((row) => row.id === id) }));
+      if (chosen.some(({ row, revision }) => row === undefined || sourceRevisionOf(row) !== revision)) return Promise.resolve({ status: "changed" });
+      if (chosen.some(({ row }) => !row?.local)) return Promise.resolve({ status: "freshness-unknown" });
+      const ids = calendars.map((calendar) => calendar.id);
+      scene.eventReads.push(`readAvailability ${ids.join(",")}`);
+      const [from, to] = [Date.parse(start), Date.parse(end)];
+      const events = scene.phoneEvents.filter((event) => ids.includes(event.calendarId) && event.begin < to && event.end > from)
+        .map((event) => ({ start: new Date(event.begin).toISOString(), end: new Date(event.end).toISOString(), allDay: event.allDay, availability: scene.marked.get(event.id) ?? "busy" }));
+      return Promise.resolve(events.length > 200 ? { status: "too-many" } : { status: "ready", freshness: "local", events });
+    },
+    dispatchDeletion({ id, change, originalStart, revision }) {
       const occurrence = change === "ExcludeOccurrence";
+      const event = scene.phoneEvents.find((one) => one.id === id && (!occurrence || one.begin === originalStart));
+      if (!event || revisionOf(event) !== revision) return Promise.resolve({ status: "conflict" });
       scene.phoneEvents = scene.phoneEvents.filter((event) => event.id !== id || (occurrence && event.begin !== originalStart));
       return Promise.resolve({ status: "committed", readback: { parentAfter: occurrence ? "ParentLive" : "ParentGone", fieldsMatch: true, exclusionExact: true, cancelledAtStart: 0, instanceRemains: false } });
     },
-  }));
+  };
+  return plugin<PhoneCalendar>(() => Object.fromEntries([...ANDROID_CALENDAR_METHODS, ...CREATION_CALLS].map((name) => [name, calls[name]])) as Native<PhoneCalendar>);
 }
 
 /** Someone on the reference week's events, as `PEOPLE` of develop's fixtures names them. */

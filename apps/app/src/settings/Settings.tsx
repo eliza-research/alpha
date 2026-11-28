@@ -69,7 +69,7 @@ import { useMachine as useShell } from "../../gen/app__shell.react.ts";
 import type { Machine as ShellMachine } from "../../gen/app__shell.effect.vibe";
 import { useMachine as useLayers } from "../../gen/app__shell__layers.react.ts";
 import type { Machine as LayersMachine } from "../../gen/app__shell__layers.effect.vibe";
-import { pageInert } from "../../gen/app__shell__layers.ts";
+import { listed, pageInert, top } from "../../gen/app__shell__layers.ts";
 import type { Alpha } from "../runtime/ui.tsx";
 import type { Device } from "../platform/index.vibe";
 import type { SystemSettings } from "../platform/index.vibe";
@@ -84,7 +84,8 @@ import { AccessReview } from "../startup/SettingsAccess.tsx";
 import { AppBack } from "../shell/ui.tsx";
 import { closeLayer, openLayer } from "../shell/index.vibe";
 import { Layers, Over, Under } from "../shell/ui.tsx";
-import { AccountStatus } from "../account/index.tsx";
+import { AccountSheetFrame, AccountStatus } from "../account/index.tsx";
+import { accountLayer } from "../account/profile.vibe";
 import { CalendarAccount, type CalendarConnection } from "./calendar.vibe";
 import type { PasswordProviderShelf } from "./passwords.vibe";
 import { PasswordEntries } from "./PasswordEntries.tsx";
@@ -644,6 +645,7 @@ export function Settings({ runtime, alpha, further }: { runtime: SettingsRuntime
   const { state, cause, can, send } = usePages(runtime);
   const android = useTimed(runtime, useAndroid);
   const facts = useTimed(runtime, useFacts);
+  const layers = useLayers(runtime);
   const [entered, setEntered] = useState<{ page?: Page; depth: number; opened: boolean; mounts: number; layers: Partial<Record<Page, Layer>> }>({ depth: 0, opened: false, mounts: 0, layers: {} });
   if (state && entered.page !== state.page) {
     const opened = state.places.length > entered.depth;
@@ -661,6 +663,8 @@ export function Settings({ runtime, alpha, further }: { runtime: SettingsRuntime
   if (!state) return <section aria-label="Settings" aria-busy className="relative flex h-full min-h-0 flex-col"><SettingsPage title="Settings" top leading={<AppBack alpha={alpha} firstPage />} /></section>;
   const page = state.page;
   const goBack = { type: "goBack" } as const;
+  const closeAccount = { type: "closeLayer", id: accountLayer } as const;
+  const accountPanel = alpha.slot("settings/account");
   const start = android.state && loading(android.state.start) ? { target: targetNames[android.state.target], channel: android.state.channel || undefined } : undefined;
   const refresh = { type: "refresh", at: untimed } as const;
   const micMayBeOn = facts.state?.grants.some((grant) => grant.access === "MicrophoneAccess" && (grant.grant === "Granted" || grant.grant === "Limited")) ?? false;
@@ -703,6 +707,14 @@ export function Settings({ runtime, alpha, further }: { runtime: SettingsRuntime
       {state.phone && facts.state?.read.read.status === "Failed" && (page === "Top" || page === "General") ? <Banner variant="warn" className="mx-4 mt-[max(--spacing(3),var(--alpha-safe-top))]">The phone did not answer</Banner> : null}
       <Layers>{pagesTo(page).map(layer)}</Layers>
       <AccessReview runtime={runtime} />
+      {accountPanel && layers.state && listed(layers.state, accountLayer) ? (
+        <AccountSheetFrame
+          open={top(layers.state).id === accountLayer}
+          onClose={() => { if (layers.can(closeAccount)) void layers.send(closeAccount); }}
+        >
+          {accountPanel}
+        </AccountSheetFrame>
+      ) : null}
     </section>
   );
 }

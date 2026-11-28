@@ -251,16 +251,19 @@ describe("Ask Alpha dock", () => {
     await expect.poll(() => section()?.getBoundingClientRect().height ?? 0).toBeGreaterThan(fitted + 100);
     const grown = section()?.getBoundingClientRect().height ?? 0;
     const closing: number[] = [];
-    const watch = async () => {
-      for (const until = performance.now() + 600; performance.now() < until; await Effect.runPromise(Effect.sleep("8 millis"))) {
-        const copy = document.querySelector<HTMLElement>("[data-alpha-ghost]");
-        if (copy) closing.push(Math.round(copy.getBoundingClientRect().height));
+    const ghosts: HTMLElement[] = [];
+    const placed = new MutationObserver((changes) => {
+      for (const node of changes.flatMap((change) => [...change.addedNodes])) {
+        if (ghosts.length > 0 || !(node instanceof HTMLElement) || !node.hasAttribute("data-alpha-ghost")) continue;
+        ghosts.push(node);
+        closing.push(Math.round(node.getBoundingClientRect().height));
       }
-    };
-    const watched = watch();
+    });
+    placed.observe(document.body, { childList: true, subtree: true });
     await page.getByRole("button", { name: "Minimize chat" }).click();
-    await watched;
-    expect(closing.length).toBeGreaterThan(0);
+    await expect.poll(() => ghosts.length).toBe(1);
+    placed.disconnect();
+    for (const [ghost] = ghosts; ghost?.isConnected; await Effect.runPromise(Effect.sleep("8 millis"))) closing.push(Math.round(ghost.getBoundingClientRect().height));
     expect(closing[0]).toBeGreaterThan(grown - 40);
     expect(closing.every((height, at) => at === 0 || height <= (closing[at - 1] ?? height) + 1)).toBe(true);
   });

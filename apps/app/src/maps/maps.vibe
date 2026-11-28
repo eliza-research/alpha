@@ -13,7 +13,7 @@ import type { Offer, Origin, Travel } from "../../gen/app__maps__navigation.effe
 import { type Saved, maxSaved } from "../../gen/app__maps__places.effect.vibe"
 import type { Grant as Allowed } from "../../gen/kit__permission.effect.vibe"
 import { Machine as Shell, showing } from "../../gen/app__shell.effect.vibe"
-import { type CloudClient, Cloud, Device, type LocationGrant as Grant, Location, Navigation, type Sighting } from "../platform/index.vibe"
+import { type CloudClient, Cloud, Device, type LocationGrant as Grant, Location, Navigation, NetworkLocation, type Sighting } from "../platform/index.vibe"
 import { type Job, Time, answer, due, following, reacting, run, started, stream, together, untimed } from "../runtime/index.vibe"
 import { Atlas, type AtlasStore, type Coverage, type Spot, type View, type Way, atlas, atlasLayer, withoutDetails } from "./atlas.vibe"
 import { type Point, coordinateOf, measured, meters, normalizeLng, pointOf } from "./geometry.ts"
@@ -66,6 +66,7 @@ import { copied, onlineTarget, opened, parsed, safeWebUrl, shared } from web
 error Unanswered { cause: unknown }
 
 const google = "eliza-cloud-google"
+const isGoogleProvider = (providerId: string): boolean => providerId === google || providerId === "google"
 const travelModes = { Drive: "drive", Walk: "walk", Bicycle: "bicycle", Transit: "transit" } as const satisfies Record<Travel, string>
 const noOffer: Offer = { drive: false, transit: false, walk: false, bicycle: false }
 
@@ -81,14 +82,19 @@ function waitOf(failure: unknown, now: number): { readonly wait: Wait; readonly 
 }
 
 // spec/app/maps/connection.md, "A wait Cloud names holds every Maps request back until it ends: a rate limit for at most a day, a spent allowance for at most 400 days, and any other wait one minute"
-effect function held(failure: unknown, account: number): void!!(Time | Screen.Machine) {
+effect function held(failure: unknown, account: number): void!!(Time | Screen.Machine | Atlas) {
+  if (failure instanceof CloudError && failure.failure.tag === "CloudInsufficientCredits") {
+    (try Atlas).setInsufficientCredits(true)
+    try ignore((try Screen.Machine).send({ type: "cloudWaits", wait: "Unnamed", seconds: 60, now: untimed, account }))
+    return
+  }
   const named = waitOf(failure, try (try Time).now())
   if (named === undefined) return
   try ignore((try Screen.Machine).send({ type: "cloudWaits", wait: named.wait, seconds: named.seconds, now: untimed, account }))
 }
 
 /** A call of eliza's cloud client for Maps under `signal`, refused while a wait Cloud named still holds. */
-effect function askedUnder<A>(call: (client: CloudClient, signal: AbortSignal) => Promise<A>, signal?: AbortSignal): A!Unanswered!(Cloud | Time | Screen.Machine) {
+effect function askedUnder<A>(call: (client: CloudClient, signal: AbortSignal) => Promise<A>, signal?: AbortSignal): A!Unanswered!(Cloud | Time | Screen.Machine | Atlas) {
   const { link } = try (try Screen.Machine).get()
   if (holding(link)) throw new Unanswered({ cause: "Cloud asked Alpha to wait" })
   const { client } = try Cloud
@@ -105,7 +111,7 @@ function offerOf(coverage: Coverage): Offer {
 }
 
 function isGoogle(coverage: Coverage): boolean {
-  return coverage.available && (coverage.providerId === google || coverage.sources.data === "Google Maps")
+  return coverage.available && (isGoogleProvider(coverage.providerId) || coverage.sources.data === "Google Maps")
 }
 
 /** The coverage of the provider the machine installed, or none. */
@@ -114,13 +120,31 @@ export function coverageOf(state: State, store: AtlasStore = atlas): Coverage | 
 }
 
 // spec/app/maps/connection.md, "Only the newest read's answer is taken, while signed in, and a healthy answer installs the provider for that account"; spec/app/maps/connection.md, "Opening Maps, regaining the network or Retry reads the coverage again only when no provider is working"
-effect function covered(ticket: number): Ev!!(Cloud | Atlas) {
+effect function covered(ticket: number): Ev!!(Cloud | Time | Screen.Machine | Atlas) {
   const { client } = try Cloud
   const store = try Atlas
+  store.setInsufficientCredits(false)
   return effect {
     const found = try tryPromise({ try: (signal) => client.mapsCapabilities({ signal }), catch: (cause) => new Unanswered({ cause }) })
     store.covered(ticket, found)
     if (!found.available) return { type: "answerCoverage", ticket, ok: true, covered: false, google: false, offer: noOffer }
+    if (found.capabilities.map && found.tiles !== undefined) {
+      const z = Math.max(0, found.tiles.minZoom)
+      const probe = effect {
+        const answer = try tryPromise({ try: (signal) => client.mapsTile({ z, x: 0, y: 0 }, { signal }), catch: (cause) => new Unanswered({ cause }) })
+        return { ok: true as const, bytes: answer.bytes }
+      } catch (failed) => ({ ok: false as const, cause: failed.cause })
+      if (probe.ok) {
+        store.putTile(`${z}/0/0`, probe.bytes)
+      } else if (probe.cause instanceof CloudError && probe.cause.failure.tag === "CloudInsufficientCredits") {
+        store.setInsufficientCredits(true)
+        return { type: "answerCoverage", ticket, ok: true, covered: false, google: false, offer: noOffer }
+      } else {
+        const account = (try (try Screen.Machine).get()).link.account
+        if (account !== 0) try held(probe.cause, account)
+        return { type: "answerCoverage", ticket, ok: false, covered: false, google: false, offer: noOffer }
+      }
+    }
     return { type: "answerCoverage", ticket, ok: true, covered: found.capabilities.map, google: isGoogle(found), offer: offerOf(found) }
   } catch () => ({ type: "answerCoverage", ticket, ok: false, covered: false, google: false, offer: noOffer })
 }
@@ -130,7 +154,7 @@ function spotOf(raw: CloudPlace): Spot {
   const categories = "categories" in raw ? (raw as { readonly categories?: unknown }).categories : undefined
   const category = Array.isArray(categories) && typeof categories[0] === "string" ? categories[0] : ""
   return {
-    name: raw.name, category, at: pointOf(raw.coordinate), providerId: raw.providerId, id: raw.id, google: raw.providerId === google,
+    name: raw.name, category, at: pointOf(raw.coordinate), providerId: raw.providerId, id: raw.id, google: isGoogleProvider(raw.providerId),
     ...(raw.address !== undefined ? { address: raw.address } : {}),
     ...(raw.phone !== undefined ? { phone: raw.phone } : {}),
     ...(raw.website !== undefined ? { website: raw.website } : {}),
@@ -224,9 +248,10 @@ function allowedOf(grant: Grant): Allowed {
 }
 
 // spec/app/maps/index.md, "A fix goes to whoever holds the location"; spec/app/maps/navigation.md, "A fix moves guidance only when it is precise, fresh and close: arrival within 25 meters, a turn passed within 40 meters or after two fixes beyond 60, the route left beyond 75"; spec/app/maps/connection.md, "\"Use my location\" gives up after 15 seconds without a fix"
-function located(session: number, once: boolean): Stream.Stream<Ev, never, Location | Time | Screen.Machine | Atlas> {
+function located(session: number, once: boolean): Stream.Stream<Ev, never, Location | NetworkLocation | Time | Screen.Machine | Atlas> {
   return Stream.unwrap(effect {
     const location = try Location
+    const network = try NetworkLocation
     const time = try Time
     const screen = try Screen.Machine
     const store = try Atlas
@@ -239,7 +264,16 @@ function located(session: number, once: boolean): Stream.Stream<Ev, never, Locat
         if (heard.kind !== "fix") return undefined
         return { fix: { ...heard, precise: heard.precise && exact }, fromGps: true }
       })
-    const standIn = Stream.fromEffect(time.until(began + networkGraceMs) |> Effect.andThen(%, location.rough()))
+    const roughFix = effect {
+      const fromNetwork = try network.locate()
+      if (Option.isSome(fromNetwork)) {
+        return Option.some<Sighting>({
+          lat: fromNetwork.value.lat, lng: fromNetwork.value.lng, accuracy: fromNetwork.value.accuracy, precise: false, taken: fromNetwork.value.found,
+        })
+      }
+      return try location.rough()
+    }
+    const standIn = Stream.fromEffect(time.until(began + networkGraceMs) |> Effect.andThen(%, roughFix))
       |> Stream.map(%, (rough): { readonly fix: Sighting; readonly fromGps: boolean } | undefined => (gps || Option.isNone(rough) ? undefined : { fix: rough.value, fromGps: false }))
     const heard = Stream.merge(fixes, standIn)
       |> Stream.mapEffect(%, (entry) => effect {
@@ -338,7 +372,7 @@ function keptIn(text: string): ReadonlyArray<KeptPlace> | undefined {
     const category = optionalText(entry.spot.category) ?? ""
     const providerId = optionalText(entry.spot.providerId) ?? ""
     const id = optionalText(entry.spot.id) ?? ""
-    if (providerId === google) return []
+    if (isGoogleProvider(providerId)) return []
     return [{ name: entry.name, spot: { name: entry.spot.name, category, at: entry.spot.at, providerId, id, google: false } }]
   })
   return kept.length === list.length ? kept : undefined
@@ -353,7 +387,7 @@ function previouslyKept(item: unknown): KeptPlace | "skipped" | undefined {
   const id = optionalText(item.providerPlaceId) ?? ""
   const name = item.label.trim()
   const at = pointOf({ latitude, longitude })
-  if (providerId === google || !isName(name) || !isPoint(at)) return "skipped"
+  if (isGoogleProvider(providerId) || !isName(name) || !isPoint(at)) return "skipped"
   return { name, spot: { name, category: "", at, providerId, id, google: false } }
 }
 
@@ -449,7 +483,7 @@ effect function handed(place: number, kind: HandOff): void!!(Screen.Machine | Ti
 /** The numbers of the agent's reads a device action is holding for its answer: any other read is told as unknown. */
 export const readsHeld = new Set<number>()
 
-function carry(fx: Out): Job<Ev, Cloud | Time | Location | Navigation | Screen.Machine | KeyValueStore.KeyValueStore | Shell | Device | Atlas, []> {
+function carry(fx: Out): Job<Ev, Cloud | Time | Location | NetworkLocation | Navigation | Screen.Machine | KeyValueStore.KeyValueStore | Shell | Device | Atlas, []> {
   return match (fx) {
     when { tag: "ReadCoverage", let ticket }: answer("coverage", covered(ticket), { type: "answerCoverage", ticket, ok: false, covered: false, google: false, offer: noOffer });
     when { tag: "DrawMap" }: run("draw", Effect.void);
@@ -547,7 +581,9 @@ const credits = reacting(Credits, { carry: carryCredits })
 
 // spec/app/maps/credits.md, "A failed tile never breaks a surface whose style has loaded, and a cancelled tile breaks nothing"
 /** The provider's tile at `z/x/y` for the map drawing it, cancelled with `signal`, and refused while Cloud's wait holds. */
-export effect function tile(z: number, x: number, y: number, signal: AbortSignal): Uint8Array!Unanswered!(Cloud | Time | Screen.Machine) {
+export effect function tile(z: number, x: number, y: number, signal: AbortSignal): Uint8Array!Unanswered!(Cloud | Time | Screen.Machine | Atlas) {
+  const cached = (try Atlas).takeTile(`${z}/${x}/${y}`)
+  if (cached !== undefined) return cached
   const found = try askedUnder((client, own) => client.mapsTile({ z, x, y }, { signal: own }), signal)
   return found.bytes
 }
@@ -601,12 +637,12 @@ const opening = started(effect {
   const device = try Device
   try Stream.runForEach(shell.changes |> Stream.map(%, (s) => showing(s, "Maps")) |> Stream.changes(%), effect (shown) => {
     if (!shown) return
+    const grant = allowedOf(try location.permission())
+    try ignore(screen.send({ type: "observeLocation", grant }))
     const caps = try device.capabilities()
     try ignore(screen.send({ type: "admitDialer", on: caps.image }))
     try accountRead()
     try ignore(screen.send({ type: "connect" }))
-    const grant = allowedOf(try location.permission())
-    try ignore(screen.send({ type: "observeLocation", grant }))
     try ignore(screen.send({ type: "quietFix" }))
   })
 }, "opening Maps")

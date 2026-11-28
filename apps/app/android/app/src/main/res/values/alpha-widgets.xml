@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="alpha_widget_card_bg">#FAFAFA</color>
+    <color name="alpha_widget_dock_bg">#FFFFFF</color>
+    <color name="alpha_widget_border">#E3E3E3</color>
+    <color name="alpha_widget_fg">#000000</color>
+    <color name="alpha_widget_muted">#666666</color>
+    <color name="alpha_widget_accent">#0000FF</color>
+
+    <string name="alpha_day_widget_label">Alpha Day</string>
+    <string name="alpha_day_widget_description">Date and live Alpha summary card</string>
+    <string name="alpha_day_widget_default_summary">Ask Alpha</string>
+    <string name="alpha_day_widget_default_meta">Tap to view your day</string>
+
+    <string name="alpha_search_widget_label">Ask Alpha</string>
+    <string name="alpha_search_widget_description">Quick Ask Alpha text and voice bar</string>
+    <string name="alpha_search_widget_prompt">Ask Alpha</string>
+    <string name="alpha_search_widget_voice_desc">Talk to Alpha</string>
+</resources>

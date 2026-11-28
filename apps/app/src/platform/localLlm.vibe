@@ -1,0 +1,556 @@
+// spec/app/account/provider.md, "Story: See where my requests go"; spec/app/platform/index.md, "Story: Reach the phone's native capabilities"
+import * as KeyValueStore from "effect/persistence/KeyValueStore"
+import { Agent } from "./agent.vibe"
+import { subscribePluginListener } from "./capacitor.ts"
+import { registered } from "./device.vibe"
+
+/** Shared preference key selecting the active AI execution mode across AlphaCore and all thin apps. */
+export const AI_MODE_KEY = "alpha.aiMode"
+
+/** Shared preference key naming the preferred on-device GGUF model id. */
+export const LOCAL_MODEL_KEY = "alpha.localModel"
+
+/** Default recommended on-device model id for Pixel 10a and 8 GB class Android phones. */
+export const DEFAULT_LOCAL_MODEL_ID = "gemma-4-e2b-it-q4"
+
+/** Active AI backend mode persisted in `AlphaPreferences`. */
+export type AiMode = "local" | "cloud" | "own-key"
+
+/** Memory fit classification for an on-device GGUF model relative to device RAM. */
+export type LocalModelFit = "fits" | "tight" | "insufficient"
+
+/** Catalog entry describing one on-device GGUF model. */
+export interface LocalLlmModel {
+  readonly id: string
+  readonly name: string
+  readonly family: string
+  readonly quantization: string
+  readonly license: string
+  readonly sizeBytes: number
+  readonly minRamMb: number
+  readonly recommended: boolean
+  readonly role: "chat" | "embedding"
+  readonly summary: string
+  readonly downloaded: boolean
+  readonly active: boolean
+  readonly installPhase: "absent" | "downloading" | "verifying" | "installed" | "partial" | "failed" | "cancelled"
+  readonly fit: LocalModelFit
+  readonly fitReason?: string
+  readonly downloadProgress?: number
+  readonly lastError?: string
+}
+
+/** Snapshot of the device's on-device LLM runtime state. */
+export interface LocalLlmStatus {
+  readonly mode: AiMode
+  readonly activeModelId: string
+  readonly loaded: boolean
+  readonly downloadingModelId?: string
+  readonly downloadProgress?: number
+  readonly nativeAvailable: boolean
+  readonly totalRamMb: number
+  readonly freeDiskMb: number
+  readonly metered: boolean
+}
+
+/** Combined catalog and runtime status returned to Settings and Provider views. */
+export interface LocalLlmCatalogSnapshot {
+  readonly status: LocalLlmStatus
+  readonly models: ReadonlyArray<LocalLlmModel>
+}
+
+/** Outcome of requesting a resumable on-device model download. */
+export interface LocalLlmDownloadResult {
+  readonly ok: boolean
+  readonly meteredRequired: boolean
+  readonly error?: string
+}
+
+/** Progress payload emitted by `AlphaLocalLlm` during a resumable model download. */
+export interface LocalLlmDownloadProgress {
+  readonly modelId: string
+  readonly downloadedBytes: number
+  readonly totalBytes: number
+  readonly percent: number
+  readonly phase: "downloading" | "verifying" | "installed" | "failed" | "cancelled"
+  readonly error?: string
+}
+
+/** Pinned Apache-2.0 and MIT on-device model catalog matching `AlphaLocalLlmCatalog.java`. */
+export const PINNED_LOCAL_MODELS: ReadonlyArray<LocalLlmModel> = [
+  {
+    id: "gemma-4-e2b-it-q4",
+    name: "Gemma 4 E2B IT (Q4_0)",
+    family: "gemma4",
+    quantization: "Q4_0",
+    license: "Apache-2.0",
+    sizeBytes: 2_841_481_184,
+    minRamMb: 6144,
+    recommended: true,
+    role: "chat",
+    summary: "Recommended default for 8 GB phones: fast Gemma 4 with native tool calling and zero cloud sign-in.",
+    downloaded: false,
+    active: false,
+    installPhase: "absent",
+    fit: "fits",
+  },
+  {
+    id: "qwen3.5-4b-q4",
+    name: "Qwen 3.5 4B (Q4_K_M)",
+    family: "qwen35",
+    quantization: "Q4_K_M",
+    license: "Apache-2.0",
+    sizeBytes: 2_740_937_888,
+    minRamMb: 6144,
+    recommended: false,
+    role: "chat",
+    summary: "High-precision structured JSON and multi-step device control tool calling.",
+    downloaded: false,
+    active: false,
+    installPhase: "absent",
+    fit: "fits",
+  },
+  {
+    id: "gemma-4-e4b-it-q2xl",
+    name: "Gemma 4 E4B IT (UD-Q2_K_XL)",
+    family: "gemma4",
+    quantization: "UD-Q2_K_XL",
+    license: "Apache-2.0",
+    sizeBytes: 3_757_419_648,
+    minRamMb: 7168,
+    recommended: false,
+    role: "chat",
+    summary: "Higher-capacity Gemma 4 E4B tier for phones with at least 8 GB RAM.",
+    downloaded: false,
+    active: false,
+    installPhase: "absent",
+    fit: "tight",
+  },
+  {
+    id: "bge-small-en-v1.5",
+    name: "BGE Small EN v1.5 (F16)",
+    family: "embedding",
+    quantization: "F16",
+    license: "MIT",
+    sizeBytes: 67_308_128,
+    minRamMb: 2048,
+    recommended: true,
+    role: "embedding",
+    summary: "Compact 384-dimensional embeddings for offline on-device memory and search.",
+    downloaded: false,
+    active: false,
+    installPhase: "absent",
+    fit: "fits",
+  },
+]
+
+/** Parses an untrusted mode string into a validated `AiMode`. */
+export function parseAiMode(raw: string | null | undefined): AiMode | undefined {
+  if (raw === "local" || raw === "cloud" || raw === "own-key") return raw
+  return undefined
+}
+
+/** Computes a memory fit classification from `minRamMb` and device `totalRamMb`. */
+export function fitForRam(minRamMb: number, totalRamMb: number): LocalModelFit {
+  if (totalRamMb <= 0) return minRamMb <= 6144 ? "fits" : "tight"
+  if (totalRamMb >= minRamMb + 1024) return "fits"
+  if (totalRamMb >= minRamMb) return "tight"
+  return "insufficient"
+}
+
+module bridge {
+  import { plugin as capacitorPlugin } from "./capacitor.ts"
+  import type { AiMode } from "./localLlm.vibe"
+
+  interface AlphaLocalLlmPlugin {
+    catalog(): Promise<unknown>
+    status(): Promise<unknown>
+    download(options: { readonly modelId: string; readonly allowMetered?: boolean }): Promise<unknown>
+    cancelDownload(options: { readonly modelId: string }): Promise<unknown>
+    activate(options: { readonly modelId: string }): Promise<unknown>
+    unload(): Promise<unknown>
+    delete(options: { readonly modelId: string }): Promise<unknown>
+    setMode(options: { readonly mode: AiMode; readonly modelId?: string }): Promise<unknown>
+    addListener(
+      eventName: "downloadProgress",
+      listener: (event: unknown) => void,
+    ): Promise<{ remove(): Promise<void> }>
+  }
+
+  let cached: AlphaLocalLlmPlugin | undefined
+
+  /** Capacitor proxy for `AlphaLocalLlm`, created once per page. @throws {never} */
+  export function localLlmPlugin(): AlphaLocalLlmPlugin {
+    return (cached ??= capacitorPlugin<AlphaLocalLlmPlugin>("AlphaLocalLlm"))
+  }
+
+  /** Safely extracts a plain object record from an untrusted bridge reply. @throws {never} */
+  export function asRecord(value: unknown): Record<string, unknown> | undefined {
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined
+  }
+
+  /** Formats a bridge rejection into code and message strings. @throws {never} */
+  export function readRejection(error: unknown): { readonly code: string; readonly message: string } {
+    const rec = asRecord(error)
+    const code = typeof rec?.code === "string" ? rec.code : ""
+    const message = error instanceof Error
+      ? error.message
+      : typeof rec?.message === "string"
+        ? rec.message
+        : String(error)
+    return { code, message }
+  }
+}
+import { asRecord, localLlmPlugin, readRejection } from bridge
+
+const pluginName = "AlphaLocalLlm"
+
+function stringField(record: Record<string, unknown>, key: string, fallback = ""): string {
+  const value = record[key]
+  return typeof value === "string" ? value : fallback
+}
+
+function numberField(record: Record<string, unknown>, key: string, fallback = 0): number {
+  const value = record[key]
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback
+}
+
+function boolField(record: Record<string, unknown>, key: string, fallback = false): boolean {
+  const value = record[key]
+  return typeof value === "boolean" ? value : fallback
+}
+
+function parseFitString(raw: string, minRamMb: number, totalRamMb: number): LocalModelFit {
+  if (raw === "fits" || raw === "tight" || raw === "insufficient") return raw
+  if (raw === "good" || raw === "recommended" || raw === "ok") return "fits"
+  if (raw === "warn" || raw === "marginal") return "tight"
+  if (raw === "no" || raw === "too_large" || raw === "too-large") return "insufficient"
+  return fitForRam(minRamMb, totalRamMb)
+}
+
+function parseInstallPhase(
+  raw: string,
+  downloaded: boolean,
+): LocalLlmModel["installPhase"] {
+  if (
+    raw === "absent" ||
+    raw === "downloading" ||
+    raw === "verifying" ||
+    raw === "installed" ||
+    raw === "partial" ||
+    raw === "failed" ||
+    raw === "cancelled"
+  ) {
+    return raw
+  }
+  return downloaded ? "installed" : "absent"
+}
+
+function decodeFit(
+  raw: unknown,
+  minRamMb: number,
+  totalRamMb: number,
+): { readonly fit: LocalModelFit; readonly fitReason?: string } {
+  const obj = asRecord(raw)
+  if (obj !== undefined) {
+    const fitsRam = boolField(obj, "fitsRam", true)
+    const fits = boolField(obj, "fits", fitsRam)
+    const reason = stringField(obj, "reason")
+    const fit: LocalModelFit = !fitsRam
+      ? "insufficient"
+      : !fits
+        ? "tight"
+        : fitForRam(minRamMb, totalRamMb)
+    return reason !== "" ? { fit, fitReason: reason } : { fit }
+  }
+  if (typeof raw === "string") {
+    return { fit: parseFitString(raw, minRamMb, totalRamMb) }
+  }
+  return { fit: fitForRam(minRamMb, totalRamMb) }
+}
+
+function decodeModel(raw: unknown, activeModelId: string, totalRamMb: number): LocalLlmModel | undefined {
+  const rec = asRecord(raw)
+  if (rec === undefined) return undefined
+  const id = stringField(rec, "id")
+  if (id === "") return undefined
+  const pinned = PINNED_LOCAL_MODELS.find((entry) => entry.id === id)
+  const minRamMb = numberField(rec, "minRamMb", pinned?.minRamMb ?? 6144)
+  const roleRaw = stringField(rec, "role", pinned?.role ?? "chat")
+  const downloaded = boolField(rec, "installed", boolField(rec, "downloaded", false))
+  const progressRaw = rec.percent ?? rec.downloadProgress
+  const { fit, fitReason } = decodeFit(rec.fit ?? rec.deviceFit, minRamMb, totalRamMb)
+  const lastError = stringField(rec, "lastError")
+  return {
+    id,
+    name: stringField(rec, "displayName", stringField(rec, "name", pinned?.name ?? id)),
+    family: stringField(rec, "family", pinned?.family ?? "gemma4"),
+    quantization: stringField(rec, "quantization", pinned?.quantization ?? "Q4_0"),
+    license: stringField(rec, "license", pinned?.license ?? "Apache-2.0"),
+    sizeBytes: numberField(rec, "sizeBytes", pinned?.sizeBytes ?? 0),
+    minRamMb,
+    recommended: boolField(rec, "recommended", pinned?.recommended ?? false),
+    role: roleRaw === "embedding" || roleRaw === "embeddings" ? "embedding" : "chat",
+    summary: stringField(rec, "description", stringField(rec, "summary", pinned?.summary ?? "")),
+    downloaded,
+    active: boolField(rec, "active", id === activeModelId && downloaded),
+    installPhase: parseInstallPhase(stringField(rec, "installPhase"), downloaded),
+    fit,
+    ...(fitReason !== undefined ? { fitReason } : {}),
+    ...(typeof progressRaw === "number" && Number.isFinite(progressRaw) ? { downloadProgress: progressRaw } : {}),
+    ...(lastError !== "" ? { lastError } : {}),
+  }
+}
+
+function decodeStatus(raw: unknown, fallbackMode: AiMode, fallbackModel: string): LocalLlmStatus {
+  const rec = asRecord(raw)
+  if (rec === undefined) {
+    return {
+      mode: fallbackMode,
+      activeModelId: fallbackModel,
+      loaded: false,
+      nativeAvailable: registered(pluginName),
+      totalRamMb: 0,
+      freeDiskMb: 0,
+      metered: false,
+    }
+  }
+  const mode = parseAiMode(stringField(rec, "mode")) ?? fallbackMode
+  const activeModelId = stringField(rec, "activeModelId", stringField(rec, "modelId", fallbackModel)) || fallbackModel
+  let downloading = stringField(rec, "downloadingModelId")
+  let progress: number | undefined = typeof rec.downloadProgress === "number" && Number.isFinite(rec.downloadProgress)
+    ? rec.downloadProgress
+    : undefined
+  if (downloading === "" && Array.isArray(rec.models)) {
+    for (const item of rec.models) {
+      const m = asRecord(item)
+      if (m === undefined) continue
+      const phase = stringField(m, "installPhase")
+      if (phase === "downloading" || phase === "verifying") {
+        downloading = stringField(m, "id")
+        const pct = m.percent
+        if (typeof pct === "number" && Number.isFinite(pct)) progress = pct
+        break
+      }
+    }
+  }
+  const loaded = boolField(rec, "loaded", stringField(rec, "activeStatus") === "ready")
+  return {
+    mode,
+    activeModelId,
+    loaded,
+    ...(downloading !== "" ? { downloadingModelId: downloading } : {}),
+    ...(progress !== undefined ? { downloadProgress: progress } : {}),
+    nativeAvailable: boolField(rec, "engineAvailable", boolField(rec, "nativeAvailable", registered(pluginName))),
+    totalRamMb: numberField(rec, "deviceRamMb", numberField(rec, "totalRamMb", 0)),
+    freeDiskMb: numberField(rec, "freeDiskMb", 0),
+    metered: boolField(rec, "metered", false),
+  }
+}
+
+function decodeProgressEvent(raw: unknown): LocalLlmDownloadProgress | undefined {
+  const rec = asRecord(raw)
+  if (rec === undefined) return undefined
+  const modelId = stringField(rec, "modelId")
+  if (modelId === "") return undefined
+  const rawPhase = stringField(rec, "phase", stringField(rec, "state"))
+  const phase: LocalLlmDownloadProgress["phase"] = rawPhase === "verifying"
+    ? "verifying"
+    : rawPhase === "installed" || rawPhase === "completed"
+      ? "installed"
+      : rawPhase === "failed"
+        ? "failed"
+        : rawPhase === "cancelled"
+          ? "cancelled"
+          : "downloading"
+  const err = stringField(rec, "error")
+  return {
+    modelId,
+    downloadedBytes: numberField(rec, "downloadedBytes", 0),
+    totalBytes: numberField(rec, "totalBytes", 0),
+    percent: numberField(rec, "percent", 0),
+    phase,
+    ...(err !== "" ? { error: err } : {}),
+  }
+}
+
+/** Reads the persisted shared AI mode (`"local" | "cloud" | "own-key"`), or `undefined` when unset. */
+export effect function readStoredAiMode(): (AiMode | undefined)!!KeyValueStore.KeyValueStore {
+  const store = try KeyValueStore.KeyValueStore
+  const raw = store.get(AI_MODE_KEY) catch () => undefined
+  return parseAiMode(raw)
+}
+
+/** Persists `mode` to the shared preference store (`AlphaPreferences` on Android). */
+export effect function writeStoredAiMode(mode: AiMode): boolean!!KeyValueStore.KeyValueStore {
+  const store = try KeyValueStore.KeyValueStore
+  return effect {
+    try store.set(AI_MODE_KEY, mode)
+    return true
+  } catch () => false
+}
+
+/** Reads the persisted preferred local model id, defaulting to Gemma 4 E2B Q4_0. */
+export effect function readStoredLocalModel(): string!!KeyValueStore.KeyValueStore {
+  const store = try KeyValueStore.KeyValueStore
+  const raw = store.get(LOCAL_MODEL_KEY) catch () => undefined
+  return raw !== undefined && raw.trim() !== "" ? raw.trim() : DEFAULT_LOCAL_MODEL_ID
+}
+
+/** Persists the preferred local model id to `AlphaPreferences`. */
+export effect function writeStoredLocalModel(modelId: string): boolean!!KeyValueStore.KeyValueStore {
+  const store = try KeyValueStore.KeyValueStore
+  return effect {
+    try store.set(LOCAL_MODEL_KEY, modelId)
+    return true
+  } catch () => false
+}
+
+/** Reads the on-device LLM catalog and status from `AlphaLocalLlm`, the resident agent, or pinned defaults. */
+export effect function readLocalLlmCatalog(): LocalLlmCatalogSnapshot!!(KeyValueStore.KeyValueStore | Agent) {
+  const storedMode = (try readStoredAiMode()) ?? "cloud"
+  const storedModel = try readStoredLocalModel()
+  let statusRaw: unknown
+  let catalogRaw: unknown
+  if (registered(pluginName)) {
+    const plugin = localLlmPlugin()
+    statusRaw = timeout(tryPromise(() => plugin.status()), "5 seconds") catch () => undefined
+    const statusRec = asRecord(statusRaw)
+    if (!Array.isArray(statusRec?.models)) {
+      catalogRaw = timeout(tryPromise(() => plugin.catalog()), "5 seconds") catch () => undefined
+    }
+  }
+  const agent = try Agent
+  if (statusRaw === undefined) {
+    statusRaw = timeout(tryPromise(() => agent.runtime.request("/api/alpha/local-llm/status")), "4 seconds") catch () => undefined
+  }
+  const statusRec = asRecord(statusRaw)
+  if (catalogRaw === undefined && !Array.isArray(statusRec?.models)) {
+    catalogRaw = timeout(tryPromise(() => agent.runtime.request("/api/alpha/local-llm/catalog")), "4 seconds") catch () => undefined
+  }
+  const status = decodeStatus(statusRaw, storedMode, storedModel)
+  const catRec = asRecord(catalogRaw)
+  const rawList = Array.isArray(statusRec?.models) && statusRec.models.length > 0
+    ? statusRec.models
+    : Array.isArray(catalogRaw)
+      ? catalogRaw
+      : Array.isArray(catRec?.models)
+        ? catRec.models
+        : undefined
+  const decoded = rawList
+    ?.map((item) => decodeModel(item, status.activeModelId, status.totalRamMb))
+    .filter((entry): entry is LocalLlmModel => entry !== undefined)
+  const models: ReadonlyArray<LocalLlmModel> = decoded !== undefined && decoded.length > 0
+    ? decoded
+    : PINNED_LOCAL_MODELS.map((entry) => ({
+        ...entry,
+        active: status.mode === "local" && entry.id === status.activeModelId && status.loaded,
+        fit: fitForRam(entry.minRamMb, status.totalRamMb),
+      }))
+  return { status, models }
+}
+
+/** Switches the device AI mode across `AlphaPreferences`, `AlphaLocalLlm`, and the resident agent. */
+export effect function setLocalLlmMode(
+  mode: AiMode,
+  modelId?: string,
+): boolean!!(KeyValueStore.KeyValueStore | Agent) {
+  const savedMode = try writeStoredAiMode(mode)
+  if (modelId !== undefined && modelId.trim() !== "") {
+    try ignore(writeStoredLocalModel(modelId.trim()))
+  }
+  const selectedModel = modelId ?? (try readStoredLocalModel())
+  if (registered(pluginName)) {
+    try ignore(timeout(tryPromise(() => localLlmPlugin().setMode({ mode, modelId: selectedModel })), "5 seconds"))
+  }
+  const agent = try Agent
+  try ignore(timeout(
+    tryPromise(() => agent.runtime.request("/api/alpha/local-llm/mode", { mode, modelId: selectedModel })),
+    "4 seconds",
+  ))
+  return savedMode
+}
+
+/** Starts a resumable download for `modelId` through `AlphaLocalLlm`, reporting metered-network refusals cleanly. */
+export effect function downloadLocalModel(
+  modelId: string,
+  allowMetered = false,
+): LocalLlmDownloadResult!! {
+  if (!registered(pluginName)) {
+    return { ok: false, meteredRequired: false, error: "On-device model downloads require an Android Alpha phone." }
+  }
+  return effect {
+    try timeout(tryPromise(() => localLlmPlugin().download({ modelId, allowMetered })), "10 seconds")
+    return { ok: true, meteredRequired: false }
+  } catch (err) => {
+    const { code, message } = readRejection(err)
+    const meteredRequired = code === "METERED_NETWORK_REQUIRED" || message.includes("METERED_NETWORK_REQUIRED")
+    return { ok: false, meteredRequired, error: message }
+  }
+}
+
+/** Cancels an active download for `modelId`. */
+export effect function cancelLocalModelDownload(modelId: string): boolean!! {
+  if (!registered(pluginName)) return false
+  return effect {
+    try timeout(tryPromise(() => localLlmPlugin().cancelDownload({ modelId })), "5 seconds")
+    return true
+  } catch () => false
+}
+
+/** Activates a downloaded local model and selects it in `AlphaPreferences`, `AlphaLocalLlm`, and the resident agent. */
+export effect function activateLocalModel(modelId: string): boolean!!(KeyValueStore.KeyValueStore | Agent) {
+  try ignore(writeStoredLocalModel(modelId))
+  try ignore(writeStoredAiMode("local"))
+  let ok = false
+  if (registered(pluginName)) {
+    ok = effect {
+      try timeout(tryPromise(() => localLlmPlugin().activate({ modelId })), "15 seconds")
+      return true
+    } catch () => false
+  }
+  const agent = try Agent
+  const agentOk = effect {
+    try timeout(tryPromise(() => agent.runtime.request("/api/alpha/local-llm/activate", { modelId })), "10 seconds")
+    return true
+  } catch () => false
+  return ok || agentOk
+}
+
+/** Unloads the active on-device model from RAM without deleting its GGUF weights. */
+export effect function unloadLocalModel(): boolean!! {
+  if (!registered(pluginName)) return false
+  return effect {
+    try timeout(tryPromise(() => localLlmPlugin().unload()), "5 seconds")
+    return true
+  } catch () => false
+}
+
+/** Deletes a downloaded local model from on-device storage. */
+export effect function deleteLocalModel(modelId: string): boolean!!Agent {
+  let ok = false
+  if (registered(pluginName)) {
+    ok = effect {
+      try timeout(tryPromise(() => localLlmPlugin().delete({ modelId })), "10 seconds")
+      return true
+    } catch () => false
+  }
+  const agent = try Agent
+  const agentOk = effect {
+    try timeout(tryPromise(() => agent.runtime.request("/api/alpha/local-llm/delete", { modelId })), "5 seconds")
+    return true
+  } catch () => false
+  return ok || agentOk
+}
+
+/** Subscribes to live download progress events from `AlphaLocalLlm` when registered. */
+export function subscribeLocalLlmProgress(onProgress: (event: LocalLlmDownloadProgress) => void): () => void {
+  if (!registered(pluginName)) return () => {}
+  return subscribePluginListener((isActive) => localLlmPlugin().addListener("downloadProgress", (raw) => {
+    if (!isActive()) return
+    const decoded = decodeProgressEvent(raw)
+    if (decoded !== undefined) onProgress(decoded)
+  }))
+}

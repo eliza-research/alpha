@@ -2,7 +2,7 @@
 import { Effect, type ManagedRuntime } from "effect";
 import { useSyncExternalStore } from "react";
 import { type ClockMetaState, clockRecords } from "./records.ts";
-import { activeClockRecords, activeClockTicks, fallbackClockNow, fallbackStopwatchNow } from "./shelf.vibe";
+import { type ClockDelivery, activeClockRecords, activeClockTicks, fallbackClockNow, fallbackDelivery, fallbackStopwatchNow } from "./shelf.vibe";
 
 interface Subscribable<T> {
   readonly snapshot: () => T;
@@ -15,6 +15,7 @@ interface BoundStore<T> {
 }
 
 const metaStores = new WeakMap<object, BoundStore<ClockMetaState>>();
+const deliveryStores = new WeakMap<object, BoundStore<ClockDelivery>>();
 const clockNowStores = new WeakMap<object, BoundStore<number>>();
 const stopwatchNowStores = new WeakMap<object, BoundStore<number>>();
 
@@ -113,5 +114,11 @@ export function useStopwatchNow<R, E>(runtime: ManagedRuntime.ManagedRuntime<R, 
     Effect.map(activeClockTicks(), (ticks) => ticks.stopwatchNow),
     fallbackStopwatchNow,
   );
+  return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+/** Android's current capability to deliver the owner's scheduled Clock alerts. */
+export function useClockDelivery<R, E>(runtime: ManagedRuntime.ManagedRuntime<R, E>): ClockDelivery {
+  const store = bindRuntimeShelf(deliveryStores, runtime, Effect.map(activeClockTicks(), (ticks) => ticks.delivery), fallbackDelivery);
   return useSyncExternalStore(store.subscribe, store.get, store.get);
 }

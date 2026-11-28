@@ -1,7 +1,8 @@
 // spec/kit/read.md, "Story: Read from outside"; spec/kit/attempt.md, "Story: Do something outside, once"
+import type { User as SdkUser } from "@mtcute/web"
 import { replied } from "../../gen/app__platform.effect.vibe"
 import * as Msg from "./messaging.vibe"
-import { type Listening, type Wired, Unsent, remoteAt } from "./remote.vibe"
+import { type Listening, type Wired, Unreachable, Unsent, remoteAt } from "./remote.vibe"
 
 /** User peer identifier. */
 export schema TelegramPeerUser {
@@ -110,6 +111,7 @@ export schema TelegramUpdate {
     | "updateMessageReactions"
     | "updateReadHistoryInbox"
     | "updateSessionRevoked"
+    | "updateSnapshotRequired"
   readonly pts: number
   readonly date: number
   readonly peer?: TelegramPeer
@@ -119,6 +121,7 @@ export schema TelegramUpdate {
   readonly msg_id?: number
   readonly reactions?: ReadonlyArray<TelegramReactionCount>
   readonly max_id?: number
+  readonly unread_count?: number
   readonly session_token?: string
 }
 
@@ -189,7 +192,8 @@ schema TelegramExportLoginTokenWire = TelegramQrPendingWire | TelegramQrSuccessW
 
 /** Outcome of `exportLoginToken`: pending QR code or completed session authorization. */
 export type TelegramExportLoginTokenResult =
-  | { readonly kind: "Pending"; readonly token: string; readonly expires: number; readonly loginUrl: string }
+  | { readonly kind: "Pending"; readonly token: string; readonly expiresAt: number; readonly loginUrl: string }
+  | Extract<TelegramSignInResult, { readonly kind: "PasswordRequired" }>
   | { readonly kind: "Success"; readonly sessionToken: string; readonly user: TelegramUser }
 
 /** Decoded response from `POST /rpc/auth.acceptLoginToken`. */
@@ -286,6 +290,7 @@ export schema TelegramUpdatesState {
 export schema TelegramDifferenceResponse {
   readonly ok: true
   readonly _type: "updates.difference"
+  readonly reset_snapshot?: boolean
   readonly new_messages: ReadonlyArray<TelegramMessage>
   readonly other_updates: ReadonlyArray<TelegramUpdate>
   readonly state: TelegramUpdatesState
@@ -361,7 +366,11 @@ export interface TelegramSearchGlobalOpts {
 
 /** First-class Telegram user-account RPC+SSE client service (phone/code/2FA/QR user sessions only; bot tokens rejected). */
 export interface TelegramClient {
+  readonly accountAccess: "connectedClient" | "officialWeb"
   readonly baseUrl: string
+  cancelLogin(): void!!
+  /** Close this owner’s local connections while retaining the encrypted grant for their next sign-in. */
+  forgetSession(): void!!
   sendCode(phone: string): TelegramSentCode!Msg.MessagingFailure
   signIn(phone: string, phoneCodeHash: string, code: string): TelegramSignInResult!Msg.MessagingFailure
   getPassword(pendingAuthId?: string, sessionToken?: string): TelegramPasswordInfo!Msg.MessagingFailure
@@ -391,7 +400,10 @@ export const unavailableTelegram = Layer.succeed(Telegram, (() => {
   const cause = new Unsent({ cause: "Telegram transport is unavailable on this device" })
   const unsent = () => Effect.fail(cause)
   return {
+    accountAccess: "officialWeb",
     baseUrl: "",
+    cancelLogin: () => Effect.void,
+    forgetSession: () => Effect.void,
     sendCode: unsent,
     signIn: unsent,
     getPassword: unsent,
@@ -416,7 +428,7 @@ export const unavailableTelegram = Layer.succeed(Telegram, (() => {
 
 const TELEGRAM_BOT_TOKEN_PATTERN = /^(?:bot\d+:|(?:\d{5,}:[A-Za-z0-9_-]{10,}))/
 const FLOOD_WAIT_PATTERN = /^FLOOD_WAIT_(\d+)$/
-const TELEGRAM_AUTH_ERRORS = ["AUTH_KEY_UNREGISTERED", "SESSION_REVOKED"]
+const TELEGRAM_AUTH_ERRORS = ["AUTH_KEY_UNREGISTERED", "AUTH_KEY_DUPLICATED", "SESSION_REVOKED"]
 const TELEGRAM_FORBIDDEN_ERRORS = ["CHAT_WRITE_FORBIDDEN", "MESSAGE_AUTHOR_REQUIRED"]
 
 /** Reject Telegram bot tokens at the client boundary; only user-account session tokens are permitted. */
@@ -474,28 +486,27 @@ effect function callTelegramAuthed<A>(
   return try callTelegram(wired, Msg.jsonPost(path, body, validToken, idempotencyKey), schema)
 }
 
+effect function openAuthorization<A>(
+  wired: Wired, path: string, body: Readonly<Record<string, unknown>>, schema: Schema.Decoder<A>,
+): (A | Extract<TelegramSignInResult, { readonly kind: "PasswordRequired" }>)!Msg.MessagingFailure {
+  const opened = try Msg.openJson(wired, Msg.jsonPost(path, body))
+  const needPassword = Schema.decodeUnknownOption(TelegramPasswordNeededBody)(opened.body)
+  if (Option.isSome(needPassword)) return { kind: "PasswordRequired", hint: needPassword.value.hint, pendingAuthId: needPassword.value.pending_auth_id }
+  if (!replied(opened.status)) throw telegramFailureFromBody(opened.status, opened.body, opened.headers["retry-after"])
+  const err = Schema.decodeUnknownOption(TelegramErrorBody)(opened.body)
+  if (Option.isSome(err)) throw telegramErrorFromCode(err.value.error_message, err.value.error_code, opened.headers["retry-after"])
+  return try Msg.decodeWith(schema, opened.body)
+}
+
 effect function signInUser(
   wired: Wired,
   phone: string,
   phoneCodeHash: string,
   code: string,
 ): TelegramSignInResult!Msg.MessagingFailure {
-  const opened = try Msg.openJson(wired, Msg.jsonPost("/rpc/auth.signIn", {
-    phone_number: phone,
-    phone_code_hash: phoneCodeHash,
-    phone_code: code,
-  }))
-  const needPassword = Schema.decodeUnknownOption(TelegramPasswordNeededBody)(opened.body)
-  if (Option.isSome(needPassword)) {
-    return { kind: "PasswordRequired", hint: needPassword.value.hint, pendingAuthId: needPassword.value.pending_auth_id }
-  }
-  if (!replied(opened.status)) {
-    throw telegramFailureFromBody(opened.status, opened.body, opened.headers["retry-after"])
-  }
-  const err = Schema.decodeUnknownOption(TelegramErrorBody)(opened.body)
-  if (Option.isSome(err)) throw telegramErrorFromCode(err.value.error_message, err.value.error_code, opened.headers["retry-after"])
-  const auth = try Msg.decodeWith(TelegramAuthorization, opened.body)
-  return { kind: "Authenticated", sessionToken: auth.session_token, user: auth.user }
+  const result = try openAuthorization(wired, "/rpc/auth.signIn", { phone_number: phone, phone_code_hash: phoneCodeHash, phone_code: code }, TelegramAuthorization)
+  if ("kind" in result) return result
+  return { kind: "Authenticated", sessionToken: result.session_token, user: result.user }
 }
 
 /** Telegram user-account client over HTTP+SSE at `base`. */
@@ -503,7 +514,10 @@ export function telegramAt(base: string) {
   return Layer.effect(Telegram, effect {
     const wired = try remoteAt(base)
     return {
+      accountAccess: "connectedClient" as const,
       baseUrl: base,
+      cancelLogin: () => Effect.void,
+      forgetSession: () => Effect.void,
       sendCode: (phone: string) => callTelegram(wired, Msg.jsonPost("/rpc/auth.sendCode", { phone_number: phone }), TelegramSentCode),
       signIn: (phone: string, phoneCodeHash: string, code: string) => signInUser(wired, phone, phoneCodeHash, code),
       getPassword: (pendingAuthId?: string, sessionToken?: string) => effect {
@@ -516,10 +530,15 @@ export function telegramAt(base: string) {
         TelegramAuthorization,
       ),
       exportLoginToken: (token?: string) => effect {
-        const wire = try callTelegram(wired, Msg.jsonPost("/rpc/auth.exportLoginToken", { token }), TelegramExportLoginTokenWire)
-        return wire._type === "auth.loginToken"
-          ? { kind: "Pending" as const, token: wire.token, expires: wire.expires, loginUrl: wire.login_url }
-          : { kind: "Success" as const, sessionToken: wire.authorization.session_token, user: wire.authorization.user }
+        const wire = try openAuthorization(wired, "/rpc/auth.exportLoginToken", { token }, TelegramExportLoginTokenWire)
+        if ("kind" in wire) return wire
+        if (wire._type === "auth.loginTokenSuccess") return { kind: "Success" as const, sessionToken: wire.authorization.session_token, user: wire.authorization.user }
+        const loginUrl = `tg://login?token=${wire.token}`
+        const expiresAt = wire.expires * 1000
+        if (!/^[A-Za-z0-9_-]+={0,2}$/.test(wire.token) || wire.login_url !== loginUrl || loginUrl.length > 2953 || !Number.isSafeInteger(expiresAt) || expiresAt <= 0) {
+          throw new Msg.ProviderError({ provider: "telegram", status: 200, code: "INVALID_LOGIN_TOKEN" })
+        }
+        return { kind: "Pending" as const, token: wire.token, expiresAt, loginUrl }
       },
       acceptLoginToken: (sessionToken: string, qrToken: string) => callTelegramAuthed(
         wired,
@@ -620,4 +639,26 @@ export function telegramAt(base: string) {
       }),
     }
   })
+}
+
+/** The Telegram user's public identity as shown on the phone. */
+export function telegramUser(user: SdkUser): TelegramUser {
+  return { _type: "user", id: user.id, first_name: user.firstName, self: user.isSelf,
+    ...(user.lastName ? { last_name: user.lastName } : {}), ...(user.username ? { username: user.username } : {}),
+    ...(user.phoneNumber ? { phone: user.phoneNumber } : {}), online: user.status === "online" }
+}
+
+/** A Telegram refusal carries its RPC code. Transport failures carry no session or authentication data. */
+function mtprotoFailure(cause: unknown): Msg.MessagingFailure {
+  if (typeof cause === "object" && cause !== null && "code" in cause && typeof cause.code === "number" && "text" in cause && typeof cause.text === "string") {
+    const code = cause.text === "FLOOD_WAIT_%d" && "seconds" in cause ? `FLOOD_WAIT_${cause.seconds}` : cause.text
+    return telegramErrorFromCode(code, cause.code, undefined)
+  }
+  if (cause instanceof Error && cause.message === "BOT_TOKENS_NOT_SUPPORTED") return telegramErrorFromCode(cause.message, 400, undefined)
+  return new Unreachable({ cause: "Telegram transport unavailable" })
+}
+
+/** Run an SDK request with the calling fiber’s cancellation signal. */
+export function mtprotoRequest<A>(request: (signal: AbortSignal) => Promise<A>): A!Msg.MessagingFailure {
+  return tryPromise({ try: request, catch: mtprotoFailure })
 }

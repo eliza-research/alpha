@@ -1,0 +1,43 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'alpha-suite'
+
+include ':alpha-ipc'
+project(':alpha-ipc').projectDir = new File(settingsDir, '../alpha-ipc')
+
+include ':alpha-app-runtime'
+project(':alpha-app-runtime').projectDir = new File(settingsDir, '../alpha-app-runtime')
+
+include ':thin-app'
+project(':thin-app').projectDir = new File(settingsDir, 'thin-app')
+
+include ':capacitor-android'
+project(':capacitor-android').projectDir = new File(settingsDir, '../../node_modules/@capacitor/android/capacitor')
+
+def elizaAndroidModules = [
+    'eliza-camera': 'camera',
+    'eliza-location': 'location',
+    'eliza-wifi': 'wifi',
+    'eliza-system': 'system',
+    'eliza-secure-store': 'secure-store',
+    'eliza-filesystem': 'filesystem',
+    'eliza-calendar': 'calendar',
+    'eliza-contacts': 'contacts',
+    'eliza-media': 'media',
+    'eliza-browser-surface': 'browser-surface',
+    'eliza-reminders': 'reminders',
+    'eliza-messages': 'messages',
+    'eliza-phone': 'phone',
+    'eliza-action-journal': 'action-journal',
+]
+
+elizaAndroidModules.each { moduleName, dirName ->
+    include ":${moduleName}"
+    project(":${moduleName}").projectDir = new File(settingsDir, "../../../../.eliza/packages/os/android/${dirName}")
+}

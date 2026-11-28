@@ -615,7 +615,6 @@ effect function stageEdit<R = never>(thread: number, event: DraftEdit, change: P
 }
 
 export effect function writeMessageDraft(thread: number, body: string): boolean!!(Drafts | Composer.Machine) {
-  if (body.length > MMS_MAX_BODY) return false
   return try stageEdit(thread, { type: "typeText", empty: body === "" }, { body })
 }
 
@@ -904,7 +903,9 @@ export effect function prepare(thread: number, selectedSim: TelephonySubscriptio
     if (provider === null || !sameDraftSource(draft.source, { kind: "thread", thread: provider, recipients })) return false
   } else if (!sameDraftSource(draft.source, { kind: "recipients", recipients })) return false
   const pictures = try store.pictures(thread)
-  try store.setOutgoing({ thread, to, body: state.slot.author === "Nobody" ? "" : try store.text(thread), sim: null, selectedSim, trustedTap, pictures, pictured: pictures.length > 0, operation: undefined, mms: undefined, status: undefined, draft, replaces: completedSend(state) })
+  const body = state.slot.author === "Nobody" ? "" : try store.text(thread)
+  if (body.length > MMS_MAX_BODY) return false
+  try store.setOutgoing({ thread, to, body, sim: null, selectedSim, trustedTap, pictures, pictured: pictures.length > 0, operation: undefined, mms: undefined, status: undefined, draft, replaces: completedSend(state) })
   return true
 }
 
@@ -1057,7 +1058,7 @@ export effect function editNewMessage(visit: number, edit: NewDraftEdit, closePi
       || newDraftHeld(try composer.get(), before.revision)) return false
     if (handoff !== undefined && (where.route !== handoff.route || store.messageHandoff.get() !== handoff || before.recipients !== "")) return false
     const draft = { ...before, ...edit, revision: before.revision + 1 }
-    if (draft.body.length > MMS_MAX_BODY || draft.recipients.length > 230) return false
+    if (draft.recipients.length > 230) return false
     const thread = edit.recipients === undefined ? place.newDraft.recipient : try numberForNew(draft)
     if (!canEditNewDraft(place, visit, draft.revision, thread, closePicker) || !(try store.saveNewDraft(draft))) return false
     return try contained(messages.send({ type: "editNewDraft", visit, revision: draft.revision, thread, closePicker }), "editing the New message draft")
@@ -1224,7 +1225,8 @@ export effect function sendNewMessage(visit: number, revision: number, selectedS
     const draft = try store.newDraft()
     const state = try composer.get()
     if (!showing(where, "Messages") || where.assistant !== "Bar" || !holdsNewDraft(place, visit) || place.newDraft.picking
-      || revision !== place.newDraft.revision || revision !== draft.revision || (!draft.body.trim() && draft.pictures.length === 0)) return false
+      || revision !== place.newDraft.revision || revision !== draft.revision || (!draft.body.trim() && draft.pictures.length === 0)
+      || draft.body.length > MMS_MAX_BODY) return false
     const to = messageRecipients(draft.recipients)
     const thread = place.newDraft.recipient
     const support = try supported(to.length, draft.pictures.length)

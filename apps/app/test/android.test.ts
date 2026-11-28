@@ -74,9 +74,11 @@ public final class Driver {
 
 // spec/app/platform/index.md, "Story: Reach the phone's native capabilities"
 describe("Reach the phone's native capabilities", () => {
-  it("hands ElizaCloud the exact spec-verified cloud route table from @repo/cloud with no refused routes", () => {
+  // spec/cloud/index.md, "Story: Reach my account's services from the app"
+  it("hands ElizaCloud the verified route table with WebView debugging disabled", () => {
     expect(capacitorConfig.plugins?.ElizaCloud?.routes).toEqual(elizaCloudRoutes);
     expect(tableProblems()).toEqual([]);
+    expect(capacitorConfig.android?.webContentsDebuggingEnabled).toBe(false);
   });
 
   it.skipIf(!jdk)("asks the network location service only for fixed, opted-in networks, falls back to the address-only answer, and reads only a usable position", () => {

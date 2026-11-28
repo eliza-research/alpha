@@ -102,7 +102,7 @@ export type ProviderName = "slack" | "telegram"
 export error RateLimited { provider: ProviderName; retryAfter?: number; code: string }
 
 /** User session or OAuth token is missing, invalid, expired, or revoked (`401` / `token_revoked` / `AUTH_KEY_UNREGISTERED`). */
-export error AuthRevoked { provider: ProviderName; code: string }
+export error AuthRevoked { provider: ProviderName; code: string; rejected?: Redacted.Redacted<string> }
 
 /** Authenticated user lacks permission for the requested action (`403` / `CHAT_WRITE_FORBIDDEN` / `cant_update_message`). */
 export error Forbidden { provider: ProviderName; code: string }
@@ -116,19 +116,31 @@ export error ProviderError { provider: ProviderName; code: string; status: numbe
 /** Unified failure union across transport, decoding, auth, rate-limiting, permissions, and provider errors. */
 export type MessagingFailure = Failure | RateLimited | AuthRevoked | Forbidden | BotTokenRejected | ProviderError
 
-/** Isolated secret session credentials kept outside spec machines and KeyValueStore JSON. */
-export interface StoredSecret {
+/** The versioned vault record scopes each grant to its owner and messaging account. */
+export schema SavedGrant {
+  readonly owner: string
+  readonly key: string
+  readonly access: string
+  readonly refresh?: string
+  readonly expiresAt?: number
+  readonly clientId?: string
+  readonly rotation?: { readonly id: string; readonly until: number }
+  readonly workspace?: { readonly teamId: string; readonly name: string; readonly ownerUserId: string; readonly brokered?: boolean; readonly authorizationId?: string }
+}
+
+/** The same grant metadata with tokens redacted until they reach the vault or provider. */
+export type StoredSecret = Omit<SavedGrant, "owner" | "key" | "access" | "refresh"> & {
   readonly accessToken: Redacted.Redacted<string>
   readonly refreshToken?: Redacted.Redacted<string>
-  readonly expiresAt?: number
 }
 
 /** Isolated secret session store for messaging accounts; secrets stay Redacted in platform memory or native secure storage. */
 export interface SessionStore {
-  get(key: string): Option.Option<StoredSecret>!!
-  set(key: string, secret: StoredSecret): void!!
-  delete(key: string): void!!
-  clear(): void!!
+  owner(): (string | undefined)!!
+  get(key: string, expectedOwner?: string): Option.Option<StoredSecret>!!
+  set(key: string, secret: StoredSecret, expectedOwner?: string): boolean!!
+  exchange(key: string, expected: StoredSecret, next: StoredSecret | undefined, expectedOwner?: string): boolean!!
+  delete(key: string, expectedOwner?: string): boolean!!
   keys(): ReadonlyArray<string>!!
 }
 
@@ -154,23 +166,51 @@ export function refreshTokenValue(secret: StoredSecret): string | undefined {
   return secret.refreshToken === undefined ? undefined : Redacted.value(secret.refreshToken)
 }
 
+/** Both a renewed grant and a new refresh reservation invalidate an earlier comparison. */
+export function sameCredential(left: StoredSecret, right: StoredSecret): boolean {
+  return tokenValue(left) === tokenValue(right) && refreshTokenValue(left) === refreshTokenValue(right)
+    && left.rotation?.id === right.rotation?.id && left.workspace?.authorizationId === right.workspace?.authorizationId
+}
+
 /** Isolated in-memory `SessionStore` whose contents never enter `KeyValueStore` or serialized machine state. */
 export function createSessionStore(): SessionStore {
   const entries = new Map<string, StoredSecret>()
+  const owner = randomBase64Url(24)
   return {
-    get: (key: string) => sync(() => {
-      const found = entries.get(key)
+    owner: () => succeed(owner),
+    get: (key: string, expectedOwner?: string) => sync(() => {
+      const found = expectedOwner === undefined || expectedOwner === owner ? entries.get(key) : undefined
       return found === undefined ? Option.none() : Option.some(found)
     }),
-    set: (key: string, secret: StoredSecret) => sync(() => { entries.set(key, secret) }),
-    delete: (key: string) => sync(() => { entries.delete(key) }),
-    clear: () => sync(() => { entries.clear() }),
+    set: (key: string, secret: StoredSecret, expectedOwner?: string) => sync(() => {
+      if (expectedOwner !== undefined && expectedOwner !== owner) return false
+      entries.set(key, secret)
+      return true
+    }),
+    exchange: (key: string, expected: StoredSecret, next: StoredSecret | undefined, expectedOwner?: string) => sync(() => {
+      if (expectedOwner !== undefined && expectedOwner !== owner) return false
+      const previous = entries.get(key)
+      if (!previous || !sameCredential(previous, expected)) return false
+      if (next === undefined) entries.delete(key)
+      else entries.set(key, next)
+      return true
+    }),
+    delete: (key: string, expectedOwner?: string) => sync(() => {
+      if (expectedOwner !== undefined && expectedOwner !== owner) return false
+      entries.delete(key)
+      return true
+    }),
     keys: () => sync(() => Array.from(entries.keys())),
   }
 }
 
 /** Default `MessagingSessions` layer backed by an isolated in-memory secret map. */
 export const messagingSessions = Layer.sync(MessagingSessions, createSessionStore)
+
+/** Nonsecret identity for a notification bound to the current owner and messaging account. */
+export effect function noticeScope(parts: readonly string[]): string!! {
+  return try promise(() => sha256Base64Url(JSON.stringify(["alpha-messaging-notice", ...parts])))
+}
 
 /** OAuth2 PKCE S256 verifier/challenge pair. */
 export interface PkcePair {

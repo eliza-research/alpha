@@ -188,7 +188,7 @@ public final class AlphaDevicePlugin extends Plugin {
   accessPermissionStatus(call);
  }
 
- private static void putSettingsGrants(Context context,JSObject out) {
+ static void putSettingsGrants(Context context,JSObject out) {
   JSObject grants=new JSObject();
   boolean fine=context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED;
   boolean coarse=context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED;
@@ -623,6 +623,61 @@ public final class AlphaDevicePlugin extends Plugin {
    if(activation==null)reconcileUpdate();
    try{call.resolve(readUpdateState());}catch(Exception unavailable){call.reject("Update status unavailable");}
   },()->call.reject("Update status unavailable"));
+ }
+ /** Headless readback of AlphaCore's update state for brokered thin-app and overlay callers. */
+ static JSObject readHeadlessUpdateState(Context context)throws Exception{
+  Context appContext=context.getApplicationContext();
+  if(UpdatePause.context==null)UpdatePause.configure(appContext);
+  if(activation==null){
+   try{
+    var settled=UpdatePause.reconcile();
+    if(settled!=null){
+     try{UpdateConfirmationReceipt.retire(appContext,settled);}catch(Exception ignored){}
+     synchronized(updateBarrier){
+      settledActivation=settled.id;
+      settledOutcome=BuildConfig.VERSION_CODE==settled.targetCode?"installed":"canceled";
+      settledResumeBridge=null;
+     }
+    }
+   }catch(Exception ignored){}
+  }
+  synchronized(updateBarrier){
+   UpdateActivation pending=activation;
+   if(pending!=null){
+    return new JSObject()
+     .put("activationId",pending.id)
+     .put("bridgeId","headless")
+     .put("automatic",pending.automatic)
+     .put("phase",pending.sealed?"paused":"preparing")
+     .put("pending",true);
+   }
+   var record=UpdatePause.store().read();
+   JSObject result=new JSObject().put("bridgeId","headless").put("pending",record!=null);
+   if(record!=null){
+    result.put("activationId",record.id).put("phase","paused").put("canContinue",false);
+   }else{
+    result.put("idle",true);
+    if(settledActivation!=null){
+     result.put("activationId",settledActivation).put("outcome",settledOutcome).put("resume",false);
+    }
+   }
+   return result;
+  }
+ }
+ /** Headless update manifest check reusing AlphaDevicePlugin's verified HTTPS manifest reader. */
+ static JSObject checkForUpdateHeadless(Context context)throws Exception{
+  Context appContext=context.getApplicationContext();
+  if(UpdatePause.context==null)UpdatePause.configure(appContext);
+  byte[] manifest=readFinalUpdateManifest();
+  return manifest==null?new JSObject():new JSObject()
+   .put("manifest",new String(manifest,java.nio.charset.StandardCharsets.UTF_8))
+   .put("manifestSha256",manifestDigest(manifest));
+ }
+ /** Headless opener for Android's install-unknown-apps permission page. */
+ static JSObject openUpdatePermissionSettingsHeadless(Context context){
+  if(Build.VERSION.SDK_INT<31)return new JSObject().put("status","unsupported");
+  context.startActivity(handOff(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:"+context.getPackageName()))));
+  return new JSObject().put("status","opened");
  }
  private boolean reconcileUpdate(){
   try{
@@ -1254,5 +1309,29 @@ public final class AlphaDevicePlugin extends Plugin {
    if(view==null||activity.isFinishing()||activity.isDestroyed()){call.reject("Alpha view is unavailable");return;}
    JSObject result=new JSObject();result.put("performed",view.performHapticFeedback(feedback));call.resolve(result);
   });
+ }
+
+ @PluginMethod public void openAlphaOverlay(PluginCall call){
+  String entrySource=call.getString("entrySource","app");
+  String initialQuery=call.getString("initialQuery");
+  boolean startVoice=Boolean.TRUE.equals(call.getBoolean("startVoice",false));
+  boolean opened=ai.alphacompute.alphaphone.overlay.AlphaVoiceInteractionService.showOverlay(getContext(),entrySource,initialQuery,startVoice);
+  call.resolve(new JSObject().put("opened",opened));
+ }
+
+ @PluginMethod public void launchSiblingApp(PluginCall call){
+  String target=call.getString("targetPackage",call.getString("view",""));
+  String uri=call.getString("uri");
+  String extrasJson=call.getString("extrasJson");
+  boolean launched=AlphaCorePluginDispatch.launchSiblingApp(getContext(),ai.alphacompute.alphaphone.ipc.AlphaSuitePolicyLoader.load(getContext()),target,uri,extrasJson);
+  call.resolve(new JSObject().put("launched",launched));
+ }
+
+ @PluginMethod public void finishTask(PluginCall call){
+  android.app.Activity activity=getActivity();
+  if(activity!=null&&!activity.isFinishing()&&!activity.isDestroyed()){
+   activity.runOnUiThread(()->activity.moveTaskToBack(true));
+  }
+  call.resolve();
  }
 }

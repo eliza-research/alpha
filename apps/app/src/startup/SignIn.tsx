@@ -1,5 +1,5 @@
 // spec/app/account/signIn.md, "Story: Sign in when Alpha needs it"; spec/app/update/page.md, "A page that was not mounted mounts its editors only once no update is pending"
-import { StartupSignIn as SignInScreen } from "@repo/ui";
+import { Button, StartupSignIn as SignInScreen } from "@repo/ui";
 import { Exit } from "effect";
 import { useMemo, useSyncExternalStore } from "react";
 import { useMachine } from "../../gen/app__account__signIn.react.ts";
@@ -9,6 +9,7 @@ import {
   cancelSignInStep,
   checkSignIn,
   chooseGoogleSignIn,
+  chooseLocalMode,
   latestSignInSeconds,
   openSignInNetwork,
   resendSignInCode,
@@ -84,8 +85,29 @@ export function SignIn({ alpha, read, state }: { alpha: Alpha; read?: FirstRun; 
     message: networkMessages[read.connection],
     onOpen: () => alpha.runtime.runPromise(openSignInNetwork),
   };
+  const startLocal = () => { alpha.runtime.runFork(chooseLocalMode); };
+  const localOption = (
+    <div className="mx-auto w-full max-w-lg shrink-0 border-t border-border bg-background px-6 pt-4 pb-[max(1.5rem,var(--alpha-safe-bottom))]">
+      <Button
+        variant="secondary"
+        data-alpha-local-mode=""
+        className="min-h-13 w-full rounded-list-icon text-base leading-tight font-medium"
+        onClick={startLocal}
+      >
+        Use On-Device AI (No Sign-In)
+      </Button>
+      <p className="mt-2 text-center text-caption text-muted-foreground">
+        Run Gemma 4 locally on this phone with zero cloud account. You can sign in anytime in Settings.
+      </p>
+    </div>
+  );
   if (read.stage === "Unavailable") return (
-    <SignInScreen stage="Choose" email={false} phone={false} online={online} connection={connection} message="Sign-in unavailable" onRetry={retry} />
+    <div className="flex size-full flex-col bg-background" onPointerDownCapture={touch} onKeyDownCapture={touch}>
+      <div className="min-h-0 flex-1">
+        <SignInScreen stage="Choose" email={false} phone={false} online={online} connection={connection} message="Sign-in unavailable" onRetry={retry} />
+      </div>
+      {localOption}
+    </div>
   );
   const busy = state.work !== "Resting";
   const issue = messages[state.trouble];
@@ -95,21 +117,24 @@ export function SignIn({ alpha, read, state }: { alpha: Alpha; read?: FirstRun; 
   const method = state.method === "Phone" ? "phone" : "email";
   if (state.step === "Browser") return <SignInScreen stage="Browser" connection={connection} />;
   return (
-    <div className="size-full" onPointerDownCapture={touch} onKeyDownCapture={touch}>
-      {state.step === "Code" ? (
-        <SignInScreen stage="Code" attempt={state.attempt} method={method} address={state.address} busy={busy} problem={issue} connection={connection}
-          onVerify={onVerify} onBack={onBack}
-          resendIn={Math.max(0, state.resendAt - Math.max(now, clock()))} onResend={online ? () => { alpha.runtime.runFork(resendSignInCode); } : undefined} />
-      ) : state.step === "Second" ? (
-        <SignInScreen stage="Second" attempt={state.attempt} factor={state.factor === "Sms" ? "sms" : "totp"}
-          busy={busy} problem={issue} connection={connection} onVerify={onVerify} onBack={onBack} />
-      ) : (
-        <SignInScreen stage="Choose" email={read.email} phone={read.phone} online={online} busy={busy} message={issue} connection={connection}
-          previous={state.prefill ? { method, address: state.address } : undefined}
-          onSend={(selected, address) => { alpha.runtime.runFork(sendSignInCode(selected, address)); }}
-          onGoogle={read.google ? () => { alpha.runtime.runFork(chooseGoogleSignIn); } : undefined}
-          onRetry={!read.email || !read.google || !read.phone ? retry : undefined} />
-      )}
+    <div className="flex size-full flex-col bg-background" onPointerDownCapture={touch} onKeyDownCapture={touch}>
+      <div className="min-h-0 flex-1">
+        {state.step === "Code" ? (
+          <SignInScreen stage="Code" attempt={state.attempt} method={method} address={state.address} busy={busy} problem={issue} connection={connection}
+            onVerify={onVerify} onBack={onBack}
+            resendIn={Math.max(0, state.resendAt - Math.max(now, clock()))} onResend={online ? () => { alpha.runtime.runFork(resendSignInCode); } : undefined} />
+        ) : state.step === "Second" ? (
+          <SignInScreen stage="Second" attempt={state.attempt} factor={state.factor === "Sms" ? "sms" : "totp"}
+            busy={busy} problem={issue} connection={connection} onVerify={onVerify} onBack={onBack} />
+        ) : (
+          <SignInScreen stage="Choose" email={read.email} phone={read.phone} online={online} busy={busy} message={issue} connection={connection}
+            previous={state.prefill ? { method, address: state.address } : undefined}
+            onSend={(selected, address) => { alpha.runtime.runFork(sendSignInCode(selected, address)); }}
+            onGoogle={read.google ? () => { alpha.runtime.runFork(chooseGoogleSignIn); } : undefined}
+            onRetry={!read.email || !read.google || !read.phone ? retry : undefined} />
+        )}
+      </div>
+      {state.step === "Choose" ? localOption : null}
     </div>
   );
 }

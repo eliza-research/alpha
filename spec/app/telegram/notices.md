@@ -69,7 +69,9 @@ pure def lawSuppressedMessagesNeverNotify(chat: int, kind: ChatKind, mentioned: 
     and not(shouldNotify(false, false, false, chat, chat, kind, mentioned))
 ```
 
-### Watching starts once authenticated with notification permission, and stops with full withdrawal on sign-out, revocation or permission loss
+### Signing in starts chat updates, and device permission controls whether updates can post notices
+
+The signed-in Telegram client receives chat updates while it runs, including when Android notifications are denied. The owner can enable notices in Telegram or change their notification settings. Losing permission withdraws posted notices. Revocation or sign-out also stops chat updates.
 
 ```quint
 pure def watching(s: Notices): bool = s.authenticated and s.notifyAllowed
@@ -78,21 +80,16 @@ pure def canWatchChanged(s: Notices, authenticated: bool, notifyAllowed: bool): 
   authenticated != s.authenticated or notifyAllowed != s.notifyAllowed
 
 pure def watchChanged(s: Notices, authenticated: bool, notifyAllowed: bool): Noticed =
-  val was = watching(s)
-  val nowOn = authenticated and notifyAllowed
   if (not(authenticated))
     {
       state: { ...initial, check: R::drop(s.check), posts: s.posts },
-      out: if (was or s.upChats.size() > 0) List(UnscheduleSync, WithdrawAll) else List(),
+      out: if (s.authenticated) List(UnscheduleSync, WithdrawAll) else List(),
     }
-  else if (not(nowOn))
-    {
-      state: { ...s, authenticated: true, notifyAllowed: false, check: R::drop(s.check), upChats: Set() },
-      out: if (was or s.upChats.size() > 0) List(UnscheduleSync, WithdrawAll) else List(),
-    }
-  else if (not(was))
-    { state: { ...s, authenticated: true, notifyAllowed: true }, out: List(ScheduleSync) }
-  else { state: s, out: List() }
+  else {
+    state: { ...s, authenticated: true, notifyAllowed: notifyAllowed, upChats: if (notifyAllowed) s.upChats else Set() },
+    out: if (not(s.authenticated)) List(ScheduleSync)
+      else if (not(notifyAllowed)) List(WithdrawAll) else List(),
+  }
 
 pure def canMuteOrArchiveChanged(s: Notices, chat: int, isMuted: bool, isArchived: bool): bool =
   s.authenticated and chat > 0
@@ -107,20 +104,20 @@ pure def muteOrArchiveChanged(s: Notices, chat: int, isMuted: bool, isArchived: 
 ### Polling reads updates from the watermark; the first answer sets the baseline quietly and later answers post only eligible messages
 
 ```quint
-pure def canPoll(s: Notices): bool = watching(s) and s.check.status != R::Loading
+pure def canPoll(s: Notices): bool = s.authenticated and s.check.status != R::Loading
 
 pure def poll(s: Notices): Noticed =
   val check = R::ask(s.check)
   { state: { ...s, check: check }, out: List(PollUpdates({ ticket: check.ticket, since: s.since })) }
 
 pure def canPolled(s: Notices, ticket: int, ok: bool, point: int, incoming: Incoming): bool =
-  watching(s) and R::canAnswer(s.check, ticket) and incoming.chat >= 0 and incoming.message >= 0
+  s.authenticated and R::canAnswer(s.check, ticket) and incoming.chat >= 0 and incoming.message >= 0
     and (ok implies (point >= 1 and (s.since != 0 implies point >= s.since)))
 
 pure def polled(s: Notices, ticket: int, ok: bool, point: int, incoming: Incoming): Noticed =
   val check = R::answer(s.check, ok)
   val eligible =
-    ok and s.since != 0 and incoming.chat > 0 and incoming.message > 0
+    watching(s) and ok and s.since != 0 and incoming.chat > 0 and incoming.message > 0
       and shouldNotify(
         incoming.isOwn, s.muted.contains(incoming.chat), s.archived.contains(incoming.chat),
         s.frontChat, incoming.chat, incoming.kind, incoming.mentioned
@@ -137,7 +134,15 @@ pure def polled(s: Notices, ticket: int, ok: bool, point: int, incoming: Incomin
 
 ### Visible chat read withdraws posted notices for that chat, and tapping a posted notice deep-links to its chat
 
+Android taps and the notice rows in Telegram resolve the original provider peer under the active Alpha owner and verified Telegram grant. A tap from a replaced or revoked session cannot open a chat. If Telegram confirms the peer is unavailable, the notice is retired. A temporary network failure leaves the tap pending.
+
 ```quint
+pure def mayOpenNotice(s: Notices, chat: int, sameGrant: bool): bool =
+  watching(s) and chat > 0 and sameGrant
+
+pure def lawReplacedGrantCannotOpenNotice(s: Notices, chat: int): bool =
+  not(mayOpenNotice(s, chat, false))
+
 pure def canFrontChatChanged(s: Notices, chat: int): bool =
   s.authenticated and chat >= 0 and chat != s.frontChat
 
@@ -145,7 +150,7 @@ pure def frontChatChanged(s: Notices, chat: int): Noticed =
   val clear = chat > 0 and s.upChats.contains(chat)
   {
     state: { ...s, frontChat: chat, upChats: if (clear) s.upChats.exclude(Set(chat)) else s.upChats },
-    out: if (clear) List(WithdrawChat({ chat: chat })) else List(),
+    out: if (chat > 0) List(WithdrawChat({ chat: chat })) else List(),
   }
 
 pure def restart(s: Notices): Notices = { ...s, check: R::drop(s.check), frontChat: 0 }
@@ -156,7 +161,8 @@ pure def restart(s: Notices): Notices = { ...s, check: R::drop(s.check), frontCh
 ```quint
 pure def alwaysNoticesConsistent(s: Notices): bool =
   s.since >= 0 and s.frontChat >= 0 and s.posts >= 0
-    and (not(watching(s)) implies (s.check.status != R::Loading and s.upChats.size() == 0))
+    and (not(watching(s)) implies s.upChats.size() == 0)
+    and (not(s.authenticated) implies s.check.status != R::Loading)
     and (not(s.authenticated) implies (s.since == 0 and s.frontChat == 0 and s.muted.size() == 0 and s.archived.size() == 0))
     and (s.frontChat > 0 implies not(s.upChats.contains(s.frontChat)))
 
@@ -176,7 +182,7 @@ pure def stepReadingWithdrawsNotices(before: Notices, via: str, after: Notices, 
   )
 
 pure def stepSignOutWithdrawsAllAndStopsSync(before: Notices, via: str, after: Notices, out: List[Effect]): bool =
-  (via == "watchChanged" and not(after.authenticated) and watching(before)) implies (
+  (via == "watchChanged" and not(after.authenticated) and before.authenticated) implies (
     after.upChats.size() == 0 and after.since == 0 and out.includes(UnscheduleSync) and out.includes(WithdrawAll)
   )
 

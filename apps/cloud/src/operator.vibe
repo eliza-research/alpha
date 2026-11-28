@@ -39,7 +39,8 @@ const workerSecretSource: Readonly<Record<string, string>> = {
   GOOGLE_CONNECT_CLIENT_SECRET: "GOOGLE_CONNECT_CLIENT_SECRET", GOOGLE_CONNECT_TOKEN_KEY: "GOOGLE_CONNECT_TOKEN_KEY",
   STRIPE_SECRET_KEY: "STRIPE_SECRET_KEY", STRIPE_WEBHOOK_SECRET: "STRIPE_WEBHOOK_SECRET",
   CEREBRAS_API_KEY: "CEREBRAS_API_KEY", CARTESIA_API_KEY: "CARTESIA_API_KEY",
-  GOOGLE_MAPS_API_KEY: "GOOGLE_MAPS_API_KEY",
+  GOOGLE_MAPS_API_KEY: "GOOGLE_MAPS_API_KEY", SLACK_CLIENT_ID: "SLACK_CLIENT_ID", SLACK_APP_ID: "SLACK_APP_ID",
+  SLACK_APP_TOKEN: "SLACK_APP_TOKEN", SLACK_SIGNING_SECRET: "SLACK_SIGNING_SECRET", TELEGRAM_API_ID: "TELEGRAM_API_ID",
 }
 
 /** This package's directory, run from `src/` or from `dist/src/`. */
@@ -196,7 +197,8 @@ export effect function elizaosCloud(args: ReadonlyArray<string>, values: Readonl
 export effect function wrangler(args: ReadonlyArray<string>, accountId?: string) {
   const path = try Path.Path
   const directory = try packageDirectory()
-  try run(`wrangler ${args.slice(0, 2).join(" ")}`, path.join(directory, "node_modules/.bin/wrangler"), args, directory, { WRANGLER_SEND_METRICS: "false", ...(accountId === undefined ? {} : { CLOUDFLARE_ACCOUNT_ID: accountId }) })
+  const executable = try canonicalPath(path.join(directory, "node_modules/.bin/wrangler"))
+  try run(`wrangler ${args.slice(0, 2).join(" ")}`, executable, args, directory, { WRANGLER_SEND_METRICS: "false", ...(accountId === undefined ? {} : { CLOUDFLARE_ACCOUNT_ID: accountId }) })
 }
 
 /** A directory of this run only its owner reads, gone with the scope. */

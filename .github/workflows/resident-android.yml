@@ -78,6 +78,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
@@ -87,6 +88,7 @@ jobs:
         run: |
           sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+          printf '%s\n' "$ANDROID_HOME/cmake/3.22.1/bin" >> "$GITHUB_PATH"
       - name: Provision build capacity on the disposable hosted runner
         if: runner.environment == 'github-hosted'
         run: |
@@ -94,6 +96,10 @@ jobs:
             if [ -e "$unused" ]; then sudo rm -rf -- "$unused"; fi
           done
           df -h "$GITHUB_WORKSPACE"
+      - name: Install speech model converter dependencies
+        run: |
+          python3 -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch==2.8.0+cpu'
+          python3 -m pip install 'numpy==2.2.6' 'zstandard==0.23.0' 'librosa==0.11.0' 'onnx==1.21.0' 'PyYAML==6.0.2' 'tqdm==4.67.1' 'requests==2.34.2'
       - uses: ./.github/actions/setup
         with:
           job: resident-android
@@ -111,6 +117,8 @@ jobs:
           pnpm --filter @repo/app android inputs
       - name: Build and verify the resident launcher candidate APKs
         env:
+          TELEGRAM_API_ID: ${{ vars.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: pnpm --filter @repo/app android build --release
@@ -119,7 +127,13 @@ jobs:
       - name: Run Alpha native JVM unit tests
         timeout-minutes: 15
         working-directory: apps/app/android
-        run: ./gradlew --no-daemon :app:testLauncherDebugUnitTest
+        run: |
+          eliza_pin=$(node -p 'require(process.env.GITHUB_WORKSPACE + "/eliza.lock.json").commit')
+          engine_pin=$(node -p 'require(process.env.GITHUB_WORKSPACE + "/.eliza/packages/os/android/local-inference/engine.lock.json").engine.commit')
+          ./gradlew --no-daemon \
+            "-PelizaInferenceEngineDir=$PWD/.cache/voice-engine/$engine_pin" \
+            "-PelizaParadeeNativeDir=$PWD/.cache/voice/$eliza_pin" \
+            -PelizaSpeechBridgeCapacitor=true :app:testLauncherDebugUnitTest
       - uses: actions/upload-artifact@v5
         with:
           name: app-native-candidate-${{ env.ELIZAOS_VERSION_CODE }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}

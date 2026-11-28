@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="alpha_background">#FFFFFF</color>
+    <color name="alpha_foreground">#000000</color>
+    <color name="alpha_primary">#0000FF</color>
+    <color name="alpha_primary_foreground">#FFFFFF</color>
+    <color name="alpha_surface">#FAFAFA</color>
+    <color name="alpha_border">#E6E6E6</color>
+</resources>

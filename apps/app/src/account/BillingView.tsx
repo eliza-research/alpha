@@ -12,8 +12,10 @@ import { useMachine as usePlan } from "../../gen/app__account__plan.react.ts";
 import { currentSignIn } from "../../gen/app__account__session.ts";
 import { useMachine as useSession } from "../../gen/app__account__session.react.ts";
 import { untimed } from "../runtime/index.vibe";
+import type { PlanOffer } from "@elizaos/cloud";
+import type { InvoiceEntry } from "./bridge.vibe";
 import { formatDate, formatUsdCents, formatUsdMicros } from "./phone.ts";
-import { type AccountRuntime, useAccountShelf, useAccountTimed } from "./useAccount.ts";
+import { type AccountRuntime, openAccountExternal, useAccountShelf, useAccountTimed } from "./useAccount.ts";
 
 const standingLabels: Record<Standing, string> = {
   Checking: "Checking plan…",
@@ -135,6 +137,79 @@ function CodesCard({ runtime, signIn, elsewhere }: { readonly runtime: AccountRu
   );
 }
 
+/** Plan offers list and Stripe invoice history cards. */
+function OffersAndInvoices({
+  runtime,
+  offers,
+  invoices,
+  offersTicket,
+  billing,
+}: {
+  readonly runtime: AccountRuntime;
+  readonly offers: ReadonlyArray<PlanOffer>;
+  readonly invoices: ReadonlyArray<InvoiceEntry>;
+  readonly offersTicket: number;
+  readonly billing: ReturnType<typeof useBilling>;
+}) {
+  return (
+    <>
+      {offers.length > 0 ? (
+        <ListGroup heading="Plans">
+          {offers.map((offer) => {
+            const tier = offer.key === "pro_monthly" ? "Pro" : "Plus";
+            const reviewEvent = { type: "reviewPlan", tier, ticket: offersTicket } as const;
+            return (
+              <ListRow
+                key={offer.key}
+                title={`${offer.name} — ${formatUsdCents(offer.amountCents)}/${offer.interval}`}
+                detail={`Monthly allowance: $${offer.allowance.amountUsd}`}
+                trailing={
+                  <Button
+                    size="sm"
+                    disabled={!billing.can(reviewEvent)}
+                    onClick={() => { void billing.send(reviewEvent); }}
+                  >
+                    Subscribe
+                  </Button>
+                }
+              />
+            );
+          })}
+        </ListGroup>
+      ) : null}
+
+      {invoices.length > 0 ? (
+        <ListGroup heading="Invoices">
+          {invoices.map((inv) => (
+            <ListRow
+              key={inv.id}
+              title={inv.number ?? inv.id}
+              detail={`${formatDate(inv.date)} · ${inv.status}`}
+              trailing={(
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{formatUsdCents(inv.amountPaidCents || inv.amountDueCents)}</span>
+                  {inv.hostedInvoiceUrl ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        const url = inv.hostedInvoiceUrl;
+                        if (url) void openAccountExternal(runtime, url);
+                      }}
+                    >
+                      Open
+                    </Button>
+                  ) : null}
+                </div>
+              )}
+            />
+          ))}
+        </ListGroup>
+      ) : null}
+    </>
+  );
+}
+
 /** Plan standing, checkout, invoices, plan changes, gift/promo code redemption, and referrals view. */
 export function BillingView({ runtime }: { readonly runtime: AccountRuntime }) {
   const session = useAccountTimed(runtime, useSession);
@@ -154,11 +229,28 @@ export function BillingView({ runtime }: { readonly runtime: AccountRuntime }) {
 
   const signIn = currentSignIn(sesState);
   const isMember = planState.standing === "Member";
+  const localAiActive = shelf.aiMode === "local" && !aiOn(planState);
   const otherTier = planState.tier === "Pro" ? "Plus" : "Pro";
   const billingBusy = billState.visit.open || billState.unsettled || billState.confirm.outcome === "Sent";
   const changeBusy = chgState.step !== "Idle" || chgState.unsettled || chgState.leave.showing;
   const codesBusy = codeState.redeem.outcome === "Sent" || codeState.apply.outcome === "Sent" || codeState.unsettled;
   const parsedFunds = Math.round(Number(fundsAmount));
+  const review = billState.review.tag === "PurchaseReview" ? billState.review : undefined;
+  const reviewedOffer = review
+    ? shelf.offers.find((offer) => (offer.key === "pro_monthly" ? "Pro" : "Plus") === review.tier)
+    : undefined;
+  const chooseReviewedEvent = review
+    ? ({
+        type: "choosePlan",
+        tier: review.tier,
+        reviewed: review.number,
+        signIn,
+        standing: planState.standing,
+        origin: "ByOwner",
+        elsewhere: changeBusy || codesBusy,
+        now: untimed,
+      } as const)
+    : undefined;
 
   return (
     <div className="space-y-3">
@@ -166,12 +258,16 @@ export function BillingView({ runtime }: { readonly runtime: AccountRuntime }) {
         <div className="flex items-center justify-between gap-2">
           <CardTitle>{isMember ? `Alpha ${planState.tier}` : "Alpha Cloud Plan"}</CardTitle>
           <StatusDot
-            status={aiOn(planState) ? "ok" : planState.standing === "Checking" ? "busy" : "warn"}
-            label={aiOn(planState) ? "AI on" : "AI off"}
+            status={aiOn(planState) || localAiActive ? "ok" : planState.standing === "Checking" ? "busy" : "warn"}
+            label={aiOn(planState) ? "AI on" : localAiActive ? "On-device AI" : "AI off"}
             showLabel
           />
         </div>
-        <p className="text-sm text-muted-foreground">{standingLabels[planState.standing]}</p>
+        <p className="text-sm text-muted-foreground">
+          {localAiActive
+            ? "Running locally on this phone. An Alpha Cloud plan is optional."
+            : standingLabels[planState.standing]}
+        </p>
         {planState.standing === "Grace" && planState.kept.until > 0 ? (
           <p className="text-caption text-muted-foreground">Offline grace until {formatDate(planState.kept.until)}</p>
         ) : null}
@@ -265,30 +361,40 @@ export function BillingView({ runtime }: { readonly runtime: AccountRuntime }) {
         </Banner>
       ) : null}
 
-      {shelf.offers.length > 0 ? (
-        <ListGroup heading="Plans">
-          {shelf.offers.map((offer) => {
-            const tier = offer.key === "pro_monthly" ? "Pro" : "Plus";
-            const chooseEvent = { type: "choosePlan", tier, reviewed: billState.reviewNumber, signIn, standing: planState.standing, origin: "ByOwner", elsewhere: changeBusy || codesBusy, now: untimed } as const;
-            return (
-              <ListRow
-                key={offer.key}
-                title={`${offer.name} — ${formatUsdCents(offer.amountCents)}/${offer.interval}`}
-                detail={`Monthly allowance: $${offer.allowance.amountUsd}`}
-                trailing={
-                  <Button
-                    size="sm"
-                    disabled={!billing.can(chooseEvent)}
-                    onClick={() => { void billing.send(chooseEvent); }}
-                  >
-                    Subscribe
-                  </Button>
-                }
-              />
-            );
-          })}
-        </ListGroup>
+      {billState.review.tag === "PurchaseReview" && chooseReviewedEvent ? (
+        <Card className="space-y-3 p-4">
+          <CardTitle>
+            Review {reviewedOffer ? `${reviewedOffer.name} (${formatUsdCents(reviewedOffer.amountCents)}/${reviewedOffer.interval})` : `Alpha ${billState.review.tier}`}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Continue in your browser to finish checkout on Stripe. Alpha returns here automatically when payment settles.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => { void billing.send({ type: "closePurchaseReview" }); }}
+            >
+              Not now
+            </Button>
+            <Button
+              size="sm"
+              disabled={!billing.can(chooseReviewedEvent)}
+              onClick={() => { void billing.send(chooseReviewedEvent); }}
+            >
+              Continue to Stripe
+            </Button>
+          </div>
+        </Card>
       ) : null}
+
+      <OffersAndInvoices
+        runtime={runtime}
+        offers={shelf.offers}
+        invoices={shelf.invoices}
+        offersTicket={billState.offers.ticket}
+        billing={billing}
+      />
 
       <Card className="space-y-3 p-4">
         <CardTitle>Add credits</CardTitle>
@@ -313,19 +419,6 @@ export function BillingView({ runtime }: { readonly runtime: AccountRuntime }) {
       </Card>
 
       <CodesCard runtime={runtime} signIn={signIn} elsewhere={billingBusy || changeBusy} />
-
-      {shelf.invoices.length > 0 ? (
-        <ListGroup heading="Invoices">
-          {shelf.invoices.map((inv) => (
-            <ListRow
-              key={inv.id}
-              title={inv.number ?? inv.id}
-              detail={`${formatDate(inv.date)} · ${inv.status}`}
-              trailing={<span className="text-sm font-medium">{formatUsdCents(inv.amountPaidCents || inv.amountDueCents)}</span>}
-            />
-          ))}
-        </ListGroup>
-      ) : null}
 
       <ConfirmDialog
         open={chgState.step === "Quoted" && chgState.change.showing}

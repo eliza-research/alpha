@@ -9,7 +9,7 @@ module page {
 
   const pageHeader = "[data-host-chrome]:not([data-alpha-comms-dock]):not([data-host-chrome=bottom])"
 
-  /** Follow the mounted dock and headers. @throws {never} */
+  /** Follow the mounted dock and headers, and measure again once an animation or transition that could have moved them ends. @throws {never} */
   export function watchChrome(root: HTMLElement, heard: (event: Chrome) => void): () => void {
     const page = root.querySelector<HTMLElement>("[data-alpha-shell-page]")
     const assistant = root.querySelector<HTMLElement>("[data-alpha-assistant-host]")
@@ -93,10 +93,23 @@ module page {
         changes?.observe(dock, { attributes: true, attributeFilter: ["data-alpha-detent", "data-alpha-dragging"] })
       }
     }
+    const settled = (event: AnimationEvent | TransitionEvent) => {
+      const moved = event.target
+      if (moved instanceof Node && [page, dock, ...headers].some((box) => box !== null && moved.contains(box))) measure()
+    }
+    const doc = root.ownerDocument
     observe()
     refresh()
     win?.addEventListener("resize", measure)
-    return () => { sizes?.disconnect(); changes?.disconnect(); win?.removeEventListener("resize", measure) }
+    doc.addEventListener("animationend", settled, true)
+    doc.addEventListener("transitionend", settled, true)
+    return () => {
+      sizes?.disconnect()
+      changes?.disconnect()
+      win?.removeEventListener("resize", measure)
+      doc.removeEventListener("animationend", settled, true)
+      doc.removeEventListener("transitionend", settled, true)
+    }
   }
 }
 import { type Chrome, watchChrome } from page

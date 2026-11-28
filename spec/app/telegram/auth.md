@@ -6,7 +6,7 @@ tokens are never admitted anywhere. Every secret (verification codes, two-factor
 passwords, QR login tokens and session tokens) is typed as a Quint secret so it
 can never reach public state, logs or Ask Alpha context. Every non-authenticated
 screen is marked sensitive so Ask Alpha withholds ambient observation while
-signing in.
+signing in. A registered Alpha client sends phone, two-factor and QR authorization over MTProto directly to Telegram, after checking the application ID with Alpha Cloud. A phone without the application registration opens Telegram Web in the external browser. Telegram owns that session and its chats stay outside Alpha.
 
 ## Story: Sign in to my Telegram user account
 
@@ -34,7 +34,7 @@ type Step =
   | TwoFactorRequired
   | Authenticated
   | SessionExpired
-type Work = Idle | SendingCode | VerifyingCode | CheckingPassword | PollingQr | LoggingOut
+type Work = Idle | SendingCode | VerifyingCode | CheckingPassword | PollingQr | SavingQr | LoggingOut
 type Trouble =
   | Fine
   | InvalidPhone
@@ -62,7 +62,9 @@ type Effect =
   | SendPhoneCode({ ticket: int, phone: str })
   | VerifyPhoneCode({ ticket: int, code: SecretCode })
   | CheckCloudPassword({ ticket: int, password: SecretPassword })
-  | StartQrLogin({ ticket: int })
+  | StartQrLogin({ ticket: int, resume: bool })
+  | StopQrLogin
+  | SaveQrSession({ ticket: int, account: int, session: SecretSession })
   | StoreSession({ credentialRev: int, session: SecretSession })
   | LogOutRemote({ ticket: int, account: int })
   | WipeLocal({ credentialRev: int })
@@ -78,7 +80,9 @@ pure val phoneValues = Set("", "+15550100")
 pure val codeValues = Set("12345")
 pure val passwordValues = Set("cloud-pass")
 pure val sessionValues = Set("session-1")
-pure val ticketValues = 1.to(20)
+pure val ticketValues = 0.to(20)
+pure val accountValues = Set(0, 1, 2)
+pure val expiresAtValues = Set(0, 30000, 60000)
 pure val nowValues = Set(0, 30000, 60000)
 pure val sendOutcomeValues = Set(
   CodeDelivered,
@@ -110,6 +114,8 @@ pure def alwaysAuthScreensAreSensitive(s: Auth): bool =
 ```
 
 ### Opening sign-in moves to phone entry or QR login; phone submission respects FloodWait and takes the next ticket
+
+Telegram’s first flood-wait response sets the retry deadline, even for a short wait. The owner can submit again when that deadline passes.
 
 ```quint
 pure def canOpenSignIn(s: Auth): bool =
@@ -223,45 +229,84 @@ pure def passwordChecked(s: Auth, ticket: int, authOutcome: AuthOutcome, session
 
 ### QR login offers an alternate user-account path with expiry and optional two-factor check
 
+The owner scans a code on another signed-in Telegram device. While that code
+is current, Alpha checks for approval every two seconds. At the provider's
+expiry it removes the old code and requests a new one, even when the previous
+request is still in flight. Returning to phone entry cancels the attempt.
+
 ```quint
-pure val qrLifetime = 30000
+pure val qrPollInterval = 2000
 
 pure def canStartQr(s: Auth, now: int, online: bool): bool =
-  (s.step == PhoneEntry or s.step == QrPending) and s.work == Idle and online and now >= s.clock and now >= s.floodUntil
+  (s.step == PhoneEntry or (s.step == QrPending and s.qrExpiresAt == 0))
+    and s.work == Idle and online and now >= s.clock and now >= s.floodUntil
 
 pure def startQr(s: Auth, now: int, online: bool): Moved =
   val ticket = s.ticket + 1
   {
-    state: { ...s, step: QrPending, work: PollingQr, ticket: ticket, qrExpiresAt: now + qrLifetime, clock: now, trouble: Fine },
-    out: List(StartQrLogin({ ticket: ticket })),
+    state: { ...s, step: QrPending, work: PollingQr, ticket: ticket, qrExpiresAt: 0, clock: now, trouble: Fine },
+    out: List(StartQrLogin({ ticket: ticket, resume: false })),
+  }
+
+pure def canQrOffered(s: Auth, ticket: int): bool = s.work == PollingQr and ticket == s.ticket
+
+pure def qrOffered(s: Auth, ticket: int, expiresAt: int, now: int): Auth =
+  val t = if (now >= s.clock) now else s.clock
+  if (expiresAt > t) { ...s, work: Idle, qrExpiresAt: expiresAt, clock: t, trouble: Fine }
+  else { ...s, work: Idle, qrExpiresAt: 0, clock: t, trouble: ExpiredCode }
+
+pure def qrCheckAt(s: Auth): int =
+  if (s.work == Idle and s.clock + qrPollInterval < s.qrExpiresAt) s.clock + qrPollInterval else s.qrExpiresAt
+
+pure def canCheckQr(s: Auth, ticket: int, now: int): bool =
+  s.step == QrPending and s.qrExpiresAt > 0 and ticket == s.ticket and now >= s.clock and now >= qrCheckAt(s)
+
+pure def checkQr(s: Auth, ticket: int, now: int): Moved =
+  val resume = now < s.qrExpiresAt
+  val nextTicket = s.ticket + 1
+  {
+    state: { ...s, work: PollingQr, ticket: nextTicket, qrExpiresAt: if (resume) s.qrExpiresAt else 0, clock: now },
+    out: List(StartQrLogin({ ticket: nextTicket, resume: resume })),
   }
 
 pure def canQrAnswered(s: Auth, ticket: int): bool =
   s.work == PollingQr and ticket == s.ticket
 
 pure def qrAnswered(s: Auth, ticket: int, authOutcome: AuthOutcome, session: SecretSession, now: int): Moved =
-  val rev = s.credentialRev + 1
   val t = if (now >= s.clock) now else s.clock
   match authOutcome {
     | AuthNeeds2fa =>
-      { state: { ...s, step: TwoFactorRequired, work: Idle, clock: t, trouble: Fine }, out: List() }
+      { state: { ...s, step: TwoFactorRequired, work: Idle, qrExpiresAt: 0, clock: t, trouble: Fine }, out: List() }
     | AuthBot =>
-      { state: { ...s, step: PhoneEntry, work: Idle, clock: t, trouble: BotTokenRejected }, out: List() }
+      { state: { ...s, step: PhoneEntry, work: Idle, qrExpiresAt: 0, clock: t, trouble: BotTokenRejected }, out: List() }
     | AuthUser(u) =>
       if (u.account > 0)
         {
-          state: { ...s, step: Authenticated, work: Idle, account: u.account, kind: UserAccount, credentialRev: rev, clock: t, trouble: Fine },
-          out: List(StoreSession({ credentialRev: rev, session: session })),
+          state: { ...s, work: SavingQr, qrExpiresAt: 0, clock: t, trouble: Fine },
+          out: List(SaveQrSession({ ticket: ticket, account: u.account, session: session })),
         }
-      else { state: { ...s, step: QrPending, work: Idle, clock: t, trouble: Unreachable }, out: List() }
+      else { state: { ...s, step: QrPending, work: Idle, qrExpiresAt: 0, clock: t, trouble: Unreachable }, out: List() }
     | AuthFailed(f) =>
-      { state: { ...s, step: QrPending, work: Idle, clock: t, trouble: Unreachable }, out: List() }
+      { state: { ...s, work: Idle, qrExpiresAt: 0, clock: t,
+          floodUntil: if (f.trouble == FloodWait and f.wait > 0) t + f.wait else s.floodUntil,
+          trouble: if (f.trouble == Fine) Unreachable else f.trouble }, out: List() }
   }
 
-pure def canBackToPhone(s: Auth): bool =
-  (s.step == CodePending or s.step == QrPending or s.step == TwoFactorRequired) and s.work == Idle
+pure def canQrSaved(s: Auth, ticket: int, account: int): bool =
+  s.work == SavingQr and ticket == s.ticket and account > 0
 
-pure def backToPhone(s: Auth): Auth = { ...s, step: PhoneEntry, trouble: Fine }
+pure def qrSaved(s: Auth, ticket: int, account: int, ok: bool): Auth =
+  if (ok)
+    { ...s, step: Authenticated, work: Idle, account: account, credentialRev: s.credentialRev + 1, trouble: Fine }
+  else { ...s, work: Idle, trouble: Unreachable }
+
+pure def canBackToPhone(s: Auth): bool =
+  (s.step == QrPending and s.work != SavingQr) or ((s.step == CodePending or s.step == TwoFactorRequired) and s.work == Idle)
+
+pure def backToPhone(s: Auth): Moved = {
+  state: { ...s, step: PhoneEntry, work: Idle, qrExpiresAt: 0, trouble: Fine },
+  out: if (s.step == QrPending) List(StopQrLogin) else List(),
+}
 ```
 
 ### Remote revocation and explicit sign-out wipe local data, advance the credential revision and stop sync
@@ -293,10 +338,19 @@ pure def loggedOut(s: Auth, ticket: int): Auth = { ...s, work: Idle }
 
 ### A restart drops in-flight authentication work and restores only a previously authenticated user account
 
+A restart keeps the flood-wait deadline and signs the public state out. The phone
+restores the active owner's sealed grant after Telegram confirms the user account. An owner change drops the previous account and any in-flight work.
+A late answer cannot replace a newer sign-in.
+
 ```quint
+pure def canRestoreSession(s: Auth, account: int, ticket: int): bool = account >= 0 and ticket == s.ticket
+
+pure def restoreSession(s: Auth, account: int, ticket: int): Auth =
+  { ...initial, step: if (account > 0) Authenticated else SignedOut,
+    account: account, ticket: ticket + 1, credentialRev: s.credentialRev + 1, clock: s.clock }
+
 pure def restart(s: Auth): Auth =
-  if (s.step == Authenticated) { ...s, work: Idle, trouble: Fine }
-  else { ...s, step: SignedOut, work: Idle, account: 0, trouble: Fine }
+  { ...s, step: SignedOut, work: Idle, account: 0, qrExpiresAt: 0, trouble: Fine }
 ```
 
 ### Bot tokens are never authenticated, an authenticated session always names a user account and positive credential revision, and FloodWait blocks submits
@@ -311,7 +365,7 @@ pure def alwaysWorkFitsStep(s: Auth): bool = and {
   s.work == SendingCode implies s.step == PhoneEntry,
   s.work == VerifyingCode implies s.step == CodePending,
   s.work == CheckingPassword implies s.step == TwoFactorRequired,
-  s.work == PollingQr implies s.step == QrPending,
+  (s.work == PollingQr or s.work == SavingQr) implies s.step == QrPending,
   s.work == LoggingOut implies s.step == SignedOut,
 }
 
@@ -339,6 +393,7 @@ pure val fair_codeSent = "weak"
 pure val fair_codeVerified = "weak"
 pure val fair_passwordChecked = "weak"
 pure val fair_qrAnswered = "weak"
+pure val fair_qrSaved = "weak"
 pure val fair_loggedOut = "weak"
 ```
 

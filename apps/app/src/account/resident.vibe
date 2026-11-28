@@ -140,6 +140,7 @@ const syncBinding = started(effect {
   const plan = try Plan.Machine
   const provider = try Provider.Machine
   const binding = try Binding.Machine
+  const shelf = try AccountShelf
   const inputs = Stream.zipLatest(
     Stream.zipLatest(resident.changes, session.changes),
     Stream.zipLatest(plan.changes, provider.changes),
@@ -147,7 +148,7 @@ const syncBinding = started(effect {
   try Stream.runForEach(inputs, effect ([[res, ses], [pl, prov]]) => {
     const up = res.phase === "Up"
     const signIn = Session.currentSignIn(ses)
-    const cloud = signIn > 0 && Plan.aiOn(pl) && !Provider.ownKeyInUse(prov)
+    const cloud = signIn > 0 && Plan.aiOn(pl) && !Provider.ownKeyInUse(prov) && shelf.snapshot().aiMode !== "local"
     const current = try binding.get()
     if (Binding.canRebind(current, signIn, cloud, false, up)) {
       try contained(binding.send({ type: "rebind", signIn, cloud, busy: false, up }), "rebind cloud ai")

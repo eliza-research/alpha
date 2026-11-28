@@ -63,7 +63,7 @@ module node {
       throw new Error(`vibelang sandbox compile failed (${String(compiled.status)}): ${compiled.stdout}\n${compiled.stderr}`)
     }
     fs.symlinkSync(
-      path.join(packageDir, "node_modules", "@elizaos", "cloud-worker", "dist", "pages"),
+      path.join(packageDir, ".cache", "public-pages"),
       path.join(distDir, "pages"),
       "dir",
     )

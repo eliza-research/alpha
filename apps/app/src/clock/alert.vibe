@@ -2,6 +2,7 @@
 import * as ClockView from "../../gen/app__clock.effect.vibe"
 import * as Alarms from "../../gen/app__clock__alarms.effect.vibe"
 import * as Timers from "../../gen/app__clock__timers.effect.vibe"
+import { Device, PhoneClockAlerts } from "../platform/index.vibe"
 import { contained, started, together } from "../runtime/index.vibe"
 import { feel } from "../shell/index.vibe"
 import { playChimePulse } from "./chime.ts"
@@ -12,9 +13,11 @@ const observeRinging = started(effect {
   const alarms = try Alarms.Machine
   const timers = try Timers.Machine
   try Stream.runForEach(Stream.zipLatest(alarms.changes, timers.changes), effect ([alarmState, timerState]) => {
-    const alarmId = alarmState.items.find((item) => item.phase === "Ringing")?.id ?? 0
-    const timerId = timerState.items.find((item) => item.status === "Ringing")?.id ?? 0
     const current = try view.get()
+    const alarmsRinging = alarmState.items.filter((item) => item.phase === "Ringing")
+    const timersRinging = timerState.items.filter((item) => item.status === "Ringing")
+    const alarmId = (alarmsRinging.find((item) => item.id === current.ringingAlarm) ?? alarmsRinging[0])?.id ?? 0
+    const timerId = (timersRinging.find((item) => item.id === current.ringingTimer) ?? timersRinging[0])?.id ?? 0
     if (ClockView.canSyncAlerts(current, alarmId, timerId)) {
       try contained(view.send({ type: "syncAlerts", alarmId, timerId }), "syncing Clock ringing alerts")
     }
@@ -29,9 +32,13 @@ const playAlertAudio = started(effect {
     view.changes,
     (a, b) => a.soundOn === b.soundOn && a.ringingAlarm === b.ringingAlarm && a.ringingTimer === b.ringingTimer,
   )
-  try Stream.runDrain(Stream.switchMap(watched, (state) => {
-    if (!state.soundOn) return Stream.empty
+  const host = try PhoneClockAlerts
+  const device = try Device
+  const visible = host.present ? Stream.prepend(device.visible, [try device.showing()]) : Stream.make(true)
+  try Stream.runDrain(Stream.switchMap(Stream.zipLatest(watched, visible), ([state, shown]) => {
+    if (!state.soundOn || !shown) return Stream.empty
     return Stream.fromEffectDrain(effect {
+      if (host.present) try sleep(1800)
       for (;;) {
         const alert = ClockView.activeAlert(state)
         if (alert.tag === "AlarmRing") {

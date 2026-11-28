@@ -29,7 +29,7 @@ import java.util.function.BooleanSupplier;
 
 @CapacitorPlugin(name = "AlphaVoiceCloud",
   permissions = @Permission(alias = "microphone", strings = Manifest.permission.RECORD_AUDIO))
-public final class AlphaLocalSpeechPlugin extends LocalSpeechBridgePlugin {
+public class AlphaLocalSpeechPlugin extends LocalSpeechBridgePlugin {
  private static final String READ_VOICEMAIL = "com.android.voicemail.permission.READ_VOICEMAIL";
  private static final int WINDOW_SAMPLES = VoicemailPcm.SAMPLE_RATE * 60;
  private static final int TRANSCRIPT_LIMIT = 8_000;
@@ -80,8 +80,14 @@ public final class AlphaLocalSpeechPlugin extends LocalSpeechBridgePlugin {
  }
 
  private boolean speechInFront() {
-  return AlphaDevicePlugin.shareForeground(getActivity()) && !PasswordSurfaces.visible();
+  return (AlphaDevicePlugin.shareForeground(getActivity())
+    || ai.alphacompute.alphaphone.overlay.AlphaOverlayHostPlugin.isOverlayForeground(getContext()))
+   && !PasswordSurfaces.visible();
  }
+
+ void onOverlayResume() { handleOnResume(); }
+ void onOverlayPause() { handleOnPause(); }
+ void onOverlayDestroy() { handleOnDestroy(); }
 
  @PluginMethod public void dictationForeground(PluginCall call) {
   mainHandler().post(() -> call.resolve(new JSObject().put("available", speechInFront())));

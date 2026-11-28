@@ -1,10 +1,16 @@
 // spec/cloud/rollout.md, "Story: Serve one reviewed profile from the API Worker"; spec/cloud/rollout.md, "The API Worker serves only while the profile in its assets is the text its pinned digest names, and otherwise asks the caller to retry"
-import { cloudWorker, type CloudBindings, type WorkerExecution } from "@elizaos/cloud-worker"
+import { isTelegramApplicationId } from "@repo/deployment"
+import { parseProfile } from "@elizaos/cloud"
+import { cloudWorker, observeIdentity, storeLayer, type CloudBindings, type WorkerExecution, type Store } from "@elizaos/cloud-worker"
+import { dispatchSlackEvents, slackNotifications, slackRelay, type SlackBindings } from "./slack-events.vibe"
+import { pruneSlackMailbox } from "./slack-mailbox.vibe"
+import { EdgeHeaders, EdgeRequest, EdgeResponse, isSlackBrowserReturn } from "./edge-platform.ts"
 import { profileUnavailable, readProfileAsset, type AssetFetcher } from "./profile-asset.ts"
 
 /** The API Worker's bindings: eliza's, with the profile read from the static assets and pinned by its digest, since the profile is larger than a Worker variable may be. */
-export type AlphaCloudBindings = Omit<CloudBindings, "CLOUD_PROFILE" | "ASSETS"> & {
+export type AlphaCloudBindings = Omit<CloudBindings, "CLOUD_PROFILE" | "ASSETS"> & SlackBindings & {
   readonly CLOUD_PROFILE_SHA256: string
+  readonly TELEGRAM_API_ID?: string
   readonly ASSETS: AssetFetcher
 }
 
@@ -23,16 +29,98 @@ async function bindingsOf(env: AlphaCloudBindings): Promise<CloudBindings | unde
   return { ...env, CLOUD_PROFILE: profile }
 }
 
+module slackNetwork {
+  export const providerFetch: typeof fetch = (url, options) => globalThis.fetch(url, options)
+}
+import { providerFetch } from slackNetwork
+
+effect function runMailbox(bound: CloudBindings, work: Response!unknown!Store) {
+  const raw = try Effect.try(() => JSON.parse(bound.CLOUD_PROFILE))
+  const profile = try parseProfile(raw)
+  const settings = profile.environments[bound.CLOUD_ENVIRONMENT]
+  const url = bound.HYPERDRIVE?.connectionString
+  if (!url || bound.PUBLIC_API_ORIGIN !== settings.api || bound.WEB_ORIGIN !== settings.web || bound.CLOUD_IDENTITY_DIGEST !== settings.databaseIdentity) return profileUnavailable()
+  provide storeLayer({ kind: "pg", url }) {
+    const identity = try observeIdentity()
+    if (identity.kind !== "identified" || identity.environment !== bound.CLOUD_ENVIRONMENT || identity.digest !== settings.databaseIdentity) return profileUnavailable()
+    return try work
+  }
+}
+
+async function serveMailbox(request: Request, env: AlphaCloudBindings, bound: CloudBindings): Promise<Response> {
+  if (!slackNotifications(env)) return profileUnavailable()
+  const origin = request.headers.get("origin")
+  if (origin && origin !== env.WEB_ORIGIN && origin !== env.PUBLIC_API_ORIGIN) return new EdgeResponse(null, { status: 403 })
+  const headers = { Vary: "Origin", ...(origin ? { "Access-Control-Allow-Origin": origin } : {}) }
+  if (request.method === "OPTIONS") return new EdgeResponse(null, { status: 204, headers: { ...headers, "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Expose-Headers": "Retry-After" } })
+  const response = await Effect.runPromise(Effect.catch(runMailbox(bound, slackRelay(request, env, providerFetch, Date.now())), () => Effect.succeed(profileUnavailable())))
+  for (const [key, value] of Object.entries(headers)) response.headers.set(key, value)
+  response.headers.set("Access-Control-Expose-Headers", "Retry-After")
+  return response
+}
+
 /** Alpha Cloud's API Worker: eliza's whole Cloud Worker, with its profile from the ASSETS copy that CLOUD_PROFILE_SHA256 names, its return pages from ASSETS and its web-origin requests through the web host's X-Forwarded-Host. */
 const alphaCloudWorker = {
   async scheduled(event: { readonly scheduledTime: number }, env: AlphaCloudBindings): Promise<void> {
     const bound = await bindingsOf(env)
     if (bound === undefined) throw new Error("Alpha Cloud's profile asset is missing or differs from CLOUD_PROFILE_SHA256")
     await upstream.scheduled(event, bound)
+    if (slackNotifications(env)) {
+      const cleaned = await Effect.runPromise(runMailbox(bound, effect {
+        try pruneSlackMailbox(event.scheduledTime)
+        try dispatchSlackEvents(env, providerFetch, event.scheduledTime)
+        return new EdgeResponse(null, { status: 204 })
+      }))
+      if (!cleaned.ok) throw new Error("Alpha Slack mailbox database is unavailable")
+    }
   },
   async fetch(request: Request, env: AlphaCloudBindings, execution?: WorkerExecution): Promise<Response> {
     const bound = await bindingsOf(env)
-    return bound === undefined ? profileUnavailable() : upstream.fetch(request, bound, execution)
+    if (bound === undefined) return profileUnavailable()
+    const path = new URL(request.url).pathname
+    const asset = path === "/slack" ? "/alpha-slack-assets/opener"
+      : isSlackBrowserReturn(path) ? "/alpha-slack-assets/return"
+      : /^\/alpha-slack-assets\/assets\/[A-Za-z0-9_@.-]+$/.test(path) ? path : undefined
+    if (asset === undefined && path.startsWith("/alpha-slack-assets/")) return new EdgeResponse(null, { status: 404 })
+    if (asset !== undefined) {
+      if (request.headers.get("x-forwarded-proto") !== "https" || !bound.WEB_ORIGIN || request.headers.get("x-forwarded-host") !== new URL(bound.WEB_ORIGIN).host)
+        return new EdgeResponse(null, { status: 404 })
+      if (request.method !== "GET" && request.method !== "HEAD") return new EdgeResponse(null, { status: 405, headers: { Allow: "GET, HEAD" } })
+      const answer = await env.ASSETS.fetch(new EdgeRequest(new URL(asset, request.url), { method: request.method, redirect: "manual" }))
+      if (!answer.ok) return new EdgeResponse(null, { status: answer.status === 404 ? 404 : 503, headers: { "Cache-Control": "no-store" } })
+      const headers = new EdgeHeaders(answer.headers)
+      headers.set("Referrer-Policy", "no-referrer")
+      headers.set("X-Content-Type-Options", "nosniff")
+      if (path !== asset) {
+        headers.set("Content-Type", "text/html; charset=utf-8")
+        headers.set("Cache-Control", "no-store")
+        headers.set("Content-Security-Policy", "frame-ancestors 'none'")
+      }
+      return new EdgeResponse(answer.body, { headers })
+    }
+    if (path.startsWith("/api/slack/")) {
+      const response = await serveMailbox(request, env, bound)
+      if (path === "/api/slack/events" && request.method === "POST" && response.ok && execution) {
+        execution.waitUntil(Effect.runPromise(runMailbox(bound, Effect.as(dispatchSlackEvents(env, providerFetch, Date.now()), new EdgeResponse(null, { status: 204 })))))
+      }
+      return response
+    }
+    if (path === "/.well-known/alpha-slack" || path === "/.well-known/alpha-telegram") {
+      const headers = { "Access-Control-Allow-Origin": "*", "Cache-Control": "no-store" }
+      if (request.method !== "GET" && request.method !== "HEAD")
+        return new EdgeResponse(null, { status: 405, headers: { ...headers, Allow: "GET, HEAD" } })
+      const clientId = env.SLACK_CLIENT_ID
+      const apiId = Number(env.TELEGRAM_API_ID)
+      const registered = path === "/.well-known/alpha-slack"
+        ? clientId && /^[0-9]+\.[0-9]+$/.test(clientId) ? { clientId, ...(slackNotifications(env) ? { notifications: true } : {}) } : undefined
+        : isTelegramApplicationId(apiId) ? { apiId } : undefined
+      if (registered === undefined)
+        return new EdgeResponse(null, { status: 503, headers: { ...headers, "Retry-After": "30" } })
+      return new EdgeResponse(request.method === "HEAD" ? null : JSON.stringify(registered), {
+        headers: { ...headers, "Content-Type": "application/json" },
+      })
+    }
+    return upstream.fetch(request, bound, execution)
   },
 }
 

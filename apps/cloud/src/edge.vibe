@@ -1,6 +1,6 @@
 // spec/cloud/rollout.md, "Story: Bring me back to the app when its link did not open"
 import { edgeAnswer, edgeRoute, type Route } from "../gen/cloud__rollout.effect.vibe"
-import { EdgeRequest, EdgeResponse, forwardedHeaders } from "./edge-platform.ts"
+import { EdgeRequest, EdgeResponse, forwardedHeaders, isSlackBrowserReturn } from "./edge-platform.ts"
 
 /** The API Worker as the web host reaches it: a Cloudflare service binding, never a public fetch. */
 export interface ApiService {
@@ -15,11 +15,13 @@ export interface EdgeEnv {
   readonly API: ApiService
 }
 
-/** Where an address of the web host goes: the same path and query on the API origin, when that stays on it and is not an API route. */
+/** Where an address of the web host goes: the same path on the API origin, with in-page consent parameters omitted, when that stays on it and is not an API route. */
 function onApi(url: URL, env: EdgeEnv): URL | null {
   if (url.pathname === "/api" || url.pathname.startsWith("/api/")) return null
   const target = URL.parse(`${url.pathname}${url.search}`, env.PUBLIC_API_ORIGIN)
-  return target !== null && target.origin === env.PUBLIC_API_ORIGIN ? target : null
+  if (target === null || target.origin !== env.PUBLIC_API_ORIGIN) return null
+  if (isSlackBrowserReturn(url.pathname)) target.search = ""
+  return target
 }
 
 /** What the web host does with an address, and where a forwarded one goes. */

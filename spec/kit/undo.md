@@ -29,6 +29,11 @@ pure def undo(u: Undo): Undo = { ...u, holding: Undone }
 
 ### A held change takes effect only once its time has come
 
+The time a change waits for is Alpha's own, which never goes back across a
+restart or a clock set back. A time kept more than a year and a day ahead
+of a phone clock that reads 2026 or later came from a clock once set far
+ahead; it is let go, and the clock is taken as it reads.
+
 ```quint
 pure def canRelease(u: Undo, now: int): bool = u.holding == Held and now >= u.until
 

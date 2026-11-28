@@ -70,12 +70,20 @@ lemma AccountsAnsweredAlways1C(s: Mailbox, ticket: int, ok: bool, connected: seq
   SoleReadableIsConnected(connected);
 }
 
-lemma AccountsAnsweredAlways2(s: Mailbox, ticket: int, ok: bool, connected: seq<Linked>)
+lemma AccountsAnsweredAlways2A(s: Mailbox, ticket: int, ok: bool, connected: seq<Linked>)
   requires inv(s) && canAccountsAnswered(s, ticket)
   ensures alwaysChosenMessagesBelongToAFreshList(accountsAnswered(s, ticket, ok, connected).state)
+{
+  hide *;
+  reveal inv, alwaysChosenMessagesBelongToAFreshList, accountsAnswered, dropOutlivedKept, emptied, turned, asking, readable;
+}
+
+lemma AccountsAnsweredAlways2B(s: Mailbox, ticket: int, ok: bool, connected: seq<Linked>)
+  requires inv(s) && canAccountsAnswered(s, ticket)
   ensures alwaysAccountsAreKnownOnlyFromAnAnswer(accountsAnswered(s, ticket, ok, connected).state)
 {
-  SoleReadableIsConnected(connected);
+  hide *;
+  reveal inv, alwaysAccountsAreKnownOnlyFromAnAnswer, accountsAnswered, dropOutlivedKept, emptied, turned, asking, canAccountsAnswered, kit__read_canAnswer, kit__read_answer;
 }
 
 lemma AccountsAnsweredAlways3(s: Mailbox, ticket: int, ok: bool, connected: seq<Linked>)
@@ -104,7 +112,8 @@ lemma AccountsAnsweredAlways4C(s: Mailbox, ticket: int, ok: bool, connected: seq
   requires inv(s) && canAccountsAnswered(s, ticket)
   ensures alwaysAFreshCountWasRead(accountsAnswered(s, ticket, ok, connected).state)
 {
-  SoleReadableIsConnected(connected);
+  hide *;
+  reveal inv, alwaysAFreshCountWasRead, accountsAnswered, dropOutlivedKept, emptied, turned, asking, noCount;
 }
 
 lemma AccountsAnsweredPart2(s: Mailbox, ticket: int, ok: bool, connected: seq<Linked>)
@@ -145,7 +154,8 @@ lemma accountsAnswered_ensures(s: Mailbox, ticket: int, ok: bool, connected: seq
     AccountsAnsweredAlways1A(s, ticket, ok, connected);
     AccountsAnsweredAlways1B(s, ticket, ok, connected);
     AccountsAnsweredAlways1C(s, ticket, ok, connected);
-    AccountsAnsweredAlways2(s, ticket, ok, connected);
+    AccountsAnsweredAlways2A(s, ticket, ok, connected);
+    AccountsAnsweredAlways2B(s, ticket, ok, connected);
     AccountsAnsweredAlways3(s, ticket, ok, connected);
     AccountsAnsweredAlways4A(s, ticket, ok, connected);
     AccountsAnsweredAlways4B(s, ticket, ok, connected);

@@ -5,7 +5,7 @@ import { Alert, AppHeader, Avatar, Banner, Button, Chip, cn, focusRing, Mark, In
 import { Effect, type Layer, type ManagedRuntime } from "effect";
 import { ArrowUp, ChevronDown, ChevronLeft, ChevronUp, CircleAlert, Image as PictureIcon, Mic, Pencil, Phone as Call, Plus, RefreshCw, Search, Square, X } from "lucide-react";
 import { memo, useCallback, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent, type PointerEvent } from "react";
-import { clear } from "../../gen/app__phone.ts";
+import { clear, liveCall } from "../../gen/app__phone.ts";
 import { useMachine as usePhone } from "../../gen/app__phone.react.ts";
 import { content, noMatches, noThreads, smsNeeded, threadsFailed } from "../../gen/app__messages.ts";
 import { useMachine as useMessages } from "../../gen/app__messages.react.ts";
@@ -527,7 +527,7 @@ function Compose({ runtime, title, addresses, thread }: MessagesProps & { title:
   const checking = here && uncertain(outgoing);
   const sendNow = { type: "send", supported: runtime.runSync(supported(state.recipients, pictures.length)), clear: clear(phone) } as const;
   const simReady = selectedSim === undefined ? state.sims <= 1 : subscriptions.some((sim) => sameSubscription(sim, selectedSim));
-  const sendable = (checking || simReady && (Boolean(text.trim()) || pictures.length > 0)) && can(sendNow);
+  const sendable = (checking || simReady && (Boolean(text.trim()) || pictures.length > 0) && text.length <= MMS_MAX_BODY) && can(sendNow);
   const submit = (event: MouseEvent<HTMLButtonElement>) => {
     if (!sendable) return;
     const trustedTap = event.nativeEvent.isTrusted && event.currentTarget.matches("[data-alpha-bar-send],[data-alpha-draft-send]");
@@ -558,7 +558,7 @@ function Compose({ runtime, title, addresses, thread }: MessagesProps & { title:
   const retry = { type: "transcribeAgain", now: untimed } as const;
   const messageForm = recording ? (
     <div data-alpha-composer data-alpha-bar-recorder="" aria-label="Message dictation" role="group" className="flex min-w-0 flex-1 items-center gap-2">
-      <span role="status" className="min-w-0 flex-1 text-sm">{recorder.stage === "Recording" ? "Recording" : recorder.stage === "Recorded" ? "Couldn’t transcribe" : recorder.stage === "Transcribing" ? "Transcribing" : "Starting microphone"}</span>
+      <span className="min-w-0 flex-1"><span role="status" className="sr-only">{recorder.stage === "Recording" ? "Recording" : recorder.stage === "Recorded" ? "Couldn’t transcribe" : recorder.stage === "Transcribing" ? "Transcribing" : "Starting microphone"}</span></span>
       {voice.can(retry) && <Button variant="ghost" size="icon" aria-label="Try transcription again" onClick={() => void voice.send(retry)}><RefreshCw /></Button>}
       {voice.can(discard) && <Button variant="ghost" size="icon" aria-label="Discard transcription" onClick={() => void voice.send(discard)}><X /></Button>}
       {voice.can(stop) && <Button size="icon" aria-label="Stop recording" onClick={() => void voice.send(stop)}><Square fill="currentColor" /></Button>}
@@ -583,7 +583,7 @@ function Compose({ runtime, title, addresses, thread }: MessagesProps & { title:
         }} />
       ))}
       {sendable && <Button size="icon" aria-label={sendLabel} data-alpha-bar-send onClick={submit}>{checking ? <RefreshCw /> : <ArrowUp />}</Button>}
-      {editable && phone.telecom === "NoCall" && voice.can({ type: "openRecorder", target: "MessagesBar" }) && <Button variant="ghost" size="icon" aria-label={`Dictate a text to ${firstName(title)}`} onClick={() => void runtime.runPromise(dictateMessage(thread))}><Mic /></Button>}
+      {editable && !liveCall(phone) && voice.can({ type: "openRecorder", target: "MessagesBar" }) && <Button variant="ghost" size="icon" aria-label={`Dictate a text to ${firstName(title)}`} onClick={() => void runtime.runPromise(dictateMessage(thread))}><Mic /></Button>}
     </div>
   );
   return (

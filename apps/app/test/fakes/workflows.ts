@@ -188,14 +188,16 @@ interface ScheduledTask {
   kind: string;
   ownerVisible: boolean;
   promptInstructions: string;
-  state: { status: string };
+  state: { status: string; firedAt?: string; lastDecisionLog?: string };
   trigger: { kind: "once"; atIso: string } | { kind: "cron"; expression: string; tz: string };
-  metadata: { recordKey?: string };
+  metadata: { recordKey?: string; checkin?: string };
 }
 
 export interface WorkflowsScene {
   readonly prompts: Map<string, Prompt>;
   readonly tasks: ScheduledTask[];
+  readonly taskActions: Array<{ taskId: string; verb: string }>;
+  failTaskFire?: string;
   readonly promptEdits: Record<string, unknown>[];
   readonly admissions: Array<{ submission: string; version: string }>;
   /** Each lifecycle change the agent applied, in order: what it did and the version it was asked on. */
@@ -234,6 +236,7 @@ export const workflowsScene = (): WorkflowsScene => ({
     taskId: "weekly", kind: "recap", ownerVisible: true, promptInstructions: "Weekly review",
     state: { status: "scheduled" }, trigger: { kind: "cron", expression: "0 8 * * *", tz: "UTC" }, metadata: { recordKey: "weekly-review" },
   }],
+  taskActions: [],
   promptEdits: [],
   admissions: [], changes: [], statement: { ...record }, created: [], saves: new Map(), decisions: [], run: false, stage: "Done", receiptReads: 0, approvalTitle: "Review the statement preview", failingPrompts: false,
 });
@@ -360,6 +363,35 @@ export function workflowRoutes(world: WorkflowsScene): Route[] {
     },
     (request, url) => {
       if (request.method !== "POST") return;
+      const taskHit = /^\/api\/scheduled-tasks\/([^/]+)\/(fire|reopen|snooze|complete|dismiss|skip)$/.exec(url.pathname);
+      if (taskHit !== null) {
+        const id = decodeURIComponent(taskHit[1] ?? "");
+        const verb = taskHit[2] ?? "";
+        const task = world.tasks.find((one) => one.taskId === id);
+        if (task === undefined) return Response.json({ error: "not_found" }, { status: 404 });
+        world.taskActions.push({ taskId: id, verb });
+        if (verb === "fire") {
+          if (task.state.status !== "scheduled") return Response.json({ fire: { kind: "raced" } });
+          if (world.failTaskFire !== undefined) {
+            task.state = { status: "failed", lastDecisionLog: `dispatch_failed: ${world.failTaskFire}` };
+            return Response.json({ fire: { kind: "dispatch_failed", task, error: world.failTaskFire } });
+          }
+          task.state = { status: "fired", firedAt: "2026-11-27T13:05:00.000Z", lastDecisionLog: "fired" };
+          return Response.json({ fire: { kind: "fired", task } });
+        }
+        if (verb === "reopen") {
+          if (task.state.status === "dismissed" || task.state.status === "scheduled") return Response.json({ error: "not_applicable" }, { status: 409 });
+          task.state = { status: "scheduled", lastDecisionLog: "reopened" };
+          return Response.json({ task });
+        }
+        if (verb === "snooze") {
+          task.state = { status: "scheduled", firedAt: "2026-11-27T13:15:00.000Z", lastDecisionLog: "snoozed" };
+          return Response.json({ task });
+        }
+        const next = verb === "complete" ? "completed" : verb === "dismiss" ? "dismissed" : "skipped";
+        task.state = { status: next, lastDecisionLog: next };
+        return Response.json({ task });
+      }
       if (url.pathname === "/api/workflow/hosted/results/ack" && world.hosted !== undefined) {
         const hosted = world.hosted;
         return readJsonBody(request).then((body) => {

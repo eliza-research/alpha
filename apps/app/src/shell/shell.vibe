@@ -4,6 +4,7 @@ import * as Shell from "../../gen/app__shell.effect.vibe"
 import * as Layers from "../../gen/app__shell__layers.effect.vibe"
 import { Device } from "../platform/index.vibe"
 import { contained, following, reacting } from "../runtime/index.vibe"
+import { currentSurface } from "../surface.ts"
 
 /** The screens that take Back before the shell does: a screen with a step of its own, such as a thread over its list. */
 export service Backs {
@@ -177,7 +178,9 @@ const backFlag = Layer.effectDiscard(effect {
   try Effect.addFinalizer(() => sync(() => markCanGoBack(undefined)))
   const flags = Stream.changes(Stream.map(
     Stream.zipLatest(shell.changes, layers.changes),
-    ([state, over]) => String(Shell.enabled(state, { type: "goBack" }) || state.textAsk.tag === "TextAskVisit" || Layers.takesBack(over)),
+    ([state, over]) => String(currentSurface().mode === "app"
+      ? (state.trail.length > 1 || state.assistant !== "Bar" || Layers.takesBack(over))
+      : (Shell.enabled(state, { type: "goBack" }) || state.textAsk.tag === "TextAskVisit" || Layers.takesBack(over))),
   ))
   try fork.scoped Stream.runForEach(flags, (flag) => sync(() => markCanGoBack(flag)))
 })

@@ -175,7 +175,7 @@ export interface RequestsStore {
   readonly recordResult: (filing: number, result: Result) => void;
   /** The last reported outcome for `filing`, if any. @throws {never} */
   readonly lastResult: (filing: number) => Result | undefined;
-  /** The owner Calendar read the requests held for, so a read of the list begun for another is refused. @throws {never} */
+  /** The owner Calendar last read, signed out counting as one, which the requests held are for: a read of the list or a tap begun under another is refused. @throws {never} */
   readonly owner: () => number;
   /** Drop all pending requests when the signed-in owner changes to `owner`. @throws {never} */
   readonly clear: (owner: number) => void;

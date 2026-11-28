@@ -225,7 +225,7 @@ pure def alwaysEachStageHasItsWorkUnderWay(t: Transfer): bool = and {
 
 ### When Alpha opens again, the form and any review are closed, and an asking or a decision that was sent is unknown
 
-A decision that was sent when Alpha stopped may have reached the agent: it
+When the phone confirms sign-out, Wallet also puts away the previous owner’s reviewed terms and request. A decision that was sent when Alpha stopped may have reached the agent: it
 is never sent again, and an approval among them spends its request.
 
 ```quint
@@ -240,6 +240,11 @@ pure def reopen(t: Transfer): Transfer =
     spent: if (wasDeciding and t.approving and not(t.spent.includes(t.request))) t.spent.append(t.request) else t.spent,
     opening: R::drop(t.opening), review: V::dismiss(t.review),
     settled: if (wasAsking or wasDeciding) t.settled + 1 else t.settled }
+
+pure def ownerSignedOut(t: Transfer): Transfer =
+  val left = reopen(t)
+  { ...left, request: 0, terms: noTerms, approving: false, why: "",
+    said: if (left.said == Unsure) Unsure else Quiet }
 
 pure def stepReopenLeavesNothingSent(before: Transfer, via: str, after: Transfer): bool =
   via == "reopen" implies and {

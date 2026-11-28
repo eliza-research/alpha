@@ -490,6 +490,14 @@ function computeChannelSummary(channel: SlackChannel, ownerId: string): Record<s
   };
 }
 
+interface LocalSlackEvent {
+  readonly sequence: number;
+  readonly team: string;
+  readonly envelope: Readonly<Record<string, unknown>>;
+}
+
+const receiverEvents = new WeakMap<SlackState, LocalSlackEvent[]>();
+
 function pushSlackEvent(
   ctx: ProviderContext<SlackState>,
   teamId: string,
@@ -505,6 +513,10 @@ function pushSlackEvent(
     event_time: Math.floor(Date.now() / 1000),
     event,
   };
+  const events = receiverEvents.get(state) ?? [];
+  events.push({ sequence: state.eventSeq, team: teamId, envelope });
+  if (events.length > 300) events.shift();
+  receiverEvents.set(state, events);
   ctx.sse.broadcast({
     id: envelope.event_id,
     event: "event_callback",
@@ -667,9 +679,10 @@ function mintAndRespondOAuth(
   workspace: SlackWorkspace,
   userId: string,
   scope: string,
+  rotated = false,
 ): void {
   const minted: SlackUserToken = {
-    access_token: randomToken("xoxp-", 20),
+    access_token: randomToken("xoxe.xoxp-", 20),
     refresh_token: randomToken("xoxe-1-", 20),
     team_id: workspace.id,
     user_id: userId,
@@ -678,6 +691,10 @@ function mintAndRespondOAuth(
   };
   ctx.getState().tokens[minted.access_token] = minted;
   ctx.save();
+  if (rotated) {
+    sendJson(res, 200, { ok: true, access_token: minted.access_token, refresh_token: minted.refresh_token, token_type: "user", expires_in: 43200 });
+    return;
+  }
   sendJson(res, 200, {
     ok: true,
     app_id: APP_ID,
@@ -710,7 +727,8 @@ function handleOAuthAccess(req: ParsedRequest, res: ServerResponse, ctx: Provide
       sendJson(res, 200, { ok: false, error: "team_not_found" });
       return;
     }
-    mintAndRespondOAuth(res, ctx, workspace, existing.user_id, existing.scope);
+    existing.revoked = true;
+    mintAndRespondOAuth(res, ctx, workspace, existing.user_id, existing.scope, true);
     return;
   }
 
@@ -934,24 +952,22 @@ function sendPagedMessages(res: ServerResponse, req: ParsedRequest, items: reado
   });
 }
 
-function handleConversationsHistory(req: ParsedRequest, res: ServerResponse, auth: ResolvedAuth): void {
-  const channel = requireChannel(req, res, auth);
-  if (!channel) return;
+function inTimeRange(req: ParsedRequest): (message: SlackMessage) => boolean {
   const oldest = asString(req.params.oldest);
   const latest = asString(req.params.latest);
   const inclusive = asBoolean(req.params.inclusive) ?? false;
+  return (message: SlackMessage) => {
+    const after = oldest ? compareTs(message.ts, oldest) : 1;
+    const before = latest ? compareTs(message.ts, latest) : -1;
+    return inclusive ? after >= 0 && before <= 0 : after > 0 && before < 0;
+  };
+}
+
+function handleConversationsHistory(req: ParsedRequest, res: ServerResponse, auth: ResolvedAuth): void {
+  const channel = requireChannel(req, res, auth);
+  if (!channel) return;
   const filtered = visibleTimelineMessages(channel)
-    .filter((msg) => {
-      if (oldest) {
-        const cmp = compareTs(msg.ts, oldest);
-        if (inclusive ? cmp < 0 : cmp <= 0) return false;
-      }
-      if (latest) {
-        const cmp = compareTs(msg.ts, latest);
-        if (inclusive ? cmp > 0 : cmp >= 0) return false;
-      }
-      return true;
-    })
+    .filter(inTimeRange(req))
     .sort((a, b) => compareTs(b.ts, a.ts));
   sendPagedMessages(res, req, filtered);
 }
@@ -967,6 +983,7 @@ function handleConversationsReplies(req: ParsedRequest, res: ServerResponse, aut
   }
   const replies = channel.messages
     .filter((msg) => msg.thread_ts === ts && msg.ts !== ts)
+    .filter(inTimeRange(req))
     .sort((a, b) => compareTs(a.ts, b.ts));
   sendPagedMessages(res, req, [parent, ...replies]);
 }
@@ -985,7 +1002,7 @@ function handlePostMessage(
     sendJson(res, 200, { ok: false, error: "no_text" });
     return;
   }
-  const idemKey = req.headers["idempotency-key"];
+  const idemKey = asString(req.params.client_msg_id) ?? req.headers["idempotency-key"];
   const scopedIdem = idemKey ? `${auth.workspace.id}:${auth.userId}:${channel.id}:${idemKey}` : undefined;
   const cached = ownGet(state.idempotency, scopedIdem);
   if (cached) {
@@ -1285,11 +1302,26 @@ function handleSlackControl(
 }
 
 function handleSlackApi(req: ParsedRequest, res: ServerResponse, ctx: ProviderContext<SlackState>): void {
+  if (req.pathname === "/.well-known/alpha-slack" && req.method === "GET") {
+    sendJson(res, 200, { clientId: "123.456", notifications: true });
+    return;
+  }
   if (req.pathname === "/oauth/v2/authorize") {
     handleAuthorize(req, res, ctx);
     return;
   }
-  if (req.pathname === "/api/oauth.v2.access" && req.method === "POST") {
+  if (req.pathname === "/api/apps.event.authorizations.list" && req.method === "POST") {
+    if (req.headers.authorization !== "Bearer xapp-local-receiver" || req.params.event_context !== "EC-local-direct") {
+      sendJson(res, 200, { ok: false, error: "invalid_auth" });
+      return;
+    }
+    const team = ctx.getState().workspaces["T01ALPHA"];
+    const second = req.params.cursor === "next";
+    const authorization = { enterprise_id: null, team_id: team.id, user_id: team.ownerId, is_bot: !second, is_enterprise_install: false };
+    sendJson(res, 200, { ok: true, authorizations: [authorization], response_metadata: { next_cursor: second ? "" : "next" } });
+    return;
+  }
+  if ((req.pathname === "/api/oauth.v2.access" || req.pathname === "/api/slack/oauth") && req.method === "POST") {
     handleOAuthAccess(req, res, ctx);
     return;
   }
@@ -1299,6 +1331,12 @@ function handleSlackApi(req: ParsedRequest, res: ServerResponse, ctx: ProviderCo
   if (!auth) return;
 
   switch (req.pathname) {
+    case "/api/slack/events/read": {
+      const cursor = asNumber(req.params.cursor) ?? state.eventSeq;
+      const events = (receiverEvents.get(state) ?? []).filter((row) => row.team === auth.workspace.id && row.sequence > cursor);
+      sendJson(res, 200, { cursor: state.eventSeq, events: events.map((row) => row.envelope) });
+      return;
+    }
     case "/api/auth.test": {
       const user = ownGet(auth.workspace.users, auth.userId);
       sendJson(res, 200, {
@@ -1364,19 +1402,6 @@ function handleSlackApi(req: ParsedRequest, res: ServerResponse, ctx: ProviderCo
       sendJson(res, 200, { ok: true });
       return;
     }
-    case "/api/conversations.setMute": {
-      const channel = requireChannel(req, res, auth);
-      if (!channel) return;
-      const muted = asBoolean(req.params.muted);
-      if (muted === undefined) {
-        sendJson(res, 200, { ok: false, error: "invalid_arguments" });
-        return;
-      }
-      channel.is_muted = muted;
-      ctx.save();
-      sendJson(res, 200, { ok: true, channel: channel.id, is_muted: channel.is_muted });
-      return;
-    }
     case "/api/chat.postMessage":
       handlePostMessage(req, res, auth, ctx);
       return;
@@ -1411,7 +1436,7 @@ function handleSlackApi(req: ParsedRequest, res: ServerResponse, ctx: ProviderCo
       sendJson(res, 200, { ok: true, user: found });
       return;
     }
-    case "/api/events.stream": {
+    case "/alpha/slack/events": {
       ctx.sse.connect(res, {
         filter: (envelope) => envelope.channel === auth.workspace.id,
         meta: { token: auth.token.access_token, team_id: auth.workspace.id },
@@ -1433,6 +1458,7 @@ export async function startSlackProvider(options?: ProviderOptions): Promise<Run
   return createProviderServer<SlackState>({
     options,
     createInitial: createInitialSlackState,
+    preflightHeaders: (path) => /^\/api\/[a-zA-Z]+\.[a-zA-Z.]+$/.test(path) ? "x-slack-version-ts" : undefined,
     defaultFaultBody: defaultSlackFaultBody,
     onControl: handleSlackControl,
     onRequest: handleSlackApi,

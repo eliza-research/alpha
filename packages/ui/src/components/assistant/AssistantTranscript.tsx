@@ -20,6 +20,8 @@ export type AssistantTranscriptProps = Omit<ComponentProps<"div">, "children"> &
   briefing?: ReactNode;
   /** The reply being written or its failure, after recorded messages. */
   liveMessages?: readonly TranscriptMessage[];
+  /** A card drawn last whatever the page's state, while its messages load or after they failed, such as the one about the owner's draft. */
+  standing?: ReactNode;
   interim?: ReactNode;
   /** The page being read, with the message that a history or search request opened it around. */
   position?: { page: string; around?: string; earlier?: string; later?: string };
@@ -83,7 +85,7 @@ const MessageRows = memo(function MessageRows({ messages, hold }: { messages: re
  * (45f6bed30 phone.css:1), so the sheet around it never stretches with the finger.
  * @model spec/app/assistant/chats.md
  */
-export function AssistantTranscript({ messages, messagesAfterLater, holdMessage, briefing, liveMessages, interim, position, visible = true, status = "loaded", turn, onRetry, onEarlier, onLater, onReturnToOriginal, className, onScroll, ...props }: AssistantTranscriptProps) {
+export function AssistantTranscript({ messages, messagesAfterLater, holdMessage, briefing, liveMessages, standing, interim, position, visible = true, status = "loaded", turn, onRetry, onEarlier, onLater, onReturnToOriginal, className, onScroll, ...props }: AssistantTranscriptProps) {
   const scrollRef = useRef<TranscriptScroll>({ follows: true, seen: { height: 0, view: 0 }, top: 0 });
   const contentRef = useRef<HTMLDivElement | null>(null);
   const page = position?.page;
@@ -112,7 +114,7 @@ export function AssistantTranscript({ messages, messagesAfterLater, holdMessage,
     observer.observe(content);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- each change to what the conversation shows is followed as it is drawn, as v119 did (45f6bed30 model.js:5561-5576), so a size the observer never sees still keeps the end
-  }, [around, page, status, visible, messages, messagesAfterLater, briefing, liveMessages, interim, turn]);
+  }, [around, page, status, visible, messages, messagesAfterLater, briefing, liveMessages, standing, interim, turn]);
   const pageFrom = (id: string | undefined, load: () => void) => {
     const content = contentRef.current;
     const viewport = content?.parentElement;
@@ -121,8 +123,8 @@ export function AssistantTranscript({ messages, messagesAfterLater, holdMessage,
     load();
   };
   const body = () => {
-    if (status === "loading") return <div role="status" aria-label="Loading messages" aria-busy className="flex flex-col gap-4"><Skeleton className="h-10 w-2/3 self-end" /><Skeleton className="h-16 w-4/5" /><Skeleton className="h-10 w-1/2 self-end" /></div>;
-    if (status === "failed") return <EmptyState title="Messages did not load">{onRetry ? <Button variant="secondary" onClick={onRetry}>Try again</Button> : null}</EmptyState>;
+    if (status === "loading") return <><div role="status" aria-label="Loading messages" aria-busy className="flex flex-col gap-4"><Skeleton className="h-10 w-2/3 self-end" /><Skeleton className="h-16 w-4/5" /><Skeleton className="h-10 w-1/2 self-end" /></div>{standing}</>;
+    if (status === "failed") return <><EmptyState title="Messages did not load">{onRetry ? <Button variant="secondary" onClick={onRetry}>Try again</Button> : null}</EmptyState>{standing}</>;
     return (
       <>
         {onEarlier ? <Button variant="ghost" size="sm" className="min-h-11 self-center" onClick={() => pageFrom(position?.earlier ?? messages[0]?.id, onEarlier)}>Earlier</Button> : null}
@@ -131,6 +133,7 @@ export function AssistantTranscript({ messages, messagesAfterLater, holdMessage,
         {messagesAfterLater?.length ? <MessageRows messages={messagesAfterLater} hold={holdMessage} /> : null}
         {briefing}
         {liveMessages?.length ? <MessageRows messages={liveMessages} /> : null}
+        {standing}
         {interim}
         {turn ? <AssistantTurnNote {...turn} /> : null}
       </>

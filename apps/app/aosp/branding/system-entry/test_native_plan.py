@@ -141,10 +141,10 @@ class NativePlanTest(unittest.TestCase):
                          'getBoolean(R.bool.config_alpha_system_entry_enabled)',
                          'getTargetActivityInfo(intent(), user, false)', 'user != userTracker.userId',
                          'FLAG_SYSTEM', 'FLAG_UPDATED_SYSTEM_APP', 'FLAG_SUSPENDED', 'target.exported',
-                         'broadcastDispatcher.registerReceiver(', 'user = UserHandle.ALL',
+                         'context.registerReceiverAsUser(', 'broadcastDispatcher.registerReceiver(', 'user = UserHandle.ALL',
                          'ACTION_PACKAGES_SUSPENDED', 'ACTION_PACKAGES_UNSUSPENDED',
                          'withContext(backgroundDispatcher)', 'finally {', 'removeCallback(users)',
-                         'broadcastDispatcher.unregisterReceiver(packages)',
+                         'context.unregisterReceiver(packages)',
                          'broadcastDispatcher.unregisterReceiver(suspension)', 'if (!available()) return']:
             self.assertIn(fragment, config)
         for forbidden in ['putExtra(', 'setData(', 'ACTION_VOICE_COMMAND', 'startActivity(', 'startService(',

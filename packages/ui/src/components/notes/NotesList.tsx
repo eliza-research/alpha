@@ -19,12 +19,14 @@ export type NotesListProps = Omit<ComponentProps<"div">, "children"> & {
   message?: string;
   /** Reads the notes again while they are out of reach. */
   onRetry?: () => void;
+  /** Direct actions offered below the empty status when there are no notes. */
+  emptyActions?: ReactNode;
 };
 
 const heading = "px-2 pt-2 pb-0.5 text-caption font-semibold text-muted-foreground";
 
 /** The Notes list: the pinned notes first, then the rest, narrowed to a folder when asked, or why there are none. */
-export function NotesList({ state, pinned = [], others = [], filter, onClearFilter, message = "Agent offline", onRetry, className, ...props }: NotesListProps) {
+export function NotesList({ state, pinned = [], others = [], filter, onClearFilter, message = "Agent offline", onRetry, emptyActions, className, ...props }: NotesListProps) {
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)} {...props}>
       {filter !== undefined && (
@@ -63,9 +65,12 @@ export function NotesList({ state, pinned = [], others = [], filter, onClearFilt
           </div>
         )}
         {state === "listed" && pinned.length + others.length === 0 && (
-          <div role="status" className="flex flex-col items-center gap-2.5 px-2 py-12 text-muted-foreground">
-            <StickyNote aria-hidden className="size-7" />
-            <h2 className="m-0 text-body leading-chat font-semibold">{filter === undefined ? "No notes" : "No matches"}</h2>
+          <div className="flex flex-col items-center gap-4 px-2 py-12 text-center">
+            <div role="status" className="flex flex-col items-center gap-2.5 text-muted-foreground">
+              <StickyNote aria-hidden className="size-7" />
+              <h2 className="m-0 text-body leading-chat font-semibold">{filter === undefined ? "No notes" : "No matches"}</h2>
+            </div>
+            {emptyActions}
           </div>
         )}
         {state === "listed" && pinned.length > 0 && <h2 className={heading}>Pinned</h2>}

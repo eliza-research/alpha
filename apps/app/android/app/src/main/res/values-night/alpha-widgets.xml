@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="alpha_widget_card_bg">#0B0B0B</color>
+    <color name="alpha_widget_dock_bg">#000000</color>
+    <color name="alpha_widget_border">#262626</color>
+    <color name="alpha_widget_fg">#FFFFFF</color>
+    <color name="alpha_widget_muted">#909090</color>
+    <color name="alpha_widget_accent">#0000FF</color>
+</resources>

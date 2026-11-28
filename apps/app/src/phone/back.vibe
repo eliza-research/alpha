@@ -4,7 +4,6 @@ import * as Messages from "../../gen/app__messages.effect.vibe"
 import * as Phone from "../../gen/app__phone.effect.vibe"
 import * as Shell from "../../gen/app__shell.effect.vibe"
 import * as Voicemail from "../../gen/app__phone__voicemail.effect.vibe"
-import { Rows } from "../contacts/contacts.vibe"
 import { contained } from "../runtime/index.vibe"
 
 /** Whether `event` was a step of the screen's own, taken by the rules. */
@@ -27,14 +26,14 @@ export const messagesBack = effect {
   return try stepped(messages, state.confirming ? { type: "keep" } as const : state.pane !== "Threads" ? { type: "back" } as const : state.searching ? { type: "closeSearch" } as const : undefined)
 }
 
-/** Back on Contacts: a delete question, the form, then the open contact. */
+/** Back on Contacts: a delete question, the form, the open contact, then any active filter. */
 export const contactsBack = effect {
   const contacts = try Contacts.Machine
   const state = try contacts.get()
   const step = state.confirming ? { type: "keep" } as const
     : state.form !== "Shut" && !Contacts.pending(state) ? { type: "discard" } as const
     : state.opened ? { type: "closeContact" } as const
-    : Contacts.canEndSearch(state) ? { type: "endSearch" } as const
+    : Contacts.canClearFilter(state) ? { type: "clearFilter" } as const
     : undefined
   return try stepped(contacts, step)
 }
@@ -42,7 +41,7 @@ export const contactsBack = effect {
 
 // spec/app/shell/index.md, "Returning to the prior communications app keeps Ask Alpha open at its current height"
 /** Return from Phone's Contacts tab once, then select the latest tab the owner chose. */
-export effect function returnPhoneTab(wanted: () => Phone.Tab): void!!(Contacts.Machine | Phone.Machine | Rows | Shell.Machine) {
+export effect function returnPhoneTab(wanted: () => Phone.Tab): void!!(Phone.Machine | Shell.Machine) {
   const shell = try Shell.Machine
   const handset = try Phone.Machine
   const before = try shell.get()
@@ -53,12 +52,6 @@ export effect function returnPhoneTab(wanted: () => Phone.Tab): void!!(Contacts.
   if (typing && !(try contained(shell.send(back, (where) => where.route === before.route && sameTrail(where) && where.assistant === "Typing"), "leaving typing for the Phone tabs"))) return
   const from = try shell.get()
   if (from.route !== before.route + (typing ? 1 : 0) || !sameTrail(from) || from.assistant === "Typing") return
-  // spec/app/contacts/index.md, "Back from the search field clears the query and returns to Contacts"
-  const contacts = try Contacts.Machine
-  const search = try contacts.get()
-  if (search.searching && search.sought && (try (try Rows).get()).filteredBy === "Owner") {
-    try contained(contacts.send({ type: "endSearch" }, (state) => state.searching && state.sought), "closing the Contacts search")
-  }
   const go = from.assistant === "Bar" ? back : { type: "returnCommsView", previous: "Phone" } as const
   if (!(try contained(shell.send(go, (where) => where.route === from.route && sameTrail(where) && where.assistant === from.assistant), "returning to Phone from Contacts"))) return
   const front = timeout(Stream.runHead(Stream.filter(handset.changes, (state) => state.front)), "2 seconds") catch () => Option.none()

@@ -69,13 +69,18 @@ effect function pendingRequests(floor: number): (ReadonlyArray<Request> | undefi
 }
 
 // spec/app/calendar/agent.md, "What is sent is exactly the change approved, for the revision the agent selected"; spec/app/calendar/agent.md, "A change Google confirms is read back; a refused or unknown one ends there and is reported"; spec/app/calendar/agent.md, "The request is read again at the tap; a newer revision is shown as updated, and nothing is sent"
-/** Approve the request the card showed, at the revision the owner reviewed, once the agent's list still holds it so: the agent then makes exactly that change, once. */
+/** Approve the request the card showed, at the revision the owner reviewed, for the owner Calendar read when the tap began, once the agent's list still holds it so: the agent then makes exactly that change, once. */
 effect function send(change: Out & { tag: "Send" }): Event!!(Agent | Attempts | Changes.Machine | Requests | Shown | Time) {
   const reqStore = try Requests
+  const owner = reqStore.owner()
+  const unsent: Event = { type: "sent", attempt: change.attempt, confirmed: false, known: true }
+  const elsewhere: Event = { type: "ownerChangedAtTap", attempt: change.attempt }
   const reviewed = reqStore.find(change.filing)
   const now = (try pendingRequests(change.filing))?.find((one) => one.id === reviewed?.id)
-  if (now === undefined || reviewed === undefined) return { type: "sent", attempt: change.attempt, confirmed: false, known: true }
+  if (reqStore.owner() !== owner) return elsewhere
+  if (now === undefined || reviewed === undefined) return unsent
   const rows = try rowsFor(now, (try Shown).all("Google"))
+  if (reqStore.owner() !== owner) return elsewhere
   const revision = revisionOf(now, rows)
   if (revision > (try (try Changes.Machine).get()).revision) {
     reqStore.keep(now)

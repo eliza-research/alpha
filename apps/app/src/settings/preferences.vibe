@@ -4,8 +4,8 @@ import * as Prefs from "../../gen/app__settings__preferences.effect.vibe"
 import type { AgentGoogle, Effect as Out, Event, Look, Sender, Share, Theme } from "../../gen/app__settings__preferences.effect.vibe"
 import * as Pages from "../../gen/app__settings.effect.vibe"
 import { Machine as Shell, showing } from "../../gen/app__shell.effect.vibe"
-import { Device } from "../platform/index.vibe"
-import { type Due, type Job, answer, applying, due, following, hearing, reacting, run, together, untimed } from "../runtime/index.vibe"
+import { Device, subscribeSharedPreferences } from "../platform/index.vibe"
+import { type Due, type Job, answer, applying, contained, due, following, hearing, reacting, run, started, together, untimed } from "../runtime/index.vibe"
 
 module web {
   /** @throws {never} */
@@ -236,5 +236,22 @@ const consented = applying(Prefs.Machine, (state) => ({ read: state.document.rea
   })
 })
 
+/** Re-reads shared appearance, text scale, and device preferences live when another Alpha app changes them. */
+const sharedSynced = started(effect {
+  const prefs = try Prefs.Machine
+  const changes = Stream.callback<string | null>((queue) => effect {
+    const stop = subscribeSharedPreferences((change) => { Queue.offerUnsafe(queue, change.key) })
+    try addFinalizer(() => sync(stop))
+  })
+  try Stream.runForEach(changes, effect (changedKey) => {
+    if (changedKey !== null && changedKey !== keys.appearance && changedKey !== keys.choices && changedKey !== "alpha.textScale") return
+    const current = try prefs.get()
+    if (current.keeping.read.status === "Loading" || current.sizing.read.status === "Loading"
+      || current.saving.read.status === "Loading" || current.recovering.read.status === "Loading") return
+    const [event, sender] = try starting
+    try contained(prefs.send(event, sender), "syncing shared preferences")
+  })
+}, "syncing shared preferences across Alpha apps")
+
 /** The owner's preferences, from launch: the look and the text the whole page follows, what other areas ask before they act, and what the agent is launched allowed to change. */
-export const preferences = Layer.provideMerge(together(machine, opened, resumed, phoneLook, looked, bars, legible, large, consented), prefsTurn)
+export const preferences = Layer.provideMerge(together(machine, opened, resumed, phoneLook, looked, bars, legible, large, consented, sharedSynced), prefsTurn)

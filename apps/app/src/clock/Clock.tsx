@@ -1,5 +1,5 @@
 // spec/app/clock/index.md, "Story: Move between Clock tabs and sheets"
-import { Tabs, TabsContent, TabsList, TabsTrigger, cn, dockClearance } from "@repo/ui";
+import { Alert, Button, Tabs, TabsContent, TabsList, TabsTrigger, cn, dockClearance } from "@repo/ui";
 import { type ManagedRuntime, Option, Schema } from "effect";
 import { initial } from "../../gen/app__clock.ts";
 import type { Machine as ClockViewMachine, Tab } from "../../gen/app__clock.effect.vibe";
@@ -12,6 +12,8 @@ import { AlarmsTab } from "./AlarmsTab.tsx";
 import { StopwatchTab } from "./StopwatchTab.tsx";
 import type { ClockResident } from "./sync.vibe";
 import { TimersTab } from "./TimersTab.tsx";
+import { configureClockDelivery } from "./device.vibe";
+import { useClockDelivery } from "./useClockStore.ts";
 import { WorldClockTab } from "./WorldClockTab.tsx";
 
 export interface ClockProps {
@@ -36,6 +38,7 @@ const TABS: ReadonlyArray<{ readonly value: Tab; readonly label: string }> = [
 export function Clock({ runtime }: ClockProps) {
   const view = useClockView(runtime);
   const state = view.state;
+  const delivery = useClockDelivery(runtime);
   if (!state) return <div aria-busy className={cn("flex flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden px-4 pt-2", dockClearance)}><Tabs value={initial.tab}><ClockTabs /></Tabs></div>;
 
   const closeSheet = () => {
@@ -44,6 +47,16 @@ export function Clock({ runtime }: ClockProps) {
 
   return (
     <div className={cn("flex flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden px-4 pt-2", dockClearance)}>
+      {delivery ? (
+        <Alert variant="warn">
+          {delivery === "notifications" ? "Allow Clock notifications to hear background alerts." : delivery === "exact" ? "Allow alarms and reminders for Clock to receive alerts on time." : "Clock could not schedule background alerts."}
+          {delivery === "notifications" || delivery === "exact" ? (
+            <Button variant="ghost" size="sm" onClick={() => { void runtime.runPromise(configureClockDelivery(delivery)); }}>
+              {delivery === "notifications" ? "Allow notifications" : "Open alarm settings"}
+            </Button>
+          ) : null}
+        </Alert>
+      ) : null}
       <Tabs
         value={state.tab}
         onValueChange={(next) => {

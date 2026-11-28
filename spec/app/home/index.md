@@ -283,13 +283,15 @@ pure def stepReadingsAreTicketed(before: Home, via: str, after: Home, out: List[
 > As the owner, I want to open Apps on my phone, see the current launcher
 > catalog, and try again if it could not be read.
 
-### The Apps tile belongs to phone Home and leaves while Home is being edited
+### The Apps tile and Apps drawer are suppressed on Home
 
-The drawer uses the last accepted catalog, including while a new reading is
-on its way. The page displays reading, unreadable, empty and matching states.
+The launcher does not show an Apps tile or render the Apps drawer UI, while
+keeping the underlying catalog-retry rule intact.
 
 ```quint
-pure def offersDrawer(h: Home): bool = onPhone(h) and not(h.editing)
+pure def offersDrawer(h: Home): bool = false
+
+pure def lawHomeSuppressesApps(home: Home): bool = not(offersDrawer(home))
 
 pure def canTryAgain(h: Home, shell: S::Shell): bool =
   onPhone(h) and shell.drawer and h.installed.read.status == R::Failed
@@ -299,10 +301,8 @@ pure def tryAgain(h: Home, shell: S::Shell): Moved = thenReadApps(List(), h, fal
 
 ### Apps also lists Alpha's own apps that are not on Home, and opens one as its tile would
 
-The Sunday demo build's Home held its 13 apps and the Apps tile (Alpha
-45f6bed30, `apps/app/src/prototype/home-shell.ts:193-194`). Alpha's apps
-that build did not have, Wallet, Telegram and Slack, start in Apps, beside
-the phone's own apps, until the owner adds them to Home.
+All admitted Alpha apps start on Home. An app removed from Home remains in
+the catalog so the owner can add it back.
 
 ```quint
 pure def drawerViews(h: Home, shell: S::Shell): List[S::View] = if (onPhone(h)) hiddenApps(h, shell) else List()
@@ -533,13 +533,14 @@ pure def sometimesATileWaitsForItsApp(h: Home): bool =
 
 ### Add to Home adds one of Alpha's own apps it lists
 
-Clock, Reminders, Wallet, Telegram and Slack are available through Add to Home and are kept when saved on Home.
+Any of Alpha's own apps removed from Home is available through Add to Home
+and is kept when saved on Home.
 
 ```quint
 pure def holdsView(tiles: List[T::Tile], view: S::View): bool = tiles.some(t => T::shows(t, view))
 
 pure def hiddenApps(h: Home, shell: S::Shell): List[S::View] =
-  T::homeCatalog.select(view => S::available(shell, view) and not(holdsView(h.tiles.favourites, view)))
+  T::homeOrder.select(view => S::available(shell, view) and not(holdsView(h.tiles.favourites, view)))
 
 pure def offered(h: Home, tile: T::Tile, shell: S::Shell): bool =
   h.adding and hiddenApps(h, shell).some(v => T::shows(tile, v))

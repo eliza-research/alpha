@@ -42,6 +42,69 @@ pure def lawABusyIntervalIsNeverFree(everyChosenIsLocal: bool, busyIntervals: in
   busyIntervals > 0 implies availability(everyChosenIsLocal, busyIntervals) != Free
 ```
 
+### A check is asked only on Home or Calendar, while Alpha can be seen, on a screen that is not sensitive
+
+Anywhere else nothing is asked and nothing is read; Android's access is
+asked next, and a refusal reads nothing.
+
+```quint
+pure def availabilityAdmitted(homeOrCalendar: bool, sensitive: bool, shown: bool): bool = homeOrCalendar and not(sensitive) and shown
+
+pure def lawElsewhereOrUnseenChecksNothing(sensitive: bool, shown: bool): bool =
+  not(availabilityAdmitted(false, sensitive, shown)) and not(availabilityAdmitted(true, true, shown)) and not(availabilityAdmitted(true, sensitive, false))
+```
+
+### The sheet offers the phone's calendars with none ticked, reads only the ticked ones, and shares only a free or busy answer it showed
+
+Check is the only way from the calendars to a read, the answer is shown
+before Share, and Cancel, Back, Home or leaving Home and Calendar closes the
+sheet with nothing shared.
+
+```quint
+type Checking = Closed | Choosing | Reading | Answered | Sharing
+type Availability = { checking: Checking, offered: Set[str], ticked: Set[str], answer: Answer }
+
+pure val initial: Availability = { checking: Closed, offered: Set(), ticked: Set(), answer: Unknown }
+
+pure val calendarValues = Set("a", "b", "c")
+pure val calendarsValues = Set(Set(), Set("a"), Set("a", "b"))
+
+pure def canShowCalendars(s: Availability, calendars: Set[str]): bool = s.checking == Closed and calendars.size() > 0
+
+pure def showCalendars(s: Availability, calendars: Set[str]): Availability =
+  { checking: Choosing, offered: calendars, ticked: Set(), answer: Unknown }
+
+pure def canTick(s: Availability, calendar: str): bool = s.checking == Choosing and s.offered.contains(calendar)
+
+pure def tick(s: Availability, calendar: str): Availability =
+  { ...s, ticked: if (s.ticked.contains(calendar)) s.ticked.exclude(Set(calendar)) else s.ticked.union(Set(calendar)) }
+
+pure def canCheck(s: Availability): bool = s.checking == Choosing and checkOffered(s.ticked.size())
+
+pure def check(s: Availability): Availability = { ...s, checking: Reading }
+
+pure def canAnswered(s: Availability, answer: Answer): bool = s.checking == Reading and answer != Unknown
+
+pure def answered(s: Availability, answer: Answer): Availability = { ...s, checking: Answered, answer: answer }
+
+pure def canShare(s: Availability): bool = s.checking == Answered
+
+pure def share(s: Availability): Availability = { ...s, checking: Sharing }
+
+pure def canClose(s: Availability): bool = s.checking != Closed
+
+pure def close(s: Availability): Availability = initial
+
+pure def alwaysOnlyTickedOfferedCalendarsAreRead(s: Availability): bool =
+  s.ticked.subseteq(s.offered)
+    and ((s.checking == Reading or s.checking == Answered or s.checking == Sharing) implies checkOffered(s.ticked.size()))
+
+pure def alwaysOnlyAFreeOrBusyAnswerIsShown(s: Availability): bool =
+  (s.checking == Answered or s.checking == Sharing) iff s.answer != Unknown
+
+pure def sometimesAnAnswerIsShared(s: Availability): bool = s.checking == Sharing
+```
+
 ## Story: Let a reviewed step read my phone's calendars for the range I approved
 
 > As the owner, I want an approved step to read only the calendars and

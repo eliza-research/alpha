@@ -8,11 +8,10 @@ import { type Detent, Machine as Shell, type View, parseEvent } from "../../gen/
 import { opensWithoutCard } from "../../gen/app__browser.effect.vibe"
 import * as Prefs from "../../gen/app__settings__preferences.effect.vibe"
 import { readOperation } from "@elizaos/agent"
-import { Agent } from "../platform/index.vibe"
-import { AgentPages, type AgentPage } from "../platform/index.vibe"
-import { ask } from "../platform/index.vibe"
+import { Agent, AgentPages, type AgentPage, ask, dismissOverlayHost, openAppViaOverlayAndWait } from "../platform/index.vibe"
 import { agentOpen, mayAgentOpen } from "../notes/agent.vibe"
 import { contained, started } from "../runtime/index.vibe"
+import { currentSurface } from "../surface.ts"
 
 module web {
   /** A fresh id for this page as a renderer of the agent's views. @throws {never} */
@@ -246,6 +245,16 @@ effect function openNamed<R>(noteId: string, asked: number, front: boolean!!R) {
   return { switched: true, opened: try agentOpen(noteId, { turn: asked, current: try views.current(), sensitive }) }
 }
 
+function confirmedNoteOpen(resultJson: string | undefined): boolean {
+  if (resultJson === undefined || resultJson.length === 0) return false
+  try {
+    const parsed = JSON.parse(resultJson) as { readonly opened?: unknown; readonly shown?: unknown }
+    return parsed.opened === true || parsed.shown !== undefined
+  } catch {
+    return false
+  }
+}
+
 /**
  * Carry out `held`: claim it once, bring its place to the front as `front` does, open a saved note in Notes'
  * editor, and tell the agent whether the view switched and, for a note, that it is shown. Nothing is said on screen.
@@ -256,9 +265,28 @@ effect function carriedOut<R>(held: Held, front: boolean!!R) {
   const claim = ask(Agent, HttpClientRequest.post("/api/views/interact-claim") |> HttpClientRequest.bodyJsonUnsafe(%, { ...binding, ...(saved ? { targetProtocol: "saved-note-v1" } : {}) }), Claimed) catch () => undefined
   if (claim === undefined) return
   const target = claim.target
-  const done = !saved ? { switched: try front, opened: false }
-    : target === undefined ? { switched: false, opened: false }
-    : try openNamed(target.noteId, held.asked, front)
+  let done: { readonly switched: boolean; readonly opened: boolean }
+  if (currentSurface().mode === "overlay") {
+    const place = placeFor(held.handoff)
+    if (place === "Home") {
+      try dismissOverlayHost()
+      done = { switched: true, opened: false }
+    } else if (place === undefined || (saved && target === undefined)) {
+      done = { switched: false, opened: false }
+    } else {
+      const payload = JSON.stringify({
+        view: place,
+        ...(held.handoff.subview === undefined ? {} : { subview: held.handoff.subview }),
+        ...(target === undefined ? {} : { target }),
+      })
+      const receipt = try openAppViaOverlayAndWait(`alpha://${place.toLowerCase()}/`, claim.claimId, payload)
+      done = { switched: receipt.switched, opened: saved && receipt.switched && confirmedNoteOpen(receipt.resultJson) }
+    }
+  } else {
+    done = !saved ? { switched: try front, opened: false }
+      : target === undefined ? { switched: false, opened: false }
+      : try openNamed(target.noteId, held.asked, front)
+  }
   const result = { switched: done.switched, ...(done.opened && target !== undefined ? { shown: target } : {}) }
   try ignore(ask(Agent, HttpClientRequest.post("/api/views/interact-result") |> HttpClientRequest.bodyJsonUnsafe(%, { ...binding, claimId: claim.claimId, success: done.switched, result }), Answered))
 }

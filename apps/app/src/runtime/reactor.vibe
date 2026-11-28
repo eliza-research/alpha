@@ -240,7 +240,7 @@ export effect function keptAttempts(machine: { readonly key: string }, version: 
 }
 
 /** The places a value kept under `key` that is no longer a state may be copied to, in order. */
-const asides = (key: string): ReadonlyArray<string> => [`${key}.unreadable`, ...Array.from({ length: 8 }, (_, index) => `${key}.unreadable.${index + 2}`)]
+export const asides = (key: string): ReadonlyArray<string> => [`${key}.unreadable`, ...Array.from({ length: 8 }, (_, index) => `${key}.unreadable.${index + 2}`)]
 
 /** Whether this machine is actually backed by durable storage at runtime (false when falling back to memory). */
 service Durability {

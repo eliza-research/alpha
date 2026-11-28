@@ -54,6 +54,13 @@ jobs:
         run: |
           sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install speech model converter dependencies
+        run: |
+          python3 -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch==2.8.0+cpu'
+          python3 -m pip install 'numpy==2.2.6' 'zstandard==0.23.0' 'librosa==0.11.0' 'onnx==1.21.0' 'PyYAML==6.0.2' 'tqdm==4.67.1' 'requests==2.34.2'
       - name: Prepare pinned Eliza checkout and verify Android inputs
         run: |
           pnpm eliza
@@ -62,6 +69,8 @@ jobs:
         id: build
         timeout-minutes: 150
         env:
+          TELEGRAM_API_ID: ${{ vars.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: pnpm --filter @repo/app android build --release
@@ -97,14 +106,14 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            set -euo pipefail
             test "$(git rev-parse HEAD)" = "${{ github.sha }}"
             test "$(sha256sum apps/app/artifacts/apk-manifest.json | cut -d' ' -f1)" = "${{ steps.freeze.outputs.manifest }}"
             mkdir -p test-results/android-instrumentation
             adb install -r apps/app/artifacts/launcher-debug.apk
             adb install -r apps/app/artifacts/instrumentation/launcher-androidTest.apk
             adb shell cmd role add-role-holder --user 0 android.app.role.HOME ai.alphacompute.alphaphone || true
-            adb shell am instrument -w -e clearPackageData true ai.alphacompute.alphaphone.test/androidx.test.runner.AndroidJUnitRunner | tee test-results/android-instrumentation/run.log
+            bash -o pipefail -c 'adb shell am instrument -w -e clearPackageData true ai.alphacompute.alphaphone.test/androidx.test.runner.AndroidJUnitRunner 2>&1 | tee test-results/android-instrumentation/run.log'
+            grep -Eq '^OK \([1-9][0-9]* tests?\)[[:space:]]*$' test-results/android-instrumentation/run.log
       - uses: actions/upload-artifact@v5
         if: always()
         with:

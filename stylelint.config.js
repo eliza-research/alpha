@@ -1,7 +1,7 @@
 export default {
   extends: ["stylelint-config-standard"],
   // Other checkouts of this repository, then what is generated or outside the workspace; what is left is hand-written, such as apps/app/src/main.css.
-  ignoreFiles: [".eliza/**", ".claude/**", "apps/app/android/**", "apps/app/aosp/**", "**/node_modules/**", "**/gen/**", "**/dist/**", "**/build/**", "**/.cache/**", "**/.spec-cache/**", "**/generated/**", "**/storybook-static/**", "vibestack/examples/**", "vibestack/fixtures/**"],
+  ignoreFiles: [".eliza/**", ".claude/**", "apps/app/android/**", "apps/app/aosp/**", "**/node_modules/**", "**/gen/**", "**/dist/**", "**/dist-suite/**", "**/build/**", "**/.cache/**", "**/.spec-cache/**", "**/generated/**", "**/storybook-static/**", "vibestack/examples/**", "vibestack/fixtures/**"],
   rules: {
     // A Tailwind v4 entry names what to scan with @source, and Tailwind inlines only an @import written as a string.
     "at-rule-no-unknown": [true, { ignoreAtRules: ["source"] }],

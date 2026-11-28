@@ -106,6 +106,74 @@ lemma AccessRevoked(s: Photos, grant: kit__permission_Grant, videos: bool, by_: 
   assert forall e :: e in d.out ==> e.Revoke? || e.Fetch? || e.DropCamera?;
 }
 
+lemma ListingKeeps(out: seq<Effect>, t: Photos)
+  ensures listing(out, t).state.rows == t.rows && listing(out, t).state.mine == t.mine && listing(out, t).state.starred == t.starred && listing(out, t).state.only == t.only
+  ensures listing(out, t).state.albums == t.albums && listing(out, t).state.album == t.album && listing(out, t).state.tab == t.tab
+  ensures listing(out, t).state.selecting == t.selecting && listing(out, t).state.selected == t.selected && listing(out, t).state.job == t.job
+  ensures listing(out, t).state.visible == t.visible && listing(out, t).state.secure == t.secure
+  ensures listing(out, t).state.access == t.access && listing(out, t).state.videos == t.videos && listing(out, t).state.filter == t.filter
+  ensures listing(out, t).state.cameraAlbum == (if t.visible then 0 else t.cameraAlbum)
+  ensures listing(out, t).state.shelf == (if t.visible && t.cameraAlbum != 0 then app__photos__albums_closeDialog(t.shelf) else t.shelf)
+  ensures forall e :: e in listing(out, t).out ==> e in out || e.Fetch? || e.DropCamera?
+{
+}
+
+lemma AccessAllowedShape(s: Photos, grant: kit__permission_Grant, videos: bool, by_: app__photos__actor_Actor)
+  requires inv(s) && canAccessIs(s, by_)
+  requires kit__permission_allows(kit__permission_observe(s.access, grant))
+  ensures accessIs(s, grant, videos, by_).state.rows == s.rows && accessIs(s, grant, videos, by_).state.mine == s.mine && accessIs(s, grant, videos, by_).state.starred == s.starred && accessIs(s, grant, videos, by_).state.only == s.only
+  ensures accessIs(s, grant, videos, by_).state.albums == s.albums && accessIs(s, grant, videos, by_).state.album == s.album && accessIs(s, grant, videos, by_).state.tab == s.tab
+  ensures accessIs(s, grant, videos, by_).state.selecting == s.selecting && accessIs(s, grant, videos, by_).state.selected == s.selected && accessIs(s, grant, videos, by_).state.job == s.job
+  ensures accessIs(s, grant, videos, by_).state.visible == s.visible && accessIs(s, grant, videos, by_).state.secure == s.secure
+  ensures accessIs(s, grant, videos, by_).state.access == kit__permission_observe(s.access, grant)
+  ensures accessIs(s, grant, videos, by_).state.filter == (if (s.filter.Videos? && !(accessIs(s, grant, videos, by_).state.videos)) then Filter.Everything else s.filter)
+  ensures accessIs(s, grant, videos, by_).state.cameraAlbum == 0
+  ensures accessIs(s, grant, videos, by_).state.shelf == (if s.cameraAlbum == 0 then s.shelf else app__photos__albums_closeDialog(s.shelf))
+  ensures forall e :: e in accessIs(s, grant, videos, by_).out ==> e.Fetch? || e.DropCamera?
+{
+  var granted := kit__permission_observe(s.access, grant);
+  var shown := videos && kit__permission_allows(granted);
+  var observed := s.(access := granted, videos := shown, filter := (if (s.filter.Videos? && !(shown)) then Filter.Everything else s.filter));
+  var same := (granted.grant == s.access.grant) && (shown == s.videos);
+  var kept := if same then observed else clearCameraVisit(observed);
+  var dropped := if same then [] else dropCamera(s);
+  assert accessIs(s, grant, videos, by_) == listing(dropped, kept);
+  assert forall e :: e in dropped ==> e.DropCamera?;
+  if !s.visible {
+    assert s.cameraAlbum == 0;
+  }
+  ListingKeeps(dropped, kept);
+}
+
+lemma AccessAllowedKeeps(s: Photos, after: Photos, out: seq<Effect>)
+  requires inv(s)
+  requires after.rows == s.rows && after.mine == s.mine && after.starred == s.starred && after.only == s.only
+  requires after.albums == s.albums && after.album == s.album && after.tab == s.tab
+  requires after.selecting == s.selecting && after.selected == s.selected && after.job == s.job
+  requires after.visible == s.visible && after.secure == s.secure
+  requires kit__permission_allows(after.access)
+  requires after.filter == (if (s.filter.Videos? && !(after.videos)) then Filter.Everything else s.filter)
+  requires after.cameraAlbum == 0
+  requires after.shelf == (if s.cameraAlbum == 0 then s.shelf else app__photos__albums_closeDialog(s.shelf))
+  requires forall e :: e in out ==> e.Fetch? || e.DropCamera?
+  ensures alwaysVideosNeedTheirAccess(after)
+  ensures alwaysOnlyOwnWithoutAccess(after)
+  ensures alwaysTheAlbumShowingIsListed(after)
+  ensures alwaysNothingShownWhileHidden(after)
+  ensures alwaysTheLockScreenListsOnlyItsSession(after)
+  ensures alwaysSelectionIsListed(after)
+  ensures alwaysRunsAreTheOwners(after)
+  ensures alwaysDialogNamesItsSubject(after)
+  ensures stepLosingAccessClosesWhatShowsTheLibrary(s, "accessIs", after, out)
+  ensures stepNothingChangesWithoutAccess(s, after, out)
+  ensures stepAPageKeepsWhatWasListed(s, "accessIs", after)
+  ensures stepChangesAreTheOwners(s, "accessIs", after, out)
+  ensures stepAFavouriteToggles(s, "accessIs", after)
+  ensures stepAlbumChangesCarryTheSelection(s, "accessIs", after, out)
+{
+  app__photos__albums_closeDialog_ensures(s.shelf);
+}
+
 lemma AccessAllowed(s: Photos, grant: kit__permission_Grant, videos: bool, by_: app__photos__actor_Actor)
   requires inv(s) && canAccessIs(s, by_)
   requires kit__permission_allows(kit__permission_observe(s.access, grant))
@@ -124,12 +192,9 @@ lemma AccessAllowed(s: Photos, grant: kit__permission_Grant, videos: bool, by_: 
   ensures stepAFavouriteToggles(s, "accessIs", accessIs(s, grant, videos, by_).state)
   ensures stepAlbumChangesCarryTheSelection(s, "accessIs", accessIs(s, grant, videos, by_).state, accessIs(s, grant, videos, by_).out)
 {
-  app__photos__albums_closeDialog_ensures(s.shelf);
+  AccessAllowedShape(s, grant, videos, by_);
   var d := accessIs(s, grant, videos, by_);
-  assert d.state.rows == s.rows && d.state.mine == s.mine && d.state.starred == s.starred;
-  assert d.state.albums == s.albums && d.state.album == s.album && d.state.tab == s.tab;
-  assert d.state.selecting == s.selecting && d.state.selected == s.selected && d.state.job == s.job;
-  assert forall e :: e in d.out ==> e.Fetch? || e.DropCamera?;
+  AccessAllowedKeeps(s, d.state, d.out);
 }
 
 lemma accessIs_ensures(s: Photos, grant: kit__permission_Grant, videos: bool, by_: app__photos__actor_Actor)
@@ -150,12 +215,10 @@ lemma accessIs_ensures(s: Photos, grant: kit__permission_Grant, videos: bool, by
 
 {
   if inv(s) && canAccessIs(s, by_) {
-    var d := accessIs(s, grant, videos, by_);
     if !kit__permission_allows(kit__permission_observe(s.access, grant)) {
-      assert d.out[0].Revoke?;
-      assert d.out[0] in d.out;
+      AccessRevoked(s, grant, videos, by_);
     } else {
-      assert forall e :: e in d.out ==> !e.Revoke?;
+      AccessAllowed(s, grant, videos, by_);
     }
   }
 }
@@ -366,9 +429,66 @@ lemma changed_ensures(s: Photos, attempt: int, done: seq<int>, stale: seq<int>, 
 
 {
   if inv(s) && canChanged(s, attempt, done, stale, by_) {
-    var r := app__photos__changes_answered(s.job, attempt, done, stale, declined, known);
-    var res := if (known && s.job.change.Trash? && (s.cameraItem in done)) then clearCameraVisit(s) else s;
-    assert res.rows == s.rows && res.mine == s.mine && res.selected == s.selected && res.starred == s.starred;
-    assert s.secure ==> |r.left| == 0;
+    ChangedShape(s, attempt, done, stale, declined, known, by_);
+    var d := changed(s, attempt, done, stale, declined, known, by_);
+    ChangedKeeps(s, d.state, d.out);
   }
+}
+
+lemma ChangedShape(s: Photos, attempt: int, done: seq<int>, stale: seq<int>, declined: bool, known: bool, by_: app__photos__actor_Actor)
+  requires inv(s) && canChanged(s, attempt, done, stale, by_)
+  ensures changed(s, attempt, done, stale, declined, known, by_).state.rows == s.rows && changed(s, attempt, done, stale, declined, known, by_).state.mine == s.mine && changed(s, attempt, done, stale, declined, known, by_).state.starred == s.starred && changed(s, attempt, done, stale, declined, known, by_).state.only == s.only
+  ensures changed(s, attempt, done, stale, declined, known, by_).state.albums == s.albums && changed(s, attempt, done, stale, declined, known, by_).state.album == s.album && changed(s, attempt, done, stale, declined, known, by_).state.tab == s.tab
+  ensures changed(s, attempt, done, stale, declined, known, by_).state.selecting == s.selecting && changed(s, attempt, done, stale, declined, known, by_).state.selected == s.selected
+  ensures changed(s, attempt, done, stale, declined, known, by_).state.visible == s.visible && changed(s, attempt, done, stale, declined, known, by_).state.secure == s.secure
+  ensures changed(s, attempt, done, stale, declined, known, by_).state.access == s.access && changed(s, attempt, done, stale, declined, known, by_).state.videos == s.videos && changed(s, attempt, done, stale, declined, known, by_).state.filter == s.filter
+  ensures app__photos__changes_running(s.job) && app__photos__changes_inv(changed(s, attempt, done, stale, declined, known, by_).state.job)
+  ensures |changed(s, attempt, done, stale, declined, known, by_).state.job.left| == 0 || changed(s, attempt, done, stale, declined, known, by_).state.job.left == s.job.left
+  ensures changed(s, attempt, done, stale, declined, known, by_).state.cameraAlbum == 0 || (changed(s, attempt, done, stale, declined, known, by_).state.cameraAlbum == s.cameraAlbum && changed(s, attempt, done, stale, declined, known, by_).state.cameraItem == s.cameraItem && changed(s, attempt, done, stale, declined, known, by_).state.library == s.library)
+  ensures changed(s, attempt, done, stale, declined, known, by_).state.shelf == (if s.cameraAlbum != 0 && changed(s, attempt, done, stale, declined, known, by_).state.cameraAlbum == 0 then app__photos__albums_closeDialog(s.shelf) else s.shelf)
+  ensures forall e :: e in changed(s, attempt, done, stale, declined, known, by_).out ==> e.Fetch? || e.DropCamera?
+{
+  app__photos__changes_answered_ensures(s.job, attempt, done, stale, declined, known);
+  var r := app__photos__changes_answered(s.job, attempt, done, stale, declined, known);
+  var res := if (known && s.job.change.Trash? && (s.cameraItem in done)) then clearCameraVisit(s) else s;
+  var t := res.(job := r);
+  if !s.visible {
+    assert s.cameraAlbum == 0;
+  }
+  if app__photos__changes_running(r) {
+    assert changed(s, attempt, done, stale, declined, known, by_) == emit([], t);
+  } else {
+    assert changed(s, attempt, done, stale, declined, known, by_) == listing([], t);
+    ListingKeeps([], t);
+  }
+}
+
+lemma ChangedKeeps(s: Photos, after: Photos, out: seq<Effect>)
+  requires inv(s)
+  requires after.rows == s.rows && after.mine == s.mine && after.starred == s.starred && after.only == s.only
+  requires after.albums == s.albums && after.album == s.album && after.tab == s.tab
+  requires after.selecting == s.selecting && after.selected == s.selected
+  requires after.visible == s.visible && after.secure == s.secure
+  requires after.access == s.access && after.videos == s.videos && after.filter == s.filter
+  requires app__photos__changes_running(s.job) && app__photos__changes_inv(after.job)
+  requires |after.job.left| == 0 || after.job.left == s.job.left
+  requires after.cameraAlbum == 0 || (after.cameraAlbum == s.cameraAlbum && after.cameraItem == s.cameraItem && after.library == s.library)
+  requires after.shelf == (if s.cameraAlbum != 0 && after.cameraAlbum == 0 then app__photos__albums_closeDialog(s.shelf) else s.shelf)
+  requires forall e :: e in out ==> e.Fetch? || e.DropCamera?
+  ensures alwaysVideosNeedTheirAccess(after)
+  ensures alwaysOnlyOwnWithoutAccess(after)
+  ensures alwaysTheAlbumShowingIsListed(after)
+  ensures alwaysNothingShownWhileHidden(after)
+  ensures alwaysTheLockScreenListsOnlyItsSession(after)
+  ensures alwaysSelectionIsListed(after)
+  ensures alwaysRunsAreTheOwners(after)
+  ensures alwaysDialogNamesItsSubject(after)
+  ensures stepLosingAccessClosesWhatShowsTheLibrary(s, "changed", after, out)
+  ensures stepNothingChangesWithoutAccess(s, after, out)
+  ensures stepAPageKeepsWhatWasListed(s, "changed", after)
+  ensures stepChangesAreTheOwners(s, "changed", after, out)
+  ensures stepAFavouriteToggles(s, "changed", after)
+  ensures stepAlbumChangesCarryTheSelection(s, "changed", after, out)
+{
+  app__photos__albums_closeDialog_ensures(s.shelf);
 }

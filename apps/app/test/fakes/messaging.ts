@@ -1,6 +1,114 @@
 // spec/kit/read.md, "Story: Read from outside"; spec/kit/attempt.md, "Story: Do something outside, once"
 import { type Route, feed, readJsonBody } from "./routes.ts";
 
+import type { HttpOptions } from "@capacitor/core";
+import deployments from "@repo/deployment/deployments.json" with { type: "json" };
+import type { Faked } from "./phone.ts";
+import type { MessagingNoticeFilter, MessagingNoticeTarget } from "../../src/platform/messaging-notices.vibe";
+import type { ProviderName } from "../../src/platform/messaging.vibe";
+
+/** Android's private posted-notification tray, permission settings and single-use activity returns. */
+export function messagingNoticePhone() {
+  type Entry = { readonly token: string; readonly target: MessagingNoticeTarget; readonly title: string; readonly body: string };
+  const enabled = new Set<ProviderName>();
+  const entries = new Map<string, Entry>();
+  const visible = new Map<ProviderName, MessagingNoticeTarget>();
+  let pending: Entry | undefined;
+  let signal = () => {};
+  const matches = (target: MessagingNoticeTarget, filter: MessagingNoticeFilter) =>
+    Object.entries(filter).every(([key, value]) => Reflect.get(target, key) === value);
+  const withdraw = (filter: MessagingNoticeFilter) => {
+    for (const [token, item] of entries) if (matches(item.target, filter)) entries.delete(token);
+    if (pending !== undefined && matches(pending.target, filter)) pending = undefined;
+  };
+  const setAllowed = (provider: ProviderName, allowed: boolean) => {
+    if (allowed) enabled.add(provider);
+    else {
+      enabled.delete(provider);
+      withdraw({ provider });
+    }
+    signal();
+  };
+  const plugins: Readonly<Record<string, Faked>> = {
+    AlphaMessagingNotices: (emit, onUnplug) => {
+      signal = () => emit("messagingNoticesChanged", {});
+      onUnplug?.(() => { signal = () => {}; visible.clear(); });
+      return {
+        status: ({ provider }: { provider: ProviderName }) => ({ allowed: enabled.has(provider) }),
+        configure: ({ provider }: { provider: ProviderName }) => setAllowed(provider, true),
+        front({ provider, target }: { provider: ProviderName; target?: MessagingNoticeTarget }) {
+          if (target === undefined) visible.delete(provider);
+          else if (provider === target.provider) visible.set(provider, target);
+        },
+        post({ target, title, body }: Omit<Entry, "token">) {
+          const current = visible.get(target.provider);
+          if (!enabled.has(target.provider) || current !== undefined && matches(current, target)) return { posted: false };
+          for (const [token, item] of entries) if (matches(item.target, target)) entries.delete(token);
+          const token = crypto.randomUUID();
+          entries.set(token, { target, title, body, token });
+          return { posted: true };
+        },
+        withdraw,
+        pendingTap: ({ provider }: { provider: ProviderName }) => pending?.target.provider === provider ? { token: pending.token, target: pending.target } : {},
+        consumeTap({ token }: { token: string }) {
+          if (pending?.token === token) pending = undefined;
+        },
+      };
+    },
+  };
+  return {
+    plugins, setAllowed, posted: () => [...entries.values()], pending: () => pending?.token,
+    tap(token: string) {
+      const selected = entries.get(token);
+      if (selected === undefined) return false;
+      entries.delete(token);
+      pending = selected;
+      signal();
+      return true;
+    },
+  };
+}
+
+/** Android's browser and HTTP transport talking to the local Slack provider, with the phone's registered return address. */
+export function slackPhone(origin: string, options: { readonly beforeReturn?: () => void; readonly initialExpirySeconds?: number; readonly beforeReply?: (path: string, body: string) => Promise<void> } = {}): Readonly<Record<string, Faked>> {
+  return {
+    AlphaSlackOAuth: () => ({
+      async authorize({ url }: { url: string }) {
+        const authorize = new URL(url);
+        if (authorize.origin !== "https://slack.com" || authorize.pathname !== "/oauth/v2/authorize") throw new Error("Unexpected consent address");
+        const consent = new URL(authorize.pathname + authorize.search, origin);
+        consent.searchParams.set("auto_approve", "1");
+        const answer = await fetch(consent, { redirect: "manual" });
+        const returned = new URL(answer.headers.get("location") ?? "");
+        if (returned.protocol !== "alphaphone:" || returned.host !== "slack" || returned.pathname !== "/oauth/callback") throw new Error("Unexpected phone callback");
+        options.beforeReturn?.();
+        return { state: returned.searchParams.get("state"), code: returned.searchParams.get("code"), error: "" };
+      },
+      async request(request: Omit<HttpOptions, "data"> & { data?: string }) {
+        const url = new URL(request.url);
+        if (url.pathname === "/.well-known/alpha-slack") {
+          if (url.origin !== deployments.production.cloud || request.headers?.authorization) throw new Error("Unexpected registration request");
+        } else if (url.pathname === "/api/slack/oauth" || url.pathname === "/api/slack/events/read") {
+          if (url.origin !== deployments.production.cloud || request.method !== "POST") throw new Error("Unexpected cloud mailbox request");
+        } else if (url.origin !== "https://slack.com") throw new Error("Unexpected Slack host");
+        if (["/api/oauth.v2.access", "/api/slack/oauth"].includes(url.pathname) && !request.headers?.["content-type"]?.startsWith("application/x-www-form-urlencoded"))
+          throw new Error("Slack only accepts form fields at its OAuth endpoint");
+        const answer = await fetch(new URL(url.pathname + url.search, origin), {
+          method: request.method, headers: request.headers, body: request.data,
+        });
+        let data = await answer.text();
+        await options.beforeReply?.(url.pathname, data);
+        if (options.initialExpirySeconds !== undefined && ["/api/oauth.v2.access", "/api/slack/oauth"].includes(url.pathname) && new URLSearchParams(request.data).has("code")) {
+          const grant: unknown = JSON.parse(data);
+          if (grant && typeof grant === "object" && "authed_user" in grant && grant.authed_user && typeof grant.authed_user === "object")
+            data = JSON.stringify({ ...grant, authed_user: { ...grant.authed_user, expires_in: options.initialExpirySeconds } });
+        }
+        return { status: answer.status, headers: Object.fromEntries(answer.headers), data };
+      },
+    }),
+  };
+}
+
 export interface SlackScene {
   teamId: string;
   teamName: string;
@@ -41,6 +149,7 @@ export function slackRoutes(scene: SlackScene, now: () => number): Route[] {
     is_private: ch.is_private === true, is_archived: false, is_muted: ch.is_muted === true,
   });
   return [
+    (request, url) => request.method === "GET" && url.pathname === "/.well-known/alpha-slack" ? Response.json({ clientId: "123.456" }) : undefined,
     (request, url) => {
       if (request.method !== "POST" || url.pathname !== "/api/oauth.v2.access") return;
       return Response.json({
@@ -51,10 +160,10 @@ export function slackRoutes(scene: SlackScene, now: () => number): Route[] {
       });
     },
     (request, url) => {
-      if (!url.pathname.startsWith("/api/")) return;
+      if (!url.pathname.startsWith("/api/") && url.pathname !== "/alpha/slack/events") return;
       const denied = authed(request);
       if (denied !== undefined) return denied;
-      if (request.method === "GET" && url.pathname === "/api/events.stream") {
+      if (request.method === "GET" && url.pathname === "/alpha/slack/events") {
         return feed((send) => {
           scene.listeners.add(send);
           return () => { scene.listeners.delete(send); };
@@ -134,13 +243,6 @@ export function slackRoutes(scene: SlackScene, now: () => number): Route[] {
           }
           return Response.json({ ok: true, channel, ts });
         }
-        if (url.pathname === "/api/conversations.setMute") {
-          const channel = typeof body.channel === "string" ? body.channel : "";
-          const muted = body.muted === true;
-          const ch = scene.channels.find((one) => one.id === channel);
-          if (ch) ch.is_muted = muted;
-          return Response.json({ ok: true, channel, is_muted: muted });
-        }
         if (url.pathname === "/api/conversations.open") {
           const ch = scene.channels[0] ?? { id: "D-DM", name: "dm", is_im: true, messages: [] };
           return Response.json({ ok: true, already_open: true, channel: { id: ch.id, name: ch.name, is_channel: false, is_group: false, is_im: true, is_mpim: false, is_private: true, is_archived: false } });
@@ -155,6 +257,7 @@ export function slackRoutes(scene: SlackScene, now: () => number): Route[] {
 }
 
 export interface TelegramScene {
+  beforeMeReply?: () => Promise<void>;
   enabled: boolean;
   sessionToken: string;
   revoked: boolean;
@@ -182,7 +285,7 @@ export function telegramScene(): TelegramScene {
 export function telegramRoutes(scene: TelegramScene, now: () => number): Route[] {
   const authed = (request: Request) => {
     const header = request.headers.get("authorization") ?? "";
-    if (scene.revoked || !header.startsWith("Bearer ")) return Response.json({ ok: false, error: "AUTH_KEY_UNREGISTERED" }, { status: 401 });
+    if (scene.revoked || header !== `Bearer ${scene.sessionToken}`) return Response.json({ ok: false, error: "AUTH_KEY_UNREGISTERED" }, { status: 401 });
     return undefined;
   };
   const selfUser = () => ({ _type: "user" as const, id: scene.user.id, first_name: scene.user.first_name, username: scene.user.username, self: true, online: true });
@@ -221,11 +324,13 @@ export function telegramRoutes(scene: TelegramScene, now: () => number): Route[]
         return Response.json({ ok: true, _type: "auth.loginToken", token: "fake-qr-token", expires: Math.floor(now() / 1000) + 60, login_url: "tg://login?token=fake-qr-token" });
       }
       const denied = authed(request);
+      if (url.pathname === "/rpc/users.getMe") {
+        const reply = denied ?? Response.json({ ok: true, user: selfUser() });
+        return scene.beforeMeReply ? scene.beforeMeReply().then(() => reply) : reply;
+      }
       if (denied !== undefined) return denied;
       return readJsonBody(request).then((body) => {
         switch (url.pathname) {
-          case "/rpc/users.getMe":
-            return Response.json({ ok: true, user: selfUser() });
           case "/rpc/auth.logOut":
             scene.revoked = true;
             return Response.json({ ok: true, _type: "auth.loggedOut" });
@@ -270,7 +375,7 @@ export function telegramRoutes(scene: TelegramScene, now: () => number): Route[]
           case "/rpc/account.updateNotifySettings":
             return Response.json({ ok: true, mute_until: typeof body.mute_until === "number" ? body.mute_until : 0 });
           case "/rpc/updates.getDifference":
-            return Response.json({ ok: true, updates: [], pts: scene.pts, has_more: false });
+            return Response.json({ ok: true, _type: "updates.difference", new_messages: [], other_updates: [], state: { pts: scene.pts, date: Math.floor(now() / 1000) } });
           default:
             return Response.json({ ok: false, error: "METHOD_INVALID" }, { status: 404 });
         }

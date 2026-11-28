@@ -22,7 +22,7 @@ import { textReviewRoute } from "./text-review.ts";
 import { type UpdateScene, updateRoutes, updateScene } from "./update.ts";
 import { type VoiceScene, voiceScene } from "./voice.ts";
 import { type BrowserScene, browserScene } from "./browser.ts";
-import { type SlackScene, type TelegramScene, slackRoutes, slackScene, telegramRoutes, telegramScene } from "./messaging.ts";
+import { type SlackScene, type TelegramScene, messagingNoticePhone, slackRoutes, slackScene, telegramRoutes, telegramScene } from "./messaging.ts";
 import { type WalletScene, walletRoutes, walletScene } from "./wallet.ts";
 
 export interface Scene {
@@ -56,6 +56,7 @@ export interface Scene {
   readonly update: UpdateScene;
   readonly voice: VoiceScene;
   readonly browser: BrowserScene;
+  readonly messagingNotices: ReturnType<typeof messagingNoticePhone>;
   readonly slack: SlackScene;
   readonly telegram: TelegramScene;
   readonly wallet: WalletScene;
@@ -84,6 +85,7 @@ export function scene(): Scene {
     update: updateScene(),
     voice: voiceScene(),
     browser: browserScene(),
+    messagingNotices: messagingNoticePhone(),
     slack: slackScene(),
     telegram: telegramScene(),
     wallet: walletScene(),

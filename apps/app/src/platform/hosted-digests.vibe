@@ -1,6 +1,6 @@
 // spec/app/digests/index.md, "Android supplies one verified view of retained results and background checks"
 import { DIGEST_RETAINED_RESULTS, digestId, type DigestResult, parseDigestResult } from "@elizaos/plugin-workflow-client"
-import { registered } from "./device.vibe"
+import { pluginChanges, registered } from "./device.vibe"
 
 const pluginName = "AlphaHostedDigestDelivery"
 
@@ -126,10 +126,5 @@ export effect function settleNativeDigestNotice(token: string, questionLease?: s
 
 export const nativeDigestChanges = () => Stream.suspend(() => {
   if (!registered(pluginName)) return Stream.empty
-  return Stream.callback<void>((queue) => Effect.asVoid(acquireRelease(
-    Effect.orElseSucceed(tryPromise(() => bridge(pluginName).addListener("changed", () => {
-      Queue.offerUnsafe(queue, undefined)
-    })), () => undefined),
-    (listener) => listener === undefined ? Effect.void : ignore(tryPromise(() => listener.remove())),
-  )))
+  return pluginChanges((notify) => bridge(pluginName).addListener("changed", notify))
 })

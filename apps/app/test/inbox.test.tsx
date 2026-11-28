@@ -1295,3 +1295,53 @@ it(`Dispatches a held Archive after restart once accounts restore its grant (spe
     expect([ops.kind, ops.attempt.outcome, world.inbox.changes.at(-1)]).toEqual(["Archive", "Confirmed", "archive g4"]);
   }, { timeout: 5_000 });
 });
+
+it(`Reauthenticates via email confirmation when Connect Gmail requires a fresh phone session (spec/app/inbox/index.md, "Story: Connect Gmail and keep to its grant")`, async () => {
+  const world = { ...scene(), phone: true };
+  const consent = { authUrl: "https://accounts.google.com/o/oauth2/v2/auth?state=alpha-reauth", reauthRequired: true, requests: [] as string[][], opened: [] as string[] };
+  world.inbox.consent = consent;
+  world.inbox.google = undefined;
+  const emailed: string[] = [];
+  const cancelled: number[] = [];
+  let attemptSeq = 0;
+  world.voice.startupSignIn = {
+    reauthenticate: (options) => {
+      attemptSeq += 1;
+      emailed.push("email" in options ? options.email : "");
+      return Promise.resolve({ request: attemptSeq, attempt: attemptSeq, verdict: "code-on-its-way", expiresAt: world.now + 60_000, resendAt: world.now + 10_000 });
+    },
+    verify: ({ attempt, code }) => {
+      if (code !== "123456") return Promise.resolve({ request: attempt, attempt, verdict: "try-again", retry: "wrong-code" });
+      consent.reauthRequired = false;
+      return Promise.resolve({ request: attempt, attempt, verdict: "account-confirmed" });
+    },
+    cancel: ({ attempt }) => {
+      cancelled.push(attempt);
+      return Promise.resolve({ attempt });
+    },
+  };
+  const { alpha } = await open(world, inboxAccountMounts);
+  const runtime = inbox.runtime(alpha);
+  await openInboxFromHome(alpha);
+  await until(alpha, runtime, List, (s) => s.accounts.status === "Loaded" && s.connected.length === 0);
+
+  // spec/app/inbox/index.md, "The owner authorizes Gmail in Google and Inbox checks access on return"
+  await press("Connect Gmail");
+  await afterDraw(() => expect(document.querySelector("[role=dialog]")?.textContent).toContain("Confirm it’s you"));
+  expect([emailed, consent.opened, told().includes("Gmail authorization could not be opened")]).toEqual([["owner@alpha.test"], [], false]);
+
+  await confirm("Not now");
+  await afterDraw(() => expect(document.querySelector("[role=dialog]")).toBeNull());
+  expect([cancelled, told().includes("Gmail authorization could not be opened")]).toEqual([[1], false]);
+
+  await press("Connect Gmail");
+  await afterDraw(() => expect(document.querySelector("[role=dialog]")?.textContent).toContain("owner@alpha.test"));
+  await fill("Confirmation code", "000000");
+  await confirm("Verify code");
+  await afterDraw(() => expect(document.querySelector("[role=dialog]")?.textContent).toContain("Check the code and try again."));
+
+  await fill("Confirmation code", "123456");
+  await confirm("Verify code");
+  await afterDraw(() => expect([document.querySelector("[role=dialog]"), consent.opened]).toEqual([null, [consent.authUrl]]));
+  expect(told().includes("Gmail authorization could not be opened")).toBe(false);
+});

@@ -7,7 +7,10 @@ import { type Account, type Fate, type Past, type Request, agents, own, readingO
 import { useMachine } from "../../gen/app__wallet.react.ts";
 import type { Machine as Sending, Said } from "../../gen/app__wallet__transfer.effect.vibe";
 import { useMachine as useTransfer } from "../../gen/app__wallet__transfer.react.ts";
-import { useTimed } from "../runtime/ui.tsx";
+import { type Alpha, useTimed } from "../runtime/ui.tsx";
+import { accountRuntime } from "../account/index.tsx";
+import { SignInView } from "../account/SignInView.tsx";
+import { useMachine as useSignIn } from "../../gen/app__account__signIn.react.ts";
 import type { Time } from "../runtime/index.vibe";
 import type { Ledger, Transferring } from "./machines.ts";
 import { Receive } from "./Receive.tsx";
@@ -16,6 +19,7 @@ import { Send } from "./Send.tsx";
 import { shownUnits } from "@elizaos/plugin-wallet-client";
 
 export interface WalletProps {
+  alpha: Alpha;
   /** Provides the wallet and the transfer under way, `wallet` and `transfer` of this area, and Alpha's time, at which `can` is asked. */
   runtime: ManagedRuntime.ManagedRuntime<Machine | Sending | Time, unknown>;
 }
@@ -148,13 +152,25 @@ function Serving({ ledger, sending }: { ledger: Ledger; sending: Transferring })
   );
 }
 
+function WalletSignIn({ alpha }: { alpha: Alpha }) {
+  const runtime = accountRuntime(alpha);
+  const signIn = useSignIn(runtime);
+  const begin = { type: "begin", origin: "ByOwner" } as const;
+  if (signIn.state && signIn.state.step !== "Closed") return <SignInView runtime={runtime} />;
+  return (
+    <EmptyState icon={<WalletIcon />} title="Sign in to use Wallet">
+      <Button disabled={!signIn.can(begin)} onClick={() => void signIn.send(begin)}>Sign in to Alpha</Button>
+    </EmptyState>
+  );
+}
+
 /**
  * The owner's wallet, as the resident agent holds it: the way to make one, or that this phone cannot hold one; a
  * wallet that is off and the way to turn it on; or what waits, what is held and what happened, with each control
  * offered exactly when the rules allow its event.
  * @model spec/app/wallet/index.md
  */
-export function Wallet({ runtime }: WalletProps) {
+export function Wallet({ runtime, alpha }: WalletProps) {
   const ledger = useMachine(runtime);
   const sending = useTimed(runtime, useTransfer);
   if (ledger.cause || sending.cause) return <Alert variant="destructive" className="m-4">Alpha could not read its wallet</Alert>;
@@ -174,6 +190,7 @@ export function Wallet({ runtime }: WalletProps) {
           The wallet did not answer
         </Banner>
       )}
+      {state.custody === "SignInRequired" && <WalletSignIn alpha={alpha} />}
       {refused && <Alert variant="warn">{state.change === "Making" ? "The wallet could not be made" : "The wallet could not be switched"}</Alert>}
       {state.custody === "NoWallet" && !read && state.standing.status !== "Failed" && <Spinner label="Reading the wallet" className="self-center" />}
       {state.custody === "NoWallet" && read && (
@@ -190,8 +207,8 @@ export function Wallet({ runtime }: WalletProps) {
       )}
       {(state.custody === "Ready" || state.custody === "Unavailable") && <Serving ledger={held} sending={under} />}
       {state.receiving && <Receive ledger={held} />}
-      {(under.state.stage === "Writing" || under.state.stage === "Asking") && <Send ledger={held} sending={under} />}
-      {(under.state.stage === "Opening" || under.state.stage === "Reviewing" || under.state.stage === "Stale" || (under.state.stage === "Deciding" && under.state.approving)) && <Review sending={under} />}
+      {state.custody !== "SignInRequired" && (under.state.stage === "Writing" || under.state.stage === "Asking") && <Send ledger={held} sending={under} />}
+      {state.custody !== "SignInRequired" && (under.state.stage === "Opening" || under.state.stage === "Reviewing" || under.state.stage === "Stale" || (under.state.stage === "Deciding" && under.state.approving)) && <Review sending={under} />}
     </section>
   );
 }

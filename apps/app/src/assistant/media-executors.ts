@@ -73,6 +73,10 @@ export async function executeMedia(alpha: Alpha, operation: DeviceOperation, cal
     const result = await alpha.runtime.runPromise(readWorkflowCalendar(operation, current));
     return result === undefined ? refused : { kind: "applied", result };
   }
+  if (operation.type === "calendar_availability") {
+    const [{ default: sheet }, { availabilityRead }] = await Promise.all([import("../calendar/availability.tsx"), import("../calendar/availability.vibe")]);
+    return sheet.runtime(alpha).runPromise(availabilityRead(operation, authority.current));
+  }
   if (operation.type === "read_calendar_range" || operation.type.startsWith("calendar_")) {
     const [{ default: calendar }, { calendarOperation, executeCalendar }] = await Promise.all([import("../calendar/index.tsx"), import("../calendar/device-actions.vibe")]);
     const exact = calendarOperation(operation);

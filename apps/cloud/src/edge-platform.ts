@@ -5,6 +5,11 @@ export const EdgeHeaders = globalThis.Headers;
 export const EdgeResponse = globalThis.Response;
 export const EdgeRequest = globalThis.Request;
 
+/** Slack browser consent is consumed in-page on these exact same-origin paths. @throws {never} */
+export function isSlackBrowserReturn(path: string): boolean {
+  return path === "/alpha-slack-return" || path === "/alpha-slack-return.html";
+}
+
 /**
  * The headers sent on to the API Worker: the caller's own, without hop-by-hop or earlier forwarding headers, naming
  * the web host it was asked for.

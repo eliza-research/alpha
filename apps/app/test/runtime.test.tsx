@@ -392,6 +392,26 @@ describe("time.vibe monotonicity and ended resumed stream", () => {
   });
 });
 
+describe("time.vibe and a kept time far ahead of the phone's clock", () => {
+  const wall = Date.UTC(2026, 10, 27, 9);
+  const day = 86_400_000;
+  const nowOver = async (kept: number) => {
+    const backing = new Map([["alpha.time", String(kept)]]);
+    const runtime = ManagedRuntime.make(harness(fakeStore(backing), wall, Stream.empty));
+    try {
+      return [await runtime.runPromise(Effect.flatMap(Time, (time) => time.now())), Number(backing.get("alpha.time"))];
+    } finally {
+      await runtime.dispose();
+    }
+  };
+
+  // spec/kit/undo.md, "A held change takes effect only once its time has come"
+  it("lets go a kept time more than a year past a clock that reads a date this build runs on, and keeps one a day ahead (spec/kit/undo.md, \"A held change takes effect only once its time has come\")", async () => {
+    expect(await nowOver(2 ** 43)).toEqual([wall, wall]);
+    expect(await nowOver(wall + day)).toEqual([wall + day, wall + day]);
+  });
+});
+
 describe("single.ts lock error handling", () => {
   // spec/app/platform/index.md, "A kept value that is no longer a state is set aside where nothing is held, and its machine starts afresh"
   it("resolves cleanly when navigator.locks.request rejects or denies (spec/app/platform/index.md, \"A kept value that is no longer a state is set aside where nothing is held, and its machine starts afresh\")", async () => {

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "project": "packages/apps/Launcher3",
+  "revision": "c612e6ece389f21c40f8cb9cd9a4b44239f00009",
+  "patch": "alpha-qsb-ask-bar.patch",
+  "patchSha256": "d909d1290539d959777a2a81fd6c848cae7dc009b1ceb0de67242a78ae8f59f0",
+  "files": [
+    {
+      "path": "src/com/android/launcher3/qsb/QsbContainerView.java",
+      "beforeSha256": "UNPINNED_ANDROID17_CP2A_PREIMAGE",
+      "afterSha256": "UNPINNED_ANDROID17_CP2A_POSTIMAGE",
+      "url": "https://android.googlesource.com/platform/packages/apps/Launcher3/+/c612e6ece389f21c40f8cb9cd9a4b44239f00009/src/com/android/launcher3/qsb/QsbContainerView.java"
+    },
+    {
+      "path": "res/values/alpha-qsb.xml",
+      "beforeSha256": null,
+      "afterSha256": "a3e0688aed250edc4fd86a1dfc1268eff0c61ef53d07c92f9409b35570502f24"
+    }
+  ],
+  "quickSwitchBehaviorChanged": false,
+  "compilation": "pending",
+  "deviceQualified": false
+}

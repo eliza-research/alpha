@@ -1,5 +1,6 @@
 import type { AgentEvents, AgentRequest, AgentStatus, AgentStreamRequest, ElizaAgentPlugin, ElizaCloudPlugin, NativeCloudRequest, ElizaSecureStorePlugin, ElizaSecureStoreResult } from "@elizaos/os-bridges";
 import { deviceRoutes } from "@elizaos/cloud";
+import type { PlatformScene } from "./platform.ts";
 import type { RecoveryScene } from "./settings.ts";
 import type { Answering } from "./routes.ts";
 
@@ -37,7 +38,7 @@ const base64 = (bytes: Uint8Array) => btoa(Array.from(bytes, (one) => String.fro
  * its channel admits; `subscribeEvents` answers `{ id }`, then emits each event the agent publishes on the topic as
  * `agentEvent`, until `unsubscribeEvents`.
  */
-export function elizaAgent(agent: Answering, recovery?: RecoveryScene, abortFails: () => boolean = () => false): Faked {
+export function elizaAgent(agent: Answering, platform: Pick<PlatformScene, "abortFails" | "agentCredentialMissing">, recovery?: RecoveryScene): Faked {
   return plugin<ElizaAgentPlugin, AgentEvents>((emit, onUnplug) => {
     const calls = new Map<string, AbortController>();
     let state: "running" | "stopped" | "failed" = recovery === undefined ? "running" : "failed";
@@ -47,7 +48,9 @@ export function elizaAgent(agent: Answering, recovery?: RecoveryScene, abortFail
       for (const call of calls.values()) call.abort();
       calls.clear();
     });
-    const status = (): AgentStatus => state === "failed"
+    const status = (): AgentStatus => platform.agentCredentialMissing
+      ? { available: true, epoch, requestBodyLimit, state: "failed", failure: "credential" }
+      : state === "failed"
       ? { available: true, epoch, requestBodyLimit, state, failure: "storage" }
       : { available: true, epoch, requestBodyLimit, state };
     const set = (next: "running" | "stopped", bumpEpoch = false): Promise<AgentStatus> => {
@@ -58,7 +61,7 @@ export function elizaAgent(agent: Answering, recovery?: RecoveryScene, abortFail
       return Promise.resolve(now);
     };
     function asked({ method, path, body, headers }: AgentRequest, id: string) {
-      if (state !== "running") throw rejection("NotReady");
+      if (status().state !== "running") throw rejection("NotReady");
       if (typeof method !== "string" || typeof path !== "string" || !path.startsWith("/api/")) throw rejection("RouteRefused");
       if (id === "" || calls.has(id)) throw rejection("IdInUse");
       const serialized = body === undefined ? undefined : JSON.stringify(body);
@@ -116,7 +119,7 @@ export function elizaAgent(agent: Answering, recovery?: RecoveryScene, abortFail
       const call = calls.get(id);
       calls.delete(id);
       call?.abort();
-      if (abortFails()) return Promise.reject(rejection("AbortFailed"));
+      if (platform.abortFails) return Promise.reject(rejection("AbortFailed"));
       return Promise.resolve({ aborted: call !== undefined });
     };
     return {
@@ -185,7 +188,7 @@ function mailRoute(method: string, target: string): boolean {
  * headers a page may read and the body in base64; what it will not send it rejects with one of eliza's `CloudFailure`
  * codes, `mail-lease-upgrade-required` for a mail or calendar route on a phone signed in without a lease.
  */
-export function elizaCloud(cloud: Answering, signedIn: () => boolean, lease: MailLeaseScene, credential: () => string, opened?: (url: string) => void, billing?: () => boolean): Faked {
+export function elizaCloud(cloud: Answering, signedIn: () => boolean, lease: MailLeaseScene, credential: () => string, opened?: (url: string) => void, billing?: () => boolean, googleSession?: () => boolean): Faked {
   return plugin<ElizaCloudPlugin>(() => ({
     async request({ method, target, headers, body, expectedCredentialId, expectedSessionCredentialId }: NativeCloudRequest) {
       if (!target.startsWith("/api/")) throw rejection("not-listed");
@@ -200,6 +203,7 @@ export function elizaCloud(cloud: Answering, signedIn: () => boolean, lease: Mai
         throw rejection("mail-lease-upgrade-required");
       }
       const connectingGoogle = method === "POST" && target === "/api/v1/eliza/google/connect/initiate";
+      if (connectingGoogle && googleSession !== undefined && !googleSession()) throw rejection("reauth-required");
       const bearer = connectingGoogle ? "signed-session" : mail ? "mail-lease" : expectedSessionCredentialId === undefined ? "device-key" : "billing-session";
       const response = await cloud(new Request(new URL(target, "http://cloud.phone"), { method, headers: { ...headers, authorization: `Bearer ${bearer}`, ...(body === undefined ? {} : { "content-type": "application/json" }) }, body })).catch(() => { throw rejection("network"); });
       const found = { etag: response.headers.get("etag"), contentType: response.headers.get("content-type"), retryAfter: response.headers.get("retry-after") };

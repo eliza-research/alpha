@@ -468,14 +468,14 @@ effect function shared(ticket: number, channel: string, items: ReadonlyArray<Ite
   } catch () => ({ type: "shareEnded", ticket, opened: false, known: false })
 }
 
-/** What the phone says of the owner's access: the kit's grant, and whether this phone has shared storage at all. */
+/** What the phone says of the owner's access: the kit's grant, and whether this phone has shared storage at all. The phone answers `ready` whatever the grant and names the grant beside it, so only `ready` with `granted` lets Files read. */
 effect function reported(asked: boolean): Event!!(Files | Browser.Machine) {
   const now = try (try Browser.Machine).get()
   const phone = Option.isSome((try Files).plugin)
   return effect {
     const state = try called("storageState", (plugin) => plugin.storageState())
     if (state.access === "unsupported" || state.status === "unavailable") return { type: "accessReported", grant: now.access, supported: false }
-    if (state.status === "ready") return { type: "accessReported", grant: "Granted", supported: true }
+    if (state.status === "ready" && state.access === "granted") return { type: "accessReported", grant: "Granted", supported: true }
     return { type: "accessReported", grant: asked || now.access === "Denied" ? "Denied" : "Unasked", supported: true }
   } catch () => ({ type: "accessReported", grant: now.access, supported: phone })
 }

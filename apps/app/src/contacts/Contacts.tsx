@@ -1,8 +1,8 @@
 // spec/app/contacts/index.md, "Story: Browse my contacts"; spec/app/contacts/index.md, "Story: Give Alpha access to my contacts"; spec/app/contacts/index.md, "Story: Look at one contact"; spec/app/contacts/index.md, "Story: Add or change a contact"; spec/app/contacts/index.md, "Story: Delete a contact"; spec/app/contacts/index.md, "Story: Know what happened to my change"
-import { Alert, AppHeader, AssistantChatActions, Avatar, Banner, Button, Chip, Input, ListGroup, ListRow, SearchField, Tabs, TabsContent, Textarea, cn } from "@repo/ui";
+import { Alert, AppHeader, AssistantChatActions, Avatar, Banner, Button, Chip, Input, ListGroup, ListRow, Tabs, TabsContent, Textarea, cn } from "@repo/ui";
 import { Effect, Exit, type ManagedRuntime } from "effect";
 import { CONTACT_MAX_ADDRESS, CONTACT_MAX_NAME, CONTACT_MAX_NOTES, CONTACT_MAX_NUMBER, type ContactDetail } from "@elizaos/os-bridges";
-import { Check, ChevronDown, ChevronLeft, MessageSquare, Minus, Pencil, Plus, Search, Trash2, X, createLucideIcon } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, MessageSquare, Minus, Pencil, Plus, Trash2, X, createLucideIcon } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import type { Machine as ContactsMachine } from "../../gen/app__contacts.effect.vibe";
 import { accessNeeded, listFailed, listedEmpty, maxEach, noMatches, pending, refused, shown, uncertain } from "../../gen/app__contacts.ts";
@@ -11,8 +11,8 @@ import type { Machine as PhoneMachine, Tab } from "../../gen/app__phone.effect.v
 import { clear } from "../../gen/app__phone.ts";
 import { useMachine as usePhone } from "../../gen/app__phone.react.ts";
 import type { Machine as VoicemailMachine } from "../../gen/app__phone__voicemail.effect.vibe";
+import { useMachine as useVoicemail } from "../../gen/app__phone__voicemail.react.ts";
 import { useMachine as useShell } from "../../gen/app__shell.react.ts";
-import { useMachine as useCanvas } from "../../gen/app__shell__keyboard.react.ts";
 import { contactChatActionsId } from "../assistant/contact-chat-id.ts";
 import { attachFromContact, searchFromContact } from "../assistant/contact-search.ts";
 import { returnPhoneTab } from "../comms/index.vibe";
@@ -31,18 +31,17 @@ export interface ContactsProps {
 }
 
 /**
- * Contacts: the list with search and the favourites filter, with no favourites strip above it as on v119 (45f6bed30,
- * prototype/template.html:2843-2862), one contact as the phone holds it, and the form. Call and Message
+ * Contacts: the list, one contact as the phone holds it, and the form. Call and Message
  * open Phone or Messages with the number filled in; nothing is dialled or sent here.
  * @model spec/app/contacts/index.md
  */
 export function Contacts({ runtime, alpha }: ContactsProps & { alpha: Alpha }) {
   const contacts = useContacts(runtime);
   const phone = usePhone(runtime).state;
+  const voicemail = useVoicemail(runtime).state;
   const returningRef = useRef<{ tab: Tab } | undefined>(undefined);
   const shell = useShell(runtime);
   const firstPageBack = useFirstPageBack(alpha);
-  const launcher = useCanvas(alpha.runtime).state?.launcher ?? false;
   const held = runtime.runSync(Effect.flatMap(Rows, (rows) => rows.get()));
   const groups = useMemo(() => {
     const grouped = Object.groupBy(held.rows, ({ name }) => {
@@ -58,18 +57,8 @@ export function Contacts({ runtime, alpha }: ContactsProps & { alpha: Alpha }) {
   if (!state || !phone) return <section aria-label="Contacts" aria-busy className="flex min-h-0 flex-1 flex-col">
     <AppHeader title="Contacts" className={telephonyHeader} leading={<AppBack alpha={alpha} firstPage label="Back to apps" />} />
   </section>;
-  const { searching } = state;
   const query = state.sought ? held.sought : "";
   const set = (change: Partial<Book>) => runtime.runSync(Effect.flatMap(Rows, (rows) => rows.set(change)));
-  const search = (typed: string) => {
-    const event = { type: "search", typed: typed.trim() !== "" } as const;
-    if (!can(event)) return;
-    const before = { sought: held.sought, filteredBy: held.filteredBy };
-    set({ sought: typed, filteredBy: "Owner" });
-    void send(event).then((outcome) => {
-      if (Exit.isFailure(outcome)) set(before);
-    });
-  };
   const safe = clear(phone);
   const editing = state.form !== "Shut";
   const open = (id: string) => {
@@ -89,31 +78,16 @@ export function Contacts({ runtime, alpha }: ContactsProps & { alpha: Alpha }) {
     returningRef.current = request;
     void runtime.runPromiseExit(returnPhoneTab(() => request.tab)).then(() => { returningRef.current = undefined; });
   };
-  const applied = held.filteredBy === "Alpha";
   const actions = (
     <>
-      {can({ type: "beginSearch", applied }) && <Button variant="ghost" size="icon" aria-label="Search contacts" onClick={() => void send({ type: "beginSearch", applied })}><Search className="size-5" /></Button>}
       {can({ type: "compose" }) && <Button variant="ghost" size="icon" aria-label="New contact" onClick={() => { set({ form: blankForm, editBase: undefined, problem: undefined }); void send({ type: "compose" }); }}><Plus className="size-5" /></Button>}
       {can({ type: "composeElsewhere" }) && <Button variant="ghost" size="icon" aria-label="New contact" onClick={() => void send({ type: "composeElsewhere" })}><Plus className="size-5" /></Button>}
     </>
   );
-  const filtered = state.sought && !searching && applied;
-  const chip = filtered && (
-    <>
-      <Chip className="min-w-0 [&>button:first-child]:min-w-0" onClear={can({ type: "endSearch" }) ? () => void send({ type: "endSearch" }) : undefined} clearLabel={`Clear filter ${query}`}><span className="truncate">{query} · {state.rows}</span></Chip>
-      <span className="flex-1" />
-    </>
-  );
-  const searchHeader = searching ? (
-    <form role="search" aria-label="Search contacts" data-host-chrome="" className={cn(telephonyHeader, "flex min-h-13 items-center gap-0.5 px-2")} onSubmit={(event) => event.preventDefault()}>
-      {!launcher && can({ type: "endSearch" }) && <Button variant="ghost" size="icon" aria-label="Back to contacts" className="size-13 rounded-lg" onClick={() => void send({ type: "endSearch" })}><ChevronLeft /></Button>}
-      <SearchField autoFocus keepClear className="min-w-0 flex-1 [&_button]:size-13 [&_input]:focus-visible:outline-none" aria-label="Search contacts" clearLabel="Clear search" placeholder="Search contacts" value={query} onValueChange={search} maxLength={128} />
-    </form>
-  ) : undefined;
   const header = phoneTabs ? (
-    <PhoneTabs title="Contacts" contacts voicemail={phone.voicemail} unheard={false} onBack={back} header={searchHeader}>{chip}{actions}</PhoneTabs>
-  ) : searchHeader ?? (
-    <AppHeader title="Contacts" className={cn(telephonyHeader, filtered && "[&>h1]:flex-none")} leading={<AppBack alpha={alpha} firstPage label="Back to apps" />}>{chip}{actions}</AppHeader>
+    <PhoneTabs title="Contacts" contacts voicemail={phone.voicemail} unheard={(voicemail?.unheard ?? 0) > 0} onBack={back} backLabel="Back">{actions}</PhoneTabs>
+  ) : (
+    <AppHeader title="Contacts" className={telephonyHeader} leading={<AppBack alpha={alpha} firstPage label="Back to apps" />}>{actions}</AppHeader>
   );
   const allow = "my-6 min-h-13 rounded-full bg-foreground px-7 text-lg font-semibold text-background hover:bg-foreground/90 active:bg-foreground/80";
   const route = shell.state?.route;
@@ -121,8 +95,7 @@ export function Contacts({ runtime, alpha }: ContactsProps & { alpha: Alpha }) {
     <CommsBar runtime={runtime}
       person={state.opened && held.card !== undefined ? { label: held.card.displayName, initials: callerInitials(held.card.displayName) } : undefined}
       actions={state.opened && shown(state) && route !== undefined ? <AssistantChatActions placement="comms" triggerId={contactChatActionsId(route, state.contact)}
-        onAttach={() => attachFromContact(alpha, route, state.contact)} onSearch={() => searchFromContact(alpha, route, state.contact)} /> : undefined}
-      filter={!state.opened && can({ type: "search", typed: true }) ? { value: filtered ? "" : query, onChange: (typed) => (typed !== "" || !filtered) && search(typed), maxLength: 128 } : undefined} />
+        onAttach={() => attachFromContact(alpha, route, state.contact)} onSearch={() => searchFromContact(alpha, route, state.contact)} /> : undefined} />
   ) : null;
   const notices = <>
       {pending(state) && <p role="status" className="sr-only">Contact change pending</p>}
@@ -142,6 +115,13 @@ export function Contacts({ runtime, alpha }: ContactsProps & { alpha: Alpha }) {
         <Under covered={state.opened || editing}>
           {!phoneTabs && header}
           {!state.opened && notices}
+          {!state.opened && state.sought && query !== "" && (
+            <div className="px-4 pb-2">
+              <Chip className="min-w-0 [&>button:first-child]:min-w-0" onClear={can({ type: "clearFilter" }) ? () => void send({ type: "clearFilter" }) : undefined} clearLabel={`Clear filter ${query}`}>
+                <span className="truncate">{query} · {state.rows}</span>
+              </Chip>
+            </div>
+          )}
           {can({ type: "loadMore" }) && <div className="flex shrink-0 justify-center"><Button variant="secondary" size="icon" aria-label="More contacts" onClick={() => void send({ type: "loadMore" })}><ChevronDown className="size-5" /></Button></div>}
           {state.list.status === "Loading" && state.rows === 0 && <p role="status" className="sr-only">Reading contacts</p>}
           {listFailed(state) && <Banner variant="destructive" action={can({ type: "refresh" }) && <Button size="sm" variant="outline" onClick={() => void send({ type: "refresh" })}>Retry</Button>}>Contacts could not be read</Banner>}

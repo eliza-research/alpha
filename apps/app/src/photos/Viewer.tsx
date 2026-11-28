@@ -37,6 +37,8 @@ const viewerFoot = "pointer-events-none absolute inset-x-0 bottom-(--alpha-viewe
 const dragX = "--alpha-photo-drag-x";
 const dragY = "--alpha-photo-drag-y";
 const panStep = panUnits / 8;
+/** Solid-black 1x1 PNG data URI preventing WebView's default play-icon video poster when a clip has no thumbnail. */
+const blackVideoPoster = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
 interface PanGesture {
   readonly image: HTMLImageElement;
@@ -533,7 +535,7 @@ function MediaViewport({ state, current, name, showing, editedImage, before, aft
               <div className={cn("relative overflow-hidden", !state.editing && mediaFrame,
                 state.editing && videoRatio === undefined && "size-full")}
                 style={videoRatio === undefined ? undefined : { width: `min(100cqw, calc(100cqh * ${videoRatio}))`, aspectRatio: videoRatio }}>
-                <video ref={attachVideo} key={state.open} src={current.uri} poster={current.item?.image ?? current.browser?.item.thumbnail}
+                <video ref={attachVideo} key={state.open} src={current.uri} poster={current.item?.image || current.browser?.item.thumbnail || blackVideoPoster}
                   muted={state.muted} playsInline preload="metadata" onPlaying={onPlaybackStarted} onLoadedData={() => onDecode(true)} onError={() => onDecode(false)} onTimeUpdate={() => played(false)} onEnded={() => played(true)}
                   className={videoRatio === undefined ? "size-full object-contain" : "absolute top-1/2 left-1/2 max-w-none object-fill"}
                   style={videoRatio === undefined ? undefined : { width: `${sideways ? videoScale / videoRatio : videoScale}%`, height: `${sideways ? videoScale * videoRatio : videoScale}%`, transform: `translate(-50%, -50%) rotate(${state.edit.turns * 90}deg)` }} />

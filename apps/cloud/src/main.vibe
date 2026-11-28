@@ -14,8 +14,10 @@ module node {
   export function commandLine(): ReadonlyArray<string> {
     return process.argv.slice(2)
   }
+  /** Finish an unsuccessful readiness check after writing its JSON report. @throws {never} */
+  export function markUnready(): void { process.exitCode = 1 }
 }
-import { commandLine } from node
+import { commandLine, markUnready } from node
 
 /** What `check` found wrong, one line each. */
 export error CheckFailed { problems: ReadonlyArray<string> }
@@ -64,7 +66,12 @@ effect function main() {
   const [command, ...rest] = commandLine()
   if (command === "check") return try check()
   if (command === "registration") return try registration()
-  try Console.log(JSON.stringify(try operate(command, rest), null, 2))
+  const output = effect { return JSON.stringify(try operate(command, rest), null, 2) } catch effect (failure) => {
+    if (failure._tag !== "NotReady") throw failure
+    try sync(markUnready)
+    return failure.report
+  }
+  try Console.log(output)
 }
 
 if (import.meta.main) NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))

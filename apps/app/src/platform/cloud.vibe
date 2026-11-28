@@ -163,7 +163,10 @@ const heldForLease = (cause: unknown): boolean => cause instanceof CloudRefused 
 const leaseRefusal = heldAnswer("HeldForMailLease")
 
 function undelivered(cause: unknown): Failure {
-  if (heldForSignIn(cause)) return refusal(cloudStatusOf(true, 0), undefined)
+  if (heldForSignIn(cause)) {
+    const reason = cause instanceof CloudRefused && cause.failure === "reauth-required" ? "reauth_required" : undefined
+    return refusal(cloudStatusOf(true, 0), undefined, reason)
+  }
   if (heldForLease(cause)) return new Refused({ status: leaseRefusal.status, reason: leaseRefusal.reason })
   return cause instanceof BridgeUnavailable || (cause instanceof CloudRefused && kept.includes(cause.failure)) ? new Unsent({ cause }) : new Unreachable({ cause })
 }

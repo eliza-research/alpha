@@ -1,0 +1,651 @@
+{
+  "schemaVersion": 1,
+  "corePackage": "ai.alphacompute.alphaphone",
+  "ipcPermission": "ai.alphacompute.permission.AGENT_IPC",
+  "apps": [
+    {
+      "id": "core",
+      "view": null,
+      "surface": "overlay",
+      "applicationId": "ai.alphacompute.alphaphone",
+      "label": "Alpha",
+      "defaultRoles": [
+        "ROLE_ASSISTANT",
+        "ROLE_CREDENTIAL_MANAGER"
+      ],
+      "intentFilters": [
+        { "action": "android.service.voice.VoiceInteractionService" },
+        { "action": "android.intent.action.ASSIST", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.service.autofill.AutofillService" },
+        { "action": "android.service.notification.NotificationListenerService" }
+      ],
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.REQUEST_INSTALL_PACKAGES",
+        "android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION",
+        "android.permission.INSTALL_SELF_UPDATES",
+        "ai.alphacompute.alphaphone.sense.permission.LISTENER_CONTROL"
+      ],
+      "allowedAgentRoutePrefixes": ["*"],
+      "allowedCloudRoutePrefixes": ["*"],
+      "allowedSecureStoreSlots": ["*"],
+      "assetsProfile": "core",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.alphaphone.core"
+    },
+    {
+      "id": "phone",
+      "view": "Phone",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.phone",
+      "label": "Phone",
+      "defaultRoles": ["ROLE_DIALER"],
+      "intentFilters": [
+        { "action": "android.intent.action.DIAL", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.intent.action.DIAL", "category": "android.intent.category.DEFAULT", "scheme": "tel" }
+      ],
+      "permissions": [
+        "android.permission.CALL_PHONE",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_PHONE_NUMBERS",
+        "android.permission.READ_CALL_LOG",
+        "android.permission.READ_CONTACTS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_PHONE_CALL",
+        "android.permission.READ_PRIVILEGED_PHONE_STATE"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": true,
+      "taskAffinity": "ai.alphacompute.phone"
+    },
+    {
+      "id": "messages",
+      "view": "Messages",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.messages",
+      "label": "Messages",
+      "defaultRoles": ["ROLE_SMS"],
+      "intentFilters": [
+        { "action": "android.intent.action.SENDTO", "category": "android.intent.category.DEFAULT", "scheme": "sms" },
+        { "action": "android.intent.action.SENDTO", "category": "android.intent.category.DEFAULT", "scheme": "smsto" },
+        { "action": "android.intent.action.SENDTO", "category": "android.intent.category.DEFAULT", "scheme": "mms" },
+        { "action": "android.intent.action.SENDTO", "category": "android.intent.category.DEFAULT", "scheme": "mmsto" }
+      ],
+      "permissions": [
+        "android.permission.READ_SMS",
+        "android.permission.SEND_SMS",
+        "android.permission.RECEIVE_SMS",
+        "android.permission.RECEIVE_MMS",
+        "android.permission.RECEIVE_WAP_PUSH",
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/messages/reply-draft",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [
+        "sms-draft:v2:*",
+        "sms-outgoing:v2:device"
+      ],
+      "assetsProfile": "thin",
+      "imageOnly": true,
+      "taskAffinity": "ai.alphacompute.messages"
+    },
+    {
+      "id": "contacts",
+      "view": "Contacts",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.contacts",
+      "label": "Contacts",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "mimeType": "vnd.android.cursor.item/contact" },
+        { "action": "android.intent.action.PICK", "category": "android.intent.category.DEFAULT", "mimeType": "vnd.android.cursor.dir/contact" },
+        { "action": "android.intent.action.INSERT", "category": "android.intent.category.DEFAULT", "mimeType": "vnd.android.cursor.dir/raw_contact" }
+      ],
+      "permissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": true,
+      "taskAffinity": "ai.alphacompute.contacts"
+    },
+    {
+      "id": "browser",
+      "view": "Browser",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.browser",
+      "label": "Browser",
+      "defaultRoles": ["ROLE_BROWSER"],
+      "intentFilters": [
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "browsable": true, "scheme": "http" },
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "browsable": true, "scheme": "https" },
+        { "action": "android.intent.action.WEB_SEARCH", "category": "android.intent.category.DEFAULT" }
+      ],
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.browser"
+    },
+    {
+      "id": "inbox",
+      "view": "Inbox",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.inbox",
+      "label": "Inbox",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.intent.action.SENDTO", "category": "android.intent.category.DEFAULT", "scheme": "mailto" },
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "browsable": true, "scheme": "mailto" }
+      ],
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [
+        "/api/v1/user",
+        "/api/v1/eliza/google/status",
+        "/api/v1/eliza/google/accounts",
+        "/api/v1/eliza/google/connect/initiate",
+        "/api/v1/eliza/google/disconnect",
+        "/api/v1/eliza/google/gmail/"
+      ],
+      "allowedSecureStoreSlots": [
+        "inbox-saved-bodies"
+      ],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.inbox"
+    },
+    {
+      "id": "telegram",
+      "view": "Telegram",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.telegram",
+      "label": "Telegram",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "browsable": true, "scheme": "tg" }
+      ],
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/messages/reply-draft",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": ["messaging-sessions:telegram:v2"],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.telegram"
+    },
+    {
+      "id": "slack",
+      "view": "Slack",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.slack",
+      "label": "Slack",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "browsable": true, "scheme": "slack" },
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "browsable": true, "scheme": "alphaphone", "host": "slack", "path": "/oauth/standalone" }
+      ],
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/messages/reply-draft",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": ["messaging-sessions:slack:v2"],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.slack"
+    },
+    {
+      "id": "calendar",
+      "view": "Calendar",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.calendar",
+      "label": "Calendar",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "mimeType": "time/epoch" },
+        { "action": "android.intent.action.INSERT", "category": "android.intent.category.DEFAULT", "mimeType": "vnd.android.cursor.dir/event" }
+      ],
+      "permissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/lifeops/calendar",
+        "/api/approvals",
+        "/api/notes/",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [
+        "/api/v1/user",
+        "/api/v1/eliza/google/status",
+        "/api/v1/eliza/google/accounts",
+        "/api/v1/eliza/google/calendar/"
+      ],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.calendar"
+    },
+    {
+      "id": "clock",
+      "view": "Clock",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.clock",
+      "label": "Clock",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.intent.action.SET_ALARM", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.intent.action.SET_TIMER", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.intent.action.SHOW_ALARMS", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.intent.action.DISMISS_ALARM", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.intent.action.SNOOZE_ALARM", "category": "android.intent.category.DEFAULT" }
+      ],
+      "permissions": [
+        "com.android.alarm.permission.SET_ALARM",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM",
+        "android.permission.WAKE_LOCK",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/alpha/clock",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.clock"
+    },
+    {
+      "id": "reminders",
+      "view": "Reminders",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.reminders",
+      "label": "Reminders",
+      "defaultRoles": [],
+      "intentFilters": [],
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/alpha/reminders",
+        "/api/scheduled-tasks",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.reminders"
+    },
+    {
+      "id": "camera",
+      "view": "Camera",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.camera",
+      "label": "Camera",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.media.action.IMAGE_CAPTURE", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.media.action.VIDEO_CAPTURE", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.media.action.STILL_IMAGE_CAMERA", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.media.action.STILL_IMAGE_CAMERA_SECURE", "category": "android.intent.category.DEFAULT" }
+      ],
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "ocr",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.camera"
+    },
+    {
+      "id": "photos",
+      "view": "Photos",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.photos",
+      "label": "Photos",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "mimeType": "image/*" },
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "mimeType": "video/*" },
+        { "action": "android.intent.action.PICK", "category": "android.intent.category.DEFAULT", "mimeType": "image/*" }
+      ],
+      "permissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.photos"
+    },
+    {
+      "id": "maps",
+      "view": "Maps",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.maps",
+      "label": "Maps",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "browsable": true, "scheme": "geo" },
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "browsable": true, "scheme": "google.navigation" }
+      ],
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [
+        "/api/v1/user",
+        "/api/v1/maps/"
+      ],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.maps"
+    },
+    {
+      "id": "notes",
+      "view": "Notes",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.notes",
+      "label": "Notes",
+      "defaultRoles": ["ROLE_NOTES"],
+      "intentFilters": [
+        { "action": "android.intent.action.CREATE_NOTE", "category": "android.intent.category.DEFAULT" },
+        { "action": "android.intent.action.SEND", "category": "android.intent.category.DEFAULT", "mimeType": "text/plain" }
+      ],
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/notes/",
+        "/api/alpha/notes/",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [
+        "notes-draft:*",
+        "notes-folders:*"
+      ],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.notes"
+    },
+    {
+      "id": "files",
+      "view": "Files",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.files",
+      "label": "Files",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "android.intent.action.VIEW", "category": "android.intent.category.DEFAULT", "mimeType": "application/pdf" },
+        { "action": "android.intent.action.OPEN_DOCUMENT", "category": "android.intent.category.DEFAULT" }
+      ],
+      "permissions": [
+        "android.permission.MANAGE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.CAMERA"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/notes/",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "ocr",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.files"
+    },
+    {
+      "id": "workflows",
+      "view": "Workflows",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.workflows",
+      "label": "Workflows",
+      "defaultRoles": [],
+      "intentFilters": [],
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_CALENDAR"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/workflow/",
+        "/api/triggers",
+        "/api/scheduled-tasks",
+        "/api/notifications",
+        "/api/approvals",
+        "/api/notes/",
+        "/api/lifeops/calendar",
+        "/api/alpha/reminders",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.workflows"
+    },
+    {
+      "id": "wallet",
+      "view": "Wallet",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.wallet",
+      "label": "Wallet",
+      "defaultRoles": [],
+      "intentFilters": [],
+      "permissions": [
+        "android.permission.USE_BIOMETRIC"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/wallet",
+        "/api/approvals",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.wallet"
+    },
+    {
+      "id": "settings",
+      "view": "Settings",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.settings",
+      "label": "Alpha Settings",
+      "defaultRoles": [],
+      "intentFilters": [
+        { "action": "ai.alphacompute.action.SETTINGS", "category": "android.intent.category.DEFAULT" }
+      ],
+      "permissions": [
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_STATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_CALENDAR",
+        "android.permission.READ_CONTACTS",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.POST_NOTIFICATIONS",
+        "ai.alphacompute.alphaphone.sense.permission.LISTENER_CONTROL"
+      ],
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/approvals",
+        "/api/notifications",
+        "/api/conversations",
+        "/api/agents",
+        "/api/turns/",
+        "/api/lifeops/calendar",
+        "/api/alpha/local-llm",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [
+        "/api/v1/user",
+        "/api/v1/referrals",
+        "/api/v1/subscriptions/",
+        "/api/v1/subscription/",
+        "/api/v1/billing/",
+        "/api/v1/eliza/google/"
+      ],
+      "allowedSecureStoreSlots": [],
+      "assetsProfile": "thin",
+      "imageOnly": false,
+      "taskAffinity": "ai.alphacompute.settings"
+    }
+  ]
+}

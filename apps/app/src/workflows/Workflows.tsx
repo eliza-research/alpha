@@ -102,10 +102,12 @@ function WorkflowListRow({ row, waiting, canToggle, open, onToggle }: {
 }) {
   const Icon = icons[row.kind];
   const canManage = !row.removed && (row.kind === "Routine" || row.kind === "Prompt");
+  const failed = (row.kind === "Reminder" || row.kind === "Schedule") && row.record.state.status === "failed";
   return (
     <WorkflowRowView
       title={row.title}
       summary={row.line}
+      failed={failed}
       status={statusWord(row, waiting)}
       icon={<Icon />}
       onClick={open}

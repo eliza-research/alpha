@@ -1,12 +1,14 @@
 // @vitest-environment happy-dom
 import { NOT_DISPATCHED } from "@elizaos/agent";
-import { Effect } from "effect";
+import { CALENDAR_AVAILABILITY_CAPABILITY, CALENDAR_CAPABILITY, deviceTimeZone } from "@elizaos/plugin-calendar-client";
+import { Effect, Schema } from "effect";
 import * as KeyValueStore from "effect/persistence/KeyValueStore";
 import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { Machine as Conversation } from "../gen/app__assistant.effect.vibe";
 import { Machine as Composer } from "../gen/app__assistant__composer.effect.vibe";
 import { type Calendar as CalendarView, Machine as View } from "../gen/app__calendar.effect.vibe";
 import { Machine as Changes } from "../gen/app__calendar__agent.effect.vibe";
+import { Machine as Toasts } from "../gen/app__notices__toasts.effect.vibe";
 import { Machine as Editor } from "../gen/app__calendar__editor.effect.vibe";
 import { Machine as Held } from "../gen/app__calendar__deletions.effect.vibe";
 import { Machine as Shell } from "../gen/app__shell.effect.vibe";
@@ -16,6 +18,8 @@ import { Machine as Reminders } from "../gen/app__reminders.effect.vibe";
 import { Machine as Alerts } from "../gen/app__reminders__alerts.effect.vibe";
 import assistant from "../src/assistant/index.tsx";
 import { executeMedia } from "../src/assistant/media-executors.ts";
+import type { Mount } from "../src/areas.ts";
+import { calendarCapabilities } from "../src/calendar/device-actions.vibe";
 import calendar from "../src/calendar/index.tsx";
 import { relistRequests } from "../src/calendar/agent.vibe";
 import { mapsHandoffKey } from "../src/calendar/calendar.vibe";
@@ -28,8 +32,9 @@ import { civilDay, dateOf, dayStart, localWallTime, shiftDays, utcDate, wallDate
 import { createReminderItem } from "../src/reminders/reminders.vibe";
 import { DEFAULT_LIST_ID, remindersStore } from "../src/reminders/store.ts";
 import type { Alpha } from "../src/runtime/area.tsx";
-import { asleep, button, closeAll, drawn, fill, hardware, later, only, open, press, seen, underAct, until } from "./alpha.tsx";
+import { asleep, button, closeAll, coverLifted, drawn, fill, hardware, later, only, open, press, seen, underAct, until } from "./alpha.tsx";
 import { agentEvent, agentRequest } from "./fakes/calendar.ts";
+import { account } from "./fakes/cloud.ts";
 import { type Scene, scene } from "./fakes/scene.ts";
 
 underAct();
@@ -123,6 +128,19 @@ async function widen(alpha: Alpha, runtime: ReturnType<typeof calendar.runtime>)
 
 /** Bring Calendar forward, as Home, a notice or Ask Alpha does through the shell. */
 const openCalendar = (alpha: Alpha) => alpha.runtime.runPromise(Effect.flatMap(Shell, (shell) => shell.send({ type: "openView", view: "Calendar" })));
+
+/** The availability sheet alone over every view, as areas.ts mounts it. */
+const availabilitySheet: Mount = { at: "overlay", load: () => import("../src/calendar/availability.tsx") };
+
+/** The agent's availability check of today from `from` to `to` o'clock, in the phone's zone. */
+const availabilityCheck = (world: ReturnType<typeof morning>, from: number, to: number) =>
+  ({ type: "calendar_availability", start: new Date(world.at(0, from)).toISOString(), end: new Date(world.at(0, to)).toISOString(), timeZone: deviceTimeZone() }) as const;
+
+const availabilityCall = (id: string) => ({ proposalId: id, operationId: id, attemptId: 1 });
+const approved = { current: () => Promise.resolve(true) };
+const tickBox = (name: string) => [...document.querySelectorAll<HTMLButtonElement>("[role=checkbox]")].find((found) => found.getAttribute("aria-label") === name);
+const availabilitySheetShows = (label: string) => vi.waitFor(() => expect(document.querySelector(`[role=dialog][aria-label="${label}"]`)).not.toBeNull());
+const openView = (alpha: Alpha, view: "Notes") => drawn(() => alpha.runtime.runPromise(Effect.flatMap(Shell, (shell) => shell.send({ type: "openView", view }))));
 
 /** Mount Calendar on `world`, bring it to front, and wait until `ready` holds on its view machine. */
 async function mountCalendar(
@@ -862,6 +880,14 @@ describe("on a phone", () => {
     await deleteOpenEvent(alpha, runtime, action);
   }
 
+  /** Open Alpha again on `world` with Calendar in front, once `ready` holds on its view. */
+  async function startAgain(world: ReturnType<typeof morning>, ready: (state: CalendarView) => boolean) {
+    const started = await open(world, only("view:Calendar", "notice"));
+    const runtime = calendar.runtime(started.alpha);
+    await until(started.alpha, runtime, View, (s) => s.front && ready(s));
+    return { ...started, runtime };
+  }
+
   async function reopenCalendar(world: ReturnType<typeof morning>, pausedTitle?: string) {
     const reopened = await open(world, only("view:Calendar", "notice"));
     const runtime = calendar.runtime(reopened.alpha);
@@ -881,12 +907,17 @@ describe("on a phone", () => {
     return { world, first };
   }
 
-  async function finishPhoneDelete(alpha: Alpha, runtime: ReturnType<typeof calendar.runtime>) {
-    await until(alpha, runtime, Editor, (e) => e.kind === "Remove" && e.write.outcome === "Sent");
+  /** Let the phone's own window for a staged deletion pass, on the fake performance clock, then go back to real timers. */
+  async function letStagedWindowPass(alpha: Alpha) {
     await drawn(() => {});
     vi.advanceTimersByTime(20_000);
     await later(alpha, 10_000);
     vi.useRealTimers();
+  }
+
+  async function finishPhoneDelete(alpha: Alpha, runtime: ReturnType<typeof calendar.runtime>) {
+    await until(alpha, runtime, Editor, (e) => e.kind === "Remove" && e.write.outcome === "Sent");
+    await letStagedWindowPass(alpha);
     await until(alpha, runtime, Editor, (e) => e.kind === "Remove" && e.write.outcome === "Confirmed");
   }
 
@@ -906,6 +937,30 @@ describe("on a phone", () => {
       { id: "p3", calendarId: "local", title: "Walk", begin: world.at(0, 17), end: world.at(0, 18), allDay: false, recurring: false },
     );
   }
+
+  it(`A deletion confirmed in front is sent, though the owner then leaves Alpha or locks the phone before it goes (spec/app/calendar/deletions.md, "Confirming the review holds the deletion; a deletion still waiting is sent first, so the only Undo shown is the newest")`, async () => {
+    const world = morning(true);
+    world.calendar.granted = true;
+    addExtraPhoneEvents(world);
+    const { alpha, runtime } = await mountCalendar(world, only("view:Calendar", "notice"), (s) => s.phoneRows === 3 && s.google.status === "Loaded");
+    const written = () => runtime.runPromise(Effect.flatMap(Editor, (e) => e.get()));
+    const sendAfterLeaving = async (title: string, meanwhile: () => void = () => {}) => {
+      const before = (await written()).write.id;
+      vi.useFakeTimers({ toFake: ["performance"] });
+      await queueDeletion(alpha, runtime, title);
+      await seen(false);
+      meanwhile();
+      await until(alpha, runtime, Editor, (e) => e.kind === "Remove" && e.write.id > before);
+      await letStagedWindowPass(alpha);
+      await until(alpha, runtime, Editor, (e) => e.kind === "Remove" && e.write.id > before && e.write.outcome !== "Sent");
+      await seen(true);
+      return (await written()).write.outcome;
+    };
+    expect([await sendAfterLeaving("Gym"), world.calendar.phoneEvents.map((event) => event.title)]).toEqual(["Confirmed", ["Piano", "Walk"]]);
+    // spec/app/calendar/deletions.md, "A refused send shows the event again and says it was not deleted, and whether it changed; a sent deletion hides it until a read no longer has it unchanged": the phone still refuses what it reviewed once the event changed while Alpha was away.
+    const piano = world.calendar.phoneEvents.find((event) => event.title === "Piano");
+    expect([await sendAfterLeaving("Piano", () => { if (piano) piano.title = "Piano lesson"; }), world.calendar.phoneEvents.map((event) => event.title)]).toEqual([expect.not.stringMatching(/^Confirmed$/), ["Piano lesson", "Walk"]]);
+  });
 
   it("A deletion a restart paused is for the event the owner confirmed, though the phone's calendar gained events before it (spec/app/calendar/deletions.md, \"A restart pauses a deletion still in its window; the owner sends it or keeps the event\")", async () => {
     const { world, first } = await openGrantedGymDeletion();
@@ -1012,9 +1067,8 @@ describe("on a phone", () => {
     const numbers = localStorage.getItem("alpha.calendar.numbers");
 
     const failing = failNumbersRead(world);
-    const second = await open(world, only("view:Calendar", "notice"));
-    const unread = calendar.runtime(second.alpha);
-    await until(second.alpha, unread, View, (s) => s.front && s.phoneRows === 1 && s.google.status === "Loaded");
+    const second = await startAgain(world, (s) => s.phoneRows === 1 && s.google.status === "Loaded");
+    const unread = second.runtime;
     await later(second.alpha, 100);
     failing.mockRestore();
     const held = await unread.runPromise(Held.use((d) => d.get()));
@@ -1022,10 +1076,8 @@ describe("on a phone", () => {
     await second.close();
 
     asleep(world, 60_000);
-    const third = await open(world, only("view:Calendar", "notice"));
-    const runtime = calendar.runtime(third.alpha);
-    await until(third.alpha, runtime, View, (s) => s.front && s.phoneRows === 1 && s.google.status === "Loaded");
-    await until(third.alpha, runtime, Held, (d) => d.paused && d.waiting === gym);
+    const third = await startAgain(world, (s) => s.phoneRows === 1 && s.google.status === "Loaded");
+    await until(third.alpha, third.runtime, Held, (d) => d.paused && d.waiting === gym);
     expect(document.body.textContent).toContain("Alpha restarted before deleting Gym.");
   });
 
@@ -1044,11 +1096,67 @@ describe("on a phone", () => {
     const world = morning(true);
     world.calendar.granted = true;
     const ahead = 2 ** 43;
+    world.now = ahead;
     world.calendar.phoneEvents = ["Gym", "Piano"].map((title, at) => ({ id: `p${at + 1}`, calendarId: "local", title, begin: ahead + (at + 1) * hour, end: ahead + (at + 2) * hour, allDay: false, recurring: false }));
-    localStorage.setItem("alpha.time", String(ahead));
     await mountCalendar(world, only("view:Calendar", "notice"), (s) => s.phone.status === "Loaded" && shown.all("Phone").length === 2);
     const ids = shown.all("Phone").map((row) => row.id);
     expect([new Set(ids).size, ids.every((id) => Number.isSafeInteger(id))]).toEqual([2, true]);
+  });
+
+  it(`Past 2109, a start that could not read the kept numbers never gives an event the number a kept deletion names (spec/app/calendar/deletions.md, "A restart pauses a deletion still in its window; the owner sends it or keeps the event")`, async () => {
+    const world = morning(true);
+    world.calendar.granted = true;
+    const ahead = 2 ** 43;
+    world.now = ahead;
+    world.calendar.phoneEvents = [{ id: "p1", calendarId: "local", title: "Gym", begin: ahead + 2 * hour, end: ahead + 3 * hour, allDay: false, recurring: false }];
+    const first = await mountCalendar(world, only("view:Calendar", "notice"), (s) => s.phone.status === "Loaded" && shown.all("Phone").length === 1);
+    await first.close();
+
+    world.calendar.phoneEvents = [{ id: "p2", calendarId: "local", title: "Walk", begin: ahead + hour, end: ahead + 2 * hour, allDay: false, recurring: false }, ...world.calendar.phoneEvents];
+    const failing = failNumbersRead(world);
+    const second = await startAgain(world, (s) => s.phone.status === "Loaded" && shown.all("Phone").length === 2);
+    await queueDeletion(second.alpha, second.runtime, "Walk");
+    await second.close();
+    failing.mockRestore();
+
+    asleep(world, 60_000);
+    const third = await startAgain(world, (s) => s.phone.status === "Loaded" && shown.all("Phone").length === 2);
+    await later(third.alpha, 100);
+    const held = await third.runtime.runPromise(Held.use((d) => d.get()));
+    expect([held.waiting, held.undo.holding, document.body.textContent?.includes("Alpha restarted before deleting"), world.calendar.phoneEvents.map((event) => event.title)]).toEqual([0, "Undone", false, ["Walk", "Gym"]]);
+  });
+
+  it(`A doubt and a hide are let go only by a whole read of the day their event was last seen on (spec/app/calendar/editor.md, "A read of the event releases the doubt; a form waiting on it then shows the event as it now is"; spec/app/calendar/deletions.md, "A refused send shows the event again and says it was not deleted, and whether it changed; a sent deletion hides it until a read no longer has it unchanged")`, async () => {
+    const world = morning(true);
+    world.calendar.granted = true;
+    world.calendar.phoneEvents.push({ id: "p9", calendarId: "local", title: "Optician", begin: world.at(-24, 10), end: world.at(-24, 11), allDay: false, recurring: false });
+    const first = await mountCalendar(world, only("view:Calendar", "notice"), (s) => s.phone.status === "Loaded" && s.google.status === "Loaded");
+    const standup = shown.all("Google").find((row) => row.title === "Standup")?.id ?? 0;
+    const optician = shown.all("Phone").find((row) => row.title === "Optician")?.id ?? 0;
+    const form = await first.runtime.runPromise(Editor.use((e) => e.get()));
+    await first.close();
+    const deletions = "alpha/app/calendar/deletions@1";
+    localStorage.setItem("alpha/app/calendar/editor@1", JSON.stringify({ ...form, latched: [standup, optician] }));
+    localStorage.setItem(deletions, JSON.stringify({ ...JSON.parse(localStorage.getItem(deletions) ?? "{}"), hiding: standup }));
+
+    // spec/app/calendar/index.md, "A read the phone cut short, or Google gave only in part, is shown as limited, never as complete": a part of Google's day without Standup is no sign it went.
+    world.calendar.events = world.calendar.events.filter((event) => event.title !== "Standup");
+    world.calendar.feedState = "partial";
+    // spec/app/calendar/presentation.md, "A read for a day covers the month before it through the month after next": anchored on 1 December, the read begins on 1 November, and never sees the Optician on 31 October.
+    asleep(world, 7 * 24 * hour);
+    const second = await startAgain(world, (s) => s.phone.status === "Loaded" && s.google.status === "Loaded" && s.googleLimited);
+    await later(second.alpha, 100);
+    expect([(await second.runtime.runPromise(Editor.use((e) => e.get()))).latched, (await second.runtime.runPromise(Held.use((d) => d.get()))).hiding]).toEqual([[standup, optician], standup]);
+  });
+
+  it(`An earlier build reads the numbers this one keeps (spec/app/calendar/deletions.md, "Deletions hold the owner they are for, the deletion under review, the one waiting with its Undo window and whether its notice shows, the one being sent, and the one sent that a read has yet to confirm")`, async () => {
+    const world = morning(true);
+    world.calendar.granted = true;
+    const { alpha } = await mountCalendar(world, only("view:Calendar", "notice"), (s) => s.phoneRows === 1 && s.google.status === "Loaded");
+    await later(alpha, 100);
+    const earlier = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Struct({ last: Schema.Number, numbers: Schema.Array(Schema.Tuple([Schema.String, Schema.Number])) })));
+    const read = await Effect.runPromise(Effect.match(earlier(localStorage.getItem("alpha.calendar.numbers") ?? ""), { onFailure: () => undefined, onSuccess: (kept) => kept.numbers.map(([name]) => name) }));
+    expect(read ?? []).toContain("Phone:p1");
   });
 
   it(`A doubt whose event went while Alpha was closed is let go by the first read that shows it gone (spec/app/calendar/editor.md, "A read of the event releases the doubt; a form waiting on it then shows the event as it now is")`, async () => {
@@ -1445,7 +1553,9 @@ describe("on a phone", () => {
     const named = () => [askedCard().includes("Eliza Calendar"), askedCard().includes("Agent Calendar")];
     expect(named()).toEqual([true, false]);
     // spec/app/calendar/index.md, "Connecting an account reads the day from Google; disconnecting takes its rows away at once": opening Calendar reads the feed again, which still says unavailable
-    await reopenUnavailable(world, alpha, agent);
+    const reads = world.calendar.feedReads ?? 0;
+    await openCalendar(alpha);
+    await until(alpha, agent, View, (s) => s.front && !s.connected && (world.calendar.feedReads ?? 0) > reads);
     await drawn(() => {});
     expect([...named(), Boolean(button("Approve")), world.calendar.writes]).toEqual([true, false, true, []]);
   });
@@ -1470,14 +1580,6 @@ describe("on a phone", () => {
     await until(alpha, agent, Changes, (a) => a.stage === "Idle" && a.write.outcome === "Confirmed");
     expect(world.calendar.writes).toEqual(["approve approval-home", "create ev-camera-setup"]);
   });
-
-  /** Opening Calendar reads the feed again and waits until it has drawn the agent's rows gone. */
-  async function reopenUnavailable(world: ReturnType<typeof morning>, alpha: Alpha, agent: ReturnType<typeof calendar.runtime>) {
-    const reads = world.calendar.feedReads ?? 0;
-    await openCalendar(alpha);
-    await vi.waitFor(() => expect(world.calendar.feedReads ?? 0).toBeGreaterThan(reads));
-    await until(alpha, agent, View, (s) => s.front && !s.connected);
-  }
 
   /** Calendar reads "Family" for a signed-in owner, `change` alters the world and reopens Calendar, and a card filed from Home then tells which of Eliza Calendar, Family and Agent Calendar it names, whether its filing read the agent's list, and what was written. */
   async function namesAfterOwnerChange(approval: string, change: (world: ReturnType<typeof morning>, alpha: Alpha, agent: ReturnType<typeof calendar.runtime>, request: Awaited<ReturnType<typeof askingCalendar>>["request"]) => Promise<void>) {
@@ -1514,13 +1616,14 @@ describe("on a phone", () => {
   });
 
   it(`A card names the calendar the agent lists now, never one a Google account that went away listed before (spec/app/calendar/presentation.md, "The agent's calendar goes by the name the agent lists for it")`, async () => {
-    const { named } = await namesAfterOwnerChange("approval-account-gone", async (world, alpha, agent) => {
+    const { named, listed } = await namesAfterOwnerChange("approval-account-gone", async (world, alpha, agent) => {
       world.calendar.summary = undefined;
       world.calendar.feedState = "unavailable";
       world.calendar.events = [];
-      await reopenUnavailable(world, alpha, agent);
+      await openCalendar(alpha);
+      await until(alpha, agent, View, (s) => s.front && !s.connected);
     });
-    expect(named).toEqual([true, false, false]);
+    expect([...named, listed]).toEqual([true, false, false, true]);
   });
 
   /**
@@ -1562,6 +1665,70 @@ describe("on a phone", () => {
   it(`An answer of the agent's approvals list read for the owner before a sign-out is refused, so that owner's request never shows signed out (spec/app/calendar/agent.md, "The agent proposes one change at a time, for the revision of the event it selected, and the card shows it"; spec/app/calendar/index.md, "A changed owner clears the agent's rows, closes the open event and the Calendars sheet, and takes that owner's hidden calendars")`, async () => {
     const { named, writes } = await heldAcrossSignOut("approvals");
     expect([...named, askedCard().includes("lens check"), writes]).toEqual([true, false, false, false, []]);
+  });
+
+  /** Owner A's request to answer Maybe to `title`'s invitation, an event of the agent's calendar at `begin`. */
+  const maybeTo = (title: string, begin: number) => agentRequest(`approval-${agentEvent(title, begin, begin).id}`, {
+    action: "respond_invitation", account: "owner", scope: "instance", response: "tentative",
+    target: { source: { calendarId: "eliza-calendar/primary" }, eventId: agentEvent(title, begin, begin).id, startAt: new Date(begin).toISOString(), expectedVersion: "1" },
+  });
+
+  /**
+   * Owner A taps Approve on the card of `filed` in Calendar while the read named by `held` waits: the agent's approvals list read
+   * again at the tap, or the day of the event, read where Calendar's own window does not hold it. A goes Home, owner B signs in,
+   * and Calendar, opened again, takes B, whose reads of the list wait unanswered. Once the held read answers, tells whether B is
+   * signed in in A's place, how the card ended, whether Approve shows, what was written, how many toasts B was shown and whether
+   * B is shown that nothing changed.
+   */
+  async function approvedAcrossOwnerChange(held: "approvals" | "feed", filed: (world: ReturnType<typeof morning>) => ReturnType<typeof agentRequest>) {
+    const { world, alpha, runtime, reread } = await onPhoneCalendar();
+    world.calendar.approvals.push(filed(world));
+    await reread();
+    await until(alpha, runtime, Changes, (a) => a.stage === "Awaiting" && a.complete);
+    const a = (await runtime.runPromise(Effect.flatMap(View, (machine) => machine.get()))).owner;
+    const releases = held === "approvals" ? world.calendar.heldApprovals : world.calendar.heldFeed;
+    const hold = (on: boolean) => {
+      if (held === "approvals") world.calendar.holdApprovals = on;
+      else world.calendar.holdFeed = on;
+    };
+    hold(true);
+    await press("Approve");
+    await vi.waitFor(() => expect(releases).toHaveLength(1));
+    hold(false);
+    const tapped = releases.splice(0);
+    world.calendar.holdApprovals = true;
+    await hardware("home");
+    const before = account.id;
+    onTestFinished(() => void Object.assign(account, { id: before }));
+    Object.assign(account, { id: "user-b" });
+    await openCalendar(alpha);
+    await until(alpha, runtime, View, (s) => s.front && s.owner > 0 && s.owner !== a);
+    const issued = async () => (await alpha.runtime.runPromise(Effect.flatMap(Toasts, (machine) => machine.get()))).issued;
+    const shown = await issued();
+    await drawn(() => tapped.forEach((release) => release()));
+    await until(alpha, runtime, Changes, (s) => s.stage === "Idle");
+    await drawn(() => {});
+    const b = (await runtime.runPromise(Effect.flatMap(View, (machine) => machine.get()))).owner;
+    const card = await runtime.runPromise(Effect.flatMap(Changes, (machine) => machine.get()));
+    return [b > 0 && b !== a, card.result, Boolean(button("Approve")), world.calendar.writes, await issued() - shown, document.body.textContent?.includes("Nothing changed")];
+  }
+
+  it("Approve tapped for one owner sends nothing once another owner signed in while the tap read the agent's list again (spec/app/calendar/agent.md, \"The request is read again at the tap; a newer revision is shown as updated, and nothing is sent\"; spec/app/calendar/agent.md, \"The agent proposes one change at a time, for the revision of the event it selected, and the card shows it\")", async () => {
+    const ended = await approvedAcrossOwnerChange("approvals", (at) => maybeTo("Team lunch", at.at(0, 12)));
+    // spec/app/calendar/agent.md, "The request is read again at the tap; a newer revision is shown as updated, and nothing is sent": approving is for the owner Calendar read at the tap, so A's approval is never sent once Calendar holds B, and B is told nothing of it
+    expect(ended).toEqual([true, "Withdrawn", false, [], 0, false]);
+  });
+
+  it("Approve tapped for one owner sends nothing once another owner signed in while the tap read the day of an event outside Calendar's window (spec/app/calendar/agent.md, \"The request is read again at the tap; a newer revision is shown as updated, and nothing is sent\"; spec/app/calendar/agent.md, \"A card is complete only with known fields, a valid time and, for a change, a verified target\")", async () => {
+    const ended = await approvedAcrossOwnerChange("feed", (at) => {
+      const begin = at.at(200, 12);
+      at.calendar.events.push(agentEvent("Offsite", begin, begin + hour, {
+        attendees: [{ email: "owner@alpha.test", displayName: "You", responseStatus: "needsAction", self: true, organizer: false, optional: false }],
+      }));
+      return maybeTo("Offsite", begin);
+    });
+    // spec/app/calendar/agent.md, "The request is read again at the tap; a newer revision is shown as updated, and nothing is sent": the tap reads the event's own day after it read the list, and an owner who signed in meanwhile gets nothing of A's sent, and no words
+    expect(ended).toEqual([true, "Withdrawn", false, [], 0, false]);
   });
 
   it(`Signed out, a card whose read of the agent's list fails names no calendar the owner before was shown (spec/app/calendar/index.md, "A changed owner clears the agent's rows, closes the open event and the Calendars sheet, and takes that owner's hidden calendars"; spec/app/calendar/presentation.md, "The agent's calendar goes by the name the agent lists for it")`, async () => {
@@ -2154,5 +2321,115 @@ describe("the agent on a phone", () => {
     const range = { type: "read_calendar_range", calendarIds: ["local"], start: new Date(world.at(0, 0)).toISOString(), end: new Date(world.at(1, 0)).toISOString(), timeZone: "UTC", maximumEvents: 5 } as const;
     expect(await executeMedia(alpha, range, call("range-1"), approved)).toMatchObject({ kind: "applied", result: { kind: "calendar", events: [{ id: "p1", title: "Gym" }] } });
     expect(await executeMedia(alpha, { ...range, maximumEvents: 0 }, call("range-2"), approved)).toMatchObject({ kind: "refused" });
+  });
+
+  it("Choose the calendars and see the answer before it is shared (spec/app/calendar/sharing.md, \"Story: Choose the calendars and see the answer before it is shared\"; spec/app/calendar/sharing.md, \"Story: Offer the agent only the Calendar actions this phone runs\")", async () => {
+    const world = morning(true);
+    world.calendar.granted = true;
+    world.calendar.calendars.push({ id: "work", name: "Work", account: "owner@alpha.test", writable: true, local: false });
+    world.calendar.phoneEvents.push(
+      { id: "p9", calendarId: "local", title: "Probe single", begin: world.at(0, 13), end: world.at(0, 13.5), allDay: false, recurring: false },
+      { id: "p10", calendarId: "local", title: "Focus", begin: world.at(0, 13), end: world.at(0, 14), allDay: false, recurring: false },
+    );
+    world.calendar.marked.set("p10", "free");
+    const { alpha } = await open(world, [...only("home"), availabilitySheet]);
+    await coverLifted(alpha);
+    const check = availabilityCheck(world, 13, 13.5);
+
+    // spec/app/calendar/sharing.md, "A local event is always offered; the agenda read only in a browser; every other action only when the agent offers it"
+    expect(calendarCapabilities([CALENDAR_CAPABILITY, CALENDAR_AVAILABILITY_CAPABILITY])).toContain(CALENDAR_AVAILABILITY_CAPABILITY);
+    expect(calendarCapabilities([CALENDAR_CAPABILITY])).not.toContain(CALENDAR_AVAILABILITY_CAPABILITY);
+
+    // spec/app/calendar/sharing.md, "The sheet offers the phone's calendars with none ticked, reads only the ticked ones, and shares only a free or busy answer it showed": from Home, Calendar does not start and only Home's own day card reads the phone, no event is read before Check, the busy row is shown busy and the free one ignored, and it is shared once read again.
+    const booted = [...world.calendar.eventReads];
+    expect(booted).toEqual(["list"]);
+    const busy = executeMedia(alpha, check, availabilityCall("availability-1"), approved);
+    await availabilitySheetShows("Calendars");
+    expect([tickBox("Phone · On this phone")?.getAttribute("aria-checked"), tickBox("Work · owner@alpha.test")?.getAttribute("aria-checked")]).toEqual(["false", "false"]);
+    expect([button("Check")?.disabled, world.calendar.eventReads]).toEqual([true, booted]);
+    await drawn(() => tickBox("Phone · On this phone")?.click());
+    await press("Check");
+    await availabilitySheetShows("Share availability");
+    expect(document.querySelector("[role=dialog][aria-label='Share availability'] h2")?.textContent).toBe("Busy");
+    await press("Share with agent");
+    expect(await busy).toEqual({
+      kind: "applied",
+      result: { version: 1, kind: "calendar_availability", window: { start: check.start, end: check.end, timeZone: check.timeZone }, calendarCount: 1, status: "busy", busy: [{ start: check.start, end: check.end, allDay: false, tentative: false }], transparentIgnored: 1 },
+    });
+    expect(world.calendar.eventReads).toEqual([...booted, "readAvailability local", "readAvailability local"]);
+
+    // spec/app/calendar/sharing.md, "The phone can say the owner is free only when every calendar chosen lives on this phone": with Android's read access alone, the phone's own calendar still answers.
+    world.calendar.granted = false;
+    world.calendar.readOnly = true;
+    const readOnly = executeMedia(alpha, check, availabilityCall("availability-2"), approved);
+    await availabilitySheetShows("Calendars");
+    await drawn(() => tickBox("Phone · On this phone")?.click());
+    await press("Check");
+    await availabilitySheetShows("Share availability");
+    await press("Share with agent");
+    expect(await readOnly).toMatchObject({ kind: "applied", result: { status: "busy" } });
+
+    // spec/app/calendar/sharing.md, "The sheet offers the phone's calendars with none ticked, reads only the ticked ones, and shares only a free or busy answer it showed": leaving Home closes the sheet, and nothing is read or shared.
+    const reads = world.calendar.eventReads.length;
+    const left = executeMedia(alpha, check, availabilityCall("availability-3"), approved);
+    await availabilitySheetShows("Calendars");
+    await openView(alpha, "Notes");
+    expect(await left).toEqual({ kind: "refused", code: "not_shared", result: { summary: "Availability check cancelled. No calendar was read. Nothing was shared." } });
+    expect([document.querySelector("[role=dialog][aria-label='Calendars']"), world.calendar.eventReads.length]).toEqual([null, reads]);
+
+    // spec/app/calendar/sharing.md, "A check is asked only on Home or Calendar, while Alpha can be seen, on a screen that is not sensitive": from another app nothing is asked and nothing is read.
+    const asked = world.calendar.asked;
+    expect(await executeMedia(alpha, check, availabilityCall("availability-4"), approved)).toEqual({ kind: "refused", code: NOT_DISPATCHED });
+    expect([world.calendar.asked, world.calendar.eventReads.length]).toEqual([asked, reads]);
+  });
+
+  it("Choose the calendars on Calendar, and never be shown free when the phone cannot tell (spec/app/calendar/sharing.md, \"Story: Choose the calendars and see the answer before it is shared\")", async () => {
+    const world = morning(true);
+    world.calendar.granted = true;
+    world.calendar.calendars.push({ id: "work", name: "Work", account: "owner@alpha.test", writable: true, local: false });
+    const { alpha } = await mountCalendar(world, [...only("view:Calendar"), availabilitySheet], (s) => s.front && s.phoneRows >= 1);
+    const check = availabilityCheck(world, 15, 15.5);
+    const checks = () => world.calendar.eventReads.filter((read) => read !== "list");
+
+    // spec/app/calendar/sharing.md, "The phone can say the owner is free only when every calendar chosen lives on this phone": a synced calendar is unknown, never free, no answer is shown and no event is read.
+    const synced = executeMedia(alpha, check, availabilityCall("availability-1"), approved);
+    await availabilitySheetShows("Calendars");
+    await drawn(() => tickBox("Work · owner@alpha.test")?.click());
+    await press("Check");
+    expect(await synced).toEqual({ kind: "refused", code: "not_shared", result: { summary: "Calendar freshness could not be verified, so your availability is unknown. Nothing was shared." } });
+    expect([document.querySelector("[role=dialog][aria-label='Share availability']"), checks()]).toEqual([null, []]);
+
+    // spec/app/calendar/sharing.md, "The sheet offers the phone's calendars with none ticked, reads only the ticked ones, and shares only a free or busy answer it showed": Cancel reads nothing, a free answer that changed before Share is not shared, and nor is one whose approval no longer holds.
+    const cancelled = executeMedia(alpha, check, availabilityCall("availability-2"), approved);
+    await availabilitySheetShows("Calendars");
+    await press("Cancel");
+    expect(await cancelled).toEqual({ kind: "refused", code: "not_shared", result: { summary: "Availability check cancelled. No calendar was read. Nothing was shared." } });
+    expect(checks()).toEqual([]);
+    const changed = executeMedia(alpha, check, availabilityCall("availability-3"), approved);
+    await availabilitySheetShows("Calendars");
+    await drawn(() => tickBox("Phone · On this phone")?.click());
+    await press("Check");
+    await availabilitySheetShows("Share availability");
+    expect(document.querySelector("[role=dialog][aria-label='Share availability'] h2")?.textContent).toBe("Free");
+    world.calendar.phoneEvents.push({ id: "p11", calendarId: "local", title: "Call", begin: world.at(0, 15), end: world.at(0, 15.25), allDay: false, recurring: false });
+    await press("Share with agent");
+    expect(await changed).toEqual({ kind: "refused", code: "not_shared", result: { summary: "Your calendar changed during this review. Review the availability check again. Nothing was shared." } });
+    const lapsed = executeMedia(alpha, check, availabilityCall("availability-4"), { current: () => Promise.resolve(false) });
+    await availabilitySheetShows("Calendars");
+    await drawn(() => tickBox("Phone · On this phone")?.click());
+    await press("Check");
+    await availabilitySheetShows("Share availability");
+    await press("Share with agent");
+    expect(await lapsed).toEqual({ kind: "refused", code: "not_shared", result: { summary: "The phone, calendars or connection changed before this availability check finished. Nothing was shared." } });
+
+    // spec/app/calendar/sharing.md, "A check is asked only on Home or Calendar, while Alpha can be seen, on a screen that is not sensitive": a hidden page asks nothing and reads nothing, and refused access reads nothing.
+    const [asked, reads] = [world.calendar.asked, checks().length];
+    await seen(false);
+    expect(await executeMedia(alpha, check, availabilityCall("availability-5"), approved)).toEqual({ kind: "refused", code: NOT_DISPATCHED });
+    await seen(true);
+    expect([world.calendar.asked, checks().length]).toEqual([asked, reads]);
+    world.calendar.granted = false;
+    expect(await executeMedia(alpha, check, availabilityCall("availability-6"), approved)).toEqual({ kind: "refused", code: "not_shared", result: { summary: "Calendar access was not allowed, so no calendar was read. Nothing was shared." } });
+    expect(checks().length).toBe(reads);
   });
 });

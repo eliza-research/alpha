@@ -142,7 +142,9 @@ const go = (text: string, kind: "normal" | "private" = "normal") => drawn(async 
   if (kind === "private") {
     await press("Menu");
     await pressOnTop("New private tab");
-  } else await press(button("Search or type address") ? "Search or type address" : /^Edit address/);
+  } else if (!document.querySelector('input[aria-label="Address"]')) {
+    await press(/^Edit address/);
+  }
   await fill("Address", text);
   const form = document.querySelector<HTMLFormElement>("form[role=search]");
   if (!form) throw new Error("no address field");
@@ -241,7 +243,7 @@ describe("The Browser on a phone", () => {
     const { alpha, runtime, world } = await openHydratedPhoneBrowser();
     // spec/app/browser/address.md, "A tab with no page says \"Search or address\" in its bar, a private tab as a normal one, and only the private mark tells them apart"
     expect(button(/^Edit address/)?.textContent).toBe("Edit addressSearch or address");
-    await press("Search or type address");
+    await press(/^Edit address/);
     await until(alpha, runtime, Library, (s) => s.read.status === "Loaded");
     const suggestions = () => document.querySelector("[aria-label='Address suggestions']");
     expect(suggestions()?.textContent).toContain("/on-device-agents");
@@ -334,14 +336,27 @@ describe("The Browser on a phone", () => {
     const { alpha, runtime, world } = await onBrowser();
     // spec/app/browser/index.md, "A launch reads the saved session, and may ask again after a failed read"
     await until(alpha, runtime, Tabs, (s) => s.hydrated);
-    expect([world.browser.calls.includes("browsingState"), Boolean(button("Search or type address"))]).toEqual([true, true]);
+    const startSearch = () => document.querySelector<HTMLInputElement>('input[aria-label="Search Google or type a URL"]');
+    expect([
+      world.browser.calls.includes("browsingState"),
+      Boolean(document.querySelector('[role="img"][aria-label="Google"]')),
+      Boolean(startSearch()),
+    ]).toEqual([true, true, true]);
 
     // spec/app/browser/address.md, "Submitting text opens it, searches for it or says why not, and blank text is not submitted"
     const history = [...world.browser.tabs.values()].map((one) => [...one.history]);
+    await fill("Search Google or type a URL", "https://owner:example@private.example");
+    await drawn(() => { startSearch()?.form?.requestSubmit(); });
+    expect(document.querySelector("[role='alert']")?.textContent).toContain("Remove the username or password from this address.");
+    expect([...world.browser.tabs.values()].map((one) => one.history)).toEqual(history);
+    await press("Clear search");
+    expect(document.querySelector("[role='alert']")).toBeNull();
+
     await go("https://owner:example@private.example");
     expect(document.querySelector("[role='alert']")?.textContent).toContain("Remove the username or password from this address.");
     expect([...world.browser.tabs.values()].map((one) => one.history)).toEqual(history);
     await press("Cancel editing");
+    expect(document.querySelector("[role='alert']")).toBeNull();
     // spec/app/browser/address.md, "Only the latest load of the page commits it or fails it"; spec/app/browser/address.md, "The secure mark shows only on a page that committed over HTTPS"; spec/app/browser/address.md, "The secure mark is drawn only in the phone's own Browser, beside a page that committed over HTTPS"
     const { tab, page } = await goSecure(alpha, runtime, "news.example/on-device-agents");
     expect([...world.browser.tabs.values()].map((one) => one.history)).toEqual([["https://news.example/on-device-agents"]]);
@@ -395,6 +410,20 @@ describe("The Browser on a phone", () => {
     await go("on device agents");
     await until(alpha, page, Page, (p) => p.phase === "Shown" && p.behind === 1);
     expect([...world.browser.tabs.values()].map((one) => one.history.at(-1))).toEqual(["https://www.google.com/search?q=on%20device%20agents"]);
+  });
+
+  it('Searches Google directly from the new tab start view (spec/app/browser/address.md, "Story: Go where I typed")', async () => {
+    const { alpha, runtime, world } = await onBrowser();
+    await until(alpha, runtime, Tabs, (s) => s.hydrated);
+    const searchInput = () => document.querySelector<HTMLInputElement>('input[aria-label="Search Google or type a URL"]');
+    expect([Boolean(document.querySelector('[role="img"][aria-label="Google"]')), Boolean(searchInput())]).toEqual([true, true]);
+
+    await fill("Search Google or type a URL", "pixel 10a");
+    await drawn(() => { searchInput()?.form?.requestSubmit(); });
+    const tab = selectedTab(runtime);
+    const page = selectedPage(runtime, tab);
+    await until(alpha, page, Page, (p) => p.phase === "Shown" && p.secure);
+    expect([...world.browser.tabs.values()].map((one) => one.history)).toEqual([["https://www.google.com/search?q=pixel%2010a"]]);
   });
 
   it.each([
@@ -618,7 +647,7 @@ describe("The Browser on a phone", () => {
     await drawn(() => vi.waitFor(() => expect(world.settings.passwordsUnlocked).toBe(false)));
     expect(world.settings.opened).toEqual([]);
     await hardware("back");
-    expect(button("Search or type address")).toBeDefined();
+    expect(document.querySelector('input[aria-label="Search Google or type a URL"]')).not.toBeNull();
   });
 
   it('Only opens a private HTTPS page after the owner confirms it (spec/app/browser/share.md, "Story: Open the page in another browser")', async () => {

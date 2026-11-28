@@ -137,11 +137,11 @@ const elizaLock = (file: string = ELIZA_LOCK): Lock => {
   return { remote, branch, commit };
 };
 
-/** Where GitHub compares `lock`'s commit, as base, with its branch. */
+/** The pin-to-branch comparison's second page retains its merge base and omits the first page's file diffs. */
 export function compareUrl(lock: Lock) {
   const repository = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(lock.remote)?.[1];
   if (repository === undefined) throw new ReleaseRefused({ message: `${lock.remote} is not a GitHub repository` });
-  return `https://api.github.com/repos/${repository}/compare/${lock.commit}...${encodeURIComponent(lock.branch)}`;
+  return `https://api.github.com/repos/${repository}/compare/${lock.commit}...${encodeURIComponent(lock.branch)}?per_page=1&page=2`;
 }
 
 /** Whether `record` is a compare made for exactly `lock`, and whether the branch contains the pinned commit. */

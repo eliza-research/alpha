@@ -25,14 +25,14 @@ import { alphaHostedDigests, workflowNoticesHost } from "./workflows.ts";
  */
 export function plugins(world: Scene, services: { readonly agent: Answering; readonly cloud: Answering }): Record<string, Faked> {
   return {
-    ElizaAgent: elizaAgent(services.agent, world.settings.recovery, () => world.platform.abortFails === true),
+    ElizaAgent: elizaAgent(services.agent, world.platform, world.settings.recovery),
     ElizaCloud: elizaCloud(services.cloud, () => world.signedIn, world.mailLease, () => world.voice.credentialId, (url) => {
       if (world.inbox.consent) world.inbox.consent.opened.push(url);
       else world.checkout?.opened.push(url);
-    }, () => world.voice.billingVerified === world.voice.credentialId),
+    }, () => world.voice.billingVerified === world.voice.credentialId, () => world.inbox.consent?.reauthRequired !== true),
     AlphaAssistantDraft: alphaAssistantDraft(world.ask, () => ({ owner: world.notes.ownerIdentity, agent: world.notes.owner, epoch: 1 })),
     ElizaSecureStore: elizaSecureStore(world.secrets, (key) => world.slots.has(key) || /^notes-(?:draft|folders):[1-9][0-9]*$/.test(key)
-      || /^sms-draft:v2:(?:new|thread:[1-9][0-9]{0,18}|recipients:[0-9a-f]{64})$/.test(key) || key === "sms-outgoing:v2:device"),
+      || /^sms-draft:v2:(?:new|thread:[1-9][0-9]{0,18}|recipients:[0-9a-f]{64})$/.test(key) || /^messaging-sessions:(slack|telegram):v2$/.test(key) || key === "sms-outgoing:v2:device"),
     ElizaCalendar: elizaCalendar(world.calendar),
     ElizaReminders: elizaReminders(world.reminders, () => world.now),
     ElizaCamera: elizaCamera(world.camera),
@@ -61,12 +61,13 @@ export function plugins(world: Scene, services: { readonly agent: Answering; rea
     AlphaConnection: alphaConnection(world.platform),
     AlphaNetworkLocation: alphaNetworkLocation(world.platform, () => world.now),
     ...(world.voice.onDevice ? { AlphaVoiceCloud: alphaVoiceCloud(world.voice) } : {}),
-    ElizaCloudSpeech: elizaCloudSpeech(world.voice),
+    ...(world.voice.cloudSpeech ? { ElizaCloudSpeech: elizaCloudSpeech(world.voice) } : {}),
     ElizaSignIn: elizaSignIn(world.voice, () => world.signedIn, world.mailLease),
+    ...world.messagingNotices.plugins,
     AlphaBrowser: alphaBrowser(world.browser),
     AlphaInboxAttachments: alphaInboxAttachments(world.inbox),
     ...(world.inbox.notices ? { AlphaInboxNotices: alphaInboxNotices(world.inbox.notices) } : {}),
-    AlphaNotes: alphaNotes(world.notes),
+    AlphaNotes: alphaNotes(world.notes, () => world.telephony.live.length > 0),
     ...(world.workflows.nativeDigests === undefined ? {} : { AlphaHostedDigestDelivery: alphaHostedDigests(world.workflows.nativeDigests) }),
   };
 }

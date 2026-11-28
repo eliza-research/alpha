@@ -3,11 +3,18 @@ import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import { type Install, install, type Time, timeOver } from "../runtime/index.vibe"
 import { type Agent, agentAt, relayedAgent } from "./agent.vibe"
 import { type Cloud, cloudAt, relayedCloud } from "./cloud.vibe"
+import { allowsTestOrigin, browserCloudOrigin, cloudApiOrigin } from "./build.ts"
 import { Device, browserDevice, phoneDevice } from "./device.vibe"
+import { browserMessagingNotices } from "./messaging-notices.vibe"
+import { browserVoiceBridge } from "./voice.vibe"
+import { phoneMessagingSessions } from "./messaging-sessions.vibe"
 import { type MessagingSessions, messagingSessions } from "./messaging.vibe"
 import { type Plugins, browserPlugins, phonePlugins } from "./plugins.vibe"
+import { sharedStore } from "./sharedStore.vibe"
+import { browserSlackHttp, nativeSlackHttp } from "./slack-oauth.vibe"
 import { type Slack, slackAt } from "./slack.vibe"
-import { type Telegram, telegramAt, unavailableTelegram } from "./telegram.vibe"
+import { personalTelegram } from "./telegram-mtproto.vibe"
+import { type Telegram, telegramAt } from "./telegram.vibe"
 import { type Vault, browserVault, relayedVault } from "./vault.vibe"
 
 module web {
@@ -46,19 +53,29 @@ const store = Layer.unwrap(sync(() => {
 function messagingLayers(overrides?: MessagingLayers) {
   return Layer.mergeAll(
     overrides?.sessions ?? messagingSessions,
-    overrides?.slack ?? Layer.provide(slackAt("https://slack.com"), FetchHttpClient.layer),
-    overrides?.telegram ?? unavailableTelegram,
+    overrides?.slack ?? Layer.provide(slackAt("https://slack.com", cloudApiOrigin), nativeSlackHttp),
+    overrides?.telegram ?? personalTelegram,
   )
 }
 
 /** The phone: each service through eliza's client of its Capacitor plugin, with the agent's token and the cloud's key kept in native code; the plugins' services may tell the time. */
 export function phonePlatform(messaging?: MessagingLayers): Layer.Layer<Platform> {
-  return Layer.provideMerge(phonePlugins, Layer.provideMerge(grounded, Layer.provideMerge(Layer.mergeAll(phoneDevice, relayedVault, relayedAgent, relayedCloud, messagingLayers(messaging)), store)))
+  return Layer.provideMerge(phonePlugins, Layer.provideMerge(grounded, Layer.provideMerge(Layer.mergeAll(phoneDevice, relayedVault, relayedAgent, relayedCloud, messagingLayers({ ...messaging, sessions: messaging?.sessions ?? Layer.provide(phoneMessagingSessions, relayedVault) })), sharedStore(store))))
 }
 
 /** A page that is no phone: `agent` and `cloud` as they are reached from it, optional messaging layers, and no image, plugins or secrets. */
 export function pagePlatform(agent: Layer.Layer<Agent>, cloud: Layer.Layer<Cloud>, messaging?: MessagingLayers): Layer.Layer<Platform> {
   return Layer.provideMerge(grounded, Layer.provideMerge(Layer.mergeAll(browserDevice, browserVault, agent, cloud, browserPlugins, messagingLayers(messaging)), store))
+}
+
+/** The Slack client shared by the browser app and its hosted workspace page. */
+function browserSlack(origin: string) {
+  return Layer.provide(allowsTestOrigin() ? slackAt(`${origin}/slack`, `${origin}/slack`, "browser") : slackAt("https://slack.com", browserCloudOrigin(origin), "browser"), browserSlackHttp)
+}
+
+/** The hosted Slack page uses its browser tab as the session owner. */
+export function hostedSlackPlatform(origin: string) {
+  return Layer.provideMerge(Layer.mergeAll(grounded, browserVoiceBridge, browserMessagingNotices, messagingSessions, browserSlack(origin)), Layer.provideMerge(browserDevice, store))
 }
 
 /** A browser page: the agent, cloud, Slack, and Telegram at the page's own `/agent`, `/cloud`, `/slack`, and `/telegram`, which the dev server answers. */
@@ -67,8 +84,8 @@ export function browserPlatform(origin: string): Layer.Layer<Platform> {
     Layer.provide(agentAt(`${origin}/agent`), FetchHttpClient.layer),
     Layer.provide(cloudAt(`${origin}/cloud`), FetchHttpClient.layer),
     {
-      slack: Layer.provide(slackAt(`${origin}/slack`), FetchHttpClient.layer),
-      telegram: Layer.provide(telegramAt(`${origin}/telegram`), FetchHttpClient.layer),
+      slack: browserSlack(origin),
+      telegram: allowsTestOrigin() ? Layer.provide(telegramAt(`${origin}/telegram`), FetchHttpClient.layer) : personalTelegram,
     },
   )
 }

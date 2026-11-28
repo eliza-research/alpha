@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "description": "Pinned MIT-licensed GrapheneOS Android 17 Sandboxed Google Play compatibility repositories and fail-closed verification metadata. Zero proprietary Google binaries are stored in Git or preinstalled in system partitions.",
+  "androidRelease": "17",
+  "aospTag": "android-17.0.0_r1",
+  "license": "MIT",
+  "failClosed": true,
+  "proprietaryBinariesInRepo": false,
+  "googleSigningCertificateSha256": "f0fd6c5b410f25cb25c3b53346c8972fae30f8ee7411df910480ad6b2d60db83",
+  "googleWebViewCertificateSha256": "6faf3c4140407473400934d117815a21af1cfefc5c0bee61c858bc3d72ba6fe5",
+  "installOrder": [
+    "com.google.android.gsf",
+    "com.google.android.gms",
+    "com.android.vending"
+  ],
+  "verificationPolicy": {
+    "failClosed": true,
+    "allowUnverifiedFallback": false,
+    "requireExactCommitMatch": true,
+    "requireZeroPrivAppGrantsForGoogle": true,
+    "targetPartitionForGoogleApps": "/data/app"
+  },
+  "repositories": {
+    "GmsCompat": {
+      "url": "https://github.com/GrapheneOS/platform_packages_apps_GmsCompat.git",
+      "branch": "17",
+      "commit": "dfa825dc74281ff8d6db90731f8facb44b3238c9",
+      "targetPath": "packages/apps/GmsCompat",
+      "license": "MIT",
+      "expectedModules": [
+        "GmsCompat"
+      ],
+      "verifiedFiles": [
+        {
+          "path": "Android.bp",
+          "sha256": "0fe7cce37b40cbb42147bbf447f78158ae2ddbb7dc47d3039d677e34fe553e9e"
+        }
+      ]
+    },
+    "GmsCompatConfig": {
+      "url": "https://github.com/GrapheneOS/platform_external_GmsCompatConfig.git",
+      "branch": "17",
+      "commit": "fc0f96a916f59759c645f219b4f867b9c5e91fed",
+      "targetPath": "external/GmsCompatConfig",
+      "license": "MIT",
+      "expectedModules": [
+        "GmsCompatConfig"
+      ],
+      "verifiedFiles": [
+        {
+          "path": "Android.bp",
+          "sha256": "8804ac522f8d280f30fbacdd95b6cc6bf6b378811f3c44f55ad327f7fd1601c9"
+        }
+      ]
+    },
+    "frameworksBaseGmsCompat": {
+      "url": "https://github.com/GrapheneOS/platform_frameworks_base.git",
+      "branch": "17",
+      "commit": "3513181140a93e2d90316b80ef76b92eeb1adeab",
+      "targetPath": "frameworks/base",
+      "license": "Apache-2.0",
+      "expectedModules": [
+        "GmsCompatLib"
+      ],
+      "verifiedFiles": [
+        {
+          "path": "core/java/android/app/compat/gms/GmsCompat.java",
+          "sha256": "b0f9c7895b121a796b2168f34e3b135c3c89f9e0a7002ec75cc9084cb48d230b"
+        },
+        {
+          "path": "core/java/com/android/internal/gmscompat/GmsHooks.java",
+          "sha256": "98e61bdfe4eacedaa7559e0ef6c38d12a01e789d72947f266720c51c63cbea71"
+        },
+        {
+          "path": "core/java/com/android/internal/gmscompat/GmsInfo.java",
+          "sha256": "f22b21f16919f8cb74e7198a96c715281310b6921d7233b30b9bf2c1440b63b1"
+        }
+      ]
+    }
+  }
+}

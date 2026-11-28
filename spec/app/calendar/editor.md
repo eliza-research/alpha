@@ -509,7 +509,8 @@ pure def sometimesInvitationAnswered(s: Editor): bool = s.kind == Reply and s.wr
 
 The calendar reads the event's day and finds it at a revision, or finds it
 gone. Only a whole read of the window around the event's own day releases
-its doubt: a read of another range, or one the phone cut short, does not. A form whose save was in doubt keeps its edits: if the event moved on,
+its doubt: a read of a window that leaves that day out, or one the phone cut
+short or Google gave only in part, does not. A form whose save was in doubt keeps its edits: if the event moved on,
 the owner chooses between theirs and the saved one; if not, they are still
 to save. A form with no edits simply follows the event. Alpha keeps with
 each event's number where the event was last seen, so a doubt whose event

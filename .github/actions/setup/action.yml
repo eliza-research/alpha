@@ -29,6 +29,43 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Install Alpha NEXT CLI verification tools
+      if: runner.os == 'Linux' && inputs.verification == 'true' && (inputs.job == 'verify' || inputs.job == 'promotion')
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends ffmpeg woff2
+        if [[ ! -x "$ANDROID_HOME/build-tools/36.0.0/aapt2" ]]; then
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;36.0.0'
+        fi
+    - name: Use the Maven Central mirror for Android builds
+      if: runner.environment == 'github-hosted' && contains(fromJSON('["android","android-emulator","android-jvm-tests","release-candidate","resident-android"]'), inputs.job)
+      shell: bash
+      run: |
+        init_dir="${GRADLE_USER_HOME:-$HOME/.gradle}/init.d"
+        mkdir -p "$init_dir"
+        cat > "$init_dir/alpha-maven-central.gradle" <<'GRADLE'
+        import org.gradle.api.artifacts.repositories.MavenArtifactRepository
+
+        def mirrorCentral = { repositories ->
+            repositories.withType(MavenArtifactRepository).configureEach { repository ->
+                if (repository.url?.toString()?.replaceAll('/+$', '') == 'https://repo.maven.apache.org/maven2') {
+                    repository.url = URI.create('https://maven-central.storage-download.googleapis.com/maven2/')
+                }
+            }
+        }
+
+        gradle.beforeSettings { settings ->
+            mirrorCentral(settings.buildscript.repositories)
+            mirrorCentral(settings.pluginManagement.repositories)
+            mirrorCentral(settings.dependencyResolutionManagement.repositories)
+        }
+
+        gradle.beforeProject { project ->
+            mirrorCentral(project.buildscript.repositories)
+            mirrorCentral(project.repositories)
+        }
+        GRADLE
     - id: setup-pnpm
       uses: pnpm/action-setup@v6
     - id: restore-dafny
@@ -132,7 +169,7 @@ runs:
         key: ${{ steps.spec-cache.outputs.key }}
         restore-keys: ${{ steps.spec-cache.outputs.restore }}
     - id: turbo-cache
-      if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch' && env.TURBO_CACHE == 'local:rw')
+      if: inputs.cache-verification == 'true' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch' && env.TURBO_CACHE == 'local:rw'))
       shell: bash
       env:
         JOB: ${{ inputs.job }}

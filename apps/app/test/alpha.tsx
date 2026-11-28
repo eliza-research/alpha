@@ -189,6 +189,14 @@ export async function readInboxFirst(alpha: Alpha, letters: ReturnType<typeof in
   await hardware("back");
 }
 
+/** The words `element` shows on screen, leaving out what only a screen reader hears. */
+export function shownWords(element: Element | null | undefined) {
+  const copy = element?.cloneNode(true);
+  if (!(copy instanceof Element)) return undefined;
+  for (const hidden of copy.querySelectorAll(".sr-only")) hidden.remove();
+  return copy.textContent?.trim();
+}
+
 /** The input whose accessible name is `name`, or null while none is drawn. */
 export const input = (name: string) => document.querySelector<HTMLInputElement>(`input[aria-label="${name}"]`);
 

@@ -406,9 +406,6 @@ export function workspacePackages(root: string): { directory: string; name: stri
   return [...found].map(([directory, name]) => ({ directory, name }));
 }
 
-/** A relative module a script names, by import, export or `import()`. */
-const SPECIFIER = /(?:\bfrom\s+|\bimport\s*\(\s*|^\s*import\s+)["'](\.\.?\/[^"']+)["']/gm;
-
 /**
  * A fingerprint of what a package's tests or its typecheck read: its files but `PROSE` and the simulations' traces, and
  * the top of its gen/ (an owner's is mirrored from the root's), the fixtures nested under its test/, the workspace packages it depends on, the lock file
@@ -429,7 +426,8 @@ export function testInputs(root: string, mode: TestProfile = "normal", read: Inp
     if (!checkGenImport) return false;
     if (entry.genImport === undefined) {
       const text = fs.readFileSync(full, "utf8");
-      entry.genImport = [...text.matchAll(SPECIFIER)].some(([, to]) => path.posix.join(path.posix.dirname(file), to).startsWith("gen/"));
+      entry.genImport = tsApi().preProcessFile(text, true, true).importedFiles
+        .some(({ fileName }) => /^\.\.?\//.test(fileName) && path.posix.join(path.posix.dirname(file), fileName).startsWith("gen/"));
     }
     return entry.genImport;
   };

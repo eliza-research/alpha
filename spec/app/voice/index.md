@@ -98,7 +98,8 @@ Prewarm speech output and status without opening the microphone, hold or
 release the native speech engine across an active conversation, ask for the
 microphone, open app settings, listen or record, close the microphone, send
 a turn, play a sentence of the reply, set the speaker output, hush the reply,
-shut the conversation down, open a screen, transcribe a clip, abandon a
+shut the conversation down, ask again after a while whether a stop that
+could not be confirmed has gone quiet, open a screen, transcribe a clip, abandon a
 recording, or fill a field with dictated text.
 
 ```quint
@@ -115,7 +116,7 @@ type Effect =
   | SetSpeakerOutput({ session: int, speakerTicket: int, muted: bool })
   | Hush({ turn: int })
   | Shut({ session: int, keyboard: bool })
-  | SayCallEnded
+  | Release({ afterMs: int })
   | Navigate({ session: int, turn: int, place: int, sourceRoute: int })
   | CheckDictation({ ticket: int })
   | Record({ ticket: int })
@@ -210,11 +211,11 @@ pure def canPrewarm(v: Voice, now: int): bool = not(v.warmed) and not(v.latched)
 pure def prewarm(v: Voice, now: int): Change =
   { state: { ...v, warmed: true }, out: List(Prewarm({ network: onNetwork(v.route, now) })) }
 
-pure def canReturned(v: Voice): bool = (quiet(v) and v.warmed) or v.callNotice != NoCallNotice
+pure def canReturned(v: Voice): bool = (quiet(v) and (v.warmed or v.latched)) or v.callNotice != NoCallNotice
 
 pure def returned(v: Voice): Change =
   { state: { ...v, warmed: if (quiet(v)) false else v.warmed, callNotice: NoCallNotice },
-    out: if (v.callNotice == CallNoticeOnReturn) List(SayCallEnded) else List() }
+    out: if (v.latched) List(Release({ afterMs: 0 })) else List() }
 
 pure def stepPrewarmNeverOpensTheMicrophone(before: Voice, via: str, after: Voice, out: List[Effect]): bool =
   via == "prewarm" implies (after.mic == before.mic and after.prompting == before.prompting and after.phase == before.phase)
@@ -777,6 +778,46 @@ pure def lawTalkRespectsSelectedChatAndExclusivePostSlot(
     and (sendInFlight implies not(talkTurnCanPost(sendInFlight)))
 ```
 
+### A heard turn waits for the send in hand, is sent once after it, and is given up quietly only after 30 s
+
+What the owner finished saying is never dropped because another send
+still holds the posting place: a typed message on its way to the agent,
+its attachments still being stored included, a typed message waiting for
+the conversation Chats is making for it, a request about a subject, or the
+turn the owner spoke over or stopped still letting go of the agent. The
+heard turn takes the posting place only once none of these is in hand, so
+the send it waited for is never refused because of it, and it is then sent
+once, after that send, in the selected conversation. Only a send still in
+hand 30 s after the owner's turn ended gives the turn up, and then quietly,
+as a turn that ends unsent: nothing is said or shown, the turn is never
+sent later, and Alpha listens again. A turn that has taken the posting
+place is no longer given up for the wait: making its conversation and
+asking for its reply go on as any turn's do.
+
+```quint
+pure val spokenTurnWaitMs = 30000
+
+pure val waitedMsValues = Set(0, 29999, 30000, 60000)
+
+pure def heardTurnPosts(sendInHand: bool, decided: bool): bool = talkTurnCanPost(sendInHand) and not(decided)
+
+pure def heardTurnWaits(sendInHand: bool, waitedMs: int, decided: bool): bool =
+  sendInHand and waitedMs < spokenTurnWaitMs and not(decided)
+
+pure def heardTurnGivenUp(sendInHand: bool, waitedMs: int, decided: bool): bool =
+  sendInHand and waitedMs >= spokenTurnWaitMs and not(decided)
+
+pure def lawAHeardTurnIsPostedOnceAfterTheSendInHandOrGivenUpOnlyAfterTheWait(sendInHand: bool, waitedMs: int, decided: bool): bool =
+  val posts = heardTurnPosts(sendInHand, decided)
+  val waits = heardTurnWaits(sendInHand, waitedMs, decided)
+  val givenUp = heardTurnGivenUp(sendInHand, waitedMs, decided)
+  (decided implies not(posts or waits or givenUp))
+    and (not(decided) implies (posts or waits or givenUp))
+    and not(posts and waits) and not(posts and givenUp) and not(waits and givenUp)
+    and (posts implies not(sendInHand))
+    and (givenUp implies waitedMs >= spokenTurnWaitMs)
+```
+
 ### What was heard but not sent is never counted as sent
 
 The owner sees it as "Heard so far, not sent". A turn still being heard,
@@ -920,8 +961,13 @@ pure def interrupt(v: Voice): Change =
 
 ### Stop shuts the conversation down, and a stop asked for the keyboard then hands it over
 
-A stop is settled once the microphone and speech are confirmed off. Talk's
-controls offer Stop and no keyboard switch, as in Alpha's Sunday demo build.
+A stop is settled once the microphone and speech are confirmed off. Only
+what could go on listening or making sound counts: the agent acknowledging
+that it closed its side of the speech session, a Cloud speech session the
+relay was never asked to start or refused to start, and the speaker's volume
+being set back do not. Talk's
+controls offer Stop and no keyboard switch. Both are as in Alpha's Sunday
+demo build.
 
 ```quint
 pure def shutDown(failure: D::Failure, keyboard: bool, v: Voice): Change =
@@ -935,8 +981,9 @@ pure def stop(v: Voice, keyboard: bool): Change = shutDown(D::NoFailure, keyboar
 
 pure def canStopped(v: Voice, confirmed: bool): bool = v.phase == Stopping
 
-pure def stopped(v: Voice, confirmed: bool): Voice =
-  { ...v, phase: if (v.failure == D::NoFailure) Idle else Failed, mic: Off, network: false, latched: v.latched or not(confirmed) }
+pure def stopped(v: Voice, confirmed: bool): Change =
+  { state: { ...v, phase: if (v.failure == D::NoFailure) Idle else Failed, mic: Off, network: false, latched: v.latched or not(confirmed) },
+    out: if (confirmed) List() else List(Release({ afterMs: releaseAgainMs })) }
 
 pure val fair_stopped = "weak"
 
@@ -947,15 +994,39 @@ pure def canDismiss(v: Voice): bool = v.phase == Failed
 pure def dismiss(v: Voice): Voice = { ...v, phase: Idle, failure: D::NoFailure }
 ```
 
-### A stop that could not be confirmed keeps voice closed until Alpha restarts
+### A stop that could not be confirmed keeps voice closed until the microphone and speech are confirmed off
 
 The microphone or speech may still be running, so neither a conversation
-nor dictation starts; the owner is told "Speech could not be stopped.
-Restart Alpha."
+nor dictation starts, and no words are shown. Alpha asks again whether they
+are off two seconds after the stop, then, while they are still not, after
+twice as long each time, up to every thirty seconds, and at once each time
+it returns to the foreground; once they are, voice opens again and Talk is
+offered, with no restart.
 
 ```quint
+pure val releaseAgainMs = 2000
+
+pure val releaseAgainMostMs = 30000
+
+pure val afterMsValues = Set(0, 2000, 16000, 30000)
+
+pure def againAfter(afterMs: int): int =
+  if (afterMs < releaseAgainMs) releaseAgainMs
+  else if (afterMs * 2 > releaseAgainMostMs) releaseAgainMostMs
+  else afterMs * 2
+
 pure def alwaysAnUnconfirmedStopKeepsVoiceClosed(v: Voice): bool =
   v.latched implies (quiet(v) and v.recorder.stage == D::Closed)
+
+pure def canReleased(v: Voice, confirmed: bool, afterMs: int): bool = v.latched
+
+pure def released(v: Voice, confirmed: bool, afterMs: int): Change =
+  { state: { ...v, latched: not(confirmed) },
+    out: if (confirmed) List() else List(Release({ afterMs: againAfter(afterMs) })) }
+
+pure def stepAnUnconfirmedStopIsAskedAgain(before: Voice, via: str, after: Voice, out: List[Effect]): bool =
+  ((after.latched and not(before.latched)) implies out.includes(Release({ afterMs: releaseAgainMs })))
+    and ((via == "released" and after.latched) implies not(out.every(e => match e { | Release(_) => false | _ => true })))
 
 pure def sometimesStopUnconfirmed(v: Voice): bool = v.latched
 ```
@@ -986,14 +1057,17 @@ pure def sometimesDenied(v: Voice): bool = v.phase == Failed and v.failure == D:
 > As the owner, I want a call to end Talk and release the microphone and
 > speaker. After the call, I can choose to start Talk again.
 
-### A phone call ends Talk and Alpha tells the owner once
+### A phone call ends Talk quietly, and only the owner starts it again
 
 Talk releases its audio and retires its in-flight turn under the normal
-confirmed stop. A call reported by the phone or a matching native speech
-request can identify this stop. If the activity hid during Talk, remember
-whether a call was observed before Alpha showed again and show the notice
-then. A plain app switch clears the pending cause without a notice.
-Only an explicit Talk request starts a new conversation after the call.
+confirmed stop, and shows no words: no toast, popup, banner or status
+line, then or when Alpha shows again. A call reported by the phone or a
+matching native speech request can identify this stop. If the activity
+hid during Talk, remember whether a call was observed until Alpha shows
+again; a plain app switch clears the pending cause the same way. Only an
+explicit Talk request starts a new conversation after the call. A call
+state the phone has not told is not a call, and does not keep Talk from
+starting.
 
 ```quint
 pure def canCallInterrupted(v: Voice, session: int, foreground: bool): bool =
@@ -1001,8 +1075,7 @@ pure def canCallInterrupted(v: Voice, session: int, foreground: bool): bool =
 
 pure def callInterrupted(v: Voice, session: int, foreground: bool): Change =
   val ended = if (talking(v)) shutDown(D::NoFailure, false, v) else { state: v, out: List() }
-  { state: { ...ended.state, callNotice: if (foreground) NoCallNotice else CallNoticeOnReturn },
-    out: ended.out.concat(if (foreground) List(SayCallEnded) else List()) }
+  { state: { ...ended.state, callNotice: if (foreground) NoCallNotice else CallNoticeOnReturn }, out: ended.out }
 
 pure def stepACallStopsTalk(before: Voice, via: str, after: Voice, out: List[Effect]): bool =
   (via == "callInterrupted") implies (not(talking(after)) and
@@ -1373,6 +1446,13 @@ pure def typeTranscript(v: Voice, ticket: int): Voice = { ...v, recorder: D::typ
 
 A messaging bar's dictation fills that bar, never Ask Alpha. The fill names
 its own number, so a late delivery cannot fill the field of a newer recording.
+Dictation asked for on a phone without speech does not start, and shows
+no words. A transcript goes into the field whole, as Sunday's v119 put it
+there, even past the longest text the phone sends: the owner shortens the
+text before it can be sent, and nothing dictated is lost. A call state the phone has not told does not keep dictation from
+starting. A messaging bar's recorder shows no words: its stage, a failed
+transcription included, is said only to a screen reader, and its retry,
+discard and stop controls stay.
 In a Messages conversation, stopping a recording puts a successful transcript
 straight into that conversation's editable draft. Leaving the conversation
 before it arrives discards it.

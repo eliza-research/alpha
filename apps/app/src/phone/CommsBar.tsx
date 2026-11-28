@@ -9,6 +9,8 @@ import type { Machine as PhoneMachine } from "../../gen/app__phone.effect.vibe";
 import { useMachine as usePhone } from "../../gen/app__phone.react.ts";
 import type { Machine as CommsMachine } from "../../gen/app__phone__comms.effect.vibe";
 import { useMachine as useComms } from "../../gen/app__phone__comms.react.ts";
+import { openAlphaOverlay } from "../platform/index.vibe";
+import { currentSurface } from "../surface.ts";
 import { Dialer } from "./phone.vibe";
 import { CommsPrompts, commsHeld } from "./comms.vibe";
 
@@ -25,8 +27,6 @@ interface QueryFilter {
 
 export interface CommsBarProps {
   runtime: DockRuntime;
-  /** A visible list's own search, kept by the area while the sheet is closed. */
-  filter?: QueryFilter;
   /** What the owner can write or do while the sheet is closed. */
   closed?: ReactNode | ((ask: (query: string) => void, talk: (() => void) | undefined) => ReactNode);
   /** An app's actions beside the closed Ask Alpha field. */
@@ -57,7 +57,7 @@ export function useCommsDock(runtime: ManagedRuntime.ManagedRuntime<ShellMachine
  * The owner side of the dock. While the sheet is open, Ask Alpha supplies the only composer.
  * @model spec/app/phone/comms.md
  */
-export function CommsBar({ runtime, closed, filter, person, actions }: CommsBarProps) {
+export function CommsBar({ runtime, closed, person, actions }: CommsBarProps) {
   const comms = useComms(runtime);
   const shell = useShell(runtime);
   const holdRef = useRef<{ id: number; x: number; y: number; cancel: () => void }>(undefined);
@@ -70,12 +70,17 @@ export function CommsBar({ runtime, closed, filter, person, actions }: CommsBarP
     if (node) return release;
   }, [release]);
   if (!shell.state || shell.state.assistant === "Sheet" || shell.state.assistant === "Full") return null;
+  const standaloneApp = currentSurface().mode === "app";
   const raise = { type: "raise", detent: "Sheet" } as const;
-  const opening = shell.can(raise);
+  const opening = standaloneApp || shell.can(raise);
   const open = async (query = "") => {
     if (!opening) return;
-    const about = comms.state?.key;
     const text = query.trim();
+    if (standaloneApp) {
+      await runtime.runPromise(openAlphaOverlay("comms-bar", text || undefined, false));
+      return;
+    }
+    const about = comms.state?.key;
     const request = about !== undefined ? ({ type: "requestTyped", about, request: text } as const) : undefined;
     if (text !== "" && request !== undefined && comms.can(request, "Owner")) await comms.send(request, "Owner");
     const raised = await shell.send(raise);
@@ -85,12 +90,16 @@ export function CommsBar({ runtime, closed, filter, person, actions }: CommsBarP
   };
   const view = shell.state.trail.at(-1);
   const talk = () => {
+    if (standaloneApp) {
+      void runtime.runPromise(openAlphaOverlay("comms-bar", undefined, true));
+      return;
+    }
     const about = comms.state?.key;
     if (!opening || !about || (view !== "Phone" && view !== "Messages" && view !== "Contacts")) return;
     void runtime.runPromise(Effect.flatMap(CommsPrompts, (prompts) => prompts.talk({ about, view })));
   };
   const phone = view === "Phone";
-  const placeholder = phone ? "Call or ask" : person ? `Ask about ${person.label.split(" ")[0]}` : "Search or ask";
+  const placeholder = phone ? "Call or ask" : person ? `Ask about ${person.label.split(" ")[0]}` : "Ask Alpha";
   return (
     <div data-alpha-comms-dock="" data-host-chrome="" className={cn("sticky bottom-0 z-dock mx-[3.9%] mt-auto mb-[max(clamp(1.5rem,6.8vw,1.75rem),calc(var(--alpha-safe-bottom,env(safe-area-inset-bottom))_+_0.75rem))] flex min-h-[clamp(4rem,18vw,4.625rem)] shrink-0 items-center gap-1 rounded-dock bg-secondary py-1.5 pr-2 pl-2.25 shadow-dock dark:shadow-dock-dark",
       person && !closed && "shadow-none ring-[1.5px] ring-primary ring-inset dark:shadow-none")}>
@@ -121,15 +130,15 @@ export function CommsBar({ runtime, closed, filter, person, actions }: CommsBarP
           skipTapRef.current = false;
         }}><Mark className="size-[118%]" aria-hidden /></Button>
       {opening && actions}
-      {typeof closed === "function" ? closed((query) => void open(query), talk) : closed ?? <CommsQuery runtime={runtime} phone={phone} filter={filter} placeholder={placeholder} onAsk={(query) => void open(query)} onTalk={talk} />}
+      {typeof closed === "function" ? closed((query) => void open(query), talk) : closed ?? <CommsQuery runtime={runtime} phone={phone} placeholder={placeholder} onAsk={(query) => void open(query)} onTalk={talk} />}
     </div>
   );
 }
 
-function CommsQuery({ runtime, phone, filter, placeholder, onAsk, onTalk }: { runtime: DockRuntime; phone: boolean; filter?: QueryFilter | undefined; placeholder: string; onAsk: (query: string) => void; onTalk: (() => void) | undefined }) {
+function CommsQuery({ runtime, phone, placeholder, onAsk, onTalk }: { runtime: DockRuntime; phone: boolean; placeholder: string; onAsk: (query: string) => void; onTalk: (() => void) | undefined }) {
   const machine = usePhone(runtime);
   const [draft, setDraft] = useState("");
-  const phoneFilter: QueryFilter | undefined = phone && machine.can({ type: "search", typed: true }) ? {
+  const owned: QueryFilter | undefined = phone && machine.can({ type: "search", typed: true }) ? {
     value: machine.state?.sought ? runtime.runSync(Effect.flatMap(Dialer, (dialer) => dialer.get())).sought : "",
     onChange: (sought) => {
       runtime.runSync(Effect.flatMap(Dialer, (dialer) => dialer.set({ sought, filterLabel: "" })));
@@ -137,7 +146,6 @@ function CommsQuery({ runtime, phone, filter, placeholder, onAsk, onTalk }: { ru
       if (machine.can(search)) void machine.send(search);
     },
   } : undefined;
-  const owned = filter ?? phoneFilter;
   const query = owned?.value ?? draft;
   return (
     <form className="flex min-w-0 flex-1 items-center gap-1" onSubmit={(event) => {

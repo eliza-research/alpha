@@ -15,6 +15,7 @@
 { "method": "POST", "path": "/api/views/interact-result" }
 { "method": "GET", "path": "/api/client-devices/capabilities" }
 { "method": "POST", "path": "/api/client-devices/register" }
+{ "method": "POST", "path": "/api/client-devices/revoke" }
 { "method": "GET", "path": "/api/client-devices/context" }
 { "method": "GET", "path": "/api/client-devices/proposals" }
 { "method": "POST", "path": "/api/client-devices/proposals/{id}/decision" }
@@ -30,7 +31,7 @@
 { "method": "PATCH", "path": "/api/lifeops/calendar/events/{eventId}" }
 { "method": "DELETE", "path": "/api/lifeops/calendar/events/{eventId}" }
 { "method": "POST", "path": "/api/lifeops/calendar/events/{eventId}/response" }
-{ "method": "GET", "path": "/api/notifications", "query": [{ "key": "category", "accepts": { "kind": "pinned", "value": "workflow" } }, { "key": "limit", "accepts": { "kind": "pinned", "value": "50" } }] }
+{ "method": "GET", "path": "/api/notifications", "query": [{ "key": "nativeTransport", "accepts": { "kind": "pinned", "value": "true" } }, { "key": "nativeEpoch", "accepts": { "kind": "pattern", "pattern": "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" } }, { "key": "limit", "accepts": { "kind": "pattern", "pattern": "0|[1-9][0-9]{0,15}" } }, { "key": "afterSequence", "accepts": { "kind": "pattern", "pattern": "0|[1-9][0-9]{0,15}" } }, { "key": "throughSequence", "accepts": { "kind": "pattern", "pattern": "0|[1-9][0-9]{0,15}" } }] }
 { "method": "GET", "path": "/api/lifeops/calendar/sync-control" }
 { "method": "POST", "path": "/api/lifeops/calendar/sync-control" }
 { "method": "GET", "path": "/api/lifeops/calendar/sync-control/destinations" }
@@ -120,3 +121,11 @@
 { "method": "POST", "path": "/api/wallet/requests" }
 { "method": "POST", "path": "/api/wallet/requests/{id}/review" }
 { "method": "POST", "path": "/api/wallet/requests/{id}/decide" }
+{ "method": "GET", "path": "/api/alpha/control/state" }
+{ "method": "POST", "path": "/api/alpha/control/lease", "maxBodyBytes": 4096 }
+{ "method": "POST", "path": "/api/alpha/control/stop", "maxBodyBytes": 1024 }
+{ "method": "GET", "path": "/api/alpha/local-llm/status" }
+{ "method": "GET", "path": "/api/alpha/local-llm/catalog" }
+{ "method": "POST", "path": "/api/alpha/local-llm/mode", "maxBodyBytes": 1024 }
+{ "method": "POST", "path": "/api/alpha/local-llm/activate", "maxBodyBytes": 1024 }
+{ "method": "POST", "path": "/api/alpha/local-llm/delete", "maxBodyBytes": 1024 }

@@ -216,9 +216,11 @@ effect function capture(fx: Extract<Rec.Effect, { readonly tag: "Captures" }>): 
   const mappedId = try takes.recordingFor(state.owner, fx.take)
   const existing = try currentTape()
   const resumingOwned = mappedId !== undefined && existing?.recordingId === mappedId
-  const taken = resumingOwned
-    ? (device.command(mappedId, "Resume") catch () => undefined)
-    : (device.start(try promise(() => ownerDigest(identity)), folderId) catch () => undefined)
+  const overtaken = (try recorder.get()).phase !== "Recording"
+  const taken = !resumingOwned
+    ? (device.start(try promise(() => ownerDigest(identity)), folderId) catch () => undefined)
+    : existing.state === "recording" || overtaken ? existing
+    : (device.command(mappedId, "Resume") catch () => undefined)
   if (taken?.recordingId !== undefined) try takes.bind(state.owner, fx.take, taken.recordingId)
   if (taken === undefined) try ignore(recorder.send({ type: "broke", capture: fx.capture }, phone))
 }
@@ -385,30 +387,25 @@ export effect function ownerRecords(owner: number): void!!Scope {
   try ignore(recorder.send({ type: "resumeDiscard" }, phone))
 }
 
-/** Clean up the scratch recording tape only after `Rec.Machine` has durably confirmed the note was kept. */
+/** Clear the phone's recording once `Rec.Machine` holds it as a kept voice note, also when Alpha stopped before clearing it, so the next Start finds no recording open. */
 const cleanupKept = started(effect {
   const recorder = try Rec.Machine
   const device = try NoteDevice
   const takes = try TakeRegistry
-  let prev = try recorder.get()
-  try Stream.runForEach(recorder.changes, effect (next) => {
-    const confirmed = prev.phase === "Keeping" && next.phase === "Idle" && next.note > 0 && prev.take > 0
-    const prevTake = prev.take
-    const prevOwner = prev.owner
-    prev = next
-    if (!confirmed) return
-    const id = try takes.recordingFor(prevOwner, prevTake)
-    if (id !== undefined) {
-      try ignore(device.discard(id))
-      try takes.forget(prevOwner, prevTake)
-    }
+  try Stream.runForEach(recorder.changes, effect (state) => {
+    if (state.phase !== "Kept" || state.note <= 0 || state.take <= 0) return
+    const id = try takes.recordingFor(state.owner, state.take)
+    if (id === undefined) return
+    try ignore(device.discard(id))
+    try takes.forget(state.owner, state.take)
   })
-}, "clean up confirmed Notes recording tape")
+}, "clear the phone's kept Notes recording")
 
 const updates = started(effect {
   const device = try NoteDevice
   if (!device.available) return
   const recorder = try Rec.Machine
+  const takes = try TakeRegistry
   const devicePage = try Device
   const shell = try Shell
   const shown = try RecordingDisplay
@@ -431,38 +428,60 @@ const updates = started(effect {
     }
     return identity
   }
+  const apart = (tape: Tape, phase: Rec.Phase) => tape.state === "paused" && phase === "Recording" || tape.state === "recording" && phase === "Paused"
+  /**
+   * The tape as the phone last reported it while the recorder agreed with it. A pause or resume is followed only when the
+   * phone made it, never from a report older than Alpha's own command, and one the rules refused, such as a Resume made over
+   * Home, is followed once Notes is in front again. A recording cut off holds no capture of Alpha's, so it follows the phone
+   * as it is, as v119's adopt did.
+   */
+  let agreed: Tape | undefined
   const report = effect (tape: Tape) => {
     const owner = try project(tape)
     if (owner === undefined) return
+    const moved = agreed !== undefined && agreed.recordingId === tape.recordingId && agreed.state !== tape.state
     try samples(tape, owner)
     const state = try recorder.get()
     if (tape.state === "stopped" && (state.phase === "Recording" || state.phase === "Paused")) {
       if (tape.stopReason === "user" || tape.stopReason === "done") try ignore(recorder.send({ type: "stop", take: state.take }, "Owner"))
       else try ignore(recorder.send({ type: "broke", capture: state.capture }, phone))
-    } else if (tape.state === "paused" && state.phase === "Recording") {
-      try ignore(recorder.send({ type: "pause", take: state.take }, "Owner"))
-    } else if (tape.state === "recording" && state.phase === "Paused") {
-      try ignore(recorder.send({ type: "resume", take: state.take, room: try room() }, "Owner"))
+      return
     }
+    const mapped = try takes.recordingFor(state.owner, state.take)
+    const owned = tape.recordingId !== undefined && tape.recordingId === mapped
+    if (owned && moved && tape.state === "paused" && state.phase === "Recording") {
+      try ignore(recorder.send({ type: "phonePaused", take: state.take }, phone))
+    } else if (owned && (moved || state.recovered) && tape.state === "recording" && state.phase === "Paused") {
+      try ignore(recorder.send({ type: "phoneResumed", take: state.take, room: try room() }, phone))
+    }
+    if (!apart(tape, (try recorder.get()).phase) && (mapped === undefined || tape.recordingId === mapped)) agreed = tape
   }
   const read = effect { return device.status() catch () => undefined }
+  const answered = (tape: Tape | undefined): tape is Tape => tape !== undefined
   const poll = Stream.fromEffectSchedule(read, Schedule.spaced("1 second"))
   const playing = Stream.changes(Stream.map(recorder.changes, (state) => state.phase === "Recording" || state.phase === "Stopping"))
-  const ticks = Stream.switchMap(playing, (polling) => polling ? Stream.filter(poll, (tape): tape is Tape => tape !== undefined) : Stream.empty)
+  const ticks = Stream.switchMap(playing, (polling) => polling ? Stream.filter(poll, answered) : Stream.empty)
   const visibility = Stream.concat(Stream.fromEffect(devicePage.showing()), devicePage.visible)
-  const listening = Stream.changes(Stream.map(Stream.zipLatestAll(recorder.changes, shell.changes, visibility),
-    ([state, place, visible]) => state.phase === "Recording" && visible && showing(place, "Notes")))
+  const inFront = (phase: Rec.Phase) => Stream.changes(Stream.map(Stream.zipLatestAll(recorder.changes, shell.changes, visibility),
+    ([state, place, visible]) => state.phase === phase && visible && showing(place, "Notes")))
   const amplitudes = Stream.filter(Stream.fromEffectSchedule(read, Schedule.spaced("120 millis")),
     (tape): tape is Tape => tape?.state === "recording")
-  const meters = Stream.switchMap(listening, (on) => on ? amplitudes : Stream.empty)
+  const meters = Stream.switchMap(inFront("Recording"), (on) => on ? amplitudes : Stream.empty)
+  const looks = Stream.switchMap(inFront("Paused"), (on) => on ? Stream.filter(Stream.fromEffect(read), answered) : Stream.empty)
   const opened = Stream.merge(device.openAsked, Stream.as(Stream.filter(devicePage.visible, (front) => front), undefined))
   const reopen = effect () => {
     if (try device.consumeOpen()) try ignore(shell.send({ type: "openView", view: "Notes" }))
   }
   try reopen()
+  const initial = try currentTape()
+  if (initial !== undefined && initial.recordingId !== undefined) {
+    const state = try recorder.get()
+    const mapped = try takes.recordingFor(state.owner, state.take)
+    if (!apart(initial, state.phase) && (mapped === undefined || initial.recordingId === mapped)) agreed = initial
+  }
   try Effect.all([
     Stream.runForEach(opened, reopen),
-    Stream.runForEach(Stream.merge(device.changed, ticks), report),
+    Stream.runForEach(Stream.merge(device.changed, Stream.merge(ticks, looks)), report),
     Stream.runForEach(meters, project),
   ], { concurrency: "unbounded" })
 }, "watch the phone’s Notes recorder")
@@ -491,7 +510,7 @@ function storedMicrophone(key: string, start?: Mic.Microphone) {
 export const recording = Layer.provideMerge(together(
   reacting(Rec, { keep: 1, open: effect {
     const tape = try currentTape()
-    return [{ type: "restart", intact: tape !== undefined, found: tape?.segments?.length ?? 0 }, phone] as const
+    return [{ type: "restart", intact: tape !== undefined, found: tape?.segments?.length ?? 0, going: tape?.state === "recording" }, phone] as const
   }, carry }),
   reacting({ ...Mic, stored: storedMicrophone }, { keep: 1, open: [{ type: "restart" }, phone], carry: microphone }),
   cleanupKept,

@@ -22,11 +22,12 @@ its number across a restart and no other event is ever given it: a
 deletion, or a form of the [editor](./editor.md), kept across a restart is
 for the event it was for. The number of an event long unseen may be let
 go, and then names no event. Where the phone cannot read the numbers Alpha
-kept, nothing kept under them is let go, and Alpha reads them again at its
-next start; kept numbers that are not whole numbers held exactly are set
-aside, never numbered on from. A deletion reaches its event, the series from
-this occurrence on, or the whole series, as the owner chose, at the
-revision the owner confirmed it from; the occurrences of a repeating event
+kept, nothing kept under them is let go, it numbers apart from every other
+start, and Alpha reads them again at its next start; kept numbers that are
+not whole numbers held exactly are set aside, never numbered on from. A
+deletion reaches its event, the series from this occurrence on, or the
+whole series, as the owner chose, at the revision the owner confirmed it
+from; the occurrences of a repeating event
 on the phone share one revision, counted from the series' title, place, notes
 and whether it is all day, and not from when they fall: moving the series
 leaves it as it was, and the phone itself refuses to delete an occurrence
@@ -127,6 +128,12 @@ pure def sometimesReviewedBesideAWaitingOne(s: Deletions): bool = s.asked != 0 a
 
 ### Confirming the review holds the deletion; a deletion still waiting is sent first, so the only Undo shown is the newest
 
+The phone's calendar reviews a deletion of one of its events as the owner
+confirms it, while Calendar is still in front, since it reviews nothing
+while Alpha is out of sight or the phone is locked. When the deletion is
+sent, after its Undo window or once the owner leaves, it is the one the
+phone reviewed, and the phone still refuses it if the event changed since.
+
 ```quint
 pure def canConfirm(s: Deletions, now: int): bool = s.asked != 0 and s.sending == 0 and not(s.paused)
 
@@ -218,7 +225,8 @@ the phone says only Android Calendar may delete is opened there. While a
 deletion is sent Calendar says Deleting…, or Declining… for an invitation.
 A declined invitation stays in the calendar, changed, so the read that
 shows it changed shows it again. The owner is told "Event changed." or
-"Couldn't delete this event."
+"Couldn't delete this event." Only a whole read of its own source, for a
+window that holds the day it was last seen on, shows a hidden event gone.
 
 ```quint
 pure def canEnded(s: Deletions, id: int, done: bool, changed: bool): bool = id > 0 and id == s.sending

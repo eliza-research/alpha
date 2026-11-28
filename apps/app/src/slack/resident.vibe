@@ -1,4 +1,7 @@
 // spec/app/slack/index.md, "Story: Switch workspaces and browse Slack conversations with strict isolation"; spec/app/slack/agent.md, "Story: Let Alpha help across my Slack workspaces safely"
+import * as Shell from "../../gen/app__shell.effect.vibe"
+import { Device, MessagingNotices } from "../platform/index.vibe"
+import { currentSurface } from "../surface.ts"
 import { waiting } from "../home/waiting.vibe"
 import { contained, started, together } from "../runtime/index.vibe"
 import * as Notices from "../../gen/app__slack__notices.effect.vibe"
@@ -13,10 +16,11 @@ import {
   slackAmbientSnapshot,
   syncSlackAgentScreen,
 } from "./agent.vibe"
-import { slackAuth } from "./auth.vibe"
+import { slackAccountChanges, slackAuth, slackOAuthReturns } from "./auth.vibe"
 import { slackComposer } from "./composer.vibe"
 import { slackConversation } from "./conversation.vibe"
 import { SlackLedger, channelTitleOf, slackLedger } from "./ledger.vibe"
+import { slackNoticeDelivery, slackNoticeTarget } from "./notice-targets.vibe"
 import { slackNotices } from "./notices.vibe"
 import { slackWorkspaces } from "./workspaces.vibe"
 
@@ -42,17 +46,37 @@ const homeBadge = started(effect {
 }, "telling Home about Slack")
 
 const frontSync = started(effect {
+  const surface = currentSurface()
+  if (surface.mode === "overlay" || (surface.mode === "app" && surface.view !== "Slack")) return
   const conv = try Conversation.Machine
   const notices = try Notices.Machine
-  try Stream.runForEach(conv.changes, effect (state) => {
-    const workspace = state.front && state.channel > 0 ? state.workspace : 0
-    const channel = state.front && state.channel > 0 ? state.channel : 0
-    const threadTs = state.front && state.channel > 0 ? state.threadTs : 0
+  const host = try MessagingNotices
+  const device = try Device
+  const auth = try Auth.Machine
+  const shell = Option.getOrUndefined(try Effect.serviceOption(Shell.Machine))
+  const ranges = Stream.changes(Stream.map(notices.changes, (s) => JSON.stringify([s.connected, s.notifyAllowed])))
+  const views = Stream.changes(Stream.map(conv.changes, (s) => JSON.stringify([s.front, s.workspace, s.channel, s.threadTs])))
+  const active = shell ? Stream.changes(Stream.map(shell.changes, (s) => Shell.showing(s, "Slack"))) : Stream.empty
+  const changed = Stream.mergeAll([Stream.as(views, false), Stream.as(ranges, false), Stream.as(auth.changes, false), Stream.as(active, false), Stream.as(device.visible, true), Stream.as(host.changed, true)], { concurrency: "unbounded" })
+  let reported: string | undefined
+  try Effect.ensuring(Stream.runForEach(changed, effect (force) => {
+    const state = try conv.get()
+    const front = state.front && state.channel > 0 && (!shell || Shell.showing(try shell.get(), "Slack")) && (try device.showing())
+    const workspace = front ? state.workspace : 0
+    const channel = front ? state.channel : 0
+    const threadTs = front ? state.threadTs : 0
     const current = try notices.get()
     if (Notices.canFrontChanged(current, workspace, channel, threadTs)) {
       try contained(notices.send({ type: "frontChanged", workspace, channel, threadTs }), "Slack notices front sync")
     }
-  })
+    if (!host.native) return
+    const target = front && current.connected.includes(workspace) ? try slackNoticeTarget({ workspace, channel, threadTs }) : undefined
+    const key = JSON.stringify(target)
+    if (force || key !== reported) {
+      try host.front("slack", target)
+      reported = key
+    }
+  }), host.native ? host.front("slack") : Effect.void)
 }, "syncing Slack front target to notices")
 
 const screenSync = started(effect {
@@ -128,11 +152,14 @@ export const slackBack = effect {
 export const slackResident = together(
   slackLedger,
   slackAuth,
+  slackOAuthReturns,
+  slackAccountChanges,
   slackWorkspaces,
   slackConversation,
   slackComposer,
   slackAgent,
   slackNotices,
+  slackNoticeDelivery,
   homeBadge,
   frontSync,
   screenSync,

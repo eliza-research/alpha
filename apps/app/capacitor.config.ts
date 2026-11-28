@@ -25,11 +25,13 @@ const config: CapacitorConfig = {
   webDir: androidPaths.web,
   loggingBehavior: "none",
   plugins: {
+    AlphaSlackOAuth: { cloudOrigin: production.cloud, callbackPath: "/oauth/callback" },
     ElizaSecureStore: {
       nativeOnly: ["device", "device-execution", "action-journal", "assistant-draft"],
       slots: [
         { pattern: "notes-draft:[1-9][0-9]*", access: "writable", limit: 256 * 1024 },
         { pattern: "notes-folders:[1-9][0-9]*", access: "writable", limit: 64 * 1024 },
+        { pattern: "messaging-sessions:(v1|telegram:v2|slack:v2)", access: "exchangeable", limit: 256 * 1024 },
         { pattern: "inbox-saved-bodies", access: "writable", limit: 2 * 1024 * 1024 },
         { pattern: "sms-draft:v2:(new|thread:[1-9][0-9]{0,18}|recipients:[0-9a-f]{64})", access: "exchangeable", limit: 2 * 1024 * 1024 },
         { pattern: "sms-outgoing:v2:device", access: "exchangeable", limit: 64 * 1024 },

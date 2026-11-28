@@ -3,6 +3,7 @@ import { Banner, Button, Card, CardTitle, ConfirmDialog, Spinner, StatusDot, Tab
 import { renewOffered, type Trouble as SessionTrouble } from "../../gen/app__account__session.ts";
 import { useMachine as useSession } from "../../gen/app__account__session.react.ts";
 import { useMachine as useSignIn } from "../../gen/app__account__signIn.react.ts";
+import type { AiMode } from "../platform/index.vibe";
 import { untimed } from "../runtime/index.vibe";
 import { BillingView } from "./BillingView.tsx";
 import { GoogleView } from "./GoogleView.tsx";
@@ -10,7 +11,7 @@ import type { Profile } from "./profile.vibe";
 import { ProviderView } from "./ProviderView.tsx";
 import { RecordsView } from "./RecordsView.tsx";
 import { SignInView } from "./SignInView.tsx";
-import { type AccountRuntime, currentMillis, useAccountShelf, useAccountTimed } from "./useAccount.ts";
+import { type AccountRuntime, currentMillis, setAccountAiMode, useAccountShelf, useAccountTimed } from "./useAccount.ts";
 
 const sessionTroubles: Partial<Record<SessionTrouble, string>> = {
   NotStored: "Couldn’t store that sign-in. Your previous session was kept.",
@@ -20,14 +21,22 @@ const sessionTroubles: Partial<Record<SessionTrouble, string>> = {
 };
 
 /** Verified Cloud profile read summary matching Settings's account read contract. */
-function VerifiedProfileSummary({ profile }: { readonly profile: Profile }) {
+function VerifiedProfileSummary({ profile, aiMode }: { readonly profile: Profile; readonly aiMode: AiMode }) {
   switch (profile.tag) {
     case "Reading":
       return <Spinner label="Reading account" className="text-muted-foreground" />;
     case "SignInRequired":
-      return <p role="status" className="text-sm text-muted-foreground">Sign-in required</p>;
+      return (
+        <p role="status" className="text-sm text-muted-foreground">
+          {aiMode === "local" ? "On-device AI active · Alpha Cloud sign-in optional" : "Sign-in required"}
+        </p>
+      );
     case "Unavailable":
-      return <p role="status" className="text-sm text-muted-foreground">Couldn’t read your account</p>;
+      return (
+        <p role="status" className="text-sm text-muted-foreground">
+          {aiMode === "local" ? "On-device AI active · Alpha Cloud offline" : "Couldn’t read your account"}
+        </p>
+      );
     case "Read": {
       const primary = profile.contact || profile.name || "Signed in";
       const secondary = profile.contact && profile.name && profile.contact !== profile.name ? profile.name : undefined;
@@ -42,7 +51,15 @@ function VerifiedProfileSummary({ profile }: { readonly profile: Profile }) {
 }
 
 /** Full Account panel combining Session, Sign-In, Plan & Billing, AI Provider, Google, and Resident Agent controls. */
-export function AccountPanel({ runtime, profile }: { readonly runtime: AccountRuntime; readonly profile: Profile }) {
+export function AccountPanel({
+  runtime,
+  profile,
+  onRefresh,
+}: {
+  readonly runtime: AccountRuntime;
+  readonly profile: Profile;
+  readonly onRefresh?: () => void;
+}) {
   const session = useAccountTimed(runtime, useSession);
   const signIn = useAccountTimed(runtime, useSignIn);
   const shelf = useAccountShelf(runtime);
@@ -54,10 +71,11 @@ export function AccountPanel({ runtime, profile }: { readonly runtime: AccountRu
   const showRenew = sesState !== undefined && renewOffered(sesState, nowMs);
   const troubleText = sesState ? sessionTroubles[sesState.trouble] : undefined;
   const beginEvent = { type: "begin", origin: "ByOwner" } as const;
+  const localMode = shelf.aiMode === "local";
 
   return (
     <div className="space-y-3 overflow-y-auto">
-      <VerifiedProfileSummary profile={profile} />
+      <VerifiedProfileSummary profile={profile} aiMode={shelf.aiMode} />
 
       {sesState && sesState.notice === "SignedOut" ? (
         <Banner
@@ -112,10 +130,16 @@ export function AccountPanel({ runtime, profile }: { readonly runtime: AccountRu
             <Card className="space-y-2 p-4">
               <div className="flex items-center justify-between gap-2">
                 <CardTitle>Alpha Cloud session</CardTitle>
-                <StatusDot status={signedIn ? "ok" : "off"} label={signedIn ? "Signed in" : "Signed out"} showLabel />
+                <StatusDot
+                  status={signedIn || localMode ? "ok" : "off"}
+                  label={signedIn ? "Signed in" : localMode ? "On-device AI" : "Signed out"}
+                  showLabel
+                />
               </div>
               {signedIn && profile.tag !== "SignInRequired" && shelf.identity ? (
                 <p className="text-sm text-muted-foreground">{shelf.identity.email || shelf.identity.phone || shelf.identity.userId}</p>
+              ) : localMode ? (
+                <p className="text-sm text-muted-foreground">Running locally on this phone with {shelf.localModel}. Sign in to Alpha Cloud anytime for Cloud models or billing.</p>
               ) : null}
               {showRenew ? (
                 <Banner variant="warn">Your sign-in expires soon. Renew it to stay connected.</Banner>
@@ -130,6 +154,17 @@ export function AccountPanel({ runtime, profile }: { readonly runtime: AccountRu
                     {showRenew ? "Renew sign-in" : "Sign in"}
                   </Button>
                 ) : null}
+                {!signedIn && !localMode ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      void setAccountAiMode(runtime, "local", shelf.localModel).then(() => { onRefresh?.(); });
+                    }}
+                  >
+                    Use on-device AI
+                  </Button>
+                ) : null}
                 {signedIn && session.can({ type: "askSignOut" }) ? (
                   <Button
                     size="sm"
@@ -137,6 +172,11 @@ export function AccountPanel({ runtime, profile }: { readonly runtime: AccountRu
                     onClick={() => { void session.send({ type: "askSignOut" }); }}
                   >
                     Sign out
+                  </Button>
+                ) : null}
+                {onRefresh ? (
+                  <Button size="sm" variant="ghost" onClick={onRefresh}>
+                    Refresh
                   </Button>
                 ) : null}
               </div>
@@ -164,7 +204,9 @@ export function AccountPanel({ runtime, profile }: { readonly runtime: AccountRu
         confirmLabel="Confirm sign out"
         cancelLabel="Keep signed in"
         destructive
-        onConfirm={() => { void session.send({ type: "confirmSignOut", busy: false, now: untimed }); }}
+        onConfirm={() => {
+          void session.send({ type: "confirmSignOut", busy: false, now: untimed }).then(() => { onRefresh?.(); });
+        }}
         onCancel={() => { void session.send({ type: "keepSignedIn" }); }}
       >
         Signing out stops the resident agent briefly and removes your saved Alpha Cloud sign-in from this phone.

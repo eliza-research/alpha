@@ -13,7 +13,7 @@ it("Uses Home defaults to complete older launcher records while preserving the o
     { tag: "Own", view: "Settings" },
     { tag: "Installed", app: "com.example.reader" },
     { tag: "Own", view: "Notes" },
-    ...["Phone", "Messages", "Inbox", "Calendar", "Browser", "Camera", "Photos", "Maps", "Contacts", "Files", "Workflows"]
+    ...["Phone", "Messages", "Inbox", "Telegram", "Slack", "Calendar", "Clock", "Reminders", "Browser", "Camera", "Photos", "Maps", "Contacts", "Files", "Workflows", "Wallet"]
       .map((view) => ({ tag: "Own", view })),
   ]);
 

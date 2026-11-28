@@ -9,18 +9,19 @@ import * as TelegramList from "../../gen/app__telegram.effect.vibe"
 import * as TelegramAgent from "../../gen/app__telegram__agent.effect.vibe"
 import * as TelegramAuth from "../../gen/app__telegram__auth.effect.vibe"
 import * as TelegramConversation from "../../gen/app__telegram__conversation.effect.vibe"
-import { type MessagingFailure, MessagingSessions, tokenValue } from "../platform/index.vibe"
+import { type MessagingFailure, MessagingSessions } from "../platform/index.vibe"
 import { Unreachable, Unsent } from "../platform/index.vibe"
 import { Slack } from "../platform/index.vibe"
 import { Telegram } from "../platform/index.vibe"
-import { contained, started, together } from "../runtime/index.vibe"
-import { SlackLedger, handleSlackFailure, slackSessionKey } from "../slack/ledger.vibe"
+import { attemptKey, contained, started, together } from "../runtime/index.vibe"
+import { SlackLedger, handleSlackFailure, withWorkspaceToken } from "../slack/ledger.vibe"
 import { slackAmbientSnapshot, slackHomeCard } from "../slack/resident.vibe"
 import { reportSessionRevoked } from "../telegram/auth.vibe"
 import { telegramAmbientSnapshot, telegramHomeCard } from "../telegram/resident.vibe"
 import {
   TelegramStore,
   chatKindOf,
+  acceptedReply,
   currentSessionToken,
   dialogTitle,
   isDialogMuted,
@@ -81,7 +82,7 @@ const syncTelegramContext = effect {
   const bridge = try MessagingBridge
   const auth = try (try TelegramAuth.Machine).get()
   const snap = try telegramAmbientSnapshot
-  if (auth.step !== "Authenticated") {
+  if (auth.step !== "Authenticated" || (!snap.available && snap.sensitive)) {
     bridge.publishContext("Telegram", {
       platform: "telegram",
       authenticated: false,
@@ -198,9 +199,16 @@ const telegramBridgeSync = started(effect {
   const agent = try TelegramAgent.Machine
   const conv = try TelegramConversation.Machine
   const store = try TelegramStore
+  const bridge = try MessagingBridge
+  let priorGrant = store.snapshot().auth.grant
   const storeChanges = Stream.callback<number>((queue) => effect {
     Queue.offerUnsafe(queue, store.snapshot().version)
-    const stop = store.subscribe(() => { Queue.offerUnsafe(queue, store.snapshot().version) })
+    const stop = store.subscribe(() => {
+      const snapshot = store.snapshot()
+      if (priorGrant !== undefined && priorGrant !== snapshot.auth.grant) bridge.clearDrafts("Telegram")
+      priorGrant = snapshot.auth.grant
+      Queue.offerUnsafe(queue, snapshot.version)
+    })
     try Effect.addFinalizer(() => Effect.sync(stop))
   })
   const signals = Stream.mergeAll([
@@ -265,6 +273,7 @@ const messagingHandlers = started(effect {
   const sessions = try MessagingSessions
   const tgAuth = try TelegramAuth.Machine
   const tgStore = try TelegramStore
+  const boundTelegramToken = currentSessionToken().pipe(Effect.provideService(TelegramStore, tgStore), Effect.provideService(MessagingSessions, sessions))
   const tgConv = try TelegramConversation.Machine
   const slackAuth = try SlackAuth.Machine
   const slackLedger = try SlackLedger
@@ -284,18 +293,18 @@ const messagingHandlers = started(effect {
     if (dialog !== undefined && !dialog.can_post) {
       return { status: "failed" as const, error: "This Telegram channel is read-only" }
     }
-    const tokenOpt = try currentSessionToken().pipe(Effect.provideService(MessagingSessions, sessions))
-    if (Option.isNone(tokenOpt)) return { status: "failed" as const, error: "Sign in to Telegram first" }
+    const tokenOpt = try boundTelegramToken
+    if (Option.isNone(tokenOpt) || snap.auth.grant !== tgStore.snapshot().auth.grant || !bridge.snapshot().drafts.includes(draft)) return { status: "failed" as const, error: "Sign in to Telegram first" }
     const replyTo = draft.replyToMessageId ? Number(draft.replyToMessageId) : undefined
     const payload = {
       peer: draft.targetId,
       message: draft.body,
       ...(replyTo !== undefined && Number.isFinite(replyTo) && replyTo > 0 ? { reply_to_msg_id: replyTo } : {}),
     }
-    const res = telegram.sendMessage(tokenOpt.value, payload, `alpha-card-${draft.id}-r${draft.revision}`) catch (failure) => ({ failed: failure })
+    const res = acceptedReply(tokenOpt.value, telegram.sendMessage(tokenOpt.value, payload, `alpha-card-${draft.id}-r${draft.revision}`)).pipe(Effect.provideService(TelegramStore, tgStore), Effect.provideService(MessagingSessions, sessions)) catch (failure) => ({ failed: failure })
     if ("failed" in res) {
       if (isRevokedFailure(res.failed)) {
-        try reportSessionRevoked().pipe(
+        try reportSessionRevoked(tokenOpt.value).pipe(
           Effect.provideService(TelegramAuth.Machine, tgAuth),
           Effect.provideService(MessagingSessions, sessions),
           Effect.provideService(TelegramStore, tgStore),
@@ -308,6 +317,7 @@ const messagingHandlers = started(effect {
   }
 
   const openTelegramTarget = (draft: MessagingDraftProposal) => effect {
+    if (Option.isNone(try boundTelegramToken) || !bridge.snapshot().drafts.includes(draft)) return
     if (draft.targetId !== "") {
       const chatId = try tgStore.chatIdOf(draft.targetId)
       const snap = try tgStore.get()
@@ -336,21 +346,18 @@ const messagingHandlers = started(effect {
     if (meta === undefined || !(try slackAuth.get()).connected.some((item) => item.workspace === meta.num)) {
       return { status: "failed" as const, error: "Connect a Slack workspace first" }
     }
-    const tokenOpt = try sessions.get(slackSessionKey(meta.teamId))
-    if (Option.isNone(tokenOpt)) return { status: "failed" as const, error: "Reconnect your Slack workspace" }
-    const res = slack.postMessage(
-      tokenValue(tokenOpt.value),
-      {
-        channel: draft.targetId,
-        text: draft.body,
-        ...(draft.threadTs ? { thread_ts: draft.threadTs } : {}),
-      },
-      `alpha-card-${draft.id}-r${draft.revision}`,
-    ) catch (failure) => ({ failed: failure })
+    const key = try attemptKey(`alpha-card-${draft.id}-r${draft.revision}`)
+    const res = withWorkspaceToken(meta.num, (token) => slack.postMessage(
+      token,
+      { channel: draft.targetId, text: draft.body, threadTs: draft.threadTs },
+      key,
+    )).pipe(Effect.provideService(Slack, slack), Effect.provideService(SlackLedger, slackLedger), Effect.provideService(MessagingSessions, sessions)) catch (failure) => ({ failed: failure })
+    if (res === undefined) return { status: "failed" as const, error: "Reconnect your Slack workspace" }
     if ("failed" in res) {
       try handleSlackFailure(meta.num, res.failed).pipe(
         Effect.provideService(SlackAuth.Machine, slackAuth),
         Effect.provideService(SlackLedger, slackLedger),
+        Effect.provideService(MessagingSessions, sessions),
       )
       return sendFailureOutcome("Slack", res.failed)
     }

@@ -13,9 +13,10 @@
     }
   },
   "scripts": {
-    "build": "eliza-harness --ready && node -e \"fs.rmSync('dist', { recursive: true, force: true })\" && vibelang -p tsconfig.build.json && node -e \"fs.cpSync('node_modules/@elizaos/cloud-worker/dist/pages', 'dist/pages', { recursive: true })\"",
+    "build": "eliza-harness --ready && node -e \"fs.rmSync('dist', { recursive: true, force: true })\" && vibelang -p tsconfig.build.json && node -e \"fs.cpSync('.cache/public-pages', 'dist/pages', { recursive: true })\"",
     "typecheck": "eliza-harness --ready && vibelang --noEmit -p .",
-    "test": "eliza-harness --ready && vitest run"
+    "test": "(cd ../.. && node vibestack/spec.ts tasks @repo/cloud#build:pages) && vitest run",
+    "build:pages": "eliza-harness --ready && node pack-pages.ts"
   },
   "dependencies": {
     "@effect/platform-node": "4.1.1",

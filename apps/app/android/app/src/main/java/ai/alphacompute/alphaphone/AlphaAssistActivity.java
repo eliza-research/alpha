@@ -23,7 +23,9 @@ public class AlphaAssistActivity extends Activity {
    Intent incoming = getIntent();
    if (state == null && incoming != null && Intent.ACTION_ASSIST.equals(incoming.getAction())
      && AlphaImageCapability.verified(this) && AlphaSenseAdmission.available(this) && unlocked(this) && admittedCaller()) {
-    MainActivity.openTextAsk(this);
+    if (!ai.alphacompute.alphaphone.overlay.AlphaVoiceInteractionService.showOverlay(this, "sense", null, true)) {
+     MainActivity.openTextAsk(this);
+    }
    }
   } finally {
    finish();

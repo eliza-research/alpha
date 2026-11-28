@@ -1,4 +1,5 @@
 // spec/app/telegram/auth.md, "Story: Sign in to my Telegram user account"
+import * as Shell from "../../gen/app__shell.effect.vibe"
 import * as Auth from "../../gen/app__telegram__auth.effect.vibe"
 import type { AuthOutcome, Effect as Out, Event, SendOutcome, Trouble } from "../../gen/app__telegram__auth.effect.vibe"
 import {
@@ -6,18 +7,23 @@ import {
   BotTokenRejected,
   type MessagingFailure,
   MessagingSessions,
+  Device,
+  VoiceBridge,
+  tokenValue,
   ProviderError,
   RateLimited,
   secretOf,
+  sameCredential,
 } from "../platform/index.vibe"
 import { Unreachable, Unsent } from "../platform/index.vibe"
 import { Telegram, type TelegramClient, type TelegramUser, assertTelegramUserToken } from "../platform/index.vibe"
 import type { Outcome } from "../platform/index.vibe"
-import { type Job, answer, contained, reacting, run, started, together, untimed } from "../runtime/index.vibe"
+import { type Job, answer, contained, due, reacting, run, started, together, untimed } from "../runtime/index.vibe"
 import { Time } from "../runtime/index.vibe"
 import {
   TELEGRAM_SESSION_KEY,
   TelegramStore,
+  acceptedReply,
   currentSessionToken,
   isBotTokenInput,
   isRevokedFailure,
@@ -64,14 +70,19 @@ function authFailureOutcomeOf(failure: MessagingFailure, fallback: Trouble): Aut
 effect function persistUserSession(
   sessionToken: string,
   user: TelegramUser,
+  owner: string,
 ): AuthOutcome!!(MessagingSessions | TelegramStore) {
   const valid = Option.getOrUndefined(try Effect.option(assertTelegramUserToken(sessionToken)))
   if (valid === undefined) return { tag: "AuthBot" }
-  try (try MessagingSessions).set(TELEGRAM_SESSION_KEY, secretOf(valid))
+  const grant = secretOf(valid)
+  if (!(try (try MessagingSessions).set(TELEGRAM_SESSION_KEY, grant, owner))) {
+    return { tag: "AuthFailed", trouble: "Unreachable", wait: 0 }
+  }
   try (try TelegramStore).update((snap) => ({
     ...snap,
     auth: {
       ...snap.auth,
+      grant,
       user,
       phoneCodeHash: "",
       pendingAuthId: "",
@@ -84,15 +95,17 @@ effect function persistUserSession(
 }
 
 // spec/app/telegram/auth.md, "Opening sign-in moves to phone entry or QR login; phone submission respects FloodWait and takes the next ticket"
-effect function sendPhoneCode(ticket: number, phone: string): Event!!(Telegram | TelegramStore) {
+effect function sendPhoneCode(ticket: number, phone: string): Event!!(Telegram | TelegramStore | MessagingSessions) {
   if (isBotTokenInput(phone)) {
     return { type: "codeSent", ticket, sendOutcome: { tag: "SendFailed", trouble: "BotTokenRejected", wait: 0 }, now: untimed }
   }
+  const owner = try (try MessagingSessions).owner()
+  if (owner === undefined) return { type: "codeSent", ticket, sendOutcome: { tag: "SendFailed", trouble: "Unreachable", wait: 0 }, now: untimed }
   const sent = (try Telegram).sendCode(phone.trim()) catch (failure) => failure
   if ("_type" in sent) {
     try (try TelegramStore).update((snap) => ({
       ...snap,
-      auth: { ...snap.auth, phone: phone.trim(), phoneCodeHash: sent.phone_code_hash, pendingAuthId: "", passwordHint: "" },
+      auth: { ...snap.auth, owner, phone: phone.trim(), phoneCodeHash: sent.phone_code_hash, pendingAuthId: "", passwordHint: "" },
     }))
     return { type: "codeSent", ticket, sendOutcome: { tag: "CodeDelivered" }, now: untimed }
   }
@@ -105,7 +118,10 @@ effect function verifyPhoneCode(ticket: number, code: string): Event!!(Telegram 
     return { type: "codeVerified", ticket, authOutcome: { tag: "AuthBot" }, session: "", now: untimed }
   }
   const store = try TelegramStore
-  const { phone, phoneCodeHash } = (try store.get()).auth
+  const { owner, phone, phoneCodeHash } = (try store.get()).auth
+  if (owner === undefined || owner !== (try (try MessagingSessions).owner())) {
+    return { type: "codeVerified", ticket, authOutcome: { tag: "AuthFailed", trouble: "ExpiredCode", wait: 0 }, session: "", now: untimed }
+  }
   const result = (try Telegram).signIn(phone, phoneCodeHash, code.trim()) catch (failure) => failure
   if ("kind" in result) {
     if (result.kind === "PasswordRequired") {
@@ -115,7 +131,7 @@ effect function verifyPhoneCode(ticket: number, code: string): Event!!(Telegram 
       }))
       return { type: "codeVerified", ticket, authOutcome: { tag: "AuthNeeds2fa" }, session: "", now: untimed }
     }
-    const outcome = try persistUserSession(result.sessionToken, result.user)
+    const outcome = try persistUserSession(result.sessionToken, result.user, owner)
     return { type: "codeVerified", ticket, authOutcome: outcome, session: outcome.tag === "AuthUser" ? result.sessionToken : "", now: untimed }
   }
   return { type: "codeVerified", ticket, authOutcome: authFailureOutcomeOf(result, "WrongCode"), session: "", now: untimed }
@@ -123,70 +139,60 @@ effect function verifyPhoneCode(ticket: number, code: string): Event!!(Telegram 
 
 // spec/app/telegram/auth.md, "Two-factor cloud password is checked as a secret and authenticates only a user account"
 effect function checkCloudPassword(ticket: number, password: string): Event!!(Telegram | MessagingSessions | TelegramStore) {
-  const { pendingAuthId } = (try (try TelegramStore).get()).auth
+  const { owner, pendingAuthId } = (try (try TelegramStore).get()).auth
+  if (owner === undefined || owner !== (try (try MessagingSessions).owner())) {
+    return { type: "passwordChecked", ticket, authOutcome: { tag: "AuthFailed", trouble: "SessionRevoked", wait: 0 }, session: "", now: untimed }
+  }
   const result = (try Telegram).checkPassword(pendingAuthId, password) catch (failure) => failure
   if ("_type" in result) {
-    const outcome = try persistUserSession(result.session_token, result.user)
+    const outcome = try persistUserSession(result.session_token, result.user, owner)
     return { type: "passwordChecked", ticket, authOutcome: outcome, session: outcome.tag === "AuthUser" ? result.session_token : "", now: untimed }
   }
   return { type: "passwordChecked", ticket, authOutcome: authFailureOutcomeOf(result, "WrongPassword"), session: "", now: untimed }
 }
 
 // spec/app/telegram/auth.md, "QR login offers an alternate user-account path with expiry and optional two-factor check"
-effect function pollQrLogin(ticket: number, initialToken?: string): Event!!(Telegram | MessagingSessions | TelegramStore | Auth.Machine) {
-  const client = try Telegram
+effect function readQrLogin(ticket: number, resume: boolean): Event!!(Telegram | TelegramStore | MessagingSessions) {
   const store = try TelegramStore
-  const authMachine = try Auth.Machine
-  const first = client.exportLoginToken(initialToken) catch (failure) => failure
-  if (!("kind" in first)) {
-    return { type: "qrAnswered", ticket, authOutcome: authFailureOutcomeOf(first, "Unreachable"), session: "", now: untimed }
+  const prior = (try store.get()).auth
+  const owner = try (try MessagingSessions).owner()
+  if (owner === undefined || (prior.qrToken !== "" && prior.owner !== owner)) {
+    return { type: "qrAnswered", ticket, authOutcome: { tag: "AuthFailed", trouble: "SessionRevoked", wait: 0 }, session: "", now: untimed }
   }
-  if (first.kind === "Success") {
-    const outcome = try persistUserSession(first.sessionToken, first.user)
-    return { type: "qrAnswered", ticket, authOutcome: outcome, session: outcome.tag === "AuthUser" ? first.sessionToken : "", now: untimed }
+  const token = resume ? prior.qrToken : undefined
+  const client = try Telegram
+  const first = client.exportLoginToken(token) catch (failure) => failure
+  const result = token && first instanceof ProviderError && first.code === "AUTH_TOKEN_EXPIRED"
+    ? (client.exportLoginToken() catch (failure) => failure)
+    : first
+  if (!("kind" in result)) return { type: "qrAnswered", ticket, authOutcome: authFailureOutcomeOf(result, "Unreachable"), session: "", now: untimed }
+  if (result.kind === "Pending") {
+    try store.update((snap) => ({ ...snap, auth: { ...snap.auth, owner, qrToken: result.token, qrLoginUrl: result.loginUrl } }))
+    return { type: "qrOffered", ticket, expiresAt: result.expiresAt, now: untimed }
   }
-  try store.update((snap) => ({
-    ...snap,
-    auth: { ...snap.auth, qrToken: first.token, qrLoginUrl: first.loginUrl },
-  }))
-  if (initialToken !== undefined) {
-    return { type: "qrAnswered", ticket, authOutcome: { tag: "AuthFailed", trouble: "Unreachable", wait: 0 }, session: "", now: untimed }
+  if (result.kind === "PasswordRequired") {
+    try store.update((snap) => ({ ...snap, auth: { ...snap.auth, owner, pendingAuthId: result.pendingAuthId, passwordHint: result.hint, qrToken: "", qrLoginUrl: "" } }))
+    return { type: "qrAnswered", ticket, authOutcome: { tag: "AuthNeeds2fa" }, session: "", now: untimed }
   }
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    try sleep("50 millis")
-    const state = try authMachine.get()
-    if (state.work !== "PollingQr" || state.ticket !== ticket) {
-      return { type: "qrAnswered", ticket, authOutcome: { tag: "AuthFailed", trouble: "Unreachable", wait: 0 }, session: "", now: untimed }
-    }
-    const polled = client.exportLoginToken(first.token) catch (failure) => failure
-    if (!("kind" in polled)) {
-      return { type: "qrAnswered", ticket, authOutcome: authFailureOutcomeOf(polled, "Unreachable"), session: "", now: untimed }
-    }
-    if (polled.kind === "Success") {
-      const outcome = try persistUserSession(polled.sessionToken, polled.user)
-      return { type: "qrAnswered", ticket, authOutcome: outcome, session: outcome.tag === "AuthUser" ? polled.sessionToken : "", now: untimed }
-    }
-  }
-  return { type: "qrAnswered", ticket, authOutcome: { tag: "AuthFailed", trouble: "Unreachable", wait: 0 }, session: "", now: untimed }
+  const valid = Option.getOrUndefined(try Effect.option(assertTelegramUserToken(result.sessionToken)))
+  if (valid === undefined) return { type: "qrAnswered", ticket, authOutcome: { tag: "AuthBot" }, session: "", now: untimed }
+  try store.update((snap) => ({ ...snap, auth: { ...snap.auth, owner, user: result.user, qrToken: "", qrLoginUrl: "" } }))
+  return { type: "qrAnswered", ticket, authOutcome: { tag: "AuthUser", account: result.user.id }, session: valid, now: untimed }
 }
 
 // spec/app/telegram/auth.md, "Remote revocation and explicit sign-out wipe local data, advance the credential revision and stop sync"
 effect function logOutRemote(ticket: number): Event!!(Telegram | MessagingSessions | TelegramStore) {
-  const token = try currentSessionToken()
-  try (try MessagingSessions).delete(TELEGRAM_SESSION_KEY)
-  try (try TelegramStore).wipe()
-  if (Option.isSome(token)) {
-    try ignore((try Telegram).logOut(token.value))
-  }
+  const store = try TelegramStore
+  const { owner, grant } = (try store.get()).auth
+  const removed = owner !== undefined && grant !== undefined && (try (try MessagingSessions).exchange(TELEGRAM_SESSION_KEY, grant, undefined, owner))
+  try store.wipe()
+  if (removed && grant !== undefined) try ignore((try Telegram).logOut(tokenValue(grant)))
   return { type: "loggedOut", ticket }
 }
 
-effect function wipeLocal(): void!!(MessagingSessions | TelegramStore | Auth.Machine) {
-  try (try TelegramStore).wipe()
+effect function wipeLocal(credentialRev: number): void!!(TelegramStore | Auth.Machine) {
   const state = try (try Auth.Machine).get()
-  if (state.work !== "LoggingOut") {
-    try (try MessagingSessions).delete(TELEGRAM_SESSION_KEY)
-  }
+  if (state.work !== "LoggingOut" && state.credentialRev === credentialRev) try (try TelegramStore).wipe()
 }
 
 function carry(fx: Out): Job<Event, Telegram | MessagingSessions | TelegramStore | Auth.Machine, []> {
@@ -206,27 +212,49 @@ function carry(fx: Out): Job<Event, Telegram | MessagingSessions | TelegramStore
       checkCloudPassword(ticket, password),
       { type: "passwordChecked", ticket, authOutcome: { tag: "AuthFailed", trouble: "Unreachable", wait: 0 }, session: "", now: untimed },
     );
-    when { tag: "StartQrLogin", let ticket }: answer(
+    when { tag: "StartQrLogin", let ticket, let resume }: answer(
       "auth",
-      pollQrLogin(ticket),
+      readQrLogin(ticket, resume),
       { type: "qrAnswered", ticket, authOutcome: { tag: "AuthFailed", trouble: "Unreachable", wait: 0 }, session: "", now: untimed },
     );
-    when { tag: "StoreSession", let session }: run("store-session", effect {
+    when { tag: "StopQrLogin" }: run("auth", effect {
+      try (try Telegram).cancelLogin()
+      try (try TelegramStore).update((snap) => ({ ...snap, auth: { ...snap.auth, qrToken: "", qrLoginUrl: "" } }))
+    });
+    when { tag: "SaveQrSession", let ticket, let account, let session }: answer("auth", effect {
+      const store = try TelegramStore
+      const { owner } = (try store.get()).auth
+      const grant = secretOf(session)
+      const ok = owner !== undefined && (try (try MessagingSessions).set(TELEGRAM_SESSION_KEY, grant, owner))
+      if (ok) try store.update((s) => ({ ...s, auth: { ...s.auth, grant } }))
+      return { type: "qrSaved", ticket, account, ok } as const
+    }, { type: "qrSaved", ticket, account, ok: false });
+    when { tag: "StoreSession", let credentialRev, let session }: run("store-session", effect {
       const valid = Option.getOrUndefined(try Effect.option(assertTelegramUserToken(session)))
-      if (valid !== undefined) try (try MessagingSessions).set(TELEGRAM_SESSION_KEY, secretOf(valid))
+      const { owner, grant } = (try (try TelegramStore).get()).auth
+      const state = try (try Auth.Machine).get()
+      if (valid !== undefined && owner !== undefined && grant !== undefined && tokenValue(grant) === valid && state.step === "Authenticated" && state.credentialRev === credentialRev) {
+        try (try MessagingSessions).exchange(TELEGRAM_SESSION_KEY, grant, grant, owner)
+      }
     });
     when { tag: "LogOutRemote", let ticket }: answer("logout", logOutRemote(ticket), { type: "loggedOut", ticket });
-    when { tag: "WipeLocal" }: run("wipe-local", wipeLocal());
+    when { tag: "WipeLocal", let credentialRev }: run("wipe-local", wipeLocal(credentialRev));
     when { tag: "StopSync" }: run("stop-sync", Effect.void);
   }
 }
 
 /** Notify the Telegram auth machine that the user session was revoked remotely. */
-export effect function reportSessionRevoked(): void!!(Auth.Machine | MessagingSessions | TelegramStore) {
+export effect function reportSessionRevoked(rejected?: string): void!!(Auth.Machine | MessagingSessions | TelegramStore) {
   const auth = try Auth.Machine
-  try (try MessagingSessions).delete(TELEGRAM_SESSION_KEY)
-  try (try TelegramStore).wipe()
-  if (Auth.canRevoked(try auth.get())) {
+  const store = try TelegramStore
+  const { owner, grant } = (try store.get()).auth
+  if (owner === undefined || grant === undefined || (rejected !== undefined && tokenValue(grant) !== rejected)) return
+  const sessions = try MessagingSessions
+  if (owner !== (try sessions.owner())) return
+  if (rejected === undefined) {
+    if (Option.isSome(try sessions.get(TELEGRAM_SESSION_KEY, owner))) return
+  } else if (!(try sessions.exchange(TELEGRAM_SESSION_KEY, grant, undefined, owner))) return
+  if ((try store.get()).auth.grant === grant && Auth.canRevoked(try auth.get())) {
     try contained(auth.send({ type: "revoked" }), "telegram session revoked")
   }
 }
@@ -254,16 +282,22 @@ export effect function runPeerMutation<A>(
   const target = try resolveAuthedPeer(chat)
   if (Option.isNone(target)) return { confirmed: false, known: true }
   const { token, peerKey } = target.value
-  const res = invoke(try Telegram, token, peerKey) catch (failure) => ({ failed: failure })
+  const res = acceptedReply(token, invoke(try Telegram, token, peerKey)) catch (failure) => ({ failed: failure })
   if (typeof res === "object" && res !== null && "failed" in res) {
-    if (isRevokedFailure(res.failed)) try reportSessionRevoked()
+    if (isRevokedFailure(res.failed)) try reportSessionRevoked(token)
     return messagingOutcomeOf(res.failed)
   }
   try onSuccess(res, peerKey)
   return { confirmed: true, known: true }
 }
 
-const machine = reacting(Auth, { keep: 1, open: [{ type: "restart" }], carry })
+const machine = reacting(Auth, {
+  keep: 1,
+  open: [{ type: "restart" }],
+  carry,
+  timers: (state) => state.step === "QrPending" && state.qrExpiresAt > 0
+    ? [due("qr", Auth.qrCheckAt(state), { type: "checkQr", ticket: state.ticket, now: untimed })] : [],
+})
 
 const floodWake = started(effect {
   const auth = try Auth.Machine
@@ -276,5 +310,49 @@ const floodWake = started(effect {
   })))
 }, "telegram flood wait wake")
 
+const restoredOwner = started(effect {
+  const auth = try Auth.Machine
+  const store = try TelegramStore
+  const sessions = try MessagingSessions
+  const client = try Telegram
+  const shell = try Shell.Machine
+  const shown = Stream.filter(Stream.changes(Stream.map(shell.changes, (s) => s.trail.at(-1) === "Telegram")), (front) => front)
+  const changes = Stream.merge(Stream.as(shown, true), Stream.merge(Stream.as((try VoiceBridge).signIns, true), Stream.filter((try Device).visible, (visible) => visible)))
+  try Stream.runForEach(Stream.concat(Stream.make(true), changes), effect () => {
+    const owner = try sessions.owner()
+    const prior = (try store.get()).auth
+    let initial = try auth.get()
+    let grant = owner === undefined ? undefined : Option.getOrUndefined(try sessions.get(TELEGRAM_SESSION_KEY, owner))
+    const changed = initial.step === "Authenticated" && (grant === undefined || prior.grant === undefined || !sameCredential(prior.grant, grant))
+    if ((prior.owner !== undefined && owner !== prior.owner) || changed || (initial.step === "SessionExpired" && grant !== undefined)) {
+      if ((try store.get()).auth.grant !== prior.grant) return
+      if (!(try contained(auth.send({ type: "restoreSession", ticket: initial.ticket, account: 0 }), "switching Telegram session"))) return
+      try store.wipe()
+      try client.forgetSession()
+      initial = try auth.get()
+    }
+    if (owner === undefined || initial.step !== "SignedOut" || initial.work !== "Idle") return
+    try store.update((s) => s.auth.owner === owner ? s : { ...s, auth: { ...s.auth, owner } })
+    if (client.accountAccess !== "connectedClient") return
+    while (grant !== undefined) {
+      const checked = grant
+      const result = client.getMe(tokenValue(checked)) catch (failure) => failure
+      if (!("user" in result) && isRevokedFailure(result) && (try sessions.exchange(TELEGRAM_SESSION_KEY, checked, undefined, owner))) return
+      const current = try auth.get()
+      if (current.step !== "SignedOut" || current.work !== "Idle" || current.ticket !== initial.ticket) return
+      const saved = Option.getOrUndefined(try sessions.get(TELEGRAM_SESSION_KEY, owner))
+      if (saved === undefined) return
+      if (sameCredential(checked, saved)) {
+        if ("user" in result && Auth.canRestoreSession(current, result.user.id, initial.ticket)) {
+          try store.update((s) => ({ ...s, auth: { ...s.auth, owner, grant: checked, user: result.user } }))
+          try contained(auth.send({ type: "restoreSession", ticket: initial.ticket, account: result.user.id }), "restoring Telegram user")
+        }
+        return
+      }
+      grant = saved
+    }
+  })
+}, "following the signed-in Telegram owner")
+
 /** Telegram user-account authentication shell over `Telegram` and isolated `MessagingSessions`. */
-export const telegramAuth = together(machine, floodWake)
+export const telegramAuth = together(machine, floodWake, restoredOwner)

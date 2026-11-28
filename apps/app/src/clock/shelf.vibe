@@ -10,12 +10,55 @@ export const metaStoreKey = "alpha/app/clock/meta@1"
 /** Scoped reactive Clock metadata store bound to a single runtime lifecycle. */
 export service ClockRecords {
   readonly store: ClockRecordsStore
+  readonly nativeReady: SubscriptionRef.SubscriptionRef<boolean>
+  readonly notificationRoute: Ref.Ref<number>
 }
+
+export interface SyncCoordinator {
+  readonly lock: Semaphore.Semaphore
+  lastSynced(): string | undefined
+  setLastSynced(key: string | undefined): void
+}
+
+/** Scoped sync coordinator serializing Clock pull/push and tracking last synced state fingerprint. */
+export service ClockSyncState {
+  readonly coordinator: SyncCoordinator
+}
+
+function makeSyncCoordinator(): SyncCoordinator!! {
+  return effect {
+    const lock = try Semaphore.make(1)
+    let synced: string | undefined
+    return {
+      lock,
+      lastSynced: () => synced,
+      setLastSynced: (key: string | undefined) => {
+        synced = key
+      },
+    }
+  }
+}
+
+export const clockSyncStateLayer = Layer.effect(ClockSyncState, effect {
+  const coordinator = try makeSyncCoordinator()
+  try Effect.addFinalizer(() => sync(() => { coordinator.setLastSynced(undefined) }))
+  return { coordinator }
+})
+
+export effect function activeSyncCoordinator(): SyncCoordinator!! {
+  const ctx = try Effect.context<never>()
+  const found = Context.getOption(ctx, ClockSyncState)
+  if (Option.isSome(found)) return found.value.coordinator
+  return try makeSyncCoordinator()
+}
+
+export type ClockDelivery = "" | "notifications" | "exact" | "unavailable"
 
 /** Scoped reactive Clock ticker shelves bound to a single runtime lifecycle. */
 export service ClockTicks {
   readonly clockNow: Shelf<number>
   readonly stopwatchNow: Shelf<number>
+  readonly delivery: Shelf<ClockDelivery>
 }
 
 /** Fallback 1-second Clock timestamp shelf when mounted without ClockTicks. */
@@ -23,6 +66,7 @@ export const fallbackClockNow: Shelf<number> = createShelf(0)
 
 /** Fallback 50ms Stopwatch timestamp shelf when mounted without ClockTicks. */
 export const fallbackStopwatchNow: Shelf<number> = createShelf(0)
+export const fallbackDelivery = createShelf<ClockDelivery>("")
 
 /** Provides a freshly created `ClockRecords` store hydrated from KeyValueStore that resets when its runtime scope closes. */
 export const clockRecordsLayer = Layer.effect(ClockRecords, effect {
@@ -31,18 +75,22 @@ export const clockRecordsLayer = Layer.effect(ClockRecords, effect {
   const kept = kv.get(metaStoreKey) catch () => undefined
   if (kept !== undefined) store.restore(kept)
   try Effect.addFinalizer(() => sync(() => { store.reset() }))
-  return { store }
+  const nativeReady = try SubscriptionRef.make(store.snapshot().version > 0)
+  const notificationRoute = try Ref.make(-1)
+  return { store, nativeReady, notificationRoute }
 })
 
 /** Provides freshly created `ClockTicks` shelves that reset when their runtime scope closes. */
 export const clockTicksLayer = Layer.effect(ClockTicks, effect {
   const clockNow = createShelf(0)
   const stopwatchNow = createShelf(0)
+  const delivery = createShelf<ClockDelivery>("")
   try Effect.addFinalizer(() => sync(() => {
     clockNow.reset()
     stopwatchNow.reset()
+    delivery.reset()
   }))
-  return { clockNow, stopwatchNow }
+  return { clockNow, stopwatchNow, delivery }
 })
 
 /** Resolve the runtime's scoped `ClockRecords` store, falling back to the standalone store when absent. */
@@ -52,9 +100,14 @@ export effect function activeClockRecords(): ClockRecordsStore!! {
   return Option.isSome(found) ? found.value.store : clockRecords
 }
 
+export effect function confirmClockSnapshot(): void!! {
+  const found = Context.getOption(try Effect.context<never>(), ClockRecords)
+  if (Option.isSome(found) && !(try SubscriptionRef.get(found.value.nativeReady))) try SubscriptionRef.set(found.value.nativeReady, true)
+}
+
 /** Resolve the runtime's scoped `ClockTicks` shelves, falling back to standalone shelves when absent. */
-export effect function activeClockTicks(): { readonly clockNow: Shelf<number>; readonly stopwatchNow: Shelf<number> }!! {
+export effect function activeClockTicks(): Context.Service.Shape<typeof ClockTicks>!! {
   const ctx = try Effect.context<never>()
   const found = Context.getOption(ctx, ClockTicks)
-  return Option.isSome(found) ? found.value : { clockNow: fallbackClockNow, stopwatchNow: fallbackStopwatchNow }
+  return Option.isSome(found) ? found.value : { clockNow: fallbackClockNow, stopwatchNow: fallbackStopwatchNow, delivery: fallbackDelivery }
 }

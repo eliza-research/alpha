@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Alpha Home</string>
+    <bool name="config_alpha_qsb_ask_bar">true</bool>
+    <bool name="config_alpha_hide_taskbar_handle">true</bool>
+    <bool name="config_alpha_home_back_only">false</bool>
+    <bool name="config_enableTaskbarPinning">false</bool>
+    <string name="config_icon_mask" translatable="false">M50,0 C82,0 100,18 100,50 C100,82 82,100 50,100 C18,100 0,82 0,50 C0,18 18,0 50,0 Z</string>
+    <string name="alpha_qsb_hint" translatable="false">Ask Alpha</string>
+    <string name="alpha_qsb_target_package" translatable="false">ai.alphacompute.alphaphone</string>
+    <integer name="config_allAppsTransitionTime">250</integer>
+    <integer name="config_overviewTransitionTime">250</integer>
+</resources>

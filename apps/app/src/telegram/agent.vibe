@@ -13,6 +13,7 @@ import {
   type TelegramAgentMutationPayload,
   type TelegramSnapshot,
   TelegramStore,
+  acceptedReply,
   currentSessionToken,
   dialogTitle,
   isRevokedFailure,
@@ -106,11 +107,12 @@ function formatAgentMessage(
 }
 
 effect function runReadCall<A>(
+  token: string,
   call: A!MessagingFailure,
 ): Option.Option<A>!!(MessagingSessions | TelegramStore | Auth.Machine) {
-  const res = call catch (failure) => ({ failed: failure })
+  const res = acceptedReply(token, call) catch (failure) => ({ failed: failure })
   if (typeof res === "object" && res !== null && "failed" in res) {
-    if (isRevokedFailure(res.failed)) try reportSessionRevoked()
+    if (isRevokedFailure(res.failed)) try reportSessionRevoked(token)
     return Option.none()
   }
   return Option.some(res)
@@ -132,7 +134,7 @@ effect function executeReadTool(
   const store = try TelegramStore
   const bounded = Math.max(1, Math.min(AgentTelegram.maxReadLimit, limit))
   if (tool === "TelegramListChats") {
-    const res = try runReadCall(client.getDialogs(token.value, { limit: bounded }))
+    const res = try runReadCall(token.value, client.getDialogs(token.value, { limit: bounded }))
     if (Option.isNone(res)) return { ok: false }
     for (const dialog of res.value.dialogs) try store.chatIdOf(dialog.peer_key)
     const snap = try store.update((current) => ({ ...current, ...mergeEntities(current, res.value.users, res.value.chats) }))
@@ -151,7 +153,7 @@ effect function executeReadTool(
   }
   if (tool === "TelegramSearchMessages") {
     const peerKey = chat > 0 ? try store.peerKeyOf(chat) : undefined
-    const res = try runReadCall(client.searchGlobal(token.value, query, { peer: peerKey, limit: bounded }))
+    const res = try runReadCall(token.value, client.searchGlobal(token.value, query, { peer: peerKey, limit: bounded }))
     if (Option.isNone(res)) return { ok: false }
     const snap = try store.update((current) => ({ ...current, ...mergeEntities(current, res.value.users, res.value.chats) }))
     return {
@@ -178,7 +180,7 @@ effect function executeReadTool(
       },
     }
   }
-  const res = try runReadCall(client.getHistory(token.value, peerKey, { limit: bounded }))
+  const res = try runReadCall(token.value, client.getHistory(token.value, peerKey, { limit: bounded }))
   if (Option.isNone(res)) return { ok: false }
   const snap = try store.get()
   return {
@@ -263,9 +265,9 @@ effect function readBackMutation(
   const target = try resolveAuthedPeer(chat)
   if (Option.isNone(target)) return { type: "readBackAnswered", ticket, ok: false, applied: false }
   const { token, peerKey } = target.value
-  const res = (try Telegram).getHistory(token, peerKey, { limit: 20 }) catch (failure) => ({ failed: failure })
+  const res = acceptedReply(token, (try Telegram).getHistory(token, peerKey, { limit: 20 })) catch (failure) => ({ failed: failure })
   if ("failed" in res) {
-    if (isRevokedFailure(res.failed)) try reportSessionRevoked()
+    if (isRevokedFailure(res.failed)) try reportSessionRevoked(token)
     return { type: "readBackAnswered", ticket, ok: false, applied: false }
   }
   return { type: "readBackAnswered", ticket, ok: true, applied: res.messages.some((item) => item.id === message) }
@@ -349,7 +351,7 @@ const screenSync = started(effect {
 
 // spec/app/telegram/agent.md, "Ambient context is emitted ONLY when authenticated, non-sensitive and allowed by `TelegramContext`, bounded to 15 messages and 6000 characters, with zero secrets"
 /** Read the current bounded, secret-free Telegram ambient context snapshot for Ask Alpha. */
-export effect function readTelegramAmbientSnapshot(): TelegramAmbientSnapshot!!(AgentTelegram.Machine | Auth.Machine | TelegramStore) {
+export effect function readTelegramAmbientSnapshot(): TelegramAmbientSnapshot!!(AgentTelegram.Machine | Auth.Machine | MessagingSessions | TelegramStore) {
   const authState = try (try Auth.Machine).get()
   const agentState = try (try AgentTelegram.Machine).get()
   const store = try TelegramStore
@@ -367,10 +369,11 @@ export effect function readTelegramAmbientSnapshot(): TelegramAmbientSnapshot!!(
     boundedMessages.push({ id: msg.id, sender, body, date: msg.date, out: msg.out })
   }
   const decision = AgentTelegram.ambientContext(agentState, boundedMessages.length, charCount)
-  if (authState.step !== "Authenticated" || decision.tag === "NoContext") {
+  const authenticated = authState.step === "Authenticated" && Option.isSome(try currentSessionToken())
+  if (!authenticated || decision.tag === "NoContext") {
     return {
       available: false,
-      sensitive: authState.step !== "Authenticated" || agentState.sensitive,
+      sensitive: !authenticated || agentState.sensitive,
       shareAllowed: agentState.shareAllowed,
       pane: agentState.pane,
     }
@@ -392,7 +395,8 @@ export effect function readTelegramAmbientSnapshot(): TelegramAmbientSnapshot!!(
 /** Execute one Ask Alpha Telegram read, staged draft, or revision-bound mutation request. */
 export effect function executeTelegramAgentRequest(
   request: TelegramAgentRequest,
-): TelegramAgentResult!!(AgentTelegram.Machine | TelegramStore | Composer.Machine | Conversation.Machine) {
+): TelegramAgentResult!!(AgentTelegram.Machine | TelegramStore | MessagingSessions | Composer.Machine | Conversation.Machine) {
+  if (Option.isNone(try currentSessionToken())) return { ok: false }
   const agent = try AgentTelegram.Machine
   const store = try TelegramStore
   if (request.kind === "TelegramDraftMessage") {
@@ -410,6 +414,7 @@ export effect function executeTelegramAgentRequest(
     return { ok: true, data: { chat: request.chat, peerKey, text: request.text, sent: false } }
   }
   if (request.kind === "ProposeMutation") {
+    if ((try store.peerKeyOf(request.chat)) === undefined) return { ok: false }
     const payload: TelegramAgentMutationPayload = {
       turn: request.turn,
       chat: request.chat,

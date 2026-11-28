@@ -91,8 +91,16 @@ export schema ScheduledTask {
   readonly kind: string
   readonly ownerVisible: boolean
   readonly promptInstructions: string
-  readonly state: { readonly status: string; readonly firedAt?: string }
+  readonly state: { readonly status: string; readonly firedAt?: string; readonly lastDecisionLog?: string }
   readonly trigger: { readonly kind: "once" | "cron" | "manual"; readonly atIso?: string; readonly expression?: string; readonly tz?: string }
+}
+
+const AgentFailure = Schema.Struct({
+  lastCloudFailure: Schema.optionalKey(Schema.NullOr(Schema.Struct({ kind: Schema.String }))),
+})
+
+export effect function readAgentFailure() {
+  return map(ask(Agent, HttpClientRequest.get("/api/status"), AgentFailure), ({ lastCloudFailure }) => lastCloudFailure?.kind) catch () => undefined
 }
 
 const Triggers = Schema.Struct({ triggers: Schema.Array(PromptSchema) })

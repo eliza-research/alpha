@@ -143,6 +143,7 @@ describe.each([["a browser", false], ["a phone", true]])("in %s", (_where, phone
     await press("Dismiss Call the bank");
     await later(fourth.alpha, 5_000);
     await until(fourth.alpha, last, Reminders, (s) => s.deletion.attempt.outcome === "Sent");
+    await vi.waitFor(() => expect(world.sample.asked).toEqual(["Water the plants", "Call the bank", "Buy bread", "Call the bank"]));
     await later(fourth.alpha, 10_000);
     await until(fourth.alpha, last, Reminders, (s) => s.deletion.attempt.outcome === "Unknown");
     expect(told()).toBe("Alpha cannot tell whether the agent deleted “Call the bank”");

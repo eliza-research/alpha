@@ -8,7 +8,7 @@ const key = "a".repeat(64);
 const attemptId = "device-attempt-1";
 
 type Sms = Extract<DeviceOperation, { type: "sms_send" }>;
-type ReviewOperation = Extract<DeviceOperation, { type: "sms_send" | "sms_compose" | "sms_latest_sender" | "messages_read_selected" | "voicemail_read_selected" | "voicemail_delete_selected" | "files_filter" | "files_open" | "files_move" | "files_share" | "files_trash" | "files_folder_create" | "browser_navigate" | "camera_capture_photo" | "create_note" | "post_notification" | "speak_text" }>;
+type ReviewOperation = Extract<DeviceOperation, { type: "sms_send" | "sms_compose" | "sms_latest_sender" | "messages_read_selected" | "voicemail_read_selected" | "voicemail_delete_selected" | "files_filter" | "files_open" | "files_move" | "files_share" | "files_trash" | "files_folder_create" | "browser_navigate" | "camera_capture_photo" | "calendar_availability" | "create_note" | "post_notification" | "speak_text" }>;
 interface ReadOrigin { readonly version: 1; readonly requestId: string; readonly conversationId: string; readonly inReplyTo: string }
 
 type Confirmation = Pick<Sms, "recipients" | "body" | "subscriptionId"> & { operationId: string; confirm(): void };
@@ -88,6 +88,7 @@ export function textReviewRoute(review: TextReviewScene, subjectUserId: string):
     files_folder_create: files,
     browser_navigate: [...files, "browser.open-direct.v1"],
     camera_capture_photo: ["camera.capture-photo.v1", ...(review.cameraLibraryId ? ["camera.capture-library-id.v1"] : [])],
+    calendar_availability: ["calendar.availability-read.v1"],
     create_note: files,
     post_notification: files,
     speak_text: files,

@@ -7,7 +7,10 @@ import { defineRoutes } from "@elizaos/agent";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { pageQueries } from "../gen/agent.ts";
-import { AlphaAppsStore, alphaAppsModule, alphaAppsPluginName, createAlphaAppsPlugin, notesTranscriptionRoutes } from "../src/plugins/index.ts";
+import {
+  AlphaAppsStore, AlphaControlCoordinator, CONTROL_ACTION_NAME, MAX_LEASE_OPS, alphaAppsModule, alphaAppsPluginName,
+  createAlphaAppsPlugin, isBlockedTarget, notesTranscriptionRoutes, parseControlOp,
+} from "../src/plugins/index.ts";
 import { advanceDueDate, civilToEpochMs } from "../src/plugins/store.ts";
 import type { AgentAction, AgentRoute, AgentRuntimeLike } from "../src/plugins/types.ts";
 
@@ -234,7 +237,7 @@ describe("Alpha product plugin: Clock acts only on what the model named", () => 
 });
 
 describe("Alpha product plugin: Clock actions, provider, and routes", () => {
-  // spec/agent/index.md, "The agent may run the actions the old phone's agent ran plus Alpha's Clock and Reminders actions, and every other action the bundle registers is listed as refused with its reason"
+  // spec/agent/index.md, "The agent may run the actions the old phone's agent ran plus Alpha's Clock, Reminders and Device Control actions, and every other action the bundle registers is listed as refused with its reason"
   it("runs CLOCK_ALARM, CLOCK_TIMER, CLOCK_WORLD actions and injects CLOCK_CONTEXT", async () => {
     let nowMs = Date.UTC(2026, 10, 24, 14, 0, 0);
     const store = new AlphaAppsStore({ now: () => nowMs });
@@ -365,7 +368,7 @@ describe("Alpha product plugin: Clock actions, provider, and routes", () => {
 });
 
 describe("Alpha product plugin: Reminders actions, provider, recurrence, and routes", () => {
-  // spec/agent/index.md, "The agent may run the actions the old phone's agent ran plus Alpha's Clock and Reminders actions, and every other action the bundle registers is listed as refused with its reason"
+  // spec/agent/index.md, "The agent may run the actions the old phone's agent ran plus Alpha's Clock, Reminders and Device Control actions, and every other action the bundle registers is listed as refused with its reason"
   it("handles recurrence edge cases accurately", () => {
     expect(advanceDueDate("2026-01-31", "monthly")).toBe("2026-02-28");
     expect(advanceDueDate("2024-01-31", "monthly")).toBe("2024-02-29");
@@ -683,6 +686,7 @@ function createRemindersTestHarness(nowMs: number, initialTasks: Parameters<type
       { method: "POST" as const, target: "/api/views/interact-claim" },
       { method: "POST" as const, target: "/api/views/interact-result" },
       { method: "POST" as const, target: "/api/messages/reply-draft" },
+      { method: "POST" as const, target: "/api/client-devices/revoke" },
       { method: "POST" as const, target: "/api/cloud/warm" },
       { method: "GET" as const, target: "/api/lifeops/calendar/sync-control" },
       { method: "POST" as const, target: "/api/lifeops/calendar/sync-control" },
@@ -782,5 +786,220 @@ describe("Notes transcription for the local browser", () => {
   // spec/agent/index.md, "The local browser can request a private transcription of a reviewed note"
   it("is not offered while the agent runs Alpha's native speech engine", () => {
     expect(notesTranscriptionRoutes(transcriptionContext({ ALPHA_LOCAL_SPEECH_SOCKET: "/run/alpha/speech.sock" }), "local-inference", () => Promise.resolve(true))).toEqual([]);
+  });
+});
+
+describe("Bounded external app control in the Alpha product plugin", () => {
+  // spec/app/control/index.md, "Story: Control a third-party app within an owner-approved lease"
+  // spec/app/control/index.md, "Story: Enforce formal safety guarantees over external app control"
+  // spec/agent/index.md, "Only Android's native control executor can post UI observations, poll queued operations, submit receipts, or fire native interrupts"
+  it("validates all twelve closed control operations and rejects unsafe inputs", () => {
+    const validOps = [
+      { type: "app_launch_package", packageName: "org.mozilla.firefox" },
+      { type: "app_open_url", url: "https://example.org/docs", packageName: "org.mozilla.firefox" },
+      { type: "ui_read_tree", includeNonInteractive: false, maxNodes: 80 },
+      { type: "ui_capture_screen", maxWidth: 720, quality: 70 },
+      { type: "ui_click", snapshotId: 1, expectedPackage: "org.mozilla.firefox", nodeId: "n1" },
+      { type: "ui_click", snapshotId: 1, expectedPackage: "org.mozilla.firefox", x: 120, y: 240, longClick: true },
+      { type: "ui_set_text", snapshotId: 1, expectedPackage: "org.mozilla.firefox", nodeId: "url_bar", text: "alpha phone", submit: true },
+      { type: "ui_scroll", snapshotId: 1, expectedPackage: "org.mozilla.firefox", direction: "down", distanceRatio: 0.6 },
+      { type: "ui_key_event", snapshotId: 1, expectedPackage: "org.mozilla.firefox", keyCode: "ENTER" },
+      { type: "ui_gesture", snapshotId: 1, expectedPackage: "org.mozilla.firefox", kind: "swipe", startX: 200, startY: 800, endX: 200, endY: 300, durationMs: 250 },
+      { type: "ui_global_action", snapshotId: 1, expectedPackage: "org.mozilla.firefox", action: "back" },
+      { type: "app_functions_discover", packageName: "org.mozilla.firefox" },
+      { type: "app_function_execute", snapshotId: 1, expectedPackage: "org.mozilla.firefox", functionId: "browser.openTab", parameters: { url: "https://example.org", pinned: true } },
+    ];
+    for (const op of validOps) {
+      expect(parseControlOp(op)).toBeDefined();
+    }
+    expect(parseControlOp({ type: "app_open_url", url: "http://insecure.example.org" })).toBeUndefined();
+    expect(parseControlOp({ type: "ui_click", snapshotId: 1, expectedPackage: "org.mozilla.firefox" })).toBeUndefined();
+    expect(parseControlOp({ type: "ui_key_event", snapshotId: 1, expectedPackage: "org.mozilla.firefox", keyCode: "POWER" })).toBeUndefined();
+    expect(parseControlOp({ type: "ui_gesture", snapshotId: 1, expectedPackage: "org.mozilla.firefox", kind: "swipe", startX: 10, startY: 10, durationMs: 200 })).toBeUndefined();
+    expect(parseControlOp({ type: "unknown_op" })).toBeUndefined();
+  });
+
+  // spec/app/control/index.md, "No operation is ever active over a blocked package, and snapshot-bound operations only run over an allowed foreground app"
+  it("hard-blocks permission dialogs, settings, password managers, billing sheets, and Alpha approval surfaces", () => {
+    expect(isBlockedTarget("com.android.permissioncontroller")).toBe(true);
+    expect(isBlockedTarget("com.google.android.packageinstaller")).toBe(true);
+    expect(isBlockedTarget("com.android.settings")).toBe(true);
+    expect(isBlockedTarget("proton.android.pass")).toBe(true);
+    expect(isBlockedTarget("ai.alphacompute.alphaphone")).toBe(true);
+    expect(isBlockedTarget("ai.alphacompute.wallet")).toBe(true);
+    expect(isBlockedTarget("com.android.vending", "com.google.android.finsky.billing.PurchaseActivity")).toBe(true);
+    expect(isBlockedTarget("com.android.vending", "com.google.android.finsky.activities.MainActivity")).toBe(false);
+    expect(isBlockedTarget("org.mozilla.firefox", "org.mozilla.fenix.HomeActivity")).toBe(false);
+  });
+
+  // spec/app/control/index.md, "The agent dispatches one operation at a time only under an active lease on a clear unblocked screen, binding the exact live snapshot for every UI operation"
+  // spec/app/control/index.md, "The kill-switch immediately revokes any active lease, clears any in-flight operation, and signals the native bridge and overlay"
+  it("drives a Firefox control lease end-to-end and enforces stale-snapshot, protected-screen, budget, and kill-switch rules", async () => {
+    const clock = 10_000;
+    const coordinator = new AlphaControlCoordinator();
+    const { plugin } = createAlphaAppsPlugin({ control: coordinator, controlWaitTimeoutMs: 0 });
+    const routes = plugin.routes!;
+    const action = actionOf(plugin, CONTROL_ACTION_NAME);
+    const provider = plugin.providers!.find((entry) => entry.name === "alpha_device_control")!;
+    const { runtime } = makeFakeRuntime();
+
+    const beforeTier = await callRoute(routes, "POST", "/api/alpha/control/lease", {
+      body: { packageName: "org.mozilla.firefox", maxOps: 3, durationMs: 60_000 },
+    });
+    expect(beforeTier.status).toBe(409);
+
+    const tierReady = await callRoute(routes, "POST", "/api/alpha-control/observe", {
+      body: {
+        tier: "TierPrivileged",
+        capabilities: ["ui.observe.v1", "ui.act.v1", "ui.screenshot.v1", "ui.inject.v1"],
+        packageName: "com.android.launcher3",
+        activityName: "com.android.launcher3.Launcher",
+        protection: "ScreenClear",
+        windowCount: 1,
+        nodes: [],
+      },
+    });
+    expect(tierReady.status).toBe(200);
+
+    const blockedLease = await callRoute(routes, "POST", "/api/alpha/control/lease", {
+      body: { packageName: "com.android.settings", maxOps: 2, durationMs: 60_000 },
+    });
+    expect(blockedLease.status).toBe(403);
+
+    const granted = await callRoute(routes, "POST", "/api/alpha/control/lease", {
+      body: { packageName: "org.mozilla.firefox", maxOps: 3, durationMs: 60_000 },
+    });
+    expect(granted.status).toBe(200);
+
+    const openFirefox = await action.handler(runtime, emptyMessage("Open example.org in Firefox"), emptyState, {
+      parameters: { op: { type: "app_open_url", url: "https://example.org" } },
+    });
+    expect(openFirefox?.success).toBe(true);
+    const next1 = await callRoute(routes, "GET", "/api/alpha-control/next");
+    const op1 = next1.body.op as { opId: number; boundSnapId: number; expectedPackage: string; op: { type: string; packageName?: string } };
+    expect(op1.boundSnapId).toBe(0);
+    expect(op1.expectedPackage).toBe("org.mozilla.firefox");
+    expect(op1.op.packageName).toBe("org.mozilla.firefox");
+    const receipt1 = await callRoute(routes, "POST", "/api/alpha-control/receipt", { body: { opId: op1.opId, outcome: "done" } });
+    expect(receipt1.status).toBe(200);
+
+    const openUnleasedBrowser = await action.handler(runtime, emptyMessage("Open in Chrome"), emptyState, {
+      parameters: { op: { type: "app_open_url", url: "https://example.org", packageName: "com.android.chrome" } },
+    });
+    expect(openUnleasedBrowser?.success).toBe(false);
+    expect((openUnleasedBrowser?.data as { code: string; leaseRequest?: { packageName: string; requestedOp: string } }).code).toBe("LEASE_REQUIRED");
+    expect((openUnleasedBrowser?.data as { leaseRequest?: { packageName: string; requestedOp: string } }).leaseRequest).toMatchObject({
+      packageName: "com.android.chrome",
+      requestedOp: "app_open_url",
+    });
+    const pendingPromptState = await callRoute(routes, "GET", "/api/alpha/control/state");
+    expect(pendingPromptState.body.leaseRequest).toMatchObject({
+      packageName: "com.android.chrome",
+      requestedOp: "app_open_url",
+    });
+
+    const firefoxObs = await callRoute(routes, "POST", "/api/alpha-control/observe", {
+      body: {
+        tier: "TierPrivileged",
+        capabilities: ["ui.observe.v1", "ui.act.v1", "ui.screenshot.v1", "ui.inject.v1"],
+        packageName: "org.mozilla.firefox",
+        activityName: "org.mozilla.fenix.HomeActivity",
+        webUri: "https://example.org",
+        protection: "ScreenClear",
+        windowCount: 1,
+        nodes: [
+          { nodeId: "n_link", role: "Link", text: "More information", bounds: { left: 10, top: 200, right: 300, bottom: 260 }, clickable: true, editable: false, scrollable: false, sensitive: false },
+          { nodeId: "n_pass", role: "EditText", text: "secret-password", bounds: { left: 10, top: 300, right: 300, bottom: 360 }, clickable: true, editable: true, scrollable: false, sensitive: true },
+        ],
+      },
+    });
+    const snapId = firefoxObs.body.snapshotId as number;
+    expect(snapId).toBeGreaterThan(1);
+
+    const context = await provider.get(runtime, emptyMessage("context"), emptyState);
+    expect(context.text).toContain("https://example.org");
+    expect(context.text).toContain("n_link");
+    expect(context.text).not.toContain("secret-password");
+
+    const staleClick = await action.handler(runtime, emptyMessage("Stale click"), emptyState, {
+      parameters: { op: { type: "ui_click", snapshotId: snapId - 1, expectedPackage: "org.mozilla.firefox", nodeId: "n_link" } },
+    });
+    expect(staleClick?.success).toBe(false);
+    expect((staleClick?.data as { code: string }).code).toBe("STALE_SNAPSHOT");
+
+    const sensitiveClick = await action.handler(runtime, emptyMessage("Password click"), emptyState, {
+      parameters: { op: { type: "ui_click", snapshotId: snapId, expectedPackage: "org.mozilla.firefox", nodeId: "n_pass" } },
+    });
+    expect(sensitiveClick?.success).toBe(false);
+    expect((sensitiveClick?.data as { code: string }).code).toBe("SENSITIVE_VIEW");
+
+    const liveClick = await action.handler(runtime, emptyMessage("Click link"), emptyState, {
+      parameters: { op: { type: "ui_click", snapshotId: snapId, expectedPackage: "org.mozilla.firefox", nodeId: "n_link" } },
+    });
+    expect(liveClick?.success).toBe(true);
+    const next2 = await callRoute(routes, "GET", "/api/alpha-control/next");
+    const op2 = next2.body.op as { opId: number };
+    const receipt2 = await callRoute(routes, "POST", "/api/alpha-control/receipt", {
+      body: { opId: op2.opId, outcome: "done", postSnapshotId: snapId + 1 },
+    });
+    expect(receipt2.status).toBe(200);
+    expect((receipt2.body.receipt as { postSnapshotId?: number }).postSnapshotId).toBe(snapId + 1);
+
+    const privateObs = await callRoute(routes, "POST", "/api/alpha-control/observe", {
+      body: {
+        tier: "TierPrivileged",
+        capabilities: ["ui.observe.v1", "ui.act.v1"],
+        packageName: "org.mozilla.firefox",
+        activityName: "org.mozilla.fenix.HomeActivity",
+        webUri: "https://private.example.org",
+        protection: "PrivateTab",
+        windowCount: 1,
+        nodes: [{ nodeId: "priv", role: "Text", text: "private", bounds: { left: 0, top: 0, right: 10, bottom: 10 }, clickable: true, editable: false, scrollable: false, sensitive: false }],
+      },
+    });
+    const privSnap = privateObs.body.snapshotId as number;
+    const afterPrivateState = await callRoute(routes, "GET", "/api/alpha/control/state");
+    expect(afterPrivateState.body.leaseRequest).toBeNull();
+    const privateClick = await action.handler(runtime, emptyMessage("Private click"), emptyState, {
+      parameters: { op: { type: "ui_click", snapshotId: privSnap, expectedPackage: "org.mozilla.firefox", nodeId: "priv" } },
+    });
+    expect(privateClick?.success).toBe(false);
+    expect((privateClick?.data as { code: string }).code).toBe("PROTECTED_SCREEN");
+
+    const clearAgain = await callRoute(routes, "POST", "/api/alpha-control/observe", {
+      body: {
+        tier: "TierPrivileged",
+        capabilities: ["ui.observe.v1", "ui.act.v1", "ui.inject.v1"],
+        packageName: "org.mozilla.firefox",
+        activityName: "org.mozilla.fenix.HomeActivity",
+        protection: "ScreenClear",
+        windowCount: 1,
+        nodes: [],
+      },
+    });
+    const clearSnap = clearAgain.body.snapshotId as number;
+    const keyEvent = await action.handler(runtime, emptyMessage("Press Enter"), emptyState, {
+      parameters: { op: { type: "ui_key_event", snapshotId: clearSnap, expectedPackage: "org.mozilla.firefox", keyCode: "ENTER" } },
+    });
+    expect(keyEvent?.success).toBe(true);
+
+    const stopped = await callRoute(routes, "POST", "/api/alpha/control/stop", { body: { reason: "owner_stop" } });
+    expect(stopped.status).toBe(200);
+    expect(stopped.body.killed).toBe(true);
+    expect(stopped.body.pending).toBeNull();
+    expect((stopped.body.lease as { status: string }).status).toBe("LeaseRevoked");
+
+    const afterStop = await action.handler(runtime, emptyMessage("Click after stop"), emptyState, {
+      parameters: { op: { type: "ui_scroll", snapshotId: clearSnap, expectedPackage: "org.mozilla.firefox", direction: "down" } },
+    });
+    expect(afterStop?.success).toBe(false);
+    expect((afterStop?.data as { code: string }).code).toBe("KILL_SWITCH_ACTIVE");
+
+    const overBudget = coordinator.grantLease({ packageName: "org.mozilla.firefox", maxOps: MAX_LEASE_OPS + 1, durationMs: 30_000 }, clock);
+    expect(overBudget.ok).toBe(false);
+    const expiredCheck = coordinator.snapshot(clock + 1_000);
+    expect(expiredCheck.killed).toBe(true);
+    const stateRoute = await callRoute(routes, "GET", "/api/alpha/control/state");
+    expect(stateRoute.status).toBe(200);
   });
 });

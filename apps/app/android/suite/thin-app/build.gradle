@@ -1,0 +1,96 @@
+apply plugin: 'com.android.application'
+
+def appPkg = new groovy.json.JsonSlurper().parse(file('../../../package.json'))
+def resolvedVersionCode = System.getenv('ELIZAOS_VERSION_CODE')?.isInteger()
+    ? System.getenv('ELIZAOS_VERSION_CODE').toInteger()
+    : 121
+def resolvedVersionName = System.getenv('ELIZAOS_VERSION_NAME') ?: appPkg.version
+
+def resolveDebugKeystore = {
+    def explicit = System.getenv('ALPHA_DEBUG_KEYSTORE')
+    if (explicit != null && !explicit.trim().isEmpty()) {
+        return file(explicit)
+    }
+    def coreDebug = file('../../.android-user/debug.keystore')
+    if (coreDebug.exists()) {
+        return coreDebug
+    }
+    def userHomeDebug = new File(System.getProperty('user.home'), '.android/debug.keystore')
+    if (userHomeDebug.exists()) {
+        return userHomeDebug
+    }
+    return coreDebug
+}
+
+android {
+    namespace 'ai.alphacompute.thinapp'
+    compileSdk rootProject.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+
+    defaultConfig {
+        minSdk rootProject.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 29
+        targetSdk rootProject.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+        versionCode resolvedVersionCode
+        versionName resolvedVersionName
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    signingConfigs {
+        debug {
+            def debugKeystoreFile = resolveDebugKeystore()
+            if (debugKeystoreFile.exists()) {
+                storeFile debugKeystoreFile
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
+        release {
+            def storePath = System.getenv('ELIZAOS_KEYSTORE_PATH')
+            if (storePath != null && !storePath.trim().isEmpty()) {
+                storeFile file(storePath)
+                storePassword System.getenv('ELIZAOS_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ELIZAOS_KEY_ALIAS')
+                keyPassword System.getenv('ELIZAOS_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
+def generatedFlavors = file('../generated/suite-flavors.gradle')
+if (generatedFlavors.exists()) {
+    apply from: generatedFlavors
+}
+
+dependencies {
+    implementation project(':alpha-ipc')
+    implementation project(':alpha-app-runtime')
+    implementation project(':capacitor-android')
+    implementation "androidx.appcompat:appcompat:${rootProject.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'}"
+    implementation "androidx.core:core-splashscreen:${rootProject.hasProperty('coreSplashScreenVersion') ? rootProject.ext.coreSplashScreenVersion : '1.2.0'}"
+    implementation "androidx.webkit:webkit:${rootProject.hasProperty('androidxWebkitVersion') ? rootProject.ext.androidxWebkitVersion : '1.17.1'}"
+    testImplementation "junit:junit:${rootProject.hasProperty('junitVersion') ? rootProject.ext.junitVersion : '4.13.2'}"
+}

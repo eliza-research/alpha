@@ -1,0 +1,644 @@
+// spec/app/platform/index.md, "Story: Reach the phone's native capabilities"
+import type { View } from "../../gen/app__shell.ts"
+import { registered } from "./device.vibe"
+
+/** Bounded foreground context snapshot published by a standalone Alpha app to `AlphaCore`. */
+export interface ForegroundContextSnapshot {
+  readonly view: View
+  readonly route: string
+  readonly snapshotJson: string
+  readonly sensitive: boolean
+  readonly leaseMs: number
+}
+
+/** Default lease duration for a foreground app context snapshot in milliseconds. */
+export const DEFAULT_CONTEXT_LEASE_MS = 120_000
+
+module bridge {
+  import { plugin as capacitorPlugin } from "./capacitor.ts"
+
+  /** Maximum byte budget enforced before publishing foreground context across Binder. */
+  export const MAX_CONTEXT_SNAPSHOT_BYTES = 32_768
+
+  /** Bounding rectangle reported to `AlphaOverlayHost` for `TOUCHABLE_INSETS_REGION` passthrough. */
+  export interface TouchableRect {
+    readonly left: number
+    readonly top: number
+    readonly right: number
+    readonly bottom: number
+  }
+
+  /** Validated payload delivered by a signed `ai.alphacompute.action.AGENT_OPEN` deep link. */
+  export interface AlphaIntentDetail {
+    readonly uri: string
+    readonly claimId: string
+    readonly ticket: number
+    readonly nonce: string
+    readonly payloadJson: string
+  }
+
+  /** Result returned by a view intent handler before acknowledging `IAlphaActionCallback`. */
+  export interface AlphaIntentResult {
+    readonly switched: boolean
+    readonly result?: unknown
+    readonly errorCode?: string
+  }
+
+  /** Event detail dispatched when `AlphaVoiceInteractionSession.onShow` presents the overlay. */
+  export interface OverlayShowDetail {
+    readonly entrySource?: string
+    readonly initialQuery?: string
+    readonly startVoice: boolean
+    readonly activeContext?: unknown
+    readonly stagedAttachment?: unknown
+  }
+
+  /** Event detail dispatched when a target thin app replies on `IAlphaActionCallback`. */
+  export interface ActionResultEvent {
+    readonly claimId: string
+    readonly switched: boolean
+    readonly resultJson?: string
+    readonly errorCode?: string
+  }
+
+  /** Assist metadata captured by `AlphaVoiceInteractionSession.onHandleAssist`. */
+  export interface AssistContextEvent {
+    readonly packageName?: string
+    readonly activityName?: string
+    readonly webUri?: string
+    readonly title?: string
+    readonly text?: string
+    readonly activeContextJson?: string
+  }
+
+  /** Parsed active foreground context snapshot from either a thin Alpha app or Android Assist. */
+  export interface ActiveForegroundContext {
+    readonly packageName?: string
+    readonly view?: string
+    readonly route?: string
+    readonly sensitive: boolean
+    readonly snapshot?: Record<string, unknown>
+    readonly webUri?: string
+    readonly title?: string
+    readonly text?: string
+  }
+
+  interface AlphaContextPlugin {
+    publish(options: {
+      readonly view: string
+      readonly route: string
+      readonly snapshot: string
+      readonly sensitive: boolean
+      readonly leaseMs: number
+    }): Promise<{ readonly published?: boolean }>
+    clear(options: { readonly view: string }): Promise<{ readonly cleared?: boolean }>
+    getActive(): Promise<{ readonly active?: unknown }>
+    replyAction(options: {
+      readonly claimId: string
+      readonly switched: boolean
+      readonly result: string
+      readonly errorCode: string
+    }): Promise<{ readonly delivered?: boolean }>
+  }
+
+  interface AlphaOverlayHostPlugin {
+    setTouchableRegions(options: {
+      readonly rects: ReadonlyArray<TouchableRect>
+      readonly density: number
+    }): Promise<void>
+    setFocusable(options: { readonly focusable: boolean }): Promise<void>
+    dismiss(): Promise<void>
+    openAppIntent(options: {
+      readonly uri: string
+      readonly claimId?: string
+      readonly payloadJson?: string
+    }): Promise<{ readonly opened: boolean }>
+    addListener(
+      eventName: "assistContext",
+      listener: (event: AssistContextEvent) => void,
+    ): Promise<{ remove(): Promise<void> }>
+  }
+
+  interface AlphaDeviceBridgePlugin {
+    finishTask?(): Promise<void>
+    openAlphaOverlay?(options: {
+      readonly entrySource: string
+      readonly initialQuery?: string
+      readonly startVoice: boolean
+    }): Promise<{ readonly opened?: boolean }>
+    launchSiblingApp?(options: {
+      readonly targetPackage: string
+      readonly uri?: string
+      readonly extrasJson?: string
+    }): Promise<{ readonly launched?: boolean }>
+  }
+
+  let contextCache: AlphaContextPlugin | undefined
+  let overlayCache: AlphaOverlayHostPlugin | undefined
+  let deviceCache: AlphaDeviceBridgePlugin | undefined
+
+  /** Capacitor proxy for `AlphaContext`. @throws {never} */
+  export function contextPlugin(): AlphaContextPlugin {
+    return (contextCache ??= capacitorPlugin<AlphaContextPlugin>("AlphaContext"))
+  }
+
+  /** Capacitor proxy for `AlphaOverlayHost`. @throws {never} */
+  export function overlayPlugin(): AlphaOverlayHostPlugin {
+    return (overlayCache ??= capacitorPlugin<AlphaOverlayHostPlugin>("AlphaOverlayHost"))
+  }
+
+  /** Capacitor proxy for `AlphaDevice` suite navigation and task controls. @throws {never} */
+  export function deviceBridgePlugin(): AlphaDeviceBridgePlugin {
+    return (deviceCache ??= capacitorPlugin<AlphaDeviceBridgePlugin>("AlphaDevice"))
+  }
+
+  /** Current document title, falling back to `fallback` when blank. @throws {never} */
+  export function pageTitle(fallback: string): string {
+    return typeof document !== "undefined" && document.title.length > 0 ? document.title : fallback
+  }
+
+  /** Current location pathname, falling back to `"/"`. @throws {never} */
+  export function pagePath(): string {
+    return typeof location !== "undefined" && location.pathname.length > 0 ? location.pathname : "/"
+  }
+
+  /** Truncate a JSON snapshot string to fit within `MAX_CONTEXT_SNAPSHOT_BYTES`. @throws {never} */
+  export function boundSnapshotJson(raw: string): string {
+    const encoder = new TextEncoder()
+    if (encoder.encode(raw).length <= MAX_CONTEXT_SNAPSHOT_BYTES) return raw
+    return JSON.stringify({ truncated: true, preview: raw.slice(0, 4096) })
+  }
+
+  /** Validate an untrusted `alpha-intent` CustomEvent detail payload. @throws {never} */
+  export function parseIntentDetail(raw: unknown): AlphaIntentDetail | undefined {
+    if (typeof raw !== "object" || raw === null) return undefined
+    const record = raw as Record<string, unknown>
+    const uri = typeof record.uri === "string" ? record.uri : ""
+    if (uri.length === 0) return undefined
+    const claimId = typeof record.claimId === "string" ? record.claimId : ""
+    const ticket = typeof record.ticket === "number" && Number.isSafeInteger(record.ticket) ? record.ticket : 0
+    const nonce = typeof record.nonce === "string" ? record.nonce : ""
+    const payloadJson = typeof record.payloadJson === "string"
+      ? record.payloadJson
+      : (typeof record.payload === "string" ? record.payload : "{}")
+    return { uri, claimId, ticket, nonce, payloadJson }
+  }
+
+  /** Parse an untrusted `alpha-overlay-show` event detail payload. @throws {never} */
+  export function parseOverlayShowDetail(raw: unknown): OverlayShowDetail {
+    if (typeof raw !== "object" || raw === null) return { startVoice: false }
+    const record = raw as Record<string, unknown>
+    const entrySource = typeof record.entrySource === "string" && record.entrySource.length > 0 ? record.entrySource : undefined
+    const initialQuery = typeof record.initialQuery === "string" && record.initialQuery.length > 0 ? record.initialQuery : undefined
+    const startVoice = record.startVoice === true
+    return {
+      ...(entrySource === undefined ? {} : { entrySource }),
+      ...(initialQuery === undefined ? {} : { initialQuery }),
+      startVoice,
+      ...(record.activeContext === undefined ? {} : { activeContext: record.activeContext }),
+      ...(record.stagedAttachment === undefined ? {} : { stagedAttachment: record.stagedAttachment }),
+    }
+  }
+
+  /** Parse an untrusted `alpha-action-result` event detail payload. @throws {never} */
+  export function parseActionResultEvent(raw: unknown): ActionResultEvent | undefined {
+    if (typeof raw !== "object" || raw === null) return undefined
+    const record = raw as Record<string, unknown>
+    const claimId = typeof record.claimId === "string" ? record.claimId : ""
+    if (claimId.length === 0) return undefined
+    const resultJson = typeof record.resultJson === "string" ? record.resultJson : undefined
+    const errorCode = typeof record.errorCode === "string" && record.errorCode.length > 0 ? record.errorCode : undefined
+    return {
+      claimId,
+      switched: record.switched === true,
+      ...(resultJson === undefined ? {} : { resultJson }),
+      ...(errorCode === undefined ? {} : { errorCode }),
+    }
+  }
+
+  /** Parse an untrusted active foreground context object or JSON string from `AlphaContext` or Android Assist. @throws {never} */
+  export function parseActiveForegroundContext(raw: unknown): ActiveForegroundContext | undefined {
+    let parsed: unknown = raw
+    if (typeof parsed === "string") {
+      if (parsed.trim().length === 0) return undefined
+      try {
+        parsed = JSON.parse(parsed) as unknown
+      } catch {
+        return undefined
+      }
+    }
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined
+    const record = parsed as Record<string, unknown>
+    const nested = typeof record.activeContextJson === "string" ? parseActiveForegroundContext(record.activeContextJson) : undefined
+    const packageName = typeof record.packageName === "string" && record.packageName.length > 0 ? record.packageName : nested?.packageName
+    const view = typeof record.view === "string" && record.view.length > 0 ? record.view : nested?.view
+    const route = typeof record.route === "string" && record.route.length > 0 ? record.route : nested?.route
+    const webUri = typeof record.webUri === "string" && record.webUri.length > 0 ? record.webUri : nested?.webUri
+    const title = typeof record.title === "string" && record.title.length > 0 ? record.title : nested?.title
+    const text = typeof record.text === "string" && record.text.length > 0 ? record.text : nested?.text
+    const snapshot = typeof record.snapshot === "object" && record.snapshot !== null && !Array.isArray(record.snapshot)
+      ? (record.snapshot as Record<string, unknown>)
+      : nested?.snapshot
+    const sensitive = record.sensitive === true || nested?.sensitive === true
+    if (packageName === undefined && view === undefined && webUri === undefined && title === undefined && snapshot === undefined) {
+      return undefined
+    }
+    return {
+      ...(packageName === undefined ? {} : { packageName }),
+      ...(view === undefined ? {} : { view }),
+      ...(route === undefined ? {} : { route }),
+      sensitive,
+      ...(snapshot === undefined ? {} : { snapshot }),
+      ...(webUri === undefined ? {} : { webUri }),
+      ...(title === undefined ? {} : { title }),
+      ...(text === undefined ? {} : { text }),
+    }
+  }
+
+  /** Wait for one matching `alpha-action-result` window event. @throws {never} */
+  export function listenActionResult(
+    claimId: string,
+    onResult: (event: ActionResultEvent) => void,
+  ): () => void {
+    if (typeof window === "undefined") return () => {}
+    const listener = (event: Event) => {
+      const parsed = parseActionResultEvent((event as CustomEvent<unknown>).detail)
+      if (parsed !== undefined && parsed.claimId === claimId) onResult(parsed)
+    }
+    window.addEventListener("alpha-action-result", listener)
+    return () => { window.removeEventListener("alpha-action-result", listener) }
+  }
+
+  /** Subscribe to overlay show, hide, and assist-context window events. @throws {never} */
+  export function attachOverlayEvents(handlers: {
+    readonly onShow?: (detail: OverlayShowDetail) => void
+    readonly onHide?: () => void
+    readonly onAssistContext?: (detail: AssistContextEvent) => void
+  }): () => void {
+    if (typeof window === "undefined") return () => {}
+    const onShow = (event: Event) => {
+      handlers.onShow?.(parseOverlayShowDetail((event as CustomEvent<unknown>).detail))
+    }
+    const onHide = () => {
+      handlers.onHide?.()
+    }
+    const onAssist = (event: Event) => {
+      const raw = (event as CustomEvent<unknown>).detail
+      if (typeof raw === "object" && raw !== null) handlers.onAssistContext?.(raw as AssistContextEvent)
+    }
+    window.addEventListener("alpha-overlay-show", onShow)
+    window.addEventListener("alpha-overlay-hide", onHide)
+    window.addEventListener("alpha-assist-context", onAssist)
+    return () => {
+      window.removeEventListener("alpha-overlay-show", onShow)
+      window.removeEventListener("alpha-overlay-hide", onHide)
+      window.removeEventListener("alpha-assist-context", onAssist)
+    }
+  }
+
+  const INTERACTIVE_SELECTOR = [
+    "[data-alpha-detent]",
+    "[data-alpha-top-alerts] > *",
+    "[data-alpha-toast]",
+    "[role='dialog']",
+    "[role='alertdialog']",
+  ].join(", ")
+
+  /** Measure interactive regions and focusability for the system-wide overlay surface. @throws {never} */
+  export function attachOverlayObservers(
+    root: HTMLElement,
+    onRegions: (rects: ReadonlyArray<TouchableRect>, density: number) => void,
+    onFocusable: (focusable: boolean) => void,
+  ): () => void {
+    const win = root.ownerDocument.defaultView
+    let lastRegionsKey = ""
+    let lastFocusable: boolean | undefined
+    const measure = () => {
+      const nodes = root.querySelectorAll<HTMLElement>(INTERACTIVE_SELECTOR)
+      const rects: TouchableRect[] = []
+      for (const node of nodes) {
+        if (node.hidden) continue
+        const style = win?.getComputedStyle(node)
+        if (style?.display === "none" || style?.visibility === "hidden") continue
+        const box = node.getBoundingClientRect()
+        if (box.width <= 0 || box.height <= 0) continue
+        rects.push({
+          left: Math.max(0, Math.floor(box.left)),
+          top: Math.max(0, Math.floor(box.top)),
+          right: Math.ceil(box.right),
+          bottom: Math.ceil(box.bottom),
+        })
+      }
+      const density = win?.devicePixelRatio && Number.isFinite(win.devicePixelRatio) ? win.devicePixelRatio : 1
+      const regionsKey = `${density}|${rects.map((r) => `${r.left},${r.top},${r.right},${r.bottom}`).join(";")}`
+      if (regionsKey !== lastRegionsKey) {
+        lastRegionsKey = regionsKey
+        onRegions(rects, density)
+      }
+      const detentNode = root.querySelector<HTMLElement>("[data-alpha-detent]")
+      const detent = detentNode?.dataset.alphaDetent
+      const hasTyping = detentNode?.hasAttribute("data-alpha-typing") === true
+      const hasDialog = root.querySelector("[role='dialog'], [role='alertdialog']") !== null
+      const focusable = hasDialog || hasTyping || detent === "typing" || detent === "sheet" || detent === "full"
+      if (focusable !== lastFocusable) {
+        lastFocusable = focusable
+        onFocusable(focusable)
+      }
+    }
+    const sizes = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(measure)
+    const mutations = typeof MutationObserver === "undefined" ? undefined : new MutationObserver(measure)
+    sizes?.observe(root)
+    mutations?.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "data-alpha-detent", "data-alpha-typing", "style", "class"] })
+    win?.addEventListener("resize", measure)
+    measure()
+    return () => {
+      sizes?.disconnect()
+      mutations?.disconnect()
+      win?.removeEventListener("resize", measure)
+    }
+  }
+
+  /** Listen for `alpha-intent` window events and visibility changes for a standalone app surface. @throws {never} */
+  export function attachAppListeners(
+    onVisibility: (visible: boolean) => void,
+    onIntent: (detail: AlphaIntentDetail) => void,
+  ): () => void {
+    const handleVisibility = () => {
+      onVisibility(document.visibilityState === "visible")
+    }
+    const handleIntent = (event: Event) => {
+      const detail = parseIntentDetail((event as CustomEvent<unknown>).detail)
+      if (detail !== undefined) onIntent(detail)
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+    window.addEventListener("alpha-intent", handleIntent)
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility)
+      window.removeEventListener("alpha-intent", handleIntent)
+    }
+  }
+
+  interface AlphaOverlayNativeBridge {
+    setTouchableRegions(rectsJson: string, density: number): void
+    setFocusable(focusable: boolean): void
+    dismiss(): void
+    openAppIntent(uri: string, claimId: string, payloadJson: string): boolean
+  }
+
+  /** Native JS interface injected inside `AlphaVoiceInteractionSession`'s warm WebView, if present. @throws {never} */
+  export function nativeOverlayBridge(): AlphaOverlayNativeBridge | undefined {
+    const candidate = (globalThis as { readonly AlphaOverlayNative?: AlphaOverlayNativeBridge }).AlphaOverlayNative
+    return candidate !== undefined && typeof candidate.setTouchableRegions === "function" ? candidate : undefined
+  }
+
+  /** Dispatch native assist context captured by `AlphaVoiceInteractionSession` onto `window`. @throws {never} */
+  export function emitAssistContext(detail: AssistContextEvent): void {
+    window.dispatchEvent(new CustomEvent("alpha-assist-context", { detail }))
+  }
+}
+import {
+  MAX_CONTEXT_SNAPSHOT_BYTES,
+  type ActionResultEvent,
+  type ActiveForegroundContext,
+  type AlphaIntentDetail,
+  type AlphaIntentResult,
+  type AssistContextEvent,
+  type OverlayShowDetail,
+  type TouchableRect,
+  attachAppListeners,
+  attachOverlayEvents,
+  attachOverlayObservers,
+  boundSnapshotJson,
+  contextPlugin,
+  deviceBridgePlugin,
+  emitAssistContext,
+  listenActionResult,
+  nativeOverlayBridge,
+  overlayPlugin,
+  pagePath,
+  pageTitle,
+  parseActiveForegroundContext,
+  parseOverlayShowDetail,
+} from bridge
+export { MAX_CONTEXT_SNAPSHOT_BYTES, attachOverlayEvents, parseActiveForegroundContext, parseOverlayShowDetail }
+export type { ActionResultEvent, ActiveForegroundContext, AlphaIntentDetail, AlphaIntentResult, AssistContextEvent, OverlayShowDetail, TouchableRect }
+
+const contextName = "AlphaContext"
+const overlayName = "AlphaOverlayHost"
+const deviceName = "AlphaDevice"
+
+/** Publish a bounded foreground context snapshot to `AlphaCore` when `AlphaContext` is registered. */
+export effect function publishForegroundContext(snapshot: ForegroundContextSnapshot): boolean!! {
+  if (!registered(contextName)) return false
+  return effect {
+    const reply = try tryPromise(() => contextPlugin().publish({
+      view: snapshot.view,
+      route: snapshot.route,
+      snapshot: boundSnapshotJson(snapshot.snapshotJson),
+      sensitive: snapshot.sensitive,
+      leaseMs: Math.max(1000, snapshot.leaseMs),
+    }))
+    return reply.published !== false
+  } catch () => false
+}
+
+/** Clear the active foreground context snapshot for `view` when `AlphaContext` is registered. */
+export effect function clearForegroundContext(view: View): void!! {
+  if (!registered(contextName)) return
+  try ignore(tryPromise(() => contextPlugin().clear({ view })))
+}
+
+/** Read the currently active foreground context JSON from `AlphaCore` for the Ask Alpha overlay. */
+export effect function getActiveForegroundContext(): Option.Option<string>!! {
+  if (!registered(contextName)) return Option.none()
+  const reply = tryPromise(() => contextPlugin().getActive()) catch () => undefined
+  const active = reply?.active
+  if (active === null || active === undefined) return Option.none()
+  if (typeof active === "string") return active.length > 0 ? Option.some(active) : Option.none()
+  return Option.some(JSON.stringify(active))
+}
+
+/** Reply to a signed `AGENT_OPEN` action callback via `AlphaContext`. */
+export effect function replyAlphaAction(
+  claimId: string,
+  switched: boolean,
+  resultJson: string,
+  errorCode = "",
+): boolean!! {
+  if (!registered(contextName) || claimId.length === 0) return false
+  return effect {
+    const reply = try tryPromise(() => contextPlugin().replyAction({ claimId, switched, result: resultJson, errorCode }))
+    return reply.delivered !== false
+  } catch () => false
+}
+
+/** Dismiss the system-wide Ask Alpha overlay window when `AlphaOverlayHost` or the native overlay bridge is active. */
+export effect function dismissOverlayHost(): void!! {
+  if (registered(overlayName)) {
+    try ignore(tryPromise(() => overlayPlugin().dismiss()))
+    return
+  }
+  const nativeBridge = nativeOverlayBridge()
+  if (nativeBridge !== undefined) try sync(() => { nativeBridge.dismiss() })
+}
+
+/** Open a target Alpha app via a signed `AGENT_OPEN` intent from the Ask Alpha overlay. */
+export effect function openAppViaOverlay(uri: string, claimId?: string, payloadJson?: string): boolean!! {
+  if (registered(overlayName)) {
+    const reply = tryPromise(() => overlayPlugin().openAppIntent({ uri, claimId, payloadJson })) catch () => undefined
+    return reply?.opened === true
+  }
+  const nativeBridge = nativeOverlayBridge()
+  if (nativeBridge === undefined) return false
+  return try sync(() => nativeBridge.openAppIntent(uri, claimId ?? "", payloadJson ?? ""))
+}
+
+/** Open a target Alpha app via `AGENT_OPEN` and await its `IAlphaActionCallback` receipt when `claimId` is given. */
+export effect function openAppViaOverlayAndWait(
+  uri: string,
+  claimId: string,
+  payloadJson?: string,
+  timeoutMs = 4000,
+): { readonly opened: boolean; readonly switched: boolean; readonly resultJson?: string; readonly errorCode?: string }!! {
+  if (claimId.length === 0) {
+    const opened = try openAppViaOverlay(uri, undefined, payloadJson)
+    return { opened, switched: opened }
+  }
+  const settled = try Deferred.make<ActionResultEvent>()
+  const stop = listenActionResult(claimId, (event) => {
+    Deferred.doneUnsafe(settled, Exit.succeed(event))
+  })
+  return try ensuring(effect {
+    const opened = try openAppViaOverlay(uri, claimId, payloadJson)
+    if (!opened) return { opened: false, switched: false }
+    const receipt = try Effect.timeoutOption(Deferred.await(settled), timeoutMs)
+    if (Option.isNone(receipt)) return { opened: true, switched: true }
+    return {
+      opened: true,
+      switched: receipt.value.switched,
+      ...(receipt.value.resultJson === undefined ? {} : { resultJson: receipt.value.resultJson }),
+      ...(receipt.value.errorCode === undefined ? {} : { errorCode: receipt.value.errorCode }),
+    }
+  }, sync(stop))
+}
+
+/** Open the system-wide Ask Alpha overlay from any standalone Alpha app surface. */
+export effect function openAlphaOverlay(entrySource: string, initialQuery?: string, startVoice = false): boolean!! {
+  if (!registered(deviceName)) return false
+  const open = deviceBridgePlugin().openAlphaOverlay
+  if (typeof open !== "function") return false
+  const reply = tryPromise(() => open({
+    entrySource,
+    ...(initialQuery === undefined || initialQuery.length === 0 ? {} : { initialQuery }),
+    startVoice,
+  })) catch () => undefined
+  return reply?.opened === true
+}
+
+/** Launch an allowlisted sibling thin Alpha app by view name or package name. */
+export effect function launchSiblingApp(target: string, uri?: string, extrasJson?: string): boolean!! {
+  if (!registered(deviceName) || target.length === 0) return false
+  const launch = deviceBridgePlugin().launchSiblingApp
+  if (typeof launch !== "function") return false
+  const reply = tryPromise(() => launch({
+    targetPackage: target,
+    ...(uri === undefined || uri.length === 0 ? {} : { uri }),
+    ...(extrasJson === undefined || extrasJson.length === 0 ? {} : { extrasJson }),
+  })) catch () => undefined
+  return reply?.launched === true
+}
+
+/** Wire overlay touchable regions, IME focusability, and assist-context forwarding for an overlay root element. */
+export function watchOverlaySurface(root: HTMLElement): () => void {
+  const hostPresent = registered(overlayName)
+  const nativeBridge = nativeOverlayBridge()
+  const stopObservers = attachOverlayObservers(
+    root,
+    (rects, density) => {
+      if (hostPresent) void overlayPlugin().setTouchableRegions({ rects, density }).catch(() => undefined)
+      else if (nativeBridge !== undefined) nativeBridge.setTouchableRegions(JSON.stringify(rects), density)
+    },
+    (focusable) => {
+      if (hostPresent) void overlayPlugin().setFocusable({ focusable }).catch(() => undefined)
+      else if (nativeBridge !== undefined) nativeBridge.setFocusable(focusable)
+    },
+  )
+  let active = true
+  let assistHandle: { remove(): Promise<void> } | undefined
+  if (hostPresent) {
+    void overlayPlugin().addListener("assistContext", (detail) => {
+      if (active) emitAssistContext(detail)
+    }).then((attached) => {
+      if (!active) void attached.remove()
+      else assistHandle = attached
+    }, () => undefined)
+  }
+  return () => {
+    active = false
+    stopObservers()
+    if (assistHandle !== undefined) void assistHandle.remove()
+  }
+}
+
+/** Wire foreground context publishing and signed `alpha-intent` reception for a standalone app view. */
+export function watchAppSurface(
+  view: View,
+  onIntent: (detail: AlphaIntentDetail) => Promise<AlphaIntentResult | void> | AlphaIntentResult | void,
+): () => void {
+  const present = registered(contextName)
+  const publish = () => {
+    if (!present) return
+    const snapshotJson = JSON.stringify({ view, title: pageTitle(view) })
+    void contextPlugin().publish({
+      view,
+      route: pagePath(),
+      snapshot: boundSnapshotJson(snapshotJson),
+      sensitive: false,
+      leaseMs: DEFAULT_CONTEXT_LEASE_MS,
+    }).catch(() => undefined)
+  }
+  const clear = () => {
+    if (!present) return
+    void contextPlugin().clear({ view }).catch(() => undefined)
+  }
+  publish()
+  const stopListeners = attachAppListeners((visible) => {
+    if (visible) publish()
+    else clear()
+  }, (detail) => {
+    void Promise.resolve()
+      .then(() => onIntent(detail))
+      .then((outcome) => {
+        if (!present || detail.claimId.length === 0) return
+        const switched = outcome !== undefined ? outcome.switched : true
+        const resultPayload = outcome?.result ?? { view, uri: detail.uri }
+        const errorCode = outcome?.errorCode ?? ""
+        return contextPlugin().replyAction({
+          claimId: detail.claimId,
+          switched,
+          result: JSON.stringify(resultPayload),
+          errorCode,
+        })
+      }, () => {
+        if (!present || detail.claimId.length === 0) return
+        return contextPlugin().replyAction({
+          claimId: detail.claimId,
+          switched: false,
+          result: JSON.stringify({ view, uri: detail.uri }),
+          errorCode: "IntentFailed",
+        })
+      })
+      .catch(() => undefined)
+  })
+  return () => {
+    stopListeners()
+    clear()
+  }
+}
+
+/** Finish or background a standalone Alpha app task when Back is pressed at its root. */
+export function finishThinAppTask(): void {
+  if (!registered(deviceName)) return
+  const task = deviceBridgePlugin().finishTask
+  if (typeof task === "function") void task().catch(() => undefined)
+}

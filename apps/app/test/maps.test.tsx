@@ -672,6 +672,7 @@ describe("Maps in a browser", () => {
   it('Takes a quiet fix on open that fails silently and clears one-shot GPS watches (spec/app/maps/index.md, "Opening Maps with location already allowed and nothing chosen takes one fix quietly, once a visit"; spec/app/maps/index.md, "A fix goes to whoever holds the location")', async () => {
     const world = { ...scene(), phone: true };
     world.maps.here = undefined;
+    world.platform.network.failing = true;
     const first = await openMaps(world, false);
     await until(first.alpha, first.runtime, Screen, (s) => s.link.locator !== "Nobody");
     const locating = await first.runtime.runPromise(Effect.flatMap(Screen, (screen) => screen.get()));
@@ -850,6 +851,7 @@ describe("Maps in a browser", () => {
     const world = { ...scene(), phone: true };
     world.maps.allowed = "granted"; world.maps.precision = "precise";
     world.maps.here = undefined;
+    world.platform.network.failing = true;
     const { alpha, runtime } = await onMaps(world);
     // spec/app/maps/index.md, "Opening Maps with location already allowed and nothing chosen takes one fix quietly, once a visit"
     await until(alpha, runtime, Screen, (s) => s.link.provider !== 0 && s.quiet && s.quietDone);
@@ -964,5 +966,52 @@ describe("Maps in a browser", () => {
     await hardware("back");
     await until(alpha, runtime, Screen, (s) => !s.searching && s.fromEvent === 0);
     await until(alpha, alpha.runtime, Shell, (s) => s.trail.at(-1) === "Calendar");
+  });
+
+  it(`Keeps the world basemap usable when Cloud tiles return 402 insufficient credits and installs Google on Retry without refetching the probed tile (spec/app/maps/connection.md, "Story: Serve Maps through my cloud account"; spec/app/maps/connection.md, "Google's content is drawn only on Google's own map, whose only credit is the Google Maps badge")`, async () => {
+    const world = { ...scene(), phone: true };
+    if (!world.maps.coverage.available) throw new Error("expected available coverage");
+    world.maps.coverage = {
+      ...world.maps.coverage,
+      providerId: "google",
+      sources: { data: "Google Maps", search: "Google Maps", routing: "Google Maps" },
+      capabilities: { ...world.maps.coverage.capabilities, map: true },
+      tiles: { urlTemplate: "/api/v1/maps/tiles/{z}/{x}/{y}", mapType: "roadmap", minZoom: 0, maxZoom: 22, tileSize: 256, attribution: "Google" },
+    };
+    world.maps.tilesInsufficientCredits = true;
+    const { alpha, runtime } = await openMaps(world, (s) => s.link.unoffered);
+
+    const depleted = await runtime.runPromise(Effect.flatMap(Screen, (screen) => screen.get()));
+    expect([depleted.link.provider, depleted.link.google, depleted.link.basemap, world.maps.tiles]).toEqual([0, false, "World", ["0/0/0"]]);
+    expect(document.querySelector("[role=application]")).not.toBeNull();
+    expect(document.body.textContent).toContain("Add Alpha Cloud credits to search places and get directions.");
+    expect(document.body.textContent).toContain("OpenFreeMap");
+    expect(document.body.textContent).not.toContain("Maps unavailable");
+    expect(document.body.textContent).not.toContain("The Google map is missing.");
+
+    world.maps.tilesInsufficientCredits = false;
+    await press("Retry");
+    await until(alpha, runtime, Screen, (s) => s.link.provider !== 0 && s.link.google && s.link.basemap === "Cloud");
+    expect(world.maps.tiles).toEqual(["0/0/0", "0/0/0"]);
+    const cached = await runtime.runPromise(tile(0, 0, 0, new AbortController().signal));
+    expect([cached.byteLength > 0, world.maps.tiles]).toEqual([true, ["0/0/0", "0/0/0"]]);
+    expect(document.body.textContent).not.toContain("Add Alpha Cloud credits");
+  });
+
+  it(`Falls back to AlphaNetworkLocation after 4 seconds indoors and offsets the search bar by the safe top inset (spec/app/maps/connection.md, "Story: Use my location")`, async () => {
+    const world = { ...scene(), phone: true };
+    world.maps.allowed = "granted";
+    world.maps.precision = "precise";
+    world.maps.here = undefined;
+    const { alpha, runtime } = await openMaps(world, (s) => s.link.provider !== 0 && s.link.location.grant === "Granted" && s.quiet);
+
+    const searchBox = document.querySelector<HTMLInputElement>("input[aria-label='Search Maps']")?.closest("form");
+    expect(searchBox?.className).toContain("var(--alpha-safe-top)");
+
+    await later(alpha, 4_000);
+    await until(alpha, runtime, Screen, (s) => !s.quiet && s.link.locator === "Nobody");
+    const store = await runtime.runPromise(Atlas);
+    expect([world.platform.network.asked.length, store.snapshot().here]).toEqual([1, { at: { lat: 51_500_000, lng: -120_000 }, accuracy: 40, approximate: true }]);
+    expect(document.body.textContent).not.toContain("No location fix arrived.");
   });
 });

@@ -1,0 +1,26 @@
+// spec/app/slack/auth.md, "OAuth callback verifies the state nonce and exchanges the secret code and PKCE verifier; only user tokens (`UserToken`) are admitted"
+module web {
+  import { Capacitor } from "@capacitor/core"
+
+  const browserPath = "/alpha-slack-return"
+  const channelName = "alpha-slack-oauth"
+
+  /** Same-origin reply registered for browser consent. @throws {never} */
+  export function browserSlackReturn(): string { return new URL(browserPath, window.location.origin).href }
+
+  /** Same-origin browser returns contain the code or refusal, and no token. @throws {never} */
+  export function returnChannel(): BroadcastChannel { return new BroadcastChannel(channelName) }
+
+  /** Return a consent tab to its opener's waiting resident and remove the one-use code from browser history. @throws {never} */
+  export function deliverSlackReturn(): boolean {
+    if (Capacitor.isNativePlatform() || (window.location.pathname !== browserPath && window.location.pathname !== `${browserPath}.html`)) return false
+    const query = new URLSearchParams(window.location.search)
+    window.history.replaceState(null, "", browserPath)
+    const channel = returnChannel()
+    channel.postMessage({ state: query.get("state"), code: query.get("code") ?? "", error: query.get("error") ?? "" })
+    channel.close()
+    window.close()
+    return true
+  }
+}
+export { browserSlackReturn, deliverSlackReturn, returnChannel } from web

@@ -9,7 +9,9 @@ take back (the area that raised it and its number there), and stays until
 that area withdraws it, because the change can no longer be undone, or
 Undo is tapped. How long the change stays undoable is the area's: it
 sets the window from `duration` here at the scale this layer reads. A toast only
-passes the tap on.
+passes the tap on. An Undo toast takes a tap only on its Undo: a tap anywhere
+else on it reaches what is under it, so it never stands in the way of a row
+or a control beneath.
 
 ## Story: Read a toast before it goes
 

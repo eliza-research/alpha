@@ -1,0 +1,84 @@
+// spec/app/slack/auth.md, "Story: Connect and manage my Slack workspaces with user tokens only"; spec/app/telegram/auth.md, "Story: Sign in to my Telegram user account"
+import { MessagingSessions, SavedGrant, type StoredSecret, sameCredential, secretOf } from "./messaging.vibe"
+import { CLOUD_ENVIRONMENT, signInAccounts } from "./voice.vibe"
+import { Vault, type MessagingSlot } from "./vault.vibe"
+
+const stored = Schema.fromJsonString(Schema.Struct({
+  grants: Schema.Array(SavedGrant),
+  migratedFrom: Schema.optionalKey(Schema.String),
+}))
+const slackSlot: MessagingSlot = "messaging-sessions:slack:v2"
+const telegramSlot: MessagingSlot = "messaging-sessions:telegram:v2"
+
+function slotOf(key: string): MessagingSlot | undefined {
+  if (key === "telegram:user") return telegramSlot
+  return key.startsWith("slack:") ? slackSlot : undefined
+}
+
+function pack(owner: string, key: string, grant: StoredSecret): SavedGrant {
+  const { accessToken, refreshToken, ...metadata } = grant
+  return { ...metadata, owner, key, access: Redacted.value(accessToken),
+    ...(refreshToken === undefined ? {} : { refresh: Redacted.value(refreshToken) }) }
+}
+
+function unpack(grant: SavedGrant): StoredSecret {
+  const { owner: _owner, key: _key, access, refresh, ...metadata } = grant
+  return { ...metadata, ...secretOf(access, refresh) }
+}
+
+/** The signed-in owner's messaging grants, replaced against the exact encrypted record read by each operation. */
+export const phoneMessagingSessions = Layer.effect(MessagingSessions, effect {
+  const vault = try Vault
+  const owner = effect () => {
+    const status = timeout(tryPromise(() => signInAccounts().status({ environment: CLOUD_ENVIRONMENT })), "5 seconds") catch () => undefined
+    const account = status?.account
+    return account?.kind === "signedIn" && account.keyExpiresAt > (try Clock.currentTimeMillis)
+      ? JSON.stringify([CLOUD_ENVIRONMENT, account.organizationId, account.userId]) : undefined
+  }
+  const read = effect (slot: MessagingSlot) => {
+    const found = vault.read(slot) catch () => undefined
+    if (found === undefined) return undefined
+    const before = Option.getOrNull(found)
+    const saved = before === null ? { grants: [] } : Option.getOrUndefined(Schema.decodeUnknownOption(stored)(Redacted.value(before)))
+    return saved === undefined ? undefined : { before, ...saved }
+  }
+  const update = effect (key: string, expected: StoredSecret | undefined, next: StoredSecret | undefined, expectedOwner?: string): boolean!! => {
+    const binding = try owner()
+    if (binding === undefined || (expectedOwner !== undefined && expectedOwner !== binding)) return false
+    const slot = slotOf(key)
+    if (slot === undefined) return false
+    for (;;) {
+      const record = try read(slot)
+      if (record === undefined) return false
+      const prior = record.grants.find((entry) => entry.owner === binding && entry.key === key)
+      if (expected !== undefined && (prior === undefined || !sameCredential(unpack(prior), expected))) return false
+      if (next === undefined && prior === undefined) return true
+      const kept = record.grants.filter((entry) => entry.owner !== binding || entry.key !== key)
+      if (next !== undefined) kept.push(pack(binding, key, next))
+      const replacement = Redacted.make(JSON.stringify({ grants: kept, migratedFrom: record.migratedFrom }))
+      const result = vault.compareAndExchange(slot, record.before, replacement) catch () => undefined
+      if (result !== "conflict") return result === "saved" && binding === (try owner())
+      if (binding !== (try owner())) return false
+    }
+  }
+  return {
+    owner,
+    effect get(key: string, expectedOwner?: string) {
+      const binding = try owner()
+      if (binding === undefined || (expectedOwner !== undefined && expectedOwner !== binding)) return Option.none()
+      const slot = slotOf(key)
+      if (slot === undefined) return Option.none()
+      const entry = (try read(slot))?.grants.find((grant) => grant.owner === binding && grant.key === key)
+      return entry === undefined || binding !== (try owner()) ? Option.none() : Option.some(unpack(entry))
+    },
+    set: (key: string, grant: StoredSecret, expectedOwner?: string) => update(key, undefined, grant, expectedOwner),
+    exchange: (key: string, expected: StoredSecret, next: StoredSecret | undefined, expectedOwner?: string) => update(key, expected, next, expectedOwner),
+    delete: (key: string, expectedOwner?: string) => update(key, undefined, undefined, expectedOwner),
+    effect keys() {
+      const binding = try owner()
+      if (binding === undefined) return []
+      const records = try Effect.all([read(slackSlot), read(telegramSlot)])
+      return binding !== (try owner()) ? [] : records.flatMap((record) => record?.grants.filter((grant) => grant.owner === binding).map((grant) => grant.key) ?? [])
+    },
+  }
+})

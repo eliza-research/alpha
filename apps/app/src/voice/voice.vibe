@@ -5,7 +5,7 @@ import { Machine as Conversation, type Context as Screen } from "../../gen/app__
 import { Machine as Chats } from "../../gen/app__assistant__chats.effect.vibe"
 import { sendsOpenDocument } from "../../gen/app__assistant__context.effect.vibe"
 import { cueBoundMs, replyWaitMs, type Cue } from "../../gen/app__assistant__reply.effect.vibe"
-import { Machine as Phone, clear, type Telecom } from "../../gen/app__phone.effect.vibe"
+import { Machine as Phone, clear, liveCall } from "../../gen/app__phone.effect.vibe"
 import * as Shell from "../../gen/app__shell.effect.vibe"
 import * as Layers from "../../gen/app__shell__layers.effect.vibe"
 import * as Voice from "../../gen/app__voice.effect.vibe"
@@ -18,15 +18,14 @@ import { MediaReview, proposedReview, ranDirect, sameFiles } from "../assistant/
 import { Talk, type Attached, type DraftSeat } from "../assistant/talk.vibe"
 import type { MessageSmsRequest } from "../messages/agent-sim.vibe"
 import { SystemSettings, classifyVoiceFault, interruptedByCall, refusedForFunds, type NativePageSpeech, type VoiceEvent, type VoicePreview, VoiceBridge } from "../platform/index.vibe"
-import type { Machine as Toasts } from "../../gen/app__notices__toasts.effect.vibe"
-import { type Said, say } from "../notices/index.vibe"
 import { fresh } from "../runtime/index.vibe"
-import { type Job, answer, applying, contained, due, following, hearing, reacting, run, started, stream, together, untimed } from "../runtime/index.vibe"
+import { type Job, Time, answer, applying, contained, due, following, hearing, reacting, run, started, stream, together, untimed } from "../runtime/index.vibe"
 import { createShelf } from "../runtime/index.vibe"
 import { signedIn } from "./account.vibe"
 import { replyBlocks } from "../assistant/words.ts"
 import { replyWords } from "@repo/ui"
 import { dictationClock } from "./dictation-clock.vibe"
+import { development } from "../settings/build.ts"
 
 interface SpokenNavigation {
   readonly session: number
@@ -61,7 +60,20 @@ export type SpokenChatContext = Agent | VoiceWords | Voice.Machine | Shell.Machi
 interface SpokenChat {
   readonly context: Context.Context<SpokenChatContext>
   readonly writer: Semaphore.Semaphore
+  /** Whether no typed message, request or conversation being made holds the posting place now. */
+  readonly free: boolean!!
+  /** Each change after which the posting place may be free, from the moment it is run. */
+  readonly changes: Stream.Stream<void>
   readonly begin: (session: number, turn: number, current: boolean!!) => (SpokenChatLease | undefined)!!
+}
+
+/** Where a heard Talk turn ended without the agent asked, or with nothing said aloud. */
+export type TalkTurnGuard = "NothingHeard" | "TurnRetired" | "WaitExpired" | "NoChat" | "NoSeat" | "DraftInBlankChat" | "ChatNotMade"
+  | "RecordMissing" | "SelectionMoved" | "LeaseRefused" | "SendFailed" | "ReplyStale" | "PlaybackFailed"
+
+/** Names, in a development build's log and nowhere else, the guard that ended a heard Talk turn unsent or unsaid, so a device run shows which one fired. */
+export effect function noteTalkTurn(guard: TalkTurnGuard, session: number, turn: number, detail?: string): void!! {
+  if (development()) try logInfo(`talk turn ${session}:${turn} ended at ${guard}${detail === undefined ? "" : ` (${detail})`}`)
 }
 
 export interface InterimWords {
@@ -468,6 +480,16 @@ module pure {
     return text.replaceAll(".", "·")
   }
 
+  /** What kind of failure ended a Talk turn, by its tag or class alone, never its message. @throws {never} */
+  export function failureName(failure: unknown, depth = 0): string {
+    if (typeof failure !== "object" || failure === null) return typeof failure
+    const tag: unknown = Reflect.get(failure, "_tag")
+    const cause: unknown = Reflect.get(failure, "cause")
+    if (typeof tag === "string") return cause === undefined || depth >= 3 ? tag : `${tag} from ${failureName(cause, depth + 1)}`
+    const made: unknown = Reflect.get(failure, "constructor")
+    return typeof made === "function" ? made.name : "object"
+  }
+
   /** Returns complete written sentences and how much of the unchanged input they consumed. @throws {never} */
   export function takeCompleteSentences(buffer: string, final: boolean): { readonly ready: readonly string[]; readonly consumed: number } {
     const scan = (final ? buffer : buffer
@@ -528,7 +550,7 @@ module pure {
       .replace(/\s+/g, " ")
   }
 }
-import { speakableText, spokenForm, takeCompleteSentences } from pure
+import { failureName, speakableText, spokenForm, takeCompleteSentences } from pure
 export { speakableText, spokenForm }
 
 interface VoicePost {
@@ -746,7 +768,8 @@ effect function postVoiceTurn({ session, turn, queue, lease, spoken }: VoicePost
     : origin !== undefined && (try review.filesOrigin(true))?.route === origin.route)
   const direct = enrolled !== undefined && readyToSend && (try atSource) ? enrolled : undefined
   const refused: VoiceCompletion = { type: "replyEnds", session, turn, asks: false, says: true }
-  if (!(try lease.verified) || !(try currentRequest)) return refused
+  const refusedAt = (guard: TalkTurnGuard) => Effect.as(noteTalkTurn(guard, session, turn), refused)
+  if (!(try lease.verified) || !(try currentRequest)) return try refusedAt("LeaseRefused")
   if (chat?.snapshot().failure?.kind === "OutOfFunds") chat.change({ failure: undefined })
   const admittedScreen = direct === undefined ? sameScreen : try atSource
   const sent = effect (directTurn: typeof direct) => {
@@ -757,7 +780,10 @@ effect function postVoiceTurn({ session, turn, queue, lease, spoken }: VoicePost
       : enrolled !== undefined && (try atSource) ? try review.turnHeaders(enrolled, false) : undefined
     return tryPromise(() => controller.send({
       text: spoken, channelType: "VOICE_DM", ...(images.length === 0 ? {} : { images }), ...(Object.keys(metadata).length === 0 ? {} : { metadata }),
-    }, { stream: output.hooks, ...(headers === undefined ? {} : { headers }) })) catch () => undefined
+    }, { stream: output.hooks, ...(headers === undefined ? {} : { headers }) })) catch effect (failure) => {
+      try noteTalkTurn("SendFailed", session, turn, failureName(failure))
+      return undefined
+    }
   }
   const retired = Stream.merge(lease.retired, Stream.as(Stream.filter(voice.changes, (current) => !Voice.canSentence(current, session, turn)), undefined))
   const stopped = Effect.as(Stream.runHead(retired), undefined)
@@ -770,7 +796,7 @@ effect function postVoiceTurn({ session, turn, queue, lease, spoken }: VoicePost
     if (controller.pending) try stopActive()
     else settled = true
   })
-  if (!(try currentRequest)) return refused
+  if (!(try currentRequest)) return try refusedAt("ReplyStale")
   if (isCloudFundsRefusal(result)) {
     memory.lastReply = ""
     return try stopForFunds(session, turn, result?.kind === "AgentFailed" ? result.reply?.messageId : undefined)
@@ -878,7 +904,7 @@ effect function postVoiceTurn({ session, turn, queue, lease, spoken }: VoicePost
   return { type: "replyEnds", session, turn, asks, says }
 }
 
-// spec/app/assistant/context.md, "A spoken turn carries what a typed turn sent at that moment would, the view claim included"
+// spec/app/assistant/context.md, "A spoken turn carries what a typed turn sent at that moment would, the view claim included"; spec/app/voice/index.md, "A heard turn waits for the send in hand, is sent once after it, and is given up quietly only after 30 s"
 function sendVoiceTurn(session: number, turn: number): Stream.Stream<Voice.Event, never, Agent | VoiceWords | Voice.Machine | Shell.Machine> {
   const send = (queue: Queue.Queue<Voice.Event, Cause.Done>, shared: SpokenChat) => effect {
     const { memory } = try VoiceWords
@@ -887,24 +913,36 @@ function sendVoiceTurn(session: number, turn: number): Stream.Stream<Voice.Event
     memory.setHeard(undefined)
     const spoken = heard?.session === session && heard.turn === turn ? heard.text.trim() : ""
     // spec/app/voice/index.md, "A reply that needs the owner's review in chat keeps voice listening with the microphone open": every spoken turn goes to the agent, and a review is decided only by the owner's touch on it.
-    const finishLocally = () => {
+    const finishLocally = (guard?: TalkTurnGuard) => effect {
+      if (guard !== undefined) try noteTalkTurn(guard, session, turn)
       Queue.offerUnsafe(queue, { type: "replyEnds", session, turn, asks: false, says: true })
       Queue.endUnsafe(queue)
     }
-    const state = try voice.get()
-    if (spoken === "" || !Voice.canSentence(state, session, turn)) {
-      finishLocally()
-      return
-    }
+    if (spoken === "") return try finishLocally("NothingHeard")
+    if (!Voice.canSentence(try voice.get(), session, turn)) return try finishLocally("TurnRetired")
     const current = effect { return Voice.canSentence(try voice.get(), session, turn) }
-    const carried = try shared.writer.withPermitsIfAvailable(1)(effect {
-      const abandoned = Effect.as(Stream.runHead(Stream.filter(voice.changes, (state) => !Voice.canSentence(state, session, turn))), undefined)
-      const lease = try Effect.raceFirst(shared.begin(session, turn, current), abandoned)
-      if (lease === undefined) return { type: "replyEnds", session, turn, asks: false, says: true } as const
-      return try postVoiceTurn({ session, turn, queue, lease, spoken })
-    })
-    if (Option.isNone(carried)) { finishLocally(); return }
-    if (carried.value !== undefined) Queue.offerUnsafe(queue, carried.value)
+    const decided = try Deferred.make<void>()
+    const unlessDecided = (guard: TalkTurnGuard) => effect {
+      return (try Deferred.succeed(decided, undefined)) ? guard : try Effect.never
+    }
+    const retired = Stream.runHead(Stream.filter(voice.changes, (state) => !Voice.canSentence(state, session, turn)))
+    const abandoned = Effect.andThen(retired, unlessDecided("TurnRetired"))
+    const expired = Effect.andThen(Effect.sleep(Voice.spokenTurnWaitMs), unlessDecided("WaitExpired"))
+    const taken = effect {
+      if (!(try shared.free)) return undefined
+      return try shared.writer.withPermits(1)(effect {
+        if (!(try shared.free)) return undefined
+        if (!(try Deferred.succeed(decided, undefined))) return try Effect.never
+        const lease = try Effect.raceFirst(shared.begin(session, turn, current), Effect.as(retired, "TurnRetired" as const))
+        if (lease === "TurnRetired" || lease === undefined) return lease ?? "NoChat" as const
+        return { completion: try postVoiceTurn({ session, turn, queue, lease, spoken }) }
+      })
+    }
+    const posted = Effect.map(Stream.runHead(Stream.filter(Stream.mapEffect(shared.changes, () => taken), (outcome) => outcome !== undefined)),
+      (outcome) => Option.isSome(outcome) && outcome.value !== undefined ? outcome.value : "NoChat" as const)
+    const carried = try Effect.raceFirst(posted, Effect.raceFirst(abandoned, expired))
+    if (typeof carried === "string") return try finishLocally(carried === "NoChat" ? undefined : carried)
+    if (carried.completion !== undefined) Queue.offerUnsafe(queue, carried.completion)
     Queue.endUnsafe(queue)
   }
   return Stream.callback<Voice.Event, never, VoiceWords>((queue) => effect {
@@ -914,6 +952,7 @@ function sendVoiceTurn(session: number, turn: number): Stream.Stream<Voice.Event
       try Effect.ensuring(Effect.provideContext(send(queue, shared), shared.context), sync(() => memory.retireSaid(session, turn)))
       return
     }
+    try noteTalkTurn("NoChat", session, turn)
     memory.setHeard(undefined)
     memory.retireSaid(session, turn)
     Queue.offerUnsafe(queue, { type: "replyEnds", session, turn, asks: false, says: true })
@@ -989,7 +1028,7 @@ effect function dictationVisible(): boolean!!(Device | Layers.Machine | VoiceBri
   return try (try VoiceBridge).dictationForeground()
 }
 
-function carryVoice(fx: Voice.Effect): Job<Voice.Event, Agent | Device | Layers.Machine | VoiceBridge | VoiceWords | SystemSettings | Shell.Machine | Voice.Machine | Toasts | Said, []> {
+function carryVoice(fx: Voice.Effect): Job<Voice.Event, Agent | Device | Layers.Machine | VoiceBridge | VoiceWords | SystemSettings | Shell.Machine | Voice.Machine | Time, []> {
   return match (fx) {
     when { tag: "Prewarm", let network }: run("prewarm", effect { try (try VoiceBridge).prewarm(network) });
     when { tag: "HoldEngine" }: run("holdEngine", effect { try (try VoiceBridge).holdEngine() });
@@ -1067,7 +1106,9 @@ function carryVoice(fx: Voice.Effect): Job<Voice.Event, Agent | Device | Layers.
           }
           if (!(try current)) return
         }
-        try ignore(bridge.playSentence(session, turn, piece.text, append))
+        bridge.playSentence(session, turn, piece.text, append) catch effect (failure) => {
+          try noteTalkTurn("PlaybackFailed", session, turn, failureName(failure))
+        }
       })
       const playing = heard
       if (playing !== undefined) try Effect.promise(() => playing.ended)
@@ -1088,7 +1129,11 @@ function carryVoice(fx: Voice.Effect): Job<Voice.Event, Agent | Device | Layers.
       const confirmed = try (try VoiceBridge).shut(session)
       return { type: "stopped", confirmed }
     }, { type: "stopped", confirmed: false });
-    when { tag: "SayCallEnded" }: run("call notice", say("Voice paused for a phone call."));
+    when { tag: "Release", let afterMs }: answer("release", effect {
+      const time = try Time
+      if (afterMs > 0) try time.until((try time.now()) + afterMs)
+      return { type: "released", confirmed: try (try VoiceBridge).release(), afterMs }
+    }, { type: "released", confirmed: false, afterMs });
     when { tag: "Navigate", let session, let turn, let place, let sourceRoute }: run("spoken navigation", navigateLeased(session, turn, place, sourceRoute));
     when { tag: "CheckDictation", let ticket }: answer("check dictation recognition", effect {
       const voice = try Voice.Machine
@@ -1138,10 +1183,6 @@ const autoPrewarm = started(effect {
   })
 }, "auto-prewarming voice")
 
-function liveCall(telecom: Telecom): boolean {
-  return telecom === "OrdinaryCall" || telecom === "MaybeEmergencyCall"
-}
-
 const visibility = started(effect {
   const device = try Device
   const bridge = try VoiceBridge
@@ -1150,7 +1191,7 @@ const visibility = started(effect {
   try Stream.runForEach(device.visible, effect (shown) => {
     if (shown) {
       try bridge.invalidateCache()
-      if (phone !== undefined && liveCall((try phone.get()).telecom)) {
+      if (phone !== undefined && liveCall(try phone.get())) {
         const { session } = try voice.get()
         try contained(voice.send({ type: "callInterrupted", session, foreground: true }), "identifying the call on return")
       }
@@ -1178,13 +1219,13 @@ const navigation = started(effect {
   })
 }, "voice observing shell navigation")
 
-// spec/app/voice/index.md, "A phone call ends Talk and Alpha tells the owner once"
+// spec/app/voice/index.md, "A phone call ends Talk quietly, and only the owner starts it again"
 export const voiceWithCalls = started(effect {
   const phone = try Phone
   const device = try Device
   const voice = try Voice.Machine
   const { memory } = try VoiceWords
-  const calls = Stream.changes(Stream.map(phone.changes, (state) => liveCall(state.telecom)))
+  const calls = Stream.changes(Stream.map(phone.changes, liveCall))
   try Stream.runForEach(Stream.zipLatest(calls, voice.changes), effect ([live, speech]) => {
     if (!live) return
     if (speech.recorder.field === "MessagesBar" && Voice.canCloseRecorder(speech)) {

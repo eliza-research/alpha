@@ -26,10 +26,11 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  WalletQr,
 } from "@repo/ui";
 import { Effect, type ManagedRuntime } from "effect";
 import { ArrowLeft, Bell, BellOff, LogOut, MessageSquare, MoreVertical, RefreshCw } from "lucide-react";
-import { type ReactNode, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useState } from "react";
 import type { Machine as ChatListMachine } from "../../gen/app__telegram.effect.vibe";
 import { type Filter } from "../../gen/app__telegram.ts";
 import { useMachine as useChatList } from "../../gen/app__telegram.react.ts";
@@ -41,14 +42,16 @@ import { useMachine as useComposer } from "../../gen/app__telegram__composer.rea
 import type { Machine as ConversationMachine } from "../../gen/app__telegram__conversation.effect.vibe";
 import { composable } from "../../gen/app__telegram__conversation.ts";
 import { useMachine as useConversation } from "../../gen/app__telegram__conversation.react.ts";
+import { useMachine as useNotices } from "../../gen/app__telegram__notices.react.ts";
 import type { Machine as NoticesMachine } from "../../gen/app__telegram__notices.effect.vibe";
-import type { TelegramDialogSummary } from "../platform/index.vibe";
+import { MessagingNotices, type MessagingSessions, Telegram, type TelegramDialogSummary } from "../platform/index.vibe";
+import { useTelegramSnapshot } from "./Notice.tsx";
+import { openTelegramNotice } from "./notices.vibe";
 import { useTimed } from "../runtime/ui.tsx";
 import { swapComposerTarget } from "../messaging/composer.ts";
 import { untimed } from "../runtime/index.vibe";
 import { Time } from "../runtime/index.vibe";
 import {
-  type TelegramSnapshot,
   TelegramStore,
   chatKindOf,
   dialogTitle,
@@ -59,7 +62,7 @@ import {
 export interface TelegramScreenProps {
   /** Runtime supplying Telegram's auth, chat list, conversation, composer, notices, store, and clock services. */
   runtime: ManagedRuntime.ManagedRuntime<
-    AuthMachine | ChatListMachine | ConversationMachine | ComposerMachine | NoticesMachine | TelegramStore | Time,
+    AuthMachine | ChatListMachine | ConversationMachine | ComposerMachine | NoticesMachine | TelegramStore | Telegram | MessagingSessions | MessagingNotices | Time,
     unknown
   >;
   onBack?: (() => void) | undefined;
@@ -82,11 +85,6 @@ const QUICK_REACTION = "👍";
 
 function withStore<A>(runtime: Runtime, fn: (store: TelegramStore["Service"]) => Effect.Effect<A>): A {
   return runtime.runSync(Effect.flatMap(TelegramStore, fn));
-}
-
-function useTelegramSnapshot(runtime: Runtime): TelegramSnapshot {
-  const store = withStore(runtime, (service) => Effect.succeed(service));
-  return useSyncExternalStore((listener) => store.subscribe(listener), () => store.snapshot(), () => store.snapshot());
 }
 
 function formatUnixTime(seconds: number): string {
@@ -273,6 +271,7 @@ function AuthFlow({ runtime, onBack }: { runtime: Runtime; onBack?: (() => void)
     );
   }
 
+  const retry = { type: "startQr", now: untimed, online: true } as const;
   const back = { type: "backToPhone" } as const;
   return (
     <AuthScreen state={state}>
@@ -282,14 +281,14 @@ function AuthFlow({ runtime, onBack }: { runtime: Runtime; onBack?: (() => void)
         subtitle="Open Telegram on another device, go to Settings > Devices > Link Desktop Device, and approve this code."
         error={errorText}
         waitNotice={waitNotice}
+        primaryAction={can(retry) ? { label: "Get a new code", onClick: () => { void send(retry); } } : undefined}
         onBack={can(back) ? () => { void send(back); } : undefined}
         secondaryAction={can(back) ? { label: "Use phone number", onClick: () => { void send(back); } } : undefined}
       >
         <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-secondary p-4 text-center">
-          <Spinner label="Waiting for QR approval" />
-          {snap.auth.qrLoginUrl ? (
-            <p data-telegram-qr-url className="font-mono text-xs break-all text-muted-foreground">{snap.auth.qrLoginUrl}</p>
-          ) : null}
+          {state.qrExpiresAt > 0 && snap.auth.qrLoginUrl ? (
+            <WalletQr value={snap.auth.qrLoginUrl} label="Telegram sign-in QR code" />
+          ) : busy ? <Spinner label="Getting Telegram sign-in code" /> : null}
         </div>
       </AuthStepFrame>
     </AuthScreen>
@@ -327,6 +326,7 @@ function ChatListView({
 }) {
   const list = useChatList(runtime);
   const conv = useConversation(runtime);
+  const notices = useNotices(runtime);
   const snap = useTelegramSnapshot(runtime);
   const [searchInput, setSearchInput] = useState("");
   if (!list.state) return null;
@@ -383,6 +383,22 @@ function ChatListView({
         </>
       }
     >
+      {runtime.runSync(Effect.map(MessagingNotices, (host) => host.native)) ? (
+        <Button variant="ghost" onClick={() => void runtime.runPromise(Effect.flatMap(MessagingNotices, (host) => host.configure("telegram")))}>
+          {notices.state?.notifyAllowed ? "Notification settings" : "Enable Telegram notifications"}
+        </Button>
+      ) : null}
+      {snap.notices.length > 0 ? (
+        <ul aria-label="Telegram notifications">
+          {snap.notices.map((notice) => (
+            <li key={notice.peerKey}>
+              <Button variant="ghost" onClick={() => void runtime.runPromise(openTelegramNotice(notice.scope, notice.peerKey))}>
+                {notice.title} · {notice.excerpt}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <SearchField
         aria-label="Search Telegram"
         placeholder="Search messages and chats"
@@ -753,6 +769,16 @@ export function TelegramScreen({ runtime, onBack }: TelegramScreenProps) {
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   if (auth.cause) return <Alert variant="destructive" className="m-4">Alpha could not open Telegram</Alert>;
   if (!auth.state) return null;
+  if (runtime.runSync(Effect.map(Telegram, (client) => client.accountAccess)) === "officialWeb") {
+    return (
+      <Screen title="Telegram" data-alpha-sensitive="true" leading={onBack ? <Button variant="ghost" size="icon" aria-label="Back" onClick={onBack}><ArrowLeft /></Button> : null}>
+        <div className="flex flex-col items-start gap-3 p-4">
+          <p className="text-sm text-muted-foreground">The built-in Telegram connection is unavailable on this phone.</p>
+          <Button asChild><a href="https://web.telegram.org/a/" rel="noreferrer">Open Telegram Web</a></Button>
+        </div>
+      </Screen>
+    );
+  }
   if (auth.state.step !== "Authenticated") {
     return <AuthFlow runtime={runtime} onBack={onBack} />;
   }

@@ -1468,6 +1468,8 @@ pure val amountValues = Set(0, 1)`;
       "gen/traces/a.b.0/0.itf.json": [false, false], "generated/stories/.cache/manifest.json": [false, false], "spec/a.md": [false, false], "spec/lock.json": [true, false],
       "spec/a.proof.dfy": [true, false], "src/a.proof.dfy": [true, false],
     }, "the tests read the package, its test fixtures, what its workspace dependencies ship to it and the fixtures they keep; the typecheck reads only scripts and JSON, and no traces or counterexamples; neither reads a spec's prose or its Quint copy, the prose kept for people and agents, the simulations' traces or the stories' bookkeeping");
+    fs.writeFileSync(path.join(workspace, "kit/a.ts"), 'export const fixture = `import "./gen/a.ts"; export * from "./gen/a.ts"`;\n');
+    assert.deepEqual(changed("kit/gen/a.ts"), [false, false], "a dependency's fixture source does not import the generated module it describes");
     fs.writeFileSync(path.join(workspace, "kit/a.ts"), 'export * from "./gen/a.ts";\n');
     assert.deepEqual(changed("kit/gen/a.ts"), [true, true], "a dependency's gen/ is read once its code imports it");
     fs.writeFileSync(path.join(workspace, "kit/package.json"), '{"dependencies":{"linked":"link:../runtime"}}');

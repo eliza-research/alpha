@@ -475,7 +475,9 @@ live. A send whose outcome is unknown is read back instead, including when
 the phone can no longer send. A new send seals the draft's saved revision
 and waits for any earlier confirmed draft clear. Send goes to the open
 conversation's own numbers, exactly as the phone listed them for that
-conversation, never to a number typed or named elsewhere.
+conversation, never to a number typed or named elsewhere. A draft that
+dictation made longer than the phone sends in one text is kept whole, and
+Send waits until the owner shortens it.
 
 ```quint
 pure def ready(c: Composer, supported: bool, clear: bool): bool =

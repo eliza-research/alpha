@@ -61,7 +61,7 @@ export function CalendarMonthPanel({ month, year, months, years, onMonth, onYear
             const owner = event.currentTarget instanceof HTMLElement ? event.currentTarget.ownerDocument : document;
             if (owner.activeElement === owner.body) onRestoreFocus?.();
           }}
-          className={cn("absolute inset-x-0 top-11 box-border max-h-[calc(100%_-_4rem)] overflow-auto rounded-sheet border border-border/60 bg-popover px-4 pt-3 pb-5 text-popover-foreground shadow-md outline-none dark:border-border", wide && "mx-auto max-w-140")}>
+          className={cn("absolute inset-x-0 top-[calc(var(--alpha-safe-top)+--spacing(11))] box-border max-h-[calc(100%_-_var(--alpha-safe-top)_-_4rem)] overflow-auto rounded-sheet border border-border/60 bg-popover px-4 pt-3 pb-5 text-popover-foreground shadow-md outline-none in-data-[alpha-launcher]:top-[calc(max(--spacing(11),var(--alpha-safe-top))+--spacing(11))] in-data-[alpha-launcher]:max-h-[calc(100%_-_max(--spacing(11),var(--alpha-safe-top))_-_4rem)] dark:border-border", wide && "mx-auto max-w-140")}>
           <Dialog.Title className="sr-only">Choose calendar date</Dialog.Title>
           <div className="mb-3 flex items-center gap-1">
             <select aria-label="Calendar month" value={month} onChange={(event) => onMonth(Number(event.target.value))} className={cn(select, "flex-1")}>

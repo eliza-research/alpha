@@ -1,4 +1,92 @@
 export { commands } from "./commands/index.ts";
+export type { AlphaNextSubcommand } from "./commands/alpha-next.ts";
+export {
+  REQUIRED_CORE_COMPONENTS,
+  assertSafeEmulatorSerial,
+  buildEmulatorPlan,
+  extractPackageUid,
+  inspectAccessibilityDump,
+  inspectControlTelemetry,
+  inspectCorePackageDump,
+  inspectCrossAppIpcLog,
+  inspectLauncherActivities,
+  inspectThinAppLaunchLog,
+  inspectVoiceAndOverlayDump,
+  resolveAndroidAvdHome,
+  resolveInstalledBlockedGuards,
+  sortApksCoreFirst,
+  type AccessibilityInspection,
+  type ControlTelemetryInspection,
+  type CorePackageInspection,
+  type CrossAppIpcInspection,
+  type EmulatorE2eReport,
+  type EmulatorStageResult,
+  type EmulatorToolchainPlan,
+  type LauncherActivityInspection,
+  type ThinAppLaunchInspection,
+  type VoiceOverlayInspection,
+} from "./commands/alpha-next-emulator.ts";
+export {
+  buildGcpAospPlan,
+  isGcpAospAction,
+  renderGcpBootstrapScript,
+  type GcpAospAction,
+  type GcpAospFlags,
+  type GcpAospPlan,
+  type GcpAospReport,
+  type GcpMachineProfile,
+} from "./commands/alpha-next-gcp-aosp.ts";
+export {
+  buildPixelDeploySteps,
+  evaluatePixelCompatibility,
+  parsePixelPackageSummary,
+  type InstalledCoreSummary,
+  type LocalSuiteApkSummary,
+  type PixelCompatibilityReport,
+  type PixelDeployFlags,
+  type PixelDeployReport,
+  type PixelDeviceInspection,
+} from "./commands/alpha-next-pixel-deploy.ts";
+export {
+  buildWalkthroughPlan,
+  type CapturedArtifact,
+  type WalkthroughAction,
+  type WalkthroughPlan,
+  type WalkthroughReport,
+} from "./commands/alpha-next-walkthrough.ts";
+export {
+  WALKTHROUGH_VIEWS,
+  buildStoryboardHtml,
+  buildWalkthroughStoryboard,
+  type WalkthroughChapterSpec,
+  type WalkthroughRenderReport,
+  type WalkthroughVideoMetadata,
+  type WalkthroughViewDescriptor,
+} from "./commands/alpha-next-walkthrough-render.ts";
+export {
+  cssLengthToDp,
+  generateAndroidResources,
+  oklchToHex,
+  parseAlphaDesignTokens,
+  renderAlphaFontsXml,
+  type DpLength,
+  type FontAssetStatus,
+  type GeneratedFontAsset,
+  type GeneratedResource,
+  type HexColor,
+  type ParsedDesignTokens,
+  type SyncFontsReport,
+  type SyncTokensReport,
+  type TokenSyncTarget,
+} from "./commands/alpha-next-tokens.ts";
+export {
+  scanSecurityInvariants,
+  validateSuiteManifest,
+  type Aapt2CheckResult,
+  type SecurityInvariantResult,
+  type SuiteManifestReport,
+  type ValidateReport,
+} from "./commands/alpha-next-validate.ts";
 export {
   defineCommand,
   runCli,

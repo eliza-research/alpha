@@ -19,7 +19,7 @@ import java.util.Map;
  * password surface opens.
  */
 @CapacitorPlugin(name = "ElizaCloudSpeech", permissions = { @Permission(alias = "microphone", strings = { Manifest.permission.RECORD_AUDIO }) })
-public final class AlphaCloudSpeechPlugin extends SpeechStreamBridgePlugin {
+public class AlphaCloudSpeechPlugin extends SpeechStreamBridgePlugin {
  private static final String SIGN_IN = "ElizaSignIn";
  private AlphaCloudSpeechAuthority authority;
  private final PasswordSurfaces.Listener secretSurface = visible -> { if (visible) retireSpeechAuthority(); };
@@ -56,6 +56,10 @@ public final class AlphaCloudSpeechPlugin extends SpeechStreamBridgePlugin {
 
  @Override protected String diagnosticFormat() { return "alpha-cloud-stream-timing-v1"; }
 
+ void onOverlayResume() { handleOnResume(); }
+ void onOverlayPause() { handleOnPause(); }
+ void onOverlayDestroy() { handleOnDestroy(); }
+
  private Map<String, String> origins() {
   Map<String, String> origins = new HashMap<>();
   try {
@@ -63,13 +67,29 @@ public final class AlphaCloudSpeechPlugin extends SpeechStreamBridgePlugin {
    com.getcapacitor.CapConfig capConfig = bridge == null ? null : bridge.getConfig();
    com.getcapacitor.PluginConfig pluginConfig = capConfig == null ? null : capConfig.getPluginConfiguration(SIGN_IN);
    org.json.JSONObject json = pluginConfig == null ? null : pluginConfig.getConfigJSON();
-   if (json == null) return origins;
-   String config = json.toString();
-   for (SignInRegistration.Environment environment : SignInRegistration.parse(CredentialJson.object(CredentialJson.parse(config), SIGN_IN)).environments())
-    origins.put(environment.name, environment.apiOrigin);
+   if (json == null) json = loadSignInConfigFromAssets();
+   if (json != null) {
+    String config = json.toString();
+    for (SignInRegistration.Environment environment : SignInRegistration.parse(CredentialJson.object(CredentialJson.parse(config), SIGN_IN)).environments())
+     origins.put(environment.name, environment.apiOrigin);
+   }
   } catch (IllegalArgumentException | NullPointerException refused) {
    origins.clear();
   }
+  if (origins.isEmpty() && BuildConfig.CLOUD_API_ORIGIN != null && !BuildConfig.CLOUD_API_ORIGIN.isBlank()) {
+   origins.put("production", BuildConfig.CLOUD_API_ORIGIN);
+  }
   return origins;
+ }
+
+ private org.json.JSONObject loadSignInConfigFromAssets() {
+  try (java.io.InputStream in = getContext().getAssets().open("capacitor.config.json")) {
+   byte[] bytes = AlphaUtil.readBounded(in, 256 * 1024, null);
+   org.json.JSONObject root = new org.json.JSONObject(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+   org.json.JSONObject plugins = root.optJSONObject("plugins");
+   return plugins == null ? null : plugins.optJSONObject(SIGN_IN);
+  } catch (Exception unavailable) {
+   return null;
+  }
  }
 }

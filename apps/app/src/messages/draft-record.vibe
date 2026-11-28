@@ -1,5 +1,5 @@
 // spec/app/messages/composer.md, "Story: Keep my draft"; spec/app/messages/composer.md, "The owner attaches up to five pictures, and removes them one by one"
-import { MMS_ATTACHMENT_TYPES, MMS_MAX_ATTACHMENTS, MMS_MAX_BODY, MMS_MAX_RECIPIENTS, MMS_MAX_TOTAL_BYTES, normalizePhoneNumber, operationIdOf, threadIdOf, type MmsAttachmentType, type OperationId, type PhoneNumber, type ThreadId } from "@elizaos/os-bridges"
+import { MMS_ATTACHMENT_TYPES, MMS_MAX_ATTACHMENTS, MMS_MAX_RECIPIENTS, MMS_MAX_TOTAL_BYTES, normalizePhoneNumber, operationIdOf, threadIdOf, type MmsAttachmentType, type OperationId, type PhoneNumber, type ThreadId } from "@elizaos/os-bridges"
 import type { Author } from "../../gen/app__messages__composer.effect.vibe"
 import type { SmsDraftSlot } from "../platform/index.vibe"
 
@@ -46,7 +46,7 @@ const contents = {
   version: Schema.Literal(2),
   revision,
   author: Schema.Literals(["Nobody", "OwnerWrote", "AlphaWrote"]),
-  body: Schema.String.check(Schema.isMaxLength(MMS_MAX_BODY)),
+  body: Schema.String,
   pictures: Schema.Array(picture).check(Schema.isMaxLength(MMS_MAX_ATTACHMENTS)),
   completedOperation: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(128))),
 }

@@ -2,6 +2,7 @@
 import type * as KeyValueStore from "effect/persistence/KeyValueStore"
 import * as Timers from "../../gen/app__clock__timers.effect.vibe"
 import type { Event, Timer } from "../../gen/app__clock__timers.effect.vibe"
+import { clockRecordId } from "../platform/index.vibe"
 import { contained, due, reacting, untimed, Time } from "../runtime/index.vibe"
 import { persistClockMeta } from "./alarms.vibe"
 import { activeClockRecords } from "./shelf.vibe"
@@ -20,7 +21,9 @@ export effect function createTimer(durationMs: number, label: string, autoStart 
   const nextId = (try machine.get()).issued + 1
   const hadPrior = records.snapshot().timers.has(nextId)
   const prior = records.timer(nextId)
-  records.setTimer(nextId, { label: label.trim(), remoteId: `timer-${nextId}`, updatedAtMs: now })
+  const unique = clockRecordId()
+  if (unique === undefined) return 0
+  records.setTimer(nextId, { label: label.trim(), remoteId: `timer-${unique}`, updatedAtMs: now })
   const sent = try contained(machine.send({ type: "create", durationMs, autoStart, at: untimed }), "creating a timer")
   if (!sent) {
     if (hadPrior) records.setTimer(nextId, prior)

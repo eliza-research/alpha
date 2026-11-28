@@ -23,7 +23,6 @@ import org.json.JSONObject;
 public final class AlphaAssistantDraftPlugin extends Plugin {
  private static final Pattern ID = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_-]{0,127}");
  private static final int RAW_LIMIT = 256 * 1024;
- private static final long MAX_REVISION = 9_007_199_254_740_991L;
  private final ExecutorService drafts = Executors.newSingleThreadExecutor();
 
  @PluginMethod public void read(PluginCall call) { drafts.execute(() -> perform(call, false)); }
@@ -36,41 +35,46 @@ public final class AlphaAssistantDraftPlugin extends Plugin {
  }
 
  private void perform(PluginCall call, boolean exchange) {
+  call.resolve(execute(getContext(), call.getData(), exchange));
+ }
+
+ /** Executes a bound assistant draft read or compare-and-exchange against native custody. */
+ public static JSObject execute(android.content.Context context, JSONObject data, boolean exchange) {
   try {
-   var reader = new AlphaAgentCredentials(getContext()).reader();
+   var reader = new AlphaAgentCredentials(context).reader();
    if (!(reader instanceof DeviceCredentialStore store)) {
-    call.resolve(result("unavailable"));
-    return;
+    return result("unavailable");
    }
    var session = new ResidentDigestChannel(store, store::generation).openAccount();
-   if (session.epoch() != call.getLong("epoch", 0L)
-     || !session.scope().ownerId().equals(call.getString("owner"))
-     || !session.scope().agentId().equals(call.getString("agent"))) {
-    call.resolve(result("denied"));
-    return;
+   long epoch = data.optLong("epoch", 0L);
+   String owner = data.has("owner") && !data.isNull("owner") ? data.optString("owner", null) : null;
+   String agent = data.has("agent") && !data.isNull("agent") ? data.optString("agent", null) : null;
+   if (session.epoch() != epoch
+     || !session.scope().ownerId().equals(owner)
+     || !session.scope().agentId().equals(agent)) {
+    return result("denied");
    }
 
-   String conversation = call.getString("conversation");
-   String room = call.getString("room");
-   if (call.getData().has("conversation") != (conversation != null)
-     || call.getData().has("room") != (room != null)
+   String conversation = data.has("conversation") && !data.isNull("conversation") ? data.optString("conversation", null) : null;
+   String room = data.has("room") && !data.isNull("room") ? data.optString("room", null) : null;
+   if (data.has("conversation") != (conversation != null)
+     || data.has("room") != (room != null)
      || (conversation == null) != (room == null)
      || conversation != null && (!ID.matcher(conversation).matches() || !ID.matcher(room).matches())) {
-    call.resolve(result("denied"));
-    return;
+    return result("denied");
    }
    String slot = slot(session, conversation, room);
    synchronized (AgentService.channel().policy()) {
     session.check();
-    SecureSlots slots = SecureSlots.forHost(getContext());
-    JSObject answer = exchange ? exchange(slots, slot, call) : read(slots, slot);
+    SecureSlots slots = SecureSlots.forHost(context);
+    JSObject answer = exchange ? exchange(slots, slot, data) : read(slots, slot);
     session.check();
-    call.resolve(answer);
+    return answer;
    }
   } catch (SecurityException denied) {
-   call.resolve(result("denied"));
+   return result("denied");
   } catch (Exception unavailable) {
-   call.resolve(result(exchange ? "failure" : "unavailable"));
+   return result(exchange ? "failure" : "unavailable");
   }
  }
 
@@ -93,20 +97,13 @@ public final class AlphaAssistantDraftPlugin extends Plugin {
   };
  }
 
- private static JSObject exchange(SecureSlots slots, String slot, PluginCall call) throws Exception {
-  String expected = call.getString("expected");
-  String next = call.getString("next");
-  if (call.getData().has("expected") != (expected != null)
-    || call.getData().has("next") != (next != null)) return result("denied");
+ private static JSObject exchange(SecureSlots slots, String slot, JSONObject data) throws Exception {
+  String expected = data.has("expected") && !data.isNull("expected") ? data.optString("expected", null) : null;
+  String next = data.has("next") && !data.isNull("next") ? data.optString("next", null) : null;
+  if (data.has("expected") != (expected != null)
+    || data.has("next") != (next != null)) return result("denied");
   if (expected != null && expected.getBytes(StandardCharsets.UTF_8).length > RAW_LIMIT) return result("denied");
-  if (next != null) {
-   if (next.getBytes(StandardCharsets.UTF_8).length > RAW_LIMIT) return result("denied");
-   JSONObject row = new JSONObject(next);
-   Object revision = row.opt("revision");
-   if (row.length() != 3 || !(revision instanceof Integer || revision instanceof Long)
-     || row.getLong("revision") < 1 || row.getLong("revision") > MAX_REVISION
-     || !(row.opt("sending") instanceof Boolean) || !(row.opt("text") instanceof String)) return result("denied");
-  }
+  if (next != null && (next.getBytes(StandardCharsets.UTF_8).length > RAW_LIMIT || !AlphaDraftRow.admits(next))) return result("denied");
   return switch (slots.compareAndExchange(Caller.NativeCaller, slot, expected, next)) {
    case Written, Removed -> result("landed");
    case Conflict -> result("conflict");

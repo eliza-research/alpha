@@ -1,19 +1,19 @@
 {
   "key": "alpha/app/telegram/notices@1",
   "spec": "spec/app/telegram/notices.md",
-  "shape": "0ff7fb04aa9f5b7b",
+  "shape": "b652d84aa3b7b200",
   "sealed": {
-    "shape": "0ff7fb04aa9f5b7b",
-    "state": "985361e51d64c29d"
+    "shape": "b652d84aa3b7b200",
+    "state": "a965c079d485af9d"
   },
   "state": {
     "authenticated": true,
-    "notifyAllowed": true,
+    "notifyAllowed": false,
     "check": {
-      "status": "Idle",
-      "ticket": 0
+      "status": "Loading",
+      "ticket": 3
     },
-    "since": 0,
+    "since": 12,
     "frontChat": 0,
     "muted": [
       5
@@ -21,9 +21,51 @@
     "archived": [
       6
     ],
-    "upChats": [
-      7
-    ],
-    "posts": 0
-  }
+    "upChats": [],
+    "posts": 2
+  },
+  "kept": [
+    "check.ticket",
+    "posts"
+  ],
+  "earlier": [
+    {
+      "from": "1948b6abd0",
+      "until": "2a75bfa704",
+      "state": {
+        "authenticated": true,
+        "notifyAllowed": true,
+        "check": {
+          "status": "Idle",
+          "ticket": 0
+        },
+        "since": 0,
+        "frontChat": 0,
+        "muted": [
+          5
+        ],
+        "archived": [
+          6
+        ],
+        "upChats": [
+          7
+        ],
+        "posts": 0
+      },
+      "reads": {
+        "authenticated": false,
+        "notifyAllowed": false,
+        "check": {
+          "status": "Idle",
+          "ticket": 0
+        },
+        "since": 0,
+        "frontChat": 0,
+        "muted": [],
+        "archived": [],
+        "upChats": [],
+        "posts": 0
+      }
+    }
+  ]
 }

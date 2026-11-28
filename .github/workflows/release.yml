@@ -1,7 +1,7 @@
 name: release
 
-# Alpha's launcher release (spec/release/index.md, `pnpm release` in apps/app). A push to main builds an
-# unsigned candidate numbered by its run, mirrors it privately with its signing plan, and stops. The release
+# Alpha's launcher release (spec/release/index.md, `pnpm release` in apps/app). A branch push builds
+# an unsigned candidate, mirrors it privately with its signing plan, and stops. The release
 # owner reads the plan and dispatches this workflow with the candidate's run and the plan's digest: the
 # protected `release` environment signs exactly that plan's APK with Alpha's one key, delivers it with a
 # receipt, records its voice qualification, and publishes the APK first, its anonymous download verified,
@@ -47,6 +47,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
         with:
           packages: platform-tools platforms;android-36 build-tools;36.0.0 ndk;28.2.13676358 cmake;3.22.1
@@ -62,18 +63,32 @@ jobs:
       - name: Prepare the pinned Eliza packages
         run: |
           pnpm eliza
+      - name: Assign the launcher version code
+        id: version
+        shell: bash
+        run: |
+          version_base=1000
+          version_code=$((version_base + GITHUB_RUN_NUMBER))
+          if (( version_code > 2100000000 )); then
+            echo 'The launcher version code exceeds the Android limit.' >&2
+            exit 1
+          fi
+          printf 'code=%s\n' "$version_code" >> "$GITHUB_OUTPUT"
       - run: pnpm --filter @repo/app android build --release
         env:
-          ELIZAOS_VERSION_CODE: ${{ github.run_number }}
+          TELEGRAM_API_ID: ${{ vars.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          ELIZAOS_VERSION_CODE: ${{ steps.version.outputs.code }}
       - name: Build the candidate, mirror it and plan its signing
         working-directory: apps/app
         env:
           GH_TOKEN: ${{ github.token }}
+          ELIZAOS_VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
           private="$RUNNER_TEMP/candidate"
           mkdir -p "$private"
           pnpm -s release upstream --out "$private/upstream.json"
-          pnpm -s release candidate --run "$private/run.json" --number "${{ github.run_number }}" --attempt "${{ github.run_attempt }}" --apk-manifest artifacts/apk-manifest.json --upstream "$private/upstream.json"
+          pnpm -s release candidate --run "$private/run.json" --number "$ELIZAOS_VERSION_CODE" --attempt "$GITHUB_RUN_ATTEMPT" --apk-manifest artifacts/apk-manifest.json --upstream "$private/upstream.json"
           pnpm -s release mirror --run "$private/run.json" --apk artifacts/launcher-release-unsigned.apk --to "$private"
           pnpm -s release plan --run "$private/run.json" --apk artifacts/launcher-release-unsigned.apk --out "$private/plan.json" | tee "$private/plan-answer.json"
           echo "Signing plan: \`$(node -p 'require(process.argv[1]).planSha256' "$private/plan-answer.json")\`" >> "$GITHUB_STEP_SUMMARY"

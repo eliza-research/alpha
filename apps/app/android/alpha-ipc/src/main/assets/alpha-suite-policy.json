@@ -1,0 +1,361 @@
+{
+  "schemaVersion": 1,
+  "corePackage": "ai.alphacompute.alphaphone",
+  "ipcPermission": "ai.alphacompute.permission.AGENT_IPC",
+  "apps": [
+    {
+      "id": "core",
+      "view": null,
+      "surface": "overlay",
+      "applicationId": "ai.alphacompute.alphaphone",
+      "allowedAgentRoutePrefixes": [
+        "*"
+      ],
+      "allowedCloudRoutePrefixes": [
+        "*"
+      ],
+      "allowedSecureStoreSlots": [
+        "*"
+      ],
+      "imageOnly": false
+    },
+    {
+      "id": "phone",
+      "view": "Phone",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.phone",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": true
+    },
+    {
+      "id": "messages",
+      "view": "Messages",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.messages",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/messages/reply-draft",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [
+        "sms-draft:v2:*",
+        "sms-outgoing:v2:device"
+      ],
+      "imageOnly": true
+    },
+    {
+      "id": "contacts",
+      "view": "Contacts",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.contacts",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": true
+    },
+    {
+      "id": "browser",
+      "view": "Browser",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.browser",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "inbox",
+      "view": "Inbox",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.inbox",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [
+        "/api/v1/user",
+        "/api/v1/eliza/google/status",
+        "/api/v1/eliza/google/accounts",
+        "/api/v1/eliza/google/connect/initiate",
+        "/api/v1/eliza/google/disconnect",
+        "/api/v1/eliza/google/gmail/"
+      ],
+      "allowedSecureStoreSlots": [
+        "inbox-saved-bodies"
+      ],
+      "imageOnly": false
+    },
+    {
+      "id": "telegram",
+      "view": "Telegram",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.telegram",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/messages/reply-draft",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [
+        "messaging-sessions:telegram:v2"
+      ],
+      "imageOnly": false
+    },
+    {
+      "id": "slack",
+      "view": "Slack",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.slack",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/messages/reply-draft",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [
+        "messaging-sessions:slack:v2"
+      ],
+      "imageOnly": false
+    },
+    {
+      "id": "calendar",
+      "view": "Calendar",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.calendar",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/lifeops/calendar",
+        "/api/approvals",
+        "/api/notes/",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [
+        "/api/v1/user",
+        "/api/v1/eliza/google/status",
+        "/api/v1/eliza/google/accounts",
+        "/api/v1/eliza/google/calendar/"
+      ],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "clock",
+      "view": "Clock",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.clock",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/alpha/clock",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "reminders",
+      "view": "Reminders",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.reminders",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/alpha/reminders",
+        "/api/scheduled-tasks",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "camera",
+      "view": "Camera",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.camera",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "photos",
+      "view": "Photos",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.photos",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "maps",
+      "view": "Maps",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.maps",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [
+        "/api/v1/user",
+        "/api/v1/maps/"
+      ],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "notes",
+      "view": "Notes",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.notes",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/notes/",
+        "/api/alpha/notes/",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [
+        "notes-draft:*",
+        "notes-folders:*"
+      ],
+      "imageOnly": false
+    },
+    {
+      "id": "files",
+      "view": "Files",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.files",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/notes/",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "workflows",
+      "view": "Workflows",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.workflows",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/workflow/",
+        "/api/triggers",
+        "/api/scheduled-tasks",
+        "/api/notifications",
+        "/api/approvals",
+        "/api/notes/",
+        "/api/lifeops/calendar",
+        "/api/alpha/reminders",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "wallet",
+      "view": "Wallet",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.wallet",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/wallet",
+        "/api/approvals",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    },
+    {
+      "id": "settings",
+      "view": "Settings",
+      "surface": "app",
+      "applicationId": "ai.alphacompute.settings",
+      "allowedAgentRoutePrefixes": [
+        "/api/health",
+        "/api/status",
+        "/api/auth/me",
+        "/api/approvals",
+        "/api/notifications",
+        "/api/conversations",
+        "/api/agents",
+        "/api/turns/",
+        "/api/lifeops/calendar",
+        "/api/alpha/local-llm",
+        "/api/views/",
+        "/api/client-devices/"
+      ],
+      "allowedCloudRoutePrefixes": [
+        "/api/v1/user",
+        "/api/v1/referrals",
+        "/api/v1/subscriptions/",
+        "/api/v1/subscription/",
+        "/api/v1/billing/",
+        "/api/v1/eliza/google/"
+      ],
+      "allowedSecureStoreSlots": [],
+      "imageOnly": false
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import { type AddressInfo, createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { prepared } from "./checkout.ts";
 import { builtPack } from "./pack.ts";
 
@@ -104,6 +104,38 @@ const client = { clientId: "ai.alphacompute.alphaphone", displayName: "Alpha", a
 function owned(directory: string) {
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   return directory;
+}
+
+const legacyAccount = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({
+  account: Schema.Struct({ userId: Schema.String, organizationId: Schema.String }),
+})));
+
+/** Private state and custody for one developer account. A previous unscoped store belongs to its recorded owner. */
+export function keptAgentState(state: string, account: Pick<DeviceKey, "accountId" | "organizationId">) {
+  const scope = createHash("sha256").update(JSON.stringify([account.accountId, account.organizationId])).digest("hex");
+  const directory = owned(path.join(state, ".alpha-custody", scope));
+  const legacy = path.join(state, "launch.json");
+  const previous = fs.existsSync(legacy) ? legacyAccount(fs.readFileSync(legacy, "utf8")).account : undefined;
+  const original = previous?.userId === account.accountId && previous.organizationId === account.organizationId;
+  const home = owned(path.join(original ? state : directory, "agent"));
+  const target = path.join(directory, "storage.key");
+  if (!fs.existsSync(target)) {
+    if (fs.existsSync(path.join(home, "wallet", "keys.sealed"))) {
+      throw new Error("This development wallet needs its original storage key. Restore its private custody directory or choose a fresh development state directory.");
+    }
+    const staged = path.join(directory, `${base64url(randomBytes(16))}.key`);
+    fs.writeFileSync(staged, randomBytes(32), { mode: 0o600, flag: "wx", flush: true });
+    try {
+      fs.linkSync(staged, target);
+    } catch (cause) {
+      if (!(cause instanceof Error && "code" in cause && cause.code === "EEXIST")) throw cause;
+    } finally {
+      fs.unlinkSync(staged);
+    }
+  }
+  const held = fs.readFileSync(target);
+  if (held.length !== 32) throw new Error("The development storage key is damaged. Restore its original private custody directory.");
+  return { home, launch: path.join(directory, "launch.json"), storageKey: base64url(held) };
 }
 
 /** A fresh state directory, for one run. */
@@ -584,7 +616,9 @@ export async function startAgent(state: string, cloud: Cloud, key: DeviceKey, ch
   persist: boolean, browserNotesSpeech?: string, timeZone?: string,
 ): Promise<Agent> {
   const pack = await builtPack();
-  const launch = path.join(owned(state), "launch.json");
+  const { home, launch, storageKey } = persist ? keptAgentState(state, key) : {
+    home: owned(path.join(state, "agent")), launch: path.join(state, "launch.json"), storageKey: base64url(randomBytes(32)),
+  };
   fs.writeFileSync(launch, JSON.stringify({
     schema: 1,
     character,
@@ -600,7 +634,6 @@ export async function startAgent(state: string, cloud: Cloud, key: DeviceKey, ch
   }), { mode: 0o600 });
   const token = base64url(randomBytes(32));
   const port = await freePort();
-  const home = owned(path.join(state, "agent"));
   const child = spawn(node, [pack.bundle, "serve", "--launch", launch, "--state", home, "--http", `127.0.0.1:${port}`], {
     env: { PATH: process.env.PATH, HOME: home, TMPDIR: home, TZ: timeZone ?? "UTC", NODE_EXTRA_CA_CERTS: cloud.caFile },
     stdio: ["pipe", "ignore", "pipe"],
@@ -608,7 +641,7 @@ export async function startAgent(state: string, cloud: Cloud, key: DeviceKey, ch
   children.add(child);
   let errors = "";
   child.stderr.setEncoding("utf8").on("data", (text: string) => { errors = appendRing(errors, text); });
-  child.stdin.end(`${JSON.stringify({ version: 1, token, epoch: Date.now(), credential: { version: 1, value: key.token }, storageKey: base64url(randomBytes(32)) })}\n`);
+  child.stdin.end(`${JSON.stringify({ version: 1, token, epoch: Date.now(), credential: { version: 1, value: key.token }, storageKey })}\n`);
   const origin = `http://127.0.0.1:${port}`;
   try {
     await awaitChildService(child, `${origin}/api/health`, "the agent", () => errors);

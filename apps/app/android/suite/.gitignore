@@ -1,0 +1,6 @@
+.gradle/
+build/
+generated/
+out/
+thin-app/build/
+thin-app/src/*/assets/

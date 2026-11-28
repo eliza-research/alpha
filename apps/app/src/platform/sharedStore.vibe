@@ -1,0 +1,141 @@
+// spec/app/settings/preferences.md, "Story: Keep my preferences through a restart"; spec/kit/attempt.md, "A retry keeps the number of the attempt it retries"
+import * as KeyValueStore from "effect/persistence/KeyValueStore"
+import { subscribePluginListener } from "./capacitor.ts"
+import { registered } from "./device.vibe"
+
+/** Keys synchronized across AlphaCore and every standalone Alpha app through `AlphaPreferences`. */
+export const SHARED_PREFERENCE_KEYS = [
+  "alpha.appearance",
+  "alpha.preferences",
+  "alpha.textScale",
+  "alpha.install",
+  "alpha.aiMode",
+  "alpha.localModel",
+] as const
+
+/** Earlier read-only migration keys resolved through `AlphaPreferences` when present. */
+export const SHARED_MIGRATION_KEYS = [
+  "alpha.appearance.v1",
+  "alpha.browser.device.v1",
+] as const
+
+const writeKeys: ReadonlySet<string> = new Set<string>(SHARED_PREFERENCE_KEYS)
+const readKeys: ReadonlySet<string> = new Set<string>([...SHARED_PREFERENCE_KEYS, ...SHARED_MIGRATION_KEYS])
+
+/** Whether `key` is read from `AlphaPreferences` when that plugin is registered. */
+export function isSharedPreferenceReadKey(key: string): boolean {
+  return readKeys.has(key)
+}
+
+/** Whether `key` is written to and removed from `AlphaPreferences` when that plugin is registered. */
+export function isSharedPreferenceWriteKey(key: string): boolean {
+  return writeKeys.has(key)
+}
+
+module bridge {
+  import { plugin as capacitorPlugin } from "./capacitor.ts"
+
+  /** Payload emitted by `AlphaPreferences` when another Alpha app changes a shared preference key. */
+  export interface SharedPreferenceChange {
+    readonly key: string | null
+    readonly value: string | null
+  }
+
+  interface AlphaPreferencesPlugin {
+    get(options: { readonly key: string }): Promise<{ readonly value?: string | null }>
+    set(options: { readonly key: string; readonly value: string }): Promise<void>
+    remove(options: { readonly key: string }): Promise<void>
+    snapshot(): Promise<{ readonly values?: Record<string, string> }>
+    addListener(
+      eventName: "changed",
+      listener: (event: SharedPreferenceChange) => void,
+    ): Promise<{ remove(): Promise<void> }>
+  }
+
+  let cached: AlphaPreferencesPlugin | undefined
+
+  /** Capacitor proxy for `AlphaPreferences`, created once per page. @throws {never} */
+  export function preferencesPlugin(): AlphaPreferencesPlugin {
+    return (cached ??= capacitorPlugin<AlphaPreferencesPlugin>("AlphaPreferences"))
+  }
+
+  /** Encode UTF-8 text into bytes for `KeyValueStore.getUint8Array`. @throws {never} */
+  export function encodeUtf8(value: string): Uint8Array {
+    return new TextEncoder().encode(value)
+  }
+
+  /** Decode UTF-8 bytes into text for `KeyValueStore.set`. @throws {never} */
+  export function decodeUtf8(value: Uint8Array): string {
+    return new TextDecoder().decode(value)
+  }
+}
+import { type SharedPreferenceChange, decodeUtf8, encodeUtf8, preferencesPlugin } from bridge
+export type { SharedPreferenceChange }
+
+const pluginName = "AlphaPreferences"
+
+function storeError(method: string, key: string | undefined, cause: unknown): KeyValueStore.KeyValueStoreError {
+  const message = cause instanceof Error ? cause.message : String(cause)
+  return new KeyValueStore.KeyValueStoreError({ method, ...(key === undefined ? {} : { key }), message, cause })
+}
+
+/**
+ * Split `KeyValueStore` Layer: routes only the allowlisted shared keys to `AlphaPreferences` when
+ * registered, keeping every app-private key in `local`. Returns `local` unchanged off-device or in monolith builds.
+ */
+export function sharedStore(
+  local: Layer.Layer<KeyValueStore.KeyValueStore>,
+): Layer.Layer<KeyValueStore.KeyValueStore> {
+  return Layer.unwrap(sync(() => {
+    if (!registered(pluginName)) return local
+    const remote = preferencesPlugin()
+    return Layer.provide(
+      Layer.effect(KeyValueStore.KeyValueStore, effect {
+        const localStore = try KeyValueStore.KeyValueStore
+        const remoteGet = (key: string) => tryPromise({
+          try: () => remote.get({ key }).then((reply) => (typeof reply.value === "string" ? reply.value : undefined)),
+          catch: (cause) => storeError("get", key, cause),
+        })
+        const remoteSet = (key: string, value: string) => tryPromise({
+          try: () => remote.set({ key, value }),
+          catch: (cause) => storeError("set", key, cause),
+        })
+        const remoteRemove = (key: string) => tryPromise({
+          try: () => remote.remove({ key }),
+          catch: (cause) => storeError("remove", key, cause),
+        })
+        const remoteKeys = () => tryPromise({
+          try: () => remote.snapshot().then((reply) => Object.keys(reply.values ?? {})),
+          catch: (cause) => storeError("keys", undefined, cause),
+        })
+        const mergedKeys = effect {
+          const own = try localStore.keys
+          const shared = remoteKeys() catch () => [] as ReadonlyArray<string>
+          return [...new Set([...own, ...shared])]
+        }
+        return KeyValueStore.make({
+          get: (key) => (isSharedPreferenceReadKey(key) ? remoteGet(key) : localStore.get(key)),
+          getUint8Array: (key) => (isSharedPreferenceReadKey(key)
+            ? Effect.map(remoteGet(key), (value) => (value === undefined ? undefined : encodeUtf8(value)))
+            : localStore.getUint8Array(key)),
+          set: (key, value) => (isSharedPreferenceWriteKey(key)
+            ? remoteSet(key, typeof value === "string" ? value : decodeUtf8(value))
+            : localStore.set(key, value)),
+          remove: (key) => (isSharedPreferenceWriteKey(key) ? remoteRemove(key) : localStore.remove(key)),
+          clear: localStore.clear,
+          keys: mergedKeys,
+          size: Effect.map(mergedKeys, (list) => list.length),
+        })
+      }),
+      local,
+    )
+  }))
+}
+
+/** Subscribe to cross-app shared preference updates when `AlphaPreferences` is registered. */
+export function subscribeSharedPreferences(onChange: (change: SharedPreferenceChange) => void): () => void {
+  if (!registered(pluginName)) return () => {}
+  return subscribePluginListener((isActive) => preferencesPlugin().addListener("changed", (event) => {
+    if (isActive()) onChange(event)
+  }))
+}

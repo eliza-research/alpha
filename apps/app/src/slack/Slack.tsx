@@ -1,4 +1,6 @@
 // spec/app/slack/index.md, "Story: Switch workspaces and browse Slack conversations with strict isolation"; spec/app/slack/auth.md, "Story: Connect and manage my Slack workspaces with user tokens only"; spec/app/slack/conversation.md, "Story: Read Slack channels and threaded replies accurately"; spec/app/slack/composer.md, "Story: Draft and send Slack messages and thread replies safely"
+import { useSlackLedger } from "./Notice.tsx";
+import { configureSlackNotices, openSlackNotice } from "./notice-targets.vibe";
 import {
   type AuthScopeItem,
   AppHeader,
@@ -28,9 +30,9 @@ import {
   TabsList,
   TabsTrigger,
 } from "@repo/ui";
-import { Effect, type ManagedRuntime } from "effect";
+import type { ManagedRuntime } from "effect";
 import { ArrowLeft, Bell, BellOff, ChevronDown, Hash, LogOut, MessageSquare, Plus, RefreshCw } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import type { Machine as WorkspacesMachine, Section } from "../../gen/app__slack.effect.vibe";
 import { useMachine as useWorkspaces } from "../../gen/app__slack.react.ts";
 import type { Machine as AgentMachine } from "../../gen/app__slack__agent.effect.vibe";
@@ -40,25 +42,26 @@ import type { Machine as ComposerMachine } from "../../gen/app__slack__composer.
 import { useMachine as useComposer } from "../../gen/app__slack__composer.react.ts";
 import type { Machine as ConversationMachine } from "../../gen/app__slack__conversation.effect.vibe";
 import { useMachine as useConversation } from "../../gen/app__slack__conversation.react.ts";
+import { useMachine as useNotices } from "../../gen/app__slack__notices.react.ts";
 import type { Machine as NoticesMachine } from "../../gen/app__slack__notices.effect.vibe";
-import type { SlackChannelSummary, SlackMessage, SlackUser } from "../platform/index.vibe";
+import { type MessagingSessions, type MessagingNotices, type Slack, native, type SlackChannelSummary, type SlackMessage, type SlackUser } from "../platform/index.vibe";
 import { useTimed } from "../runtime/ui.tsx";
 import { swapComposerTarget } from "../messaging/composer.ts";
 import { untimed } from "../runtime/index.vibe";
 import type { Time } from "../runtime/index.vibe";
 import {
   type SlackLedgerStore,
-  SlackLedger,
+  type SlackLedger,
   type WorkspaceMeta,
   channelTitleOf,
   convKindOf,
   formatSlackTs,
-  userNameOf,
+  messageSenderName,
 } from "./ledger.vibe";
 
 /** Minimum Effect runtime services required by `SlackScreen`. */
 export type SlackRuntime = ManagedRuntime.ManagedRuntime<
-  AuthMachine | WorkspacesMachine | ConversationMachine | ComposerMachine | AgentMachine | NoticesMachine | SlackLedger | Time,
+  AuthMachine | WorkspacesMachine | ConversationMachine | ComposerMachine | AgentMachine | NoticesMachine | SlackLedger | Slack | MessagingNotices | MessagingSessions | Time,
   unknown
 >;
 
@@ -68,15 +71,15 @@ export interface SlackScreenProps {
 }
 
 const SLACK_CONSENT_SCOPES: AuthScopeItem[] = [
-  { scope: "channels:read · channels:history", description: "Browse public channels and read their messages" },
-  { scope: "groups:read · groups:history", description: "Browse private channels and read their messages" },
-  { scope: "im:read · im:history · mpim:read", description: "Read direct messages and group DMs" },
-  { scope: "chat:write · reactions:write", description: "Send, edit, delete messages and toggle reactions as you" },
+  { scope: "channels:read · channels:history · channels:write", description: "Browse public channels, read messages and mark them as read" },
+  { scope: "groups:read · groups:history · groups:write", description: "Browse private channels, read messages and mark them as read" },
+  { scope: "im:read · im:history · im:write · mpim:read · mpim:history · mpim:write", description: "Open, read and mark direct messages and group DMs" },
+  { scope: "chat:write · reactions:read · reactions:write", description: "Send, edit, delete messages and toggle reactions as you" },
   { scope: "search:read · users:read · team:read", description: "Search workspace messages and show workspace member names" },
 ];
 
 const TROUBLE_MESSAGES: Partial<Record<Trouble, string>> = {
-  BotTokenRejected: "Bot tokens (xoxb-) are not supported. Connect with your Slack user account (xoxp-).",
+  BotTokenRejected: "Slack issued a different kind of token. Connect with your personal Slack account.",
   StateMismatch: "OAuth state mismatch. Please start connecting again.",
   ExchangeFailed: "Could not complete Slack sign-in. Try again.",
   WorkspaceRevoked: "A workspace session was revoked. Reconnect to continue using it.",
@@ -97,12 +100,6 @@ function uiKindOf(ch: SlackChannelSummary): ConversationKind {
   if (ch.is_mpim) return "group";
   if (ch.is_private || ch.is_group) return "channel-private";
   return "channel-public";
-}
-
-function useSlackLedger(runtime: SlackRuntime): SlackLedgerStore {
-  const ledger = runtime.runSync(SlackLedger.use((store) => Effect.succeed(store)));
-  useSyncExternalStore((listener) => ledger.subscribe(listener), () => ledger.snapshot(), () => ledger.snapshot());
-  return ledger;
 }
 
 function messageReactions(msg: SlackMessage, ownerId: string) {
@@ -139,7 +136,7 @@ function SlackAuthView({
         <AuthStepFrame
           platform="Slack"
           title="Review Slack user scopes"
-          subtitle="Alpha connects strictly as your personal Slack user account (xoxp-)."
+          subtitle="Alpha connects to Slack as you."
           accountNotice="User account · no bot token"
           error={troubleText}
           scopes={SLACK_CONSENT_SCOPES}
@@ -173,10 +170,14 @@ function SlackAuthView({
             onClick: () => void auth.send({ type: "cancelOAuth" }),
           } : undefined}
         >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Spinner size="sm" />
-            <span>{pending ? "Waiting for OAuth callback..." : "Preparing PKCE request..."}</span>
-          </div>
+          {pending && !native() ? (
+            <Button asChild><a href={pending.authorizeUrl} target="_blank" rel="noopener noreferrer">Open Slack in your browser</a></Button>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner size="sm" />
+              <span>{pending ? "Waiting for Slack…" : "Preparing sign-in…"}</span>
+            </div>
+          )}
         </AuthStepFrame>
       </Screen>
     );
@@ -188,7 +189,7 @@ function SlackAuthView({
         <AuthStepFrame
           platform="Slack"
           title="Verifying user token"
-          subtitle="Checking that Slack issued an xoxp- user token."
+          subtitle="Checking your Slack workspace and user account."
           accountNotice="User account · no bot token"
           primaryAction={{ label: "Verifying...", loading: true, disabled: true }}
         />
@@ -209,7 +210,11 @@ function SlackAuthView({
           disabled: !auth.can({ type: "startConnect" }),
           onClick: () => void auth.send({ type: "startConnect" }),
         }}
-      />
+      >
+        {state.trouble === "ExchangeFailed" ? (
+          <a className="underline" href="https://app.slack.com/client" rel="noreferrer">Use Slack in a browser without linking Alpha</a>
+        ) : null}
+      </AuthStepFrame>
     </Screen>
   );
 }
@@ -241,7 +246,8 @@ function SlackMessageTimeline({
     <div className="flex flex-col divide-y divide-border/40">
       {messages.map((msg, idx) => {
         const prev = idx > 0 ? messages[idx - 1] : undefined;
-        const grouped = prev !== undefined && prev.user === msg.user && !isThread;
+        const senderId = msg.user ?? msg.bot_id;
+        const grouped = prev !== undefined && senderId !== undefined && (prev.user ?? prev.bot_id) === senderId && !isThread;
         const own = msg.user === ownerId;
         const tsNum = ledger.tsNum(workspace, channel, msg.ts);
         const reactions = messageReactions(msg, ownerId);
@@ -251,7 +257,7 @@ function SlackMessageTimeline({
           <MessageItem
             key={msg.ts}
             layout="compact"
-            sender={userNameOf(users, msg.user)}
+            sender={messageSenderName(users, msg)}
             grouped={grouped}
             own={own}
             time={formatSlackTs(msg.ts)}
@@ -298,6 +304,8 @@ function SlackChannelView({
   users,
   ownerId,
   rateNotice,
+  liveNotices,
+  noticeControls,
   onOpenThread,
   onCloseThread,
   onCloseChannel,
@@ -309,6 +317,8 @@ function SlackChannelView({
   users: ReadonlyMap<string, SlackUser>;
   ownerId: string;
   rateNotice: string | undefined;
+  liveNotices: boolean;
+  noticeControls: React.ReactNode;
   onOpenThread: (threadTs: number) => void;
   onCloseThread: () => void;
   onCloseChannel: () => void;
@@ -353,11 +363,11 @@ function SlackChannelView({
           </Button>
         )}
       >
-        {!isThread ? (
+        {!isThread && liveNotices ? (
           <Button
             variant="ghost"
             size="icon"
-            aria-label={isMuted ? "Unmute channel" : "Mute channel"}
+            aria-label={isMuted ? "Unmute Alpha notifications" : "Mute Alpha notifications"}
             disabled={!workspaces.can({ type: "toggleMute", channel: convState.channel, muted: !isMuted })}
             onClick={() => void workspaces.send({ type: "toggleMute", channel: convState.channel, muted: !isMuted })}
           >
@@ -367,6 +377,7 @@ function SlackChannelView({
       </AppHeader>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+        {noticeControls}
         {rateNotice ? <Banner variant="warn" className="mb-2">{rateNotice}</Banner> : null}
         {!isThread && conv.can({ type: "loadOlderChannel" }) ? (
           <div className="mb-2 flex justify-center">
@@ -496,6 +507,7 @@ function SlackWorkspaceListView({
   users,
   ownerId,
   rateNotice,
+  noticeControls,
   onOpenChannel,
 }: {
   auth: ReturnType<typeof useAuth>;
@@ -506,6 +518,7 @@ function SlackWorkspaceListView({
   users: ReadonlyMap<string, SlackUser>;
   ownerId: string;
   rateNotice: string | undefined;
+  noticeControls: React.ReactNode;
   onOpenChannel: (workspace: number, channelNum: number, summary?: SlackChannelSummary) => void;
 }) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -567,6 +580,8 @@ function SlackWorkspaceListView({
     >
       {authState.trouble === "WorkspaceRevoked" ? <Banner variant="destructive">{TROUBLE_MESSAGES.WorkspaceRevoked}</Banner> : null}
       {rateNotice ? <Banner variant="warn">{rateNotice}</Banner> : null}
+      {noticeControls}
+      {!activeMeta?.brokered ? <Banner variant="info">Live Slack notifications are unavailable. Refresh to read the latest messages.</Banner> : null}
       {wsState.saved ? <Banner variant="info">Showing saved workspace cache</Banner> : null}
       {wsState.failure !== "Fine" ? (
         <Banner variant="destructive">
@@ -638,7 +653,7 @@ function SlackWorkspaceListView({
                 title={channelTitleOf(ch, users, ownerId)}
                 kind={uiKindOf(ch)}
                 preview={ch.latest?.text}
-                previewSender={ch.latest ? userNameOf(users, ch.latest.user) : undefined}
+                previewSender={ch.latest ? messageSenderName(users, ch.latest) : undefined}
                 time={ch.latest ? formatSlackTs(ch.latest.ts) : undefined}
                 muted={muted}
                 unreadCount={unreadCount}
@@ -733,6 +748,7 @@ export function SlackScreen({ runtime }: SlackScreenProps) {
   const conv = useConversation(runtime);
   const composer = useTimed(runtime, useComposer);
   const ledger = useSlackLedger(runtime);
+  const noticesAllowed = useNotices(runtime).state?.notifyAllowed === true;
 
   const authState = auth.state;
   const wsState = workspaces.state;
@@ -754,6 +770,17 @@ export function SlackScreen({ runtime }: SlackScreenProps) {
 
   const activeWorkspace = wsState.selected.workspace;
   const activeMeta = ledger.workspaceMeta(activeWorkspace);
+  const liveNotices = activeMeta?.brokered === true;
+  const noticeControls = <>
+    {liveNotices && !noticesAllowed ? (
+      <Button variant="ghost" onClick={() => void runtime.runPromise(configureSlackNotices)}>Enable Slack notifications</Button>
+    ) : null}
+    {ledger.noticesList().map((notice) => (
+      <Button key={notice.key} variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => void runtime.runPromise(openSlackNotice(notice.destination))}>
+        {notice.title} · {notice.body}
+      </Button>
+    ))}
+  </>;
   const users = ledger.usersOf(activeWorkspace);
   const ownerId = activeMeta?.ownerUserId ?? "";
   const rateNotice = ledger.rateLimitNotice();
@@ -768,6 +795,8 @@ export function SlackScreen({ runtime }: SlackScreenProps) {
         users={users}
         ownerId={ownerId}
         rateNotice={rateNotice}
+        liveNotices={liveNotices}
+        noticeControls={noticeControls}
         onOpenThread={(threadTs) => {
           if (conv.can({ type: "openThread", threadTs })) void conv.send({ type: "openThread", threadTs });
           if (composer.can({ type: "openTarget", workspace: convState.workspace, channel: convState.channel, threadTs }, "Owner")) {
@@ -798,6 +827,7 @@ export function SlackScreen({ runtime }: SlackScreenProps) {
       users={users}
       ownerId={ownerId}
       rateNotice={rateNotice}
+      noticeControls={noticeControls}
       onOpenChannel={(workspace, channelNum, summary) => {
         const kind = summary ? convKindOf(summary) : "PublicChannel";
         if (conv.can({ type: "openChannel", workspace, channel: channelNum, kind, front: true })) {

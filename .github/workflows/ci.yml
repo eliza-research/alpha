@@ -377,7 +377,7 @@ jobs:
           if [[ $GITHUB_EVENT_NAME == pull_request && -n $GH_TOKEN ]]; then
             python3 - <<'PYTHON' &
           from collections import defaultdict
-          from hashlib import file_digest
+          from hashlib import sha256
           from pathlib import Path
           from tempfile import TemporaryDirectory, TemporaryFile
           from urllib.error import HTTPError
@@ -467,7 +467,10 @@ jobs:
                   if archive.tell() != artifact["size_in_bytes"]:
                       return
                   archive.seek(0)
-                  if "sha256:" + file_digest(archive, "sha256").hexdigest() != artifact["digest"]:
+                  digest = sha256()
+                  while chunk := archive.read(256 * 1024):
+                      digest.update(chunk)
+                  if "sha256:" + digest.hexdigest() != artifact["digest"]:
                       return
                   cache = Path(".spec-cache")
                   cache.mkdir(exist_ok=True)

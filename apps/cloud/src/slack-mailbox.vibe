@@ -1,0 +1,113 @@
+// spec/app/slack/notices.md, "Story: Hear about Slack DMs, mentions and thread replies per workspace"; spec/cloud/rollout.md, "Story: Serve one reviewed profile from the API Worker"
+import { Store, type Tx } from "@elizaos/cloud-worker"
+
+export interface SlackOwner {
+  readonly enterprise: string
+  readonly team: string
+  readonly user: string
+}
+
+interface SlackCoordinates {
+  readonly id: string
+  readonly time: number
+  readonly channel: string
+  readonly ts: string
+  readonly thread: string
+}
+
+const ownerFields = (owner: SlackOwner) => [owner.enterprise, owner.team, owner.user]
+
+export const prepareSlackMailbox = effect {
+  try (try Store).transaction(effect (tx: Tx) => {
+    try tx.script(`
+      CREATE TABLE IF NOT EXISTS alpha_slack_grants (
+        access_hash text PRIMARY KEY, refresh_hash text UNIQUE NOT NULL,
+        enterprise text NOT NULL, team text NOT NULL, owner_id text NOT NULL,
+        access_until bigint NOT NULL, retain_until bigint NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS alpha_slack_owners ON alpha_slack_grants (enterprise,team,owner_id);
+      CREATE TABLE IF NOT EXISTS alpha_slack_events (
+        seq bigserial PRIMARY KEY, enterprise text NOT NULL, team text NOT NULL, owner_id text NOT NULL,
+        event_id text NOT NULL, event_time bigint NOT NULL, channel text NOT NULL,
+        ts text NOT NULL, thread text NOT NULL, retain_until bigint NOT NULL,
+        UNIQUE (enterprise, team, owner_id, event_id)
+      );
+      CREATE INDEX IF NOT EXISTS alpha_slack_unread ON alpha_slack_events (enterprise,team,owner_id,seq);
+      CREATE TABLE IF NOT EXISTS alpha_slack_dispatch (
+        event_id text PRIMARY KEY, context_id text NOT NULL, event_time bigint NOT NULL, channel text NOT NULL,
+        ts text NOT NULL, thread text NOT NULL, page_cursor text, ready_at bigint NOT NULL, retain_until bigint NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS alpha_slack_dispatch_due ON alpha_slack_dispatch (ready_at) WHERE page_cursor IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS alpha_slack_expired ON alpha_slack_events (retain_until);
+    `)
+  })
+}
+
+export effect function pruneSlackMailbox(now: number) {
+  try (try Store).transaction(effect (tx: Tx) => {
+    try tx.query("DELETE FROM alpha_slack_dispatch WHERE retain_until <= $1", [now])
+    try tx.query("DELETE FROM alpha_slack_events WHERE retain_until <= $1", [now])
+    try tx.query("DELETE FROM alpha_slack_grants WHERE retain_until <= $1", [now])
+  })
+}
+
+export const mailbox = effect {
+  const store = try Store
+  return {
+    ownerFor: (hash: string, refresh: boolean, now: number) => store.transaction(effect (tx: Tx) => {
+      const rows = try tx.query(refresh
+        ? "SELECT enterprise,team,owner_id FROM alpha_slack_grants WHERE refresh_hash=$1 AND retain_until>$2"
+        : "SELECT enterprise,team,owner_id FROM alpha_slack_grants WHERE access_hash=$1 AND access_until>$2", [hash, now])
+      const row = rows[0]
+      return row && typeof row.enterprise === "string" && typeof row.team === "string" && typeof row.owner_id === "string"
+        ? { enterprise: row.enterprise, team: row.team, user: row.owner_id } : undefined
+    }),
+    enroll: (owner: SlackOwner, access: string, refresh: string, previous: string, expires: number, now: number) => store.transaction(effect (tx: Tx) => {
+      if (previous) try tx.query("DELETE FROM alpha_slack_grants WHERE refresh_hash=$1", [previous])
+      try tx.query(`INSERT INTO alpha_slack_grants (enterprise, team, owner_id, access_hash, refresh_hash, access_until, retain_until)
+        VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (access_hash) DO NOTHING`,
+        [...ownerFields(owner), access, refresh, expires, now + 30 * 86400000])
+    }),
+    dispatch: (context: string, event: SlackCoordinates, now: number) => store.transaction(effect (tx: Tx) => {
+      try tx.query(`INSERT INTO alpha_slack_dispatch (event_id,context_id,event_time,channel,ts,thread,page_cursor,ready_at,retain_until)
+        VALUES ($1,$2,$3,$4,$5,$6,'',$7,$8) ON CONFLICT (event_id) DO NOTHING`, [event.id,context,event.time,event.channel,event.ts,event.thread,now,now+3600000])
+    }),
+    claim: (now: number) => store.transaction(effect (tx: Tx) => {
+      const rows = try tx.query(`UPDATE alpha_slack_dispatch SET ready_at=$2 WHERE event_id=(
+        SELECT event_id FROM alpha_slack_dispatch WHERE page_cursor IS NOT NULL AND ready_at <= $1 AND retain_until > $1
+        ORDER BY ready_at,event_id FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *`, [now,now+60000])
+      const row = rows[0]
+      return row ? { context: String(row.context_id), cursor: String(row.page_cursor), lease: Number(row.ready_at), receivedAt: Number(row.retain_until)-3600000,
+        event: { id: String(row.event_id), time: Number(row.event_time), channel: String(row.channel), ts: String(row.ts), thread: String(row.thread) } } : undefined
+    }),
+    finishPage: (id: string, lease: number, current: string, next: string | null, retryAt: number) => store.transaction(effect (tx: Tx) => {
+      try tx.query(`UPDATE alpha_slack_dispatch SET page_cursor=$4, ready_at=$5 WHERE event_id=$1 AND ready_at=$2 AND page_cursor=$3`,
+        [id,lease,current,next,retryAt])
+    }),
+    enqueue: (owners: ReadonlyArray<SlackOwner>, event: SlackCoordinates, now: number) => store.transaction(effect (tx: Tx) => {
+      for (const owner of owners) {
+        const key = ownerFields(owner)
+        try tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [JSON.stringify(key)])
+        try tx.query(`INSERT INTO alpha_slack_events (enterprise,team,owner_id,event_id,event_time,channel,ts,thread,retain_until)
+          SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9 WHERE EXISTS (
+            SELECT 1 FROM alpha_slack_grants WHERE enterprise=$1 AND team=$2 AND owner_id=$3 AND retain_until>$10
+          ) ON CONFLICT (enterprise,team,owner_id,event_id) DO NOTHING`,
+          [...key, event.id, event.time, event.channel, event.ts, event.thread, now + 3600000, now])
+        try tx.query(`DELETE FROM alpha_slack_events WHERE enterprise=$1 AND team=$2 AND owner_id=$3 AND seq <=
+          (SELECT seq FROM alpha_slack_events WHERE enterprise=$1 AND team=$2 AND owner_id=$3 ORDER BY seq DESC OFFSET 128 LIMIT 1)`, key)
+      }
+    }),
+    read: (owner: SlackOwner, cursor: number | undefined, now: number) => store.transaction(effect (tx: Tx) => {
+      const key = ownerFields(owner)
+      if (cursor === undefined) {
+        const rows = try tx.query("SELECT COALESCE(MAX(seq),0) AS head FROM alpha_slack_events WHERE enterprise=$1 AND team=$2 AND owner_id=$3", key)
+        return { cursor: Number(rows[0]?.head ?? 0), event: undefined }
+      }
+      const rows = try tx.query(`SELECT seq,event_id,event_time,channel,ts,thread FROM alpha_slack_events
+        WHERE enterprise=$1 AND team=$2 AND owner_id=$3 AND seq>$4 AND retain_until>$5 ORDER BY seq LIMIT 1`, [...key, cursor, now])
+      const row = rows[0]
+      if (!row) return { cursor, event: undefined }
+      return { cursor: Number(row.seq), event: { id: String(row.event_id), time: Number(row.event_time), channel: String(row.channel), ts: String(row.ts), thread: String(row.thread) } }
+    }),
+  }
+}

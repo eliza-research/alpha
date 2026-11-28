@@ -69,6 +69,8 @@ jobs:
           pnpm --filter @repo/app android inputs
       - name: Build and verify the launcher APKs (debug, instrumentation, release)
         env:
+          TELEGRAM_API_ID: ${{ vars.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ github.event_name != 'pull_request' && secrets.TELEGRAM_API_HASH || '' }}
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m"
         run: pnpm --filter @repo/app android build --release

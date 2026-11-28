@@ -109,7 +109,7 @@ export function HomePage({ runtime, alpha }: Shown<HomeMachines | Resident>) {
   } : undefined;
   const actOnEdit = (event: HomeEditInput) => runtime.runPromise(editHome(event, s.route, alongside));
   const offered = (event: HomeEditInput) => editVisible && can(event) ? () => { void actOnEdit(event); } : undefined;
-  const showingApps = s.drawer && Home.onPhone(h);
+  const showingApps = Home.offersDrawer(h) && s.drawer && Home.onPhone(h);
   const paired = showingApps && adjacentAskSheet(s, landscapePhone);
   const drawerActive = showingApps && layers !== undefined && !pageInert(layers) && s.textAsk.tag === "NoTextAsk"
     && (s.assistant === "Bar" || paired);

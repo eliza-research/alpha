@@ -1,16 +1,17 @@
 // spec/app/phone/comms.md, "The bar addresses Alpha exactly while the conversation is open, and the left slot holds the other target"; spec/app/voice/index.md, "Story: Hold a spoken conversation"; spec/app/voice/index.md, "A failed conversation ends quietly: why it failed is kept only until voice returns to idle, and nothing is shown"
 import { Machine as Conversation } from "../../gen/app__assistant.effect.vibe"
 import { Machine as Chats } from "../../gen/app__assistant__chats.effect.vibe"
-import { Machine as Phone } from "../../gen/app__phone.effect.vibe"
+import * as Composer from "../../gen/app__assistant__composer.effect.vibe"
+import { Machine as Phone, liveCall } from "../../gen/app__phone.effect.vibe"
 import { Machine as Comms } from "../../gen/app__phone__comms.effect.vibe"
 import * as Shell from "../../gen/app__shell.effect.vibe"
 import * as Voice from "../../gen/app__voice.effect.vibe"
 import { Machine as Speaker } from "../../gen/app__voice__output.effect.vibe"
 import { CommsPrompts } from "../comms/index.vibe"
-import { Device } from "../platform/index.vibe"
-import { VoiceBridge } from "../platform/index.vibe"
+import { Device, VoiceBridge, attachOverlayEvents, type OverlayShowDetail } from "../platform/index.vibe"
 import { contained, started, untimed } from "../runtime/index.vibe"
 import { keyboardVoice } from "../shell/index.vibe"
+import { currentSurface } from "../surface.ts"
 import { Talk } from "./talk.vibe"
 
 // spec/app/voice/index.md, "Talk started from the bar or the pill stays there with speech on the phone; with Cloud speech or while typing it brings up the sheet"
@@ -23,10 +24,10 @@ import { Talk } from "./talk.vibe"
 export effect function beginTalk() {
   const voice = try Voice.Machine
   const shell = try Shell.Machine
-  const call = (try (try Phone).get()).telecom
+  const call = liveCall(try (try Phone).get())
   const speaker = try (try Speaker).get()
   const before = try voice.get()
-  if (call === "OrdinaryCall" || call === "MaybeEmergencyCall" || speaker.stage !== "Silent" || speaker.retiring
+  if (call || speaker.stage !== "Silent" || speaker.retiring
     || !(try (try Device).showing()) || !(try (try VoiceBridge).available()) || !Voice.canStartTalking(before, untimed)) return
   const page = try shell.get()
   if (Voice.talkRaisesTheSheet(page.assistant === "Typing", page.assistant === "Bar", Voice.onNetwork(before.route, untimed)) && Shell.canRaise(page, "Sheet")) {
@@ -47,11 +48,11 @@ export const talkFromComms = started(effect {
   try Stream.runForEach(requests, effect ({ about, view }) => {
     const before = try shell.get()
     if (!Shell.showing(before, view) || !Shell.canRaise(before, "Sheet") || (try comms.get()).key !== about || !(try device.showing())) return
-    if ((try phone.get()).telecom !== "NoCall" || !(try bridge.available())) return
+    if (liveCall(try phone.get()) || !(try bridge.available())) return
     if (!(try contained(shell.send({ type: "raise", detent: "Sheet" }), "opening Talk from the communications bar"))) return
     const current = try shell.get()
     if (Shell.showing(current, view) && current.assistant === "Sheet" && (try comms.get()).key === about
-      && (try phone.get()).telecom === "NoCall") try beginTalk()
+      && !liveCall(try phone.get())) try beginTalk()
   })
 }, "starting Talk from the communications bar")
 
@@ -101,3 +102,67 @@ export const spokenReviewNotice = started(effect {
       && Voice.canReviewSettled(live) && board.snapshot().media === cards), "clearing the settled Talk review")
   })
 }, "following the exact Talk reviews shown in chat")
+
+type OverlayLifecycleSignal =
+  | { readonly kind: "show"; readonly detail: OverlayShowDetail }
+  | { readonly kind: "hide" }
+
+function stagedQueryOf(staged: unknown): string | undefined {
+  if (typeof staged !== "object" || staged === null) return undefined
+  const meta = (staged as { readonly meta?: unknown }).meta
+  if (typeof meta !== "object" || meta === null) return undefined
+  const record = meta as Record<string, unknown>
+  const suggestion = typeof record.suggestion === "string" ? record.suggestion.trim() : ""
+  if (suggestion.length > 0) return suggestion
+  const text = typeof record.text === "string" ? record.text.trim() : ""
+  return text.length > 0 ? text : undefined
+}
+
+/** Handles native `alpha-overlay-show` and `alpha-overlay-hide` lifecycle signals inside the system overlay. */
+export const overlayEvents = started(effect {
+  if (currentSurface().mode !== "overlay") return
+  const shell = try Shell.Machine
+  const composer = try Composer.Machine
+  const { board } = try Talk
+  const signals = Stream.callback<OverlayLifecycleSignal>((queue) => effect {
+    const stop = attachOverlayEvents({
+      onShow: (detail) => { Queue.offerUnsafe(queue, { kind: "show", detail }) },
+      onHide: () => { Queue.offerUnsafe(queue, { kind: "hide" }) },
+    })
+    try addFinalizer(() => sync(stop))
+  })
+  try Stream.runForEach(signals, effect (signal) => {
+    if (signal.kind === "hide") {
+      for (const _ of [0, 1]) {
+        const current = try shell.get()
+        if (current.assistant === "Bar" || !Shell.canGoBack(current)) break
+        try contained(shell.send({ type: "goBack" }), "lowering Ask Alpha when overlay hides")
+      }
+      return
+    }
+    const { detail } = signal
+    const query = detail.initialQuery?.trim() || stagedQueryOf(detail.stagedAttachment)
+    if (query !== undefined && query.length > 0) {
+      board.type(query)
+      const edit: Composer.Event = { type: "edit", blank: false, long: query.length > Composer.textLimit }
+      if (Composer.enabled(try composer.get(), edit)) {
+        try contained(composer.send(edit), "seeding overlay query draft")
+      }
+      if (Shell.canRaise(try shell.get(), "Sheet")) {
+        try contained(shell.send({ type: "raise", detent: "Sheet" }), "raising overlay for initial query")
+      }
+    }
+    if (detail.startVoice) {
+      if (Shell.canRaise(try shell.get(), "Sheet")) {
+        try contained(shell.send({ type: "raise", detent: "Sheet" }), "raising overlay for voice")
+      }
+      try beginTalk()
+      return
+    }
+    if ((detail.entrySource !== undefined || detail.stagedAttachment !== undefined)
+      && (try shell.get()).assistant === "Bar"
+      && Shell.canRaise(try shell.get(), "Sheet")) {
+      try contained(shell.send({ type: "raise", detent: "Sheet" }), "raising overlay on show")
+    }
+  })
+}, "following Ask Alpha overlay show and hide events")

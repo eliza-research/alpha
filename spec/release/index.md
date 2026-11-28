@@ -15,7 +15,8 @@ channel, [OS](./os.md).
 
 ### A release in flight is built, mirrored, planned, signed, delivered, qualified, uploaded, verified, published and recorded, or abandoned
 
-A candidate's version is its build's run number. The floor is the last
+A candidate's version is its build's workflow run number plus the fixed
+launcher version base. Rerunning the build keeps that version. The floor is the last
 recorded release, which starts at the retired channel's version 75 and
 rises with every APK any writer retains on the channel. `pointer` is the
 version the stable manifest was last read back to name, and `pointerRead`

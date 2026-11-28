@@ -97,12 +97,25 @@ it("draws the selected PDF one page at a time", async () => {
 });
 
 it('Reorder pages after the clock advances (spec/app/files/scan.md, "Story: Arrange the pages")', async () => {
+  await page.viewport(412, 915);
   const { alpha } = await open(scene(), only("home", "view:Files"));
   await coverLifted(alpha);
   try {
     await page.getByRole("button", { name: "Files", exact: true }).click();
     const tools = page.getByRole("button", { name: "Files tools", exact: true });
     await expect.element(tools).toBeVisible();
+    document.documentElement.style.setProperty("--alpha-native-inset-top", "58px");
+    const main = document.querySelector("main");
+    const header = document.querySelector("section[aria-label=Files] header");
+    if (!main || !header) throw new Error("Files header did not mount");
+    await expect.poll(() => Math.round(header.getBoundingClientRect().top - main.getBoundingClientRect().top)).toBe(58);
+    main.setAttribute("data-alpha-launcher", "");
+    try {
+      expect(Math.round(header.getBoundingClientRect().top - main.getBoundingClientRect().top)).toBe(58);
+    } finally {
+      main.removeAttribute("data-alpha-launcher");
+    }
+    document.documentElement.style.removeProperty("--alpha-native-inset-top");
     const trigger = tools.element();
     if (!(trigger instanceof HTMLButtonElement)) throw new Error("Files tools is not a button");
     trigger.focus();
@@ -127,6 +140,7 @@ it('Reorder pages after the clock advances (spec/app/files/scan.md, "Story: Arra
     await expect.element(image(1)).toHaveAttribute("src", second);
     await expect.element(image(2)).toHaveAttribute("src", first);
   } finally {
+    document.documentElement.style.removeProperty("--alpha-native-inset-top");
     await closeAll();
     await new Promise<void>((resolve, reject) => {
       const removed = indexedDB.deleteDatabase("alpha-scan-pages");

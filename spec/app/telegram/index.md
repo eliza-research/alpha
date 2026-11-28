@@ -2,7 +2,7 @@
 
 The owner's personal Telegram user account on Alpha: the chat list gated by an
 authenticated user session, folder and search filters, single-use cursor
-pagination, mute changes, credential-bound offline caching, and Home attention.
+pagination, mute changes, offline caching within the authenticated session, and Home attention.
 The rest of the area:
 
 - [Authentication](./auth.md): phone code, two-factor password and QR user-account login, FloodWait, revocation and sign-out wipe
@@ -15,8 +15,8 @@ The rest of the area:
 
 > As the owner, I want to filter my Telegram chats by folder or unread status,
 > search across chats, page back without repeating cursors, mute noisy chats,
-> see my last list while offline, and have everything wiped the moment my
-> session ends.
+> see my last list if the connection drops during my session, and have
+> everything wiped the moment my session ends.
 
 ### The chat list holds the session gate, selection, ticketed read, pagination cursors, mute attempt, credential-bound cache and Home unread count
 
@@ -236,7 +236,11 @@ pure def muteAnswered(s: ChatList, id: int, chat: int, muted: bool, ok: bool, kn
   { ...s, muteOp: done, mutedChats: nextMuted }
 ```
 
-### A restart keeps the credential-bound cache and restores it as saved while offline
+### Reopening the list restores saved counts only for the same authenticated credential and selection
+
+On a cold start, Telegram must confirm the active owner's account before Alpha
+shows their chats. If Telegram is unreachable, the phone retains the sealed
+grant and keeps the chat list closed. It retries when the owner returns.
 
 ```quint
 pure def restart(s: ChatList): ChatList =

@@ -14,7 +14,7 @@ import { telegramChats } from "./chats.vibe"
 import { telegramComposer } from "./composer.vibe"
 import { telegramConversation } from "./conversation.vibe"
 import { telegramNotices } from "./notices.vibe"
-import { TelegramStore, dialogTitle, isDialogMuted, telegramStore } from "./store.vibe"
+import { TelegramStore, currentSessionToken, dialogTitle, isDialogMuted, telegramStore } from "./store.vibe"
 
 export { executeTelegramAgentRequest }
 
@@ -57,8 +57,8 @@ export const telegramAmbientSnapshot = readTelegramAmbientSnapshot()
 export const telegramHomeCard = effect {
   const list = try (try ChatList.Machine).get()
   const att = ChatList.attention(list)
-  if (!list.authenticated) {
-    return { standing: att.standing, unread: 0, mentions: 0, rows: [] } satisfies TelegramHomeCardSnapshot
+  if (!list.authenticated || Option.isNone(try currentSessionToken())) {
+    return { standing: "SignedOut", unread: 0, mentions: 0, rows: [] } satisfies TelegramHomeCardSnapshot
   }
   const store = try TelegramStore
   const snap = try store.get()

@@ -10,6 +10,12 @@ export interface AskScene {
   down: boolean;
   stalled: boolean;
   readonly turns: Map<string, () => void>;
+  /** While set, the agent holds each answer to an abort of a turn until the test lets it go, as an agent slow to stop a turn does. */
+  holdAborts?: boolean;
+  readonly heldAborts: (() => void)[];
+  /** While set, the agent holds each conversation it is asked to make until the test lets it go. */
+  holdCreates?: boolean;
+  readonly heldCreates: (() => void)[];
   afterStop?: Kept["messages"];
   readonly kept: Map<string, Kept>;
   searchDown: boolean;
@@ -64,6 +70,12 @@ export interface AskScene {
   /** The fake native store, which survives disposal of the WebView runtime. */
   readonly drafts: Map<string, string>;
   beforeDraftExchange?: () => Promise<void>;
+  /** The native store answers every read of a draft slot as unreadable, as its SecureSlots does for a slot it cannot decrypt. */
+  draftReadsFail?: boolean;
+  /** Every message posted waits: "unheard" before the agent keeps it, as when Alpha stops before its request arrives; "unanswered" once the agent kept it, with no frame back. */
+  holdPosts?: "unheard" | "unanswered";
+  /** The text of each post held "unheard", which reached the agent's address but was never kept. */
+  readonly unheard: string[];
   refusedDraftExchanges: number;
   /** When true, /api/status omits serverInstanceId so the peer does not declare optional turn-context fields. */
   noOptionalFields?: boolean;
@@ -73,6 +85,7 @@ export interface AskScene {
   beforeStatus?: () => Promise<void>;
   /** Whether the agent's status says it can answer, and each warm-up it was asked for, with the headers it came with. */
   canRespond: boolean;
+  lastCloudFailure?: { readonly kind: string; readonly at: number };
   warmUps: Record<string, string>[];
   warmUpFails: boolean;
   statusReads: number;
@@ -85,12 +98,25 @@ export interface Kept {
 }
 
 export function askScene(): AskScene {
-  return { opened: 0, said: [], down: false, stalled: false, turns: new Map(), kept: new Map(), searchDown: false, pagesDown: false, pagesMissing: false, pageReads: 0, listReads: 0, holdLists: false, heldLists: [], heldPages: [], drafts: new Map(), refusedDraftExchanges: 0, canRespond: true, warmUps: [], warmUpFails: false, statusReads: 0 };
+  return { opened: 0, said: [], down: false, stalled: false, turns: new Map(), heldAborts: [], heldCreates: [], kept: new Map(), searchDown: false, pagesDown: false, pagesMissing: false, pageReads: 0, listReads: 0, holdLists: false, heldLists: [], heldPages: [], drafts: new Map(), refusedDraftExchanges: 0, unheard: [], canRespond: true, warmUps: [], warmUpFails: false, statusReads: 0 };
 }
 
 /** A storage address within the fake phone's already verified local account. */
 export function draftKey(owner: string, agent: string, conversation?: string, room?: string) {
   return JSON.stringify([owner, agent, conversation ?? null, room ?? null]);
+}
+
+/** The most UTF-8 bytes AlphaAssistantDraft takes for a slot row it compares or writes, as its `RAW_LIMIT`. */
+const rawLimit = 256 * 1024;
+
+/** The rows AlphaAssistantDraft writes, as `AlphaDraftRow.admits` checks a `next` before the plugin exchanges it: a whole revision of at least 1, a text, a sending flag, and only beside a sending mark a string `lastSentId` and `lastSentWire`. */
+function admitsRow(next: string) {
+  let row: unknown;
+  try { row = JSON.parse(next); } catch { return false; }
+  if (typeof row !== "object" || row === null || Array.isArray(row)) return false;
+  const { revision, text, sending, ...mark } = row as Record<string, unknown>;
+  return Number.isSafeInteger(revision) && (revision as number) >= 1 && typeof text === "string" && typeof sending === "boolean"
+    && Object.entries(mark).every(([key, value]) => sending && (key === "lastSentId" || key === "lastSentWire") && typeof value === "string");
 }
 
 /** AlphaAssistantDraft derives the slot after admitting the supplied owner, agent and epoch as assertions. */
@@ -105,6 +131,7 @@ export function alphaAssistantDraft(scene: AskScene, authority: () => Pick<Draft
     read(address: DraftAddress) {
       const key = admitted(address);
       if (key === undefined) return Promise.resolve({ status: "denied" });
+      if (scene.draftReadsFail) return Promise.resolve({ status: "failure" });
       const raw = scene.drafts.get(key);
       return Promise.resolve(raw === undefined ? { status: "read" } : { status: "read", raw });
     },
@@ -115,6 +142,8 @@ export function alphaAssistantDraft(scene: AskScene, authority: () => Pick<Draft
         scene.refusedDraftExchanges += 1;
         return { status: "denied" };
       }
+      if ([address.expected, address.next].some((raw) => raw !== undefined && encoder.encode(raw).length > rawLimit)) return { status: "denied" };
+      if (address.next !== undefined && !admitsRow(address.next)) return { status: "denied" };
       if (scene.drafts.get(key) !== address.expected) return { status: "conflict" };
       if (address.next === undefined) scene.drafts.delete(key);
       else scene.drafts.set(key, address.next);
@@ -235,9 +264,12 @@ export function askRoutes(scene: AskScene): Route[] {
     (request, url) => {
       if (request.method !== "POST" || url.pathname !== "/api/conversations") return;
       if (scene.down) return Response.json({ error: "starting" }, { status: 503 });
-      const id = ++scene.opened;
-      scene.kept.set(`c${id}`, { roomId: `r${id}`, title: "Ask Alpha", messages: [] });
-      return Response.json({ conversation: { id: `c${id}`, roomId: `r${id}`, title: "Ask Alpha", createdAt: 0, updatedAt: 0 } }, { status: 201 });
+      const made = () => {
+        const id = ++scene.opened;
+        scene.kept.set(`c${id}`, { roomId: `r${id}`, title: "Ask Alpha", messages: [] });
+        return Response.json({ conversation: { id: `c${id}`, roomId: `r${id}`, title: "Ask Alpha", createdAt: 0, updatedAt: 0 } }, { status: 201 });
+      };
+      return scene.holdCreates ? new Promise<void>((resolve) => { scene.heldCreates.push(resolve); }).then(made) : made();
     },
     (request, url) => {
       if (request.method !== "GET" || url.pathname !== "/api/conversations") return;
@@ -301,6 +333,7 @@ export function askRoutes(scene: AskScene): Route[] {
     (request, url) => {
       const found = /^\/api\/conversations\/([^/]+)\/messages(\/stream)?$/.exec(url.pathname);
       if (request.method !== "POST" || !found) return;
+      if (scene.holdPosts === "unheard") return request.json().then((body: { text: string }) => { scene.unheard.push(body.text); return new Promise<Response>(() => undefined); });
       const conversationId = decodeURIComponent(found[1] ?? "");
       const kept = scene.kept.get(conversationId);
       if (kept === undefined) return Response.json({ error: "unknown_conversation" }, { status: 404 });
@@ -320,6 +353,7 @@ export function askRoutes(scene: AskScene): Route[] {
         scene.said.push(body.text);
         keep("user", body.text);
         Object.assign(kept.messages.at(-1) ?? {}, { clientMessageId: body.clientMessageId });
+        if (scene.holdPosts === "unanswered") return new Promise<Response>(() => undefined);
         if (found[2] !== undefined && scene.nextDropsWith !== undefined) {
           const dropped = scene.nextDropsWith;
           scene.nextDropsWith = undefined;
@@ -343,7 +377,8 @@ export function askRoutes(scene: AskScene): Route[] {
     (request, url) => {
       const room = /^\/api\/turns\/([^/]+)\/abort$/.exec(url.pathname)?.[1];
       if (request.method !== "POST" || room === undefined) return;
-      return request.json().then(({ reason }: { reason: string }) => {
+      const held = scene.holdAborts ? new Promise<void>((resolve) => { scene.heldAborts.push(resolve); }) : Promise.resolve();
+      return Promise.all([request.json(), held]).then(([{ reason }]: [{ reason: string }, void]) => {
         const stop = scene.turns.get(room);
         scene.turns.delete(room);
         stop?.();
@@ -358,7 +393,11 @@ export function askRoutes(scene: AskScene): Route[] {
       scene.statusReads += 1;
       const answer = () => scene.failStatus
         ? Response.json({ error: "status_unavailable" }, { status: 503 })
-        : Response.json({ ...(scene.noOptionalFields ? {} : { serverInstanceId: "alpha-fake" }), canRespond: scene.canRespond });
+        : Response.json({
+          ...(scene.noOptionalFields ? {} : { serverInstanceId: "alpha-fake" }),
+          canRespond: scene.canRespond,
+          ...(scene.lastCloudFailure === undefined ? {} : { lastCloudFailure: scene.lastCloudFailure }),
+        });
       return scene.beforeStatus ? scene.beforeStatus().then(answer) : answer();
     },
     (request, url) => {

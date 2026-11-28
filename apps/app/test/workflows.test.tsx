@@ -171,7 +171,7 @@ describe("Workflows", () => {
     expect(visible("Monthly statement", "Desk check", "Retired brief")).toEqual([]);
     await press("Add to Workflows");
     await until(alpha, area, Listing, (state) => state.place.tag === "ListingAdd");
-    const choices = [...document.querySelectorAll<HTMLButtonElement>("main button")];
+    const choices = [...document.querySelectorAll<HTMLButtonElement>('main[aria-label="Add to Workflows"] button')];
     expect(["Automation", "Reminder", "Scheduled digest"].map((name) => choices.find((item) => item.textContent?.startsWith(name))?.disabled)).toEqual([true, true, true]);
     await drawn(() => alpha.back());
     await until(alpha, area, Listing, (state) => state.place.tag === "ListingRows");
@@ -877,5 +877,61 @@ const openStepsBuilder = async (alpha: Awaited<ReturnType<typeof open>>["alpha"]
     await press(/^Steps/);
     await until(second, secondArea, Builder, (state) => state.offer.status === "Loaded" && state.name === earlierSpec.name.length && state.steps.length === 1);
     expect(world.platform.earlier.has(slot)).toBe(true);
+  });
+
+  it('Surfaces a failed Morning check-in reason, reopens it in one tap, and runs it once ready (spec/app/workflows/automations.md, "Story: Act on an automation"; spec/app/workflows/automations.md, "A row that ended (done, dismissed, skipped, expired or failed) offers only Reopen; a scheduled row offers every other control")', async () => {
+    const world = scene();
+    world.ask.canRespond = false;
+    world.ask.lastCloudFailure = { kind: "insufficient_credits", at: 1_795_784_479_518 };
+    world.workflows.tasks.push({
+      taskId: "morning-checkin",
+      kind: "personal-assistant.checkin",
+      ownerVisible: true,
+      promptInstructions: "Morning check-in",
+      state: { status: "failed", lastDecisionLog: "dispatch_failed: The check-in was not stored: NoModel" },
+      trigger: { kind: "cron", expression: "0 8 * * *", tz: "America/New_York" },
+      metadata: { checkin: "morning" },
+    });
+    const { alpha, area } = await onList(world, { complete: true });
+
+    const morningRow = rows().find((one) => one.textContent?.startsWith("Morning check-in"));
+    expect(morningRow?.textContent).toContain("Failed");
+
+    await choose("Morning check-in");
+    await until(alpha, area, Automations, (state) => state.present && state.list.status === "Loaded" && state.status === "Failed");
+    expect(document.querySelector('[aria-label="Automation controls"] [role="alert"]')?.textContent).toContain("Out of credits");
+    expect(button("Run now")).toBeUndefined();
+    expect(button("Reopen")).toBeDefined();
+
+    world.workflows.failTaskFire = "The check-in was not stored: NoModel";
+    await press("Reopen");
+    await until(alpha, area, Automations, (state) => state.list.status === "Loaded" && state.status === "Scheduled" && state.change.attempt.outcome === "Confirmed");
+    expect(button("Run now")).toBeDefined();
+    expect(document.querySelector('[aria-label="Automation controls"] [role="alert"]')).toBeNull();
+
+    await press("Run now");
+    await press("Confirm Run now");
+    await until(alpha, area, Automations, (state) => state.list.status === "Loaded" && state.fired === "DispatchFailed" && state.status === "Failed");
+    expect(document.querySelectorAll('[aria-label="Automation controls"] [role="alert"]')).toHaveLength(1);
+    expect(document.querySelector('[aria-label="Automation controls"] [role="alert"]')?.textContent).toContain("Out of credits");
+
+    world.ask.canRespond = true;
+    world.ask.lastCloudFailure = undefined;
+    world.workflows.failTaskFire = undefined;
+
+    await press("Reopen");
+    await until(alpha, area, Automations, (state) => state.list.status === "Loaded" && state.status === "Scheduled");
+    await press("Run now");
+    await press("Confirm Run now");
+    await until(alpha, area, Automations, (state) => state.list.status === "Loaded" && state.fired === "Dispatched" && state.change.attempt.outcome === "Confirmed");
+    expect(world.workflows.taskActions).toEqual([
+      { taskId: "morning-checkin", verb: "reopen" },
+      { taskId: "morning-checkin", verb: "fire" },
+      { taskId: "morning-checkin", verb: "reopen" },
+      { taskId: "morning-checkin", verb: "fire" },
+    ]);
+    expect(document.querySelector('[aria-label="Automation controls"] [role="alert"]')).toBeNull();
+    expect(document.querySelector('[aria-label="Automation controls"] [role="status"]')?.textContent).toContain("The agent ran it.");
+    expect(world.workflows.tasks.find((task) => task.taskId === "morning-checkin")?.state.status).toBe("fired");
   });
 });

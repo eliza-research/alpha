@@ -24,6 +24,12 @@ Voice note shows the elapsed time, recent microphone levels, and the
 recording status. Pause and Stop recording sit below the waveform.
 While paused, Resume takes the place of Pause.
 
+As in the existing app, the status is one word: Starting…, Recording,
+Paused or Saving…. A call pauses the recording quietly: the status reads
+Paused, the levels dim, and Resume waits for the call to end, with no
+words about the call. A recording picked up after a crash, or one an
+error stopped, is told to a screen reader only.
+
 ### The recorder holds one recording, the audio written so far, what is waiting to be written, and the keeping of it as a voice note
 
 A recording has a number, and while the microphone is on, a capture under
@@ -202,13 +208,20 @@ pure def broke(r: Recorder, capture: int, by: Actor): Moved = halted(r.capture, 
 
 Each control names the recording it was shown for, so one from an old
 notification changes nothing. Pausing writes the segment so far. An
-interrupted recording goes on under a new capture.
+interrupted recording goes on under a new capture. When Android reports that
+the owner has already paused or resumed the matching recording from its
+notification, Notes adopts the reported phase without issuing another command.
 
 ```quint
 pure def canPause(r: Recorder, take: int, by: Actor): bool = by == Owner and r.phase == Recording and take == r.take
 
 pure def pause(r: Recorder, take: int, by: Actor): Moved =
   { state: { ...r, phase: Paused, level: 0 }, out: List(Tells({ capture: r.capture, command: Pause })) }
+
+pure def canPhonePaused(r: Recorder, take: int, by: Actor): bool =
+  by == Phone and take == r.take and r.phase == Recording
+
+pure def phonePaused(r: Recorder, take: int, by: Actor): Recorder = { ...r, phase: Paused, level: 0 }
 
 pure def canCallStarted(r: Recorder, by: Actor): bool = by == Phone and not(r.calling)
 
@@ -229,6 +242,12 @@ pure def resume(r: Recorder, take: int, room: Admission, by: Actor): Moved =
   if (r.capture != 0) { state: { ...r, phase: Recording }, out: List(Tells({ capture: r.capture, command: Resume })) }
   else { state: { ...r, phase: Recording, capture: n, issued: n, recovered: false },
     out: List(Captures({ take: r.take, capture: n })) }
+
+pure def canPhoneResumed(r: Recorder, take: int, room: Admission, by: Actor): bool =
+  by == Phone and canResume(r, take, room, Owner)
+
+pure def phoneResumed(r: Recorder, take: int, room: Admission, by: Actor): Recorder =
+  resume(r, take, room, Owner).state
 ```
 
 ### Stopping ends the capture and keeps what was recorded as a voice note, and a recording with nothing in it leaves nothing
@@ -251,7 +270,7 @@ pure def stop(r: Recorder, take: int, by: Actor): Moved =
 ```quint
 pure def stepNoLengthLimit(before: Recorder, via: str, after: Recorder): bool =
   (before.phase == Recording and after.phase != Recording)
-    implies (via == "pause" or via == "stop" or via == "callStarted" or via == "broke" or via == "tick"
+    implies (via == "pause" or via == "phonePaused" or via == "stop" or via == "callStarted" or via == "broke" or via == "tick"
       or via == "segmentKept" or via == "restart" or via == "ownerChanged" or via == "confirmDiscard")
 ```
 
@@ -337,13 +356,17 @@ pure def alwaysTheMicrophoneFollowsTheRecorder(r: Recorder): bool =
 
 ### The phone is told to pause before a recording pauses, and to end or write down a discard before it lets go of a capture
 
-A restart, which ends every capture, is the exception; so is the last
-segment of a recording already told to end.
+While recording, a pause action issued from Notes or following a call tells
+the phone to pause. Android can also report that its own notification already
+paused the recorder. Either notification control changes only the observed
+phase and issues no command back to the device. Restart ends every capture,
+and the last segment can arrive after the phone was told to end.
 
 ```quint
 pure def stepTheMicrophoneIsToldFirst(before: Recorder, via: str, after: Recorder, out: List[Effect]): bool =
   and {
-    (before.phase == Recording and after.phase == Paused and via != "restart") implies told(out, before.capture, Pause),
+    (via == "phonePaused" or via == "phoneResumed") implies out.length() == 0,
+    (before.phase == Recording and after.phase == Paused and via != "restart" and via != "phonePaused") implies told(out, before.capture, Pause),
     (after.phase == Stopping and before.phase != Stopping) implies told(out, before.capture, End),
     (before.capture != 0 and after.capture == 0 and via != "restart" and before.phase != Stopping)
       implies (told(out, before.capture, End) or (via == "confirmDiscard" and out.some(fx => match fx {
@@ -542,40 +565,53 @@ part. After a reload, it offers the saved parts only under the same Notes
 connection. A recording already bound to a canonical note uses that same
 note on retry.
 
+Alpha can also stop while the phone goes on: closing Alpha leaves the
+recording under its notification, which keeps the microphone on and writes
+a segment every 27 seconds. As in the existing app, Alpha shows such a
+recording as the phone has it when it opens again.
+
 > As the owner, I want a recording the phone lost in the middle to be
 > waiting for me, with everything written, before I can start another, and
 > never offered as whole when the phone cannot find all of it.
 
-### Only the phone restarts the recorder: a restart keeps every segment written, offers a recording cut off as paused only when the phone found it whole, and leaves a keeping cut off unknown
+### Only the phone restarts the recorder: a restart keeps every segment written and those the phone wrote since, takes up a recording the phone still holds open as the phone has it, offers a recording cut off as paused only when the phone found it whole, and leaves a keeping cut off unknown
 
-The microphone is off; whatever was asked of the phone and not answered is
-dropped, and its late answer is refused. The phone says whether the
-recording's journal was intact and how many of its segments it found on
-disk; a recording whose journal is damaged or whose segments are not all
-there is damaged, and can only be discarded. A recording with nothing
+Whatever was asked of the phone and not answered is dropped, and its late
+answer is refused. The phone says whether it holds the recording, how many
+of its segments it has written, and whether it is still recording. A
+recording the phone still records, or holds with no segment yet, goes on
+under a new capture, recording or paused as the phone has it; otherwise the
+microphone is off and a recording with segments is cut off. Segments the
+phone wrote while Alpha was away are the recording's own; a recording whose
+journal is damaged or whose segments are not all there is damaged, and can
+only be discarded. A recording the phone does not hold and with nothing
 written leaves nothing. A discard written down is written down again.
 
 ```quint
-pure def canRestart(r: Recorder, intact: bool, found: int, by: Actor): bool = by == Phone and found >= 0
+pure def canRestart(r: Recorder, intact: bool, found: int, going: bool, by: Actor): bool = by == Phone and found >= 0
 
-pure def restart(r: Recorder, intact: bool, found: int, by: Actor): Recorder =
+pure def restart(r: Recorder, intact: bool, found: int, going: bool, by: Actor): Recorder =
   val calm = { ...r, capture: 0, unsaved: 0, level: 0, ask: NoAsk, calling: false, pending: false,
     keeping: A::cutOff(r.keeping), look: R::drop(r.look), erasing: if (r.erasing.outcome == A::Recorded) r.erasing else A::cutOff(r.erasing) }
-  val whole = intact and found == r.kept and not(r.damaged)
-  if ((live(r) or r.phase == Failed) and r.kept > 0)
-    (if (whole) { ...calm, phase: if (live(r)) Paused else Failed, recovered: live(r), found: found }
-    else { ...calm, phase: Failed, recovered: false, damaged: true, found: found })
+  val whole = intact and found >= r.kept and not(r.damaged)
+  val n = r.issued + 1
+  if (live(r) and whole and (going or found == 0))
+    { ...calm, phase: if (going) Recording else Paused, capture: n, issued: n, kept: found, recovered: false, found: found }
+  else if (live(r) and whole) { ...calm, phase: Paused, kept: found, recovered: true, found: found }
+  else if (r.phase == Failed and whole) { ...calm, kept: found, recovered: false, found: found }
+  else if ((live(r) or r.phase == Failed) and r.kept > 0) { ...calm, phase: Failed, recovered: false, damaged: true, found: found }
   else if (live(r)) { ...calm, phase: Idle, recovered: false, found: 0 }
   else calm
 ```
 
-### A crash keeps the audio and takes no late answer
+### A restart keeps the audio, adds what the phone wrote since, and takes no late answer
 
 ```quint
 pure def stepACrashKeepsTheAudio(before: Recorder, via: str, after: Recorder): bool =
   via == "restart" implies and {
-    after.kept == before.kept, after.take == before.take,
-    after.capture == 0, after.keeping.outcome != A::Sent, after.erasing.outcome != A::Sent, after.look.status != R::Loading,
+    after.kept >= before.kept, after.take == before.take,
+    after.capture == 0 or after.capture > before.issued,
+    after.keeping.outcome != A::Sent, after.erasing.outcome != A::Sent, after.look.status != R::Loading,
   }
 ```
 

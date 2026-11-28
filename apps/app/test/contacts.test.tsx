@@ -190,16 +190,14 @@ describe("Contacts on an Alpha image", () => {
     await press("Allow");
     await until(alpha, alpha.runtime, Contacts, (s) => s.list.status === "Loaded" && s.rows === 2);
 
-    await fill("Search or ask", "Maya");
-    await until(alpha, alpha.runtime, Contacts, (s) => s.list.status === "Loaded" && s.rows === 1);
-    expect(document.querySelector('[aria-label="Ben Ortiz"]')).toBeNull();
-    // spec/app/contacts/index.md, "Searching or changing the filter chip starts a new list"
-    expect([button("Ask Alpha"), button("Talk")?.disabled]).toEqual([undefined, false]);
-    await drawn(() => document.querySelector<HTMLInputElement>("input[aria-label='Search or ask']")?.form?.requestSubmit());
+    // spec/app/contacts/index.md, "Filtering or changing the filter chip starts a new list"
+    expect(button("Search contacts")).toBeUndefined();
+    await fill("Ask Alpha", "Maya");
+    expect([Boolean(document.querySelector('[aria-label="Ben Ortiz"]')), Boolean(button("Ask Alpha")), button("Talk")]).toEqual([true, true, undefined]);
+    await drawn(() => document.querySelector<HTMLInputElement>("input[aria-label='Ask Alpha']")?.form?.requestSubmit());
     await drawn(() => vi.waitFor(() => expect(world.ask.said).toEqual(["Maya"])));
     await drawn(() => alpha.back());
     await until(alpha, alpha.runtime, Shell, (s) => s.assistant === "Bar");
-    await fill("Search or ask", "");
     await until(alpha, alpha.runtime, Contacts, (s) => s.list.status === "Loaded" && s.rows === 2);
 
     // spec/app/contacts/index.md, "Opening a contact reads it from the phone afresh"
@@ -451,7 +449,7 @@ describe("Contacts on an Alpha image", () => {
     await filledPhoneKeypad(alpha, 12);
     expect([world.telephony.placed, world.telephony.dialed]).toEqual([[], []]);
 
-    // spec/app/contacts/index.md, "Searching or changing the filter chip starts a new list"
+    // spec/app/contacts/index.md, "Filtering or changing the filter chip starts a new list"
     expect(await read({ type: "contact_show", query: "Ben" })).toEqual({ kind: "contact-show", status: "shown" });
     await until(alpha, alpha.runtime, Contacts, (s) => s.front && s.sought && s.list.status === "Loaded" && s.rows === 1);
     await drawn(() => vi.waitFor(() => expect(button("Ben Ortiz")).toBeDefined()));

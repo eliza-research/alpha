@@ -32,7 +32,7 @@
 +}
 --- a/packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt
 +++ b/packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt
-@@ -321,6 +321,67 @@
+@@ -321,6 +321,68 @@
                  flags = Context.RECEIVER_NOT_EXPORTED,
              )
 
@@ -62,22 +62,23 @@
 +                user = UserHandle.ALL,
 +                flags = Context.RECEIVER_NOT_EXPORTED,
 +            )
-+            broadcastDispatcher.registerReceiver(
++            userTracker.userContext.registerReceiverAsUser(
 +                object : BroadcastReceiver() {
 +                    override fun onReceive(context: Context, intent: Intent) {
 +                        if (intent.data?.schemeSpecificPart == AlphaCoreLauncherPolicy.PACKAGE) {
-+                            refreshAlphaCoreLauncher()
++                            backgroundExecutor.execute(refreshAlphaCoreLauncher)
 +                        }
 +                    }
 +                },
++                UserHandle.ALL,
 +                IntentFilter().apply {
 +                    addAction(Intent.ACTION_PACKAGE_CHANGED)
 +                    addAction(Intent.ACTION_PACKAGE_REPLACED)
 +                    addDataScheme("package")
 +                },
-+                executor = backgroundExecutor,
-+                user = UserHandle.ALL,
-+                flags = Context.RECEIVER_NOT_EXPORTED,
++                null,
++                null,
++                Context.RECEIVER_NOT_EXPORTED,
 +            )
 +            broadcastDispatcher.registerReceiver(
 +                object : BroadcastReceiver() {
@@ -100,7 +101,7 @@
              initialized = true
          }
      }
-@@ -474,6 +535,13 @@
+@@ -474,6 +536,13 @@
          if (refreshUiControls) {
              packages.forEach { (pkg, _) -> pkg.updateUiControl() }
          }
@@ -114,7 +115,7 @@
 
          val addedPackages =
              packages.keys.filter {
-@@ -735,11 +803,31 @@
+@@ -735,11 +804,31 @@
              }
              private set
 
@@ -147,7 +148,7 @@
                      PowerExemptionManager.REASON_SYSTEM_UID,
                      PowerExemptionManager.REASON_DEVICE_DEMO_MODE -> UIControl.HIDE_ENTRY
 
-@@ -765,7 +853,7 @@
+@@ -765,7 +854,7 @@
                  }
              // If the app wants to be a good citizen by being stoppable, even if the category it
              // belongs to is exempted for background restriction, let it be stoppable by user.

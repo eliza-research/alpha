@@ -1,0 +1,2 @@
+-keep class ai.alphacompute.localllm.AlphaLocalLlmPlugin { *; }
+-keep class ai.eliza.voice.VoiceNative { *; }

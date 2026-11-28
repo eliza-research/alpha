@@ -119,7 +119,7 @@ function Tab({ runtime, alpha, tabs, page }: BrowserProps & { tabs: State; page:
   useSyncExternalStore(pages.subscribe, pages.version, pages.version);
   const bookmarks = useSyncExternalStore(libraryRows.subscribe, libraryRows.snapshot, libraryRows.snapshot);
   const [typed, setTyped] = useState("");
-  const [refusal, setRefusal] = useState<string>();
+  const [refusal, setRefusal] = useState<{ readonly from: "Address" | "NewTab"; readonly message: string }>();
   const [finding, setFinding] = useState("");
   const [clearingSite, setClearingSite] = useState<SitePage>();
   const { review, support } = runtime.runSync(PageReading);
@@ -142,15 +142,19 @@ function Tab({ runtime, alpha, tabs, page }: BrowserProps & { tabs: State; page:
   const cover = (layer: State["layer"]) => (browser.can({ type: "cover", layer }) ? () => void browser.send({ type: "cover", layer }) : undefined);
   const uncover = () => { if (browser.can({ type: "uncover" })) void browser.send({ type: "uncover" }); };
   const leading = <AppBack alpha={alpha} />;
-  const submit = (text: string) => {
+  const submit = (text: string, from: "Address" | "NewTab" = "Address") => {
     const input = inputOf(text);
     if (!can({ type: "submit", i: input })) return;
     const outcome = verdict(input);
     if (outcome === "Refuse") {
-      setRefusal(input.tooLong ? "This address is too long." : input.userInfo ? "Remove the username or password from this address." : "Enter a complete web address.");
+      setRefusal({
+        from,
+        message: input.tooLong ? "This address is too long." : input.userInfo ? "Remove the username or password from this address." : "Enter a complete web address.",
+      });
       void send({ type: "submit", i: input });
       return;
     }
+    setRefusal(undefined);
     void runtime.runPromise(pages.aim(tab, addressOf(text, outcome === "Search")))
       .then(() => send({ type: "submit", i: input }))
       .then(() => { if (browser.can({ type: "uncover" })) return browser.send({ type: "uncover" }); });
@@ -240,9 +244,10 @@ function Tab({ runtime, alpha, tabs, page }: BrowserProps & { tabs: State; page:
   });
   const privateNotice = tabHost.web === undefined ? undefined : "This tab is not saved in Alpha history. Website cookies and sign-ins are managed by your browser.";
   return (
+    <div className="flex min-h-0 flex-1 flex-col pt-[var(--alpha-safe-top)] in-data-[alpha-launcher]:pt-[max(0px,calc(var(--alpha-safe-top)-2.75rem))]">
     <div className="relative flex min-h-0 flex-1 flex-col">
       {editing
-        ? <BrowserAddressBar leading={leading} value={typed} onValueChange={(value) => { setTyped(value); setRefusal(undefined); }} onSubmit={() => submit(typed)} onCancel={uncover} />
+        ? <BrowserAddressBar leading={leading} value={typed} onValueChange={(value) => { setTyped(value); setRefusal(undefined); }} onSubmit={() => submit(typed, "Address")} onCancel={() => { setRefusal(undefined); uncover(); }} />
         : <BrowserBar
             leading={leading}
             host={host}
@@ -266,11 +271,18 @@ function Tab({ runtime, alpha, tabs, page }: BrowserProps & { tabs: State; page:
       )}
       <div inert={tabs.layer !== "Uncovered"} className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
         {state.phase === "Blank"
-          ? <BrowserNewTab private={privateTab} privateNotice={privateNotice} onSearch={browser.can({ type: "cover", layer: "Address" }) ? edit : undefined} />
+          ? <BrowserNewTab
+              private={privateTab}
+              privateNotice={privateNotice}
+              refusal={state.refused && !editing && refusal?.from === "NewTab" ? refusal.message : undefined}
+              onQueryChange={() => setRefusal(undefined)}
+              onSubmit={(query) => submit(query, "NewTab")}
+              onSearch={browser.can({ type: "cover", layer: "Address" }) ? edit : undefined}
+            />
           : <BrowserPagePlace key={findShown ? "finding" : "page"} runtime={runtime} />}
       </div>
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32.5 bg-linear-to-b from-transparent to-background to-70%" />
-      {editing && <AddressChoices runtime={runtime} query={typed} privateTab={privateTab} privateNotice={privateNotice} refusal={state.refused ? refusal : undefined} onOpen={submit} />}
+      {editing && <AddressChoices runtime={runtime} query={typed} privateTab={privateTab} privateNotice={privateNotice} refusal={state.refused && refusal?.from === "Address" ? refusal.message : undefined} onOpen={submit} />}
       {findShown && (
         <BrowserFindBar value={finding} onValueChange={seek} status={findStatus}
           onPrevious={can({ type: "findNext", forward: false }) ? () => void send({ type: "findNext", forward: false }) : undefined}
@@ -326,6 +338,7 @@ function Tab({ runtime, alpha, tabs, page }: BrowserProps & { tabs: State; page:
         onCancel={() => { if (canCancelErase(tabs)) void browser.send({ type: "cancelErase" }); }}>
         {native ? "Clears history, cookies and tabs." : "Clears history and tabs."}
       </BrowserReview>
+    </div>
     </div>
   );
 }

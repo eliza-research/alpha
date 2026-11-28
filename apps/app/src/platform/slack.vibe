@@ -12,18 +12,20 @@ import {
   fallbackStatusError,
   joinBaseUrl,
   jsonPost,
-  openEventStream,
   parseRetryAfter,
   queryGet,
+  stringParams,
 } from "./messaging.vibe"
-import { type Listening, type Wired, remoteAt } from "./remote.vibe"
+import { type Wired, remoteAt } from "./remote.vibe"
 
 /** Default OAuth2 user scopes requested for first-class Slack user-account access (`user_scope`, never bot `scope`). */
 export const SLACK_DEFAULT_USER_SCOPES = [
   "channels:read",
   "channels:history",
+  "channels:write",
   "groups:read",
   "groups:history",
+  "groups:write",
   "im:read",
   "im:history",
   "im:write",
@@ -41,14 +43,9 @@ export const SLACK_DEFAULT_USER_SCOPES = [
 /** Slack workspace user profile decoded from Web API responses. */
 export schema SlackUser {
   readonly id: string
-  readonly team_id: string
   readonly name: string
-  readonly real_name: string
-  readonly display_name: string
-  readonly is_owner: boolean
-  readonly is_bot: boolean
-  readonly deleted: boolean
-  readonly presence: "active" | "away"
+  readonly real_name?: string
+  readonly profile?: { readonly real_name?: string; readonly display_name?: string }
 }
 
 /** Slack message reaction aggregate. */
@@ -60,7 +57,7 @@ export schema SlackReaction {
 
 /** Slack message edit metadata. */
 export schema SlackEdited {
-  readonly user: string
+  readonly user?: string
   readonly ts: string
 }
 
@@ -68,7 +65,9 @@ export schema SlackEdited {
 export schema SlackMessage {
   readonly type: "message"
   readonly ts: string
-  readonly user: string
+  readonly user?: string
+  readonly username?: string
+  readonly bot_id?: string
   readonly text: string
   readonly thread_ts?: string
   readonly reply_broadcast?: boolean
@@ -89,13 +88,13 @@ export schema SlackTextField {
 /** Slack conversation summary (public/private channel, DM, or MPIM). */
 export schema SlackChannelSummary {
   readonly id: string
-  readonly name: string
-  readonly is_channel: boolean
-  readonly is_group: boolean
-  readonly is_im: boolean
-  readonly is_mpim: boolean
-  readonly is_private: boolean
-  readonly is_archived: boolean
+  readonly name?: string
+  readonly is_channel?: boolean
+  readonly is_group?: boolean
+  readonly is_im?: boolean
+  readonly is_mpim?: boolean
+  readonly is_private?: boolean
+  readonly is_archived?: boolean
   readonly user?: string
   readonly members?: ReadonlyArray<string>
   readonly topic?: SlackTextField
@@ -109,13 +108,13 @@ export schema SlackChannelSummary {
 
 /** Slack cursor pagination metadata. */
 export schema SlackResponseMetadata {
-  readonly next_cursor: string
+  readonly next_cursor?: string
 }
 
 /** Slack workspace summary returned by OAuth exchange and team info. */
 export schema SlackTeamSummary {
   readonly id: string
-  readonly name: string
+  readonly name?: string
   readonly domain?: string
   readonly url?: string
 }
@@ -136,6 +135,19 @@ export schema SlackOAuthResponse {
   readonly app_id: string
   readonly team: SlackTeamSummary
   readonly authed_user: SlackAuthedUser
+}
+
+const SlackRegistration = Schema.Struct({
+  clientId: Schema.String.check(Schema.isPattern(/^\d+\.\d+$/)),
+  notifications: Schema.optionalKey(Schema.Boolean),
+})
+
+schema SlackRotatedGrant {
+  readonly ok: true
+  readonly token_type: "user"
+  readonly access_token: string
+  readonly refresh_token: string
+  readonly expires_in: number
 }
 
 /** Decoded response from `POST /api/auth.test`. */
@@ -179,20 +191,13 @@ export schema SlackConversationOpenResponse {
 export schema SlackMessagesPageResponse {
   readonly ok: true
   readonly messages: ReadonlyArray<SlackMessage>
-  readonly has_more: boolean
+  readonly has_more?: boolean
   readonly response_metadata?: SlackResponseMetadata
 }
 
 /** Decoded simple `{ ok: true }` acknowledgement from mark/reaction endpoints. */
 export schema SlackOkResponse {
   readonly ok: true
-}
-
-/** Decoded response from `POST /api/conversations.setMute`. */
-export schema SlackSetMuteResponse {
-  readonly ok: true
-  readonly channel: string
-  readonly is_muted: boolean
 }
 
 /** Decoded response from `POST /api/chat.postMessage`. */
@@ -322,7 +327,7 @@ export schema SlackTokensRevokedEvent {
 /** Union of workspace-scoped Slack event payloads delivered over SSE. */
 export schema SlackEventPayload = SlackMessageEvent | SlackReactionEvent | SlackChannelMarkedEvent | SlackTokensRevokedEvent
 
-/** Envelope delivered by `GET /api/events.stream`. */
+/** Slack Events API callback envelope from a subscribed receiver. */
 export schema SlackEventEnvelope {
   readonly type: "event_callback"
   readonly team_id: string
@@ -331,6 +336,11 @@ export schema SlackEventEnvelope {
   readonly event_time: number
   readonly event: SlackEventPayload
 }
+
+const SlackMailbox = Schema.Struct({
+  cursor: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  events: Schema.Array(SlackEventEnvelope),
+})
 
 schema SlackErrorBody {
   readonly ok: false
@@ -345,13 +355,13 @@ export interface SlackAuthorizeParams {
   readonly codeChallenge: string
   readonly userScope?: string
   readonly team?: string
-  readonly autoApprove?: boolean
 }
 
 /** Parameters for exchanging an OAuth2 authorization code for an `xoxp-` user token. */
 export interface SlackExchangeCodeParams {
   readonly code: string
   readonly codeVerifier: string
+  readonly brokered?: boolean
   readonly redirectUri?: string
   readonly clientId?: string
 }
@@ -359,6 +369,7 @@ export interface SlackExchangeCodeParams {
 /** Parameters for refreshing an `xoxp-` user token via refresh token rotation. */
 export interface SlackRefreshTokenParams {
   readonly refreshToken: string
+  readonly brokered?: boolean
   readonly clientId?: string
 }
 
@@ -418,9 +429,10 @@ export interface SlackSearchOpts {
 /** First-class Slack user-account HTTP+SSE client service (strictly `xoxp-` user tokens; bot tokens are rejected). */
 export interface SlackClient {
   readonly baseUrl: string
+  registration(): typeof SlackRegistration.Type!MessagingFailure
   authorizeUrl(params: SlackAuthorizeParams): string
   exchangeCode(params: SlackExchangeCodeParams): SlackOAuthResponse!MessagingFailure
-  refreshToken(params: SlackRefreshTokenParams): SlackOAuthResponse!MessagingFailure
+  refreshToken(params: SlackRefreshTokenParams): SlackRotatedGrant!MessagingFailure
   authTest(token: string): SlackAuthTestResponse!MessagingFailure
   revoke(token: string): SlackRevokeResponse!MessagingFailure
   listConversations(token: string, opts?: SlackListConversationsOpts): SlackConversationsListResponse!MessagingFailure
@@ -429,7 +441,6 @@ export interface SlackClient {
   history(token: string, channel: string, opts?: SlackHistoryOpts): SlackMessagesPageResponse!MessagingFailure
   replies(token: string, channel: string, ts: string, opts?: SlackPaginationOpts): SlackMessagesPageResponse!MessagingFailure
   markRead(token: string, channel: string, ts: string): SlackOkResponse!MessagingFailure
-  setMute(token: string, channel: string, muted: boolean): SlackSetMuteResponse!MessagingFailure
   postMessage(token: string, req: SlackPostMessageReq, idempotencyKey?: string): SlackPostMessageResponse!MessagingFailure
   updateMessage(token: string, req: SlackUpdateMessageReq): SlackUpdateMessageResponse!MessagingFailure
   deleteMessage(token: string, req: SlackDeleteMessageReq): SlackDeleteMessageResponse!MessagingFailure
@@ -438,13 +449,13 @@ export interface SlackClient {
   searchMessages(token: string, query: string, opts?: SlackSearchOpts): SlackSearchMessagesResponse!MessagingFailure
   listUsers(token: string, opts?: SlackPaginationOpts): SlackUsersListResponse!MessagingFailure
   userInfo(token: string, userId: string): SlackUserInfoResponse!MessagingFailure
-  eventsStream(token: string, listening?: Listening): Stream.Stream<SlackEventEnvelope, MessagingFailure>
+  readEvents(token: string, cursor?: number): typeof SlackMailbox.Type!MessagingFailure
 }
 
 /** Effect service tag for the Slack user-account client. */
 export service Slack: SlackClient {}
 
-const SLACK_AUTH_ERRORS = ["token_revoked", "invalid_auth", "not_authed", "account_inactive"]
+const SLACK_AUTH_ERRORS = ["token_revoked", "token_expired", "invalid_refresh_token", "invalid_auth", "not_authed", "account_inactive"]
 const SLACK_FORBIDDEN_ERRORS = ["cant_update_message", "cant_delete_message", "missing_scope"]
 const SLACK_BOT_ERRORS = ["bot_token_not_allowed", "bot_tokens_not_supported"]
 
@@ -454,7 +465,7 @@ function isSlackUserToken(token: string): boolean {
 
 /** Reject Slack bot (`xoxb-`, `xoxe.xoxb-`) and app (`xapp-`) tokens at the client boundary. */
 export effect function assertSlackUserToken(token: string): string!BotTokenRejected {
-  if (token.startsWith("xoxb-") || token.startsWith("xoxe.xoxb-") || token.startsWith("xapp-")) {
+  if (!isSlackUserToken(token)) {
     throw new BotTokenRejected({ provider: "slack", reason: "Slack bot and app tokens are not allowed; use an xoxp- or xoxe.xoxp- user token" })
   }
   return token
@@ -501,22 +512,34 @@ effect function callSlackAuthed<A>(
   schema: Schema.Decoder<A>,
 ): A!MessagingFailure {
   const validToken = try assertSlackUserToken(token)
-  return try callSlack(wired, build(validToken), schema)
+  return callSlack(wired, build(validToken), schema) catch effect (failure) => {
+    if (failure instanceof AuthRevoked) throw new AuthRevoked({ provider: "slack", code: failure.code, rejected: Redacted.make(validToken) })
+    throw failure
+  }
 }
 
-effect function exchangeOAuth(wired: Wired, body: Readonly<Record<string, unknown>>): SlackOAuthResponse!MessagingFailure {
-  const response = try callSlack(wired, jsonPost("/api/oauth.v2.access", body), SlackOAuthResponse)
-  if (!isSlackUserToken(response.authed_user.access_token) || response.authed_user.token_type !== "user") {
-    throw new BotTokenRejected({ provider: "slack", reason: "Slack OAuth exchange must return an xoxp- or xoxe.xoxp- user token" })
-  }
-  return response
+type SlackFields = Readonly<Record<string, string | number | boolean | undefined>>
+
+function formPost(path: string, fields: SlackFields) {
+  return HttpClientRequest.bodyUrlParams(HttpClientRequest.post(path), stringParams(fields))
 }
 
 /** Slack user-account client over HTTP+SSE at `base`. */
-export function slackAt(base: string) {
+export function slackAt(base: string, registrationBase = base, transport: "native" | "browser" = "native") {
   return Layer.effect(Slack, effect {
     const wired = try remoteAt(base)
+    const registration = try remoteAt(registrationBase)
+    const browserMethod = (path: string, fields: SlackFields, token: string) => formPost(path, { ...fields, token })
+    const get = transport === "browser" ? browserMethod : queryGet
+    const post = (path: string, fields: SlackFields, token: string, key?: string) =>
+      transport === "browser" ? browserMethod(path, fields, token) : jsonPost(path, fields, token, key)
+    const oauth = <A>(brokered: boolean | undefined, fields: Readonly<Record<string, string | undefined>>, response: Schema.Decoder<A>) => callSlack(
+      brokered ? registration : wired, formPost(brokered ? "/api/slack/oauth" : "/api/oauth.v2.access", fields), response,
+    )
     return {
+      effect registration() {
+        return try callSlack(registration, HttpClientRequest.get("/.well-known/alpha-slack"), SlackRegistration)
+      },
       baseUrl: base,
       authorizeUrl: (params: SlackAuthorizeParams) => joinBaseUrl(base, "/oauth/v2/authorize", {
         client_id: params.clientId,
@@ -526,25 +549,26 @@ export function slackAt(base: string) {
         code_challenge: params.codeChallenge,
         code_challenge_method: "S256",
         team: params.team,
-        auto_approve: params.autoApprove ? "1" : undefined,
       }),
-      exchangeCode: (params: SlackExchangeCodeParams) => exchangeOAuth(wired, {
+      exchangeCode: (params: SlackExchangeCodeParams) => oauth(params.brokered, {
         code: params.code,
         code_verifier: params.codeVerifier,
         redirect_uri: params.redirectUri,
         client_id: params.clientId,
-      }),
-      refreshToken: (params: SlackRefreshTokenParams) => exchangeOAuth(wired, {
+      }, SlackOAuthResponse),
+      refreshToken: (params: SlackRefreshTokenParams) => oauth(params.brokered, {
         grant_type: "refresh_token",
         refresh_token: params.refreshToken,
         client_id: params.clientId,
-      }),
-      authTest: (token: string) => callSlackAuthed(wired, token, (t) => jsonPost("/api/auth.test", {}, t), SlackAuthTestResponse),
-      revoke: (token: string) => callSlackAuthed(wired, token, (t) => jsonPost("/api/auth.revoke", {}, t), SlackRevokeResponse),
+      }, SlackRotatedGrant),
+      readEvents: (token: string, cursor?: number) => callSlackAuthed(registration, token,
+        (valid) => jsonPost("/api/slack/events/read", cursor === undefined ? {} : { cursor }, valid), SlackMailbox),
+      authTest: (token: string) => callSlackAuthed(wired, token, (t) => post("/api/auth.test", {}, t), SlackAuthTestResponse),
+      revoke: (token: string) => callSlackAuthed(wired, token, (t) => post("/api/auth.revoke", {}, t), SlackRevokeResponse),
       listConversations: (token: string, opts?: SlackListConversationsOpts) => callSlackAuthed(
         wired,
         token,
-        (t) => queryGet("/api/users.conversations", {
+        (t) => get("/api/users.conversations", {
           types: opts?.types,
           exclude_archived: opts?.excludeArchived,
           cursor: opts?.cursor,
@@ -555,19 +579,19 @@ export function slackAt(base: string) {
       conversationInfo: (token: string, channel: string) => callSlackAuthed(
         wired,
         token,
-        (t) => queryGet("/api/conversations.info", { channel }, t),
+        (t) => get("/api/conversations.info", { channel }, t),
         SlackConversationInfoResponse,
       ),
       openConversation: (token: string, users: ReadonlyArray<string>) => callSlackAuthed(
         wired,
         token,
-        (t) => jsonPost("/api/conversations.open", { users: users.join(",") }, t),
+        (t) => post("/api/conversations.open", { users: users.join(",") }, t),
         SlackConversationOpenResponse,
       ),
       history: (token: string, channel: string, opts?: SlackHistoryOpts) => callSlackAuthed(
         wired,
         token,
-        (t) => queryGet("/api/conversations.history", {
+        (t) => get("/api/conversations.history", {
           channel,
           cursor: opts?.cursor,
           limit: opts?.limit,
@@ -580,7 +604,7 @@ export function slackAt(base: string) {
       replies: (token: string, channel: string, ts: string, opts?: SlackPaginationOpts) => callSlackAuthed(
         wired,
         token,
-        (t) => queryGet("/api/conversations.replies", {
+        (t) => get("/api/conversations.replies", {
           channel,
           ts,
           cursor: opts?.cursor,
@@ -591,72 +615,63 @@ export function slackAt(base: string) {
       markRead: (token: string, channel: string, ts: string) => callSlackAuthed(
         wired,
         token,
-        (t) => jsonPost("/api/conversations.mark", { channel, ts }, t),
+        (t) => post("/api/conversations.mark", { channel, ts }, t),
         SlackOkResponse,
-      ),
-      setMute: (token: string, channel: string, muted: boolean) => callSlackAuthed(
-        wired,
-        token,
-        (t) => jsonPost("/api/conversations.setMute", { channel, muted }, t),
-        SlackSetMuteResponse,
       ),
       postMessage: (token: string, req: SlackPostMessageReq, idempotencyKey?: string) => callSlackAuthed(
         wired,
         token,
-        (t) => jsonPost("/api/chat.postMessage", {
+        (t) => post("/api/chat.postMessage", {
           channel: req.channel,
           text: req.text,
           thread_ts: req.threadTs,
           reply_broadcast: req.replyBroadcast,
+          client_msg_id: idempotencyKey,
         }, t, idempotencyKey),
         SlackPostMessageResponse,
       ),
       updateMessage: (token: string, req: SlackUpdateMessageReq) => callSlackAuthed(
         wired,
         token,
-        (t) => jsonPost("/api/chat.update", { channel: req.channel, ts: req.ts, text: req.text }, t),
+        (t) => post("/api/chat.update", { channel: req.channel, ts: req.ts, text: req.text }, t),
         SlackUpdateMessageResponse,
       ),
       deleteMessage: (token: string, req: SlackDeleteMessageReq) => callSlackAuthed(
         wired,
         token,
-        (t) => jsonPost("/api/chat.delete", { channel: req.channel, ts: req.ts }, t),
+        (t) => post("/api/chat.delete", { channel: req.channel, ts: req.ts }, t),
         SlackDeleteMessageResponse,
       ),
       addReaction: (token: string, req: SlackReactionReq) => callSlackAuthed(
         wired,
         token,
-        (t) => jsonPost("/api/reactions.add", { channel: req.channel, timestamp: req.timestamp, name: req.name }, t),
+        (t) => post("/api/reactions.add", { channel: req.channel, timestamp: req.timestamp, name: req.name }, t),
         SlackOkResponse,
       ),
       removeReaction: (token: string, req: SlackReactionReq) => callSlackAuthed(
         wired,
         token,
-        (t) => jsonPost("/api/reactions.remove", { channel: req.channel, timestamp: req.timestamp, name: req.name }, t),
+        (t) => post("/api/reactions.remove", { channel: req.channel, timestamp: req.timestamp, name: req.name }, t),
         SlackOkResponse,
       ),
       searchMessages: (token: string, query: string, opts?: SlackSearchOpts) => callSlackAuthed(
         wired,
         token,
-        (t) => queryGet("/api/search.messages", { query, page: opts?.page, count: opts?.count }, t),
+        (t) => get("/api/search.messages", { query, page: opts?.page, count: opts?.count }, t),
         SlackSearchMessagesResponse,
       ),
       listUsers: (token: string, opts?: SlackPaginationOpts) => callSlackAuthed(
         wired,
         token,
-        (t) => queryGet("/api/users.list", { cursor: opts?.cursor, limit: opts?.limit }, t),
+        (t) => get("/api/users.list", { cursor: opts?.cursor, limit: opts?.limit }, t),
         SlackUsersListResponse,
       ),
       userInfo: (token: string, userId: string) => callSlackAuthed(
         wired,
         token,
-        (t) => queryGet("/api/users.info", { user: userId }, t),
+        (t) => get("/api/users.info", { user: userId }, t),
         SlackUserInfoResponse,
       ),
-      eventsStream: (token: string, listening?: Listening) => Stream.unwrap(effect {
-        const validToken = try assertSlackUserToken(token)
-        return openEventStream(wired, "slack", queryGet("/api/events.stream", {}, validToken), SlackEventEnvelope, slackFailureFromBody, listening)
-      }),
     }
   })
 }

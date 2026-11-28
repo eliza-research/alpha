@@ -1,0 +1,66 @@
+--- a/src/com/android/launcher3/qsb/QsbContainerView.java
++++ b/src/com/android/launcher3/qsb/QsbContainerView.java
+@@ -24,6 +24,8 @@ import android.appwidget.AppWidgetProviderInfo;
++import android.app.SearchManager;
++import android.content.ActivityNotFoundException;
+ import android.content.ComponentName;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.graphics.Rect;
+ import android.os.Bundle;
+ import android.provider.Settings;
+@@ -261,6 +263,15 @@ public class QsbContainerView extends FrameLayout {
+         protected View getDefaultView(ViewGroup container, boolean showSetupIcon) {
+             // Return a default widget with setup icon.
+             View v = getDefaultView(container.getContext(), showSetupIcon);
++            if (container.getResources().getBoolean(R.bool.config_alpha_qsb_ask_bar)) {
++                v.setOnClickListener(clicked -> launchAlphaAskBar(clicked.getContext(), false));
++                View voiceBtn = v.findViewById(R.id.mic_icon);
++                if (voiceBtn != null) {
++                    voiceBtn.setOnClickListener(
++                            clicked -> launchAlphaAskBar(clicked.getContext(), true));
++                }
++                return v;
++            }
+             if (showSetupIcon) {
+                 View setupButton = v.findViewById(R.id.btn_qsb_setup);
+                 setupButton.setVisibility(View.VISIBLE);
+@@ -273,6 +284,30 @@ public class QsbContainerView extends FrameLayout {
+             return v;
+         }
+ 
++        private static void launchAlphaAskBar(Context context, boolean startVoice) {
++            Bundle assistArgs = new Bundle();
++            assistArgs.putString("alpha.overlay.entrySource", "launcher3-qsb");
++            assistArgs.putBoolean("alpha.overlay.startVoice", startVoice);
++            SearchManager searchManager = context.getSystemService(SearchManager.class);
++            if (searchManager != null) {
++                try {
++                    searchManager.launchAssist(assistArgs);
++                    return;
++                } catch (RuntimeException ignored) {
++                }
++            }
++            String targetPackage = context.getString(R.string.alpha_qsb_target_package);
++            Intent fallback = new Intent("ai.alphacompute.alphaphone.TEXT_ASK")
++                    .setComponent(new ComponentName(targetPackage, targetPackage + ".MainActivity"))
++                    .putExtra("alpha.overlay.entrySource", "launcher3-qsb")
++                    .putExtra("alpha.overlay.startVoice", startVoice)
++                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
++            try {
++                context.startActivity(fallback);
++            } catch (SecurityException | ActivityNotFoundException ignored) {
++            }
++        }
++
+         /**
+          * Removes the widget from the host and creates a new one.
+          */
+--- /dev/null
++++ b/res/values/alpha-qsb.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <bool name="config_alpha_qsb_ask_bar">false</bool>
++    <string name="alpha_qsb_target_package" translatable="false">ai.alphacompute.alphaphone</string>
++</resources>

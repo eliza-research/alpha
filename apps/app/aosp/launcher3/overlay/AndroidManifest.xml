@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="ai.alphacompute.alpha.overlay.launcher3">
+    <application android:hasCode="false" />
+    <overlay
+        android:isStatic="true"
+        android:priority="1000"
+        android:targetPackage="com.android.launcher3" />
+</manifest>

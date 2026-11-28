@@ -3,7 +3,7 @@
 The owner's Slack user workspaces on Alpha: a multi-workspace registry and
 switcher with strict per-workspace isolation (`(workspace, credentialRev)`),
 channel, DM, MPIM and Mentions & Threads lists, workspace search, single-use
-cursor pagination, channel mute, credential-bound offline cache and Home
+cursor pagination, local channel notification mutes, credential-bound offline cache and Home
 attention. The rest of the area:
 
 - [Authentication](./auth.md): scope consent, OAuth2 PKCE user tokens (`xoxp-`), bot-token rejection and per-workspace isolation
@@ -107,7 +107,6 @@ pure def turned(chosen: Selection, s: WorkspaceList): WorkspaceList =
   {
     ...s, selected: chosen, further: false, failure: Fine, cursor: 0, spent: Set(),
     pages: if (restores) s.keptPages else 0, total: if (restores) s.keptTotal else 0, saved: restores,
-    mutedChannels: if (chosen.workspace != s.selected.workspace) Set() else s.mutedChannels,
     count: if (s.count.workspace != chosen.workspace) noCount else if (restores) { ...s.count, fresh: false } else s.count,
   }
 ```
@@ -154,7 +153,7 @@ pure def workspaceRemoved(s: WorkspaceList, workspace: int): Moved =
     {
       state: {
         ...cleaned, selected: nowhere, list: R::drop(s.list), further: false, failure: Fine,
-        pages: 0, total: 0, cursor: 0, spent: Set(), saved: false, mutedChannels: Set(),
+        pages: 0, total: 0, cursor: 0, spent: Set(), saved: false,
         muteOp: A::plan(s.muteOp.id),
       },
       out: List(),
@@ -247,6 +246,10 @@ pure def listed(s: WorkspaceList, ticket: int, answer: ListAnswer): WorkspaceLis
 ```
 
 ### Single-use cursor pagination and channel mute attempts
+
+A channel mute suppresses Alpha notices for this connection on this device.
+The resident assigns channels unique numbers across workspaces, so switching
+workspaces preserves each channel’s mute.
 
 ```quint
 pure def canLoadMore(s: WorkspaceList): bool =

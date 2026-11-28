@@ -16,6 +16,11 @@ on:
     branches: [vibestack-develop]
     paths:
       - apps/cloud/**
+      - apps/app/**
+      - spec/app/**
+      - spec/kit/**
+      - packages/ui/**
+      - packages/design-system/**
       - spec/cloud/**
       - spec/index.md
       - packages/deployment/**

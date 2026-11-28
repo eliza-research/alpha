@@ -1,5 +1,6 @@
 test/__traces__/
 artifacts/
+dist-suite/
 /android/.eliza-consumer-host.json
 /android/.eliza-consumer-profile.json
 /android/build.gradle
